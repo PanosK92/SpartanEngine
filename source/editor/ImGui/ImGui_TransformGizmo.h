@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ==============================
 #include "Source/ImGuizmo/ImGuizmo.h"
 #include "Source/imgui.h"
 #include "World/Entity.h"
@@ -29,14 +29,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "Commands/CommandStack.h"
 #include "Commands/CommandTransform.h"
+#include "Commands/CommandTransformMulti.h"
 #include "Engine.h"
-//====================================
+#include <vector>
+//=========================================
 
 namespace ImGui::TransformGizmo
 {
     const  spartan::math::Vector3 snap = spartan::math::Vector3(0.1f, 0.1f, 0.1f);
 
     bool first_use = true;
+    std::vector<spartan::Entity*> entities_being_transformed;
+    std::vector<spartan::math::Vector3> positions_previous;
+    std::vector<spartan::math::Quaternion> rotations_previous;
+    std::vector<spartan::math::Vector3> scales_previous;
+    
+    // for backwards compatibility with single entity
     spartan::math::Vector3 position_previous;
     spartan::math::Quaternion rotation_previous;
     spartan::math::Vector3 scale_previous;
@@ -88,9 +96,14 @@ namespace ImGui::TransformGizmo
         if (!camera)
             return;
 
-        // get selected entity
-        spartan::Entity* entity = camera->GetSelectedEntity();
-        if (!entity)
+        // get selected entities
+        const std::vector<spartan::Entity*>& selected_entities = camera->GetSelectedEntities();
+        if (selected_entities.empty())
+            return;
+            
+        // use the first entity as the primary for rotation/scale reference
+        spartan::Entity* primary_entity = selected_entities[0];
+        if (!primary_entity)
             return;
 
         // switch between position, rotation and scale operations, with W, E and R respectively
@@ -120,12 +133,33 @@ namespace ImGui::TransformGizmo
         ImGuizmo::SetOrthographic(is_orthographic);
         ImGuizmo::BeginFrame();
 
-        // map transform to ImGuizmo
-        static bool use_world_space            = true;
-        spartan::math::Vector3 position        = use_world_space ? entity->GetPosition() : entity->GetPositionLocal();
-        spartan::math::Quaternion rotation     = use_world_space ? entity->GetRotation() : entity->GetRotationLocal();
-        spartan::math::Vector3 scale           = use_world_space ? entity->GetScale() : entity->GetScaleLocal();
+        // calculate center position of all selected entities for gizmo placement
+        static bool use_world_space = true;
+        spartan::math::Vector3 center_position = spartan::math::Vector3::Zero;
+        uint32_t valid_entity_count = 0;
+        for (spartan::Entity* entity : selected_entities)
+        {
+            if (entity)
+            {
+                center_position += use_world_space ? entity->GetPosition() : entity->GetPositionLocal();
+                valid_entity_count++;
+            }
+        }
+        if (valid_entity_count > 0)
+        {
+            center_position /= static_cast<float>(valid_entity_count);
+        }
+        
+        // use center position for gizmo, but primary entity's rotation/scale for orientation
+        spartan::math::Vector3 position        = center_position;
+        spartan::math::Quaternion rotation     = use_world_space ? primary_entity->GetRotation() : primary_entity->GetRotationLocal();
+        spartan::math::Vector3 scale           = use_world_space ? primary_entity->GetScale() : primary_entity->GetScaleLocal();
         spartan::math::Matrix transform_matrix = create_row_major_matrix(position, rotation, scale);
+        
+        // save the initial position for delta calculation
+        spartan::math::Vector3 initial_position = position;
+        spartan::math::Quaternion initial_rotation = rotation;
+        spartan::math::Vector3 initial_scale = scale;
 
         // set viewport rectangle
         ImGuizmo::SetDrawlist();
@@ -143,33 +177,94 @@ namespace ImGui::TransformGizmo
         // map imguizmo to transform
         if (ImGuizmo::IsUsing())
         {
-            // start of handling - save the initial transform
+            // start of handling - save the initial transforms for all entities
             if (first_use)
             {
-                position_previous = use_world_space ? entity->GetPosition() : entity->GetPositionLocal();
-                rotation_previous = use_world_space ? entity->GetRotation() : entity->GetRotationLocal();
-                scale_previous    = use_world_space ? entity->GetScale()    : entity->GetScaleLocal();
-                first_use         = false;
+                entities_being_transformed.clear();
+                positions_previous.clear();
+                rotations_previous.clear();
+                scales_previous.clear();
+                
+                for (spartan::Entity* entity : selected_entities)
+                {
+                    if (entity)
+                    {
+                        entities_being_transformed.push_back(entity);
+                        positions_previous.push_back(use_world_space ? entity->GetPosition() : entity->GetPositionLocal());
+                        rotations_previous.push_back(use_world_space ? entity->GetRotation() : entity->GetRotationLocal());
+                        scales_previous.push_back(use_world_space ? entity->GetScale() : entity->GetScaleLocal());
+                    }
+                }
+                first_use = false;
             }
 
             transform_matrix.Transposed().Decompose(scale, rotation, position);
-            if (use_world_space)
+            
+            // calculate deltas from primary entity
+            spartan::math::Vector3 position_delta = position - initial_position;
+            spartan::math::Quaternion rotation_delta = rotation * initial_rotation.Inverse();
+            spartan::math::Vector3 scale_ratio = spartan::math::Vector3(
+                initial_scale.x != 0.0f ? scale.x / initial_scale.x : 1.0f,
+                initial_scale.y != 0.0f ? scale.y / initial_scale.y : 1.0f,
+                initial_scale.z != 0.0f ? scale.z / initial_scale.z : 1.0f
+            );
+            
+            // apply transforms to all selected entities
+            for (spartan::Entity* entity : selected_entities)
             {
-                entity->SetPosition(position);
-                entity->SetRotation(rotation);
-                entity->SetScale(scale);
-            }
-            else
-            {
-                entity->SetPositionLocal(position);
-                entity->SetRotationLocal(rotation);
-                entity->SetScaleLocal(scale);
+                if (!entity)
+                    continue;
+                    
+                if (use_world_space)
+                {
+                    // for translation, apply the delta
+                    entity->SetPosition(entity->GetPosition() + position_delta);
+                    
+                    // for rotation, apply the rotation delta
+                    if (transform_operation == ImGuizmo::ROTATE)
+                    {
+                        entity->SetRotation(rotation_delta * entity->GetRotation());
+                    }
+                    
+                    // for scale, apply the ratio
+                    if (transform_operation == ImGuizmo::SCALE)
+                    {
+                        spartan::math::Vector3 current_scale = entity->GetScale();
+                        entity->SetScale(spartan::math::Vector3(
+                            current_scale.x * scale_ratio.x,
+                            current_scale.y * scale_ratio.y,
+                            current_scale.z * scale_ratio.z
+                        ));
+                    }
+                }
+                else
+                {
+                    entity->SetPositionLocal(entity->GetPositionLocal() + position_delta);
+                    
+                    if (transform_operation == ImGuizmo::ROTATE)
+                    {
+                        entity->SetRotationLocal(rotation_delta * entity->GetRotationLocal());
+                    }
+                    
+                    if (transform_operation == ImGuizmo::SCALE)
+                    {
+                        spartan::math::Vector3 current_scale = entity->GetScaleLocal();
+                        entity->SetScaleLocal(spartan::math::Vector3(
+                            current_scale.x * scale_ratio.x,
+                            current_scale.y * scale_ratio.y,
+                            current_scale.z * scale_ratio.z
+                        ));
+                    }
+                }
             }
 
-            // end of handling - add the current and previous transforms to the command stack
+            // end of handling - add transforms to the command stack for all entities as a single undo operation
             if (spartan::Input::GetKeyUp(spartan::KeyCode::Click_Left))
             {
-                spartan::CommandStack::Add<spartan::CommandTransform>(entity, position_previous, rotation_previous, scale_previous);
+                if (!entities_being_transformed.empty())
+                {
+                    spartan::CommandStack::Add<spartan::CommandTransformMulti>(entities_being_transformed, positions_previous, rotations_previous, scales_previous);
+                }
                 first_use = true;
             }
         }

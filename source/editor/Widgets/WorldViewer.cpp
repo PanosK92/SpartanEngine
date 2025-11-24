@@ -121,7 +121,19 @@ void WorldViewer::OnTickVisible()
             {
                 if (entity_hovered_raw->GetObjectId() == entity_clicked_raw->GetObjectId())
                 {
-                    SetSelectedEntity(entity_clicked_raw);
+                    // support Ctrl+Click for multi-select
+                    bool ctrl_held = spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) || spartan::Input::GetKey(spartan::KeyCode::Ctrl_Right);
+                    if (ctrl_held)
+                    {
+                        if (spartan::Camera* camera = spartan::World::GetCamera())
+                        {
+                            camera->ToggleSelection(entity_clicked_raw);
+                        }
+                    }
+                    else
+                    {
+                        SetSelectedEntity(entity_clicked_raw);
+                    }
                 }
 
                 entity_clicked = nullptr;
@@ -181,17 +193,18 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         node_flags |= ImGuiTreeNodeFlags_Leaf;
     }
 
-    // handle selection
-    spartan::Entity* selected_entity = spartan::World::GetCamera() ? spartan::World::GetCamera()->GetSelectedEntity() : nullptr;
-    const bool is_selected           = selected_entity && selected_entity->GetObjectId() == entity->GetObjectId();
-    const bool first_time_selected   = is_selected && selected_entity->GetObjectId() != last_selected_entity_id;
+    // handle selection (multi-select support)
+    spartan::Camera* camera = spartan::World::GetCamera();
+    const bool is_selected  = camera && camera->IsSelected(entity);
+    spartan::Entity* primary_selected = camera ? camera->GetSelectedEntity() : nullptr;
+    const bool first_time_selected = is_selected && primary_selected && primary_selected->GetObjectId() != last_selected_entity_id;
     if (is_selected)
     {
         node_flags |= ImGuiTreeNodeFlags_Selected;
     }
 
     // auto-expand for selected descendants
-    if (selected_entity && selected_entity->IsDescendantOf(entity) && selected_entity->GetObjectId() != last_selected_entity_id)
+    if (primary_selected && primary_selected->IsDescendantOf(entity) && primary_selected->GetObjectId() != last_selected_entity_id)
     {
         ImGui::SetNextItemOpen(true);
     }
@@ -201,10 +214,10 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "");
 
     // scroll to selected entity
-    if (first_time_selected)
+    if (first_time_selected && primary_selected)
     {
         ImGui::SetScrollHereY(0.25f);
-        last_selected_entity_id = selected_entity->GetObjectId();
+        last_selected_entity_id = primary_selected->GetObjectId();
     }
 
     // set up row for interaction
@@ -305,14 +318,7 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
     const ImVec2 text_pos = ImVec2(next_x, row_pos.y - (ImGui::GetTextLineHeightWithSpacing() - ImGui::GetTextLineHeight()) * 0.25f);
     dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), text_pos, ImGui::GetColorU32(ImGuiCol_Text), entity->GetObjectName().c_str());
 
-    // handle selection on click
-    if (clicked)
-    {
-        if (spartan::Camera* camera = spartan::World::GetCamera())
-        {
-            camera->SetSelectedEntity(entity);
-        }
-    }
+    // note: selection is handled in OnTickVisible on mouse release to avoid double-selection
 
     // recursively add children
     if (is_node_open)
@@ -333,10 +339,22 @@ void WorldViewer::HandleClicking()
     const auto is_window_hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     const auto left_click        = ImGui::IsMouseClicked(0);
     const auto right_click       = ImGui::IsMouseClicked(1);
+    const auto double_click      = ImGui::IsMouseDoubleClicked(0);
 
     // since we are handling clicking manually, we must ensure we are inside the window
     if (!is_window_hovered)
         return;
+
+    // double-click on item - Focus camera on entity
+    if (double_click && entity_hovered)
+    {
+        SetSelectedEntity(entity_hovered);
+        if (spartan::Camera* camera = spartan::World::GetCamera())
+        {
+            camera->FocusOnSelectedEntity();
+        }
+        return; // don't process as regular click
+    }
 
     // left click on item - Don't select yet
     if (left_click && entity_hovered)
@@ -349,16 +367,28 @@ void WorldViewer::HandleClicking()
     {
         if (entity_hovered)
         {
-            SetSelectedEntity(entity_hovered);
+            // if entity is not already selected, select it (replacing current selection)
+            // if already selected, keep the current selection for multi-entity context menu
+            if (spartan::Camera* camera = spartan::World::GetCamera())
+            {
+                if (!camera->IsSelected(entity_hovered))
+                {
+                    SetSelectedEntity(entity_hovered);
+                }
+            }
         }
 
         ImGui::OpenPopup("##HierarchyContextMenu");
     }
 
-    // clicking on empty space - Clear selection
+    // clicking on empty space - Clear selection (only if Ctrl not held)
     if ((left_click || right_click) && !entity_hovered)
     {
-        SetSelectedEntity(nullptr);
+        bool ctrl_held = spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) || spartan::Input::GetKey(spartan::KeyCode::Ctrl_Right);
+        if (!ctrl_held)
+        {
+            SetSelectedEntity(nullptr);
+        }
     }
 }
 
@@ -388,16 +418,22 @@ void WorldViewer::PopupContextMenu() const
     if (!ImGui::BeginPopup("##HierarchyContextMenu"))
         return;
 
-    // get selected entity
-    spartan::Entity* selected_entity = nullptr;
-    if (spartan::Camera* camera = spartan::World::GetCamera())
-    {
-        selected_entity = camera->GetSelectedEntity();
-    }
+    // get selected entities
+    spartan::Camera* camera = spartan::World::GetCamera();
+    spartan::Entity* selected_entity = camera ? camera->GetSelectedEntity() : nullptr;
+    uint32_t selected_count = camera ? camera->GetSelectedEntityCount() : 0;
 
     const bool on_entity = selected_entity != nullptr;
+    const bool multiple_selected = selected_count > 1;
 
-    if (ImGui::MenuItem("Copy") && on_entity)
+    // show selection count if multiple
+    if (multiple_selected)
+    {
+        ImGui::Text("%d entities selected", selected_count);
+        ImGui::Separator();
+    }
+
+    if (ImGui::MenuItem("Copy") && on_entity && !multiple_selected)
     {
         entity_copied = selected_entity;
     }
@@ -407,7 +443,7 @@ void WorldViewer::PopupContextMenu() const
         entity_copied->Clone();
     }
 
-    if (ImGui::MenuItem("Rename") && on_entity)
+    if (ImGui::MenuItem("Rename") && on_entity && !multiple_selected)
     {
         popup_rename_entity = true;
     }
@@ -417,9 +453,27 @@ void WorldViewer::PopupContextMenu() const
         spartan::World::GetCamera()->FocusOnSelectedEntity();
     }
 
-    if (ImGui::MenuItem("Delete", "Delete") && on_entity)
+    // delete shows count if multiple selected
+    std::string delete_label = multiple_selected ? "Delete (" + std::to_string(selected_count) + ")" : "Delete";
+    if (ImGui::MenuItem(delete_label.c_str(), "Delete") && on_entity)
     {
-        ActionEntityDelete(selected_entity);
+        if (multiple_selected)
+        {
+            // delete all selected entities
+            std::vector<spartan::Entity*> to_delete = camera->GetSelectedEntities();
+            for (spartan::Entity* entity : to_delete)
+            {
+                if (entity)
+                {
+                    ActionEntityDelete(entity);
+                }
+            }
+            camera->ClearSelection();
+        }
+        else
+        {
+            ActionEntityDelete(selected_entity);
+        }
     }
     ImGui::Separator();
 
@@ -548,15 +602,21 @@ void WorldViewer::PopupEntityRename() const
 
 void WorldViewer::HandleKeyShortcuts()
 {
-    // Delete
+    // Delete - deletes all selected entities
     if (spartan::Input::GetKey(spartan::KeyCode::Delete))
     {
         if (spartan::Camera* camera = spartan::World::GetCamera())
-        { 
-            if (spartan::Entity* selected_entity = camera->GetSelectedEntity())
+        {
+            // copy the vector since we're modifying it
+            std::vector<spartan::Entity*> to_delete = camera->GetSelectedEntities();
+            for (spartan::Entity* entity : to_delete)
             {
-                ActionEntityDelete(selected_entity);
+                if (entity)
+                {
+                    ActionEntityDelete(entity);
+                }
             }
+            camera->ClearSelection();
         }
     }
 

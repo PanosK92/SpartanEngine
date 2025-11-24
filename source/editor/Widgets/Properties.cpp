@@ -62,6 +62,25 @@ namespace
 
         return nullptr;
     }
+    
+    uint32_t get_selected_entity_count()
+    {
+        if (Camera* camera = World::GetCamera())
+        {
+            return camera->GetSelectedEntityCount();
+        }
+        return 0;
+    }
+    
+    const std::vector<Entity*>& get_selected_entities()
+    {
+        static std::vector<Entity*> empty;
+        if (Camera* camera = World::GetCamera())
+        {
+            return camera->GetSelectedEntities();
+        }
+        return empty;
+    }
 
     void component_context_menu_options(const string& id, Component* component, const bool removable)
     {
@@ -162,7 +181,25 @@ void Properties::OnTickVisible()
     {
         ImGui::PushItemWidth(item_width);
         {
-            if (Entity* entity = get_selected_entity())
+            uint32_t selected_count = get_selected_entity_count();
+            
+            if (selected_count > 1)
+            {
+                // multiple entities selected
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f), "%d entities selected", selected_count);
+                ImGui::Separator();
+                
+                // list the selected entities
+                const auto& selected = get_selected_entities();
+                for (Entity* entity : selected)
+                {
+                    if (entity)
+                    {
+                        ImGui::BulletText("%s", entity->GetObjectName().c_str());
+                    }
+                }
+            }
+            else if (Entity* entity = get_selected_entity())
             {
                 Renderable* renderable = entity->GetComponent<Renderable>();
                 Material* material     = renderable ? renderable->GetMaterial() : nullptr;

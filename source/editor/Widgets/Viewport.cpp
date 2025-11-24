@@ -103,26 +103,43 @@ void Viewport::OnTickVisible()
 
     Camera* camera = World::GetCamera();
 
-    // mouse picking
-    if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
+    // double-click to focus on entity
+    if (camera && ImGui::IsMouseDoubleClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
     {
         camera->Pick();
         m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+        if (camera->GetSelectedEntity())
+        {
+            camera->FocusOnSelectedEntity();
+        }
+    }
+    // mouse picking (with multi-select via Ctrl handled in Pick())
+    else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
+    {
+        camera->Pick();
+        // update the world viewer to reflect selection (uses primary selected entity for Properties)
+        m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
     }
 
-    // entity transform gizmo (will only show if an entity has been picked)
+    // entity transform gizmo (will only show if entities have been picked)
     if (Renderer::GetOption<bool>(spartan::Renderer_Option::TransformHandle))
     {
         if (camera) // skip if no camera
         {
-            if (spartan::Entity* selected_entity = camera->GetSelectedEntity()) // skip if no entity is selected
+            const std::vector<spartan::Entity*>& selected_entities = camera->GetSelectedEntities();
+            if (!selected_entities.empty()) // skip if no entities are selected
             {
-                spartan::Entity* camera_entity = camera->GetEntity();
-                spartan::math::Vector3 dir_to_entity = selected_entity->GetPosition() - camera_entity->GetPosition();
-                dir_to_entity.Normalize();
-                if (dir_to_entity.Dot(camera_entity->GetForward()) >= 0.0f) // skip when the camera is facing away
+                // use the first selected entity for direction check
+                spartan::Entity* primary_selected = selected_entities[0];
+                if (primary_selected)
                 {
-                    ImGui::TransformGizmo::tick();
+                    spartan::Entity* camera_entity = camera->GetEntity();
+                    spartan::math::Vector3 dir_to_entity = primary_selected->GetPosition() - camera_entity->GetPosition();
+                    dir_to_entity.Normalize();
+                    if (dir_to_entity.Dot(camera_entity->GetForward()) >= 0.0f) // skip when the camera is facing away
+                    {
+                        ImGui::TransformGizmo::tick();
+                    }
                 }
             }
         }
