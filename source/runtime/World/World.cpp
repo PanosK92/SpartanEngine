@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Game/Game.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/ProgressTracker.h"
+#include "../Core/ThreadPool.h"
 #include "Components/Renderable.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
@@ -51,9 +52,9 @@ namespace spartan
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
-        uint32_t audio_source_count = 0;
-        bool resolve                = false;
-        bool was_in_editor_mode     = false;
+        uint32_t audio_source_count     = 0;
+        atomic<bool> resolve            = false;
+        bool was_in_editor_mode         = false;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* light               = nullptr;
@@ -266,24 +267,61 @@ namespace spartan
 
         ProcessPendingRemovals();
 
-        // pre-tick
-        for (Entity* entity : entities)
+        // pre-tick (parallelized - components calculate shadow matrices, etc.)
+        if (entities.size() >= 32 && ThreadPool::GetThreadCount() > 0)
         {
-            if (entity->GetActive())
+            ThreadPool::ParallelLoop([](uint32_t start, uint32_t end)
             {
-                entity->PreTick();
+                for (uint32_t i = start; i < end; i++)
+                {
+                    if (entities[i]->GetActive())
+                    {
+                        entities[i]->PreTick();
+                    }
+                }
+            }, static_cast<uint32_t>(entities.size()));
+        }
+        else
+        {
+            for (Entity* entity : entities)
+            {
+                if (entity->GetActive())
+                {
+                    entity->PreTick();
+                }
             }
         }
 
-        // tick
-        // tick
+        // tick (parallelized - renderables update AABB, frustum culling, LOD)
+        if (entities.size() >= 32 && ThreadPool::GetThreadCount() > 0)
+        {
+            ThreadPool::ParallelLoop([](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                {
+                    if (entities[i]->GetActive())
+                    {
+                        entities[i]->Tick();
+                    }
+                }
+            }, static_cast<uint32_t>(entities.size()));
+        }
+        else
+        {
+            for (Entity* entity : entities)
+            {
+                if (entity->GetActive())
+                {
+                    entity->Tick();
+                }
+            }
+        }
+
+        // entity state checking (serial - accesses shared state)
         for (Entity* entity : entities)
         {
             if (entity->GetActive())
             {
-                entity->Tick();
-
-                // check for entity changes
                 uint64_t id = entity->GetObjectId();
                 auto it = entity_states.find(id);
                 if (it != entity_states.end())
