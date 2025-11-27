@@ -203,49 +203,49 @@ namespace spartan
         
         if (GetOption<bool>(Renderer_Option::Lights))
         {
-            for (Entity* entity : World::GetEntities())
+            if (Camera* camera = World::GetCamera())
             {
-                if (Camera* camera = World::GetCamera())
+                // iterate through all selected entities
+                for (Entity* entity : camera->GetSelectedEntities())
                 {
-                    Entity* entity_selected = camera->GetSelectedEntity();
-                    if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
-                    {
-                        if (Light* light = entity->GetComponent<Light>())
-                        { 
-                            if (light->GetLightType() == LightType::Directional)
-                            {
-                                Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * FLT_MAX;
-                                DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
-                            }
-                            else if (light->GetLightType() == LightType::Point)
-                            {
-                                Vector3 center = light->GetEntity()->GetPosition();
-                                float radius   = light->GetRange();
-                                uint32_t segment_count = 64;
+                    if (!entity)
+                        continue;
+                        
+                    if (Light* light = entity->GetComponent<Light>())
+                    { 
+                        if (light->GetLightType() == LightType::Directional)
+                        {
+                            Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * FLT_MAX;
+                            DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
+                        }
+                        else if (light->GetLightType() == LightType::Point)
+                        {
+                            Vector3 center = light->GetEntity()->GetPosition();
+                            float radius   = light->GetRange();
+                            uint32_t segment_count = 64;
 
-                                DrawCircle(center, Vector3::Up,      radius, segment_count);
-                                DrawCircle(center, Vector3::Right,   radius, segment_count);
-                                DrawCircle(center, Vector3::Forward, radius, segment_count);
-                            }
-                            else if (light->GetLightType() == LightType::Spot)
-                            {
-                                // tan(angle) = opposite/adjacent
-                                // opposite = adjacent * tan(angle)
-                                float opposite = light->GetRange() * tan(light->GetAngle());
+                            DrawCircle(center, Vector3::Up,      radius, segment_count);
+                            DrawCircle(center, Vector3::Right,   radius, segment_count);
+                            DrawCircle(center, Vector3::Forward, radius, segment_count);
+                        }
+                        else if (light->GetLightType() == LightType::Spot)
+                        {
+                            // tan(angle) = opposite/adjacent
+                            // opposite = adjacent * tan(angle)
+                            float opposite = light->GetRange() * tan(light->GetAngle());
 
-                                Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
-                                Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp()    * opposite;
-                                Vector3 pos_end_right  = pos_end_center + light->GetEntity()->GetRight() * opposite;
-                                Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown()  * opposite;
-                                Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft()  * opposite;
+                            Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
+                            Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp()    * opposite;
+                            Vector3 pos_end_right  = pos_end_center + light->GetEntity()->GetRight() * opposite;
+                            Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown()  * opposite;
+                            Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft()  * opposite;
 
-                                Vector3 pos_start = light->GetEntity()->GetPosition();
-                                DrawLine(pos_start, pos_start + pos_end_center);
-                                DrawLine(pos_start, pos_start + pos_end_up);
-                                DrawLine(pos_start, pos_start + pos_end_right);
-                                DrawLine(pos_start, pos_start + pos_end_down);
-                                DrawLine(pos_start, pos_start + pos_end_left);
-                            }
+                            Vector3 pos_start = light->GetEntity()->GetPosition();
+                            DrawLine(pos_start, pos_start + pos_end_center);
+                            DrawLine(pos_start, pos_start + pos_end_up);
+                            DrawLine(pos_start, pos_start + pos_end_right);
+                            DrawLine(pos_start, pos_start + pos_end_down);
+                            DrawLine(pos_start, pos_start + pos_end_left);
                         }
                     }
                 }

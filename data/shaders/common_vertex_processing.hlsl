@@ -258,7 +258,11 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     // start building the vertex
     gbuffer_vertex vertex;
     vertex.uv_misc.w         = instance_id;
-    vertex.uv_misc.xy        = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
+    float2 uv = float2(input.uv.x * material.tiling.x + material.offset.x, input.uv.y * material.tiling.y + material.offset.y);
+    // apply inversion (mirror along axis)
+    uv.x = material.invert_uv.x > 0.5f ? (1.0f - frac(uv.x)) + floor(uv.x) : uv.x;
+    uv.y = material.invert_uv.y > 0.5f ? (1.0f - frac(uv.y)) + floor(uv.y) : uv.y;
+    vertex.uv_misc.xy        = uv;
     vertex.position          = 0.0f; // set to silence validation errors (in case it's never set later)
     vertex.position_previous = 0.0f; // set to silence validation errors (in case it's never set later)
     

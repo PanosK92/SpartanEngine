@@ -62,6 +62,25 @@ namespace
 
         return nullptr;
     }
+    
+    uint32_t get_selected_entity_count()
+    {
+        if (Camera* camera = World::GetCamera())
+        {
+            return camera->GetSelectedEntityCount();
+        }
+        return 0;
+    }
+    
+    const std::vector<Entity*>& get_selected_entities()
+    {
+        static std::vector<Entity*> empty;
+        if (Camera* camera = World::GetCamera())
+        {
+            return camera->GetSelectedEntities();
+        }
+        return empty;
+    }
 
     void component_context_menu_options(const string& id, Component* component, const bool removable)
     {
@@ -162,7 +181,25 @@ void Properties::OnTickVisible()
     {
         ImGui::PushItemWidth(item_width);
         {
-            if (Entity* entity = get_selected_entity())
+            uint32_t selected_count = get_selected_entity_count();
+            
+            if (selected_count > 1)
+            {
+                // multiple entities selected
+                ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f), "%d entities selected", selected_count);
+                ImGui::Separator();
+                
+                // list the selected entities
+                const auto& selected = get_selected_entities();
+                for (Entity* entity : selected)
+                {
+                    if (entity)
+                    {
+                        ImGui::BulletText("%s", entity->GetObjectName().c_str());
+                    }
+                }
+            }
+            else if (Entity* entity = get_selected_entity())
             {
                 Renderable* renderable = entity->GetComponent<Renderable>();
                 Material* material     = renderable ? renderable->GetMaterial() : nullptr;
@@ -868,6 +905,17 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             ImGui::SameLine(); ImGui::Text("Y");
             ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+        
+            // inversion
+            bool invert_x = material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
+            bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
+            ImGui::Text("Invert");
+            ImGui::SameLine(column_pos_x);
+            ImGui::Checkbox("X##matInvertX", &invert_x);
+            ImGui::SameLine();
+            ImGui::Checkbox("Y##matInvertY", &invert_y);
+            material->SetProperty(MaterialProperty::TextureInvertX, invert_x ? 1.0f : 0.0f);
+            material->SetProperty(MaterialProperty::TextureInvertY, invert_y ? 1.0f : 0.0f);
         }
 
         // rendering

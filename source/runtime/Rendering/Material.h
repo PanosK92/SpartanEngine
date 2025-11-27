@@ -83,6 +83,8 @@ namespace spartan
         TextureTilingY,             // tiling along y axis
         TextureOffsetX,             // offset along x axis
         TextureOffsetY,             // offset along y axis
+        TextureInvertX,             // invert texture along x axis (mirror horizontally)
+        TextureInvertY,             // invert texture along y axis (mirror vertically)
     
         // special effects
         IsTerrain,                  // slope-based texture mapping

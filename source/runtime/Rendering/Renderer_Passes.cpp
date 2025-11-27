@@ -1949,46 +1949,58 @@ namespace spartan
 
         if (Camera* camera = World::GetCamera())
         {
-            if (Entity* entity_selected = camera->GetSelectedEntity())
+            const std::vector<Entity*>& selected_entities = camera->GetSelectedEntities();
+            if (!selected_entities.empty())
             {
                 cmd_list->BeginTimeblock("outline");
                 {
                     RHI_Texture* tex_outline = GetRenderTarget(Renderer_RenderTarget::outline);
 
-                    if (Renderable* renderable = entity_selected->GetComponent<Renderable>())
+                    // draw silhouettes for all selected entities
+                    bool any_rendered = false;
+                    cmd_list->BeginMarker("color_silhouette");
                     {
-                        cmd_list->BeginMarker("color_silhouette");
+                        // set pipeline state once for all entities
+                        RHI_PipelineState pso;
+                        pso.name                             = "color_silhouette";
+                        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+                        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+                        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+                        pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
+                        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
+                        pso.render_target_color_textures[0]  = tex_outline;
+                        pso.clear_color[0]                   = Color::standard_transparent;
+                        cmd_list->SetPipelineState(pso);
+                    
+                        // render each selected entity
+                        for (Entity* entity_selected : selected_entities)
                         {
-                            // set pipeline state
-                            RHI_PipelineState pso;
-                            pso.name                             = "color_silhouette";
-                            pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-                            pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-                            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-                            pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-                            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-                            pso.render_target_color_textures[0]  = tex_outline;
-                            pso.clear_color[0]                   = Color::standard_transparent;
-                            cmd_list->SetPipelineState(pso);
-                        
-                            // render
-                            {
-                                // push draw data
-                                m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
-                                m_pcb_pass_cpu.transform = entity_selected->GetMatrix();
-                                cmd_list->PushConstants(m_pcb_pass_cpu);
+                            if (!entity_selected)
+                                continue;
+                                
+                            Renderable* renderable = entity_selected->GetComponent<Renderable>();
+                            if (!renderable)
+                                continue;
+                                
+                            // no mesh (vertex/index buffer) can occur if the mesh is selected but not loaded or the user removed it
+                            if (!renderable->GetVertexBuffer() || !renderable->GetIndexBuffer())
+                                continue;
 
-                                // no mesh (vertex/index buffer) can occur if the mesh is selected but not loaded or the user removed it
-                                if (renderable->GetVertexBuffer() && renderable->GetIndexBuffer())
-                                {
-                                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-                                    cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-                                }
-                            }
+                            // push draw data
+                            m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
+                            m_pcb_pass_cpu.transform = entity_selected->GetMatrix();
+                            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                            cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                            cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                            any_rendered = true;
                         }
-                        cmd_list->EndMarker();
-                        
+                    }
+                    cmd_list->EndMarker();
+                    
+                    if (any_rendered)
+                    {
                         // blur the color silhouette
                         {
                             const float radius = 30.0f;

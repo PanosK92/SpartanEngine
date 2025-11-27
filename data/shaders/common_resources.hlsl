@@ -88,6 +88,7 @@ struct MaterialParameters
 
     float2 tiling;
     float2 offset;
+    float2 invert_uv;
 
     float roughness;
     float metallness;

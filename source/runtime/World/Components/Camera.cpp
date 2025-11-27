@@ -156,7 +156,7 @@ namespace spartan
     {
         if (!Input::GetMouseIsInViewport())
         {
-            m_selected_entity = nullptr;
+            ClearSelection();
             return;
         }
 
@@ -181,7 +181,7 @@ namespace spartan
 
         if (hits.empty())
         {
-            m_selected_entity = nullptr;
+            ClearSelection();
             return;
         }
 
@@ -241,7 +241,99 @@ namespace spartan
             }
         }
 
-        m_selected_entity = best_entity;
+        // handle ctrl for multi-select
+        if (best_entity)
+        {
+            if (Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right))
+            {
+                ToggleSelection(best_entity);
+            }
+            else
+            {
+                SetSelectedEntity(best_entity);
+            }
+        }
+        else
+        {
+            if (!(Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right)))
+            {
+                ClearSelection();
+            }
+        }
+    }
+    
+    void Camera::SetSelectedEntity(Entity* entity)
+    {
+        m_selected_entities.clear();
+        if (entity)
+        {
+            m_selected_entities.push_back(entity);
+        }
+    }
+    
+    Entity* Camera::GetSelectedEntity()
+    {
+        return m_selected_entities.empty() ? nullptr : m_selected_entities[0];
+    }
+    
+    void Camera::AddToSelection(Entity* entity)
+    {
+        if (!entity)
+            return;
+        
+        // check if already selected
+        for (Entity* e : m_selected_entities)
+        {
+            if (e && e->GetObjectId() == entity->GetObjectId())
+                return;
+        }
+        
+        m_selected_entities.push_back(entity);
+    }
+    
+    void Camera::RemoveFromSelection(Entity* entity)
+    {
+        if (!entity)
+            return;
+        
+        m_selected_entities.erase(
+            remove_if(m_selected_entities.begin(), m_selected_entities.end(),
+                [entity](Entity* e) { return e && e->GetObjectId() == entity->GetObjectId(); }),
+            m_selected_entities.end()
+        );
+    }
+    
+    void Camera::ToggleSelection(Entity* entity)
+    {
+        if (!entity)
+            return;
+        
+        if (IsSelected(entity))
+        {
+            RemoveFromSelection(entity);
+        }
+        else
+        {
+            AddToSelection(entity);
+        }
+    }
+    
+    void Camera::ClearSelection()
+    {
+        m_selected_entities.clear();
+    }
+    
+    bool Camera::IsSelected(Entity* entity) const
+    {
+        if (!entity)
+            return false;
+        
+        for (Entity* e : m_selected_entities)
+        {
+            if (e && e->GetObjectId() == entity->GetObjectId())
+                return true;
+        }
+        return false;
     }
 
     void Camera::WorldToScreenCoordinates(const Vector3& position_world, Vector2& position_screen) const

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "Component.h"
 #include <memory>
+#include <vector>
 #include "../../RHI/RHI_Viewport.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
@@ -142,8 +143,19 @@ namespace spartan
 
         // misc
         bool IsWalking()                                { return m_is_walking; }
-        void SetSelectedEntity(spartan::Entity* entity) { m_selected_entity = entity; }
-        spartan::Entity* GetSelectedEntity()            { return m_selected_entity; }
+        
+        // selection - single entity (for compatibility)
+        void SetSelectedEntity(spartan::Entity* entity);
+        spartan::Entity* GetSelectedEntity();
+        
+        // selection - multiple entities
+        void AddToSelection(spartan::Entity* entity);
+        void RemoveFromSelection(spartan::Entity* entity);
+        void ToggleSelection(spartan::Entity* entity);
+        void ClearSelection();
+        bool IsSelected(spartan::Entity* entity) const;
+        const std::vector<spartan::Entity*>& GetSelectedEntities() const { return m_selected_entities; }
+        uint32_t GetSelectedEntityCount() const { return static_cast<uint32_t>(m_selected_entities.size()); }
 
         math::Matrix UpdateViewMatrix() const;
         math::Matrix ComputeProjection(const float near_plane, const float far_plane);
@@ -187,6 +199,6 @@ namespace spartan
         Entity* m_flashlight                         = nullptr;
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;
-        spartan::Entity* m_selected_entity = nullptr;
+        std::vector<spartan::Entity*> m_selected_entities;
     };
 }
