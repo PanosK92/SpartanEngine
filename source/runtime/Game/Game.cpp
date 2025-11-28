@@ -1082,24 +1082,56 @@ namespace spartan
 
                             // foliage
                             {
-                                // grass
+                                // grass - distance-based density tiers for performance
+                                // near grass (0-150m): full density for visual quality up close
                                 {
-                                   // create entity
-                                   Entity* entity = World::CreateEntity();
-                                   entity->SetObjectName("grass");
-                                   entity->SetParent(terrain_tile);
+                                    Entity* entity = World::CreateEntity();
+                                    entity->SetObjectName("grass_near");
+                                    entity->SetParent(terrain_tile);
 
-                                   // generate instances
-                                   vector<Matrix> transforms;
-                                   terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade, 1.0f, transforms);
+                                    vector<Matrix> transforms;
+                                    terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade, 1.0f, transforms);
 
-                                   // set renderable component
-                                   Renderable* renderable = entity->AddComponent<Renderable>();
-                                   renderable->SetMesh(mesh_grass_blade.get());
-                                   renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
-                                   renderable->SetInstances(transforms);
-                                   renderable->SetMaterial(material_grass_blade);
-                                   renderable->SetMaxRenderDistance(render_distance_foliage);
+                                    Renderable* renderable = entity->AddComponent<Renderable>();
+                                    renderable->SetMesh(mesh_grass_blade.get());
+                                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                    renderable->SetInstances(transforms);
+                                    renderable->SetMaterial(material_grass_blade);
+                                    renderable->SetMaxRenderDistance(150.0f); // near tier
+                                }
+
+                                // mid grass (150-350m): reduced density
+                                {
+                                    Entity* entity = World::CreateEntity();
+                                    entity->SetObjectName("grass_mid");
+                                    entity->SetParent(terrain_tile);
+
+                                    vector<Matrix> transforms;
+                                    terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade * 0.3f, 1.0f, transforms);
+
+                                    Renderable* renderable = entity->AddComponent<Renderable>();
+                                    renderable->SetMesh(mesh_grass_blade.get());
+                                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                    renderable->SetInstances(transforms);
+                                    renderable->SetMaterial(material_grass_blade);
+                                    renderable->SetMaxRenderDistance(350.0f); // mid tier
+                                }
+
+                                // far grass (350-500m): sparse density
+                                {
+                                    Entity* entity = World::CreateEntity();
+                                    entity->SetObjectName("grass_far");
+                                    entity->SetParent(terrain_tile);
+
+                                    vector<Matrix> transforms;
+                                    terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade * 0.1f, 1.0f, transforms);
+
+                                    Renderable* renderable = entity->AddComponent<Renderable>();
+                                    renderable->SetMesh(mesh_grass_blade.get());
+                                    renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                    renderable->SetInstances(transforms);
+                                    renderable->SetMaterial(material_grass_blade);
+                                    renderable->SetMaxRenderDistance(render_distance_foliage); // far tier (500m)
                                 }
 
                                 // flower
