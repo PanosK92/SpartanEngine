@@ -267,6 +267,7 @@ namespace spartan
 
         ProcessPendingRemovals();
 
+      
         for (Entity* entity : entities)
         {
             if (entity->GetActive())
