@@ -42,6 +42,11 @@ public:
     Pin* FindPin(NodeEditor::PinId id);
     NodeEditor::LinkId GetNextLinkId();
 
+    // Link management methods
+    Link* CreateLink(NodeEditor::PinId startPinId, NodeEditor::PinId endPinId);
+    bool DeleteLink(NodeEditor::LinkId linkId);
+    void ClearLinks();
+
     Node* SpawnInputActionNode();
     Node* SpawnBranchNode();
     Node* SpawnDoNNode();

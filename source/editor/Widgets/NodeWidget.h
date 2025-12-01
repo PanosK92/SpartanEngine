@@ -62,7 +62,6 @@ private:
 
     std::unique_ptr<NodeBuilder> m_node_builder;
     NodeEditor::EditorContext* m_context    = nullptr;
-    ImVector<LinkInfo> m_links; 
     int32_t m_index_displayed       = -1;
     bool m_first_run                = true;
     const float m_touch_time         = 1.0f;

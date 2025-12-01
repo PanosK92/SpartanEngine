@@ -1,18 +1,18 @@
 /*
 Copyright(c) 2015-2025 Panos Karabelas
 
-Permission is hereby grantNodeEditor, free of charge, to any person obtaining a copy
-of this software and associatNodeEditor documentation files (the "Software"), to deal
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
-copies of the Software, and to permit persons to whom the Software is furnishNodeEditor
+copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
 
-The above copyright notice and this permission notice shall be includNodeEditor in
+The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDNodeEditor "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLINodeEditor, INCLUDING BUT NOT LIMITNodeEditor TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
 FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
@@ -97,6 +97,7 @@ void NodeWidget::OnVisible()
     };
 
     m_context = NodeEditor::CreateEditor(&config);
+    NodeEditor::SetCurrentEditor(m_context);
     
     // Initialize nodes when the widget first becomes visible
     if (m_first_run)
@@ -144,22 +145,14 @@ void NodeWidget::OnVisible()
         Node* node6 = m_node_builder->FindNode(6);
         if (node5 && node6 && !node5->GetOutputs().empty() && !node6->GetInputs().empty())
         {
-            LinkInfo link;
-            link.id = m_node_builder->GetNextLinkId();
-            link.output_id = node5->GetOutputs()[0].GetID();
-            link.input_id = node6->GetInputs()[0].GetID();
-            m_links.push_back(link);
+            m_node_builder->CreateLink(node5->GetOutputs()[0].GetID(), node6->GetInputs()[0].GetID());
         }
 
         Node* node14 = m_node_builder->FindNode(14);
         Node* node15 = m_node_builder->FindNode(15);
         if (node14 && node15 && !node14->GetOutputs().empty() && !node15->GetInputs().empty())
         {
-            LinkInfo link;
-            link.id = m_node_builder->GetNextLinkId();
-            link.output_id = node14->GetOutputs()[0].GetID();
-            link.input_id = node15->GetInputs()[0].GetID();
-            m_links.push_back(link);
+            m_node_builder->CreateLink(node14->GetOutputs()[0].GetID(), node15->GetInputs()[0].GetID());
         }
 
         m_first_run = false;
@@ -410,11 +403,7 @@ void NodeWidget::HandleInteractions()
                     showLabel("+ Create Link", ImColor(32, 45, 32, 180));
                     if (NodeEditor::AcceptNewItem(ImColor(128, 255, 128), 4.0f))
                     {
-                        LinkInfo link;
-                        link.id = m_node_builder->GetNextLinkId();
-                        link.input_id = endPinId;
-                        link.output_id = startPinId;
-                        m_links.push_back(link);
+                        m_node_builder->CreateLink(startPinId, endPinId);
                     }
                 }
             }
@@ -437,11 +426,13 @@ void NodeWidget::HandleInteractions()
                 NodeEditor::Resume();
             }
         }
+
+        NodeEditor::EndCreate();
     }
     else
+    {
         m_new_link_pin = nullptr;
-
-    NodeEditor::EndCreate();
+    }
 
     // Handle link deletion
     if (NodeEditor::BeginDelete())
@@ -451,14 +442,7 @@ void NodeWidget::HandleInteractions()
         {
             if (NodeEditor::AcceptDeletedItem())
             {
-                for (int i = 0; i < m_links.Size; ++i)
-                {
-                    if (m_links[i].id == linkId)
-                    {
-                        m_links.erase(m_links.Data + i);
-                        break;
-                    }
-                }
+                m_node_builder->DeleteLink(linkId);
             }
         }
 
@@ -470,8 +454,9 @@ void NodeWidget::HandleInteractions()
                 // Delete node logic would go here
             }
         }
+
+        NodeEditor::EndDelete();
     }
-    NodeEditor::EndDelete();
 }
 
 void NodeWidget::ShowContextMenu()
@@ -498,9 +483,8 @@ void NodeWidget::ShowContextMenu()
         ImGui::TextUnformatted("Node Context Menu");
         ImGui::Separator();
         if (node)
-        {
             ImGui::Text("ID: %d", static_cast<int>(node->GetID().Get()));
-        }
+
         ImGui::EndPopup();
     }
 
@@ -511,9 +495,8 @@ void NodeWidget::ShowContextMenu()
         ImGui::TextUnformatted("Pin Context Menu");
         ImGui::Separator();
         if (pin)
-        {
             ImGui::Text("ID: %d", static_cast<int>(pin->GetID().Get()));
-        }
+
         ImGui::EndPopup();
     }
 
@@ -524,15 +507,14 @@ void NodeWidget::ShowContextMenu()
         ImGui::TextUnformatted("Link Context Menu");
         ImGui::Separator();
         if (link)
-        {
             ImGui::Text("ID: %d", static_cast<int>(link->GetID().Get()));
-        }
+
         ImGui::EndPopup();
     }
 
     if (ImGui::BeginPopup("Create New Node"))
     {
-        auto newNodePostion = NodeEditor::ScreenToCanvas(ImGui::GetMousePosOnOpeningCurrentPopup());
+        auto newNodePosition = NodeEditor::ScreenToCanvas(ImGui::GetMousePosOnOpeningCurrentPopup());
 
         Node* node = nullptr;
         if (ImGui::MenuItem("Input Action"))
@@ -556,7 +538,7 @@ void NodeWidget::ShowContextMenu()
         if (node)
         {
             m_node_builder->BuildNode(node);
-            NodeEditor::SetNodePosition(node->GetID(), newNodePostion);
+            NodeEditor::SetNodePosition(node->GetID(), newNodePosition);
 
             if (auto startPin = m_new_node_link_pin)
             {
@@ -570,11 +552,7 @@ void NodeWidget::ShowContextMenu()
                         if (startPin->GetKind() == PinKind::Input)
                             std::swap(startPin, endPin);
 
-                        LinkInfo link;
-                        link.id = m_node_builder->GetNextLinkId();
-                        link.input_id = endPin->GetID();
-                        link.output_id = startPin->GetID();
-                        m_links.push_back(link);
+                        m_node_builder->CreateLink(startPin->GetID(), endPin->GetID());
 
                         break;
                     }
@@ -617,8 +595,10 @@ void NodeWidget::OnTickVisible()
     DrawNodes();
 
     // Draw all links
-    for (auto& linkInfo : m_links)
-        NodeEditor::Link(linkInfo.id, linkInfo.output_id, linkInfo.input_id);
+    for (auto& link : m_node_builder->GetLinks())
+    {
+        NodeEditor::Link(link.GetID(), link.GetStartPinID(), link.GetEndPinID());
+    }
 
     // Handle interactions
     HandleInteractions();

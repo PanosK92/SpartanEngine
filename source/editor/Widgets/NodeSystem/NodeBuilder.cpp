@@ -211,6 +211,31 @@ bool NodeBuilder::IsPinLinked(NodeEditor::PinId id)
     return false;
 }
 
+Link* NodeBuilder::CreateLink(NodeEditor::PinId startPinId, NodeEditor::PinId endPinId)
+{
+    NodeEditor::LinkId linkId = GetNextLinkId();
+    m_links.emplace_back(linkId, startPinId, endPinId);
+    return &m_links.back();
+}
+
+bool NodeBuilder::DeleteLink(NodeEditor::LinkId linkId)
+{
+    for (auto it = m_links.begin(); it != m_links.end(); ++it)
+    {
+        if (it->GetID() == linkId)
+        {
+            m_links.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+void NodeBuilder::ClearLinks()
+{
+    m_links.clear();
+}
+
 void NodeBuilder::BuildNode(Node* node)
 {
     for (auto& input : node->GetInputs())
