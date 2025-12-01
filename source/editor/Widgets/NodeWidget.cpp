@@ -48,6 +48,8 @@ NodeWidget::NodeWidget(Editor* editor) : Widget(editor)
     m_alpha           = 1.0f;
     m_index_displayed = -1;
     m_node_builder    = std::make_unique<NodeBuilder>();
+
+    m_grid.SetWidgetContext(this);
 }
 
 NodeWidget::~NodeWidget()

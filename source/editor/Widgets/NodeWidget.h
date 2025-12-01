@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======
 #include "Widget.h"
 #include "../ImGui/ImGui_Extension.h"
+#include "../ImGui/ImGui_ViewGrid.h"
 #include "NodeSystem/NodeBuilder.h"
 //=================
 
@@ -49,6 +50,9 @@ public:
     void OnVisible() override;
     void OnTickVisible() override;
 
+    Grid& GetGrid() { return m_grid; }
+    const Grid& GetGrid() const { return m_grid; }
+
 private:
     void TouchNode(NodeEditor::NodeId id);
     float GetTouchProgress(NodeEditor::NodeId id);
@@ -62,6 +66,7 @@ private:
 
     std::unique_ptr<NodeBuilder> m_node_builder;
     NodeEditor::EditorContext* m_context    = nullptr;
+    Grid m_grid;
     int32_t m_index_displayed       = -1;
     bool m_first_run                = true;
     const float m_touch_time         = 1.0f;
