@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/Implementation/imgui_impl_sdl3.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
+#include "Widgets/NodeWidget.h"
 #include "Widgets/Style.h"
 #include "Widgets/ProgressDialog.h"
 #include "Widgets/Properties.h"
@@ -99,6 +100,7 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<AssetBrowser>(this));
     m_widgets.emplace_back(make_shared<Properties>(this));
     m_widgets.emplace_back(make_shared<WorldViewer>(this));
+    m_widgets.emplace_back(make_shared<NodeWidget>(this));
     widget_world = m_widgets.back().get();
     MenuBar::Initialize(this);
 

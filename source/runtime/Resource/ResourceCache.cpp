@@ -108,6 +108,9 @@ namespace spartan
         m_default_icons[IconType::Camera]        = Load<RHI_Texture>(data_dir + "Icons\\camera.png");
         m_default_icons[IconType::Physics]       = Load<RHI_Texture>(data_dir + "Icons\\physics.png");
         m_default_icons[IconType::Compressed]    = Load<RHI_Texture>(data_dir + "Icons\\compressed.png");
+        m_default_icons[IconType::Circle]        = Load<RHI_Texture>(data_dir + "Icons\\circle.png");
+        m_default_icons[IconType::Square]        = Load<RHI_Texture>(data_dir + "Icons\\square.png");
+        m_default_icons[IconType::Node]          = Load<RHI_Texture>(data_dir + "Icons\\node.png");
     }
 
     void ResourceCache::UnloadDefaultResources()
