@@ -22,13 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "../Widget.h"
+#include "../NodeBase.h"
 //=================
 
-class NodeProperties : public Widget
+namespace Node
 {
-public:
-    NodeProperties(Editor* editor);
 
-    void OnTickVisible() override;
-};
+}

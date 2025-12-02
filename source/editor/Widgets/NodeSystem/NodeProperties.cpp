@@ -20,11 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
-// ReSharper disable CppWrongIncludesOrder
 #include "pch.h"
-#include "../NodeSystem/NodeProperties.h"
+#include "NodeProperties.h"
 #include "../../ImGui/ImGui_Extension.h"
-#include "../../ImGui/Source/imgui.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -35,16 +33,15 @@ using namespace spartan::math;
 
 NodeProperties::NodeProperties(Editor* editor) : Widget(editor) 
 {
-    m_title           = "Shader Editor";
-    m_flags           = ImGuiWindowFlags_NoScrollbar;
-    m_visible         = false;
-    m_alpha           = 1.0f;
+    m_title = "Node Properties";
+    m_flags = ImGuiWindowFlags_None;
+    m_visible = false;
+    m_alpha = 1.0f;
 }
 
 void NodeProperties::OnTickVisible()
 {
-    //ShowShaderSource();
-    //ImGui::SameLine();
-    //ShowShaderList();
-    //ShowControls();
+    ImGui::Text("Node Properties Panel");
+    ImGui::Separator();
+    ImGui::Text("Select a node to view its properties");
 }

@@ -19,16 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ========================
+#include "pch.h"
+#include "NodeTemplate.h"
+#include "NodeBase.h"
+//===================================
 
-//= INCLUDES ======
-#include "../Widget.h"
-//=================
-
-class NodeProperties : public Widget
+NodeTemplate::NodeTemplate(std::string name, NodeCategory category, NodeFactory factory)
+    : m_name(std::move(name)), m_category(category), m_factory(std::move(factory))
 {
-public:
-    NodeProperties(Editor* editor);
+}
 
-    void OnTickVisible() override;
-};
+NodeBase* NodeTemplate::CreateNode(NodeId id, PinId& next_pin_id) const
+{
+    if (m_factory)
+        return m_factory(id, next_pin_id);
+    return nullptr;
+}

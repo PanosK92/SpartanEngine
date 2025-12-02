@@ -22,23 +22,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Pin.h"
+#include "NodeBase.h"
 #include "Resource/ResourceCache.h"
 #include "../../ImGui/ImGui_Extension.h"
 //===================================
 
 
-Pin::Pin(int id, const char* name, PinType type) : m_id(id), m_node(nullptr), m_name(name), m_type(type), m_kind(PinKind::Input)
+Pin::Pin(PinId id, const char* name, PinType type, PinKind kind) 
+    : m_id(id), m_node(nullptr), m_name(name), m_type(type), m_kind(kind)
 {   
-}
-
-void Pin::StartPin(NodeEditor::PinId id, NodeEditor::PinKind kind)
-{
-    BeginPin(id, kind);
-}
-
-void Pin::EndPin()
-{
-    NodeEditor::EndPin();
 }
 
 bool Pin::CanCreateLink(Pin* a, Pin* b)
@@ -63,14 +55,15 @@ ImColor Pin::GetIconColor(PinType type)
         case PinType::Function: return {218, 0, 183};
         case PinType::Delegate: return {255, 48, 48};
     }
-};
+}
 
-void Pin::DrawPinIcon(const Pin& pin, bool connected, int alpha)
+void Pin::DrawIcon(bool connected, int alpha) const
 {
     spartan::IconType iconType;
-    ImColor color = GetIconColor(pin.m_type);
+    ImColor color = GetIconColor(m_type);
     color.Value.w = alpha / 255.0f;
-    switch (pin.m_type)
+    
+    switch (m_type)
     {
         case PinType::Flow: iconType = spartan::IconType::Flow; break;
         case PinType::Bool: iconType = spartan::IconType::Circle; break;

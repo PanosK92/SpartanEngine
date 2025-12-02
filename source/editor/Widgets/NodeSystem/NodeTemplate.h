@@ -22,13 +22,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "../Widget.h"
+#include "NodeTypes.h"
+#include <functional>
+#include <string>
 //=================
 
-class NodeProperties : public Widget
+class NodeBase;
+
+// Factory function type for creating nodes
+typedef std::function<NodeBase*(NodeId, PinId&)> NodeFactory;
+
+class NodeTemplate
 {
 public:
-    NodeProperties(Editor* editor);
+    NodeTemplate(std::string name, NodeCategory category, NodeFactory factory);
+    ~NodeTemplate() = default;
 
-    void OnTickVisible() override;
+    [[nodiscard]] NodeBase* CreateNode(NodeId id, PinId& next_pin_id) const;
+
+    [[nodiscard]] const std::string& GetName() const { return m_name; }
+    [[nodiscard]] NodeCategory GetCategory() const { return m_category; }
+
+private:
+    std::string m_name;
+    NodeCategory m_category;
+    NodeFactory m_factory;
 };

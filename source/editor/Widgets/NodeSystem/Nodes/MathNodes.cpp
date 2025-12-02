@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "pch.h"
-#include "Node.h"
+#include "MathNodes.h"
 //===================================
 
-Node::Node(int id, const char* name, ImColor color) : m_id(id), m_name(name), m_color(color), m_type(NodeType::Blueprint), m_size(0, 0)
+namespace Node
 {
-    
+ 
+
 }

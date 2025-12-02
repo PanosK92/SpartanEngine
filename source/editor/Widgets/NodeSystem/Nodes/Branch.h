@@ -22,13 +22,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "../Widget.h"
+#include "../NodeBase.h"
 //=================
 
-class NodeProperties : public Widget
+namespace Node
 {
-public:
-    NodeProperties(Editor* editor);
+    class Branch : public NodeBase
+    {
+    public:
+        Branch(NodeId id, PinId& next_pin_id);
+        ~Branch() override = default;
+    
+        void Execute() override;
+    
+    private:
+        PinId m_flow_in_id;
+        PinId m_condition_id;
+        PinId m_flow_true_id;
+        PinId m_flow_false_id;
+    };
 
-    void OnTickVisible() override;
-};
+}

@@ -22,13 +22,50 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "../Widget.h"
+#include <cstdint>
 //=================
 
-class NodeProperties : public Widget
-{
-public:
-    NodeProperties(Editor* editor);
+typedef uint32_t NodeId;
+typedef uint32_t PinId;
+typedef uint32_t LinkId;
 
-    void OnTickVisible() override;
+constexpr NodeId INVALID_NODE_ID    = 0;
+constexpr PinId  INVALID_PIN_ID     = 0;
+constexpr LinkId INVALID_LINK_ID    = 0;
+
+enum class PinType : uint8_t
+{
+    Flow,
+    Bool,
+    Int,
+    Float,
+    String,
+    Object,
+    Function,
+    Delegate,
+};
+
+enum class PinKind : uint8_t
+{
+    Input,
+    Output
+};
+
+enum class NodeType : uint8_t
+{
+    Blueprint,
+    Simple,
+    Tree,
+    Comment,
+};
+
+enum class NodeCategory : uint8_t
+{
+    Math,
+    Function,
+    Asset,
+    Material,
+    Logic,
+    Utility,
+    Comment
 };

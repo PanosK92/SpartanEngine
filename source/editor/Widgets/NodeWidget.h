@@ -23,22 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "Widget.h"
-#include "../ImGui/ImGui_Extension.h"
-#include "../ImGui/ImGui_ViewGrid.h"
 #include "NodeSystem/NodeBuilder.h"
+#include "NodeSystem/NodeTypes.h"
+#include "../ImGui/ImGui_ViewGrid.h"
+#include <memory>
+#include <map>
 //=================
 
-namespace ax::NodeEditor
-{
-    struct EditorContext;
-}
-
-struct LinkInfo
-{
-    NodeEditor::LinkId id;
-    NodeEditor::PinId input_id;
-    NodeEditor::PinId output_id;
-};
+class Pin;
+class NodeTemplate;
 
 class NodeWidget : public Widget
 {
@@ -51,33 +44,48 @@ public:
     void OnTickVisible() override;
 
     Grid& GetGrid() { return m_grid; }
-    const Grid& GetGrid() const { return m_grid; }
+    [[nodiscard]] const Grid& GetGrid() const { return m_grid; }
 
 private:
-    void TouchNode(NodeEditor::NodeId id);
-    float GetTouchProgress(NodeEditor::NodeId id);
-    void UpdateTouch();
     void DrawNodes();
-    void DrawNode(Node* node);
-    void DrawPinIcon(const Pin& pin, bool connected, int alpha);
-    ImColor GetIconColor(PinType type);
+    void DrawNode(NodeBase* node);
+    void DrawPin(const Pin& pin, const ImVec2& pos);
+    void DrawLinks();
     void HandleInteractions();
     void ShowContextMenu();
+    void ShowNodeCreationPopup();
+    
+    Pin* FindPinAt(const ImVec2& pos);
+    NodeBase* FindNodeAt(const ImVec2& pos);
+    Link* FindLinkNear(const ImVec2& pos, float max_distance = 10.0f);
 
     std::unique_ptr<NodeBuilder> m_node_builder;
-    NodeEditor::EditorContext* m_context    = nullptr;
     Grid m_grid;
-    int32_t m_index_displayed       = -1;
-    bool m_first_run                = true;
-    const float m_touch_time         = 1.0f;
-    std::map<NodeEditor::NodeId, float, NodeIdLess> m_node_touch_time;
+    bool m_first_run = true;
+    
+    // Interaction state
+    NodeBase* m_dragged_node = nullptr;
+    ImVec2 m_drag_offset = ImVec2(0, 0);
+    
+    Pin* m_link_start_pin = nullptr;
+    ImVec2 m_link_end_pos = ImVec2(0, 0);
+    
+    NodeBase* m_hovered_node = nullptr;
+    Pin* m_hovered_pin = nullptr;
+    Link* m_hovered_link = nullptr;
     
     // Context menu state
-    NodeEditor::NodeId m_context_node_id = 0;
-    NodeEditor::LinkId m_context_link_id = 0;
-    NodeEditor::PinId m_context_pin_id = 0;
-    bool m_create_new_node = false;
-    Pin* m_new_node_link_pin = nullptr;
-    Pin* m_new_link_pin = nullptr;
-    int m_pin_icon_size = 24;
+    bool m_show_create_menu = false;
+    ImVec2 m_create_menu_pos = ImVec2(0, 0);
+    Pin* m_create_from_pin = nullptr;
+    
+    // Visual settings
+    const float m_node_rounding = 4.0f;
+    const float m_node_padding = 8.0f;
+    const float m_pin_radius = 6.0f;
+    const int m_pin_icon_size = 24;
+    
+    // Category filter for node creation
+    NodeCategory m_current_category = NodeCategory::Math;
+    char m_search_buffer[256] = "";
 };

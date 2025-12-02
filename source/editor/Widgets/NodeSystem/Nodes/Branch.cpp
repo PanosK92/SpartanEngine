@@ -19,16 +19,36 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ========================
+#include "pch.h"
+#include "Branch.h"
+//===================================
 
-//= INCLUDES ======
-#include "../Widget.h"
-//=================
-
-class NodeProperties : public Widget
+namespace Node
 {
-public:
-    NodeProperties(Editor* editor);
+    // Branch
+    Branch::Branch(NodeId id, PinId& next_pin_id) : NodeBase(id, "Branch")
+    {
+        m_flow_in_id = next_pin_id++;
+        m_condition_id = next_pin_id++;
+        m_flow_true_id = next_pin_id++;
+        m_flow_false_id = next_pin_id++;
+        
+        AddInput(m_flow_in_id, "", PinType::Flow);
+        AddInput(m_condition_id, "Condition", PinType::Bool);
+        AddOutput(m_flow_true_id, "True", PinType::Flow);
+        AddOutput(m_flow_false_id, "False", PinType::Flow);
+        
+        SetType(NodeType::Blueprint);
+    }
 
-    void OnTickVisible() override;
-};
+    void Branch::Execute()
+    {
+        bool condition = GetInputValue<bool>(1); // Index 1 is the condition pin
+        // Flow execution logic would be handled by the node graph executor
+        // For now, just store the condition result
+        SetOutputValue<bool>(0, condition);   // True output
+        SetOutputValue<bool>(1, !condition);  // False output
+    }
+
+}

@@ -36,25 +36,15 @@ struct GridColors
     ImU32 grid_background  = IM_COL32(33, 41, 45, 255);
 };
 
-struct GridZoomLevels
-{
-    bool  grid_zoom_enabled      = true;
-    float grid_min_zoom          = 0.3f;
-    float grid_max_zoom          = 2.f;
-    float grid_divisions         = 10.f;
-    float grid_zoom_smoothness   = 5.f;
-    float grid_default_zoom      = 1.f;
-};
-
 struct GridSettings
 {
-    bool        enabled            = false;
-    bool        opacity_enabled    = false;
-    bool        snap_to_grid       = false;
-    float       opacity            = 0.0f;
-    float       grid_scale         = 50.0f;
-    GridColors  grid_colors;
-    GridZoomLevels grid_zoom;
+    bool  enabled         = true;
+    bool  snap_to_grid    = false;
+    float grid_scale      = 50.0f;
+    float min_zoom        = 0.3f;
+    float max_zoom        = 2.0f;
+    float zoom_smoothness = 5.0f;
+    GridColors colors;
 };
 
 class Grid
@@ -65,15 +55,36 @@ public:
 
     void SetWidgetContext(NodeWidget* widget) { m_widget_context = widget; }
 
-    ImVec2 GetGridPos() const;
-    ImVec2 GetScroll() const;
-    ImVec2 GetZoom() const;
-
+    // Rendering
+    void Draw();
+    
+    // Coordinate transforms
     ImVec2 ScreenToGrid(const ImVec2& screen_pos) const;
     ImVec2 GridToScreen(const ImVec2& grid_pos) const;
 
+    // Input handling
+    void HandleInput();
+    
+    // Accessors
+    ImVec2 GetScroll() const { return m_scroll; }
+    float GetZoom() const { return m_zoom; }
+    ImVec2 GetCanvasSize() const;
+    ImVec2 GetCanvasPos() const;
+    
+    void SetScroll(const ImVec2& scroll) { m_scroll = scroll; }
+    void SetZoom(float zoom);
+
+    GridSettings& GetSettings() { return m_settings; }
+    const GridSettings& GetSettings() const { return m_settings; }
+
 private:
+    void DrawGridLines();
+
     NodeWidget* m_widget_context = nullptr;
     GridSettings m_settings;
-    GridSettings& GetSettings() { return m_settings; }
+    ImVec2 m_scroll = ImVec2(0, 0);
+    float m_zoom = 1.0f;
+    float m_target_zoom = 1.0f;
+    bool m_is_panning = false;
+    ImVec2 m_pan_start_pos = ImVec2(0, 0);
 };

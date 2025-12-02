@@ -22,13 +22,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "../Widget.h"
+#include "NodeTemplate.h"
+#include <memory>
+#include <vector>
+#include <string>
 //=================
 
-class NodeProperties : public Widget
+class NodeLibrary
 {
 public:
-    NodeProperties(Editor* editor);
+    NodeLibrary()                              = default;
+    ~NodeLibrary()                             = default;
 
-    void OnTickVisible() override;
+    NodeLibrary(const NodeLibrary&)            = delete;
+    NodeLibrary& operator=(const NodeLibrary&) = delete;
+
+    static NodeLibrary& GetInstance()
+    {
+        static NodeLibrary instance;
+        return instance;
+    }
+
+    void Initialize();
+    void RegisterTemplate(std::unique_ptr<NodeTemplate> node_template);
+
+    [[nodiscard]] std::vector<const NodeTemplate*> SearchTemplates(const std::string& search_text = "", NodeCategory category = NodeCategory::Math) const;
+    [[nodiscard]] const std::vector<std::unique_ptr<NodeTemplate>>& GetAllTemplates() const { return m_templates; }
+
+private:
+    void RegisterMathNodes();
+    void RegisterLogicNodes();
+    void RegisterUtilityNodes();
+
+    std::vector<std::unique_ptr<NodeTemplate>> m_templates;
 };

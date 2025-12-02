@@ -22,55 +22,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "../../ImGui/Nodes/imgui_node_editor.h"
+#include "NodeTypes.h"
+#include "../../ImGui/Source/imgui.h"
+#include <string>
 //=================
 
-class Node;
-namespace NodeEditor = ax::NodeEditor;
-
-enum class PinType : uint8_t
-{
-    Flow,
-    Bool,
-    Int,
-    Float,
-    String,
-    Object,
-    Function,
-    Delegate,
-};
-
-enum class PinKind : uint8_t
-{
-    Output,
-    Input
-};
+class NodeBase;
 
 class Pin
 {
 public:
-    Pin(int id, const char* name, PinType type);
-
-    void StartPin(NodeEditor::PinId id, NodeEditor::PinKind kind);
-    void EndPin();
+    Pin(PinId id, const char* name, PinType type, PinKind kind);
 
     static bool CanCreateLink(Pin* a, Pin* b);
-    ImColor GetIconColor(PinType type);
-    void DrawPinIcon(const Pin& pin, bool connected, int alpha);
+    static ImColor GetIconColor(PinType type);
+    void DrawIcon(bool connected, int alpha) const;
 
-    [[nodiscard]] NodeEditor::PinId GetID() const { return m_id; }
+    [[nodiscard]] PinId GetID() const { return m_id; }
     [[nodiscard]] const std::string& GetName() const { return m_name; }
-    Node& GetNode() { return *m_node; }
-    PinKind GetKind() const { return m_kind; }
-    PinType GetType() const { return m_type; }
+    [[nodiscard]] NodeBase* GetNode() const { return m_node; }
+    [[nodiscard]] PinKind GetKind() const { return m_kind; }
+    [[nodiscard]] PinType GetType() const { return m_type; }
+    [[nodiscard]] bool IsLinked() const { return m_is_linked; }
 
-    void SetKind(PinKind kind) { m_kind = kind; }
-    void SetNode(Node* node) { m_node = node; }
+    void SetNode(NodeBase* node) { m_node = node; }
+    void SetLinked(bool linked) { m_is_linked = linked; }
 
 private:
-    NodeEditor::PinId m_id;
-    Node* m_node;
+    PinId m_id;
+    NodeBase* m_node;
     std::string m_name;
     PinType m_type;
     PinKind m_kind;
+    bool m_is_linked = false;
 };

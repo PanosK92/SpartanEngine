@@ -19,16 +19,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ========================
+#include "pch.h"
+#include "Addition.h"
+//===================================
 
-//= INCLUDES ======
-#include "../Widget.h"
-//=================
-
-class NodeProperties : public Widget
+namespace Node
 {
-public:
-    NodeProperties(Editor* editor);
+    Addition::Addition(NodeId id, PinId& next_pin_id) : NodeBase(id, "Add")
+    {
+        m_input_a_id = next_pin_id++;
+        m_input_b_id = next_pin_id++;
+        m_output_id = next_pin_id++;
+        
+        AddInput(m_input_a_id, "A", PinType::Float);
+        AddInput(m_input_b_id, "B", PinType::Float);
+        AddOutput(m_output_id, "Result", PinType::Float);
+        
+        SetType(NodeType::Simple);
+    }
 
-    void OnTickVisible() override;
-};
+    void Addition::Execute()
+    {
+        float a = GetInputValue<float>(0);
+        float b = GetInputValue<float>(1);
+        float result = a + b;
+        SetOutputValue<float>(0, result);
+    }
+}

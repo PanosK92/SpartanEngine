@@ -22,81 +22,55 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
+#include "NodeTypes.h"
+#include "NodeBase.h"
 #include "Link.h"
-#include "Node.h"
-#include "Pin.h"
+#include "NodeTemplate.h"
 #include <vector>
+#include <memory>
 //=================
 
 class NodeBuilder
 {
 public:
     NodeBuilder();
+    ~NodeBuilder() = default;
 
-    bool IsPinLinked(NodeEditor::PinId id);
-    void BuildNode(Node* node);
-    void BuildNodes();
+    // NodeBase management
+    NodeBase* CreateNode(const NodeTemplate* node_template);
+    NodeBase* CreateNode(NodeId id, const char* name);
+    bool DeleteNode(NodeId nodeId);
+    NodeBase* FindNode(NodeId id);
+    const NodeBase* FindNode(NodeId id) const;
 
-    Link* FindLink(NodeEditor::LinkId id);
-    Node* FindNode(NodeEditor::NodeId id);
-    Pin* FindPin(NodeEditor::PinId id);
-    NodeEditor::LinkId GetNextLinkId();
+    // Pin management
+    Pin* FindPin(PinId id);
+    const Pin* FindPin(PinId id) const;
+    bool IsPinLinked(PinId id) const;
 
-    // Link management methods
-    Link* CreateLink(NodeEditor::PinId startPinId, NodeEditor::PinId endPinId);
-    bool DeleteLink(NodeEditor::LinkId linkId);
+    // Link management
+    Link* CreateLink(PinId startPinId, PinId endPinId);
+    bool DeleteLink(LinkId linkId);
+    Link* FindLink(LinkId id);
+    const Link* FindLink(LinkId id) const;
     void ClearLinks();
 
-    Node* SpawnInputActionNode();
-    Node* SpawnBranchNode();
-    Node* SpawnDoNNode();
-    Node* SpawnOutputActionNode();
-    Node* SpawnPrintStringNode();
-    Node* SpawnMessageNode();
-    Node* SpawnSetTimerNode();
-    Node* SpawnLessNode();
-    Node* SpawnWeirdNode();
-    Node* SpawnTraceByChannelNode();
-    Node* SpawnTreeSequenceNode();
-    Node* SpawnTreeTaskNode();
-    Node* SpawnTreeTask2Node();
-    Node* SpawnComment();
+    // Accessors
+    std::vector<std::unique_ptr<NodeBase>>& GetNodes() { return m_nodes; }
+    const std::vector<std::unique_ptr<NodeBase>>& GetNodes() const { return m_nodes; }
+    std::vector<std::unique_ptr<Link>>& GetLinks() { return m_links; }
+    const std::vector<std::unique_ptr<Link>>& GetLinks() const { return m_links; }
 
-    std::vector<Node>& GetNodes() { return m_nodes; }
-    std::vector<Link>& GetLinks() { return m_links; }
+    // ID generation
+    NodeId GetNextNodeId() { return m_next_node_id++; }
+    PinId GetNextPinId() { return m_next_pin_id++; }
+    LinkId GetNextLinkId() { return m_next_link_id++; }
 
 private:
-    int m_next_id               = 1;
-    const int m_pin_icon_size   = 24;
-    std::vector<Node> m_nodes;
-    std::vector<Link> m_links;
-    int GetNextId();
-
-    enum class Stage : uint8_t
-    {
-        Invalid,
-        Begin,
-        Header,
-        Content,
-        Input,
-        Output,
-        Middle,
-        End
-    };
-
-    bool SetStage(Stage stage);
-
-    ImTextureID header_texture_id;
-    int header_texture_width;
-    int header_texture_height;
-    NodeEditor::NodeId current_node_id;
-    Stage current_stage;
-    ImU32 header_color;
-    ImVec2 node_min;
-    ImVec2 node_max;
-    ImVec2 header_min;
-    ImVec2 header_max;
-    ImVec2 content_min;
-    ImVec2 content_max;
-    bool has_header;
+    NodeId m_next_node_id = 1;
+    PinId m_next_pin_id = 1;
+    LinkId m_next_link_id = 1;
+    
+    std::vector<std::unique_ptr<NodeBase>> m_nodes;
+    std::vector<std::unique_ptr<Link>> m_links;
 };

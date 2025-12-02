@@ -22,25 +22,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "../../ImGui/Nodes/imgui_node_editor.h"
-#include "../../ImGui/Source/imgui_internal.h"
-#include <vector>
+#include "NodeTypes.h"
+#include "../../ImGui/Source/imgui.h"
 //=================
-
-namespace NodeEditor = ax::NodeEditor;
 
 class Link
 {
 public:
-    Link(NodeEditor::LinkId id, NodeEditor::PinId startPinId, NodeEditor::PinId endPinId);
+    Link(LinkId id, PinId startPinId, PinId endPinId);
 
-    [[nodiscard]] NodeEditor::LinkId GetID() const { return m_id; }
-    [[nodiscard]] NodeEditor::PinId GetStartPinID() const { return m_start_pin_id; }
-    [[nodiscard]] NodeEditor::PinId GetEndPinID() const { return m_end_pin_id; }
+    void Draw(const ImVec2& start_pos, const ImVec2& end_pos, ImColor color, float thickness = 3.0f) const;
+
+    [[nodiscard]] LinkId GetID() const { return m_id; }
+    [[nodiscard]] PinId GetStartPinID() const { return m_start_pin_id; }
+    [[nodiscard]] PinId GetEndPinID() const { return m_end_pin_id; }
+    [[nodiscard]] ImColor GetColor() const { return m_color; }
+
+    void SetColor(ImColor color) { m_color = color; }
 
 private:
-    NodeEditor::LinkId m_id;
-    NodeEditor::PinId m_start_pin_id;
-    NodeEditor::PinId m_end_pin_id;
-    ImColor m_color;
+    LinkId m_id;
+    PinId m_start_pin_id;
+    PinId m_end_pin_id;
+    ImColor m_color = ImColor(255, 255, 255);
 };

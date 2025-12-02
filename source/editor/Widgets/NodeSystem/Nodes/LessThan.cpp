@@ -19,16 +19,33 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ========================
+#include "pch.h"
+#include "LessThan.h"
+//===================================
 
-//= INCLUDES ======
-#include "../Widget.h"
-//=================
-
-class NodeProperties : public Widget
+namespace Node
 {
-public:
-    NodeProperties(Editor* editor);
-
-    void OnTickVisible() override;
-};
+    
+    LessThan::LessThan(NodeId id, PinId& next_pin_id) : NodeBase(id, "Less Than")
+    {
+        m_input_a_id = next_pin_id++;
+        m_input_b_id = next_pin_id++;
+        m_output_id  = next_pin_id++;
+    
+        AddInput(m_input_a_id, "A", PinType::Float);
+        AddInput(m_input_b_id, "B", PinType::Float);
+        AddOutput(m_output_id, "Result", PinType::Bool);
+    
+        SetType(NodeType::Simple);
+    }
+    
+    void LessThan::Execute()
+    {
+        float a     = GetInputValue<float>(0);
+        float b     = GetInputValue<float>(1);
+        bool result = a < b;
+        SetOutputValue<bool>(0, result);
+    }
+    
+}

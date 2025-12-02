@@ -22,13 +22,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "../Widget.h"
+#include "../NodeBase.h"
 //=================
 
-class NodeProperties : public Widget
+namespace Node
 {
-public:
-    NodeProperties(Editor* editor);
 
-    void OnTickVisible() override;
-};
+    class Multiplication : public NodeBase
+    {
+    public:
+        Multiplication(NodeId id, PinId& next_pin_id);
+        ~Multiplication() override = default;
+    
+        void Execute() override;
+    
+    private:
+        PinId m_input_a_id;
+        PinId m_input_b_id;
+        PinId m_output_id;
+    };
+
+}
