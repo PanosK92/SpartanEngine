@@ -1090,7 +1090,7 @@ namespace spartan
                                     entity->SetParent(terrain_tile);
 
                                     vector<Matrix> transforms;
-                                    terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade, 1.0f, transforms);
+                                    terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade, 0.7f, transforms);
 
                                     Renderable* renderable = entity->AddComponent<Renderable>();
                                     renderable->SetMesh(mesh_grass_blade.get());
