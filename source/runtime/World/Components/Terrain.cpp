@@ -1091,12 +1091,15 @@ namespace spartan
         );
 
         // counter-act any scaling since it's baked into the instance transforms and can be controled via scale_min and scale_max
-        if (entity->GetScale() != Vector3::One && entity->GetScale() != Vector3::Zero)
-        {
-            Matrix root_scale_matrix = Matrix::CreateScale(Vector3::One / entity->GetScale());
-            for (Matrix& t : transforms_out)
+        if (entity)
+        { 
+            if (entity->GetScale() != Vector3::One && entity->GetScale() != Vector3::Zero)
             {
-                t *= root_scale_matrix;
+                Matrix root_scale_matrix = Matrix::CreateScale(Vector3::One / entity->GetScale());
+                for (Matrix& t : transforms_out)
+                {
+                    t *= root_scale_matrix;
+                }
             }
         }
     }
