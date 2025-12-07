@@ -67,6 +67,16 @@ namespace spartan
         DynamicResolution,
         OcclusionCulling,
         AutoExposureAdaptationSpeed,
+        // volumetric clouds
+        CloudAnimation, // whether clouds animate (wind movement)
+        CloudCoverage,  // 0=no clouds, >0=clouds visible
+        CloudType,
+        CloudShadows,
+        CloudColorR,
+        CloudColorG,
+        CloudColorB,
+        CloudDarkness,
+        CloudSeed,      // seed for cloud generation
         Max
     };
 
@@ -124,6 +134,10 @@ namespace spartan
         bindless_material_parameters = 16,
         bindless_light_parameters    = 17,
         bindless_aabbs               = 18,
+        
+        // volumetric clouds 3D noise
+        tex3d_cloud_shape  = 19,
+        tex3d_cloud_detail = 20,
     };
 
     enum class Renderer_BindingsUav
@@ -194,6 +208,10 @@ namespace spartan
         reflections_ray_generation_r,
         reflections_ray_miss_r,
         reflections_ray_hit_r,
+        // volumetric clouds
+        cloud_noise_shape_c,
+        cloud_noise_detail_c,
+        cloud_shadow_c,
         max
     };
     
@@ -228,6 +246,10 @@ namespace spartan
         shadow_atlas,
         auto_exposure,
         auto_exposure_previous,
+        // volumetric clouds
+        cloud_noise_shape,
+        cloud_noise_detail,
+        cloud_shadow,
         max
     };
 

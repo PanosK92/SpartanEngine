@@ -82,6 +82,15 @@ namespace spartan
                 case Renderer_Option::OcclusionCulling:            return "OcclusionCulling";
                 case Renderer_Option::AutoExposureAdaptationSpeed: return "AutoExposureAdaptationSpeed";
                 case Renderer_Option::RayTracedReflections:        return "RayTracedReflections";
+                case Renderer_Option::CloudAnimation: return "CloudAnimation";
+                case Renderer_Option::CloudCoverage:  return "CloudCoverage";
+                case Renderer_Option::CloudType:      return "CloudType";
+                case Renderer_Option::CloudShadows:   return "CloudShadows";
+                case Renderer_Option::CloudColorR:    return "CloudColorR";
+                case Renderer_Option::CloudColorG:    return "CloudColorG";
+                case Renderer_Option::CloudColorB:    return "CloudColorB";
+                case Renderer_Option::CloudDarkness:  return "CloudDarkness";
+                case Renderer_Option::CloudSeed:      return "CloudSeed";
                 default:
                 {
                     SP_ASSERT_MSG(false, "Renderer_Option not handled");
@@ -140,13 +149,18 @@ namespace spartan
                 Renderer::SetResolutionRender(root.child("ResolutionRenderWidth").text().as_int(), root.child("ResolutionRenderHeight").text().as_int());
                 Renderer::SetResolutionOutput(root.child("ResolutionOutputWidth").text().as_int(), root.child("ResolutionOutputHeight").text().as_int());
 
-                unordered_map<Renderer_Option, float> m_render_options;
+                // Load options one by one using SetOption (preserves defaults for missing options)
                 for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)
                 {
                     Renderer_Option option = static_cast<Renderer_Option>(i);
-                    m_render_options[option] = root.child(renderer_option_to_string(option)).text().as_float();
+                    pugi::xml_node node = root.child(renderer_option_to_string(option));
+                    
+                    // Only set options that exist in the saved file
+                    if (!node.empty())
+                    {
+                        Renderer::SetOption(option, node.text().as_float());
+                    }
                 }
-                Renderer::SetOptions(m_render_options);
 
                 // this setting can be mapped directly to the resource cache (no need to wait for it to initialize)
                 ResourceCache::SetUseRootShaderDirectory(root.child("UseRootShaderDirectory").text().as_bool());

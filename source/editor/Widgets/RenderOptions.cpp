@@ -379,6 +379,22 @@ void RenderOptions::OnTickVisible()
 
                 option_value("Fog density", Renderer_Option::Fog, "Controls atmospheric fog strength", 0.1f);
 
+                if (option("Volumetric Clouds"))
+                {
+                    option_value("Coverage", Renderer_Option::CloudCoverage, "Sky coverage (0=no clouds, 1=overcast)", 0.05f, 0.0f, 1.0f, "%.2f");
+                    option_value("Cloud Type", Renderer_Option::CloudType, "0=stratus (flat), 0.5=stratocumulus, 1=cumulus (billowy)", 0.05f, 0.0f, 1.0f, "%.2f");
+                    option_check_box("Enable Animation", Renderer_Option::CloudAnimation, "Animate clouds with wind (performance cost)");
+                    option_value("Seed", Renderer_Option::CloudSeed, "Change to regenerate clouds", 1.0f, 1.0f, 100.0f, "%.0f");
+                    
+                    ImGui::BeginDisabled(Renderer::GetOption<float>(Renderer_Option::CloudCoverage) <= 0.0f);
+                    option_value("Shadow Intensity", Renderer_Option::CloudShadows, "Cloud shadow intensity on ground", 0.1f, 0.0f, 2.0f, "%.2f");
+                    option_value("Darkness", Renderer_Option::CloudDarkness, "Self-shadowing darkness blend", 0.05f, 0.0f, 1.0f, "%.2f");
+                    option_value("Color R", Renderer_Option::CloudColorR, "Cloud base color red", 0.05f, 0.0f, 1.0f, "%.2f");
+                    option_value("Color G", Renderer_Option::CloudColorG, "Cloud base color green", 0.05f, 0.0f, 1.0f, "%.2f");
+                    option_value("Color B", Renderer_Option::CloudColorB, "Cloud base color blue", 0.05f, 0.0f, 1.0f, "%.2f");
+                    ImGui::EndDisabled();
+                }
+
                 if (option("Wind"))
                 {
                     Vector3 wind = Renderer::GetWind();
@@ -396,6 +412,8 @@ void RenderOptions::OnTickVisible()
                         wind.z = cosf(radians) * strength;
                         Renderer::SetWind(wind);
                     }
+                    
+                    ImGuiSp::tooltip("Wind affects cloud movement and shape evolution");
                 }
 
                 ImGui::EndTable();

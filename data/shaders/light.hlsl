@@ -26,6 +26,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //============================
 
+// Cloud shadow map sampling
+// tex3 is bound as the cloud shadow map in Pass_Light
+float sample_cloud_shadow(float3 world_pos)
+{
+    // Skip if cloud shadows are disabled
+    if (buffer_frame.cloud_shadows <= 0.0 || buffer_frame.cloud_coverage <= 0.0)
+        return 1.0;
+    
+    // Cloud shadow map covers 10km x 10km area centered on camera
+    float shadow_map_size = 10000.0;
+    float2 relative_pos = world_pos.xz - buffer_frame.camera_position.xz;
+    float2 uv = relative_pos / shadow_map_size + 0.5;
+    
+    // Out of bounds check
+    if (any(uv < 0.0) || any(uv > 1.0))
+        return 1.0;
+    
+    // Sample cloud shadow (tex3 is the cloud shadow map)
+    float shadow = tex3.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
+    
+    return shadow;
+}
+
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
     const float distortion         = 0.3f;
@@ -106,6 +129,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 }
 
                 light.radiance *= L_shadow;
+            }
+            
+            // apply cloud shadows for directional lights (even if regular shadows are off)
+            if (light.is_directional())
+            {
+                float cloud_shadow = sample_cloud_shadow(surface.position);
+                L_shadow = min(L_shadow, cloud_shadow);
+                light.radiance *= cloud_shadow;
             }
 
             // reflectance terms

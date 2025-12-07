@@ -163,6 +163,17 @@ namespace spartan
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
             SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
 
+            // volumetric clouds
+            SetOption(Renderer_Option::CloudAnimation, 0.0f);  // animation off by default (static clouds)
+            SetOption(Renderer_Option::CloudCoverage,  0.5f);  // 0-1: sky coverage amount (>0 = visible)
+            SetOption(Renderer_Option::CloudType,      0.5f);  // 0=stratus, 0.5=stratocumulus, 1=cumulus
+            SetOption(Renderer_Option::CloudShadows,   1.0f);  // cloud shadow intensity
+            SetOption(Renderer_Option::CloudColorR,    0.7f);  // cloud color R
+            SetOption(Renderer_Option::CloudColorG,    0.7f);  // cloud color G
+            SetOption(Renderer_Option::CloudColorB,    0.7f);  // cloud color B
+            SetOption(Renderer_Option::CloudDarkness,  0.5f);  // self-shadowing blend
+            SetOption(Renderer_Option::CloudSeed,      1.0f);  // seed for cloud generation
+
             // set wind direction and strength
             {
                 float rotation_y      = 120.0f * math::deg_to_rad;
@@ -579,6 +590,16 @@ namespace spartan
         m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
         m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+
+        // cloud/weather parameters
+        m_cb_frame_cpu.cloud_coverage = GetOption<float>(Renderer_Option::CloudCoverage);
+        m_cb_frame_cpu.cloud_type     = GetOption<float>(Renderer_Option::CloudType);
+        m_cb_frame_cpu.cloud_shadows  = GetOption<float>(Renderer_Option::CloudShadows);
+        m_cb_frame_cpu.cloud_darkness = GetOption<float>(Renderer_Option::CloudDarkness);
+        m_cb_frame_cpu.cloud_color    = Vector3(GetOption<float>(Renderer_Option::CloudColorR),
+                                                GetOption<float>(Renderer_Option::CloudColorG),
+                                                GetOption<float>(Renderer_Option::CloudColorB));
+        m_cb_frame_cpu.cloud_seed     = GetOption<float>(Renderer_Option::CloudSeed);
 
         // these must match what common_buffer.hlsl is reading
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);

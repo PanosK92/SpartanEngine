@@ -257,51 +257,63 @@ void Properties::ShowEntity(Entity* entity) const
         Quaternion rotation = entity->GetRotationLocal();
         Vector3 scale       = entity->GetScaleLocal();
 
-        // per-entity tracking for euler angles
-        static std::unordered_map<uintptr_t, Vector3> last_euler_map;
+        // per-entity tracking for continuous euler angles
+        static std::unordered_map<uintptr_t, Vector3> display_euler_map;
+        static std::unordered_map<uintptr_t, Quaternion> last_quat_map;
         uintptr_t entity_id = reinterpret_cast<uintptr_t>(entity);
-        rotation.Normalize(); // safety
+        rotation.Normalize();
 
-        // sync euler if externally changed or uninitialized
-        auto it = last_euler_map.find(entity_id);
-        if (it != last_euler_map.end())
+        // get or initialize display euler
+        auto euler_it = display_euler_map.find(entity_id);
+        auto quat_it = last_quat_map.find(entity_id);
+        
+        if (euler_it == display_euler_map.end())
         {
-            Quaternion expected = Quaternion::FromEulerAngles(it->second);
-            expected.Normalize();
-            float dot_abs = std::abs(rotation.Dot(expected));
-            if (dot_abs < 0.999f) // detect external changes
-            {
-                it->second = rotation.ToEulerAngles();
-            }
+            display_euler_map[entity_id] = rotation.ToEulerAngles();
+            last_quat_map[entity_id] = rotation;
         }
         else
         {
-            last_euler_map[entity_id] = rotation.ToEulerAngles();
+            // compute delta rotation from last frame
+            Quaternion last_quat = quat_it->second;
+            Quaternion delta_quat = rotation * last_quat.Inverse();
+            delta_quat.Normalize();
+            
+            // convert delta to euler (will be small values for continuous rotation)
+            Vector3 delta_euler = delta_quat.ToEulerAngles();
+            
+            // only apply delta if rotation actually changed
+            float dot_val = std::abs(rotation.Dot(last_quat));
+            if (dot_val < 0.9999f)
+            {
+                // accumulate the delta to allow going beyond ±180
+                display_euler_map[entity_id] += delta_euler;
+                last_quat_map[entity_id] = rotation;
+            }
         }
 
-        // use the (possibly updated) per-entity euler
-        Vector3& last_frame_euler = last_euler_map[entity_id];
-        Vector3 current_euler     = last_frame_euler;
+        Vector3& display_euler = display_euler_map[entity_id];
+        Vector3 edit_euler = display_euler;
 
         // display and edit transforms
         ImGui::AlignTextToFramePadding();
         ImGuiSp::vector3("Position (m)", position);
         ImGui::SameLine();
-        ImGuiSp::vector3("Rotation (degrees)", current_euler);
+        ImGuiSp::vector3("Rotation (degrees)", edit_euler);
         ImGui::SameLine();
         ImGuiSp::vector3("Scale", scale);
 
-        // handle rotation delta
-        Vector3 delta_euler         = current_euler - last_frame_euler;
-        last_frame_euler            = current_euler;
-        Quaternion delta_quaternion = Quaternion::FromEulerAngles(delta_euler);
-        Quaternion new_rotation;
-        new_rotation = rotation * delta_quaternion;
-        new_rotation.Normalize();
-
-        // apply transforms based on mode
+        // handle user editing euler angles directly
+        if (edit_euler != display_euler)
+        {
+            display_euler = edit_euler;
+            Quaternion new_rotation = Quaternion::FromEulerAngles(display_euler);
+            new_rotation.Normalize();
+            entity->SetRotationLocal(new_rotation);
+            last_quat_map[entity_id] = new_rotation;
+        }
+        
         entity->SetPositionLocal(position);
-        entity->SetRotationLocal(new_rotation);
         entity->SetScaleLocal(scale);
     }
     component_end();

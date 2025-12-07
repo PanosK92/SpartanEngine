@@ -81,21 +81,72 @@ namespace spartan
             brdf_produced = true;
         }
 
-        // once per skysphere update
+        // generate cloud noise textures (once at startup, before skysphere needs them)
+        Pass_CloudNoise(cmd_list_graphics_present);
+
+        // Skysphere update logic:
+        // - Always render once on startup (for initial clouds)
+        // - Re-render when light changes
+        // - Re-render every frame if cloud animation is enabled
+        bool clouds_visible = GetOption<float>(Renderer_Option::CloudCoverage) > 0.0f;
+        bool cloud_animation = GetOption<float>(Renderer_Option::CloudAnimation) > 0.0f;
+        
         {
-            bool update_skysphere = false; // true when the light updates or it gets added/removed
+            bool update_skysphere = false;
+            Light* directional_light = World::GetDirectionalLight();
+            
             {
+                static bool first_frame = true;
                 static bool had_directional_light = false;
-                bool has_directional_light        = World::GetDirectionalLight() != nullptr;
-                update_skysphere                  = (has_directional_light && World::GetDirectionalLight()->NeedsSkysphereUpdate()) || (has_directional_light != had_directional_light);
-                had_directional_light             = has_directional_light;
+                static float last_coverage = -1.0f;
+                static float last_seed = -1.0f;
+                static float last_cloud_type = -1.0f;
+                static float last_darkness = -1.0f;
+                bool has_directional_light = directional_light != nullptr;
+                float current_coverage = GetOption<float>(Renderer_Option::CloudCoverage);
+                float current_seed = GetOption<float>(Renderer_Option::CloudSeed);
+                float current_type = GetOption<float>(Renderer_Option::CloudType);
+                float current_darkness = GetOption<float>(Renderer_Option::CloudDarkness);
+                
+                // Update skysphere when:
+                // 1. First frame (initial render)
+                // 2. Light changes
+                // 3. Cloud parameters changed (coverage, seed, type, darkness)
+                // 4. Cloud animation is enabled (for wind movement)
+                bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) || 
+                                     (has_directional_light != had_directional_light);
+                bool cloud_params_changed = (current_coverage != last_coverage) ||
+                                            (current_seed != last_seed) ||
+                                            (current_type != last_cloud_type) ||
+                                            (current_darkness != last_darkness);
+                
+                update_skysphere = first_frame || light_changed || cloud_params_changed || cloud_animation;
+                
+                first_frame = false;
+                had_directional_light = has_directional_light;
+                last_coverage = current_coverage;
+                last_seed = current_seed;
+                last_cloud_type = current_type;
+                last_darkness = current_darkness;
             }
             
             if (update_skysphere)
             {
-                Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
+                // Only update LUT when light changes (it's expensive)
+                static bool lut_generated = false;
+                if (!lut_generated || (directional_light && directional_light->NeedsSkysphereUpdate()))
+                {
+                    Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
+                    lut_generated = true;
+                }
                 Pass_Skysphere(cmd_list_graphics_present);
             }
+        }
+
+        // Only update cloud shadow map when clouds are visible
+        if (clouds_visible)
+        {
+            Pass_CloudShadow(cmd_list_graphics_present);
         }
 
         if (Camera* camera = World::GetCamera())
@@ -907,10 +958,12 @@ namespace spartan
     {
         RHI_Texture* tex_skysphere              = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_cloud_shape            = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
+        RHI_Texture* tex_cloud_detail           = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
 
         cmd_list->BeginTimeblock("skysphere");
         {
-            // 1. atmospheric scattering
+            // 1. atmospheric scattering + volumetric clouds
             if (World::GetDirectionalLight())
             {
                 RHI_PipelineState pso;
@@ -920,6 +973,13 @@ namespace spartan
     
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
+                
+                // bind 3D cloud noise textures (if available)
+                if (tex_cloud_shape)
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, tex_cloud_shape);
+                if (tex_cloud_detail)
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_cloud_detail);
+                
                 cmd_list->Dispatch(tex_skysphere);
             }
             else
@@ -980,6 +1040,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::skysphere));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::cloud_shadow)); // cloud shadows
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,    light_specular);
             cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_shadow);
@@ -1111,6 +1172,101 @@ namespace spartan
         }
         cmd_list->EndTimeblock();
     }
+
+    void Renderer::Pass_CloudNoise(RHI_CommandList* cmd_list)
+    {
+        // Generate 3D noise textures for volumetric clouds (only once at startup)
+        static bool noise_generated = false;
+        if (noise_generated)
+            return;
+
+        RHI_Texture* tex_shape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
+        RHI_Texture* tex_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
+
+        if (!tex_shape || !tex_detail)
+            return;
+
+        // Check if shaders are ready (they compile async)
+        RHI_Shader* shader_shape  = GetShader(Renderer_Shader::cloud_noise_shape_c);
+        RHI_Shader* shader_detail = GetShader(Renderer_Shader::cloud_noise_detail_c);
+        if (!shader_shape || !shader_shape->IsCompiled() || !shader_detail || !shader_detail->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("cloud_noise");
+        {
+            // Generate shape noise (128x128x128)
+            {
+                RHI_PipelineState pso;
+                pso.name             = "cloud_noise_shape";
+                pso.shaders[Compute] = shader_shape;
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_shape);
+                cmd_list->Dispatch(tex_shape);
+            }
+
+            // Generate detail noise (32x32x32)
+            {
+                RHI_PipelineState pso;
+                pso.name             = "cloud_noise_detail";
+                pso.shaders[Compute] = shader_detail;
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_detail);
+                cmd_list->Dispatch(tex_detail);
+            }
+
+            // Transition to shader read for later use
+            tex_shape->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_detail->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+
+        noise_generated = true;
+    }
+
+    void Renderer::Pass_CloudShadow(RHI_CommandList* cmd_list)
+    {
+        // Skip if clouds or cloud shadows are disabled
+        if (GetOption<float>(Renderer_Option::CloudCoverage) <= 0.0f || 
+            GetOption<float>(Renderer_Option::CloudShadows) <= 0.0f)
+            return;
+
+        // Skip if no directional light
+        if (!World::GetDirectionalLight())
+            return;
+
+        // Check if shader is compiled
+        RHI_Shader* shader = GetShader(Renderer_Shader::cloud_shadow_c);
+        if (!shader || !shader->IsCompiled())
+            return;
+
+        RHI_Texture* tex_shadow = GetRenderTarget(Renderer_RenderTarget::cloud_shadow);
+        RHI_Texture* tex_shape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
+        RHI_Texture* tex_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
+
+        if (!tex_shadow || !tex_shape || !tex_detail)
+            return;
+
+        cmd_list->BeginTimeblock("cloud_shadow");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "cloud_shadow";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
+
+            // Bind 3D noise textures using the correct slots (t19, t20)
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape,  tex_shape);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_detail);
+
+            // Bind shadow map as output
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_shadow);
+
+            cmd_list->Dispatch(tex_shadow);
+        }
+        cmd_list->EndTimeblock();
+    }
+
 
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
     {

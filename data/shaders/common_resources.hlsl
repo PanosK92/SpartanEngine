@@ -72,6 +72,15 @@ struct FrameBufferData
 
     float3 camera_right;
     float camera_exposure;
+
+    // weather/clouds
+    float cloud_coverage;
+    float cloud_type;
+    float cloud_shadows;
+    float cloud_darkness;
+
+    float3 cloud_color;
+    float cloud_seed;
 };
 
 // 128 byte push constant buffer used by every pass
@@ -165,6 +174,10 @@ Texture3D tex3d : register(t13);
 
 // noise
 Texture2D tex_perlin : register(t14);
+
+// volumetric cloud 3D noise textures
+Texture3D tex3d_cloud_shape  : register(t19); // 128^3 Perlin-Worley + Worley FBM
+Texture3D tex3d_cloud_detail : register(t20); // 32^3 high-frequency detail
 
 // bindless arrays
 Texture2D material_textures[]                            : register(t15, space1);
