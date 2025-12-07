@@ -56,8 +56,9 @@ namespace spartan
         set<uint64_t> pending_remove;
         vector<Volume*> registered_volumes;
         vector<Volume*> overlapping_volumes;
-        RenderOptionsPool mix_volume_options = RenderOptionsPool(RenderOptionsListType::Component); // volume data accumulation
-        bool is_transitioning                = false;
+        RenderOptionsPool mix_volume_options = RenderOptionsPool(RenderOptionsListType::Component); // volume data accumulation (when overlapped)
+        RenderOptionsPool blended_options = RenderOptionsPool(RenderOptionsListType::Global); // volume data accumulation (on interpolation)
+        bool is_transitioning = false;
         uint32_t audio_source_count          = 0;
         atomic<bool> resolve                 = false;
         bool was_in_editor_mode              = false;
@@ -697,10 +698,10 @@ namespace spartan
     {
         // Update the render options results for overlapping volumes.
         // Works for single-volume overlapping cases as well.
-        // - for floats: take weighted average result (from interpolation function)
+        // - for floats:          take average result
         // - for booleans:        take combination result
         // - for enums:           take the value of the newest overlapping volume (can't mix)
-        // - for ints:            not implemented
+        // - for ints:            not implemented or applicable (no options have this type)
 
         // Frequency tables for each type of render option.
         // Used for dividing sums for averages and setting up first overlapping contact outputs
@@ -732,10 +733,39 @@ namespace spartan
                 }
                 else if (holds_alternative<float>(option_value))
                 {
-                    float new_float_value = get<float>(option_value);
-                    if (mix_volume_options.GetOptions().contains(option_key) && !RenderOptionsPool::AreVariantsEqual(option_value, mix_volume_options.GetOptions()[option_key]))
+                    if (overlapping_volumes.size() > 1)
                     {
-                        mix_volume_options.SetOption(option_key, new_float_value);
+                        float old_float_value = mix_volume_options.GetOption<float>(option_key);
+                        float new_float_value = get<float>(option_value);
+                        if (mix_volume_options.GetOptions().contains(option_key))
+                        {
+                            mix_volume_options.SetOption(option_key, old_float_value + new_float_value);
+                        }
+                    }
+                    else
+                    {
+                        float new_float_value = get<float>(option_value);
+                        if (mix_volume_options.GetOptions().contains(option_key))
+                        {
+                            mix_volume_options.SetOption(option_key, new_float_value);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (overlapping_volumes.size() > 1)
+        {
+            for (auto& [option_key, option_value] : mix_volume_options.GetOptions())
+            {
+                if (holds_alternative<float>(option_value))
+                {
+                    float option_float_value = get<float>(option_value);
+                    if (mix_volume_options.GetOptions().contains(option_key))
+                    {
+                        const int volumes_count = overlapping_volumes.size();
+                        float mix_float_value = option_float_value / static_cast<float>(volumes_count);
+                        mix_volume_options.SetOption(option_key, mix_float_value);
                     }
                 }
             }
@@ -748,7 +778,7 @@ namespace spartan
         RenderOptionsPool& global_render_options = Renderer::GetRenderOptionsPoolRef(true);
         auto global_render_options_map = global_render_options.GetOptions();
 
-        float total_alpha = 0.0f;
+        float total_alpha = 1.0f;
 
         for (Volume* volume : overlapping_volumes)
         {
@@ -763,10 +793,10 @@ namespace spartan
                     // Calculate weighted sum value
                     if (holds_alternative<float>(option_value))
                     {
-                        float mix_float_value = mix_volume_options.GetOption<float>(option_key);
+                        float blended_float_value = blended_options.GetOption<float>(option_key);
                         float option_float_value = get<float>(option_value);
-                        mix_float_value =+ option_float_value * alpha;
-                        mix_volume_options.SetOption(option_key, mix_float_value);
+                        blended_float_value =+ option_float_value * alpha;
+                        blended_options.SetOption(option_key, blended_float_value);
                     }
                 }
             }
@@ -779,21 +809,27 @@ namespace spartan
             {
                 is_transitioning = true;
             }
-            for (auto& [option_key, option_value] : mix_volume_options.GetOptions())
+            for (auto& [option_key, option_value] : blended_options.GetOptions())
             {
                 if (holds_alternative<float>(option_value))
                 {
                     float& option_float_value = get<float>(option_value);
                     const float blended_option_value = option_float_value / total_alpha;
                     option_float_value = lerp(global_render_options.GetOption<float>(option_key), blended_option_value, total_alpha);
-                    mix_volume_options.SetOption(option_key, option_float_value);
+                    blended_options.SetOption(option_key, option_float_value);
                 }
             }
         }
         else if (total_alpha <= 0.0f && overlapping_volumes.empty() && is_transitioning)
         {
             // Update to global options only once when exiting the volume component
-            mix_volume_options = global_render_options;
+            blended_options = global_render_options;
+            is_transitioning = false;
+        }
+        else if (total_alpha >= 1.0 && !overlapping_volumes.empty() && is_transitioning)
+        {
+            // Update to mix volume options only once when entering the volume component
+            blended_options = mix_volume_options;
             is_transitioning = false;
         }
     }
@@ -808,12 +844,12 @@ namespace spartan
                 return;
             }
 
-            if (mix_volume_options.GetOptions() != Renderer::GetRenderOptionsPoolRef(true).GetOptions())
+            if (blended_options.GetOptions() != Renderer::GetRenderOptionsPoolRef(true).GetOptions())
             {
-                for (auto& [option_key, option_value] : mix_volume_options.GetOptions())
+                for (auto& [option_key, option_value] : blended_options.GetOptions())
                 {
                     auto value = Renderer::GetRenderOptionsPoolRef(true).GetOption(option_key);
-                    mix_volume_options.SetOption(option_key, value);
+                    blended_options.SetOption(option_key, value);
                 }
             }
         }
@@ -821,52 +857,12 @@ namespace spartan
         if (!is_transitioning)
             return;
 
-        for (auto& [option_key, option_value] : mix_volume_options.GetOptions())
+        for (auto& [option_key, option_value] : blended_options.GetOptions())
         {
-            auto existing_value = Renderer::GetOption(option_key);
-            auto new_value = mix_volume_options.GetOption(option_key);
-
-            if (holds_alternative<uint32_t>(existing_value) && holds_alternative<uint32_t>(new_value))
-            {
-                uint32_t existing_enum = get<uint32_t>(existing_value);
-                uint32_t new_enum = get<uint32_t>(new_value);
-                if (existing_enum != new_enum)
-                {
-                    Renderer::SetOption(option_key, new_value);
-                }
-            }
-            else if (holds_alternative<bool>(existing_value) && holds_alternative<bool>(new_value))
-            {
-                bool existing_bool = get<bool>(existing_value);
-                bool new_bool = get<bool>(new_value);
-                if (existing_bool != new_bool)
-                {
-                    Renderer::SetOption(option_key, new_value);
-                }
-            }
-            else if (holds_alternative<int>(existing_value) && holds_alternative<int>(new_value))
-            {
-                int existing_int = get<int>(existing_value);
-                int new_int = get<int>(new_value);
-                if (existing_int != new_int)
-                {
-                    Renderer::SetOption(option_key, new_value);
-                }
-            }
-            else if (holds_alternative<float>(existing_value) && holds_alternative<float>(new_value))
-            {
-                float existing_float = get<float>(existing_value);
-                float new_float = get<float>(new_value);
-                if (fabs(existing_float - new_float) > epsilon)
-                {
-                    Renderer::SetOption(option_key, new_value);
-                }
-            }
-
-            /*if (RenderOptionType existing_value = Renderer::GetOption(option_key); !RenderOptionsPool::AreVariantsEqual(existing_value, option_value))
+            if (RenderOptionType existing_value = Renderer::GetOption(option_key); !RenderOptionsPool::AreVariantsEqual(existing_value, option_value))
             {
                 Renderer::SetOption(option_key, option_value);
-            }*/
+            }
         }
     }
 
