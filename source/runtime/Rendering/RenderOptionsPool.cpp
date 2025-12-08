@@ -58,6 +58,7 @@ namespace spartan
         m_options[Renderer_Option::Dithering] =                   false; // bool
         m_options[Renderer_Option::ScreenSpaceAmbientOcclusion] = true;  // bool
         m_options[Renderer_Option::ScreenSpaceReflections] =      true;  // bool
+        m_options[Renderer_Option::RayTracedReflections] =        RHI_Device::IsSupportedRayTracing(); // bool
         m_options[Renderer_Option::Fog] =                         1.0f;  // float
         m_options[Renderer_Option::VariableRateShading] =         false; // bool
         m_options[Renderer_Option::Vsync] =                       false; // bool
@@ -205,6 +206,7 @@ namespace spartan
             case Renderer_Option::Fog:                         return "Fog";
             case Renderer_Option::ScreenSpaceAmbientOcclusion: return "Ambient Occlusion (SSAO)";
             case Renderer_Option::ScreenSpaceReflections:      return "Reflections (SSR)";
+            case Renderer_Option::RayTracedReflections:        return "Reflections (Ray Traced)";
             case Renderer_Option::MotionBlur:                  return "Motion Blur";
             case Renderer_Option::DepthOfField:                return "Depth Of Field";
             case Renderer_Option::FilmGrain:                   return "Film Grain";
@@ -244,6 +246,7 @@ namespace spartan
         else if (name == "Fog")                       return Renderer_Option::Fog;
         else if (name == "Ambient Occlusion (SSAO)")  return Renderer_Option::ScreenSpaceAmbientOcclusion;
         else if (name == "Reflections (SSR)")         return Renderer_Option::ScreenSpaceReflections;
+        else if (name == "Reflections (Ray Traced)")  return Renderer_Option::RayTracedReflections;
         else if (name == "Motion Blur")               return Renderer_Option::MotionBlur;
         else if (name == "Depth Of Field")            return Renderer_Option::DepthOfField;
         else if (name == "Film Grain")                return Renderer_Option::FilmGrain;
