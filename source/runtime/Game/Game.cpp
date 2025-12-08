@@ -1093,10 +1093,10 @@ namespace spartan
                                         size_t split_1     = static_cast<size_t>(total_count * 0.1f); // far layer is 10% of the total count
                                         size_t split_2     = static_cast<size_t>(total_count * 0.3f); // mid layer is 20% of the total count (so we end at 30%)
                                         
-                                        // 1. far layer (base)
+                                        // 1. low detail - near
                                         {
                                             Entity* entity = World::CreateEntity();
-                                            entity->SetObjectName("grass_layer_base");
+                                            entity->SetObjectName("grass_layer_detail_low");
                                             entity->SetParent(terrain_tile);
 
                                             // copy the first 10% of transforms
@@ -1110,10 +1110,10 @@ namespace spartan
                                             renderable->SetMaxRenderDistance(render_distance_foliage);
                                         }
 
-                                        // 2. mid layer (detail)
+                                        // 2. medium detail - medium
                                         {
                                             Entity* entity = World::CreateEntity();
-                                            entity->SetObjectName("grass_layer_detail");
+                                            entity->SetObjectName("grass_layer_detail_mid");
                                             entity->SetParent(terrain_tile);
 
                                             // copy the next 20% of transforms
@@ -1127,10 +1127,10 @@ namespace spartan
                                             renderable->SetMaxRenderDistance(350.0f);
                                         }
 
-                                        // 3. near layer (high detail)
+                                        // 3. high detail - near
                                         {
                                             Entity* entity = World::CreateEntity();
-                                            entity->SetObjectName("grass_high_detail");
+                                            entity->SetObjectName("grass_layer_detail_high");
                                             entity->SetParent(terrain_tile);
 
                                             // copy the remaining 70% of transforms
