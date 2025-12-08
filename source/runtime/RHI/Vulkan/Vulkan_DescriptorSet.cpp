@@ -57,6 +57,8 @@ namespace spartan
         vector<VkWriteDescriptorSetAccelerationStructureKHR> info_accel_structs;
         info_accel_structs.resize(descriptor_count);
         info_accel_structs.reserve(descriptor_count);
+        vector<VkAccelerationStructureKHR> accel_struct_handles;
+        accel_struct_handles.reserve(descriptor_count);
         int accel_index = -1;
 
         uint32_t index = 0;
@@ -139,11 +141,19 @@ namespace spartan
             else if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure)
             {
                 RHI_AccelerationStructure* tlas = static_cast<RHI_AccelerationStructure*>(descriptor.data);
+                
+                if (!tlas || !tlas->GetRhiResource())
+                {
+                    SP_LOG_WARNING("Acceleration structure is null or invalid, skipping descriptor update");
+                    continue;
+                }
 
                 accel_index++;
+                // Store handle in persistent vector so pointer remains valid
+                accel_struct_handles.push_back(static_cast<VkAccelerationStructureKHR>(tlas->GetRhiResource()));
                 info_accel_structs[accel_index].sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
                 info_accel_structs[accel_index].accelerationStructureCount = 1;
-                info_accel_structs[accel_index].pAccelerationStructures    = static_cast<VkAccelerationStructureKHR*>(tlas->GetRhiResource());
+                info_accel_structs[accel_index].pAccelerationStructures    = &accel_struct_handles.back();
                 descriptor_index_start                                     = accel_index;
                 descriptor_cnt                                             = 1;
             }
