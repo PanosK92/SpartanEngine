@@ -1336,7 +1336,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(m_global_options.GetOption<uint32_t>(Renderer_Option::Tonemapping));
+        m_pcb_pass_cpu.set_f3_value(m_global_options.GetOption<float>(Renderer_Option::Tonemapping));
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures

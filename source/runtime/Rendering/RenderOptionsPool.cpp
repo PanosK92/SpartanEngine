@@ -123,7 +123,7 @@ namespace spartan
                 SP_LOG_WARNING("This display doesn't support HDR");
                 return;
             }
-            else if (option == Renderer_Option::VariableRateShading && v == 1.0f && !RHI_Device::PropertyIsShadingRateSupported())
+            else if (option == Renderer_Option::VariableRateShading && v == 1.0f && !RHI_Device::IsSupportedVrs())
             {
                 SP_LOG_WARNING("This GPU doesn't support variable rate shading");
                 return;
