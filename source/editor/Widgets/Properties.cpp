@@ -63,7 +63,7 @@ namespace
 
         return nullptr;
     }
-    
+
     uint32_t get_selected_entity_count()
     {
         if (Camera* camera = World::GetCamera())
@@ -72,7 +72,7 @@ namespace
         }
         return 0;
     }
-    
+
     const std::vector<Entity*>& get_selected_entities()
     {
         static std::vector<Entity*> empty;
@@ -183,13 +183,13 @@ void Properties::OnTickVisible()
         ImGui::PushItemWidth(item_width);
         {
             uint32_t selected_count = get_selected_entity_count();
-            
+
             if (selected_count > 1)
             {
                 // multiple entities selected
                 ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f), "%d entities selected", selected_count);
                 ImGui::Separator();
-                
+
                 // list the selected entities
                 const auto& selected = get_selected_entities();
                 for (Entity* entity : selected)
@@ -492,7 +492,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
                     std::snprintf(lod_name, sizeof(lod_name), "LOD %d", i + 1);
                     ImGui::TableSetupColumn(lod_name);
                 }
-                
+
                 // header row
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -907,7 +907,7 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             ImGui::SameLine(); ImGui::Text("Y");
             ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-        
+
             // inversion
             bool invert_x = material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
             bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
@@ -1200,6 +1200,7 @@ void Properties::ShowVolume(Volume* volume) const
                 };
 
                 ImGui::Text("Volume Type");
+                ImGuiSp::tooltip("The body shape of the volume");
                 ImGui::SameLine(column_pos_x);
                 uint32_t selection_index = static_cast<uint32_t>(volume->GetVolumeShapeType());
                 if (ImGuiSp::combo_box("##volume_body_shape", body_types, &selection_index))
@@ -1210,6 +1211,7 @@ void Properties::ShowVolume(Volume* volume) const
 
             // shape size
             ImGui::Text("Volume Size");
+            ImGuiSp::tooltip("Size of inner volume shape (yellow)");
             ImGui::SameLine(column_pos_x);
             if (ImGui::InputFloat("##collisionShapeSize", &shape_size, step, step_fast, precision, input_text_flags))
             {
@@ -1219,6 +1221,7 @@ void Properties::ShowVolume(Volume* volume) const
 
             // transition size
             ImGui::Text("Transition Size");
+            ImGuiSp::tooltip("Thickness of outer volume shape (blue)");
             ImGui::SameLine(column_pos_x);
             if (ImGui::InputFloat("##collisionTransitionSize", &transition_size, step, step_fast, precision, input_text_flags))
             {
@@ -1231,6 +1234,7 @@ void Properties::ShowVolume(Volume* volume) const
             {
                 volume->SetDebugDrawEnabled(is_debug_draw_enabled);
             }
+            ImGuiSp::tooltip("Make volume shape outlines visible for debugging");
         }
 
         // Render Options
