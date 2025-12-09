@@ -672,8 +672,9 @@ namespace spartan
 
                 if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
                 {
-                    material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
-                    material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                    material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::WindAnimation,        1.0f);
+                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                 }
             }
         }
@@ -954,7 +955,7 @@ namespace spartan
                         material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project\\models\\tree\\Twig_Opacity_Map.jpg");
                         material_leaf->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                         material_leaf->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
-                        material_leaf->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_leaf->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material_leaf->SetResourceName("tree_leaf" + string(EXTENSION_MATERIAL));
 
                         material_body = make_shared<Material>();
@@ -975,7 +976,7 @@ namespace spartan
                         material_grass_blade->SetProperty(MaterialProperty::Roughness, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
-                        material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         material_grass_blade->SetColor(Color::standard_white);
                         material_grass_blade->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));

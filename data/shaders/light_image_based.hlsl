@@ -23,15 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
-// compute dominant specular direction for rough surfaces using reflection vector
-// for smooth surfaces, use perfect reflection; for rough surfaces, reflection is already correct
+// Compute dominant specular direction using reflection vector (perfect for smooth, biased for rough)
 float3 get_dominant_specular_direction(float3 normal, float3 view_dir, float roughness)
 {
     // compute perfect reflection vector
     float3 reflection = reflect(-view_dir, normal);
     
-    // for very rough surfaces, slightly bias toward normal to reduce fireflies
-    // this is a heuristic to improve stability, not physically accurate
+    // Bias toward normal for very rough surfaces to reduce fireflies (stability heuristic)
     const float roughness_threshold = 0.8f;
     if (roughness > roughness_threshold)
     {
@@ -42,7 +40,7 @@ float3 get_dominant_specular_direction(float3 normal, float3 view_dir, float rou
     return reflection;
 }
 
-// fresnel schlick with roughness modification for ibl
+// Fresnel Schlick with roughness modification for IBL
 float3 fresnel_schlick_roughness(float cos_theta, float3 F0, float roughness)
 {
     return F0 + (max(1.0f - roughness.xxx, F0) - F0) * pow(saturate(1.0f - cos_theta), 5.0f);
@@ -61,7 +59,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (surface.is_sky())
         return;
 
-    // compute fresnel and energy terms using original normal (not bent normal)
+    // Compute fresnel and energy terms using original normal (bent normal used for diffuse only)
     const float3 view_dir            = normalize(-surface.camera_to_pixel);
     const float n_dot_v              = saturate(dot(surface.normal, view_dir));
     const float3 F                   = fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness);
@@ -69,12 +67,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     const float3 specular_energy     = F * envBRDF.x + envBRDF.y;
     const float3 diffuse_energy      = compute_diffuse_energy(specular_energy, surface.metallic);
 
-    // compute specular reflection using original normal (bent normal is for diffuse only)
+    // Compute specular reflection using original normal
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, view_dir, surface.roughness);
     float mip_count_environment        = pass_get_f3_value().x;
     float mip_level                    = lerp(0.0f, mip_count_environment - 1.0f, surface.roughness);
     
-    // sample environment map for specular (using original normal) and diffuse (using bent normal)
+    // Sample environment map: specular uses original normal, diffuse uses bent normal
     float3 specular_skysphere = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
     float3 diffuse_skysphere  = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
     float shadow_mask         = tex[thread_id.xy].r;
@@ -82,14 +80,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // apply specular energy and shadow mask to specular ibl
     specular_skysphere *= specular_energy * shadow_mask;
 
-    // apply shadow mask and occlusion to diffuse ibl (bent normal already accounts for ao direction)
+    // Apply shadow mask and occlusion to diffuse IBL (bent normal accounts for AO direction)
     shadow_mask        = max(0.3f, shadow_mask);  // prevent complete darkness
     float3 diffuse_ibl = (diffuse_skysphere * shadow_mask) * surface.occlusion;
 
-    // combine specular ibl (gi fallback can be added here if needed)
+    // Combine specular IBL (GI fallback can be added here if needed)
     float3 specular_ibl = specular_skysphere;
     
-    // combine diffuse and specular ibl with proper energy terms
+    // Combine diffuse and specular IBL with proper energy terms
     float3 ibl = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + specular_ibl;
 
     // apply alpha for transparent surfaces

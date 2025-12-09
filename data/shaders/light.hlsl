@@ -26,36 +26,57 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //============================
 
-// compute subsurface scattering contribution using geometric normal
+// Subsurface scattering with wrapped diffuse and thickness estimation
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
-    const float distortion         = 0.3f;
-    const float sss_exponent       = 4.0f;
-    const float thickness_exponent = 2.0f;
-    const float ambient            = 0.1f;
-    const float sss_strength       = surface.subsurface_scattering * 0.5f;
-
+    // material-dependent scattering parameters
+    const float wrap_factor        = 0.5f;  // wrapped lighting factor (0 = no wrap, 1 = full wrap)
+    const float sss_exponent       = 3.0f;  // translucency falloff sharpness
+    const float thickness_exponent = 1.5f;  // edge thickness falloff
+    const float sss_scale          = 0.8f;  // overall scattering strength multiplier
+    const float min_scatter        = 0.05f; // minimum ambient scattering
+    
     // compute key vectors (use geometric normal for sss)
     float3 L = normalize(-light.to_pixel);
     float3 V = normalize(-surface.camera_to_pixel);
     float3 N = surface.normal;
     
-    // distorted half-vector for better translucency effect
-    float3 H = normalize(L + N * distortion);
-    float translucency = pow(saturate(dot(V, -H)), sss_exponent);
+    // Wrapped diffuse: allows light to wrap around surface, simulating subsurface penetration
+    float n_dot_l_wrapped = saturate((dot(N, L) + wrap_factor) / (1.0f + wrap_factor));
+    float wrapped_diffuse = n_dot_l_wrapped * n_dot_l_wrapped; // square for smoother falloff
     
-    // combined scattering term with ambient
-    float sss_term = (translucency + ambient);
+    // Back-scattering translucency: light passing through from behind using distorted normal
+    const float distortion = 0.4f;
+    float3 N_distorted     = normalize(N + L * distortion);
+    float back_scatter     = saturate(dot(V, -N_distorted));
+    back_scatter           = pow(back_scatter, sss_exponent);
     
-    // edge modulation: stronger scattering near silhouette edges
-    float dot_N_V    = saturate(dot(N, V));
-    float modulation = pow(1.0f - dot_N_V, thickness_exponent);
+    // Combine forward (wrapped diffuse) and backward (translucency) scattering
+    float sss_term = lerp(back_scatter, wrapped_diffuse, saturate(dot(N, L) * 0.5f + 0.5f));
+    sss_term = max(sss_term, min_scatter); // ensure minimum scattering
     
-    // compute light contribution
-    float3 light_color = light.color * light.intensity * light.attenuation;
+    // Thickness modulation: stronger scattering at thin edges (view-dependent)
+    float n_dot_v = saturate(dot(N, V));
+    float view_thickness = pow(1.0f - n_dot_v, thickness_exponent);
+    
+    // Light-dependent: backlit areas show more scattering
+    float n_dot_l = saturate(dot(N, L));
+    float light_thickness = pow(1.0f - n_dot_l, 1.0f);
+    
+    // combine thickness terms
+    float thickness_modulation = saturate(view_thickness + light_thickness * 0.5f);
+    
+    // compute light contribution with proper radiance
+    float3 light_radiance = light.radiance;
+    
+    // apply material strength and scale
+    float sss_strength = surface.subsurface_scattering * sss_scale;
+    
+    // Color tinting: preserve material color for subsurface scattering
+    float3 sss_color = surface.albedo;
     
     // combine all terms
-    return light_color * sss_term * modulation * sss_strength * surface.albedo;
+    return light_radiance * sss_term * thickness_modulation * sss_strength * sss_color;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -113,7 +134,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 light.radiance *= L_shadow;
             }
 
-            // build angular information for brdf calculations (uses geometric normal)
+            // build angular information for brdf calculations
             AngularInfo angular_info;
             angular_info.Build(light, surface);
 
