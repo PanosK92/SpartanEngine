@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //============================
 
+// compute subsurface scattering contribution using geometric normal
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
     const float distortion         = 0.3f;
@@ -34,59 +35,61 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     const float ambient            = 0.1f;
     const float sss_strength       = surface.subsurface_scattering * 0.5f;
 
-    // compute key vectors
-    float3 L = normalize(-light.to_pixel);          // to light
-    float3 V = normalize(-surface.camera_to_pixel); // to camera
-    float3 N = surface.normal;                      // surface normal
+    // compute key vectors (use geometric normal for sss)
+    float3 L = normalize(-light.to_pixel);
+    float3 V = normalize(-surface.camera_to_pixel);
+    float3 N = surface.normal;
     
-    // distorted half-vector for better translucency
+    // distorted half-vector for better translucency effect
     float3 H = normalize(L + N * distortion);
     float translucency = pow(saturate(dot(V, -H)), sss_exponent);
     
-    // combined scattering term
+    // combined scattering term with ambient
     float sss_term = (translucency + ambient);
     
-    // modulation: stronger near edges
+    // edge modulation: stronger scattering near silhouette edges
     float dot_N_V    = saturate(dot(N, V));
     float modulation = pow(1.0f - dot_N_V, thickness_exponent);
     
-    // light contribution
+    // compute light contribution
     float3 light_color = light.color * light.intensity * light.attenuation;
     
-    // combine
+    // combine all terms
     return light_color * sss_term * modulation * sss_strength * surface.albedo;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // build surface
+    // get resolution and build surface data
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, true);
 
-    // early exits
-    bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky();
+    // early exit for mismatched pass/surface types
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent() && !surface.is_sky();
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
         return;
 
+    // initialize output accumulators
     float3 out_diffuse    = 0.0f;
     float3 out_specular   = 0.0f;
     float  out_shadow     = 1.0f;
     float3 out_volumetric = 0.0f;
 
-    // we pre-compute the part that we can
+    // pre-compute common terms (alpha and occlusion)
     float3 light_precomputed = surface.alpha * surface.occlusion;
     
-    // loop lights and accumulate
+    // loop over all lights and accumulate contributions
     uint light_count = pass_get_f3_value().x;
     for (uint i = 0; i < light_count; i++)
     {
         Light light;
         light.Build(i, surface);
 
+        // per-light accumulators
         float  L_shadow        = 1.0f;
         float3 L_specular_sum  = 0.0f;
         float3 L_diffuse_term  = 0.0f;
@@ -95,25 +98,28 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
         if (!surface.is_sky())
         {
-            // shadows
+            // compute shadow term
             if (light.has_shadows())
             {
                 L_shadow = compute_shadow(surface, light);
 
+                // combine with screen-space shadows if available
                 if (light.has_shadows_screen_space() && surface.is_opaque())
                 {
                     L_shadow = min(L_shadow, tex_uav_sss[int3(thread_id.xy, light.screen_space_shadows_slice_index)].x);
                 }
 
+                // apply shadow to light radiance
                 light.radiance *= L_shadow;
             }
 
-            // reflectance terms
+            // build angular information for brdf calculations (uses geometric normal)
             AngularInfo angular_info;
             angular_info.Build(light, surface);
 
-            // specular lobes
+            // compute specular brdf lobes
             {
+                // main specular lobe (anisotropic or isotropic)
                 if (surface.anisotropic > 0.0f)
                 {
                     L_specular_sum += BRDF_Specular_Anisotropic(surface, angular_info);
@@ -123,46 +129,49 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     L_specular_sum += BRDF_Specular_Isotropic(surface, angular_info);
                 }
                 
+                // clearcoat layer (secondary specular)
                 if (surface.clearcoat > 0.0f)
                 {
                     L_specular_sum += BRDF_Specular_Clearcoat(surface, angular_info);
                 }
                 
+                // sheen layer (cloth-like materials)
                 if (surface.sheen > 0.0f)
                 {
                     L_specular_sum += BRDF_Specular_Sheen(surface, angular_info);
                 }
                 
-                // subsurface
+                // subsurface scattering (translucent materials)
                 if (surface.subsurface_scattering > 0.0f)
                 {
                     L_subsurface += subsurface_scattering(surface, light, angular_info);
                 }
             }
             
-            // diffuse term before radiance
+            // compute diffuse brdf term
             L_diffuse_term += BRDF_Diffuse(surface, angular_info);
         }
 
-        // volumetric
+        // compute volumetric fog contribution
         if (light.is_volumetric())
         {
             L_volumetric += compute_volumetric_fog(surface, light, thread_id.xy);
         }
         
-        // convert per light terms to what we actually store in the UAVs
+        // combine per-light terms with radiance and precomputed factors
         float3 write_diffuse    = L_diffuse_term * light.radiance * light_precomputed * surface.diffuse_energy + L_subsurface;
         float3 write_specular   = L_specular_sum * light.radiance * light_precomputed;
         float  write_shadow     = L_shadow;
         float3 write_volumetric = L_volumetric;
 
-        // accumulate
+        // accumulate into output buffers
         out_diffuse    += write_diffuse;
         out_specular   += write_specular;
-        out_shadow     *= write_shadow;
+        out_shadow     *= write_shadow;  // multiply shadows (all lights must be unshadowed)
         out_volumetric += write_volumetric;
     }
 
+    // write results to output buffers
     tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,    1.0f));
     tex_uav2[thread_id.xy] = validate_output(float4(out_specular,   1.0f));
     tex_uav3[thread_id.xy] = validate_output(out_shadow);
