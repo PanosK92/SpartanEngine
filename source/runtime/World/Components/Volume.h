@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Component.h"
-#include "Geometry/Mesh.h"
 #include "Rendering/RenderOptionsPool.h"
 //============================================
 
@@ -49,8 +48,9 @@ namespace spartan
         VolumeType m_volume_shape_type   = VolumeType::Sphere;
         float m_shape_size               = default_shape_size;
         float m_transition_size          = default_transition_size;
-        math::BoundingBox m_bounding_box = math::BoundingBox::Unit;
         bool m_is_debug_draw_enabled     = true;
+
+        math::BoundingBox m_bounding_box = math::BoundingBox::Unit;
 
         RenderOptionsPool m_options_collection = RenderOptionsPool();
     public:
@@ -58,10 +58,9 @@ namespace spartan
         ~Volume();
 
         //= COMPONENT ================================
-        //void PreTick() override;
         void Tick() override;
-        //void Save(pugi::xml_node& node) override;
-        //void Load(pugi::xml_node& node) override;
+        void Save(pugi::xml_node& node) override;
+        void Load(pugi::xml_node& node) override;
         //============================================
 
         float ComputeAlpha(const math::Vector3& camera_position) const;

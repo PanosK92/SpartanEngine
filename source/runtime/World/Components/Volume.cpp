@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Volume.h"
 
 #include <algorithm>
+
+#include "IO/pugixml.hpp"
 #include "World/Entity.h"
 //============================================
 
@@ -48,7 +50,7 @@ namespace spartan
         m_transition_size = default_transition_size;
         m_is_debug_draw_enabled = true;
 
-        m_options_collection = RenderOptionsPool();
+        m_options_collection = RenderOptionsPool(RenderOptionsListType::Component);
     }
 
     Volume::~Volume()
@@ -77,38 +79,65 @@ namespace spartan
         }
     }
 
+    void Volume::Save(pugi::xml_node& node)
+    {
+        node.append_attribute("shape_type")      = static_cast<int>(m_volume_shape_type);
+        node.append_attribute("shape_size")      = m_shape_size;
+        node.append_attribute("transition_size") = m_transition_size;
+        node.append_attribute("debug_enabled")   = m_is_debug_draw_enabled;
+    }
+
+    void Volume::Load(pugi::xml_node& node)
+    {
+        m_volume_shape_type = static_cast<VolumeType>(node.attribute("shape_type").as_int(static_cast<int>(VolumeType::Max)));
+        m_shape_size = node.attribute("shape_size").as_float();
+        m_transition_size = node.attribute("transition_size").as_float();
+        m_is_debug_draw_enabled = node.attribute("debug_enabled").as_bool();
+
+        m_bounding_box = BoundingBox::Unit;
+        m_options_collection = RenderOptionsPool(RenderOptionsListType::Component);
+    }
+
     float Volume::ComputeAlpha(const Vector3& camera_position) const
     {
         if (m_volume_shape_type == VolumeType::Box)
         {
-            Vector3 p = camera_position - m_entity_ptr->GetPosition();
-            Vector3 q = p.Abs() - m_bounding_box.GetExtents();
+            const Vector3 distance_absolute = (camera_position - m_entity_ptr->GetPosition()).Abs();
 
-            float outside = Vector3::Max(q, Vector3::Zero).Length();
-            float inside  = std::min(std::max(q.x, std::max(q.y, q.z)), 0.0f);
+            const Vector3 inner_half_extents = m_bounding_box.GetExtents() + Vector3(m_shape_size / 2.0f);
+            const Vector3 outer_half_extents = inner_half_extents + Vector3(m_transition_size);
 
-            float d = outside + inside; // signed distance to box
+            const float dist_to_inner = (distance_absolute - inner_half_extents).Max(Vector3::Zero).Length();
+            const float dist_to_outer = (distance_absolute - outer_half_extents).Max(Vector3::Zero).Length();
 
-            if (d <= 0)
+            if (dist_to_inner <= 0.0f)
+            {
                 return 1.0f;
-            if (d >= m_transition_size)
+            }
+            if (dist_to_outer > 0.0f)
+            {
                 return 0.0f;
+            }
 
-            return 1.0f - d / m_transition_size;
+            return 1.0f - dist_to_inner / m_transition_size;
         }
-
-        // Circle volume type
-        const float distance = Vector3::Distance(camera_position, m_entity_ptr->GetPosition());
-
-        if (distance > m_transition_size + m_shape_size)
+        if (m_volume_shape_type == VolumeType::Sphere)
         {
-            return 0.0f;
-        }
-        if (distance <= m_shape_size)
-        {
-            return 1.0f;
+            const float distance = Vector3::Distance(camera_position, m_entity_ptr->GetPosition());
+
+            if (distance > m_transition_size + m_shape_size)
+            {
+                return 0.0f;
+            }
+            if (distance <= m_shape_size)
+            {
+                return 1.0f;
+            }
+
+            return 1.0f - (distance - m_shape_size) / m_transition_size;
         }
 
-        return 1.0f - (distance - m_shape_size) / m_transition_size;
+        // Unknown shape
+        return 1.0f;
     }
 }
