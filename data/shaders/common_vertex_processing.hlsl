@@ -58,12 +58,14 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
     float3 instance_position = float3(instance_position_x, instance_position_y, instance_position_z);
     
     // check for identity
-    if (!any(instance_position) && instance_normal_oct == 0 && instance_yaw == 0 && instance_scale == 0)
+    float pos_sq = dot(instance_position, instance_position);
+    if (pos_sq < 1e-10 && instance_normal_oct == 0 && instance_yaw == 0 && instance_scale == 0)
         return float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
     
     // compose octahedral normal
-    float x            = float(instance_normal_oct >> 8) / 255.0 * 2.0 - 1.0;
-    float y            = float(instance_normal_oct & 0xFF) / 255.0 * 2.0 - 1.0;
+    static const float rcp_255 = 1.0 / 255.0;
+    float x            = (float(instance_normal_oct >> 8) * rcp_255) * 2.0 - 1.0;
+    float y            = (float(instance_normal_oct & 0xFF) * rcp_255) * 2.0 - 1.0;
     float3 n           = float3(x, y, 1.0 - abs(x) - abs(y));
     float mask         = step(0.0, n.z);
     float2 adjusted_xy = (float2(1.0, 1.0) - abs(n.yx)) * sign(n.xy);
@@ -71,8 +73,11 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
     float3 normal      = normalize(n);
     
     // compose yaw and scale
-    float yaw   = float(instance_yaw) / 255.0 * 6.28318530718; // pi_2
-    float scale = exp2(lerp(-6.643856, 6.643856, float(instance_scale) / 255.0)); // log2(0.01) to log2(100)
+    static const float pi_2 = 6.28318530718;
+    static const float scale_min_log2 = -6.643856; // log2(0.01)
+    static const float scale_max_log2 = 6.643856;  // log2(100)
+    float yaw   = float(instance_yaw) * rcp_255 * pi_2;
+    float scale = exp2(lerp(scale_min_log2, scale_max_log2, float(instance_scale) * rcp_255));
     
     // compose quaternion
     float3 up           = float3(0, 1, 0);
@@ -87,38 +92,33 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
         float s = fast_sqrt(2.0 + 2.0 * up_dot_normal);
         quat    = float4(cross(up, normal) / s, s * 0.5);
     }
-    float cy        = cos(yaw * 0.5);
-    float sy        = sin(yaw * 0.5);
+    float cy        = cos(-yaw * 0.5);
+    float sy        = sin(-yaw * 0.5);
     float4 quat_yaw = float4(0, sy, 0, cy);
-    float4 q        = float4(
-        quat.w * quat_yaw.x + quat.x * quat_yaw.w + quat.y * quat_yaw.z - quat.z * quat_yaw.y,
-        quat.w * quat_yaw.y - quat.x * quat_yaw.z + quat.y * quat_yaw.w + quat.z * quat_yaw.x,
-        quat.w * quat_yaw.z + quat.x * quat_yaw.y - quat.y * quat_yaw.x + quat.z * quat_yaw.w,
-        quat.w * quat_yaw.w - quat.x * quat_yaw.x - quat.y * quat_yaw.y - quat.z * quat_yaw.z
-    );
     
-    // compose rotation matrix
-    float xx = q.x * q.x;
-    float xy = q.x * q.y;
-    float xz = q.x * q.z;
-    float xw = q.x * q.w;
-    float yy = q.y * q.y;
-    float yz = q.y * q.z;
-    float yw = q.y * q.w;
-    float zz = q.z * q.z;
-    float zw = q.z * q.w;
-    float3x3 rotation = float3x3(
-        1 - 2 * (yy + zz), 2 * (xy - zw), 2 * (xz + yw),
-        2 * (xy + zw), 1 - 2 * (xx + zz), 2 * (yz - xw),
-        2 * (xz - yw), 2 * (yz + xw), 1 - 2 * (xx + yy)
-    );
+    // quaternion multiplication
+    float qx = quat.w * quat_yaw.x + quat.x * quat_yaw.w + quat.y * quat_yaw.z - quat.z * quat_yaw.y;
+    float qy = quat.w * quat_yaw.y - quat.x * quat_yaw.z + quat.y * quat_yaw.w + quat.z * quat_yaw.x;
+    float qz = quat.w * quat_yaw.z + quat.x * quat_yaw.y - quat.y * quat_yaw.x + quat.z * quat_yaw.w;
+    float qw = quat.w * quat_yaw.w - quat.x * quat_yaw.x - quat.y * quat_yaw.y - quat.z * quat_yaw.z;
     
-    // compose final transform
+    // compose rotation matrix directly as 4x4 with scale applied
+    float xx = qx * qx;
+    float xy = qx * qy;
+    float xz = qx * qz;
+    float xw = qx * qw;
+    float yy = qy * qy;
+    float yz = qy * qz;
+    float yw = qy * qw;
+    float zz = qz * qz;
+    float zw = qz * qw;
+    
+    // compose final transform directly (scale applied during matrix construction)
     return float4x4(
-        float4(rotation._11 * scale, rotation._12 * scale, rotation._13 * scale, 0),
-        float4(rotation._21 * scale, rotation._22 * scale, rotation._23 * scale, 0),
-        float4(rotation._31 * scale, rotation._32 * scale, rotation._33 * scale, 0),
-        float4(instance_position, 1)
+        float4((1.0 - 2.0 * (yy + zz)) * scale, 2.0 * (xy + zw) * scale, 2.0 * (xz - yw) * scale, 0.0),
+        float4(2.0 * (xy - zw) * scale, (1.0 - 2.0 * (xx + zz)) * scale, 2.0 * (yz + xw) * scale, 0.0),
+        float4(2.0 * (xz + yw) * scale, 2.0 * (yz - xw) * scale, (1.0 - 2.0 * (xx + yy)) * scale, 0.0),
+        float4(instance_position, 1.0)
     );
 }
 
