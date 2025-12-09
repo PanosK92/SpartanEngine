@@ -699,7 +699,7 @@ namespace spartan
         {
             is_transitioning = false;
             blended_options = Renderer::GetRenderOptionsPoolRef(true);
-            UpdateRenderOptions();
+            UpdateRendererOptions();
         }
     }
 
@@ -786,7 +786,7 @@ namespace spartan
                 // Only float render options can be interpolated
                 if (std::holds_alternative<float>(option_value))
                 {
-                    float option_float_value = std::get<float>(option_value);
+                    const float option_float_value = std::get<float>(option_value);
                     accumulator_floats[option_key] += option_float_value * alpha;
                     accumulator_weights[option_key] += alpha;
                 }
@@ -803,7 +803,7 @@ namespace spartan
         if (!any_volume_transitioning)
         {
             blended_options = mix_volume_options;
-            UpdateRenderOptions();
+            UpdateRendererOptions();
             is_transitioning = false;
             return;
         }
@@ -825,13 +825,13 @@ namespace spartan
         }
 
         // Update every frame, since there is currently a transition being performed
-        UpdateRenderOptions();
+        UpdateRendererOptions();
 
         // Keep is_transitioning state true so we don't snap prematurely
         is_transitioning = true;
     }
 
-    void World::UpdateRenderOptions()
+    void World::UpdateRendererOptions()
     {
         for (auto& [option_key, option_value] : blended_options.GetOptions())
         {

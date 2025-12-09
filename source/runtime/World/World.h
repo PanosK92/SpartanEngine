@@ -56,7 +56,7 @@ namespace spartan
         static void UpdateActiveVolumes();
         static void UpdateMixRenderOptions();
         static void InterpolateOverlappingVolumes();
-        static void UpdateRenderOptions();
+        static void UpdateRendererOptions();
         static void RegisterVolume(Volume* volume);
         static void UnregisterVolume(Volume* volume);
 
