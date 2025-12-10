@@ -65,7 +65,7 @@ namespace spartan::math
             z = f;
         }
 
-        bool Normalize()
+        void Normalize()
         {
             const auto length_squared = LengthSquared();
             if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
