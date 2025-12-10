@@ -65,7 +65,7 @@ namespace spartan::math
             z = f;
         }
 
-        void Normalize()
+        bool Normalize()
         {
             const auto length_squared = LengthSquared();
             if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
@@ -94,6 +94,14 @@ namespace spartan::math
                 y *= length_inverted;
                 z *= length_inverted;
             #endif
+                return true;
+            }
+            else
+            {
+                x = 0;
+                y = 0;
+                z = 0;
+                return false;
             }
         };
 
