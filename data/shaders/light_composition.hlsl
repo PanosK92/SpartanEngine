@@ -87,39 +87,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 sky_color   = lerp(sky_color_view, sky_color_light, light_weight * phase);
     
         float fog_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y);
-        float3 fog_emissive   = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
+        float3 fog_volumetric = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
         
-        // fog blending: atmospheric (base), directional volumetric (modulates), point/spot volumetric (additive)
-        // compute directional volumetric fog separately (light 0 is always directional)
-        float3 fog_volumetric_directional = 0.0f;
-        if (light.is_volumetric() && light.is_directional())
-        {
-            fog_volumetric_directional = compute_volumetric_fog(surface, light, thread_id.xy);
-        }
-        
-        // separate point/spot volumetric fog from total
-        float3 fog_volumetric_point_spot = fog_emissive - fog_volumetric_directional;
-        
+        // fog blending: atmospheric (base), volumetric (additive with shadows)
         // base atmospheric fog in-scatter (no shadows)
         float3 fog_inscatter = fog_atmospheric * sky_color;
         
-        // modulate atmospheric fog with directional volumetric fog (multiplicative, non-additive)
-        if (length(fog_volumetric_directional) > 0.001f && fog_atmospheric > 0.001f)
-        {
-            // normalize volumetric fog to extract scattering factor
-            float3 light_contribution = light.intensity * light.color;
-            float3 volumetric_scattering = fog_volumetric_directional / max(length(light_contribution), 0.001f);
-            
-            // compute shadow modulation: ratio of volumetric (with shadows) to atmospheric (without shadows)
-            float atmospheric_scattering = fog_atmospheric;
-            float shadow_modulation = saturate(length(volumetric_scattering) / max(atmospheric_scattering, 0.001f));
-            
-            // reduce atmospheric fog where shadows are present
-            fog_inscatter *= shadow_modulation;
-        }
-        
-        // add point/spot volumetric fog (additive)
-        light_atmospheric = fog_inscatter + fog_volumetric_point_spot;
+        // add volumetric fog (already includes all lights with shadows)
+        // volumetric fog is computed per-light in light.hlsl and accumulated
+        // it already accounts for shadow maps, so we can add it directly
+        light_atmospheric = fog_inscatter + fog_volumetric;
     }
 
     // transparent surfaces sample background via refraction, no need to blend
