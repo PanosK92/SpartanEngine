@@ -248,17 +248,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
 
     // emission
-    bool emissive_from_albedo = material.emissive_from_albedo();
-    if (emissive_from_albedo)
+    if (surface.has_texture_emissive())
     {
-        emission += luminance(albedo.rgb) * (float)emissive_from_albedo;
+        float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy).rgb;
+        albedo.rgb            += emissive_color;
+        emission               = luminance(emissive_color);
     }
-    else if (surface.has_texture_emissive())
-    {
-        float3 emissive_color = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy).rgb;
-        albedo.rgb += emissive_color;
-        emission = luminance(emissive_color);
-    }
+    emission += luminance(albedo.rgb) * (float)material.emissive_from_albedo();
     
     // normal mapping
     if (surface.has_texture_normal())
