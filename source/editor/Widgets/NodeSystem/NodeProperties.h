@@ -25,10 +25,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Widget.h"
 //=================
 
+// TODO: Add functionality to edit node properties such as name, type, value, connections, etc.
+// TODO: Integrate with the node system to fetch and update node data.
+
+/**
+ * @class NodeProperties
+ * @brief A class responsible for displaying, editing, and managing the properties of a selected node.
+ * This widget provides an interface for users to view and modify various attributes of nodes within the node system.
+ * It typically includes features such as property panels, input fields, and other UI elements that allow for
+ * intuitive interaction with node properties.
+ */
 class NodeProperties : public Widget
 {
 public:
-    NodeProperties(Editor* editor);
+    explicit NodeProperties(Editor* editor);
 
     void OnTickVisible() override;
 };

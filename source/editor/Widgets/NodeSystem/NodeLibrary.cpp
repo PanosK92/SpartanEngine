@@ -31,6 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 //===================================
 
+NodeLibrary& NodeLibrary::GetInstance()
+{
+    static NodeLibrary instance;
+    return instance;
+}
+
 void NodeLibrary::Initialize()
 {
     RegisterMathNodes();

@@ -27,11 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Node
 {
-    class LessThan : public NodeBase
+    class LessThan final : public NodeBase
     {
     public:
         LessThan(NodeId id, PinId& next_pin_id);
-        ~LessThan() override = default;
     
         void Execute() override;
     

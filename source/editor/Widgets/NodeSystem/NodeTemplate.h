@@ -32,14 +32,29 @@ class NodeBase;
 // Factory function type for creating nodes
 typedef std::function<NodeBase*(NodeId, PinId&)> NodeFactory;
 
+/**
+ * @class NodeTemplate
+ * @brief Represents a template for creating nodes in the node system.
+ * This class encapsulates the properties and factory function needed to instantiate nodes of a specific type.
+ *
+ * @note - Copy operations are deleted to prevent ambiguity in node identity and ownership.
+ * @note - Move operations are allowed to facilitate ownership transfer.
+ */
 class NodeTemplate
 {
 public:
     NodeTemplate(std::string name, NodeCategory category, NodeFactory factory);
     ~NodeTemplate() = default;
 
-    [[nodiscard]] NodeBase* CreateNode(NodeId id, PinId& next_pin_id) const;
+    // Copy operations
+    NodeTemplate(const NodeTemplate&)                = delete;
+    NodeTemplate& operator=(const NodeTemplate&)     = delete;
 
+    // Move operations
+    NodeTemplate(NodeTemplate&&) noexcept            = default;
+    NodeTemplate& operator=(NodeTemplate&&) noexcept = default;
+
+    [[nodiscard]] NodeBase* CreateNode(NodeId id, PinId& next_pin_id) const;
     [[nodiscard]] const std::string& GetName() const { return m_name; }
     [[nodiscard]] NodeCategory GetCategory() const { return m_category; }
 

@@ -24,10 +24,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======
 #include "NodeTemplate.h"
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 //=================
 
+/**
+ * @class NodeLibrary
+ * @brief A class responsible for managing node templates in the node system.
+ * It allows for the registration and retrieval of node templates based on categories and search criteria.
+ * This class follows the singleton design pattern to ensure a single instance throughout the application.
+ *
+ * Usage:
+ * - Initialize the library using `Initialize()`.
+ * - Register node templates using `RegisterTemplate()`.
+ * - Search for node templates using `SearchTemplates()`.
+ * - Retrieve all registered templates using `GetAllTemplates()`.
+ *
+ * @note This class is non-copyable to prevent multiple instances.
+ *
+ * @see @class NodeTemplate
+ */
 class NodeLibrary
 {
 public:
@@ -36,20 +52,18 @@ public:
 
     NodeLibrary(const NodeLibrary&)            = delete;
     NodeLibrary& operator=(const NodeLibrary&) = delete;
-
-    static NodeLibrary& GetInstance()
-    {
-        static NodeLibrary instance;
-        return instance;
-    }
+    NodeLibrary(NodeLibrary&&)                 = delete;
+    NodeLibrary& operator=(NodeLibrary&&)      = delete;
 
     void Initialize();
     void RegisterTemplate(std::unique_ptr<NodeTemplate> node_template);
+    static NodeLibrary& GetInstance();
 
     [[nodiscard]] std::vector<const NodeTemplate*> SearchTemplates(const std::string& search_text = "", NodeCategory category = NodeCategory::Math) const;
     [[nodiscard]] const std::vector<std::unique_ptr<NodeTemplate>>& GetAllTemplates() const { return m_templates; }
 
 private:
+    // TODO: Setup dynamic registration via reflection or a registration macro.
     void RegisterMathNodes();
     void RegisterLogicNodes();
     void RegisterUtilityNodes();

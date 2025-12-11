@@ -33,11 +33,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class Pin;
 class NodeTemplate;
 
+/**
+ * @class NodeWidget
+ * @brief Represents a node widget in the editor.
+ *
+ * This class provides functionality for rendering and interacting with nodes,
+ * pins, and links within a node-based editor interface.
+ * It handles drawing nodes, managing user interactions,
+ * and displaying context menus for node creation.
+ */
 class NodeWidget : public Widget
 {
 public:
-    NodeWidget(Editor *editor);
-    ~NodeWidget();
+    explicit NodeWidget(Editor *editor);
+    virtual ~NodeWidget() override;
 
     void OnTick() override;
     void OnVisible() override;

@@ -28,11 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Node
 {
 
-    class Division : public NodeBase
+    class Division final : public NodeBase
     {
     public:
         Division(NodeId id, PinId& next_pin_id);
-        ~Division() override = default;
     
         void Execute() override;
     

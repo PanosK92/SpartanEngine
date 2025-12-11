@@ -22,44 +22,59 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include "NodeTypes.h"
-#include "NodeBase.h"
 #include "Link.h"
+#include "NodeBase.h"
 #include "NodeTemplate.h"
-#include <vector>
+#include "NodeTypes.h"
 #include <memory>
+#include <vector>
 //=================
 
+/**
+ * @class NodeBuilder
+ * @brief A class responsible for constructing and managing nodes and links in the node system.
+ * This class provides functionality to create, delete, and find nodes and links,
+ * as well as manage unique identifiers for nodes, pins, and links.
+ *
+ * @note Nodes and links are managed using std::unique_ptr to ensure proper memory management
+ * and prevent memory leaks.
+ */
 class NodeBuilder
 {
 public:
     NodeBuilder();
     ~NodeBuilder() = default;
 
+    NodeBuilder(const NodeBuilder&)                 = delete;
+    NodeBuilder& operator=(const NodeBuilder&)      = delete;
+    NodeBuilder(NodeBuilder&&) noexcept             = default;
+    NodeBuilder& operator=(NodeBuilder&&) noexcept  = default;
+
     // NodeBase management
-    NodeBase* CreateNode(const NodeTemplate* node_template);
-    NodeBase* CreateNode(NodeId id, const char* name);
+    NodeBase* CreateNode(const NodeTemplate* node_template);  // Creates a node based on a NodeTemplate
+    NodeBase* CreateNode(NodeId id, const char* name);        // Creates a basic node with a given ID and name
     bool DeleteNode(NodeId nodeId);
+
     NodeBase* FindNode(NodeId id);
-    const NodeBase* FindNode(NodeId id) const;
+    [[nodiscard]] const NodeBase* FindNode(NodeId id) const;
 
     // Pin management
     Pin* FindPin(PinId id);
-    const Pin* FindPin(PinId id) const;
-    bool IsPinLinked(PinId id) const;
+    [[nodiscard]] const Pin* FindPin(PinId id) const;
+    [[nodiscard]] bool IsPinLinked(PinId id) const;
 
     // Link management
     Link* CreateLink(PinId startPinId, PinId endPinId);
     bool DeleteLink(LinkId linkId);
     Link* FindLink(LinkId id);
-    const Link* FindLink(LinkId id) const;
+    [[nodiscard]] const Link* FindLink(LinkId id) const;
     void ClearLinks();
 
     // Accessors
     std::vector<std::unique_ptr<NodeBase>>& GetNodes() { return m_nodes; }
-    const std::vector<std::unique_ptr<NodeBase>>& GetNodes() const { return m_nodes; }
+    [[nodiscard]] const std::vector<std::unique_ptr<NodeBase>>& GetNodes() const { return m_nodes; }
     std::vector<std::unique_ptr<Link>>& GetLinks() { return m_links; }
-    const std::vector<std::unique_ptr<Link>>& GetLinks() const { return m_links; }
+    [[nodiscard]] const std::vector<std::unique_ptr<Link>>& GetLinks() const { return m_links; }
 
     // ID generation
     NodeId GetNextNodeId() { return m_next_node_id++; }

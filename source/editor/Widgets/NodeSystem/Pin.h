@@ -29,10 +29,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class NodeBase;
 
+/**
+ * @class Pin
+ * @brief Represents a pin in the node system.
+ * Pins are connection points on nodes that allow data or flow to be passed between nodes.
+ *
+ * @note - Pins have unique IDs (m_id) and are associated with a specific node (m_node).
+ */
 class Pin
 {
 public:
     Pin(PinId id, const char* name, PinType type, PinKind kind);
+
+    // Default copy and move operations are appropriate
+    Pin(const Pin&)                = default;
+    Pin& operator=(const Pin&)     = default;
+    Pin(Pin&&) noexcept            = default;
+    Pin& operator=(Pin&&) noexcept = default;
+    ~Pin()                         = default;
 
     static bool CanCreateLink(Pin* a, Pin* b);
     static ImColor GetIconColor(PinType type);

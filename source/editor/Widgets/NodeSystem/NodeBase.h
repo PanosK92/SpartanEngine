@@ -32,22 +32,65 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 //=================
 
-// Type-safe variant for pin values
-using PinValue = std::variant<
-    std::monostate,  // Empty/unset
-    bool,
-    int,
-    float,
-    std::string
->;
+/**
+ * @brief Variant type for pin values, allowing for different data types to be stored.
+ *
+ * This variant can hold:
+ * - std::monostate: Represents an uninitialized or empty state.
+ * - bool: Boolean values.
+ * - int: Integer values.
+ * - float: Floating-point values.
+ * - std::string: String values.
+ * @note Additional types can be added as needed to support more complex data types.
+ *
+ * Usage example:
+ * @code
+ * PinValue value = 42; // Storing an integer
+ * value = true; // Storing a boolean
+ * value = std::string("Hello, World!"); // Storing a string
+ * @endcode
+ */
+using PinValue = std::variant<std::monostate, bool, int, float, std::string>;
 
+/**
+ * @class NodeBase
+ * @brief Base class for all nodes in the node system.
+ * This class provides common functionality for managing inputs, outputs,
+ * and execution logic of nodes.
+ *
+ * Derived classes should implement the Execute() method to define
+ * the specific behavior of the node.
+ *
+ * @note Nodes can have multiple input and output pins,
+ * and pin values can be accessed and modified using type-safe methods.
+ */
 class NodeBase
 {
 public:
     NodeBase(NodeId id, const char* name, ImColor color = ImColor(255, 255, 255));
     virtual ~NodeBase() = default;
 
-    // Execution - to be implemented by derived classes
+    /**
+     * @note Nodes have unique IDs (m_id) and are managed through std::unique_ptr in NodeBuilder.
+     * Copying a node would create ambiguity about identity and ownership, so copy operations should be explicitly deleted.
+     */
+    NodeBase(const NodeBase&)                = delete;
+    NodeBase& operator=(const NodeBase&)     = delete;
+
+    /**
+    * @note Moving a node is allowed to transfer ownership without duplicating the node.
+    * Moving is safe and useful for container operations (like vector reallocation). 
+    */
+    NodeBase(NodeBase&&) noexcept            = default;
+    NodeBase& operator=(NodeBase&&) noexcept = default;
+
+    /**
+     * @brief Executes the node's logic.
+     * Derived classes should override this method to implement
+     * the specific behavior of the node.
+     * 
+     * @note This is a virtual method with an empty default implementation.
+     */
     virtual void Execute() {}
 
     void AddInput(PinId pin_id, const char* name, PinType type);
@@ -59,15 +102,31 @@ public:
     // Pin value access
     void SetPinValue(PinId pin_id, const PinValue& value);
     PinValue GetPinValue(PinId pin_id) const;
-    
-    // Template helpers for type-safe value access
+
+    /**
+     * @brief Sets the value of an input pin at the specified index.
+     * @tparam T The type of the value to set.
+     * @param input_index The index of the input pin.
+     * @param value The value to set for the input pin.
+     *
+     * This function checks if the input index is valid and sets the value
+     * of the corresponding input pin in the internal pin values map.
+     *
+     * @note Template helper is a type-safe value access
+     */
     template<typename T>
     void SetInputValue(size_t input_index, const T& value)
     {
         if (input_index < m_inputs.size())
             m_pin_values[m_inputs[input_index].GetID()] = value;
     }
-    
+
+    /**
+     * @brief Gets the value of an input pin at the specified index.
+     * @tparam T The expected type of the value to retrieve.
+     * @param input_index The index of the input pin.
+     * @return The value of the input pin, or a default-constructed value if the index is invalid or the type does not match.
+     */
     template<typename T>
     T GetInputValue(size_t input_index) const
     {
@@ -79,14 +138,27 @@ public:
         }
         return T{};
     }
-    
+
+    /**
+     * @brief Sets the value of an output pin at the specified index.
+     * @tparam T The type of the value to set.
+     * @param output_index The index of the output pin.
+     * @param value The value to set for the output pin.
+     */
     template<typename T>
     void SetOutputValue(size_t output_index, const T& value)
     {
         if (output_index < m_outputs.size())
             m_pin_values[m_outputs[output_index].GetID()] = value;
     }
-    
+
+    /**
+     * @brief Gets the value of an output pin at the specified index.
+     * @tparam T The expected type of the value to retrieve.
+     * @param output_index The index of the output pin.
+     *
+     * @return The value of the output pin, or a default-constructed value if the index is invalid or the type does not match.
+     */
     template<typename T>
     T GetOutputValue(size_t output_index) const
     {
@@ -105,14 +177,17 @@ public:
     [[nodiscard]] NodeType GetType() const { return m_type; }
     [[nodiscard]] ImVec2 GetSize() const { return m_size; }
     [[nodiscard]] ImVec2 GetPosition() const { return m_position; }
+
     [[nodiscard]] bool IsSelected() const { return m_selected; }
     [[nodiscard]] bool IsDragging() const { return m_dragging; }
-    
-    std::vector<Pin>& GetInputs() { return m_inputs; }
-    const std::vector<Pin>& GetInputs() const { return m_inputs; }
-    std::vector<Pin>& GetOutputs() { return m_outputs; }
-    const std::vector<Pin>& GetOutputs() const { return m_outputs; }
 
+    // Inputs and outputs
+    std::vector<Pin>& GetInputs() { return m_inputs; }
+    [[nodiscard]] const std::vector<Pin>& GetInputs() const { return m_inputs; }
+    std::vector<Pin>& GetOutputs() { return m_outputs; }
+    [[nodiscard]] const std::vector<Pin>& GetOutputs() const { return m_outputs; }
+
+    // Setters
     void SetType(NodeType type) { m_type = type; }
     void SetSize(const ImVec2& size) { m_size = size; }
     void SetColor(ImColor color) { m_color = color; }
@@ -120,8 +195,8 @@ public:
     void SetSelected(bool selected) { m_selected = selected; }
     void SetDragging(bool dragging) { m_dragging = dragging; }
 
-    bool ContainsPoint(const ImVec2& point) const;
-    ImRect GetRect() const;
+    [[nodiscard]] bool ContainsPoint(const ImVec2& point) const;
+    [[nodiscard]] ImRect GetRect() const;
 
 protected:
     NodeId m_id;
@@ -130,10 +205,10 @@ protected:
     std::vector<Pin> m_outputs;
     ImColor m_color;
     NodeType m_type;
-    ImVec2 m_size = ImVec2(0, 0);
-    ImVec2 m_position = ImVec2(0, 0);
-    bool m_selected = false;
-    bool m_dragging = false;
+    ImVec2 m_size       = ImVec2(0, 0);
+    ImVec2 m_position   = ImVec2(0, 0);
+    bool m_selected     = false;
+    bool m_dragging     = false;
     
     // Pin values storage
     std::map<PinId, PinValue> m_pin_values;

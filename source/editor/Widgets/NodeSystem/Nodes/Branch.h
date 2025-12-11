@@ -27,12 +27,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Node
 {
-    class Branch : public NodeBase
+    /**
+     * @class Branch
+     * @brief Branch node for conditional execution.
+     * This node routes the execution flow based on a boolean condition.
+     * It has one flow input, one boolean condition input,
+     * and two flow outputs (true and false).
+     */
+    class Branch final : public NodeBase
     {
     public:
         Branch(NodeId id, PinId& next_pin_id);
-        ~Branch() override = default;
-    
+
         void Execute() override;
     
     private:

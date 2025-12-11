@@ -26,10 +26,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../ImGui/Source/imgui.h"
 //=================
 
+/**
+ * @class Link
+ * @brief Represents a connection (link) between two pins in the node system.
+ *
+ * This class encapsulates the properties and behaviors of a link, including its
+ * unique identifier, the pins it connects, and its visual representation.
+ *
+ * @note Links are one-way connections. If you need bidirectional communication,
+ * consider using two links or a different node setup.
+ */
 class Link
 {
 public:
     Link(LinkId id, PinId startPinId, PinId endPinId);
+    ~Link() = default;
+
+    Link(const Link&)                = delete;
+    Link& operator=(const Link&)     = delete;
+    Link(Link&&) noexcept            = default;
+    Link& operator=(Link&&) noexcept = default;
 
     void Draw(const ImVec2& start_pos, const ImVec2& end_pos, ImColor color, float thickness = 3.0f) const;
 

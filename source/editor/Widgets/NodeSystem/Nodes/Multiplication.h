@@ -28,11 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Node
 {
 
-    class Multiplication : public NodeBase
+    class Multiplication final : public NodeBase
     {
     public:
         Multiplication(NodeId id, PinId& next_pin_id);
-        ~Multiplication() override = default;
     
         void Execute() override;
     

@@ -60,8 +60,7 @@ void NodeWidget::OnVisible()
     
     // Create some initial test nodes
     {
-        auto tmpl = NodeLibrary::GetInstance().SearchTemplates("Add", NodeCategory::Math);
-        if (!tmpl.empty())
+        if (auto tmpl = NodeLibrary::GetInstance().SearchTemplates("Add", NodeCategory::Math); !tmpl.empty())
         {
             if (NodeBase* node = m_node_builder->CreateNode(tmpl[0]))
                 node->SetPosition(ImVec2(100, 100));
@@ -69,8 +68,7 @@ void NodeWidget::OnVisible()
     }
     
     {
-        auto tmpl = NodeLibrary::GetInstance().SearchTemplates("Multiply", NodeCategory::Math);
-        if (!tmpl.empty())
+        if (auto tmpl = NodeLibrary::GetInstance().SearchTemplates("Multiply", NodeCategory::Math); !tmpl.empty())
         {
             if (NodeBase* node = m_node_builder->CreateNode(tmpl[0]))
                 node->SetPosition(ImVec2(400, 150));
@@ -256,8 +254,7 @@ void NodeWidget::DrawLinks()
         
         ImVec2 start_pos = ImVec2(
             start_node_screen_pos.x + start_node->GetSize().x,
-            start_node_screen_pos.y + header_height + m_node_padding + start_pin_index * pin_spacing
-        );
+            start_node_screen_pos.y + header_height + m_node_padding + start_pin_index * pin_spacing);
         
         // End pin (input, on left side)
         size_t end_pin_index = 0;
@@ -272,8 +269,7 @@ void NodeWidget::DrawLinks()
         
         ImVec2 end_pos = ImVec2(
             end_node_screen_pos.x,
-            end_node_screen_pos.y + header_height + m_node_padding + end_pin_index * pin_spacing
-        );
+            end_node_screen_pos.y + header_height + m_node_padding + end_pin_index * pin_spacing);
         
         // Draw the link
         float thickness = (m_hovered_link == link.get()) ? 4.0f : 2.5f;
@@ -304,8 +300,7 @@ void NodeWidget::DrawLinks()
                 }
                 start_pos = ImVec2(
                     start_node_screen_pos.x + start_node->GetSize().x,
-                    start_node_screen_pos.y + header_height + m_node_padding + pin_index * pin_spacing
-                );
+                    start_node_screen_pos.y + header_height + m_node_padding + pin_index * pin_spacing);
             }
             else
             {
@@ -320,8 +315,7 @@ void NodeWidget::DrawLinks()
                 }
                 start_pos = ImVec2(
                     start_node_screen_pos.x,
-                    start_node_screen_pos.y + header_height + m_node_padding + pin_index * pin_spacing
-                );
+                    start_node_screen_pos.y + header_height + m_node_padding + pin_index * pin_spacing);
             }
             
             // Draw temporary link to mouse

@@ -27,11 +27,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Node
 {
-    class Addition : public NodeBase
+    /**
+     * @class Addition
+     * @brief A node that performs addition of two float inputs.
+     * This node has two float inputs (A and B) and one float output (Result).
+     */
+    class Addition final : public NodeBase
     {
     public:
         Addition(NodeId id, PinId& next_pin_id);
-        ~Addition() override = default;
     
         void Execute() override;
     

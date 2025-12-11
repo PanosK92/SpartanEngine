@@ -28,11 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Node
 {
 
-    class Subtraction : public NodeBase
+    class Subtraction final : public NodeBase
     {
     public:
         Subtraction(NodeId id, PinId& next_pin_id);
-        ~Subtraction() override = default;
     
         void Execute() override;
     
