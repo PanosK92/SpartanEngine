@@ -151,7 +151,7 @@ namespace spartan
                 PxExtendedVec3 pos_ext = static_cast<PxCapsuleController*>(m_controller)->getPosition();
                 Vector3 pos_previous   = GetEntity()->GetPosition();
                 Vector3 pos            = Vector3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
-                GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
+                GetEntity()->SetPosition(pos);
 
                 // compute velocity for xz
                 m_velocity.x = (pos.x - pos_previous.x) / delta_time;
@@ -169,6 +169,9 @@ namespace spartan
             Renderable* renderable = GetEntity()->GetComponent<Renderable>();
             for (uint32_t i = 0; i < m_actors.size(); i++)
             {
+                if (!m_actors[i])
+                    continue;
+                    
                 PxRigidActor* actor     = static_cast<PxRigidActor*>(m_actors[i]);
                 PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
                 if (Engine::IsFlagSet(EngineMode::Playing))
@@ -358,7 +361,7 @@ namespace spartan
                 {
                     // volume             = cylinder (π * r² * h) + two hemispheres ((4/3) * π * r³)
                     float radius          = max(scale.x, scale.z) * 0.5f;
-                    float cylinder_height = scale.y - 2.0f * radius; // height of cylindrical part
+                    float cylinder_height = max(0.0f, scale.y - 2.0f * radius); // height of cylindrical part (clamp to avoid negative)
                     float cylinder_volume = math::pi * radius * radius * cylinder_height;
                     float sphere_volume   = (4.0f / 3.0f) * math::pi * radius * radius * radius;
                     volume                = cylinder_volume + sphere_volume;
@@ -488,7 +491,7 @@ namespace spartan
             return Vector3::Zero;
         }
         
-        if (m_actors.empty())
+        if (m_actors.empty() || !m_actors[0])
             return Vector3::Zero;
             
         if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>())
@@ -596,12 +599,20 @@ namespace spartan
         m_center_of_mass = center_of_mass;
         for (auto* body : m_actors)
         {
+            if (!body)
+                continue;
+                
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 if (m_center_of_mass != Vector3::Zero)
                 {
                     PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
                     PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
+                }
+                else
+                {
+                    // update inertia with default center of mass (0,0,0)
+                    PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, nullptr);
                 }
             }
         }
@@ -681,8 +692,9 @@ namespace spartan
         Vector3 scale     = GetEntity()->GetScale();
         float half_height = scale.y * 0.5f;   // half the height of the cylindrical part
 
-        // cylinder volume: π * r² * h
-        float cylinder_volume = math::pi * radius * radius * (scale.y - 2 * radius);
+        // cylinder volume: π * r² * h (clamp to avoid negative height)
+        float cylinder_height = max(0.0f, scale.y - 2.0f * radius);
+        float cylinder_volume = math::pi * radius * radius * cylinder_height;
 
         // sphere volume (two hemispheres = one full sphere): (4/3) * π * r³
         float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
@@ -881,7 +893,8 @@ namespace spartan
                 // cooking parameters
                 PxTolerancesScale _scale;
                 _scale.length                          = 1.0f;                         // 1 unit = 1 meter
-                _scale.speed                           = PhysicsWorld::GetGravity().y; // gravity is in meters per second
+                Vector3 gravity                        = PhysicsWorld::GetGravity();
+                _scale.speed                           = sqrtf(gravity.x * gravity.x + gravity.y * gravity.y + gravity.z * gravity.z); // magnitude of gravity vector
                 PxCookingParams params(_scale);         
                 params.areaTestEpsilon                 = 0.06f * _scale.length * _scale.length;
                 params.planeTolerance                  = 0.0007f;
@@ -953,6 +966,12 @@ namespace spartan
     {
         PxPhysics* physics      = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         Renderable* renderable  = GetEntity()->GetComponent<Renderable>();
+        
+        if (!renderable)
+        {
+            SP_LOG_ERROR("No Renderable component found for physics body creation");
+            return;
+        }
 
         // create bodies and shapes
         m_actors.resize(renderable->GetInstanceCount(), nullptr);
@@ -1054,6 +1073,7 @@ namespace spartan
             {
                 shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
                 actor->attachShape(*shape);
+                shape->release(); // release shape reference (actor owns it now)
             }
 
             if (actor)

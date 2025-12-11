@@ -223,13 +223,36 @@ namespace spartan
                     }
                     else
                     {
+                        // create organic irregular shape using smooth noise function
+                        // use cluster position as seed for consistent shape per cluster
+                        float cluster_seed = (cl.center_position.x * 12.9898f + cl.center_position.z * 78.233f) * 43758.5453f;
+                        cluster_seed = cluster_seed - floorf(cluster_seed); // normalize to [0, 1]
+                        
                         for (uint32_t t = 0; t < tri_count; t++)
                         {
                             uint32_t tri_idx = acceptable_triangles[t];
                             TriangleData& tri = tile_triangle_data[tri_idx];
                             Vector2 tri_xz(tri.centroid.x, tri.centroid.z);
-                            float dist_sq = (tri_xz - cl_xz).LengthSquared();
-                            if (dist_sq <= prop_desc.cluster_radius * prop_desc.cluster_radius)
+                            Vector2 offset = tri_xz - cl_xz;
+                            float dist_sq = offset.LengthSquared();
+                            
+                            // calculate angle for organic shape variation
+                            float angle = atan2f(offset.y, offset.x);
+                            
+                            // create smooth organic variation using multiple sine waves at different frequencies
+                            // this creates natural blob-like shapes instead of circles
+                            float angle_rad = angle + cluster_seed * pi_2;
+                            float noise1 = sinf(angle_rad * 3.0f) * 0.15f; // primary distortion
+                            float noise2 = sinf(angle_rad * 5.0f) * 0.10f; // secondary detail
+                            float noise3 = sinf(angle_rad * 7.0f) * 0.08f; // fine detail
+                            float noise4 = cosf(angle_rad * 4.0f) * 0.12f; // orthogonal variation
+                            
+                            // combine noise layers for organic shape (variation from 0.5x to 1.5x)
+                            float radius_variation = 1.0f + noise1 + noise2 + noise3 + noise4;
+                            radius_variation = fmaxf(0.5f, fminf(1.5f, radius_variation)); // clamp to reasonable range
+                            
+                            float effective_radius = prop_desc.cluster_radius * radius_variation;
+                            if (dist_sq <= effective_radius * effective_radius)
                             {
                                 nearby.push_back(tri_idx);
                             }
@@ -1091,12 +1114,15 @@ namespace spartan
         );
 
         // counter-act any scaling since it's baked into the instance transforms and can be controled via scale_min and scale_max
-        if (entity->GetScale() != Vector3::One && entity->GetScale() != Vector3::Zero)
-        {
-            Matrix root_scale_matrix = Matrix::CreateScale(Vector3::One / entity->GetScale());
-            for (Matrix& t : transforms_out)
+        if (entity)
+        { 
+            if (entity->GetScale() != Vector3::One && entity->GetScale() != Vector3::Zero)
             {
-                t *= root_scale_matrix;
+                Matrix root_scale_matrix = Matrix::CreateScale(Vector3::One / entity->GetScale());
+                for (Matrix& t : transforms_out)
+                {
+                    t *= root_scale_matrix;
+                }
             }
         }
     }

@@ -795,21 +795,26 @@ namespace spartan
             pso.shaders[RayHit]        = GetShader(Renderer_Shader::reflections_ray_hit_r);
             cmd_list->SetPipelineState(pso);
 
-            // set output textures and acceleration structure
-            SetCommonTextures(cmd_list);
-            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, GetTopLevelAccelerationStructure());
-
-            // set output texture
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_reflections);
-            
-            // temp: do it here for now
-          
+            // create or update shader binding table (must be after pipeline is set)
             if (!m_std_reflections)
             {
                 uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
                 m_std_reflections = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "reflections_sbt");
-                m_std_reflections->UpdateHandles(cmd_list);
             }
+            // Update handles every frame in case pipeline changed (UpdateHandles needs pipeline to be set first)
+            m_std_reflections->UpdateHandles(cmd_list);
+
+            // set output textures and acceleration structure
+            SetCommonTextures(cmd_list);
+            RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
+            if (!tlas)
+            {
+                SP_LOG_WARNING("Top-level acceleration structure is null. Ray tracing will not work. Ensure UpdateAccelerationStructures is enabled.");
+            }
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+
+            // set output texture
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_reflections);
  
             // trace full screen (match tex resolution)
             uint32_t width  = tex_reflections->GetWidth();

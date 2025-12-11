@@ -23,16 +23,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// spartan engine take on GTAO + Bent Normals + Visibility Bitmask
-// inspired from XeGTAO:                    https://github.com/GameTechDev/XeGTAO
+// spartan engine take on gtao + bent Normals + visibility bitmask
+// inspired from xegtao:                    https://github.com/GameTechDev/XeGTAO
 // enchanced with visibility bitmasks from: https://cdrinmatane.github.io/posts/ssaovb-code/
 
 // constants
 static const float g_ao_radius    = 1.5f;
 static const float g_ao_intensity = 1.0f;
-static const uint g_directions    = 3;
-static const uint g_steps         = 3;
-static const uint g_sector_count  = 32;
+static const uint  g_directions   = 3;
+static const uint  g_steps        = 3;
+static const uint  g_sector_count = 32;
 static const float g_thickness    = 1.0f;
 static const float g_offsets[]    = { 0.0f, 0.5f, 0.25f, 0.75f };
 static const float g_rotations[]  = { 0.1666f, 0.8333f, 0.5f, 0.6666f, 0.3333f, 0.0f };
@@ -193,10 +193,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float n                           = sign_norm * fast_acos(cos_norm);
 
         // find horizon angles
-        float low_horizon_cos0  = cos(n + PI_HALF);
-        float low_horizon_cos1  = cos(n - PI_HALF);
-        float horizon_cos0      = low_horizon_cos0;
-        float horizon_cos1      = low_horizon_cos1;
+        float low_horizon_cos0 = cos(n + PI_HALF);
+        float low_horizon_cos1 = cos(n - PI_HALF);
+        float horizon_cos0     = low_horizon_cos0;
+        float horizon_cos1     = low_horizon_cos1;
         uint occlusion_bitmask = 0u;
         [unroll]
         for (uint step = 0; step < g_steps; step++)
@@ -266,8 +266,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     bent_normal = normalize(view_to_world(normalize(bent_normal), false));
 
     // when input textures are black/empty, NaNs can appear, in that case, zero out the result
-    bent_normal *= 1.0f - (float) any(isnan(bent_normal));
-    visibility  *= 1.0f - (float) isnan(visibility);
+    bent_normal *= 1.0f - (float)any(isnan(bent_normal));
+    visibility  *= 1.0f - (float)isnan(visibility);
 
     tex_uav[thread_id.xy] = float4(bent_normal, visibility);
 }

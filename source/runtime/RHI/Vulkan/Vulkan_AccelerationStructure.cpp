@@ -156,7 +156,7 @@ namespace spartan
         void* scratch_buffer = nullptr;
         const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
         uint64_t scratch_size = (size_info.buildScratchSize + alignment - 1) & ~(alignment - 1); // align size
-        usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
+        usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
         properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         RHI_Device::MemoryBufferCreate(
             scratch_buffer,
@@ -188,14 +188,14 @@ namespace spartan
 
         as_build(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos.data());
 
-        // barrier
+        // barrier: ensure build completes before use
         VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
         barrier.srcAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        barrier.dstAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        barrier.dstAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(
             static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
             VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
             0, 1, &barrier, 0, nullptr, 0, nullptr
         );
 
@@ -332,7 +332,7 @@ namespace spartan
             {
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_scratch_buffer);
             }
-            VkBufferUsageFlags usage         = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
+            VkBufferUsageFlags usage         = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
             VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
             RHI_Device::MemoryBufferCreate(m_scratch_buffer, required_scratch_size, usage, properties, nullptr, (m_object_name + "_scratch").c_str());
             m_scratch_buffer_size            = required_scratch_size;
@@ -347,13 +347,13 @@ namespace spartan
         VkAccelerationStructureBuildRangeInfoKHR* p_range_infos[] = { &range_info };
         as_build(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos);
     
-        // barrier: ensure build complete
+        // barrier: ensure build complete before use
         barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(
             static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
             VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
             0, 1, &barrier, 0, nullptr, 0, nullptr
         );
     

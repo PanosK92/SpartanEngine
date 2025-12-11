@@ -101,7 +101,7 @@ namespace
     {
         bool visible = false;
 
-        static const char* license_text =
+        const char* license_text =
             "MIT License"
             "\n\n"
             "Copyright(c) 2015-2025 Panos Karabelas"
@@ -134,7 +134,7 @@ namespace
             string steam_key;
         };
         
-        static const vector<Contributor> contributors =
+       const vector<Contributor> contributors =
         {
             { "Spartan", "Iker Galardi",        "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                                        "N/A" },
             { "Spartan", "Jesse Guerrero",      "United States",  "LinkedIn",  "https://www.linkedin.com/in/jguer",                       "UX updates",                                                              "N/A" },
@@ -144,7 +144,7 @@ namespace
             { "Spartan", "Tri Tran",            "Belgium",        "LinkedIn",  "https://www.linkedin.com/in/mtrantr/",                    "Screen space shadows (Days Gone)",                                        "Starfield" },
             { "Spartan", "Ege",                 "Turkey",         "X",         "https://x.com/egedq",                                     "Editor theme v3 + save/load themes",                                      "N/A" },
             { "Spartan", "Sandro Mtchedlidze",  "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Tonemapper, perf/lighting finds, tubes lights in the car showroom world", "N/A" },
-            { "Spartan", "Dimitris Kalyvas",    "Greece",         "X",         "https://x.com/punctuator_",                               "Entity multi-select, material uv inversion",                              "N/A" },
+            { "Spartan", "Dimitris Kalyvas",    "Greece",         "X",         "https://x.com/punctuator_",                               "Entity multi-select, grass performance improvement",                      "N/A" },
             { "Hoplite", "Apostolos Bouzalas",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                               "N/A" },
             { "Hoplite", "Nikolas Pattakos",    "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                               "N/A" },
             { "Hoplite", "Roman Koshchei",      "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                              "N/A" },
@@ -186,11 +186,18 @@ namespace
             ImGui::EndGroup();
         }
 
-        void contributors_table()
+       void contributors_table()
         {
+            static const float table_height = 250.0f;
+
             ImGui::Text("Contributors");
-            if (ImGui::BeginTable("##contributors_table", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+
+            ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY;
+            if (ImGui::BeginTable("##contributors_table", 6, flags, ImVec2(0.0f, table_height)))
             {
+                // freeze the top row so headers stay visible while scrolling
+                ImGui::TableSetupScrollFreeze(0, 1);
+        
                 ImGui::TableSetupColumn("Title");
                 ImGui::TableSetupColumn("Name");
                 ImGui::TableSetupColumn("Country");
@@ -222,7 +229,7 @@ namespace
         
                     // url button
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::PushID(&c); // unique id per row
+                    ImGui::PushID(&c); 
                     if (ImGui::Button(c.button_text.c_str()))
                     {
                         spartan::FileSystem::OpenUrl(c.button_url);
@@ -245,32 +252,39 @@ namespace
         {
             ImGui::BeginGroup();
             {
+                static const float table_height = 540.0f;
+        
                 ImGui::Text("Third party libraries");
-                if (ImGui::BeginTable("##third_party_libs_table", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+        
+                ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollY;
+                if (ImGui::BeginTable("##third_party_libs_table", 3, flags, ImVec2(0.0f, table_height)))
                 {
+                    // freeze the header row so it stays visible
+                    ImGui::TableSetupScrollFreeze(0, 1);
+        
                     ImGui::TableSetupColumn("Name", 0, -1.0f);
                     ImGui::TableSetupColumn("Version", 0, -1.0f);
                     ImGui::TableSetupColumn("URL", 0, -1.0f);
                     ImGui::TableHeadersRow();
-            
+        
                     for (const spartan::third_party_lib& lib : spartan::Settings::GetThirdPartyLibs())
                     {
                         // switch row
                         ImGui::TableNextRow();
-            
+        
                         // shift text down so that it's on the same line with the button
                         static const float y_shift = 8.0f;
-            
+        
                         // name
                         ImGui::TableSetColumnIndex(0);
                         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                         ImGui::Text(lib.name.c_str());
-            
+        
                         // version
                         ImGui::TableSetColumnIndex(1);
                         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                         ImGui::Text(lib.version.c_str());
-            
+        
                         // url
                         ImGui::TableSetColumnIndex(2);
                         ImGui::PushID(lib.url.c_str());
@@ -285,7 +299,7 @@ namespace
             }
             ImGui::EndGroup();
         }
-
+        
         void window()
         {
              if (!visible)

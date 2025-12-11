@@ -23,67 +23,76 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
-float3 get_dominant_specular_direction(float3 normal, float3 reflection, float roughness)
+// Compute dominant specular direction using reflection vector (perfect for smooth, biased for rough)
+float3 get_dominant_specular_direction(float3 normal, float3 view_dir, float roughness)
 {
-    const float smoothness = 1.0f - roughness;
-    const float alpha      = smoothness * (sqrt(smoothness) + roughness);
+    // compute perfect reflection vector
+    float3 reflection = reflect(-view_dir, normal);
     
-    return lerp(normal, reflection, alpha);
+    // Bias toward normal for very rough surfaces to reduce fireflies (stability heuristic)
+    const float roughness_threshold = 0.8f;
+    if (roughness > roughness_threshold)
+    {
+        float blend = (roughness - roughness_threshold) / (1.0f - roughness_threshold);
+        reflection = normalize(lerp(reflection, normal, blend * 0.1f));
+    }
+    
+    return reflection;
 }
 
-float get_blend_weight(float value, float smoothness)
-{
-    return saturate((value + smoothness) / (smoothness * 2.0f));
-}
-
+// Fresnel Schlick with roughness modification for IBL
 float3 fresnel_schlick_roughness(float cos_theta, float3 F0, float roughness)
 {
-    return F0 + (max(1.0 - roughness.xxx, F0) - F0) * pow(saturate(1.0 - cos_theta), 5.0);
+    return F0 + (max(1.0f - roughness.xxx, F0) - F0) * pow(saturate(1.0f - cos_theta), 5.0f);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // create surface
+    // get resolution and build surface data
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
 
-    if (surface.is_sky())  // we don't want to do ibl on the sky itself
+    // skip sky pixels (no ibl needed for sky itself)
+    if (surface.is_sky())
         return;
 
-    // diffuse and specular energy
-    const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
-    const float3 F               = fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness);
-    const float2 envBRDF         = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
-    const float3 specular_energy = F * envBRDF.x + envBRDF.y;
-    const float3 diffuse_energy  = compute_diffuse_energy(specular_energy, surface.metallic);
+    // Compute fresnel and energy terms using original normal (bent normal used for diffuse only)
+    const float3 view_dir            = normalize(-surface.camera_to_pixel);
+    const float n_dot_v              = saturate(dot(surface.normal, view_dir));
+    const float3 F                   = fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness);
+    const float2 envBRDF             = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
+    const float3 specular_energy     = F * envBRDF.x + envBRDF.y;
+    const float3 diffuse_energy      = compute_diffuse_energy(specular_energy, surface.metallic);
 
-    // sample all the textures
-    const float3 reflection            = reflect(surface.camera_to_pixel, surface.bent_normal);
-    float3 dominant_specular_direction = get_dominant_specular_direction(surface.bent_normal, reflection, surface.roughness);
+    // Compute specular reflection using original normal
+    float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, view_dir, surface.roughness);
     float mip_count_environment        = pass_get_f3_value().x;
-    float mip_level                    = lerp(0, mip_count_environment - 1, surface.roughness);
-    float3 specular_skysphere          = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
-    float3 diffuse_skysphere           = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
-    float shadow_mask                  = tex[thread_id.xy].r;
+    float mip_level                    = lerp(0.0f, mip_count_environment - 1.0f, surface.roughness);
+    
+    // Sample environment map: specular uses original normal, diffuse uses bent normal
+    float3 specular_skysphere = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
+    float3 diffuse_skysphere  = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
+    float shadow_mask         = tex[thread_id.xy].r;
 
-    // modulate specular light source with the outcoming energy
+    // apply specular energy and shadow mask to specular ibl
     specular_skysphere *= specular_energy * shadow_mask;
 
-    // combine the diffuse light
-    shadow_mask        = max(0.3f, shadow_mask);
+    // Apply shadow mask and occlusion to diffuse IBL (bent normal accounts for AO direction)
+    shadow_mask        = max(0.3f, shadow_mask);  // prevent complete darkness
     float3 diffuse_ibl = (diffuse_skysphere * shadow_mask) * surface.occlusion;
 
-    // combine all the specular light, fallback order: gi -> skysphere
+    // Combine specular IBL (GI fallback can be added here if needed)
     float3 specular_ibl = specular_skysphere;
     
-    // combine the diffuse and specular light
+    // Combine diffuse and specular IBL with proper energy terms
     float3 ibl = (diffuse_ibl * diffuse_energy * surface.albedo.rgb) + specular_ibl;
 
-    // tone down for transparent surfaces
+    // apply alpha for transparent surfaces
     ibl *= surface.alpha;
 
+    // accumulate ibl contribution to output
     tex_uav[thread_id.xy] += validate_output(float4(ibl, 0.0f));
 }

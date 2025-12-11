@@ -335,7 +335,7 @@ namespace spartan::geometry_generation
         using namespace math;
 
         // constants
-        const float grass_width    = 0.2f; // base width
+        const float grass_width    = 0.3f; // base width
         const float grass_height   = 1.2f; // blade height
         const float thinning_start = 0.4f; // thinning start (0=base, 1=top)
         const float thinning_power = 1.0f; // thinning sharpness
@@ -591,7 +591,7 @@ namespace spartan::geometry_generation
             float sa             = std::sin(angle);
             float cos_t          = std::cos(this_tilt);
             float sin_t          = std::sin(this_tilt);
-            uint32_t petal_start = vertices->size();
+            uint32_t petal_start = static_cast<uint32_t>(vertices->size());
             for (uint32_t i = 0; i <= petal_segment_count; ++i)
             {
                 float t = static_cast<float>(i) / petal_segment_count;

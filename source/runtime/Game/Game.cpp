@@ -672,8 +672,9 @@ namespace spartan
 
                 if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
                 {
-                    material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
-                    material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                    material->SetProperty(MaterialProperty::CullMode,             static_cast<float>(RHI_CullMode::None));
+                    material->SetProperty(MaterialProperty::WindAnimation,        1.0f);
+                    material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                 }
             }
         }
@@ -753,7 +754,7 @@ namespace spartan
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetIntensity(5'000.0f);   // low light too match the sunrise direction
                 sun->SetTemperature(3'800.0f); // kelvin - warm light
-                sun->SetFlag(LightFlags::Volumetric, false);
+                sun->SetFlag(LightFlags::Volumetric, true);
                 sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(7.0f, -100.0f, -0.5f)); // sunrise height
 
                 entities::camera(Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
@@ -954,7 +955,7 @@ namespace spartan
                         material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project\\models\\tree\\Twig_Opacity_Map.jpg");
                         material_leaf->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                         material_leaf->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
-                        material_leaf->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_leaf->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material_leaf->SetResourceName("tree_leaf" + string(EXTENSION_MATERIAL));
 
                         material_body = make_shared<Material>();
@@ -975,7 +976,7 @@ namespace spartan
                         material_grass_blade->SetProperty(MaterialProperty::Roughness, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.2f);
-                        material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 0.0f);
+                        material_grass_blade->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         material_grass_blade->SetColor(Color::standard_white);
                         material_grass_blade->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
@@ -1082,24 +1083,68 @@ namespace spartan
 
                             // foliage
                             {
-                                // grass
+                                // grass - with max distance, lods, and unions to control density
                                 {
-                                   // create entity
-                                   Entity* entity = World::CreateEntity();
-                                   entity->SetObjectName("grass");
-                                   entity->SetParent(terrain_tile);
+                                    vector<Matrix> all_transforms;
+                                    terrain->FindTransforms(tile_index, TerrainProp::Grass, nullptr, per_triangle_density_grass_blade, 0.7f, all_transforms);
 
-                                   // generate instances
-                                   vector<Matrix> transforms;
-                                   terrain->FindTransforms(tile_index, TerrainProp::Grass, entity, per_triangle_density_grass_blade, 1.0f, transforms);
+                                    if (!all_transforms.empty())
+                                    {
+                                        size_t total_count = all_transforms.size();
+                                        size_t split_1     = static_cast<size_t>(total_count * 0.1f); // far layer is 10% of the total count
+                                        size_t split_2     = static_cast<size_t>(total_count * 0.3f); // mid layer is 20% of the total count (so we end at 30%)
+                                        
+                                        // 1. low detail - near
+                                        {
+                                            Entity* entity = World::CreateEntity();
+                                            entity->SetObjectName("grass_layer_detail_low");
+                                            entity->SetParent(terrain_tile);
 
-                                   // set renderable component
-                                   Renderable* renderable = entity->AddComponent<Renderable>();
-                                   renderable->SetMesh(mesh_grass_blade.get());
-                                   renderable->SetFlag(RenderableFlags::CastsShadows, false); // screen space shadows are enough
-                                   renderable->SetInstances(transforms);
-                                   renderable->SetMaterial(material_grass_blade);
-                                   renderable->SetMaxRenderDistance(render_distance_foliage);
+                                            // copy the first 10% of transforms
+                                            vector<Matrix> far_transforms(all_transforms.begin(), all_transforms.begin() + split_1);
+
+                                            Renderable* renderable = entity->AddComponent<Renderable>();
+                                            renderable->SetMesh(mesh_grass_blade.get());
+                                            renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                            renderable->SetInstances(far_transforms);
+                                            renderable->SetMaterial(material_grass_blade);
+                                            renderable->SetMaxRenderDistance(render_distance_foliage);
+                                        }
+
+                                        // 2. medium detail - medium
+                                        {
+                                            Entity* entity = World::CreateEntity();
+                                            entity->SetObjectName("grass_layer_detail_mid");
+                                            entity->SetParent(terrain_tile);
+
+                                            // copy the next 20% of transforms
+                                            vector<Matrix> mid_transforms(all_transforms.begin() + split_1, all_transforms.begin() + split_2);
+
+                                            Renderable* renderable = entity->AddComponent<Renderable>();
+                                            renderable->SetMesh(mesh_grass_blade.get());
+                                            renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                            renderable->SetInstances(mid_transforms);
+                                            renderable->SetMaterial(material_grass_blade);
+                                            renderable->SetMaxRenderDistance(350.0f);
+                                        }
+
+                                        // 3. high detail - near
+                                        {
+                                            Entity* entity = World::CreateEntity();
+                                            entity->SetObjectName("grass_layer_detail_high");
+                                            entity->SetParent(terrain_tile);
+
+                                            // copy the remaining 70% of transforms
+                                            vector<Matrix> near_transforms(all_transforms.begin() + split_2, all_transforms.end());
+
+                                            Renderable* renderable = entity->AddComponent<Renderable>();
+                                            renderable->SetMesh(mesh_grass_blade.get());
+                                            renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                            renderable->SetInstances(near_transforms);
+                                            renderable->SetMaterial(material_grass_blade);
+                                            renderable->SetMaxRenderDistance(150.0f);
+                                        }
+                                    }
                                 }
 
                                 // flower

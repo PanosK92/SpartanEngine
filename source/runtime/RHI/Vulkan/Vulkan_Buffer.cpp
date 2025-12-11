@@ -228,14 +228,21 @@ namespace spartan
         memcpy(dst + m_miss_offset, handles.data() + 1 * handle_size, handle_size);
         memcpy(dst + m_hit_offset, handles.data() + 2 * handle_size, handle_size);
     
-        VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+        // Use buffer memory barrier for more specific synchronization
+        // Since memory is HOST_COHERENT, writes are immediately visible, but we need ordering
+        VkBufferMemoryBarrier barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER };
         barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.buffer = static_cast<VkBuffer>(m_rhi_resource);
+        barrier.offset = 0;
+        barrier.size = VK_WHOLE_SIZE;
         vkCmdPipelineBarrier(
             static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
             VK_PIPELINE_STAGE_HOST_BIT,
             VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-            0, 1, &barrier, 0, nullptr, 0, nullptr
+            0, 0, nullptr, 1, &barrier, 0, nullptr
         );
     }
 }
