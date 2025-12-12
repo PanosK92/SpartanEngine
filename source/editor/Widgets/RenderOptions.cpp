@@ -122,6 +122,31 @@ namespace
         ImGui::EndDisabled();
     }
 
+    bool option_slider_float(const char* label, float& value, const char* tooltip = nullptr, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.1f")
+    {
+        option_first_column();
+        ImGui::Text(label);
+        if (tooltip)
+        {
+            ImGuiSp::tooltip(tooltip);
+        }
+
+        option_second_column();
+        ImGui::PushID(get_item_id());
+        ImGui::PushItemWidth(width_combo_box);
+        bool changed =  ImGui::SliderFloat(label, &value, min, max, format);
+        ImGui::PopItemWidth();
+        ImGui::PopID();
+
+        option_third_column();
+        ImGui::PushItemWidth(width_input_numeric);
+        ImGui::Text(format, value);
+        ImGui::PopItemWidth();
+
+
+        return changed;
+    }
+
     void option_check_box(const char* label, bool& value, const char* tooltip = nullptr)
     {
         option_first_column();
@@ -153,10 +178,15 @@ namespace
         ImGui::PopItemWidth();
         ImGui::PopID();
 
+        option_third_column();
+        ImGui::PushItemWidth(width_input_numeric);
+        ImGui::Text(options[selection_index].c_str());
+        ImGui::PopItemWidth();
+
         return result;
     }
 
-    bool option_value(const char* label, Renderer_Option render_option, bool is_renderer_visible, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
+    bool option_value(const char* label, Renderer_Option render_option, bool is_disabled, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
     {
         option_first_column();
         ImGui::Text(label);
@@ -186,15 +216,12 @@ namespace
         }
 
         option_third_column();
-        if (is_renderer_visible)
-        {
-            float& renderer_value = Renderer::GetOptionRef<float>(render_option);
-            ImGui::BeginDisabled(true);
-            ImGui::PushItemWidth(width_input_numeric);
-            ImGui::Text(format, renderer_value);
-            ImGui::PopItemWidth();
-            ImGui::EndDisabled();
-        }
+        float& renderer_value = Renderer::GetOptionRef<float>(render_option);
+        ImGui::PushItemWidth(width_input_numeric);
+        ImGui::BeginDisabled(is_disabled);
+        ImGui::Text(format, renderer_value);
+        ImGui::EndDisabled();
+        ImGui::PopItemWidth();
 
         return changed;
     }
@@ -294,6 +321,7 @@ void RenderOptions::OnTickVisible()
                         Renderer::SetResolutionRender(display_modes[res_render_index].width, display_modes[res_render_index].height);
                     }
 
+
                     // output resolution
                     Vector2 res_output = Renderer::GetResolutionOutput();
                     uint32_t res_output_index = get_display_mode_index(res_output);
@@ -306,7 +334,7 @@ void RenderOptions::OnTickVisible()
                     option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "Scales render resolution automatically based on GPU load");
 
                     ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution, true));
-                    option_value("Resolution scale", Renderer_Option::ResolutionScale, true, "Adjusts the percentage of the render resolution", 0.01f);
+                    option_value("Resolution scale", Renderer_Option::ResolutionScale, false, "Adjusts the percentage of the render resolution", 0.01f);
                     ImGui::EndDisabled();
                 }
 
@@ -331,7 +359,7 @@ void RenderOptions::OnTickVisible()
                     bool use_rcas = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling, true) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
                     string label = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
                     string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening" : "AMD FidelityFX Contrast Adaptive Sharpening";
-                    option_value(label.c_str(), Renderer_Option::Sharpness, true, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
+                    option_value(label.c_str(), Renderer_Option::Sharpness, false, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
                 }
 
                 if (option("Ray-traced Effects"))
@@ -365,9 +393,9 @@ void RenderOptions::OnTickVisible()
                 {
                     option_check_box("HDR", Renderer_Option::Hdr, "Enable high dynamic range output");
                     ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr, true));
-                    option_value("Gamma", Renderer_Option::Gamma, true);
+                    option_value("Gamma", Renderer_Option::Gamma, false);
                     ImGui::EndDisabled();
-                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, true, "Negative value disables adaptation");
+                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, false, "Negative value disables adaptation");
 
                     bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr, true);
                     ImGui::BeginDisabled(!hdr_enabled);
@@ -384,12 +412,6 @@ void RenderOptions::OnTickVisible()
                     {
                         Renderer::SetOption(Renderer_Option::Tonemapping, index, true);
                     }
-
-                    option_third_column();
-                    ImGui::BeginDisabled(true);
-                    uint32_t renderer_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
-                    ImGui::Text("%s", tonemapping[renderer_index].c_str());
-                    ImGui::EndDisabled();
                 }
 
                 ImGui::EndTable();
@@ -406,7 +428,7 @@ void RenderOptions::OnTickVisible()
             {
                 render_options_table_header("Effect");
 
-                option_value("Bloom intensity", Renderer_Option::Bloom, true, "Blend factor, set to 0 to disable", 0.01f);
+                option_value("Bloom intensity", Renderer_Option::Bloom, false, "Blend factor, set to 0 to disable", 0.01f);
                 option_check_box("Motion blur", Renderer_Option::MotionBlur, "Controlled by camera shutter speed");
                 option_check_box("Depth of field", Renderer_Option::DepthOfField, "Controlled by camera aperture");
                 option_check_box("Film grain", Renderer_Option::FilmGrain, "Simulates old film camera noise");
@@ -428,7 +450,7 @@ void RenderOptions::OnTickVisible()
             {
                 render_options_table_header("Option");
 
-                option_value("Fog density", Renderer_Option::Fog, true, "Controls atmospheric fog strength", 0.1f);
+                option_value("Fog density", Renderer_Option::Fog, false, "Controls atmospheric fog strength", 0.1f);
 
                 if (option("Wind"))
                 {
@@ -437,8 +459,8 @@ void RenderOptions::OnTickVisible()
                     float direction = atan2f(wind.x, wind.z) * (180.0f / 3.14159f);
 
                     bool changed = false;
-                    changed |= ImGui::SliderFloat("Strength", &strength, 0.1f, 10.0f, "%.1f");
-                    changed |= ImGui::SliderFloat("Direction (deg)", &direction, 0.0f, 360.0f, "%.1f");
+                    changed |= option_slider_float("Strength", strength, "", 0.1f, 10.0f);
+                    changed |= option_slider_float("Direction (deg)", direction, "", 0.0f, 360.0f);
 
                     if (changed)
                     {
@@ -478,6 +500,10 @@ void RenderOptions::OnTickVisible()
                         ImGui::InputFloat("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
                         ImGui::PopItemWidth();
                         Timer::SetFpsLimit(fps_target);
+                    }
+                    option_third_column();
+                    {
+                        ImGui::Text("%.1f", Timer::GetFpsLimit());
                     }
                     option_check_box("Show performance metrics", Renderer_Option::PerformanceMetrics);
                 }
