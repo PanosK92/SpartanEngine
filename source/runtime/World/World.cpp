@@ -728,11 +728,8 @@ namespace spartan
             {
                 if (holds_alternative<bool>(option_value))
                 {
-                    const int bool_option_count = bool_options_frequencies[option_key]++;
-
-                    const bool existing_bool_value = mix_volume_options.GetOption<bool>(option_key);
                     bool new_bool_value = get<bool>(option_value);
-                    mix_volume_options.SetOption(option_key, bool_option_count <= 1 ? new_bool_value : new_bool_value && existing_bool_value);
+                    mix_volume_options.SetOption(option_key, new_bool_value);
                 }
                 else if (holds_alternative<uint32_t>(option_value))
                 {
@@ -761,45 +758,46 @@ namespace spartan
 
     void World::InterpolateOverlappingVolumes()
     {
-        // Reset blended options to a clean pool seeded with global values
-        blended_options = RenderOptionsPool(RenderOptionsListType::Global);
         RenderOptionsPool& global_render_options = Renderer::GetRenderOptionsPoolRef(true);
-
-        // ensure blended_options has keys for options we will override, or use Get/Set semantics below
 
         float total_alpha = 0.0f;
         bool any_volume_transitioning = false;
 
         map<Renderer_Option, float> accumulator_floats;
-        map<Renderer_Option, float> accumulator_weights; // sum of weights per option
+        map<Renderer_Option, float> accumulator_weights;
 
-        // Accumulate weighted sums for each option across volumes
+        // Accumulate sums for interpolated float values
         for (Volume* volume : overlapping_volumes)
         {
-            // Alpha computations
             const float alpha = volume->ComputeAlpha(camera->GetMatrix().GetTranslation());
-            any_volume_transitioning = alpha > 0.0f && alpha < 1.0f;
+            any_volume_transitioning |= (alpha > 0.0f && alpha < 1.0f);
             total_alpha += alpha;
 
             for (auto& [option_key, option_value] : volume->GetOptionsCollection().GetOptions())
             {
-                // Only float render options can be interpolated
                 if (std::holds_alternative<float>(option_value))
                 {
-                    const float option_float_value = std::get<float>(option_value);
-                    accumulator_floats[option_key] += option_float_value * alpha;
+                    const float v = std::get<float>(option_value);
+                    accumulator_floats[option_key] += v * alpha;
                     accumulator_weights[option_key] += alpha;
                 }
             }
         }
 
-        // Already snapped to global options. See UpdateActiveVolumes()
         if (overlapping_volumes.empty())
-        {
             return;
+
+        // Instantly update for non-float values only once
+        for (auto& [option_key, option_value] : mix_volume_options.GetOptions())
+        {
+            RenderOptionType blended_value = blended_options.GetOption(option_key);
+            if (!std::holds_alternative<float>(option_value) && !RenderOptionsPool::AreVariantsEqual(blended_value, option_value))
+            {
+                blended_options.SetOption(option_key, option_value);
+            }
         }
 
-        // No volumes are transitioning at the moment. Snap to mixed options.
+        // Update to mixed values if not inside any volume's transition zone
         if (!any_volume_transitioning)
         {
             blended_options = mix_volume_options;
@@ -808,28 +806,25 @@ namespace spartan
             return;
         }
 
-        // Volume in transition detected: compute per-option blended float values and lerp with global
-        for (auto& [option_key, sumVal] : accumulator_floats)
+        // Finish interpolation for float values
+        for (auto& [option_key, sum_value] : accumulator_floats)
         {
             const float weight_sum = accumulator_weights[option_key];
+
             if (weight_sum <= 0.0f)
                 continue;
 
-            const float weighted_average = sumVal / weight_sum; // this is the average of option values weighted by alpha
-            const float global_float_value = global_render_options.GetOption<float>(option_key);
+            const float weighted_average = sum_value / weight_sum;
+            const float global_v = global_render_options.GetOption<float>(option_key);
             const float t = clamp(total_alpha, 0.0f, 1.0f);
 
-            float final = lerp(global_float_value, weighted_average, t);
-
-            blended_options.SetOption(option_key, final);
+            blended_options.SetOption(option_key, lerp(global_v, weighted_average, t));
         }
 
-        // Update every frame, since there is currently a transition being performed
         UpdateRendererOptions();
-
-        // Keep is_transitioning state true so we don't snap prematurely
         is_transitioning = true;
     }
+
 
     void World::UpdateRendererOptions()
     {
