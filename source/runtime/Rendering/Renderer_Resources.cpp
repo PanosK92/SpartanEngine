@@ -649,7 +649,7 @@ namespace spartan
                 "black_texture",                   // name
                 black_data                         // data
             );
-        
+
             // white texture (1x1 pixel, rgba = 255,255,255,255)
             std::vector<RHI_Texture_Mip> white_mips = {
                 RHI_Texture_Mip{std::vector<std::byte>{std::byte{255}, std::byte{255}, std::byte{255}, std::byte{255}}} // single pixel: r=255, g=255, b=255, a=255

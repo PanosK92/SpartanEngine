@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "../Math/BoundingBox.h"
+#include "Components/Volume.h"
 //==============================
 
 namespace spartan
@@ -50,6 +51,14 @@ namespace spartan
         static Entity* GetEntityById(uint64_t id);
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
+
+        // volumes
+        static void UpdateActiveVolumes();
+        static void UpdateMixRenderOptions();
+        static void InterpolateOverlappingVolumes();
+        static void UpdateRendererOptions();
+        static void RegisterVolume(Volume* volume);
+        static void UnregisterVolume(Volume* volume);
 
         // misc
         static std::string GetName();

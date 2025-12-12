@@ -40,6 +40,7 @@ namespace spartan
     class AudioSource;
     class Script;
     class Terrain;
+    class Volume;
     class ReflectionProbe;
     class Component;
 }
@@ -66,6 +67,7 @@ private:
     void ShowCamera(spartan::Camera* camera) const;
     void ShowTerrain(spartan::Terrain* terrain) const;
     void ShowAudioSource(spartan::AudioSource* audio_source) const;
+    void ShowVolume(spartan::Volume* volume) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

@@ -166,7 +166,7 @@ namespace spartan
             }
 
             if (pso.resolution_scale)
-            { 
+            {
                 float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
                 *width                 = static_cast<uint32_t>(*width * resolution_scale);
                 *height                = static_cast<uint32_t>(*height * resolution_scale);

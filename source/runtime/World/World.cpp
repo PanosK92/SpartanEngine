@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
 #include "../Resource/ResourceCache.h"
+#include "Components/Volume.h"
+#include "Rendering/Renderer.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -52,12 +54,17 @@ namespace spartan
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
-        uint32_t audio_source_count     = 0;
-        atomic<bool> resolve            = false;
-        bool was_in_editor_mode         = false;
-        BoundingBox bounding_box    = BoundingBox::Unit;
-        Entity* camera              = nullptr;
-        Entity* light               = nullptr;
+        vector<Volume*> registered_volumes;
+        vector<Volume*> overlapping_volumes;
+        RenderOptionsPool mix_volume_options = RenderOptionsPool(RenderOptionsListType::Component); // volume data accumulation (when overlapped)
+        RenderOptionsPool blended_options = RenderOptionsPool(RenderOptionsListType::Global); // volume data accumulation (on interpolation)
+        bool is_transitioning = false;
+        uint32_t audio_source_count          = 0;
+        atomic<bool> resolve                 = false;
+        bool was_in_editor_mode              = false;
+        BoundingBox bounding_box             = BoundingBox::Unit;
+        Entity* camera                       = nullptr;
+        Entity* light                        = nullptr;
 
         // entity state tracking - things that change the nature of the entity for rendering
         enum class EntityChange : uint8_t
@@ -221,6 +228,8 @@ namespace spartan
         }
         entities.clear();
         entities_lights.clear();
+        overlapping_volumes.clear();
+        registered_volumes.clear();
         pending_add.clear();
         camera = nullptr;
         light  = nullptr;
@@ -267,7 +276,7 @@ namespace spartan
 
         ProcessPendingRemovals();
 
-      
+
         for (Entity* entity : entities)
         {
             if (entity->GetActive())
@@ -392,6 +401,10 @@ namespace spartan
             resolve = false;
             entity_states.clear();
         }
+
+        // Volumes interpolation
+        UpdateActiveVolumes();
+        InterpolateOverlappingVolumes();
 
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
@@ -589,6 +602,10 @@ namespace spartan
         {
             camera = nullptr;
         }
+        if (Volume* volume = entity_to_remove->GetComponent<Volume>())
+        {
+            UnregisterVolume(volume);
+        }
 
         // remove the entity and all of its children
         {
@@ -653,6 +670,193 @@ namespace spartan
     const vector<Entity*>& World::GetEntitiesLights()
     {
         return entities_lights;
+    }
+
+    void World::UpdateActiveVolumes()
+    {
+        for (Volume* volume : registered_volumes)
+        {
+            const float alpha = volume->ComputeAlpha(camera->GetMatrix().GetTranslation());
+
+            auto volume_it = ranges::find(overlapping_volumes, volume);
+            if (alpha > 0.0f && volume_it == overlapping_volumes.end())
+            {
+                // Camera is within volume's range. Mark it as overlapping
+                overlapping_volumes.push_back(volume);
+                UpdateMixRenderOptions();
+                is_transitioning = true;
+            }
+            else if (alpha <= 0.0f && volume_it != overlapping_volumes.end())
+            {
+                // Camera just got out of volume's range. Cancel overlapping behaviour.
+                overlapping_volumes.erase(volume_it);
+                UpdateMixRenderOptions();
+            }
+        }
+
+        // If we are moving out from any volumes, update back to global values once
+        if (overlapping_volumes.empty())
+        {
+            is_transitioning = false;
+            blended_options = Renderer::GetRenderOptionsPoolRef(true);
+            UpdateRendererOptions();
+        }
+    }
+
+    void World::UpdateMixRenderOptions()
+    {
+        // Clear previous accumulation for proper reset
+        mix_volume_options = RenderOptionsPool(RenderOptionsListType::Component);
+
+        // Update the render options results for overlapping volumes.
+        // Works for single-volume overlapping cases as well.
+        // - for floats:          take average result (ex: Fog_v1=50, Fog_v2=100, Fog_Mix=75)
+        // - for booleans:        take combination result
+        // - for enums:           "newest wins" semantic
+        // - for ints:            not implemented or applicable (no options have this type)
+
+        // Frequency table for boolean render options to determine the combination result
+        map<Renderer_Option, int> bool_options_frequencies;
+
+        // Simple accumulation containers for floats (so we don't rely on GetOption before it's set)
+        map<Renderer_Option, float> float_options_accumulations;
+        map<Renderer_Option, int> float_options_counts;
+
+        for (Volume* volume : overlapping_volumes)
+        {
+            for (auto& [option_key, option_value] : volume->GetOptionsCollection().GetOptions())
+            {
+                if (holds_alternative<bool>(option_value))
+                {
+                    bool new_bool_value = get<bool>(option_value);
+                    mix_volume_options.SetOption(option_key, new_bool_value);
+                }
+                else if (holds_alternative<uint32_t>(option_value))
+                {
+                    uint32_t new_enum_value = std::get<uint32_t>(option_value);
+                    mix_volume_options.SetOption(option_key, new_enum_value);
+                }
+                else if (holds_alternative<float>(option_value))
+                {
+                    const float new_float_value = std::get<float>(option_value);
+                    float_options_accumulations[option_key] += new_float_value;
+                    float_options_counts[option_key] += 1;
+                }
+            }
+        }
+
+        // Finalize float averages into mix_volume_options
+        for (auto& [option_key, float_sum_value] : float_options_accumulations)
+        {
+            if (const int count = float_options_counts[option_key]; count > 0)
+            {
+                float float_average_value = float_sum_value / static_cast<float>(count);
+                mix_volume_options.SetOption(option_key, float_average_value);
+            }
+        }
+    }
+
+    void World::InterpolateOverlappingVolumes()
+    {
+        RenderOptionsPool& global_render_options = Renderer::GetRenderOptionsPoolRef(true);
+
+        float total_alpha = 0.0f;
+        bool any_volume_transitioning = false;
+
+        map<Renderer_Option, float> accumulator_floats;
+        map<Renderer_Option, float> accumulator_weights;
+
+        // Accumulate sums for interpolated float values
+        for (Volume* volume : overlapping_volumes)
+        {
+            const float alpha = volume->ComputeAlpha(camera->GetMatrix().GetTranslation());
+            any_volume_transitioning |= (alpha > 0.0f && alpha < 1.0f);
+            total_alpha += alpha;
+
+            for (auto& [option_key, option_value] : volume->GetOptionsCollection().GetOptions())
+            {
+                if (std::holds_alternative<float>(option_value))
+                {
+                    const float v = std::get<float>(option_value);
+                    accumulator_floats[option_key] += v * alpha;
+                    accumulator_weights[option_key] += alpha;
+                }
+            }
+        }
+
+        if (overlapping_volumes.empty())
+            return;
+
+        // Instantly update for non-float values only once
+        for (auto& [option_key, option_value] : mix_volume_options.GetOptions())
+        {
+            RenderOptionType blended_value = blended_options.GetOption(option_key);
+            if (!std::holds_alternative<float>(option_value) && !RenderOptionsPool::AreVariantsEqual(blended_value, option_value))
+            {
+                blended_options.SetOption(option_key, option_value);
+            }
+        }
+
+        // Update to mixed values if not inside any volume's transition zone
+        if (!any_volume_transitioning)
+        {
+            blended_options = mix_volume_options;
+            UpdateRendererOptions();
+            is_transitioning = false;
+            return;
+        }
+
+        // Finish interpolation for float values
+        for (auto& [option_key, sum_value] : accumulator_floats)
+        {
+            const float weight_sum = accumulator_weights[option_key];
+
+            if (weight_sum <= 0.0f)
+                continue;
+
+            const float weighted_average = sum_value / weight_sum;
+            const float global_v = global_render_options.GetOption<float>(option_key);
+            const float t = clamp(total_alpha, 0.0f, 1.0f);
+
+            blended_options.SetOption(option_key, lerp(global_v, weighted_average, t));
+        }
+
+        UpdateRendererOptions();
+        is_transitioning = true;
+    }
+
+
+    void World::UpdateRendererOptions()
+    {
+        for (auto& [option_key, option_value] : blended_options.GetOptions())
+        {
+            if (RenderOptionType existing_value = Renderer::GetOption(option_key); !RenderOptionsPool::AreVariantsEqual(existing_value, option_value))
+            {
+                Renderer::SetOption(option_key, option_value);
+            }
+        }
+    }
+
+    void World::RegisterVolume(Volume* volume)
+    {
+        if (!volume)
+            return;
+
+        if (const auto it = ranges::find(registered_volumes, volume); it == registered_volumes.end())
+        {
+            registered_volumes.push_back(volume);
+        }
+    }
+
+    void World::UnregisterVolume(Volume* volume)
+    {
+        if (!volume)
+            return;
+
+        if (const auto it = ranges::find(registered_volumes, volume); it != registered_volumes.end())
+        {
+            registered_volumes.erase(ranges::remove(registered_volumes, volume).begin(), registered_volumes.end());
+        }
     }
 
     string World::GetName()

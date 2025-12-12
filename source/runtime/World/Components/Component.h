@@ -46,6 +46,7 @@ namespace spartan
         Physics,
         Renderable,
         Terrain,
+        Volume,
         Max
     };
     // after re-ordering the above, ensure .world save/load works
@@ -113,7 +114,8 @@ namespace spartan
             if (name == "physics")      return ComponentType::Physics;
             if (name == "renderable")   return ComponentType::Renderable;
             if (name == "terrain")      return ComponentType::Terrain;
-        
+            if (name == "volume")       return ComponentType::Volume;
+
             assert(false && "StringToType: Unknown component name");
             return ComponentType::Max;
         }

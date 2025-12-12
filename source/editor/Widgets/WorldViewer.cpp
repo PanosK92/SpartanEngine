@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Commands/CommandStack.h"
 #include "Input/Input.h"
 #include "../ImGui/ImGui_Extension.h"
+#include "World/Components/Volume.h"
 SP_WARNINGS_OFF
 #include "../ImGui/Source/imgui_stdlib.h"
 SP_WARNINGS_ON
@@ -56,19 +57,19 @@ namespace
     {
         spartan::RHI_Texture* icon = nullptr;
         int match_count = 0;
-    
+
         if (entity->GetComponent<spartan::Light>())
         {
             icon = spartan::ResourceCache::GetIcon(spartan::IconType::Light);
             ++match_count;
         }
-    
+
         if (entity->GetComponent<spartan::Camera>())
         {
             icon = spartan::ResourceCache::GetIcon(spartan::IconType::Camera);
             ++match_count;
         }
-    
+
         if (entity->GetComponent<spartan::AudioSource>())
         {
             icon = spartan::ResourceCache::GetIcon(spartan::IconType::Audio);
@@ -81,7 +82,7 @@ namespace
         //    icon = spartan::ResourceCache::GetIcon(spartan::IconType::Physics);
         //    ++match_count;
         //}
-    
+
         if (entity->GetComponent<spartan::Terrain>())
         {
             icon = spartan::ResourceCache::GetIcon(spartan::IconType::Terrain);
@@ -96,7 +97,7 @@ namespace
 
         if (match_count > 1)
             return spartan::ResourceCache::GetIcon(spartan::IconType::Hybrid);
-    
+
         return icon ? icon : spartan::ResourceCache::GetIcon(spartan::IconType::Entity);
     }
 }
@@ -563,6 +564,12 @@ void WorldViewer::PopupContextMenu() const
         ActionEntityCreateTerrain();
     }
 
+    // VOLUME
+    if (ImGui::MenuItem("Volume"))
+    {
+        ActionEntityCreateVolume();
+    }
+
     ImGui::EndPopup();
 }
 
@@ -590,7 +597,7 @@ void WorldViewer::PopupEntityRename() const
         selected_entity->SetObjectName(string(name));
 
         if (ImGuiSp::button("Ok"))
-        { 
+        {
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
             return;
@@ -667,7 +674,7 @@ void WorldViewer::ActionEntityDelete(spartan::Entity* entity)
 spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
 {
     spartan::Entity* entity = spartan::World::CreateEntity();
-    
+
     if (spartan::Camera* camera = spartan::World::GetCamera())
     {
         if (spartan::Entity* selected_entity = camera->GetSelectedEntity())
@@ -778,3 +785,12 @@ void WorldViewer::ActionEntityCreateAudioSource()
     entity->AddComponent<spartan::AudioSource>();
     entity->SetObjectName("Physics");
 }
+
+void WorldViewer::ActionEntityCreateVolume()
+{
+    auto entity = ActionEntityCreateEmpty();
+    entity->AddComponent<spartan::Volume>();
+    entity->SetObjectName("Volume");
+}
+
+

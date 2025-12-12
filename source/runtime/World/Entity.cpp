@@ -167,7 +167,7 @@ namespace spartan
             node.append_attribute("name")   = m_object_name.c_str();
             node.append_attribute("id")     = m_object_id;
             node.append_attribute("active") = m_is_active;
-            
+
             {
                 stringstream ss;
                 ss << m_position_local.x << " " << m_position_local.y << " " << m_position_local.z;
@@ -278,7 +278,7 @@ namespace spartan
 
         m_is_active = active;
     }
-    
+
     Component* Entity::AddComponent(const ComponentType type)
     {
         Component* component = nullptr;
@@ -307,6 +307,10 @@ namespace spartan
             {
                 if (id == component->GetObjectId())
                 {
+                    if (auto volume = dynamic_cast<Volume*>(component.get()))
+                    {
+                        World::UnregisterVolume(volume);
+                    }
                     component->Remove();
                     component = nullptr;
                     break;
@@ -476,11 +480,11 @@ namespace spartan
             // early exit if the parent is this entity
             if (GetObjectId() == new_parent->GetObjectId())
                 return;
-        
+
             // early exit if the parent is already set
             if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
                 return;
-        
+
             // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
             if (new_parent->IsDescendantOf(this))
             {
@@ -489,18 +493,18 @@ namespace spartan
                     child->m_parent = m_parent; // directly setting parent
                     child->UpdateTransform();   // update transform if needed
                 }
-        
+
                 m_children.clear();
             }
         }
-        
+
         // remove the this as a child from the existing parent
         if (m_parent)
         {
             bool update_child_with_null_parent = false;
             m_parent->RemoveChild(this, update_child_with_null_parent);
         }
-        
+
         // add this is a child to new parent
         if (new_parent)
         {
