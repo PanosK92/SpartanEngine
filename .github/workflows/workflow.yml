@@ -26,11 +26,11 @@ jobs:
       matrix:
         include:
           - api: vulkan
-            configuration: Release
+            configuration: release
           - api: vulkan
-            configuration: Debug
+            configuration: debug
           - api: d3d12
-            configuration: Release
+            configuration: release
 
     runs-on: windows-2022
     steps:
@@ -80,14 +80,14 @@ jobs:
       - name: Build
         shell: cmd
         working-directory: ${{ github.workspace }}
-        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /m spartan.slnx
+        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /p:PlatformToolset=v143 /m spartan.slnx
 
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
         shell: cmd
         run: |
           echo "Creating artifacts for ${{ matrix.api }} - ${{ matrix.configuration }}"
-          IF "${{ matrix.configuration }}" == "Release" (
+          IF "${{ matrix.configuration }}" == "release" (
             echo "Creating binaries-only archive for Release..."
             build_scripts\7z.exe a -bb1 spartan_vulkan_release.7z .\binaries\7z.exe .\binaries\7z.dll .\binaries\dxcompiler.dll .\binaries\libxess.dll .\binaries\download_assets.py .\binaries\file_utilities.py .\binaries\data .\binaries\spartan_${{ matrix.api }}.exe
           ) ELSE (
