@@ -197,10 +197,13 @@ jobs:
 
       - name: Update release notes
         uses: actions/github-script@v7
+        env:
+          RELEASE_NOTES: ${{ steps.generate_release_notes.outputs.result }}
+          RELEASE_TAG: ${{ steps.get_datetime.outputs.version }}
         with:
           script: |
-            const releaseNotes = `${{ steps.generate_release_notes.outputs.result }}`;
-            const tagName = `${{ steps.get_datetime.outputs.version }}`;
+            const releaseNotes = process.env.RELEASE_NOTES;
+            const tagName = process.env.RELEASE_TAG;
             
             // Get the release by tag
             const { data: releases } = await github.rest.repos.listReleases({
