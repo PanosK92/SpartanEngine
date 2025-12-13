@@ -70,17 +70,17 @@ jobs:
         shell: cmd
         working-directory: ${{ github.workspace }}
         run: |
-          if not exist spartan.sln (
-            echo Error: spartan.sln not found!
-            dir *.sln
+          if not exist spartan.slnx (
+            echo Error: spartan.slnx not found!
+            dir *.sln*
             exit /b 1
           )
-          echo Solution file found: spartan.sln
+          echo Solution file found: spartan.slnx
           
       - name: Build
         shell: cmd
         working-directory: ${{ github.workspace }}
-        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /m spartan.sln
+        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /m spartan.slnx
 
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
