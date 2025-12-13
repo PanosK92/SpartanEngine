@@ -23,68 +23,128 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// shadow mapping constants
-// note: golden angle (2.399963 radians) maximizes surface coverag
-static const uint   g_shadow_sample_count            = 4;     // number of samples for shadow filtering
-static const float  g_shadow_filter_size             = 1.0f;  // base filter size (gets x4 for directional lights)
+// shadow mapping constants (golden angle 2.399963 radians maximizes surface coverage)
+static const uint   g_shadow_sample_count            = 4;     // shadow filtering samples
+static const float  g_shadow_filter_size             = 1.0f;  // base filter size (x4 for directional lights)
 static const float  g_shadow_cascade_blend_threshold = 0.8f;  // cascade transition threshold
-static const uint   g_penumbra_sample_count          = 8;     // samples for penumbra estimation
+static const uint   g_penumbra_sample_count          = 8;     // penumbra estimation samples
 static const float  g_penumbra_filter_size           = 128.0f; // penumbra search radius
 static const float  g_shadow_sample_reciprocal       = 1.0f / (float)g_shadow_sample_count;
+static const float  g_minimum_penumbra_size          = 0.5f;  // minimum penumbra to prevent hard shadows
+static const float  g_maximum_penumbra_size          = 64.0f; // maximum penumbra size
+static const float  g_contact_hardening_factor      = 0.5f;  // contact hardening strength (0=soft, 1=hard)
+static const float  g_slope_bias_scale               = 2.0f;  // slope-scaled bias multiplier
+static const float  g_constant_bias_scale             = 0.0001f; // constant bias scale
 
-// generate vogel disk sample for poisson disk sampling
-// uses golden angle spiral for optimal distribution
-float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
+// pre-computed vogel disk samples (golden angle spiral, rotated at runtime for temporal jitter)
+static const float2 g_vogel_samples_shadow[g_shadow_sample_count] =
 {
-    const float golden_angle = 2.399963f; // radians (137.508 degrees)
-    float radius             = sqrt(sample_index + 0.5f) / sqrt(sample_count);
-    float theta              = sample_index * golden_angle + angle;
+    float2(0.353553f, 0.000000f),   // sample 0
+    float2(-0.451544f, 0.413652f),  // sample 1
+    float2(0.069116f, -0.787542f),  // sample 2
+    float2(0.569143f, 0.742345f)    // sample 3
+};
+
+static const float2 g_vogel_samples_penumbra[g_penumbra_sample_count] =
+{
+    float2(0.250000f, 0.000000f),   // sample 0
+    float2(-0.319290f, 0.292496f),  // sample 1
+    float2(0.048872f, -0.556877f),  // sample 2
+    float2(0.402445f, 0.524917f),   // sample 3
+    float2(-0.738535f, -0.130636f), // sample 4
+    float2(0.699604f, -0.445032f),  // sample 5
+    float2(-0.234003f, 0.870484f),  // sample 6
+    float2(-0.446273f, -0.859268f)  // sample 7
+};
+
+// rotate 2d vector by angle (radians) using rotation matrix
+float2 rotate_2d(float2 v, float angle)
+{
     float sine, cosine;
-    sincos(theta, sine, cosine);
-    
-    return float2(cosine, sine) * radius;
+    sincos(angle, sine, cosine);
+    return float2(
+        v.x * cosine - v.y * sine,
+        v.x * sine + v.y * cosine
+    );
 }
 
-// estimate penumbra size using blocker search (percentage closer soft shadows)
-// larger depth difference between receiver and blocker = larger penumbra
-float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, float receiver_depth)
+// get vogel disk sample from pre-computed lookup table with rotation
+float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
 {
-    float penumbra          = 1.0f;
+    float2 sample;
+    
+    // lookup pre-computed sample based on sample count
+    if (sample_count == g_shadow_sample_count)
+    {
+        sample = g_vogel_samples_shadow[sample_index];
+    }
+    else if (sample_count == g_penumbra_sample_count)
+    {
+        sample = g_vogel_samples_penumbra[sample_index];
+    }
+    else
+    {
+        // fallback for other sample counts (shouldn't happen in practice)
+        const float golden_angle = 2.399963f;
+        float radius = sqrt(sample_index + 0.5f) / sqrt(sample_count);
+        float theta = sample_index * golden_angle + angle;
+        float sine, cosine;
+        sincos(theta, sine, cosine);
+        return float2(cosine, sine) * radius;
+    }
+    
+    // apply rotation for temporal jitter
+    return rotate_2d(sample, angle);
+}
+
+// estimate penumbra size using pcss (percentage closer soft shadows) with improved blocker search
+float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, float receiver_depth, float light_distance)
+{
+    float penumbra          = g_minimum_penumbra_size;
     float blocker_depth_sum = 0.0f;
     uint  blocker_count     = 0;
+    float search_radius     = g_penumbra_filter_size * light.atlas_texel_size[0].x;
 
-    // search for blockers in neighborhood
+    // search for blockers in neighborhood with adaptive search radius
     for(uint i = 0; i < g_penumbra_sample_count; i++)
     {
-        float2 offset = vogel_disk_sample(i, g_penumbra_sample_count, rotation_angle) * light.atlas_texel_size[0] * g_penumbra_filter_size;
+        float2 offset = vogel_disk_sample(i, g_penumbra_sample_count, rotation_angle) * search_radius;
         float depth   = light.sample_depth(sample_coords + float3(offset, 0.0f));
 
-        // accumulate blockers (depth > receiver means blocker is closer to light)
-        if(depth > receiver_depth)
+        // accumulate blockers (depth > receiver means blocker is closer to light, threshold avoids noise)
+        if(depth > receiver_depth + 0.0001f)
         {
             blocker_depth_sum += depth;
             blocker_count++;
         }
     }
 
-    // compute penumbra size based on average blocker depth
+    // compute penumbra size based on average blocker depth (pcss formula)
     if (blocker_count > 0)
     {
         float blocker_depth_avg = blocker_depth_sum / float(blocker_count);
         
-        // depth difference determines penumbra size (larger gap = softer shadow)
-        float depth_difference = abs(receiver_depth - blocker_depth_avg);
+        // pcss formula: penumbra = (receiver_depth - blocker_depth) * light_size / blocker_depth (accounts for light distance)
+        float depth_difference = receiver_depth - blocker_depth_avg;
         
-        // normalize by blocker depth to get relative penumbra size
-        penumbra = depth_difference / (blocker_depth_avg + FLT_MIN);
+        // avoid division by zero and negative penumbra
+        if (depth_difference > 0.0f && blocker_depth_avg > 0.0f)
+        {
+            // scale by light distance for realistic penumbra (closer blockers create larger penumbra)
+            float light_size_factor = saturate(light_distance * 0.1f);
+            penumbra = (depth_difference / blocker_depth_avg) * light_size_factor * search_radius;
+            
+            // apply contact hardening: reduce penumbra near contact points (shadows harder when blocker close to receiver)
+            float contact_factor = saturate(depth_difference * 1000.0f);
+            penumbra = lerp(penumbra * g_contact_hardening_factor, penumbra, contact_factor);
+        }
     }
     
-    // scale and clamp penumbra to reasonable range
-    return clamp(penumbra * 16.0f, 1.0f, 1024.0f);
+    // clamp penumbra to reasonable range
+    return clamp(penumbra, g_minimum_penumbra_size, g_maximum_penumbra_size);
 }
 
-// compute shadow factor using vogel disk sampling with adaptive penumbra
-// uses percentage closer filtering with temporal jitter for noise reduction
+// compute shadow factor using vogel disk sampling with adaptive penumbra and improved edge handling
 float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth, float filter_size_multiplier = 1.0f)
 {
     float shadow_factor   = 0.0f;
@@ -93,10 +153,15 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
     float temporal_offset = noise_interleaved_gradient(surface.pos);
     float temporal_angle  = temporal_offset * PI2;
     
+    // compute light distance for penumbra calculation
+    float light_distance = light.is_directional() ? 1000.0f : length(surface.position - light.position);
+    
     // estimate penumbra size for adaptive filtering
-    float penumbra        = compute_penumbra(light, temporal_angle, sample_coords, receiver_depth);
+    float penumbra = compute_penumbra(light, temporal_angle, sample_coords, receiver_depth, light_distance);
 
     // sample shadow map using vogel disk pattern
+    float valid_sample_count = 0.0f;
+    
     for (uint i = 0; i < g_shadow_sample_count; i++)
     {
         // compute filter size with penumbra adaptation
@@ -104,41 +169,63 @@ float vogel_depth(Light light, Surface surface, float3 sample_coords, float rece
         float2 offset      = vogel_disk_sample(i, g_shadow_sample_count, temporal_angle) * filter_size;
         float2 sample_uv   = sample_coords.xy + offset;
 
-        // check if sample is within shadow map bounds
+        // check if sample is within shadow map bounds with smooth fade (fade over 10% of texture)
+        float2 uv_clamped = clamp(sample_uv, 0.0f, 1.0f);
+        float2 fade_dist = min(sample_uv, 1.0f - sample_uv) * 10.0f;
+        float fade_factor = saturate(min(fade_dist.x, fade_dist.y));
         float is_valid = step(0.0f, sample_uv.x) * step(sample_uv.x, 1.0f) * 
                          step(0.0f, sample_uv.y) * step(sample_uv.y, 1.0f);
 
         // compare depths: 1.0 = lit, 0.0 = shadowed
-        // treat out-of-bounds samples as lit to avoid hard edges
-        float depth_sample = light.compare_depth(float3(sample_uv, sample_coords.z), receiver_depth);
-        shadow_factor += depth_sample + (1.0f - depth_sample) * (1.0f - is_valid);
+        float depth_sample = light.compare_depth(float3(uv_clamped, sample_coords.z), receiver_depth);
+        
+        // apply smooth fade at boundaries to avoid hard edges
+        depth_sample = lerp(1.0f, depth_sample, fade_factor * is_valid + (1.0f - is_valid));
+        
+        shadow_factor += depth_sample;
+        valid_sample_count += is_valid;
     }
 
-    // average samples to get final shadow factor
-    return shadow_factor * g_shadow_sample_reciprocal;
+    // normalize by valid samples (better than fixed count for edge cases)
+    float sample_count = max(valid_sample_count, 1.0f);
+    return shadow_factor / sample_count;
 }
 
-// compute normal offset to reduce shadow acne (peter panning)
-// offset surface along normal to avoid self-shadowing artifacts
+// compute improved depth bias using slope-scaled bias technique (combines constant and slope-scaled bias)
 float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
 {
+    // get light direction in world space
+    float3 light_dir = light.is_directional() ? normalize(-light.forward.xyz) : 
+                       normalize(surface.position - light.position);
+    
+    // compute surface slope (steeper slopes need more bias, sin of angle between normal and light)
+    float n_dot_l = dot(surface.normal, light_dir);
+    float slope = sqrt(1.0f - n_dot_l * n_dot_l);
+    
     // base bias per cascade: larger bias for far cascades (coarser resolution)
     float base_bias = (cascade_index == 0) ? 60.0f : 600.0f;
-
+    
     // get texel size in world space units
-    float texel_size = light.atlas_texel_size[cascade_index].x; // assuming square texels
-
-    // offset along surface normal proportional to texel size
-    float3 normal_offset = surface.normal * base_bias * texel_size;
-
-    // clamp to prevent excessive offset that could cause light leaking
-    normal_offset = clamp(normal_offset, -0.5f * base_bias, 0.5f * base_bias);
-
+    float texel_size = light.atlas_texel_size[cascade_index].x;
+    
+    // slope-scaled bias: steeper slopes get more bias (prevents shadow acne on surfaces nearly perpendicular to light)
+    float slope_bias = slope * g_slope_bias_scale * texel_size;
+    
+    // constant bias: minimum offset to prevent self-shadowing
+    float constant_bias = g_constant_bias_scale * base_bias * texel_size;
+    
+    // combine biases and apply along surface normal
+    float total_bias = constant_bias + slope_bias;
+    float3 normal_offset = surface.normal * total_bias;
+    
+    // clamp to prevent excessive offset that could cause light leaking (conservative clamp based on texel size)
+    float max_offset = texel_size * base_bias * 0.5f;
+    normal_offset = clamp(normal_offset, -max_offset, max_offset);
+    
     return normal_offset;
 }
 
-// compute shadow factor for a surface point from a light source
-// handles point lights (cube maps), directional lights (cascades), and spot lights
+// compute shadow factor for a surface point from a light source (handles point, directional, and spot lights)
 float compute_shadow(Surface surface, Light light)
 {
     float3 to_light = light.position - surface.position;
@@ -190,7 +277,7 @@ float compute_shadow(Surface surface, Light light)
         float  shadow_near      = vogel_depth(light, surface, float3(uv_near, near_cascade), ndc_near.z, 4.0f);
         shadow                  = shadow_near;
 
-        // directional lights: blend between near and far cascades
+        // directional lights: blend between near and far cascades with improved transition
         if (light.is_directional())
         {
             const uint far_cascade = 1;
@@ -202,10 +289,21 @@ float compute_shadow(Surface surface, Light light)
             float2 uv_far             = ndc_to_uv(ndc_far.xy);
             float  shadow_far         = vogel_depth(light, surface, float3(uv_far, far_cascade), ndc_far.z, 4.0f);
 
-            // blend cascades based on distance from cascade edge
-            float edge_dist    = max(abs(ndc_near.x), abs(ndc_near.y));
-            float blend_factor = smoothstep(0.7f, 1.0f, edge_dist);
-            shadow             = lerp(shadow_near, shadow_far, blend_factor);
+            // improved cascade blending: use distance from center and edge (smoother transitions, reduces popping)
+            float2 ndc_dist_from_center = abs(ndc_near.xy);
+            float max_dist = max(ndc_dist_from_center.x, ndc_dist_from_center.y);
+            
+            // blend based on distance from cascade center (start at 60%, finish at 95% from center)
+            float blend_start = 0.6f;
+            float blend_end   = 0.95f;
+            float blend_factor = smoothstep(blend_start, blend_end, max_dist);
+            
+            // consider depth difference for better quality (prefer near cascade when both valid, reduce blend when depths similar)
+            float depth_diff = abs(ndc_near.z - ndc_far.z);
+            float depth_factor = saturate(depth_diff * 10.0f);
+            blend_factor *= depth_factor;
+            
+            shadow = lerp(shadow_near, shadow_far, blend_factor);
         }
 
         // apply range fade for spot lights
