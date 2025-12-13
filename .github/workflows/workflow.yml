@@ -34,7 +34,7 @@ jobs:
 
     runs-on: windows-2022
     env:
-      msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      msbuild_path: C:\Program Files\Microsoft Visual Studio\2026\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v4
 
@@ -49,12 +49,12 @@ jobs:
       - name: Setup MSBuild / Visual Studio Environment
         uses: microsoft/setup-msbuild@v1
         with:
-          vs-version: '[17.0,18.0)'  # opt for latest available visual studio version
+          vs-version: '[19.0,20.0)'  # opt for latest available visual studio version
 
       - name: Show MSVC version (for debugging)
         shell: cmd
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+          call "C:\Program Files\Microsoft Visual Studio\2026\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           cl
 
       - name: Generate project files
@@ -65,7 +65,7 @@ jobs:
           import subprocess
           import os
           api = os.environ["API"]
-          subprocess.run(f"python generate_vs2022_{api}.py ci")
+          subprocess.run(f"python generate_vs2026_{api}.py ci")
           
       - name: Build
         shell: cmd
@@ -137,18 +137,41 @@ jobs:
               per_page: 1
             });
 
+            let commits = [];
             const lastRelease = releases[0];
-            const lastReleaseDate = lastRelease ? lastRelease.published_at : null;
+            
+            if (lastRelease && lastRelease.tag_name) {
+              // Get commits since the last release tag
+              const { data: compareData } = await github.rest.repos.compareCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base: lastRelease.tag_name,
+                head: context.sha
+              });
+              commits = compareData.commits || [];
+            } else {
+              // No previous release, get recent commits (last 50)
+              const { data: recentCommits } = await github.rest.repos.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 50
+              });
+              commits = recentCommits || [];
+            }
 
-            const { data: commits } = await github.rest.repos.listCommits({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              since: lastReleaseDate,
-              per_page: 100
-            });
+            // Format commits nicely, filtering out merge commits
+            const releaseNotes = commits
+              .filter(commit => !commit.commit.message.startsWith('Merge'))
+              .map(commit => {
+                const shortSha = commit.sha.substring(0, 7);
+                const author = commit.commit.author.name;
+                const message = commit.commit.message.split('\n')[0]; // First line only
+                return `- \`${shortSha}\` ${message} (@${author})`;
+              })
+              .join('\n');
 
-            const releaseNotes = commits.map(commit => `- ${commit.commit.message}`).join('\n');
-            return releaseNotes;
+            // If no commits found, provide a default message
+            return releaseNotes || '- Initial release or no commits found';
 
       - name: Publish release
         uses: marvinpinto/action-automatic-releases@latest
