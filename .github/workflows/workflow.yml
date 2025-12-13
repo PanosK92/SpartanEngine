@@ -57,6 +57,7 @@ jobs:
 
       - name: Generate project files
         shell: python
+        working-directory: ${{ github.workspace }}
         env:
           API: ${{ matrix.api }}
         run: |
@@ -65,8 +66,20 @@ jobs:
           api = os.environ["API"]
           subprocess.run(f"python generate_vs2026_{api}.py ci")
           
+      - name: Verify solution file exists
+        shell: cmd
+        working-directory: ${{ github.workspace }}
+        run: |
+          if not exist spartan.sln (
+            echo Error: spartan.sln not found!
+            dir *.sln
+            exit /b 1
+          )
+          echo Solution file found: spartan.sln
+          
       - name: Build
         shell: cmd
+        working-directory: ${{ github.workspace }}
         run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /m spartan.sln
 
       - name: Create artifacts
