@@ -33,8 +33,6 @@ jobs:
             configuration: Release
 
     runs-on: windows-2022
-    env:
-      msbuild_path: C:\Program Files\Microsoft Visual Studio\2026\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v4
 
@@ -49,13 +47,13 @@ jobs:
       - name: Setup MSBuild / Visual Studio Environment
         uses: microsoft/setup-msbuild@v1
         with:
-          vs-version: '[19.0,20.0)'  # opt for latest available visual studio version
+          vs-version: '[17.0,20.0)'  # Use latest available VS version (2022 or 2026 if available)
 
       - name: Show MSVC version (for debugging)
         shell: cmd
         run: |
-          call "C:\Program Files\Microsoft Visual Studio\2026\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          cl
+          where msbuild
+          msbuild /version
 
       - name: Generate project files
         shell: python
@@ -69,7 +67,7 @@ jobs:
           
       - name: Build
         shell: cmd
-        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /m spartan.sln'
+        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /m spartan.sln
 
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
