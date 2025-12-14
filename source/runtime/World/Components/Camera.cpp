@@ -671,8 +671,8 @@ namespace spartan
 
         // behavior: flashlight
         {
-            // create
-            if (GetFlag(CameraFlags::Flashlight) && !m_flashlight)
+            // create flashlight entity once
+            if (!m_flashlight)
             {
                 // entity
                 m_flashlight = World::CreateEntity();
@@ -698,10 +698,25 @@ namespace spartan
                 SetFlag(CameraFlags::Flashlight, !GetFlag(CameraFlags::Flashlight));
             }
 
-            // set active state
+            // ensure flashlight follows camera and respects active state
             if (m_flashlight)
             {
-                m_flashlight->SetActive(GetFlag(CameraFlags::Flashlight));
+                // ensure parent is set (in case camera entity was recreated)
+                if (m_flashlight->GetParent() != GetEntity())
+                {
+                    m_flashlight->SetParent(GetEntity());
+                    m_flashlight->SetRotationLocal(Quaternion::Identity);
+                }
+
+                // set active state and intensity based on flag
+                bool flashlight_enabled = GetFlag(CameraFlags::Flashlight);
+                m_flashlight->SetActive(flashlight_enabled);
+                
+                if (Light* light = m_flashlight->GetComponent<Light>())
+                {
+                    // set intensity to 0 when off, restore to 2000 when on
+                    light->SetIntensity(flashlight_enabled ? 2000.0f : 0.0f);
+                }
             }
         }
 

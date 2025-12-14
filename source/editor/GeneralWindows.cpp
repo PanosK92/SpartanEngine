@@ -475,8 +475,8 @@ namespace
                 {
                     ImGui::TableNextRow();
                     
-                    // CRITICAL FIX: Push the row index as an ID.
-                    // This makes "Ctrl" in Row 0 distinct from "Ctrl" in Row 1.
+                    // Push the row index as an ID
+                    // This makes "Ctrl" in Row 0 distinct from "Ctrl" in Row 1
                     ImGui::PushID((int)i); 
 
                     // Column 1: Description
