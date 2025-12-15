@@ -62,6 +62,8 @@ namespace spartan
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
+    RenderOptionsPool Renderer::m_editor_options   = RenderOptionsPool();
+    RenderOptionsPool Renderer::m_global_options   = RenderOptionsPool();
     uint32_t Renderer::m_resource_index            = 0;
     atomic<bool> Renderer::m_initialized_resources = false;
     bool Renderer::m_transparents_present          = false;
@@ -85,22 +87,21 @@ namespace spartan
         const uint8_t swap_chain_buffer_count = 2;
 
         // misc
-        unordered_map<Renderer_Option, float> m_options;
         uint64_t frame_num                   = 0;
         math::Vector2 jitter_offset          = math::Vector2::Zero;
         const uint32_t resolution_shadow_min = 128;
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
- 
 
-        void dynamic_resolution()
+
+        void dynamic_resolution(RenderOptionsPool& options_pool)
         {
-            if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
+            if (options_pool.GetOption<bool>(Renderer_Option::DynamicResolution))
             {
                 float gpu_time_target   = 16.67f;                                               // target for 60 FPS
                 float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
-                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
+                float screen_percentage = options_pool.GetOption<float>(Renderer_Option::ResolutionScale);
                 float gpu_time          = Profiler::GetTimeGpuLast();
 
                 if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
@@ -115,7 +116,7 @@ namespace spartan
                 // clamp screen_percentage to a reasonable range
                 screen_percentage = clamp(screen_percentage, 0.5f, 1.0f);
 
-                Renderer::SetOption(Renderer_Option::ResolutionScale, screen_percentage);
+                options_pool.SetOption(Renderer_Option::ResolutionScale, screen_percentage);
             }
         }
     }
@@ -135,33 +136,6 @@ namespace spartan
         // options
         {
             bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements();
-
-            m_options.clear();
-            SetOption(Renderer_Option::WhitePoint,                  350.0f);
-            SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f);  // non-zero values activate it and control the intensity
-            SetOption(Renderer_Option::MotionBlur,                  1.0f);
-            SetOption(Renderer_Option::DepthOfField,                1.0f);
-            SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
-            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
-            SetOption(Renderer_Option::RayTracedReflections,        RHI_Device::IsSupportedRayTracing() ? 0.0f : 0.0f);
-            SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
-            SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
-            SetOption(Renderer_Option::ResolutionScale,             1.0f);
-            SetOption(Renderer_Option::VariableRateShading,         0.0f);
-            SetOption(Renderer_Option::Vsync,                       0.0f);
-            SetOption(Renderer_Option::TransformHandle,             1.0f);
-            SetOption(Renderer_Option::SelectionOutline,            1.0f);
-            SetOption(Renderer_Option::Grid,                        1.0f);
-            SetOption(Renderer_Option::Lights,                      1.0f);
-            SetOption(Renderer_Option::AudioSources,                1.0f);
-            SetOption(Renderer_Option::Physics,                     0.0f);
-            SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
-            SetOption(Renderer_Option::Dithering,                   0.0f);
-            SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
-            SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
 
             // set wind direction and strength
             {
@@ -203,19 +177,19 @@ namespace spartan
                 Window::GetHeight(),
                 // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
                 // note: fifo is not supported on linux, it will be ignored
-                GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
+                m_global_options.GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
                 swap_chain_buffer_count,
                 Display::GetHdr(),
                 "renderer"
             );
 
-            SetOption(Renderer_Option::Hdr, swapchain->IsHdr() ? 1.0f : 0.0f);
+            m_global_options.SetOption(Renderer_Option::Hdr, swapchain->IsHdr());
         }
 
         // tonemapping
         if (!swapchain->IsHdr())
         {
-            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::AcesNautilus));
+            m_global_options.SetOption(Renderer_Option::Tonemapping, static_cast<uint32_t>(Renderer_Tonemapping::AcesNautilus));
         }
 
         // load/create resources
@@ -289,10 +263,10 @@ namespace spartan
         {
             swapchain->AcquireNextImage();
             RHI_Device::Tick(frame_num);
-            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetOption<float>(Renderer_Option::ResolutionScale));
-            dynamic_resolution();
+            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), m_global_options.GetOption<float>(Renderer_Option::ResolutionScale));
+            dynamic_resolution(m_global_options);
         }
-    
+
         // begin the primary graphics command list
         {
             RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
@@ -304,10 +278,8 @@ namespace spartan
         {
             // fill draw call list and determine ideal occluders
             UpdateDrawCalls(m_cmd_list_present);
-
             // update tlas
             UpdateAccelerationStructures(m_cmd_list_present);
-    
             // handle dynamic buffers and resource deletion
             {
                 m_resource_index++;
@@ -529,7 +501,7 @@ namespace spartan
         }
 
         // generate jitter samples in case of fsr or xess
-        Renderer_AntiAliasing_Upsampling upsampling_mode = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+        Renderer_AntiAliasing_Upsampling upsampling_mode = m_global_options.GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
         {
             if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
             {
@@ -573,17 +545,17 @@ namespace spartan
         m_cb_frame_cpu.time                = Timer::GetTimeSec();
         m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
         m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
-        m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
-        m_cb_frame_cpu.hdr_enabled         = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
+        m_cb_frame_cpu.resolution_scale    = m_global_options.GetOption<float>(Renderer_Option::ResolutionScale);
+        m_cb_frame_cpu.hdr_enabled         = m_global_options.GetOption<bool>(Renderer_Option::Hdr);
         m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
-        m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
-        m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
+        m_cb_frame_cpu.hdr_white_point     = m_global_options.GetOption<float>(Renderer_Option::WhitePoint);
+        m_cb_frame_cpu.gamma               = m_global_options.GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
         // these must match what common_buffer.hlsl is reading
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion), 1 << 1);
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                         1 << 2);
+        m_cb_frame_cpu.set_bit(m_global_options.GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
+        m_cb_frame_cpu.set_bit(m_global_options.GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion), 1 << 1);
+        m_cb_frame_cpu.set_bit(m_global_options.GetOption<bool>(Renderer_Option::Fog),                         1 << 2);
 
         // set
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
@@ -646,113 +618,6 @@ namespace spartan
         }
     }
     
-    void Renderer::SetOption(Renderer_Option option, float value)
-    {
-        // clamp value
-        {
-            // anisotropy
-            if (option == Renderer_Option::Anisotropy)
-            {
-                value = clamp(value, 0.0f, 16.0f);
-            }
-            else if (option == Renderer_Option::ResolutionScale)
-            {
-                value = clamp(value, 0.5f, 1.0f);
-            }
-        }
-
-        // early exit if the value is already set
-        if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
-            return;
-
-        // reject changes (if needed)
-        {
-            if (option == Renderer_Option::Hdr)
-            {
-                if (value == 1.0f)
-                {
-                    if (!Display::GetHdr())
-                    { 
-                        SP_LOG_WARNING("This display doesn't support HDR");
-                        return;
-                    }
-                }
-            }
-            else if (option == Renderer_Option::VariableRateShading)
-            {
-                if (value == 1.0f)
-                {
-                    if (!RHI_Device::IsSupportedVrs())
-                    { 
-                        SP_LOG_WARNING("This GPU doesn't support variable rate shading");
-                        return;
-                    }
-                }
-            }
-            else if (option == Renderer_Option::AntiAliasing_Upsampling)
-            {
-                if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
-                {
-                    if (!RHI_Device::IsSupportedXess())
-                    { 
-                        SP_LOG_WARNING("This GPU doesn't support XeSS");
-                        return;
-                    }
-                }
-            }
-        }
-
-        // set new value
-        m_options[option] = value;
-
-        // handle cascading changes
-        {
-            // upsampling and anti-aliasing
-            if (option == Renderer_Option::AntiAliasing_Upsampling)
-            {
-                // reset history for temporal filters
-                if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) || value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
-                {
-                    RHI_VendorTechnology::ResetHistory();
-                }
-            }
-            else if (option == Renderer_Option::Hdr)
-            {
-                if (swapchain)
-                { 
-                    swapchain->SetHdr(value == 1.0f);
-                }
-            }
-            else if (option == Renderer_Option::Vsync)
-            {
-                if (swapchain)
-                {
-                    swapchain->SetVsync(value == 1.0f);
-                }
-            }
-            else if (option == Renderer_Option::PerformanceMetrics)
-            {
-                static bool enabled = false;
-                if (!enabled && value == 1.0f)
-                {
-                    Profiler::ClearMetrics();
-                }
-
-                enabled = value != 0.0f;
-            }
-        }
-    }
-
-    unordered_map<Renderer_Option, float>& Renderer::GetOptions()
-    {
-        return m_options;
-    }
-
-    void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options)
-    {
-        m_options = options;
-    }
-
     RHI_SwapChain* Renderer::GetSwapChain()
     {
         return swapchain.get();

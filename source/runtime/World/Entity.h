@@ -85,7 +85,7 @@ namespace spartan
             return component.get();
         }
 
-        // adds a component of ComponentType 
+        // adds a component of ComponentType
         Component* AddComponent(ComponentType type);
 
         // returns a component of type T

@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,7 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
+#include "Components/Volume.h"
 #include "../Resource/ResourceCache.h"
+#include "Rendering/Renderer.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -52,12 +54,12 @@ namespace spartan
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
-        uint32_t audio_source_count     = 0;
-        atomic<bool> resolve            = false;
-        bool was_in_editor_mode         = false;
-        BoundingBox bounding_box    = BoundingBox::Unit;
-        Entity* camera              = nullptr;
-        Entity* light               = nullptr;
+        uint32_t audio_source_count          = 0;
+        atomic<bool> resolve                 = false;
+        bool was_in_editor_mode              = false;
+        BoundingBox bounding_box             = BoundingBox::Unit;
+        Entity* camera                       = nullptr;
+        Entity* light                        = nullptr;
 
         // entity state tracking - things that change the nature of the entity for rendering
         enum class EntityChange : uint8_t
@@ -392,6 +394,9 @@ namespace spartan
             resolve = false;
             entity_states.clear();
         }
+
+        // TODO: Create WorldSubSystem class with a Tick() function and place all of the instances' ticks here
+        VolumeSystem::Tick();
 
         if (Engine::IsFlagSet(EngineMode::Playing))
         {

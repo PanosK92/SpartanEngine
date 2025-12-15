@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
+#include "World/Components/Volume.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -212,6 +213,7 @@ void Properties::OnTickVisible()
                 ShowRenderable(renderable);
                 ShowMaterial(material);
                 ShowPhysics(entity->GetComponent<Physics>());
+                ShowVolume(entity->GetComponent<Volume>());
 
                 ShowAddComponentButton();
             }
@@ -1169,6 +1171,132 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
     component_end();
 }
 
+void Properties::ShowVolume(Volume* volume) const
+{
+    if (!volume)
+        return;
+
+    const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
+    const float step            = 0.1f;
+    const float step_fast       = 0.1f;
+    const auto precision        = "%.3f";
+
+    if (component_begin("Volume", volume))
+    {
+        // reflect
+        RenderOptionsPool options                                               = volume->GetOptionsCollection();
+        float shape_size                                                        = volume->GetShapeSize();
+        float transition_size                                                   = volume->GetTransitionSize();
+        bool  is_debug_draw_enabled                                             = volume->GetDebugDrawEnabled();
+
+        if (ImGuiSp::collapsing_header("Volume Properties", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            // Mesh Type
+            {
+                static vector<string> body_types =
+                {
+                    "Box",
+                    "Sphere"
+                };
+
+                ImGui::Text("Volume Type");
+                ImGuiSp::tooltip("The body shape of the volume");
+                ImGui::SameLine(column_pos_x);
+                uint32_t selection_index = static_cast<uint32_t>(volume->GetVolumeShapeType());
+                if (ImGuiSp::combo_box("##volume_body_shape", body_types, &selection_index))
+                {
+                    volume->SetMeshType(static_cast<VolumeType>(selection_index));
+                }
+            }
+
+            // shape size
+            ImGui::Text("Volume Size");
+            ImGuiSp::tooltip("Size of inner volume shape (yellow)");
+            ImGui::SameLine(column_pos_x);
+            if (ImGui::InputFloat("##collisionShapeSize", &shape_size, step, step_fast, precision, input_text_flags))
+            {
+                // clamp to positive
+                shape_size = std::max(shape_size, default_shape_size);
+            }
+
+            // transition size
+            ImGui::Text("Transition Size");
+            ImGuiSp::tooltip("Thickness of outer volume shape (blue)");
+            ImGui::SameLine(column_pos_x);
+            if (ImGui::InputFloat("##collisionTransitionSize", &transition_size, step, step_fast, precision, input_text_flags))
+            {
+                // clamp to positive
+                transition_size = std::max(transition_size, default_transition_size);
+            }
+
+            // toggle for debug draw enabled
+            if (ImGui::Checkbox("Debug Draw Shape", &is_debug_draw_enabled))
+            {
+                volume->SetDebugDrawEnabled(is_debug_draw_enabled);
+            }
+            ImGuiSp::tooltip("Make volume shape outlines visible for debugging");
+        }
+
+        // Render Options
+        if (ImGuiSp::collapsing_header("Render Options", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            for (auto& [option_key, option_value] : options.GetOptions())
+            {
+                string label_str = RenderOptionsPool::EnumToString(option_key);
+                const char* label = label_str.c_str();
+
+                if (std::holds_alternative<bool>(option_value))
+                {
+                    bool& bool_value = get<bool>(option_value);
+                    if (ImGui::Checkbox(label, &bool_value))
+                    {
+                        options.SetOption(option_key, bool_value);
+                    }
+                }
+                else if (std::holds_alternative<uint32_t>(option_value))
+                {
+                    uint32_t& enumValue = std::get<uint32_t>(option_value);
+
+                    if (option_key == Renderer_Option::Tonemapping)
+                    {
+                        const char* tonemapping_items[] = { "Aces", "AgX", "Reinhard", "AcesNautilus" };
+                        int current = static_cast<int>(enumValue);
+
+                        if (ImGui::Combo(label, &current, tonemapping_items, IM_ARRAYSIZE(tonemapping_items)))
+                        {
+                            enumValue = static_cast<uint32_t>(current);
+                            options.SetOption(option_key, enumValue);
+                        }
+                    }
+                }
+                else if (std::holds_alternative<float>(option_value))
+                {
+                    float& float_value = get<float>(option_value);
+                    if (ImGui::InputFloat(label, &float_value, 1, 0.1f))
+                    {
+                        options.SetOption(option_key, float_value);
+                    }
+                }
+                else if (std::holds_alternative<int>(option_value))
+                {
+                    int& int_value = get<int>(option_value);
+                    if (ImGui::InputInt(label, &int_value, 1, 0.0f))
+                    {
+                        options.SetOption(option_key, int_value);
+                    }
+                }
+            }
+        }
+
+        //= MAP ===================================================================================================================
+        if (fabs(shape_size - volume->GetShapeSize())           > epsilon) volume->SetShapeSize(shape_size);
+        if (fabs(transition_size - volume->GetTransitionSize()) > epsilon) volume->SetTransitionSize(transition_size);
+        if (options != volume->GetOptionsCollection())                         volume->SetOptionsCollection(options);
+        //=========================================================================================================================
+    }
+    component_end();
+}
+
 void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
@@ -1232,6 +1360,11 @@ void Properties::ComponentContextMenu_Add() const
                 }
 
                 ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem("Volume"))
+            {
+                entity->AddComponent<Volume>();
             }
         }
 

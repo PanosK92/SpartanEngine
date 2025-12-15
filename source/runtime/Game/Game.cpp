@@ -290,10 +290,10 @@ namespace spartan
         void set_base_renderer_options()
          {
              // disable all effects which are specific to certain worlds, let the each world decide which effects it wants to enable
-             Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
-             Renderer::SetOption(Renderer_Option::ChromaticAberration, 0.0f);
-             Renderer::SetOption(Renderer_Option::Grid,                0.0f);
-             Renderer::SetOption(Renderer_Option::Vhs,                 0.0f);
+             Renderer::SetOption(Renderer_Option::Dithering,           false);
+             Renderer::SetOption(Renderer_Option::ChromaticAberration, false);
+             Renderer::SetOption(Renderer_Option::Grid,                false);
+             Renderer::SetOption(Renderer_Option::Vhs,                 false);
          }
     }
 
@@ -757,7 +757,7 @@ namespace spartan
                 sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(7.0f, -100.0f, -0.5f)); // sunrise height
 
                 entities::camera(Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
-                Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+                Renderer::SetOption(Renderer_Option::Grid, false);
 
                 // create
                 default_terrain = World::CreateEntity();
@@ -1343,9 +1343,9 @@ namespace spartan
 
                 // adjust renderer options
                 {
-                    Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
-                    Renderer::SetOption(Renderer_Option::Lights,             0.0f);
-                    Renderer::SetOption(Renderer_Option::Dithering,          0.0f);
+                    Renderer::SetOption(Renderer_Option::PerformanceMetrics, false);
+                    Renderer::SetOption(Renderer_Option::Lights,             false);
+                    Renderer::SetOption(Renderer_Option::Dithering,          false);
                 }
             }
 
@@ -1459,13 +1459,13 @@ namespace spartan
                 }
             
                 // renderer options
-                Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
-                Renderer::SetOption(Renderer_Option::Vhs, 1.0f);
-            
+                Renderer::SetOption(Renderer_Option::ChromaticAberration, true);
+                Renderer::SetOption(Renderer_Option::Vhs, true);
+
                 // camera
                 entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));
                 default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true);
-            
+
                 // audio hum
                 Entity* entity_hum = World::CreateEntity();
                 entity_hum->SetObjectName("audio_hum_electric");

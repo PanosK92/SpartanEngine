@@ -149,7 +149,7 @@ namespace spartan
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(Renderer_Option::VariableRateShading))
+        if (!m_global_options.GetOption<bool>(Renderer_Option::VariableRateShading))
             return;
 
         // acquire resources
@@ -299,7 +299,7 @@ namespace spartan
         // objects failing Hi-Z but recently visible get precise occlusion queries, with results read next frame
         // recently visible objects are drawn until confirmed occluded, avoiding sudden disappearances
 
-        if (!GetOption<bool>(Renderer_Option::OcclusionCulling))
+        if (!m_global_options.GetOption<bool>(Renderer_Option::OcclusionCulling))
             return;
     
         cmd_list->BeginTimeblock("occlusion");
@@ -501,7 +501,7 @@ namespace spartan
         RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output); // output resolution
    
         // deduce rasterizer state
-        bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
+        bool is_wireframe                     = m_global_options.GetOption<bool>(Renderer_Option::Wireframe);
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
 
@@ -514,7 +514,7 @@ namespace spartan
             pso.rasterizer_state                 = rasterizer_state;
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-            pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+            pso.vrs_input_texture                = m_global_options.GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
             pso.render_target_depth_texture      = tex_depth;
             pso.resolution_scale                 = true;
             pso.clear_depth                      = 0.0f;
@@ -575,7 +575,7 @@ namespace spartan
             }
 
             // blit to output resolution
-            float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
+            float resolution_scale = m_global_options.GetOption<float>(Renderer_Option::ResolutionScale);
             cmd_list->Blit(tex_depth, tex_depth_output, false, resolution_scale);
     
             // perform early resource transitions
@@ -605,9 +605,9 @@ namespace spartan
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::gbuffer_v);
             pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-            pso.rasterizer_state                 = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual); // transparents are see-through, no pre-pass needed
-            pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+            pso.rasterizer_state                 = m_global_options.GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual); // transparents are few, no pre-pass needed
+            pso.vrs_input_texture                = m_global_options.GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
             pso.resolution_scale                 = true;
             pso.render_target_color_textures[0]  = tex_color;
             pso.render_target_color_textures[1]  = tex_normal;
@@ -655,7 +655,7 @@ namespace spartan
     
                 // draw
                 {
-                    cmd_list->SetCullMode(GetOption<bool>(Renderer_Option::Wireframe) ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                    cmd_list->SetCullMode(m_global_options.GetOption<bool>(Renderer_Option::Wireframe) ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
     
@@ -688,7 +688,7 @@ namespace spartan
         static bool cleared = false;
         RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
 
-        if (GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion))
+        if (m_global_options.GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion))
         {
             RHI_PipelineState pso;
             pso.name             = "screen_space_ambient_occlusion";
@@ -699,7 +699,7 @@ namespace spartan
                 cmd_list->SetPipelineState(pso);
                 SetCommonTextures(cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
-                cmd_list->Dispatch(tex_ssao, GetOption<float>(Renderer_Option::ResolutionScale));
+                cmd_list->Dispatch(tex_ssao, m_global_options.GetOption<float>(Renderer_Option::ResolutionScale));
 
                 cleared = false;
             }
@@ -722,7 +722,7 @@ namespace spartan
 
         cmd_list->BeginTimeblock("transparency_reflection_refraction");
         {
-            if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
+            if (m_global_options.GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
             { 
                 cmd_list->BeginMarker("ssr");
                 {
@@ -779,7 +779,7 @@ namespace spartan
 
     void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(Renderer_Option::RayTracedReflections))
+        if (!m_global_options.GetOption<bool>(Renderer_Option::RayTracedReflections))
             return;
 
         // get resources
@@ -992,11 +992,11 @@ namespace spartan
 
             // push constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(static_cast<uint32_t>(World::GetLightCount())), GetOption<float>(Renderer_Option::Fog));
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(static_cast<uint32_t>(World::GetLightCount())), m_global_options.GetOption<float>(Renderer_Option::Fog));
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // dispatch
-            cmd_list->Dispatch(light_diffuse, GetOption<float>(Renderer_Option::ResolutionScale)); // adds read write barrier for light_diffuse internally
+            cmd_list->Dispatch(light_diffuse, m_global_options.GetOption<float>(Renderer_Option::ResolutionScale)); // adds read write barrier for light_diffuse internally
             cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
@@ -1026,7 +1026,7 @@ namespace spartan
 
             // push pass constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-            m_pcb_pass_cpu.set_f3_value(0.0f, GetOption<float>(Renderer_Option::Fog), 0.0f);
+            m_pcb_pass_cpu.set_f3_value(0.0f, m_global_options.GetOption<float>(Renderer_Option::Fog), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // set textures
@@ -1038,7 +1038,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
 
             // render
-            cmd_list->Dispatch(tex_out, GetOption<float>(Renderer_Option::ResolutionScale));
+            cmd_list->Dispatch(tex_out, m_global_options.GetOption<float>(Renderer_Option::ResolutionScale));
         }
         cmd_list->EndTimeblock();
     }
@@ -1070,7 +1070,7 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // render
-            cmd_list->Dispatch(tex_out, GetOption<float>(Renderer_Option::ResolutionScale));
+            cmd_list->Dispatch(tex_out, m_global_options.GetOption<float>(Renderer_Option::ResolutionScale));
         }
         cmd_list->EndTimeblock();
     }
@@ -1130,7 +1130,7 @@ namespace spartan
         bool any_pass_ran    = false;
     
         // depth of field
-        if (GetOption<bool>(Renderer_Option::DepthOfField))
+        if (m_global_options.GetOption<bool>(Renderer_Option::DepthOfField))
         {
             Pass_DepthOfField(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
@@ -1138,7 +1138,7 @@ namespace spartan
         }
     
         // motion blur
-        if (GetOption<bool>(Renderer_Option::MotionBlur))
+        if (m_global_options.GetOption<bool>(Renderer_Option::MotionBlur))
         {
             Pass_MotionBlur(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
@@ -1146,7 +1146,7 @@ namespace spartan
         }
     
         // bloom
-        if (GetOption<bool>(Renderer_Option::Bloom))
+        if (m_global_options.GetOption<bool>(Renderer_Option::Bloom))
         {
             Pass_Bloom(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
@@ -1154,7 +1154,7 @@ namespace spartan
         }
     
         // auto-exposure
-        if (GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
+        if (m_global_options.GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
         {
             RHI_Texture* tex_exposure = tex_in;
 
@@ -1178,37 +1178,37 @@ namespace spartan
         swap(tex_in, tex_out);
     
         // dithering
-        if (GetOption<bool>(Renderer_Option::Dithering))
+        if (m_global_options.GetOption<bool>(Renderer_Option::Dithering))
         {
             Pass_Dithering(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
         }
     
         // sharpening
-        Renderer_AntiAliasing_Upsampling aa_upsampling = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+        Renderer_AntiAliasing_Upsampling aa_upsampling = m_global_options.GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
         bool is_fsr                                    = aa_upsampling == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr; // fsr does it's own sharpening
-        if (GetOption<bool>(Renderer_Option::Sharpness) && !is_fsr)
+        if (m_global_options.GetOption<bool>(Renderer_Option::Sharpness) && !is_fsr)
         {
             Pass_Sharpening(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
         }
     
         // film grain
-        if (GetOption<bool>(Renderer_Option::FilmGrain))
+        if (m_global_options.GetOption<bool>(Renderer_Option::FilmGrain))
         {
             Pass_FilmGrain(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
         }
     
         // chromatic aberration
-        if (GetOption<bool>(Renderer_Option::ChromaticAberration))
+        if (m_global_options.GetOption<bool>(Renderer_Option::ChromaticAberration))
         {
             Pass_ChromaticAberration(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
         }
     
         // vhs
-        if (GetOption<bool>(Renderer_Option::Vhs))
+        if (m_global_options.GetOption<bool>(Renderer_Option::Vhs))
         {
             Pass_Vhs(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
@@ -1306,7 +1306,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
 
             // set pass constants
-            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Bloom), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f3_value(m_global_options.GetOption<float>(Renderer_Option::Bloom), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // set textures
@@ -1336,7 +1336,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Tonemapping));
+        m_pcb_pass_cpu.set_f3_value(m_global_options.GetOption<float>(Renderer_Option::Tonemapping));
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1496,7 +1496,7 @@ namespace spartan
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* tex_velocity    = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
         RHI_Texture* tex_depth       = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-        const float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
+        const float resolution_scale = m_global_options.GetOption<float>(Renderer_Option::ResolutionScale);
 
         cmd_list->BeginTimeblock("aa_upscale");
         {
@@ -1504,7 +1504,7 @@ namespace spartan
             cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
             cmd_list->InsertPendingBarrierGroup();
 
-            Renderer_AntiAliasing_Upsampling method = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+            Renderer_AntiAliasing_Upsampling method = m_global_options.GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
             if (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) // highest quality, most expensive
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
@@ -1521,7 +1521,7 @@ namespace spartan
                     cmd_list,
                     World::GetCamera(),
                     m_cb_frame_cpu.delta_time,
-                    GetOption<float>(Renderer_Option::Sharpness),
+                    m_global_options.GetOption<float>(Renderer_Option::Sharpness),
                     tex_in,
                     tex_depth,
                     tex_velocity,
@@ -1554,6 +1554,21 @@ namespace spartan
         RHI_Texture* tex_exposure          = GetRenderTarget(Renderer_RenderTarget::auto_exposure);
         RHI_Texture* tex_exposure_previous = GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
 
+        // clear once if disabled or continue if enabled
+        float adaptation_speed         = m_global_options.GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed);
+        static bool cleared_on_disable = false;
+        if (adaptation_speed <= 0.0f)
+        {
+            if (!cleared_on_disable)
+            {
+                cmd_list->ClearTexture(tex_exposure, Color::standard_white);
+                cmd_list->ClearTexture(tex_exposure_previous, Color::standard_white);
+                cleared_on_disable = true;
+            }
+            return;
+        }
+        cleared_on_disable = false;
+
         // define pipeline state
         RHI_PipelineState pso;
         pso.name             = "auto_exposure";
@@ -1565,10 +1580,10 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
     
             // push constants
-            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed));
+            m_pcb_pass_cpu.set_f3_value(m_global_options.GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed));
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);                 // input: current frame
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in, tex_in->GetMipCount() - 1, 1); // input: current frame
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_exposure_previous); // input: previous exposure value
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_exposure);           // output: current exposure value
 
@@ -1673,7 +1688,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
             
             // set pass constants
-            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f3_value(m_global_options.GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
             
             // set textures
@@ -1776,14 +1791,14 @@ namespace spartan
                 math::Vector3 pos_world = entity->GetPosition();
                 if (entity->GetComponent<AudioSource>())
                 {
-                    if (GetOption<bool>(Renderer_Option::AudioSources))
+                    if (m_global_options.GetOption<bool>(Renderer_Option::AudioSources))
                     {
                         m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
                     }
                 }
                 else if (Light* light = entity->GetComponent<Light>())
                 {
-                    if (GetOption<bool>(Renderer_Option::Lights))
+                    if (m_global_options.GetOption<bool>(Renderer_Option::Lights))
                     {
                         // append light icon based on type
                         RHI_Texture* texture = nullptr;
@@ -1854,7 +1869,7 @@ namespace spartan
 
     void Renderer::Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Grid))
+        if (!m_global_options.GetOption<bool>(Renderer_Option::Grid))
             return;
 
         // acquire resources
@@ -1944,7 +1959,7 @@ namespace spartan
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::SelectionOutline) || Engine::IsFlagSet(EngineMode::Playing))
+        if (!m_global_options.GetOption<bool>(Renderer_Option::SelectionOutline) || Engine::IsFlagSet(EngineMode::Playing))
             return;
 
         // acquire shaders
@@ -2039,7 +2054,7 @@ namespace spartan
     void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         // acquire resources
-        const bool draw       = GetOption<bool>(Renderer_Option::PerformanceMetrics);
+        const bool draw       = m_global_options.GetOption<bool>(Renderer_Option::PerformanceMetrics);
         const auto& shader_v  = GetShader(Renderer_Shader::font_v);
         const auto& shader_p  = GetShader(Renderer_Shader::font_p);
         shared_ptr<Font> font = GetFont();
