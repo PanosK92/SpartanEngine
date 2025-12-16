@@ -24,17 +24,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========
 #include <functional>
 #include <variant>
+#include <cstdint>
+#include <map>
 //===================
 
 /*
 HOW TO USE
-================================================================================
+==============================================================================================
 To subscribe a function to an event -> SP_SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
+To subscribe and store handle       -> auto handle = SP_SUBSCRIBE_TO_EVENT(EVENT_ID, Handler);
+To unsubscribe from an event        -> SP_UNSUBSCRIBE_FROM_EVENT(EVENT_ID, handle);
 To fire an event                    -> SP_FIRE_EVENT(EVENT_ID);
 To fire an event with data          -> SP_FIRE_EVENT_DATA(EVENT_ID, Variant);
 
 Note: This is a blocking event system
-================================================================================
+==============================================================================================
 */
 
 //= MACROS ===============================================================================================
@@ -50,7 +54,8 @@ Note: This is a blocking event system
 #define SP_FIRE_EVENT(event_enum)                      spartan::Event::Fire(event_enum)
 #define SP_FIRE_EVENT_DATA(event_enum, data)           spartan::Event::Fire(event_enum, data)
                                                        
-#define SP_SUBSCRIBE_TO_EVENT(event_enum, function)    spartan::Event::Subscribe(event_enum, function);
+#define SP_SUBSCRIBE_TO_EVENT(event_enum, function)    spartan::Event::Subscribe(event_enum, function)
+#define SP_UNSUBSCRIBE_FROM_EVENT(event_enum, handle)  spartan::Event::Unsubscribe(event_enum, handle)
 //========================================================================================================
 
 namespace spartan
@@ -78,12 +83,14 @@ namespace spartan
         std::vector<std::shared_ptr<Entity>>
     >;
     using subscriber = std::function<void(const sp_variant&)>;
+    using subscription_handle = uint64_t;
 
     class Event
     {
     public:
         static void Shutdown();
-        static void Subscribe(const EventType event_type, subscriber&& function);
+        static subscription_handle Subscribe(const EventType event_type, subscriber&& function);
+        static void Unsubscribe(const EventType event_type, subscription_handle handle);
         static void Fire(const EventType event_type, sp_variant data = 0);
     };
 }

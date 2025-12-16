@@ -32,27 +32,37 @@ namespace spartan
 {
     namespace
     {
-        static array<vector<subscriber>, static_cast<uint32_t>(EventType::Max)> event_subscribers;
+        static array<map<subscription_handle, subscriber>, static_cast<uint32_t>(EventType::Max)> event_subscribers;
+        static subscription_handle next_subscription_id = 1;
     }
 
     void Event::Shutdown()
     {
-        for (vector<subscriber>& subscribers : event_subscribers)
+        for (map<subscription_handle, subscriber>& subscribers : event_subscribers)
         {
             subscribers.clear();
         }
+        next_subscription_id = 1;
     }
 
-    void Event::Subscribe(const EventType event_type, subscriber&& function)
+    subscription_handle Event::Subscribe(const EventType event_type, subscriber&& function)
     {
-        event_subscribers[static_cast<uint32_t>(event_type)].push_back(std::forward<subscriber>(function));
+        subscription_handle handle = next_subscription_id++;
+        event_subscribers[static_cast<uint32_t>(event_type)][handle] = std::forward<subscriber>(function);
+        return handle;
+    }
+
+    void Event::Unsubscribe(const EventType event_type, subscription_handle handle)
+    {
+        auto& subscribers = event_subscribers[static_cast<uint32_t>(event_type)];
+        subscribers.erase(handle);
     }
 
     void Event::Fire(const EventType event_type, sp_variant data /*= 0*/)
     {
-        for (const auto& subscriber : event_subscribers[static_cast<uint32_t>(event_type)])
+        for (const auto& [handle, subscriber_func] : event_subscribers[static_cast<uint32_t>(event_type)])
         {
-            subscriber(data);
+            subscriber_func(data);
         }
     }
 }
