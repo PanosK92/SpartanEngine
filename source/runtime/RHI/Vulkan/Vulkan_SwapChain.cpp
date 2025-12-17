@@ -288,11 +288,14 @@ namespace spartan
 
         Create();
     
-        SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
+        m_window_resize_event_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
     }
 
     RHI_SwapChain::~RHI_SwapChain()
     {
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WindowResized, m_window_resize_event_handle);
+        m_window_resize_event_handle = 0;
+
         for (void*& image_view : m_rhi_rtv)
         {
             if (image_view)
