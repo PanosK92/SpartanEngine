@@ -878,19 +878,19 @@ namespace spartan
                         // create sub-mesh and add three lods for the grass blade
                         uint32_t sub_mesh_index = 0;
 
-                        // lod 0: high quality grass blade (5 segments)
+                        // lod 0: high quality grass blade (3 segments)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 5); // high detail
+                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 3); // high detail
                             mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index);  // add lod 0, no auto-lod generation
                         }
 
-                        // lod 1: medium quality grass blade (3 segment)
+                        // lod 1: medium quality grass blade (2 segment)
                         {
                             vector<RHI_Vertex_PosTexNorTan> vertices;
                             vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 3); // medium detail
+                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 2); // medium detail
                             mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);               // add lod 1
                         }
 
@@ -1097,7 +1097,7 @@ namespace spartan
                                         // 1. low detail - near
                                         {
                                             Entity* entity = World::CreateEntity();
-                                            entity->SetObjectName("grass_layer_detail_low");
+                                            entity->SetObjectName("grass_layer_density_low");
                                             entity->SetParent(terrain_tile);
 
                                             // copy the first 10% of transforms
@@ -1114,7 +1114,7 @@ namespace spartan
                                         // 2. medium detail - medium
                                         {
                                             Entity* entity = World::CreateEntity();
-                                            entity->SetObjectName("grass_layer_detail_mid");
+                                            entity->SetObjectName("grass_layer_density_mid");
                                             entity->SetParent(terrain_tile);
 
                                             // copy the next 20% of transforms
@@ -1125,13 +1125,13 @@ namespace spartan
                                             renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                             renderable->SetInstances(mid_transforms);
                                             renderable->SetMaterial(material_grass_blade);
-                                            renderable->SetMaxRenderDistance(350.0f);
+                                            renderable->SetMaxRenderDistance(render_distance_foliage * 0.3f);
                                         }
 
                                         // 3. high detail - near
                                         {
                                             Entity* entity = World::CreateEntity();
-                                            entity->SetObjectName("grass_layer_detail_high");
+                                            entity->SetObjectName("grass_layer_density_high");
                                             entity->SetParent(terrain_tile);
 
                                             // copy the remaining 70% of transforms
@@ -1142,7 +1142,7 @@ namespace spartan
                                             renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                             renderable->SetInstances(near_transforms);
                                             renderable->SetMaterial(material_grass_blade);
-                                            renderable->SetMaxRenderDistance(150.0f);
+                                            renderable->SetMaxRenderDistance(render_distance_foliage * 0.1f);
                                         }
                                     }
                                 }
