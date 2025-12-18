@@ -31,9 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
-#include "Components/Volume.h"
 #include "../Resource/ResourceCache.h"
 #include "Rendering/Renderer.h"
+#include "Subsystems/RenderOptionsSubsystem.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -48,6 +48,7 @@ namespace spartan
 {
     namespace
     {
+        vector<unique_ptr<WorldSubsystem>> world_subsystems;
         vector<Entity*> entities;
         vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
@@ -206,7 +207,18 @@ namespace spartan
 
     void World::Initialize()
     {
+        InitializeSubsystems();
+    }
 
+    void World::InitializeSubsystems()
+    {
+        // Initialize world subsystems
+        world_subsystems.push_back(make_unique<RenderOptionsSubsystem>());
+
+        for (const auto& subsystem : world_subsystems)
+        {
+            subsystem->Initialize();
+        }
     }
 
     void World::Shutdown()
@@ -227,6 +239,13 @@ namespace spartan
         camera = nullptr;
         light  = nullptr;
         file_path.clear();
+
+        // clear subsystems
+        for (const auto& subsystem : world_subsystems)
+        {
+            subsystem->Shutdown();
+        }
+        world_subsystems.clear();
 
         // clear change tracking
         entity_states.clear();
@@ -269,12 +288,20 @@ namespace spartan
 
         ProcessPendingRemovals();
 
-      
+
         for (Entity* entity : entities)
         {
             if (entity->GetActive())
             {
                 entity->PreTick();
+            }
+        }
+
+        for (const auto& subsystem : world_subsystems)
+        {
+            if (subsystem->IsEnabled())
+            {
+                subsystem->PreTick();
             }
         }
 
@@ -393,10 +420,25 @@ namespace spartan
             compute_bounding_box();
             resolve = false;
             entity_states.clear();
+            InitializeSubsystems();
         }
 
-        // TODO: Create WorldSubSystem class with a Tick() function and place all of the instances' ticks here
-        VolumeSystem::Tick();
+        // Subsystem Ticks
+        for (const auto& subsystem : world_subsystems)
+        {
+            if (subsystem->IsEnabled())
+            {
+                subsystem->Tick();
+            }
+        }
+
+        for (const auto& subsystem : world_subsystems)
+        {
+            if (subsystem->IsEnabled())
+            {
+                subsystem->PostTick();
+            }
+        }
 
         if (Engine::IsFlagSet(EngineMode::Playing))
         {

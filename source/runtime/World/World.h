@@ -35,6 +35,7 @@ namespace spartan
     public:
         // system
         static void Initialize();
+        static void InitializeSubsystems();
         static void Shutdown();
         static void Tick();
 

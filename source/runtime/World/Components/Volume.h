@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "Component.h"
 #include "Rendering/RenderOptionsPool.h"
+#include "World/WorldSubsystem.h"
 //============================================
 
 namespace spartan
@@ -85,30 +86,5 @@ namespace spartan
         // Debug Draw
         bool GetDebugDrawEnabled() const { return m_is_debug_draw_enabled; }
         void SetDebugDrawEnabled(bool value) { m_is_debug_draw_enabled = value; }
-    };
-
-    /*
-     * A global manager that handles multiple Volume components at once as well as
-     * their interaction with the rest of the World and Entities.
-     */
-    // TODO: Turn VolumeSystem into a WorldSubSystem instance
-    class VolumeSystem
-    {
-    private:
-        static std::vector<Volume*> registered_volumes;
-        static std::vector<Volume*> overlapping_volumes;
-        static RenderOptionsPool mixed_volume_options; // volume data accumulation (when overlapped)
-        static RenderOptionsPool blended_options; // volume data accumulation (on interpolation)
-        static bool is_transitioning;
-
-        static void UpdateActiveVolumes(const math::Vector3& camera_position);
-        static void UpdateMixedRenderOptions();
-        static void InterpolateOverlappingVolumes(const math::Vector3& camera_position);
-        static void UpdateRendererOptions();
-    public:
-        static void Tick();
-        static void Shutdown();
-        static void AddVolume(Volume* volume);
-        static void RemoveVolume(Volume* volume);
     };
 }
