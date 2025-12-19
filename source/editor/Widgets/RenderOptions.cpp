@@ -36,7 +36,7 @@ using namespace spartan::math;
 namespace
 {
     // table
-    int column_count      = 2;
+    int column_count      = 3;
     ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_Resizable;
 
     // options sizes
@@ -66,6 +66,37 @@ namespace
         ImGui::TableSetColumnIndex(1);
     }
 
+    void option_third_column()
+    {
+        ImGui::TableSetColumnIndex(2);
+    }
+
+    void render_options_table_header(const char* title)
+    {
+        ImGui::TableSetupColumn(title);
+        ImGui::TableSetupColumn("Editor Value");
+        ImGui::TableSetupColumn("Renderer Value");
+
+        ImGui::TableNextColumn();
+        ImGui::TableHeader(title);
+
+        ImGui::TableNextColumn();
+        ImGui::TableHeader("Editor Value");
+        ImGuiSp::tooltip("Global value set by the user");
+
+        ImGui::TableNextColumn();
+        ImGui::TableHeader("Renderer Value");
+        ImGuiSp::tooltip("Final value read by the renderer.\nMay be overridden by volume components.");
+    }
+
+    int get_item_id()
+    {
+        int cursorX = static_cast<int>(ImGui::GetCursorPosX());
+        int cursorY = static_cast<int>(ImGui::GetCursorPosY());
+
+        return stoi(to_string(cursorX) + to_string(cursorY));
+    }
+
     void option_check_box(const char* label, const Renderer_Option render_option, const char* tooltip = nullptr)
     {
         option_first_column();
@@ -76,11 +107,44 @@ namespace
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        bool value = Renderer::GetOption<bool>(render_option);
-        ImGui::Checkbox("", &value);
-        Renderer::SetOption(render_option, value);
+        ImGui::PushID(get_item_id());
+        bool& editor_value = Renderer::GetOptionRef<bool>(render_option, true);
+        ImGui::Checkbox("", &editor_value);
+        Renderer::SetOption(render_option, editor_value, true);
         ImGui::PopID();
+
+        option_third_column();
+        bool& renderer_value = Renderer::GetOptionRef<bool>(render_option);
+        ImGui::BeginDisabled(true);
+        ImGui::PushID(get_item_id());
+        ImGui::Checkbox("", &renderer_value);
+        ImGui::PopID();
+        ImGui::EndDisabled();
+    }
+
+    bool option_slider_float(const char* label, float& value, const char* tooltip = nullptr, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.1f")
+    {
+        option_first_column();
+        ImGui::Text(label);
+        if (tooltip)
+        {
+            ImGuiSp::tooltip(tooltip);
+        }
+
+        option_second_column();
+        ImGui::PushID(get_item_id());
+        ImGui::PushItemWidth(width_combo_box);
+        bool changed =  ImGui::SliderFloat(label, &value, min, max, format);
+        ImGui::PopItemWidth();
+        ImGui::PopID();
+
+        option_third_column();
+        ImGui::PushItemWidth(width_input_numeric);
+        ImGui::Text(format, value);
+        ImGui::PopItemWidth();
+
+
+        return changed;
     }
 
     void option_check_box(const char* label, bool& value, const char* tooltip = nullptr)
@@ -93,7 +157,7 @@ namespace
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushID(get_item_id());
         ImGui::Checkbox("", &value);
         ImGui::PopID();
     }
@@ -108,15 +172,21 @@ namespace
         }
 
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushID(get_item_id());
         ImGui::PushItemWidth(width_combo_box);
         bool result = ImGuiSp::combo_box("", options, &selection_index);
         ImGui::PopItemWidth();
         ImGui::PopID();
+
+        option_third_column();
+        ImGui::PushItemWidth(width_input_numeric);
+        ImGui::Text(options[selection_index].c_str());
+        ImGui::PopItemWidth();
+
         return result;
     }
 
-    bool option_value(const char* label, Renderer_Option render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
+    bool option_value(const char* label, Renderer_Option render_option, bool is_disabled, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
     {
         option_first_column();
         ImGui::Text(label);
@@ -128,21 +198,30 @@ namespace
         bool changed = false;
         option_second_column();
         {
-            float value = Renderer::GetOption<float>(render_option);
+            float& editor_value = Renderer::GetOptionRef<float>(render_option, true);
+            float old_value = editor_value;
 
-            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+            ImGui::PushID(get_item_id());
             ImGui::PushItemWidth(width_input_numeric);
-            changed = ImGui::InputFloat("", &value, step, 0.0f, format);
+            changed = ImGui::InputFloat("", &editor_value, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
-            value = clamp(value, min, max);
+            editor_value = clamp(editor_value, min, max);
 
             // Only update if changed
-            if (Renderer::GetOption<float>(render_option) != value)
+            if (changed && old_value != editor_value)
             {
-                Renderer::SetOption(render_option, value);
+                Renderer::SetOption(render_option, editor_value, true);
             }
         }
+
+        option_third_column();
+        float& renderer_value = Renderer::GetOptionRef<float>(render_option);
+        ImGui::PushItemWidth(width_input_numeric);
+        ImGui::BeginDisabled(is_disabled);
+        ImGui::Text(format, renderer_value);
+        ImGui::EndDisabled();
+        ImGui::PopItemWidth();
 
         return changed;
     }
@@ -154,7 +233,7 @@ namespace
 
         option_second_column();
         {
-            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+            ImGui::PushID(get_item_id());
             ImGui::PushItemWidth(width_input_numeric);
             ImGui::InputFloat("", &option, step, 0.0f, format);
             ImGui::PopItemWidth();
@@ -167,7 +246,7 @@ namespace
         option_first_column();
         ImGui::Text(label);
         option_second_column();
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
+        ImGui::PushID(get_item_id());
         ImGui::PushItemWidth(width_input_numeric);
         ImGui::InputInt("##shadow_resolution", &option, step);
         ImGui::PopItemWidth();
@@ -230,9 +309,7 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##rendering", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Option");
 
                 if (option("Resolution"))
                 {
@@ -255,8 +332,8 @@ void RenderOptions::OnTickVisible()
                     option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying shading detail per pixel");
                     option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "Scales render resolution automatically based on GPU load");
 
-                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution));
-                    option_value("Resolution scale", Renderer_Option::ResolutionScale, "Adjusts the percentage of the render resolution", 0.01f);
+                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution, true));
+                    option_value("Resolution scale", Renderer_Option::ResolutionScale, false, "Adjusts the percentage of the render resolution", 0.01f);
                     ImGui::EndDisabled();
                 }
 
@@ -272,16 +349,16 @@ void RenderOptions::OnTickVisible()
 
                     Vector2 res_render = Renderer::GetResolutionRender();
                     Vector2 res_output = Renderer::GetResolutionOutput();
-                    uint32_t mode      = Renderer::GetOption<uint32_t>(Renderer_Option::AntiAliasing_Upsampling);
+                    uint32_t mode      = Renderer::GetOption<uint32_t>(Renderer_Option::AntiAliasing_Upsampling, true);
                     if (option_combo_box("Upsampling method", upsamplers, mode))
                     {
-                        Renderer::SetOption(Renderer_Option::AntiAliasing_Upsampling, static_cast<float>(mode));
+                        Renderer::SetOption(Renderer_Option::AntiAliasing_Upsampling, static_cast<float>(mode), true);
                     }
 
-                    bool use_rcas = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
+                    bool use_rcas = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling, true) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
                     string label = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
                     string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening" : "AMD FidelityFX Contrast Adaptive Sharpening";
-                    option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
+                    option_value(label.c_str(), Renderer_Option::Sharpness, false, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
                 }
 
                 if (option("Ray-traced Effects"))
@@ -309,31 +386,30 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##output", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Option");
 
                 if (option("Display"))
                 {
                     option_check_box("HDR", Renderer_Option::Hdr, "Enable high dynamic range output");
-                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr));
-                    option_value("Gamma", Renderer_Option::Gamma);
+                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr, true));
+                    option_value("Gamma", Renderer_Option::Gamma, false);
                     ImGui::EndDisabled();
-                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation");
+                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, false, "Negative value disables adaptation");
 
-                    bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
+                    bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr, true);
                     ImGui::BeginDisabled(!hdr_enabled);
-                    option_value("White point (nits)", Renderer_Option::WhitePoint, "Target luminance of peak white", 1.0f);
+                    option_value("White point (nits)", Renderer_Option::WhitePoint, hdr_enabled, "Target luminance of peak white", 1.0f);
                     ImGui::EndDisabled();
                 }
 
                 if (option("Tone Mapping"))
                 {
                     static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Off" };
-                    uint32_t index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
-                    if (option_combo_box("Algorithm", tonemapping, index))
+                    uint32_t index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping, true);
+                    option_combo_box("Algorithm", tonemapping, index);
+                    if (Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping, true) != index)
                     {
-                        Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(index));
+                        Renderer::SetOption(Renderer_Option::Tonemapping, index, true);
                     }
                 }
 
@@ -349,11 +425,9 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##camera", column_count, flags))
             {
-                ImGui::TableSetupColumn("Effect");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Effect");
 
-                option_value("Bloom intensity", Renderer_Option::Bloom, "Blend factor, set to 0 to disable", 0.01f);
+                option_value("Bloom intensity", Renderer_Option::Bloom, false, "Blend factor, set to 0 to disable", 0.01f);
                 option_check_box("Motion blur", Renderer_Option::MotionBlur, "Controlled by camera shutter speed");
                 option_check_box("Depth of field", Renderer_Option::DepthOfField, "Controlled by camera aperture");
                 option_check_box("Film grain", Renderer_Option::FilmGrain, "Simulates old film camera noise");
@@ -373,11 +447,9 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##world", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Option");
 
-                option_value("Fog density", Renderer_Option::Fog, "Controls atmospheric fog strength", 0.1f);
+                option_value("Fog density", Renderer_Option::Fog, false, "Controls atmospheric fog strength", 0.1f);
 
                 if (option("Wind"))
                 {
@@ -386,8 +458,8 @@ void RenderOptions::OnTickVisible()
                     float direction = atan2f(wind.x, wind.z) * (180.0f / 3.14159f);
 
                     bool changed = false;
-                    changed |= ImGui::SliderFloat("Strength", &strength, 0.1f, 10.0f, "%.1f");
-                    changed |= ImGui::SliderFloat("Direction (deg)", &direction, 0.0f, 360.0f, "%.1f");
+                    changed |= option_slider_float("Strength", strength, "", 0.1f, 10.0f);
+                    changed |= option_slider_float("Direction (deg)", direction, "", 0.0f, 360.0f);
 
                     if (changed)
                     {
@@ -410,9 +482,7 @@ void RenderOptions::OnTickVisible()
         {
             if (ImGui::BeginTable("##debug", column_count, flags))
             {
-                ImGui::TableSetupColumn("Option");
-                ImGui::TableSetupColumn("Value");
-                ImGui::TableHeadersRow();
+                render_options_table_header("Option");
 
                 if (option("Performance"))
                 {
@@ -429,6 +499,10 @@ void RenderOptions::OnTickVisible()
                         ImGui::InputFloat("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
                         ImGui::PopItemWidth();
                         Timer::SetFpsLimit(fps_target);
+                    }
+                    option_third_column();
+                    {
+                        ImGui::Text("%.1f", Timer::GetFpsLimit());
                     }
                     option_check_box("Show performance metrics", Renderer_Option::PerformanceMetrics);
                 }

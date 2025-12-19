@@ -104,9 +104,28 @@ namespace spartan
                 root.append_child("ResolutionRenderWidth").text().set(Renderer::GetResolutionRender().x);
                 root.append_child("ResolutionRenderHeight").text().set(Renderer::GetResolutionRender().y);
                 root.append_child("FPSLimit").text().set(Timer::GetFpsLimit());
-                for (auto& [option, value] : Renderer::GetOptions())
+                for (auto& [option, value] : Renderer::GetRenderOptionsPool().GetOptions())
                 {
-                    root.append_child(renderer_option_to_string(option)).text().set(value);
+                    // Force variant value to become a float WITHOUT ASSIGNING BACK TO MAP!
+                    float float_value = 0.0f;
+                    if (std::holds_alternative<float>(value))
+                    {
+                        float_value = std::get<float>(value);
+                    }
+                    else if (std::holds_alternative<int>(value))
+                    {
+                        float_value = static_cast<float>(std::get<int>(value));
+                    }
+                    else if (std::holds_alternative<uint32_t>(value))
+                    {
+                        float_value = static_cast<float>(std::get<uint32_t>(value));
+                    }
+                    else if (std::holds_alternative<bool>(value))
+                    {
+                        float_value = std::get<bool>(value) ? 1.0f : 0.0f;
+                    }
+
+                    root.append_child(renderer_option_to_string(option)).text().set(float_value);
                 }
 
                 root.append_child("UseRootShaderDirectory").text().set(ResourceCache::GetUseRootShaderDirectory());
@@ -141,12 +160,36 @@ namespace spartan
                 Renderer::SetResolutionOutput(root.child("ResolutionOutputWidth").text().as_int(), root.child("ResolutionOutputHeight").text().as_int());
 
                 unordered_map<Renderer_Option, float> m_render_options;
-                for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)
+                map<Renderer_Option, RenderOptionType> m_options;
+                for (auto& [option, value] : m_options)
                 {
-                    Renderer_Option option = static_cast<Renderer_Option>(i);
-                    m_render_options[option] = root.child(renderer_option_to_string(option)).text().as_float();
+                    const char* name = RenderOptionsPool::EnumToString(option).c_str();
+                    auto node = root.child(name);
+                    if (!node)
+                        continue;
+
+                    if (std::holds_alternative<bool>(value))
+                    {
+                        bool val = node.text().as_bool();
+                        value = val;
+                    }
+                    else if (std::holds_alternative<int>(value))
+                    {
+                        int val = node.text().as_int();
+                        value = val;
+                    }
+                    else if (std::holds_alternative<float>(value))
+                    {
+                        float val = node.text().as_float();
+                        value = val;
+                    }
+                    else if (std::holds_alternative<uint32_t>(value))
+                    {
+                        uint32_t val = static_cast<uint32_t>(node.text().as_uint());
+                        value = val;
+                    }
                 }
-                Renderer::SetOptions(m_render_options);
+                Renderer::GetRenderOptionsPool().SetOptions(m_options);
 
                 // this setting can be mapped directly to the resource cache (no need to wait for it to initialize)
                 ResourceCache::SetUseRootShaderDirectory(root.child("UseRootShaderDirectory").text().as_bool());
