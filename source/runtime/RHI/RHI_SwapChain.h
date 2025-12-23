@@ -92,6 +92,7 @@ namespace spartan
         uint32_t m_image_index   = 0;
         uint32_t semaphore_index = 0;
         void* m_sdl_window       = nullptr;
+        subscription_handle m_window_resize_event_handle;
         std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_image_acquired_semaphore;
 
         // rhi
