@@ -200,5 +200,10 @@ namespace spartan
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;
         std::vector<spartan::Entity*> m_selected_entities;
+        
+        // pre-allocated buffers for picking (to avoid heap allocations)
+        std::vector<math::RayHitResult> m_pick_hits;
+        std::vector<uint32_t> m_pick_indices;
+        std::vector<RHI_Vertex_PosTexNorTan> m_pick_vertices;
     };
 }

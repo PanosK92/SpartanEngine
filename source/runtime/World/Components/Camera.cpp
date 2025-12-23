@@ -47,6 +47,9 @@ namespace spartan
         m_entity_ptr->SetPosition(Vector3(0.0f, 3.0f, -5.0f));
         SetFlag(CameraFlags::CanBeControlled, true);
         SetFlag(CameraFlags::PhysicalBodyAnimation, true);
+        m_pick_hits.reserve(256);
+        m_pick_indices.reserve(65536);
+        m_pick_vertices.reserve(65536);
     }
 
     void Camera::Initialize()
@@ -162,8 +165,8 @@ namespace spartan
 
         const Ray& ray = ComputePickingRay();
 
-        static vector<RayHitResult> hits;
-        hits.clear();
+        // use pre-allocated member vector instead of static
+        m_pick_hits.clear();
 
         const vector<Entity*>& entities = World::GetEntities();
         for (Entity* entity : entities)
@@ -176,10 +179,10 @@ namespace spartan
             if (distance == numeric_limits<float>::infinity())
                 continue;
 
-            hits.emplace_back(entity, Vector3::Zero, distance, distance == 0.0f);
+            m_pick_hits.emplace_back(entity, Vector3::Zero, distance, distance == 0.0f);
         }
 
-        if (hits.empty())
+        if (m_pick_hits.empty())
         {
             ClearSelection();
             return;
@@ -189,24 +192,40 @@ namespace spartan
         float best_screen_dist = numeric_limits<float>::max();
         float best_depth       = numeric_limits<float>::max();
         Entity* best_entity    = nullptr;
-        for (RayHitResult& broad_hit : hits)
+        for (RayHitResult& broad_hit : m_pick_hits)
         {
             Renderable* renderable = broad_hit.m_entity->GetComponent<Renderable>();
-            static vector<uint32_t> indices;
-            indices.clear();
-            static vector<RHI_Vertex_PosTexNorTan> vertices;
-            vertices.clear();
-            renderable->GetGeometry(&indices, &vertices);
-            if (indices.empty() || vertices.empty())
+
+            // query mesh size first to reserve exact capacity and avoid allocations
+            uint32_t index_count  = renderable->GetIndexCount();
+            uint32_t vertex_count = renderable->GetVertexCount();
+            
+            // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
+            // only reserve if current capacity is insufficient
+            if (m_pick_indices.capacity() < index_count)
+            {
+                m_pick_indices.reserve(index_count);
+            }
+            if (m_pick_vertices.capacity() < vertex_count)
+            {
+                m_pick_vertices.reserve(vertex_count);
+            }
+            
+            // clear and reuse pre-allocated buffers 
+            m_pick_indices.clear();
+            m_pick_vertices.clear();
+
+            renderable->GetGeometry(&m_pick_indices, &m_pick_vertices);
+            if (m_pick_indices.empty() || m_pick_vertices.empty())
                 continue;
 
             const Matrix& transform = broad_hit.m_entity->GetMatrix();
 
-            for (uint32_t i = 0; i < indices.size(); i += 3)
+            for (uint32_t i = 0; i < m_pick_indices.size(); i += 3)
             {
-                Vector3 p1(vertices[indices[i]].pos);
-                Vector3 p2(vertices[indices[i + 1]].pos);
-                Vector3 p3(vertices[indices[i + 2]].pos);
+                Vector3 p1(m_pick_vertices[m_pick_indices[i]].pos);
+                Vector3 p2(m_pick_vertices[m_pick_indices[i + 1]].pos);
+                Vector3 p3(m_pick_vertices[m_pick_indices[i + 2]].pos);
 
                 p1 = p1 * transform;
                 p2 = p2 * transform;
