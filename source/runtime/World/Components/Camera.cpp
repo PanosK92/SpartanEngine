@@ -164,8 +164,6 @@ namespace spartan
         }
 
         const Ray& ray = ComputePickingRay();
-
-        // use pre-allocated member vector instead of static
         m_pick_hits.clear();
 
         const vector<Entity*>& entities = World::GetEntities();

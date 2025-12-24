@@ -329,7 +329,7 @@ void RenderOptions::OnTickVisible()
 
                 if (option("Tone Mapping"))
                 {
-                    static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Off" };
+                    static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Gran Turismo 7", "Off" };
                     uint32_t index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
                     if (option_combo_box("Algorithm", tonemapping, index))
                     {

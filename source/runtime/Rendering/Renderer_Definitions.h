@@ -76,6 +76,7 @@ namespace spartan
         AgX,
         Reinhard,
         AcesNautilus,
+        GranTurismo7,
         Max,
     };
 
