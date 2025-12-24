@@ -290,10 +290,10 @@ namespace spartan
         void set_base_renderer_options()
          {
              // disable all effects which are specific to certain worlds, let the each world decide which effects it wants to enable
-             Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
-             Renderer::SetOption(Renderer_Option::ChromaticAberration, 0.0f);
-             Renderer::SetOption(Renderer_Option::Grid,                0.0f);
-             Renderer::SetOption(Renderer_Option::Vhs,                 0.0f);
+             Renderer::SetOption(Renderer_Option::Dithering,           false);
+             Renderer::SetOption(Renderer_Option::ChromaticAberration, false);
+             Renderer::SetOption(Renderer_Option::Grid,                false);
+             Renderer::SetOption(Renderer_Option::Vhs,                 false);
          }
     }
 
@@ -1344,9 +1344,9 @@ namespace spartan
 
                 // adjust renderer options
                 {
-                    Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
-                    Renderer::SetOption(Renderer_Option::Lights,             0.0f);
-                    Renderer::SetOption(Renderer_Option::Dithering,          0.0f);
+                    Renderer::SetOption(Renderer_Option::PerformanceMetrics, false);
+                    Renderer::SetOption(Renderer_Option::Lights,             false);
+                    Renderer::SetOption(Renderer_Option::Dithering,          false);
                 }
             }
 
@@ -1460,8 +1460,8 @@ namespace spartan
                 }
             
                 // renderer options
-                Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
-                Renderer::SetOption(Renderer_Option::Vhs, 1.0f);
+                Renderer::SetOption(Renderer_Option::ChromaticAberration, true);
+                Renderer::SetOption(Renderer_Option::Vhs, true);
             
                 // camera
                 entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));

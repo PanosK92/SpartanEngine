@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Font/Font.h"
 #include <unordered_map>
 #include <atomic>
+#include "RenderOptionsPool.h"
 #include "../Math/Rectangle.h"
 //===============================
 
@@ -74,12 +75,13 @@ namespace spartan
         static void DrawString(const char* text, const math::Vector2& position_screen_percentage);
         static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
-        // options
-        template<typename T>
-        static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[option]); }
-        static void SetOption(Renderer_Option option, float value);
-        static std::unordered_map<Renderer_Option, float>& GetOptions();
-        static void SetOptions(const std::unordered_map<Renderer_Option, float>& options);
+        // render options
+        static RenderOptionType GetOption(const Renderer_Option option, const bool is_options_editor = false) { return is_options_editor ? editor_options.GetOption(option) : global_options.GetOption(option); }
+        template<typename T> static T GetOption(const Renderer_Option option, bool is_options_editor = false) { return is_options_editor ? editor_options.GetOption<T>(option) : global_options.GetOption<T>(option); }
+        template<typename T> static T& GetOptionRef(const Renderer_Option option, bool is_options_editor = false) { return is_options_editor ? editor_options.GetOptionRef<T>(option) : global_options.GetOptionRef<T>(option); }
+        static void SetOption(const Renderer_Option option, const RenderOptionType& value, const bool is_options_editor = false) { return is_options_editor ? editor_options.SetOption(option, value) : global_options.SetOption(option, value); }
+        static RenderOptionsPool GetRenderOptionsPool(const bool is_options_editor = false) { return is_options_editor ? editor_options : global_options; }
+        static RenderOptionsPool& GetRenderOptionsPoolRef(const bool is_options_editor = false) { return is_options_editor ? editor_options : global_options; }
 
         // swapchain
         static RHI_SwapChain* GetSwapChain();
@@ -203,6 +205,7 @@ namespace spartan
         static void UpdateShadowAtlas();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);
         static void UpdateAccelerationStructures(RHI_CommandList* cmd_list);
+        static void ApplyRenderOptions();
 
         // draw calls
         static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;
@@ -217,6 +220,9 @@ namespace spartan
         static bool m_bindless_samplers_dirty;
 
         // misc
+        static RenderOptionsPool global_options;
+        static RenderOptionsPool editor_options;
+        static bool is_override_options;
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;
