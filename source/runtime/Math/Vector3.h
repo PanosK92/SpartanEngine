@@ -117,6 +117,13 @@ namespace spartan::math
             return std::max(std::max(x, y), z);
         }
 
+        Vector3 Max(const Vector3& other)
+        {
+            return {std::max(x, other.x),
+                       std::max(y, other.y),
+                       std::max(z, other.z)};
+        }
+
         [[nodiscard]] static float Dot(const Vector3& v1, const Vector3& v2) 
         { 
             return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z);

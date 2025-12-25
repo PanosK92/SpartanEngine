@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Commands/CommandStack.h"
 #include "Input/Input.h"
 #include "../ImGui/ImGui_Extension.h"
+#include "World/Components/Volume.h"
 SP_WARNINGS_OFF
 #include "../ImGui/Source/imgui_stdlib.h"
 SP_WARNINGS_ON
@@ -563,6 +564,12 @@ void WorldViewer::PopupContextMenu() const
         ActionEntityCreateTerrain();
     }
 
+    // VOLUME
+    if (ImGui::MenuItem("Volume"))
+    {
+        ActionEntityCreateVolume();
+    }
+
     ImGui::EndPopup();
 }
 
@@ -777,4 +784,11 @@ void WorldViewer::ActionEntityCreateAudioSource()
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<spartan::AudioSource>();
     entity->SetObjectName("Physics");
+}
+
+void WorldViewer::ActionEntityCreateVolume()
+{
+    auto entity = ActionEntityCreateEmpty();
+    entity->AddComponent<spartan::Volume>();
+    entity->SetObjectName("Volume");
 }

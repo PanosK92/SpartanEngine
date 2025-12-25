@@ -76,10 +76,12 @@ namespace spartan
 
         // options
         template<typename T>
-        static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[option]); }
-        static void SetOption(Renderer_Option option, float value);
-        static std::unordered_map<Renderer_Option, float>& GetOptions();
-        static void SetOptions(const std::unordered_map<Renderer_Option, float>& options);
+        static T GetOption(const Renderer_Option option, bool is_option_editor = false) { return is_option_editor ? static_cast<T>(GetOptions(true)[option]) : static_cast<T>(GetOptions()[option]); }
+        static void SetOption(Renderer_Option option, float value, bool is_option_editor = false);
+        static std::unordered_map<Renderer_Option, float>& GetOptions(bool is_option_editor = false);
+        static void SetOptions(const std::unordered_map<Renderer_Option, float>& options, bool is_option_editor = false);
+        static void ApplyRenderOptions();
+        static void SetOverrideEnabled(bool is_override) { is_override_enabled = is_override; }
 
         // swapchain
         static RHI_SwapChain* GetSwapChain();
@@ -217,6 +219,9 @@ namespace spartan
         static bool m_bindless_samplers_dirty;
 
         // misc
+        static std::unordered_map<Renderer_Option, float> global_options;
+        static std::unordered_map<Renderer_Option, float> editor_options;
+        static bool is_override_enabled;
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;

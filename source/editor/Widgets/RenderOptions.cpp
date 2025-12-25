@@ -77,9 +77,9 @@ namespace
 
         option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        bool value = Renderer::GetOption<bool>(render_option);
+        bool value = Renderer::GetOption<bool>(render_option, true);
         ImGui::Checkbox("", &value);
-        Renderer::SetOption(render_option, value);
+        Renderer::SetOption(render_option, value, true);
         ImGui::PopID();
     }
 
@@ -128,7 +128,7 @@ namespace
         bool changed = false;
         option_second_column();
         {
-            float value = Renderer::GetOption<float>(render_option);
+            float value = Renderer::GetOption<float>(render_option, true);
 
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
             ImGui::PushItemWidth(width_input_numeric);
@@ -138,9 +138,9 @@ namespace
             value = clamp(value, min, max);
 
             // Only update if changed
-            if (Renderer::GetOption<float>(render_option) != value)
+            if (changed)
             {
-                Renderer::SetOption(render_option, value);
+                Renderer::SetOption(render_option, value, true);
             }
         }
 
@@ -255,7 +255,7 @@ void RenderOptions::OnTickVisible()
                     option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying shading detail per pixel");
                     option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "Scales render resolution automatically based on GPU load");
 
-                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution));
+                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution, true));
                     option_value("Resolution scale", Renderer_Option::ResolutionScale, "Adjusts the percentage of the render resolution", 0.01f);
                     ImGui::EndDisabled();
                 }
@@ -272,13 +272,13 @@ void RenderOptions::OnTickVisible()
 
                     Vector2 res_render = Renderer::GetResolutionRender();
                     Vector2 res_output = Renderer::GetResolutionOutput();
-                    uint32_t mode      = Renderer::GetOption<uint32_t>(Renderer_Option::AntiAliasing_Upsampling);
+                    uint32_t mode      = Renderer::GetOption<uint32_t>(Renderer_Option::AntiAliasing_Upsampling, true);
                     if (option_combo_box("Upsampling method", upsamplers, mode))
                     {
-                        Renderer::SetOption(Renderer_Option::AntiAliasing_Upsampling, static_cast<float>(mode));
+                        Renderer::SetOption(Renderer_Option::AntiAliasing_Upsampling, static_cast<float>(mode), true);
                     }
 
-                    bool use_rcas = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
+                    bool use_rcas = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling, true) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
                     string label = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
                     string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening" : "AMD FidelityFX Contrast Adaptive Sharpening";
                     option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
@@ -316,12 +316,12 @@ void RenderOptions::OnTickVisible()
                 if (option("Display"))
                 {
                     option_check_box("HDR", Renderer_Option::Hdr, "Enable high dynamic range output");
-                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr));
+                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr, true));
                     option_value("Gamma", Renderer_Option::Gamma);
                     ImGui::EndDisabled();
                     option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation");
 
-                    bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
+                    bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr, true);
                     ImGui::BeginDisabled(!hdr_enabled);
                     option_value("White point (nits)", Renderer_Option::WhitePoint, "Target luminance of peak white", 1.0f);
                     ImGui::EndDisabled();
@@ -330,10 +330,10 @@ void RenderOptions::OnTickVisible()
                 if (option("Tone Mapping"))
                 {
                     static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Off" };
-                    uint32_t index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
+                    uint32_t index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping, true);
                     if (option_combo_box("Algorithm", tonemapping, index))
                     {
-                        Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(index));
+                        Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(index), true);
                     }
                 }
 

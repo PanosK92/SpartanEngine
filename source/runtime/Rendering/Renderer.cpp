@@ -62,6 +62,9 @@ namespace spartan
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
+    unordered_map<Renderer_Option, float> Renderer::global_options;
+    unordered_map<Renderer_Option, float> Renderer::editor_options;
+    bool Renderer::is_override_enabled             = false;
     uint32_t Renderer::m_resource_index            = 0;
     atomic<bool> Renderer::m_initialized_resources = false;
     bool Renderer::m_transparents_present          = false;
@@ -85,7 +88,6 @@ namespace spartan
         const uint8_t swap_chain_buffer_count = 2;
 
         // misc
-        unordered_map<Renderer_Option, float> m_options;
         uint64_t frame_num                   = 0;
         math::Vector2 jitter_offset          = math::Vector2::Zero;
         const uint32_t resolution_shadow_min = 128;
@@ -136,7 +138,8 @@ namespace spartan
         {
             bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements();
 
-            m_options.clear();
+            global_options.clear();
+            editor_options.clear();
             SetOption(Renderer_Option::WhitePoint,                  350.0f);
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
             SetOption(Renderer_Option::Bloom,                       1.0f);  // non-zero values activate it and control the intensity
@@ -162,6 +165,7 @@ namespace spartan
             SetOption(Renderer_Option::Dithering,                   0.0f);
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
             SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
+            editor_options = global_options;
 
             // set wind direction and strength
             {
@@ -285,6 +289,12 @@ namespace spartan
 
     void Renderer::Tick()
     {
+        // update render options, if necessary
+        if (!is_override_enabled)
+        {
+            ApplyRenderOptions();
+        }
+
         // acquire next swapchain image and update RHI
         {
             swapchain->AcquireNextImage();
@@ -645,8 +655,8 @@ namespace spartan
             m_icons.emplace_back(make_tuple(icon, world_position));
         }
     }
-    
-    void Renderer::SetOption(Renderer_Option option, float value)
+
+    void Renderer::SetOption(Renderer_Option option, float value, bool is_option_editor)
     {
         // clamp value
         {
@@ -662,8 +672,16 @@ namespace spartan
         }
 
         // early exit if the value is already set
-        if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
-            return;
+        if (is_option_editor)
+        {
+            if ((editor_options.find(option) != editor_options.end()) && editor_options[option] == value)
+                return;
+        }
+        else
+        {
+            if ((global_options.find(option) != global_options.end()) && global_options[option] == value)
+                return;
+        }
 
         // reject changes (if needed)
         {
@@ -703,7 +721,12 @@ namespace spartan
         }
 
         // set new value
-        m_options[option] = value;
+        if (is_option_editor)
+        {
+            editor_options[option] = value;
+            return; // no cascading changes for editor options
+        }
+        global_options[option] = value;
 
         // handle cascading changes
         {
@@ -743,14 +766,29 @@ namespace spartan
         }
     }
 
-    unordered_map<Renderer_Option, float>& Renderer::GetOptions()
+    unordered_map<Renderer_Option, float>& Renderer::GetOptions(bool is_option_editor)
     {
-        return m_options;
+        return is_option_editor ? editor_options : global_options;
     }
 
-    void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options)
+    void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options, bool is_option_editor)
     {
-        m_options = options;
+        (is_option_editor ? editor_options : global_options) = options;
+    }
+
+    void Renderer::ApplyRenderOptions()
+    {
+        for (auto& [option_key, option_value] : global_options)
+        {
+            if (editor_options.find(option_key) != editor_options.end())
+            {
+                float editor_option_value = editor_options[option_key];
+                if (fabs(editor_option_value - option_value) > epsilon)
+                {
+                    global_options[option_key] = editor_option_value;
+                }
+            }
+        }
     }
 
     RHI_SwapChain* Renderer::GetSwapChain()
