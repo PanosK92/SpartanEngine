@@ -212,7 +212,6 @@ namespace spartan
         lut_atmosphere_scatter,
         light_diffuse,
         light_specular,
-        light_shadow,
         light_volumetric,
         frame_render,
         frame_render_opaque,

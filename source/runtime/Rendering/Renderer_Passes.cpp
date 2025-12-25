@@ -967,7 +967,6 @@ namespace spartan
         // acquire resources
         RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
-        RHI_Texture* light_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow);
         RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
 
         // define pipeline state
@@ -987,8 +986,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,    light_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_shadow);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex4,    light_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_volumetric);
 
             // push constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
@@ -998,7 +996,6 @@ namespace spartan
             // dispatch
             cmd_list->Dispatch(light_diffuse, GetOption<float>(Renderer_Option::ResolutionScale)); // adds read write barrier for light_diffuse internally
             cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
@@ -1061,7 +1058,6 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     tex_out);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::light_shadow));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));
 
