@@ -319,7 +319,7 @@ void RenderOptions::OnTickVisible()
                     ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr));
                     option_value("Gamma", Renderer_Option::Gamma);
                     ImGui::EndDisabled();
-                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation");
+                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation", 0.1f, -1.0f);
                 }
 
                 if (option("Tone Mapping"))

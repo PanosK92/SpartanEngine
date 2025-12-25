@@ -392,16 +392,17 @@ float3 linear_to_hdr10(float3 color)
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     // get input data
-    float3 f3_value = pass_get_f3_value();
-    uint tone_mapping = (uint) f3_value.x;
-    float4 color = tex[thread_id.xy];
+    float3 f3_value                = pass_get_f3_value();
+    uint tone_mapping              = (uint)f3_value.x;
+    float is_auto_exposure_enabled = f3_value.y >= 0.0f;
+    float4 color                   = tex[thread_id.xy];
 
     // apply exposure (camera and auto-exposure)
-    float exposure = tex2.Load(int3(0, 0, 0)).r;
-    color.rgb *= buffer_frame.camera_exposure * exposure;
+    float exposure  = is_auto_exposure_enabled ? tex2.Load(int3(0, 0, 0)).r : 1.0f;
+    color.rgb      *= buffer_frame.camera_exposure * exposure;
     
     // check hdr state
-    bool is_hdr = buffer_frame.hdr_enabled != 0.0f;
+    bool is_hdr    = buffer_frame.hdr_enabled != 0.0f;
     float max_nits = buffer_frame.hdr_max_nits;
 
     switch (tone_mapping)
