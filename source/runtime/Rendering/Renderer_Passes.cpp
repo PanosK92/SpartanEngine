@@ -1766,10 +1766,15 @@ namespace spartan
     {
         // append icons from entities
         if (!Engine::IsFlagSet(EngineMode::Playing))
-        { 
+        {
+            Vector3 pos_camera = World::GetCamera ? World::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
             for (Entity* entity : World::GetEntities())
             {
-                math::Vector3 pos_world = entity->GetPosition();
+                // icons will eratically move all over the screen if they are close the camera
+                // that's because their direction can change very fast, so we skip those
+                if ((entity->GetPosition() - pos_camera).LengthSquared() <= 0.01f)
+                    continue;
+
                 if (entity->GetComponent<AudioSource>())
                 {
                     if (GetOption<bool>(Renderer_Option::AudioSources))
