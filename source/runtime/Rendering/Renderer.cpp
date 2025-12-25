@@ -137,7 +137,6 @@ namespace spartan
             bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements();
 
             m_options.clear();
-            SetOption(Renderer_Option::WhitePoint,                  350.0f);
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
             SetOption(Renderer_Option::Bloom,                       1.0f);  // non-zero values activate it and control the intensity
             SetOption(Renderer_Option::MotionBlur,                  1.0f);
@@ -576,7 +575,6 @@ namespace spartan
         m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
         m_cb_frame_cpu.hdr_enabled         = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
         m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
-        m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
         m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 

@@ -66,14 +66,14 @@ namespace spartan
         float camera_last_movement_time;
         float hdr_enabled;
         float hdr_max_nits;
-        float hdr_white_point;
+        float padding;
 
         math::Vector3 camera_position_previous;
         float resolution_scale;
 
         double time;
         float camera_fov;
-        float padding;
+        float padding2;
 
         math::Vector3 wind;
         float gamma;

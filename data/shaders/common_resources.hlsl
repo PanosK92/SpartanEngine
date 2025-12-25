@@ -58,14 +58,14 @@ struct FrameBufferData
     float camera_last_movement_time;
     float hdr_enabled;
     float hdr_max_nits;
-    float hdr_white_point; // future me: not used, can be removed
+    float padding;
 
     float3 camera_position_previous;
     float resolution_scale;
     
     double time;
     float camera_fov;
-    float padding;
+    float padding2;
     
     float3 wind;
     float gamma;

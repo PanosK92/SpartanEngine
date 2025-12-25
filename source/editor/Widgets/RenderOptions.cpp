@@ -320,11 +320,6 @@ void RenderOptions::OnTickVisible()
                     option_value("Gamma", Renderer_Option::Gamma);
                     ImGui::EndDisabled();
                     option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation");
-
-                    bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
-                    ImGui::BeginDisabled(!hdr_enabled);
-                    option_value("White point (nits)", Renderer_Option::WhitePoint, "Target luminance of peak white", 1.0f);
-                    ImGui::EndDisabled();
                 }
 
                 if (option("Tone Mapping"))

@@ -59,7 +59,6 @@ namespace spartan
         Sharpness,
         Dithering,
         Hdr,
-        WhitePoint,
         Gamma,
         Vsync,
         VariableRateShading,
