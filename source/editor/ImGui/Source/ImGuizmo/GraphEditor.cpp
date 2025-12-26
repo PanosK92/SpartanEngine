@@ -1056,8 +1056,8 @@ bool EditOptions(Options& options)
 
         updated |= ImGui::ColorEdit4("Background", (float*)&backgroundColor);
         updated |= ImGui::ColorEdit4("Grid", (float*)&gridColor);
-        updated |= ImGui::ColorEdit4("Selected Node Border", (float*)&selectedNodeBorderColor);
-        updated |= ImGui::ColorEdit4("Node Border", (float*)&nodeBorderColor);
+        updated |= ImGui::ColorEdit4("Selected NodeBase Border", (float*)&selectedNodeBorderColor);
+        updated |= ImGui::ColorEdit4("NodeBase Border", (float*)&nodeBorderColor);
         updated |= ImGui::ColorEdit4("Quad Selection", (float*)&quadSelection);
         updated |= ImGui::ColorEdit4("Quad Selection Border", (float*)&quadSelectionBorder);
         updated |= ImGui::ColorEdit4("Default Slot", (float*)&defaultSlotColor);
