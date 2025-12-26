@@ -44,9 +44,22 @@ namespace spartan
     static vector<wstring> get_renderdoc_dll_paths()
     {
         vector<wstring> dll_paths;
+
+        // 1. Check the standard installation path first (most reliable)
+        const wstring standard_path = L"C:\\Program Files\\RenderDoc\\renderdoc.dll";
+        WIN32_FIND_DATA find_file_data = { 0 };
+        HANDLE file_handle = FindFirstFile(standard_path.c_str(), &find_file_data);
+        if (file_handle != INVALID_HANDLE_VALUE)
+        {
+            dll_paths.push_back(standard_path);
+            FindClose(file_handle);
+            return dll_paths; // Found it, no need to scrape registry
+        }
+
+        // 2. Fallback: Search the registry (Installer Folders)
+        // This is messy and can return many paths, some of which might be plugin folders
         static const wchar_t* installer_folders_path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\Folders");
 
-        // open installer folders key
         HKEY hkey;
         if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, installer_folders_path, 0, KEY_READ, &hkey) != ERROR_SUCCESS) 
             return dll_paths;
@@ -62,7 +75,6 @@ namespace spartan
         DWORD    cbSecurityDescriptor;          // size of security descriptor
         FILETIME ftLastWriteTime;               // last write time
 
-        // get the class name and the value count
         DWORD query_result = RegQueryInfoKey(
             hkey,                  // keyPath handle
             achClass,              // buffer for class name
@@ -91,10 +103,6 @@ namespace spartan
                 DWORD size;
                 memset(enum_value, '\0', MAX_VALUE_NAME);
 
-                // MSDN:  https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regenumvaluea
-                // If the data has the REG_SZ, REG_MULTI_SZ or REG_EXPAND_SZ type, the string may not have been stored with
-                // the proper null-terminating characters. Therefore, even if the function returns ERROR_SUCCESS, the application
-                // should ensure that the string is properly terminated before using it; otherwise, it may overwrite a buffer.
                 retCode = RegEnumValue(hkey, i,
                     ach_value,
                     &cchValue,
@@ -106,36 +114,23 @@ namespace spartan
                 if (type != REG_SZ || retCode != ERROR_SUCCESS)
                     continue;
 
-                retCode = RegQueryInfoKey(
-                    hkey,                  // keyPath handle
-                    achClass,              // buffer for class name
-                    &cchClassName,         // size of class string
-                    nullptr,               // reserved
-                    &cSubKeys,             // number of subkeys
-                    &cbMaxSubKey,          // longest subkey size
-                    &cchMaxClass,          // longest class string
-                    &c_values,              // number of values for this keyPath
-                    &cchMaxValue,          // longest value name
-                    &cbMaxValueData,       // longest value data
-                    &cbSecurityDescriptor, // security descriptor
-                    &ftLastWriteTime);     // last write time
-
                 wstring path(ach_value);
                 if (path.find(L"RenderDoc") != wstring::npos)
                 {
-                    // many paths qualify:
-                    // 
-                    // "C:\\Program Files\\RenderDoc\\plugins\\amd\\counters\\"
-                    // "C:\\Program Files\\RenderDoc\\"
-                    // "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\RenderDoc\\"
-                    //
-                    // Only consider the ones the contain the dll we want
-                    const wstring rdc_dll_path = path += TEXT("renderdoc.dll");
-                    WIN32_FIND_DATA find_file_data = { 0 };
-                    HANDLE file_handle = FindFirstFile(rdc_dll_path.c_str(), &find_file_data);
-                    if (file_handle != INVALID_HANDLE_VALUE)
+                    // Ensure valid directory path formatting
+                    if (!path.empty() && path.back() != L'\\' && path.back() != L'/')
                     {
-                        dll_paths.push_back(path);
+                        path += L"\\";
+                    }
+
+                    const wstring rdc_dll_path = path + TEXT("renderdoc.dll");
+                    
+                    WIN32_FIND_DATA find_data = { 0 };
+                    HANDLE handle = FindFirstFile(rdc_dll_path.c_str(), &find_data);
+                    if (handle != INVALID_HANDLE_VALUE)
+                    {
+                        dll_paths.push_back(rdc_dll_path);
+                        FindClose(handle);
                     }
                 }
             }
@@ -162,8 +157,13 @@ namespace spartan
             {
                 vector<wstring> RDocDllPaths = get_renderdoc_dll_paths();
                 SP_ASSERT_MSG(!RDocDllPaths.empty(), "Could not find any install locations for renderdoc.dll");
-                wstring module_path = RDocDllPaths[0]; // assuming x64 is reported first
-                rdc_module = ::LoadLibraryW(module_path.c_str());
+                
+                // Try to load paths until one works
+                for (const auto& path : RDocDllPaths)
+                {
+                    rdc_module = ::LoadLibraryW(path.c_str());
+                    if (rdc_module) break;
+                }
             }
 
             SP_ASSERT_MSG(rdc_module != nullptr, "Failed to get RenderDoc module");
@@ -226,6 +226,8 @@ namespace spartan
 
     void RenderDoc::LaunchRenderDocUi()
     {
+        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized");
+
         // if the renderdoc ui is already running, make sure it's visible
         if (rdc_api->IsTargetControlConnected())
         {
@@ -236,7 +238,8 @@ namespace spartan
         else
         {
             SP_LOG_INFO("Launching RenderDoc...");
-            if (rdc_api->LaunchReplayUI(true, "") == 0)
+            // Returns the PID of the replay UI if successful, 0 if not.
+            if (rdc_api->LaunchReplayUI(1, "") == 0)
             {
                 SP_LOG_ERROR("Failed to launch RenderDoc");
             }
