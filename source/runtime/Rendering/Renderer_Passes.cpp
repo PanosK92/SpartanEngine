@@ -1061,7 +1061,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));
 
-            // set pass constants
+            // set constants
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
