@@ -42,24 +42,6 @@ namespace
     {
         return { color.r, color.g, color.b, color.a };
     }
-
-    // Helper to convert CVarVariant to string
-    std::string VariantToString(const CVarVariant& variant)
-    {
-        std::string result;
-        std::visit([&]<typename T0>(T0&& value) -> void
-        {
-            using T = std::decay_t<T0>;
-
-            if constexpr (std::is_same_v<T, bool>)
-                result = value ? "true" : "false";
-            else if constexpr (std::is_same_v<T, std::string_view>)
-                result = value;
-            else if constexpr (std::is_arithmetic_v<T>)
-                result = std::to_string(value);
-        }, variant);
-        return result;
-    }
 }
 
 Console::Console(Editor* editor) : Widget(editor)
@@ -256,7 +238,7 @@ void Console::OnTickVisible()
                 }
 
                 ImGui::TableSetColumnIndex(1);
-                std::string value_str = VariantToString(*cvar->m_value_ptr);
+                std::string value_str = ConsoleRegistry::Get().GetValueAsString(cvar->m_name).value();
                 ImGui::TextUnformatted(value_str.c_str());
 
                 ImGui::TableSetColumnIndex(2);
