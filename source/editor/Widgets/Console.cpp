@@ -38,10 +38,9 @@ using namespace math;
 
 namespace
 {
-    ImVec4 color_to_imvec4(const Color& color)
-    {
-        return { color.r, color.g, color.b, color.a };
-    }
+    // Uncomment to enable.
+    //TConsoleVar CVarConsoleTest_Int("console.test.int", 12, "int test console var");
+
 }
 
 Console::Console(Editor* editor) : Widget(editor)
@@ -81,7 +80,7 @@ void Console::OnTickVisible()
         }
         ImGui::PopStyleColor();
         ImGui::SameLine();
-        ImGui::Text("%d", m_log_type_count[index]);
+        ImGui::Text("%u", m_log_type_count[index]);
         ImGui::SameLine();
     };
 
@@ -144,7 +143,7 @@ void Console::OnTickVisible()
                             ImGui::TableSetColumnIndex(0);
 
                             // log
-                            ImGui::PushID(row);
+                            ImGui::PushID(static_cast<int>(row));
                             {
                                 if (log.error_level != 0)
                                 {
@@ -221,7 +220,7 @@ void Console::OnTickVisible()
                 ImGui::TableNextRow();
                 ImGui::PushID(static_cast<int>(i));
 
-                bool is_selected = (static_cast<int>(i) == m_autocomplete_selection);
+                bool is_selected = (std::cmp_equal(i, m_autocomplete_selection));
                 if (is_selected)
                 {
                     ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
@@ -373,7 +372,7 @@ void Console::ApplyAutocomplete()
     const ConsoleVariable* selected = ConsoleRegistry::Get().Find(m_filtered_cvars[m_autocomplete_selection]);
 
     std::string completion = std::string(selected->m_name) + " ";
-    strncpy(m_input_buffer, completion.c_str(), IM_ARRAYSIZE(m_input_buffer) - 1);
+    strncpy_s(m_input_buffer, completion.c_str(), IM_ARRAYSIZE(m_input_buffer) - 1);
     m_input_buffer[IM_ARRAYSIZE(m_input_buffer) - 1] = '\0';
 
     m_show_autocomplete = false;
@@ -457,8 +456,8 @@ void Console::ExecuteCommand(const char* command)
     {
         if (std::optional<std::string> maybe_val = ConsoleRegistry::Get().GetValueAsString(command); maybe_val.has_value())
         {
-            SP_LOG_WARNING("Current Value of %s : ", command, maybe_val.value())
-
+            const char* Val = maybe_val.value().c_str();
+            SP_LOG_WARNING("Current Value of %s : ", command, Val)
         }
     }
 
