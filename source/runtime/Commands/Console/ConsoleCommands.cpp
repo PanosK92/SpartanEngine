@@ -72,10 +72,10 @@ namespace spartan
         }
 
         template<typename T>
-        requires(std::is_same_v<T, std::string_view> || std::is_convertible_v<T, std::string_view>)
+        requires(std::is_same_v<T, std::string> || std::is_convertible_v<T, std::string>)
         std::optional<T> ParseValue(std::string_view value)
         {
-            return value;
+            return std::string(value.begin(), value.end());
         }
     }
 
@@ -157,7 +157,7 @@ namespace spartan
             {
                 Result = Value ? "true" : "false";
             }
-            else if constexpr (std::is_same_v<T, std::string_view>)
+            else if constexpr (std::is_same_v<T, std::string>)
             {
                 Result = Value;
             }

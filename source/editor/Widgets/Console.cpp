@@ -120,7 +120,7 @@ void Console::OnTickVisible()
     const float log_height = available_height - input_height - autocomplete_height;
 
     // safety first
-    lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     // log output section
     {
@@ -153,7 +153,6 @@ void Console::OnTickVisible()
                 {
                     LogPackage& log = m_logs[row];
 
-                    // text and visibility filters
                     if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
                     {
                         if (visible_index >= clipper.DisplayStart)
@@ -213,7 +212,6 @@ void Console::OnTickVisible()
         }
     }
 
-    // autocomplete section
     if (m_show_autocomplete && !m_filtered_cvars.empty())
     {
         ImGui::Separator();
@@ -241,14 +239,12 @@ void Console::OnTickVisible()
                 ImGui::TableNextRow();
                 ImGui::PushID(static_cast<int>(i));
 
-                // highlight selected item
                 bool is_selected = (static_cast<int>(i) == m_autocomplete_selection);
                 if (is_selected)
                 {
                     ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
                 }
 
-                // name column
                 ImGui::TableSetColumnIndex(0);
                 if (ImGui::Selectable(std::string(cvar->m_name).c_str(), is_selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick))
                 {
@@ -259,12 +255,10 @@ void Console::OnTickVisible()
                     }
                 }
 
-                // value column
                 ImGui::TableSetColumnIndex(1);
                 std::string value_str = VariantToString(*cvar->m_value_ptr);
                 ImGui::TextUnformatted(value_str.c_str());
 
-                // description column
                 ImGui::TableSetColumnIndex(2);
                 ImGui::TextWrapped("%s", std::string(cvar->m_hint).c_str());
 
@@ -275,7 +269,6 @@ void Console::OnTickVisible()
         }
     }
 
-    // console input section
     {
         ImGui::Separator();
 
@@ -300,7 +293,6 @@ void Console::OnTickVisible()
             reclaim_focus = true;
         }
 
-        // handle autocomplete navigation
         if (ImGui::IsItemActive())
         {
             if (m_show_autocomplete && !m_filtered_cvars.empty())
@@ -321,7 +313,6 @@ void Console::OnTickVisible()
             }
         }
 
-        // auto-focus on input when console opens or after command
         if (ImGui::IsWindowAppearing() || reclaim_focus)
         {
             ImGui::SetKeyboardFocusHere(-1);
@@ -333,17 +324,14 @@ void Console::AddLogPackage(const LogPackage& package)
 {
     std::scoped_lock lock(m_mutex);
 
-    // save to deque
     m_logs.push_back(package);
     if (static_cast<uint32_t>(m_logs.size()) > m_log_max_count)
     {
         m_logs.pop_front();
     }
 
-    // update count
     m_log_type_count[package.error_level]++;
 
-    // if the user is displaying this type of messages, scroll to bottom
     if (m_log_type_visibility[package.error_level])
     {
         m_scroll_to_bottom = true;
@@ -402,7 +390,6 @@ void Console::ApplyAutocomplete()
 
     const ConsoleVariable* selected = ConsoleRegistry::Get().Find(m_filtered_cvars[m_autocomplete_selection]);
 
-    // copy the selected cvar name to the input buffer with a space for value input
     std::string completion = std::string(selected->m_name) + " ";
     strncpy(m_input_buffer, completion.c_str(), IM_ARRAYSIZE(m_input_buffer) - 1);
     m_input_buffer[IM_ARRAYSIZE(m_input_buffer) - 1] = '\0';
@@ -450,7 +437,6 @@ int Console::InputCallback(ImGuiInputTextCallbackData* data)
         }
     case ImGuiInputTextFlags_CallbackAlways:
         {
-            // update autocomplete as user types
             UpdateAutocomplete();
             break;
         }

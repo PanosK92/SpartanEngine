@@ -34,7 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     // Allowed types of console variables, there really should never need to be any more than these.
-    using CVarVariant = std::variant<int32_t, float, bool, std::string_view>;
+    using CVarVariant = std::variant<int32_t, float, bool, std::string>;
 
     template<typename T, typename Variant>
     struct IsVariantMember;
@@ -69,16 +69,14 @@ namespace spartan
         void (*m_on_change)(const CVarVariant&);
 
         constexpr ConsoleVariable(std::string_view name, std::string_view hint, CVarVariant* value_ptr,
-            const CVarVariant& _default, void (*callback)(const CVarVariant&) = nullptr)
+                                  CVarVariant _default, void (*callback)(const CVarVariant&) = nullptr)
             : m_name(name)
             , m_hint(hint)
             , m_value_ptr(value_ptr)
-            , m_default_value(_default)
+            , m_default_value(std::move(_default))
             , m_on_change(callback)
         {}
     };
-
-    static_assert(std::is_trivially_copyable_v<ConsoleVariable>);
 
     /**
      * Holds all registered console variables and includes utilities for setting and getting by string-value.
@@ -183,7 +181,7 @@ namespace spartan
         static TConsoleVar CVarTestConsoleVar_Int("console.test.int", 12, "int test console var");
         static TConsoleVar CVarTestConsoleVar_Bool("console.test.bool", false, "bool test console var");
         static TConsoleVar CVarTestConsoleVar_Float("console.test.float", 12.0f, "float test console var");
-        static TConsoleVar<std::string_view> CVarTestConsoleVar_String("console.test.string", "SpartanIsCool!", "string test console var");
+        static TConsoleVar<std::string> CVarTestConsoleVar_String("console.test.string", "SpartanIsCool!", "string test console var");
     }
 **/
 
