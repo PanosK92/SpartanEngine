@@ -41,7 +41,8 @@ namespace spartan
     namespace
     {
         // directional matrix parameters
-        const float cascade_near_extent    = 100.0f;
+        const float cascade_near_extent    = 20.0f;
+        const float cascade_far_extent     = 300.0f;
         const float cascade_depth          = 1000.0f;
         const float cascade_far_max_extent = FLT_MAX;
 
@@ -136,7 +137,7 @@ namespace spartan
             {
                 Quaternion rotation = Quaternion::FromAxisAngle(
                     Vector3::Right,                                                                               // x-axis rotation (left to right)
-                    (World::GetTimeOfDay(GetFlag(LightFlags::RealTimeCycle)) * 360.0f - 90.0f) * math::deg_to_rad // angle in radians, -90° offset for horizon
+                    (World::GetTimeOfDay(GetFlag(LightFlags::RealTimeCycle)) * 360.0f - 90.0f) * math::deg_to_rad // angle in radians, -90ï¿½ offset for horizon
                 );
 
                 GetEntity()->SetRotation(rotation);
@@ -426,7 +427,7 @@ namespace spartan
 
     void Light::UpdateViewMatrix()
     {
-        const Vector3 position = GetEntity()->GetPosition(); // light’s base position (arbitrary for directional)
+        const Vector3 position = GetEntity()->GetPosition(); // lightï¿½s base position (arbitrary for directional)
 
         if (m_light_type == LightType::Directional)
         {
@@ -434,52 +435,26 @@ namespace spartan
             if (!camera)
                 return;
     
-            // near cascade (tight, camera following)
+            // both cascades follow the camera
             Vector3 camera_pos = camera->GetEntity()->GetPosition();
             Vector3 position   = camera_pos - GetEntity()->GetForward() * cascade_depth * 0.5f;
             m_matrix_view[0]   = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
             m_matrix_view[1]   = m_matrix_view[0];
-
-            // far cascade (world bounds in light space)
-            {
-                // get world bounds
-                BoundingBox& world_box = World::GetBoundingBox();
-                array<Vector3, 8> corners_world;
-                world_box.GetCorners(&corners_world);
-
-                // transform into light space (using far cascade view)
-                m_far_cascade_min = Vector3::Infinity;
-                m_far_cascade_max = Vector3::InfinityNeg;
-                for (const Vector3& corner : corners_world)
-                {
-                    Vector3 corner_ls = corner * m_matrix_view[1];
-                    corner_ls.x       = clamp(corner_ls.x, -cascade_far_max_extent, cascade_far_max_extent);
-                    corner_ls.y       = clamp(corner_ls.y, -cascade_far_max_extent, cascade_far_max_extent);
-                    corner_ls.z       = clamp(corner_ls.z, -cascade_far_max_extent, cascade_far_max_extent);
-                    m_far_cascade_min = Vector3::Min(m_far_cascade_min, corner_ls);
-                    m_far_cascade_max = Vector3::Max(m_far_cascade_max, corner_ls);
-                }
-            }
     
             // move the light in words units per texel to avoid shimmering
             {
-                // compute shadow extents
+                // compute shadow extents (both fixed sizes)
                 float extents[2];
-
-                // near cascade: fixed
-                extents[0] = cascade_near_extent;
-
-                // far cascade: compute from world bounds in light space
-                Vector3 far_extent = (m_far_cascade_max - m_far_cascade_min) * 0.5f;
-                extents[1]         = max(far_extent.x, far_extent.y); // use largest xy extent for square shadow map
+                extents[0] = cascade_near_extent; // near cascade: fixed
+                extents[1] = cascade_far_extent;  // far cascade: fixed, bigger than near
                 
                 float atlas_width = static_cast<float>(Renderer::GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth());
                 for (uint32_t i  = 0; i < 2; i++)
                 {
-                    float rect_width           = m_atlas_rectangles[i].width; // cascade rectangle width in atlas
-                    float atlas_scale          = rect_width / atlas_width;    // proportion of atlas used by cascade
-                    float effective_resolution = atlas_width * atlas_scale;   // effective resolution for cascade
-                    float texel_size_world     = (2.0f * extents[i]) / effective_resolution; // World units per texel
+                    float rect_width           = m_atlas_rectangles[i].width;                // cascade rectangle width in atlas
+                    float atlas_scale          = rect_width / atlas_width;                   // proportion of atlas used by cascade
+                    float effective_resolution = atlas_width * atlas_scale;                  // effective resolution for cascade
+                    float texel_size_world     = (2.0f * extents[i]) / effective_resolution; // world units per texel
                     m_matrix_view[i].m30       = round(m_matrix_view[i].m30 / texel_size_world) * texel_size_world; // snap x
                     m_matrix_view[i].m31       = round(m_matrix_view[i].m31 / texel_size_world) * texel_size_world; // snap y
                     // z-translation (m32) remains unchanged for orthographic projection
@@ -518,11 +493,11 @@ namespace spartan
                 cascade_depth, 0.0f
             );
 
-            // far cascade (world bounds in light space)
+            // far cascade (camera following, fixed size, bigger than near cascade)
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
-                m_far_cascade_min.x, m_far_cascade_max.x, // left, right
-                m_far_cascade_min.y, m_far_cascade_max.y, // bottom, top
-                m_far_cascade_max.z, m_far_cascade_min.z  // reverse-z near, far
+                -cascade_far_extent, cascade_far_extent,
+                -cascade_far_extent, cascade_far_extent,
+                cascade_depth, 0.0f
             );
 
             m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0]);

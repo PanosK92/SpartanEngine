@@ -100,10 +100,6 @@ namespace spartan
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt() const;
 
-        // bias
-        static float GetBias()            { return -0.0007f; }
-        static float GetBiasSlopeScaled() { return -1.2f; }
-
         // range
         void SetRange(float range);
         auto GetRange() const { return m_range; }

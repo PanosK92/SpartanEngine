@@ -101,9 +101,12 @@ namespace spartan
 
     void Renderer::CreateRasterizerStates()
     {
-        float bias              = Light::GetBias();
+        // we set hardware bias to 0.0f because we are using
+        // we do normal offset bias in the shader
+        // hardware bias is linear in Z-buffer space and effectively uncontrollable across different cascades/projections
+        float bias              = 0.0f;
         float bias_clamp        = 0.0f;
-        float bias_slope_scaled = Light::GetBiasSlopeScaled();
+        float bias_slope_scaled = 0.0f;
         float line_width        = 3.0f;
 
         #define rasterizer_state(x) rasterizer_states[static_cast<uint8_t>(x)]
