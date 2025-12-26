@@ -21,26 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES ======
 #include "Widget.h"
-#include <memory>
-#include "../Widgets/ButtonColorPicker.h"
-//=======================================
+//=================
 
 namespace spartan
 {
     class Entity;
-    class Transform;
     class Light;
     class Renderable;
     class Physics;
-    class Collider;
     class Material;
     class Camera;
     class AudioSource;
-    class Script;
     class Terrain;
-    class ReflectionProbe;
+    class Volume;
     class Component;
 }
 
@@ -66,12 +61,8 @@ private:
     void ShowCamera(spartan::Camera* camera) const;
     void ShowTerrain(spartan::Terrain* terrain) const;
     void ShowAudioSource(spartan::AudioSource* audio_source) const;
+    void ShowVolume(spartan::Volume* volume) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;
-
-    // Color pickers
-    std::unique_ptr<ButtonColorPicker> m_material_color_picker;
-    std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
-    std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
 };

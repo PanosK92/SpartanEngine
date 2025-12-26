@@ -355,45 +355,77 @@ namespace ImGuiSp
         return selection_made;
     }
 
-    static void vector3(const char* label, spartan::math::Vector3& vector)
+    static void vector3(const char* label, spartan::math::Vector3& vector, bool vertical = true)
     {
-        const float label_indetation = 15.0f * spartan::Window::GetDpiScale();
-
-        const auto show_float = [](spartan::math::Vector3 axis, float* value)
-        {
-            const float label_float_spacing = 15.0f * spartan::Window::GetDpiScale();
-            const float step                = 0.01f;
-
-            // label
-            ImGui::TextUnformatted(axis.x == 1.0f ? "X" : axis.y == 1.0f ? "Y" : "Z");
-            ImGui::SameLine(label_float_spacing);
-            spartan::math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
-
-            // float
-            ImGui::PushItemWidth(128.0f);
-            ImGuiSp::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
-            ImGui::PopItemWidth();
-
-            // axis color
-            static const ImU32 color_x                 = IM_COL32(168, 46, 2, 255);
-            static const ImU32 color_y                 = IM_COL32(112, 162, 22, 255);
-            static const ImU32 color_z                 = IM_COL32(51, 122, 210, 255);
-            static const spartan::math::Vector2 size   = spartan::math::Vector2(4.0f, 19.0f);
-            static const spartan::math::Vector2 offset = spartan::math::Vector2(5.0f, 4.0);
-            pos_post_label += offset;
-            ImRect axis_color_rect = ImRect(pos_post_label.x, pos_post_label.y, pos_post_label.x + size.x, pos_post_label.y + size.y);
-            ImGui::GetWindowDrawList()->AddRectFilled(axis_color_rect.Min, axis_color_rect.Max, axis.x == 1.0f ? color_x : axis.y == 1.0f ? color_y : color_z);
-        };
-
+        // configuration
+        const float label_indent = 15.0f * spartan::Window::GetDpiScale();
+        const float axis_spacing = 15.0f * spartan::Window::GetDpiScale();
+        const float step         = 0.01f;
+    
+        ImGui::PushID(label);
         ImGui::BeginGroup();
-        ImGui::Indent(label_indetation);
+    
+        // label
+        ImGui::Indent(label_indent);
         ImGui::TextUnformatted(label);
-        ImGui::Unindent(label_indetation);
-        show_float(spartan::math::Vector3(1.0f, 0.0f, 0.0f), &vector.x);
-        show_float(spartan::math::Vector3(0.0f, 1.0f, 0.0f), &vector.y);
-        show_float(spartan::math::Vector3(0.0f, 0.0f, 1.0f), &vector.z);
+        ImGui::Unindent(label_indent);
+    
+        // layout calculation
+        float item_width = 128.0f;
+        if (!vertical)
+        {
+            float avail_x       = ImGui::GetContentRegionAvail().x;
+            float spacing       = ImGui::GetStyle().ItemSpacing.x;
+            float total_spacing = spacing * 2.0f;
+            item_width          = (avail_x - total_spacing) / 3.0f;
+            item_width          -= axis_spacing;
+    
+            if (item_width < 1.0f)
+                item_width = 1.0f;
+        }
+    
+        float* values[3]           = { &vector.x, &vector.y, &vector.z };
+        const char* axis_labels[3] = { "X", "Y", "Z" };
+        const ImU32 axis_colors[3] = {
+            IM_COL32(168, 46, 2, 255),
+            IM_COL32(112, 162, 22, 255),
+            IM_COL32(51, 122, 210, 255)
+        };
+    
+        // components
+        for (int i = 0; i < 3; ++i)
+        {
+            ImGui::PushID(i);
+    
+            // horizontal layout
+            if (!vertical && i > 0)
+            {
+                ImGui::SameLine();
+            }
+    
+            // axis label
+            ImGui::TextUnformatted(axis_labels[i]);
+            ImGui::SameLine();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + axis_spacing - ImGui::CalcTextSize(axis_labels[i]).x);
+            spartan::math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
+    
+            // float input
+            ImGui::PushItemWidth(item_width);
+            ImGuiSp::draw_float_wrap("##v", values[i], step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
+            ImGui::PopItemWidth();
+    
+            // color bar decoration
+            static const spartan::math::Vector2 size   = spartan::math::Vector2(4.0f, 19.0f);
+            static const spartan::math::Vector2 offset = spartan::math::Vector2(-7.0f, 4.0f);
+            spartan::math::Vector2 draw_pos            = pos_post_label + offset;
+            ImGui::GetWindowDrawList()->AddRectFilled(draw_pos, draw_pos + size, axis_colors[i]);
+    
+            ImGui::PopID();
+        }
+    
         ImGui::EndGroup();
-    };
+        ImGui::PopID();
+    }
 
     inline ButtonPress window_yes_no(const char* title, const char* text)
     {

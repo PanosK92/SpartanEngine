@@ -46,6 +46,7 @@ namespace spartan
         Physics,
         Renderable,
         Terrain,
+        Volume,
         Max
     };
     // after re-ordering the above, ensure .world save/load works

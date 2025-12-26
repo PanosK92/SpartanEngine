@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
+#include "World/Components/Volume.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -47,9 +48,11 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace
 {
+    std::unique_ptr<ButtonColorPicker> m_material_color_picker;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
     #define column_pos_x 180.0f * spartan::Window::GetDpiScale()
     #define item_width   120.0f * spartan::Window::GetDpiScale()
-
     string context_menu_id;
     Component* copied_component = nullptr;
 
@@ -212,6 +215,7 @@ void Properties::OnTickVisible()
                 ShowRenderable(renderable);
                 ShowMaterial(material);
                 ShowPhysics(entity->GetComponent<Physics>());
+                ShowVolume(entity->GetComponent<Volume>());
 
                 ShowAddComponentButton();
             }
@@ -1169,6 +1173,37 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
     component_end();
 }
 
+void Properties::ShowVolume(spartan::Volume* volume) const
+{
+    if (!volume)
+        return;
+
+    const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
+    const float step            = 0.2f;
+    const float step_fast       = 0.2f;
+    const auto precision        = "%.1f";
+
+    if (component_begin("Volume", volume))
+    {
+        //= REFLECT =====================================================
+        const math::BoundingBox& bounding_box = volume->GetBoundingBox();
+        Vector3 min = bounding_box.GetMin();
+        Vector3 max = bounding_box.GetMax();
+        //===============================================================
+
+        ImGuiSp::vector3("Min", min, false);
+        ImGuiSp::vector3("Max", max, false);
+
+        //= MAP =========================================================
+        if (min != bounding_box.GetMin() || max != bounding_box.GetMax())
+        {
+            volume->SetBoundingBox(math::BoundingBox(min, max));
+        }
+        //===============================================================
+    }
+    component_end();
+}
+
 void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
@@ -1232,6 +1267,11 @@ void Properties::ComponentContextMenu_Add() const
                 }
 
                 ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem("Volume"))
+            {
+                entity->AddComponent<Volume>();
             }
         }
 

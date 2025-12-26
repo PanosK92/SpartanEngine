@@ -24,7 +24,7 @@ connection with the software or the use or other dealings in the software.
 //= includes =========
 #include "Component.h"
 #include <string>
-//=====================
+//====================
 
 struct SDL_AudioStream;
 struct SDL_AudioSpec;
