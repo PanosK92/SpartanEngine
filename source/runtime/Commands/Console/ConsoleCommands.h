@@ -45,7 +45,7 @@ namespace spartan
     namespace Concept
     {
         template<typename T>
-        concept TConsoleVar = IsVariantMember<T, CVarVariant>::value;
+        concept TIsConsoleVar = IsVariantMember<T, CVarVariant>::value;
     }
 
     /**
@@ -94,14 +94,14 @@ namespace spartan
         ConsoleVariable* Find(std::string_view name);
 
         // Will assert of the requested variable is not of type T.
-        template<Concept::TConsoleVar T>
+        template<Concept::TIsConsoleVar T>
         [[nodiscard]] const T& GetAs(std::string_view name)
         {
             return std::get<T>(*Find(name)->m_value_ptr);
         }
 
         // Try to return the console variable as the found type.
-        template<Concept::TConsoleVar T>
+        template<Concept::TIsConsoleVar T>
         [[nodiscard]] const T* TryGetAs(std::string_view name)
         {
             auto It = Find(name)->m_value_ptr;
@@ -133,7 +133,7 @@ namespace spartan
      * for registration. Please see examples at the bottom of this file.
      * @tparam T Type of console variable to deduce.
      */
-    template<Concept::TConsoleVar T>
+    template<Concept::TIsConsoleVar T>
     class TConsoleVar
     {
     public:
