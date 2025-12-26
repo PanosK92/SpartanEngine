@@ -744,44 +744,55 @@ namespace spartan
 
     unordered_map<Renderer_Option, float>& Renderer::GetOptions()
     {
-        // local scratchpad to avoid permanently overwriting m_options (master user settings)
+        // local scratchpad
         static unordered_map<Renderer_Option, float> resolved_options;
-        
-        // start fresh every frame with the master settings
         resolved_options = m_options;
     
-        // get camera
         if (!World::GetCamera() || !World::GetCamera()->GetEntity())
             return resolved_options;
     
         Vector3 cam_pos = World::GetCamera()->GetEntity()->GetPosition();
-        const float blend_radius = 5.0f; // dirty hardcoded blend distance
+        
+        // how many meters deep you must be to reach 100% volume influence
+        // 0.1f means "at 10cm depth, I am fully active"
+        const float blend_depth = 0.5f; 
     
-        // iterate all entities
         const auto& entities = World::GetEntities();
         for (const auto& entity : entities)
         {
-            // skip if no volume
             Volume* volume = entity->GetComponent<Volume>();
-            if (!volume)
+            if (!volume) continue;
+    
+            // 1. transform local box to world space
+            // (crucial: otherwise you compare world camera vs local box at 0,0,0)
+            const math::BoundingBox& local_box = volume->GetBoundingBox();
+            const Matrix& transform            = entity->GetMatrix();
+            math::BoundingBox world_box        = local_box * transform; // or local_box.Transform(transform)
+    
+            // 2. fast early exit
+            if (!world_box.Contains(cam_pos))
                 continue;
     
-            // check distance
-            const math::BoundingBox& box = volume->GetBoundingBox();
-            float dist = box.GetClosestPoint(cam_pos).Distance(cam_pos);
+            // 3. calculate depth (distance to nearest face inside)
+            // since we are inside, all these deltas are positive
+            Vector3 d_min = cam_pos - world_box.GetMin();
+            Vector3 d_max = world_box.GetMax() - cam_pos;
     
-            // skip if too far
-            if (dist > blend_radius)
-                continue;
+            // the "depth" is the smallest distance to any of the 6 faces
+            float depth = min(d_min.x, d_max.x);
+            depth       = min(depth, min(d_min.y, d_max.y));
+            depth       = min(depth, min(d_min.z, d_max.z));
     
-            // calculate alpha (1.0 inside, 0.0 at radius)
-            float alpha = 1.0f - clamp(dist / blend_radius, 0.0f, 1.0f);
+            // 4. calculate alpha
+            // depth 0.0 (surface) -> alpha 0.0
+            // depth 0.5 (inside)  -> alpha 1.0
+            float alpha = clamp(depth / blend_depth, 0.0f, 1.0f);
     
-            // blend overrides onto the scratchpad
+            // 5. blend
             for (const auto& [option, vol_value] : volume->GetOptions())
             {
                 float& current_val = resolved_options[option];
-                current_val = lerp(current_val, vol_value, alpha);
+                current_val        = lerp(current_val, vol_value, alpha);
             }
         }
     
