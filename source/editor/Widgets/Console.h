@@ -31,6 +31,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGui_Style.h"
 //===============================
 
+namespace spartan
+{
+    struct ConsoleVariable;
+}
+
 struct LogPackage
 {
     std::string text;
@@ -63,14 +68,36 @@ private:
 class Console : public Widget
 {
 public:
+
+    static constexpr size_t INPUT_BUFFER_SIZE = 512;
+
     Console(Editor* editor);
-    ~Console();
+    ~Console() override;
 
     void OnTickVisible() override;
     void AddLogPackage(const LogPackage& package);
     void Clear();
 
 private:
+
+
+    void ExecuteCommand(const char* command);
+    int InputCallback(ImGuiInputTextCallbackData* data);
+
+    void UpdateAutocomplete();
+    void ApplyAutocomplete();
+
+private:
+
+    char m_input_buffer[INPUT_BUFFER_SIZE] = {};
+    std::vector<std::string> m_command_history;
+    int m_history_position = -1;
+
+    // Autocomplete
+    bool m_show_autocomplete = false;
+    int m_autocomplete_selection = 0;
+    std::vector<std::string_view> m_filtered_cvars;
+
     bool m_scroll_to_bottom       = false;
     uint32_t m_log_max_count      = 1000;
     bool m_log_type_visibility[3] = { true, true, true };
@@ -85,6 +112,6 @@ private:
 
     std::shared_ptr<EngineLogger> m_logger;
     std::deque<LogPackage> m_logs;
-    std::mutex m_mutex;
+    std::recursive_mutex m_mutex;
     ImGuiTextFilter m_log_filter;
 };
