@@ -1178,28 +1178,73 @@ void Properties::ShowVolume(spartan::Volume* volume) const
     if (!volume)
         return;
 
-    const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
-    const float step            = 0.2f;
-    const float step_fast       = 0.2f;
-    const auto precision        = "%.1f";
-
     if (component_begin("Volume", volume))
     {
-        //= REFLECT =====================================================
+        // reflect
         const math::BoundingBox& bounding_box = volume->GetBoundingBox();
         Vector3 min = bounding_box.GetMin();
         Vector3 max = bounding_box.GetMax();
-        //===============================================================
 
+        // min/max
         ImGuiSp::vector3("Min", min, false);
         ImGuiSp::vector3("Max", max, false);
 
-        //= MAP =========================================================
+        // map
         if (min != bounding_box.GetMin() || max != bounding_box.GetMax())
         {
             volume->SetBoundingBox(math::BoundingBox(min, max));
         }
-        //===============================================================
+
+        ImGui::Separator();
+        ImGui::Text("Overrides");
+
+        // scrollable area of render options
+        if (ImGui::BeginChild("##vol_overrides", ImVec2(0, 250.0f), true))
+        {
+            // iterate over all possible renderer options
+            for (const auto& [option, global_value] : Renderer::GetOptions())
+            {
+                ImGui::PushID(static_cast<int>(option));
+
+                // determine if option is overridden
+                bool is_active   = volume->GetOptions().find(option) != volume->GetOptions().end();
+                const char* name = renderer_option_to_string(option);
+
+                // checkbox (enable/disable override)
+                if (ImGui::Checkbox(name, &is_active))
+                {
+                    if (is_active)
+                    {
+                        volume->SetOption(option, global_value);
+                    }
+                    else
+                    {
+                        volume->RemoveOption(option);
+                    }
+                }
+
+                // float value (if active)
+                if (is_active)
+                {
+                    ImGui::SameLine();
+                    
+                    // ux: set a fixed width for the slider so they align nicely
+                    ImGui::PushItemWidth(100.0f);
+                    
+                    float value = volume->GetOption(option);
+                    // use ## to hide the label since the checkbox already shows it
+                    if (ImGuiSp::draw_float_wrap("##v", &value, 0.1f)) 
+                    {
+                        volume->SetOption(option, value);
+                    }
+                    
+                    ImGui::PopItemWidth();
+                }
+
+                ImGui::PopID();
+            }
+        }
+        ImGui::EndChild();
     }
     component_end();
 }

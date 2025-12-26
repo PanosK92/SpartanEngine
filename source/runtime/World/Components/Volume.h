@@ -21,10 +21,11 @@ connection with the software or the use or other dealings in the software.
 
 #pragma once
 
-//= includes ======================
+//= includes ===================================
 #include "Component.h"
 #include "../../Math/BoundingBox.h"
-//=================================
+#include ".././Rendering/Renderer_Definitions.h"
+//==============================================
 
 namespace spartan
 {
@@ -34,7 +35,7 @@ namespace spartan
     {
     public:
         Volume(Entity* entity);
-        ~Volume();
+        ~Volume() = default;
 
         //= COMPONENT =======
         void Tick() override;
@@ -44,7 +45,17 @@ namespace spartan
         const math::BoundingBox& GetBoundingBox() const   { return m_bounding_box; }
         void SetBoundingBox(const math::BoundingBox& box) { m_bounding_box = box; }
 
+        // options
+        void SetOption(Renderer_Option option, float value);
+        void RemoveOption(Renderer_Option option);
+        float GetOption(Renderer_Option option) const;
+        const std::unordered_map<Renderer_Option, float>& GetOptions() const { return m_options; }
+
     private:
+        // the shape of the volume
         math::BoundingBox m_bounding_box;
+
+        // the user defined overrides
+        std::unordered_map<Renderer_Option, float> m_options;
     };
 }

@@ -271,21 +271,21 @@ namespace ImGuiSp
     }
 
     // a drag float which will wrap the mouse cursor around the edges of the screen
-    static void draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
+    static bool draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
         static const uint32_t screen_edge_padding = 10;
         ImGuiIO& io = ImGui::GetIO();
-    
+        
         static ImVec2 last_mouse_pos = io.MousePos;
-    
+        
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             ImVec2 mouse_pos = io.MousePos;
             bool wrapped = false;
-    
+        
             float left  = static_cast<float>(screen_edge_padding);
             float right = static_cast<float>(spartan::Display::GetWidth() - screen_edge_padding);
-    
+        
             if (mouse_pos.x >= right)
             {
                 mouse_pos.x = left + 1;
@@ -296,14 +296,14 @@ namespace ImGuiSp
                 mouse_pos.x = right - 1;
                 wrapped = true;
             }
-    
+        
             if (wrapped)
             {
                 io.MousePos        = mouse_pos;
                 io.WantSetMousePos = true;
                 io.MouseDelta.x    = 0.0f;
                 io.MouseDelta.y    = 0.0f;
-    
+        
                 // update last_mouse_pos to avoid delta spikes in the next frame
                 last_mouse_pos = mouse_pos;
             }
@@ -313,10 +313,12 @@ namespace ImGuiSp
                 last_mouse_pos = mouse_pos;
             }
         }
-    
+        
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-        ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+        bool changed = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
         ImGui::PopID();
+    
+        return changed;
     }
 
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)

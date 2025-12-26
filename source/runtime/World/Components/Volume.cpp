@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Volume.h"
 #include "../Entity.h"
-#include "../../Rendering/Renderer.h"
 #include "../../Core/Engine.h"
+#include "../../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -40,11 +40,6 @@ namespace spartan
         m_bounding_box = BoundingBox::Unit;
     }
 
-    Volume::~Volume()
-    {
-
-    }
-
     void Volume::Tick()
     {
         // only draw in editor mode (not playing)
@@ -57,5 +52,27 @@ namespace spartan
 
         // draw the volume using the renderer
         Renderer::DrawBox(transformed_box);
+    }
+
+    void Volume::SetOption(Renderer_Option option, float value)
+    {
+        m_options[option] = value;
+    }
+
+    void Volume::RemoveOption(Renderer_Option option)
+    {
+        m_options.erase(option);
+    }
+
+    float Volume::GetOption(Renderer_Option option) const
+    {
+        // try to find the specific override
+        auto it = m_options.find(option);
+        if (it != m_options.end())
+        {
+            return it->second;
+        }
+
+        return 0.0f; 
     }
 }

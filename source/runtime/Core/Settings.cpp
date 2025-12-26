@@ -44,51 +44,6 @@ namespace spartan
         vector<third_party_lib> m_third_party_libs;
         mutex mutex_register;
 
-        const char* renderer_option_to_string(const Renderer_Option option)
-        {
-            switch (option)
-            {
-                case Renderer_Option::Aabb:                        return "Aabb";
-                case Renderer_Option::PickingRay:                  return "PickingRay";
-                case Renderer_Option::Grid:                        return "Grid";
-                case Renderer_Option::TransformHandle:             return "TransformHandle";
-                case Renderer_Option::SelectionOutline:            return "SelectionOutline";
-                case Renderer_Option::Lights:                      return "Lights";
-                case Renderer_Option::AudioSources:                return "AudioSpurces";
-                case Renderer_Option::PerformanceMetrics:          return "PerformanceMetrics";
-                case Renderer_Option::Physics:                     return "Physics";
-                case Renderer_Option::Wireframe:                   return "Wireframe";
-                case Renderer_Option::Bloom:                       return "Bloom";
-                case Renderer_Option::Fog:                         return "Fog";
-                case Renderer_Option::ScreenSpaceAmbientOcclusion: return "ScreenSpaceAmbientOcclusion";
-                case Renderer_Option::ScreenSpaceReflections:      return "ScreenSpaceReflections";
-                case Renderer_Option::MotionBlur:                  return "MotionBlur";
-                case Renderer_Option::DepthOfField:                return "DepthOfField";
-                case Renderer_Option::FilmGrain:                   return "FilmGrain";
-                case Renderer_Option::ChromaticAberration:         return "ChromaticAberration";
-                case Renderer_Option::Anisotropy:                  return "Anisotropy";
-                case Renderer_Option::Tonemapping:                 return "Tonemapping";
-                case Renderer_Option::AntiAliasing_Upsampling:     return "AntiAliasing_Upsampling";
-                case Renderer_Option::Sharpness:                   return "Sharpness";
-                case Renderer_Option::Hdr:                         return "Hdr";
-                case Renderer_Option::Gamma:                       return "Gamma";
-                case Renderer_Option::Vsync:                       return "Vsync";
-                case Renderer_Option::VariableRateShading:         return "VariableRateShading";
-                case Renderer_Option::ResolutionScale:             return "ResolutionScale";
-                case Renderer_Option::DynamicResolution:           return "DynamicResolution";
-                case Renderer_Option::Dithering:                   return "Dithering";
-                case Renderer_Option::Vhs:                         return "VHS";
-                case Renderer_Option::OcclusionCulling:            return "OcclusionCulling";
-                case Renderer_Option::AutoExposureAdaptationSpeed: return "AutoExposureAdaptationSpeed";
-                case Renderer_Option::RayTracedReflections:        return "RayTracedReflections";
-                default:
-                {
-                    SP_ASSERT_MSG(false, "Renderer_Option not handled");
-                    return "";
-                }
-            }
-        }
-
         void save()
         {
             pugi::xml_document doc;
