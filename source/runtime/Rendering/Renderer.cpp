@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
+#include <World/Components/Volume.h>
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
@@ -743,7 +744,48 @@ namespace spartan
 
     unordered_map<Renderer_Option, float>& Renderer::GetOptions()
     {
-        return m_options;
+        // local scratchpad to avoid permanently overwriting m_options (master user settings)
+        static unordered_map<Renderer_Option, float> resolved_options;
+        
+        // start fresh every frame with the master settings
+        resolved_options = m_options;
+    
+        // get camera
+        if (!World::GetCamera() || !World::GetCamera()->GetEntity())
+            return resolved_options;
+    
+        Vector3 cam_pos = World::GetCamera()->GetEntity()->GetPosition();
+        const float blend_radius = 5.0f; // dirty hardcoded blend distance
+    
+        // iterate all entities
+        const auto& entities = World::GetEntities();
+        for (const auto& entity : entities)
+        {
+            // skip if no volume
+            Volume* volume = entity->GetComponent<Volume>();
+            if (!volume)
+                continue;
+    
+            // check distance
+            const math::BoundingBox& box = volume->GetBoundingBox();
+            float dist = box.GetClosestPoint(cam_pos).Distance(cam_pos);
+    
+            // skip if too far
+            if (dist > blend_radius)
+                continue;
+    
+            // calculate alpha (1.0 inside, 0.0 at radius)
+            float alpha = 1.0f - clamp(dist / blend_radius, 0.0f, 1.0f);
+    
+            // blend overrides onto the scratchpad
+            for (const auto& [option, vol_value] : volume->GetOptions())
+            {
+                float& current_val = resolved_options[option];
+                current_val = lerp(current_val, vol_value, alpha);
+            }
+        }
+    
+        return resolved_options;
     }
 
     void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options)
