@@ -31,6 +31,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGui_Style.h"
 //===============================
 
+namespace spartan
+{
+    struct ConsoleVariable;
+}
+
 struct LogPackage
 {
     std::string text;
@@ -63,28 +68,50 @@ private:
 class Console : public Widget
 {
 public:
+
+    static constexpr size_t INPUT_BUFFER_SIZE = 512;
+
     Console(Editor* editor);
-    ~Console();
+    ~Console() override;
 
     void OnTickVisible() override;
     void AddLogPackage(const LogPackage& package);
     void Clear();
 
 private:
-    bool m_scroll_to_bottom       = false;
-    uint32_t m_log_max_count      = 1000;
-    bool m_log_type_visibility[3] = { true, true, true };
-    uint32_t m_log_type_count[3]  = { 0, 0, 0 };
 
-    const std::vector<ImVec4> m_log_type_color =
+
+    void ExecuteCommand(const char* command);
+    int InputCallback(ImGuiInputTextCallbackData* data);
+
+    void UpdateAutocomplete();
+    void ApplyAutocomplete();
+
+private:
+
+    std::shared_ptr<EngineLogger>      m_logger;
+    std::deque<LogPackage>             m_logs;
+    std::vector<std::string>           m_command_history;
+    std::vector<std::string_view>      m_filtered_cvars;
+    std::recursive_mutex               m_mutex;
+    ImGuiTextFilter                    m_log_filter;
+
+    char                               m_input_buffer[INPUT_BUFFER_SIZE] = {};
+
+    const std::vector<ImVec4>          m_log_type_color =
     {
         ImGui::Style::color_info,
         ImGui::Style::color_warning,
         ImGui::Style::color_error,
     };
 
-    std::shared_ptr<EngineLogger> m_logger;
-    std::deque<LogPackage> m_logs;
-    std::mutex m_mutex;
-    ImGuiTextFilter m_log_filter;
+    uint32_t                           m_log_max_count      = 1000;
+    uint32_t                           m_log_type_count[3]  = { 0, 0, 0 };
+    int                                m_history_position   = -1;
+    int                                m_autocomplete_selection = 0;
+
+    bool                               m_show_autocomplete  = false;
+    bool                               m_scroll_to_bottom   = false;
+    bool                               m_log_type_visibility[3] = { true, true, true };
 };
+
