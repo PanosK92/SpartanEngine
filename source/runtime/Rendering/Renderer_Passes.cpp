@@ -1042,7 +1042,7 @@ namespace spartan
 
     void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list)
     {
-        // acquire resources
+        // get resources
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
 

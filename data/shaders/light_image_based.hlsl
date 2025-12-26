@@ -90,18 +90,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_skysphere          = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
     float3 diffuse_skysphere           = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
     
-    // shadow mask (re-added: essential for blending IBL with directional light shadows)
-    float shadow_mask                  = tex[thread_id.xy].r;
-    shadow_mask                        = max(0.3f, shadow_mask); // prevent complete darkness in shadows
-
-    // apply energy, occlusion and shadows
+    // apply energy and occlusion
     // multi-bounce is applied to diffuse ONLY, specular relies on simple occlusion
     float3 diffuse_occlusion           = gtao_multi_bounce(surface.occlusion, surface.albedo.rgb);
     float3 diffuse_ibl                 = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl                = specular_skysphere * specular_energy * specular_occlusion;
 
     // combine ibl
-    float3 ibl  = (diffuse_ibl + specular_ibl) * shadow_mask;
+    float3 ibl  = diffuse_ibl + specular_ibl;
     ibl        *= surface.alpha;
 
     // output
