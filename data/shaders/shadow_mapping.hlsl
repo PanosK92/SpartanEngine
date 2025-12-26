@@ -33,8 +33,8 @@ static const float g_shadow_sample_reciprocal       = 1.0f / (float)g_shadow_sam
 static const float g_minimum_penumbra_size          = 0.5f;
 static const float g_maximum_penumbra_size          = 64.0f;
 static const float g_contact_hardening_factor       = 0.5f;
-static const float g_slope_bias_scale               = 2.0f;
-static const float g_constant_bias_scale            = 0.0001f;
+static const float g_base_bias_texels               = 0.2f;
+static const float g_slope_bias_texels              = 1.5f;
 
 // pre-computed vogel disk samples
 static const float2 g_vogel_samples_shadow[g_shadow_sample_count] =
@@ -132,8 +132,8 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
             penumbra                = (depth_difference / blocker_depth_avg) * light_size_factor * search_radius;
             
             // contact hardening
-            float contact_factor    = saturate(depth_difference * 1000.0f);
-            penumbra                = lerp(penumbra * g_contact_hardening_factor, penumbra, contact_factor);
+            float contact_factor = saturate(depth_difference * 1000.0f);
+            penumbra             = lerp(penumbra * g_contact_hardening_factor, penumbra, contact_factor);
         }
     }
     
@@ -190,18 +190,13 @@ float3 compute_normal_offset(Surface surface, Light light, uint cascade_index)
     float world_frustum_width = 2.0f / length(light.transform[cascade_index][0].xyz);
     float texel_size_world    = world_frustum_width * light.atlas_texel_size[cascade_index].x;
 
-    // setup bias scales (in texels)
-    float base_bias_texels  = 0.2f;
-    float slope_bias_texels = 1.5f;
-
     // compute slope
-    float3 light_dir = light.is_directional() ? normalize(-light.forward.xyz) :
-                       normalize(surface.position - light.position);
+    float3 light_dir = light.is_directional() ? normalize(-light.forward.xyz) : normalize(surface.position - light.position);
     float n_dot_l    = dot(surface.normal, light_dir);
     float slope      = sqrt(saturate(1.0f - n_dot_l * n_dot_l));
 
     // calculate final offset
-    float offset_amount = (base_bias_texels + (slope * slope_bias_texels)) * texel_size_world;
+    float offset_amount = (g_base_bias_texels + (slope * g_slope_bias_texels)) * texel_size_world;
     
     return surface.normal * offset_amount;
 }
