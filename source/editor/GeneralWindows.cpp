@@ -171,6 +171,7 @@ namespace
             { "Spartan", "Ege",                 "Turkey",         "X",         "https://x.com/egedq",                                     "Editor theme v3 + save/load themes",                                      "N/A" },
             { "Spartan", "Sandro Mtchedlidze",  "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Tonemapper, perf/lighting finds, tubes lights in the car showroom world", "N/A" },
             { "Spartan", "Dimitris Kalyvas",    "Greece",         "X",         "https://x.com/punctuator_",                               "Entity multi-select, grass performance improvement",                      "N/A" },
+            { "Spartan", "Bryan Casagrande ",   "United States",  "X",         "https://x.com/mrdrelliot",                                "Implement console variable support",                                      "N/A" },
             { "Hoplite", "Apostolos Bouzalas",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                               "N/A" },
             { "Hoplite", "Nikolas Pattakos",    "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                               "N/A" },
             { "Hoplite", "Roman Koshchei",      "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                              "N/A" },
