@@ -9,7 +9,6 @@ on:
       - '.gitattributes'
       - '.github/images'
       - '.github/ISSUE_TEMPLATE'
-      - '**/*.hlsl'
   pull_request:
     paths-ignore:
       - '**.md'
@@ -18,7 +17,6 @@ on:
       - '.gitattributes'
       - '.github/images'
       - '.github/ISSUE_TEMPLATE'
-      - '**/*.hlsl'
 
 jobs:
   build:
@@ -177,12 +175,13 @@ jobs:
                 const shortSha = commit.sha.substring(0, 7);
                 const author = commit.commit.author.name;
                 const message = commit.commit.message.split('\n')[0]; // First line only
-                return `- \`${shortSha}\` ${message} (@${author})`;
+                const url = commit.html_url; // Get the URL to the commit
+                return `- [\`${shortSha}\`](${url}) ${message} (@${author})`;
               })
               .join('\n');
 
-            // If no commits found, provide a default message
-            return releaseNotes || '- Initial release or no commits found';
+            // Set the output directly to preserve formatting
+            core.setOutput('notes', releaseNotes || '- Initial release or no commits found');
 
       - name: Publish release
         uses: marvinpinto/action-automatic-releases@latest
@@ -191,37 +190,7 @@ jobs:
           automatic_release_tag: "${{ steps.get_datetime.outputs.version }}"
           prerelease: true
           title: "Spartan v${{ steps.get_datetime.outputs.version }}"
+          body: "${{ steps.generate_release_notes.outputs.notes }}"
           files: |
             spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.7z
             spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.7z
-
-      - name: Update release notes
-        uses: actions/github-script@v7
-        env:
-          RELEASE_NOTES: ${{ steps.generate_release_notes.outputs.result }}
-          RELEASE_TAG: ${{ steps.get_datetime.outputs.version }}
-        with:
-          script: |
-            const releaseNotes = process.env.RELEASE_NOTES;
-            const tagName = process.env.RELEASE_TAG;
-            
-            // Get the release by tag
-            const { data: releases } = await github.rest.repos.listReleases({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
-            
-            const release = releases.find(r => r.tag_name === tagName);
-            
-            if (release) {
-              // Update the release body
-              await github.rest.repos.updateRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id: release.id,
-                body: releaseNotes
-              });
-              console.log(`Updated release notes for ${tagName}`);
-            } else {
-              console.log(`Release with tag ${tagName} not found`);
-            }
