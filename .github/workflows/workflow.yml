@@ -202,13 +202,12 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `notes<<${delimiter}\n${finalNotes}\n${delimiter}\n`);
 
       - name: Publish release
-        uses: marvinpinto/action-automatic-releases@latest
+        uses: softprops/action-gh-release@v2
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "${{ steps.get_datetime.outputs.version }}"
+          tag_name: ${{ steps.get_datetime.outputs.version }}
+          name: "Spartan v${{ steps.get_datetime.outputs.version }}"
+          body: ${{ steps.generate_release_notes.outputs.notes }}
           prerelease: true
-          title: "Spartan v${{ steps.get_datetime.outputs.version }}"
-          body: "${{ steps.generate_release_notes.outputs.notes }}"
           files: |
             spartan_vulkan_release_${{ steps.get_datetime.outputs.version }}.7z
             spartan_vulkan_debug_${{ steps.get_datetime.outputs.version }}.7z
