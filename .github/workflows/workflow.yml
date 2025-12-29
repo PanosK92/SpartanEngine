@@ -9,6 +9,7 @@ on:
       - '.gitattributes'
       - '.github/images'
       - '.github/ISSUE_TEMPLATE'
+      - '**/*.hlsl'
   pull_request:
     paths-ignore:
       - '**.md'
@@ -17,6 +18,7 @@ on:
       - '.gitattributes'
       - '.github/images'
       - '.github/ISSUE_TEMPLATE'
+      - '**/*.hlsl'
 
 jobs:
   build:
@@ -45,7 +47,7 @@ jobs:
       - name: Setup MSBuild / Visual Studio Environment
         uses: microsoft/setup-msbuild@v1
         with:
-          vs-version: '[17.0,20.0)'  # Use latest available VS version (2022 or 2026 if available)
+          vs-version: '[17.0,20.0)'
 
       - name: Show MSVC version (for debugging)
         shell: cmd
@@ -150,7 +152,6 @@ jobs:
             const lastRelease = releases[0];
             
             if (lastRelease && lastRelease.tag_name) {
-              // Get commits since the last release tag
               const { data: compareData } = await github.rest.repos.compareCommits({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -159,7 +160,6 @@ jobs:
               });
               commits = compareData.commits || [];
             } else {
-              // No previous release, get recent commits (last 50)
               const { data: recentCommits } = await github.rest.repos.listCommits({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -168,20 +168,39 @@ jobs:
               commits = recentCommits || [];
             }
 
-            // Format commits nicely, filtering out merge commits
-            const releaseNotes = commits
+            // 1. Format commits with Hyperlinks
+            const commitLines = commits
               .filter(commit => !commit.commit.message.startsWith('Merge'))
               .map(commit => {
                 const shortSha = commit.sha.substring(0, 7);
                 const author = commit.commit.author.name;
-                const message = commit.commit.message.split('\n')[0]; // First line only
-                const url = commit.html_url; // Get the URL to the commit
+                const message = commit.commit.message.split('\n')[0];
+                const url = commit.html_url; 
+                // Markdown link format: [`hash`](url) - message
                 return `- [\`${shortSha}\`](${url}) ${message} (@${author})`;
-              })
-              .join('\n');
+              });
+            
+            // 2. Extract Unique Contributors
+            const authors = [...new Set(commits.map(c => c.commit.author.name))];
+            
+            let finalNotes = "";
+            if (commitLines.length > 0) {
+                finalNotes += commitLines.join('\n');
+                
+                // Add Contributors section if we have authors
+                if (authors.length > 0) {
+                    finalNotes += "\n\n### Contributors\n";
+                    finalNotes += authors.map(a => `@${a}`).join(', ');
+                }
+            } else {
+                finalNotes = "- Initial release or no new commits found";
+            }
 
-            // Set the output directly to preserve formatting
-            core.setOutput('notes', releaseNotes || '- Initial release or no commits found');
+            // 3. Write to GITHUB_OUTPUT using a heredoc delimiter to preserve newlines
+            const fs = require('fs');
+            const delimiter = 'EOF' + Math.random().toString(36).substring(2, 15);
+            // We append to the file located at process.env.GITHUB_OUTPUT
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `notes<<${delimiter}\n${finalNotes}\n${delimiter}\n`);
 
       - name: Publish release
         uses: marvinpinto/action-automatic-releases@latest
