@@ -167,25 +167,41 @@ jobs:
               commits = recentCommits || [];
             }
 
-            // 2. Format Commits (Removed Manual Contributors Section)
+            // 2. Format Commits
             const commitLines = commits
               .filter(commit => !commit.commit.message.startsWith('Merge'))
               .map(commit => {
                 const shortSha = commit.sha.substring(0, 7);
                 const message = commit.commit.message.split('\n')[0];
                 const url = commit.html_url; 
-                // Returns: - [`hash`](url) Message
                 return `- [\`${shortSha}\`](${url}) ${message}`;
               });
             
+            // 3. Extract Unique Contributors (Restored this logic)
+            const authorSet = new Set();
+            commits.forEach(commit => {
+                if (commit.author && commit.author.login) {
+                    authorSet.add(commit.author.login);
+                } else {
+                    authorSet.add(commit.commit.author.name);
+                }
+            });
+            const authors = [...authorSet];
+            
             let finalNotes = "";
             if (commitLines.length > 0) {
-                finalNotes = commitLines.join('\n');
+                finalNotes += commitLines.join('\n');
+                
+                // Add Contributors section manually (Required because we are using a custom body)
+                if (authors.length > 0) {
+                    finalNotes += "\n\n### Contributors\n\n";
+                    finalNotes += authors.map(a => `@${a}`).join(', ');
+                }
             } else {
                 finalNotes = "- Initial release or no new commits found";
             }
 
-            // 3. Write Direct to Output
+            // 4. Write Direct to Output
             const fs = require('fs');
             const delimiter = 'EOF_' + Math.random().toString(36).substr(2, 9);
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `notes<<${delimiter}\n${finalNotes}\n${delimiter}\n`);
