@@ -167,20 +167,33 @@ jobs:
               commits = recentCommits || [];
             }
 
-            // 2. Format Commits with Hyperlinks
+            // 2. Format Commits with Hyperlinks and Correct Usernames
             const commitLines = commits
               .filter(commit => !commit.commit.message.startsWith('Merge'))
               .map(commit => {
                 const shortSha = commit.sha.substring(0, 7);
-                const author = commit.commit.author.name;
                 const message = commit.commit.message.split('\n')[0];
                 const url = commit.html_url; 
-                // Returns: - [`hash`](url) Message (@author)
-                return `- [\`${shortSha}\`](${url}) ${message} (@${author})`;
+                
+                // PREFER GITHUB LOGIN, FALLBACK TO GIT NAME
+                let authorName = commit.commit.author.name;
+                if (commit.author && commit.author.login) {
+                    authorName = commit.author.login;
+                }
+                
+                return `- [\`${shortSha}\`](${url}) ${message} (@${authorName})`;
               });
             
-            // 3. Extract Unique Contributors
-            const authors = [...new Set(commits.map(c => c.commit.author.name))];
+            // 3. Extract Unique Contributors (Preferring Login)
+            const authorSet = new Set();
+            commits.forEach(commit => {
+                if (commit.author && commit.author.login) {
+                    authorSet.add(commit.author.login);
+                } else {
+                    authorSet.add(commit.commit.author.name);
+                }
+            });
+            const authors = [...authorSet];
             
             let finalNotes = "";
             if (commitLines.length > 0) {
@@ -195,9 +208,8 @@ jobs:
                 finalNotes = "- Initial release or no new commits found";
             }
 
-            // 4. Write Direct to Output (Crucial for preserving newlines)
+            // 4. Write Direct to Output
             const fs = require('fs');
-            // Create a random delimiter to safely write multiline strings
             const delimiter = 'EOF_' + Math.random().toString(36).substr(2, 9);
             fs.appendFileSync(process.env.GITHUB_OUTPUT, `notes<<${delimiter}\n${finalNotes}\n${delimiter}\n`);
 
