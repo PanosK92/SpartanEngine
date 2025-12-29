@@ -167,7 +167,7 @@ jobs:
               commits = recentCommits || [];
             }
 
-            // 2. Format Commits with Hyperlinks and Correct Usernames
+            // 2. Format Commits (REMOVED INLINE AUTHOR)
             const commitLines = commits
               .filter(commit => !commit.commit.message.startsWith('Merge'))
               .map(commit => {
@@ -175,13 +175,8 @@ jobs:
                 const message = commit.commit.message.split('\n')[0];
                 const url = commit.html_url; 
                 
-                // PREFER GITHUB LOGIN, FALLBACK TO GIT NAME
-                let authorName = commit.commit.author.name;
-                if (commit.author && commit.author.login) {
-                    authorName = commit.author.login;
-                }
-                
-                return `- [\`${shortSha}\`](${url}) ${message} (@${authorName})`;
+                // Returns: - [`hash`](url) Message
+                return `- [\`${shortSha}\`](${url}) ${message}`;
               });
             
             // 3. Extract Unique Contributors (Preferring Login)
