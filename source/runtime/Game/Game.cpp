@@ -75,37 +75,21 @@ namespace spartan
                 audio_source->SetLoop(true);
             }
 
-            void sun(const bool is_night, const bool enabled, const Vector3& direction = Vector3(-1.0f, -0.2f, 0.25f))
+            void sun(const LightPreset preset, const bool enabled)
             {
                 default_light_directional = World::CreateEntity();
                 default_light_directional->SetObjectName("light_directional");
                 Light* light = default_light_directional->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
             
-                // rotation from direction
-                Vector3 forward = direction.Normalized();
-                Quaternion rot  = Quaternion::FromLookRotation(forward);
-                default_light_directional->SetRotation(rot);
-            
-                // intensity & temperature
+                // set preset (this will set temperature, intensity, time of day, and rotation)
                 if (enabled)
                 {
-                    if (is_night)
-                    {
-                        // moon: ~1 lux (gameplay visibility), cool temperature (8000k)
-                        light->SetIntensity(1.0f);
-                        light->SetTemperature(8000.0f);
-                    }
-                    else
-                    {
-                        // sun: 100,000 lux (standard noon), warm/neutral temperature (5800k)
-                        // this matches the "sunny 16" rule used in the camera
-                        light->SetIntensity(100000.0f);
-                        light->SetTemperature(5800.0f);
-                    }
+                    light->SetPreset(preset);
                 }
                 else
                 {
+                    // disabled: no light
                     light->SetIntensity(0.0f);
                 }
             
@@ -630,8 +614,7 @@ namespace spartan
         {
             // set the mood
             entities::camera(false, Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            entities::sun(false, true);
-            default_light_directional->GetComponent<Light>()->SetIntensity(120000.0f); // lux
+            entities::sun(LightPreset::Noon, true);
             entities::music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
@@ -720,7 +703,7 @@ namespace spartan
         void create_minecraft()
         {
              entities::camera(false, Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-             entities::sun(false, true);
+             entities::sun(LightPreset::GoldenHour, true);
              entities::music();
 
             // the entire minecraft world is a single mesh so don't optimize or generate lods (it will deteriorate a lot)
@@ -749,7 +732,7 @@ namespace spartan
 
         void create_subway_gi_test()
         {
-            entities::sun(false, false);
+            entities::sun(LightPreset::Night, true);
 
             entities::camera(true);
             //default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true); // if you do that, you get a GPU crash, fix
@@ -788,12 +771,9 @@ namespace spartan
                 const float per_triangle_density_rock        = 0.001f;
 
                 // sun/lighting/mood
-                entities::sun(false, true);
+                entities::sun(LightPreset::GoldenHour, true);
                 Light* sun = default_light_directional->GetComponent<Light>();
-                sun->SetIntensity(5'000.0f);   // low light too match the sunrise direction
-                sun->SetTemperature(3'800.0f); // kelvin - warm light
                 sun->SetFlag(LightFlags::Volumetric, true);
-                sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(7.0f, -100.0f, -0.5f)); // sunrise height
 
                 entities::camera(false, Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
@@ -1274,6 +1254,9 @@ namespace spartan
             {
                 // gran turismo 7 brand central music
                 entities::music("project\\music\\gran_turismo.wav");
+                
+                // no light - dark showroom
+                entities::sun(LightPreset::Custom, false);
                 
                 // textures
                 texture_brand_logo   = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
@@ -1768,7 +1751,7 @@ namespace spartan
             {
                 entities::camera(false);
                 entities::floor();
-                entities::sun(false, true);
+                entities::sun(LightPreset::BlueHour, true);
                 entities::material_ball(Vector3::Zero);
             }
         }

@@ -743,4 +743,13 @@ namespace spartan
     {
         return world_time::get_time_of_day(use_real_world_time);
     }
+
+    void World::SetTimeOfDay(float time_of_day)
+    {
+        if (time_of_day < 0.0f)
+            time_of_day = 0.0f;
+        else if (time_of_day > 1.0f)
+            time_of_day = 1.0f;
+        world_time::time_of_day = time_of_day;
+    }
 }

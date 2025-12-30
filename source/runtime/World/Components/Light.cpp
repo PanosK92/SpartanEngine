@@ -177,6 +177,7 @@ namespace spartan
         node.append_attribute("range")         = m_range;
         node.append_attribute("angle")         = m_angle_rad;
         node.append_attribute("index")         = m_index;
+        node.append_attribute("preset")       = static_cast<int>(m_preset);
     }
     
     void Light::Load(pugi::xml_node& node)
@@ -192,6 +193,7 @@ namespace spartan
         m_range                = node.attribute("range").as_float(32.0f);
         m_angle_rad            = node.attribute("angle").as_float(math::deg_to_rad * 30.0f);
         m_index                = node.attribute("index").as_uint(0);
+        m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(LightPreset::Custom)));
     
         UpdateMatrices(); // regenerate view/projection after loading
     }
@@ -324,6 +326,96 @@ namespace spartan
     {
         m_intensity_lumens_lux = lumens_lux;
         m_intensity            = LightIntensity::custom;
+
+        m_changed_this_frame = true;
+    }
+
+    void Light::SetPreset(const LightPreset preset)
+    {
+        m_preset = preset;
+
+        float time_of_day = 0.0f;
+        float temperature = 0.0f;
+        float intensity = 0.0f;
+
+        switch (preset)
+        {
+        case LightPreset::Noon:
+            // bright midday sun - direct sunlight
+            time_of_day = 0.5f; // 12:00 PM
+            temperature = 5778.0f;
+            intensity = 120000.0f; // lux
+            break;
+
+        case LightPreset::Day:
+            // daylight - overcast sky
+            time_of_day = 0.4f; // 9:36 AM
+            temperature = 6500.0f;
+            intensity = 50000.0f; // lux
+            break;
+
+        case LightPreset::GoldenHour:
+            // late afternoon with warm orange tones
+            time_of_day = 0.65f; // 3:36 PM
+            temperature = 3500.0f;
+            intensity = 15000.0f; // lux
+            break;
+
+        case LightPreset::BlueHour:
+            // twilight with beautiful blue tones
+            time_of_day = 0.72f; // 5:17 PM
+            temperature = 8000.0f;
+            intensity = 2000.0f; // lux
+            break;
+
+        case LightPreset::Night:
+            // nighttime with moonlight
+            time_of_day = 0.8f; // 7:12 PM
+            temperature = 4000.0f;
+            intensity = 0.1f; // lux
+            break;
+
+        case LightPreset::Dawn:
+            // early morning sunrise
+            time_of_day = 0.25f; // 6:00 AM
+            temperature = 2000.0f;
+            intensity = 400.0f; // lux
+            break;
+
+        case LightPreset::Dusk:
+            // evening twilight
+            time_of_day = 0.75f; // 6:00 PM
+            temperature = 3000.0f;
+            intensity = 100.0f; // lux
+            break;
+
+        case LightPreset::Midnight:
+            // darkest night - starlight only
+            time_of_day = 0.0f; // 12:00 AM
+            temperature = 2000.0f;
+            intensity = 0.01f; // lux
+            break;
+
+        case LightPreset::Custom:
+            // do nothing, keep current settings
+            return;
+        }
+
+        // set time of day
+        World::SetTimeOfDay(time_of_day);
+
+        // set light properties
+        SetTemperature(temperature);
+        SetIntensity(intensity);
+
+        // set rotation based on time of day (only for directional lights)
+        if (m_light_type == LightType::Directional)
+        {
+            float angle_rad = (time_of_day * 360.0f - 90.0f) * math::deg_to_rad;
+            Quaternion rotation = Quaternion::FromAxisAngle(Vector3::Right, angle_rad);
+            GetEntity()->SetRotation(rotation);
+            UpdateMatrices();
+        }
 
         m_changed_this_frame = true;
     }

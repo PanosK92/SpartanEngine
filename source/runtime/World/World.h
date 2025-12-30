@@ -64,6 +64,7 @@ namespace spartan
 
         // world time: 0.0 = midnight, 0.5 = noon, 1.0 = next midnight
         static float GetTimeOfDay(bool use_real_world_time = false);
+        static void SetTimeOfDay(float time_of_day);
 
     private:
         static void ProcessPendingRemovals();

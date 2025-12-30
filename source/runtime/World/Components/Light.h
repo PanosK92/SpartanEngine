@@ -57,6 +57,19 @@ namespace spartan
         custom           // custom intensity
     };
 
+    enum class LightPreset
+    {
+        Noon,       // bright midday sun
+        Day,        // daylight
+        GoldenHour, // late afternoon with warm orange tones
+        BlueHour,   // twilight with beautiful blue tones
+        Night,      // nighttime with moonlight
+        Dawn,       // early morning sunrise
+        Dusk,       // evening twilight
+        Midnight,   // darkest night
+        Custom      // custom settings
+    };
+
     enum LightFlags : uint32_t
     {
         Shadows            = 1U << 0,
@@ -99,6 +112,10 @@ namespace spartan
         float GetIntensityLumens() const    { return m_intensity_lumens_lux; }
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt() const;
+
+        // preset
+        void SetPreset(const LightPreset preset);
+        LightPreset GetPreset() const { return m_preset; }
 
         // range
         void SetRange(float range);
@@ -152,6 +169,7 @@ namespace spartan
         LightType m_light_type           = LightType::Max;
         Color m_color_rgb                = Color::standard_black;
         float m_temperature_kelvin       = 0.0f;
+        LightPreset m_preset             = LightPreset::Custom;
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
         uint32_t m_index                 = 0;
