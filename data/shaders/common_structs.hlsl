@@ -163,10 +163,17 @@ struct Light
 
     float compute_attenuation_distance(const float3 surface_position)
     {
-        float distance_to_pixel = length(surface_position - position);
-        float attenuation       = saturate(1.0f - distance_to_pixel / far);
-
-        return attenuation * attenuation;
+        float d = length(surface_position - position);
+        
+        // 1. Physically correct Inverse Square Law
+        // We add a small epsilon (0.0001) to prevent division by zero at the light source
+        float attenuation_phys = 1.0f / (d * d + 0.0001f);
+    
+        // 2. Windowing function (Forces light to 0 at 'far' distance)
+        float distance_falloff  = saturate(1.0f - d / far);
+        distance_falloff       *= distance_falloff; // square it for smoother fade
+    
+        return attenuation_phys * distance_falloff;
     }
 
     float compute_attenuation_angle()

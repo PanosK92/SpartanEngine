@@ -330,21 +330,27 @@ namespace spartan
 
     float Light::GetIntensityWatt() const
     {
-        // ideal luminous efficacy at 555nm in lm/w
-        const float luminous_efficacy = 683.0f;
-        float intensity               = m_intensity_lumens_lux;
-        
+        // ideal luminous efficacy of monochromatic radiation at 555 nm (lm/w).
+        // note: for broad spectrum white light, ~250-400 is more accurate,
+        // but 683 is the standard "ideal" definition used in engines like ue5/frostbite
+        const float luminous_efficacy = 683.0f; 
+    
+        // 1. convert photometric (lumens/lux) to radiometric (watts)
+        float radiant_flux = m_intensity_lumens_lux / luminous_efficacy;
+    
         if (m_light_type == LightType::Directional)
         {
-            // assume the intensity is in lux (lm/m^2)
-            // converting lux to W/m^2 using a reference area of 1 m^2
-            intensity = m_intensity_lumens_lux / luminous_efficacy;
-        } else
-        {
-            intensity = m_intensity_lumens_lux / luminous_efficacy;
+            // directional: input is lux (lm/m^2), output is irradiance (w/m^2)
+            // no solid angle conversion needed
+            return radiant_flux;
         }
-        
-        return intensity;
+        else
+        {
+            // point/spot: input is lumens (lm) -> flux (watts)
+            // we need radiant intensity (watts/sr)
+            // divide by 4pi to distribute flux over the sphere
+            return radiant_flux / (4.0f * 3.14159265359f);
+        }
     }
 
     void Light::SetRange(float range)

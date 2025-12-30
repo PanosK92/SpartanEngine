@@ -19,28 +19,41 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= includes =========
 #include "common.hlsl"
 //====================
 
 float3 threshold(float3 color)
 {
-    const float BLOOM_THRESHOLD = 4.3;
-    const float BLOOM_SOFT_KNEE = 0.5;
-    const float MAX_BRIGHTNESS  = 5.0;
+    // physical calibration (watts)
+    // the render buffer is in watts, so we must define the threshold in watts.
+    // calculation: nits / 683 = watts
+    
+    // threshold: "paper white" (250 nits / 683 = 0.366 watts)
+    const float BLOOM_THRESHOLD = 0.366f; 
+    
+    // knee: smooth transition range (50% of threshold)
+    const float BLOOM_SOFT_KNEE = BLOOM_THRESHOLD * 0.5f;
+    
+    // max brightness: clamp fireflies (50,000 nits / 683 = 73.2 watts)
+    const float MAX_BRIGHTNESS  = 73.2f; 
 
-    color               = min(color, MAX_BRIGHTNESS);
-    float brightness    = dot(color, float3(0.2126, 0.7152, 0.0722)); // luminance for accuracy
-    float soft          = brightness - BLOOM_THRESHOLD + BLOOM_SOFT_KNEE;
-    soft                = clamp(soft, 0, 2 * BLOOM_SOFT_KNEE);
-    soft                = soft * soft / (4 * BLOOM_SOFT_KNEE + FLT_MIN);
-    float contribution  = max(soft, brightness - BLOOM_THRESHOLD);
-    contribution       /= max(brightness, FLT_MIN);
-    color               = color * contribution;
+    // 1. clamp fireflies
+    color = min(color, MAX_BRIGHTNESS);
+    
+    // 2. calculate brightness (watts)
+    // using Rec.709 luminance coefficients
+    float brightness = dot(color, float3(0.2126, 0.7152, 0.0722)); 
 
-    // Karis average for firefly reduction
-    float luma          = dot(color, float3(0.2126, 0.7152, 0.0722));
-    color               /= (1.0 + luma);
+    // 3. quadratic threshold (standard curve)
+    float soft = brightness - BLOOM_THRESHOLD + BLOOM_SOFT_KNEE;
+    soft       = clamp(soft, 0.0f, 2.0f * BLOOM_SOFT_KNEE);
+    soft       = soft * soft / (4.0f * BLOOM_SOFT_KNEE + 0.00001f);
+    
+    float contribution = max(soft, brightness - BLOOM_THRESHOLD);
+    contribution      /= max(brightness, 0.00001f);
+    
+    color = color * contribution;
 
     return color;
 }
@@ -72,10 +85,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
     
-    float2 uv             = (thread_id.xy + 0.5) / resolution_out;
-    float3 color          = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
-    float3 filtered       = threshold(color);
-    tex_uav[thread_id.xy] = float4(saturate_16(filtered), 1.0);
+    float2 uv         = (thread_id.xy + 0.5) / resolution_out;
+    float3 color      = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
+    float3 filtered   = threshold(color);
+    
+    // store full hdr value
+    tex_uav[thread_id.xy] = float4(filtered, 1.0);
 }
 #endif
 
@@ -88,15 +103,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
     
-    float2 uv            = (thread_id.xy + 0.5) / resolution_out;
-    float2 texel_size    = 1.0 / resolution_out;
+    float2 uv         = (thread_id.xy + 0.5) / resolution_out;
+    float2 texel_size = 1.0 / resolution_out;
     
-    float3 low_mip       = upsample_filter(tex, uv, texel_size);
-    float3 high_mip      = tex_uav[thread_id.xy].rgb;
+    float3 low_mip    = upsample_filter(tex, uv, texel_size);
+    float3 high_mip   = tex_uav[thread_id.xy].rgb;
     
-    float3 result        = high_mip + low_mip; // additive for multi-scale accumulation
+    float3 result     = high_mip + low_mip;
 
-    tex_uav[thread_id.xy] = float4(saturate_16(result), 1.0);
+    tex_uav[thread_id.xy] = float4(result, 1.0);
 }
 #endif
 
@@ -114,6 +129,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     float bloom_intensity = pass_get_f3_value().x;
     float3 result         = color_frame.rgb + color_bloom.rgb * bloom_intensity;
-    tex_uav[thread_id.xy] = float4(saturate_16(result), color_frame.a);
+    
+    tex_uav[thread_id.xy] = float4(result, color_frame.a);
 }
 #endif

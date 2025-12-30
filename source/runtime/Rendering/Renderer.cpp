@@ -139,15 +139,15 @@ namespace spartan
 
             m_options.clear();
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f);  // non-zero values activate it and control the intensity
+            SetOption(Renderer_Option::Bloom,                       0.001f); // non-zero values activate it and control the intensity
             SetOption(Renderer_Option::MotionBlur,                  1.0f);
             SetOption(Renderer_Option::DepthOfField,                1.0f);
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
             SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
             SetOption(Renderer_Option::RayTracedReflections,        RHI_Device::IsSupportedRayTracing() ? 0.0f : 0.0f);
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
+            SetOption(Renderer_Option::Sharpness,                   0.0f); // becomes the upscaler's sharpness as well
+            SetOption(Renderer_Option::Fog,                         1.0);  // controls the intensity of the distance/height and volumetric fog, it's the particle density
             SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);
@@ -162,6 +162,7 @@ namespace spartan
             SetOption(Renderer_Option::Dithering,                   0.0f);
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
             SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
+            SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::GranTurismo7)); // works for both hdr and sdr, and accepts photometric units (nits) while allow for great color accuracy
 
             // set wind direction and strength
             {

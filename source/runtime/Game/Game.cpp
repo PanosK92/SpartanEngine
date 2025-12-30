@@ -75,7 +75,7 @@ namespace spartan
                 audio_source->SetLoop(true);
             }
 
-            void sun(const bool enabled, const Vector3& direction = Vector3(-1.0f, -0.2f, 0.25f))
+            void sun(const bool is_night, const bool enabled, const Vector3& direction = Vector3(-1.0f, -0.2f, 0.25f))
             {
                 default_light_directional = World::CreateEntity();
                 default_light_directional->SetObjectName("light_directional");
@@ -87,12 +87,73 @@ namespace spartan
                 Quaternion rot  = Quaternion::FromLookRotation(forward);
                 default_light_directional->SetRotation(rot);
             
-                // intensity
-                light->SetTemperature(4000.0f);
-                light->SetIntensity(enabled ? 40'000.0f : 0.0f);
+                // intensity & temperature
+                if (enabled)
+                {
+                    if (is_night)
+                    {
+                        // moon: ~1 lux (gameplay visibility), cool temperature (8000k)
+                        light->SetIntensity(1.0f);
+                        light->SetTemperature(8000.0f);
+                    }
+                    else
+                    {
+                        // sun: 100,000 lux (standard noon), warm/neutral temperature (5800k)
+                        // this matches the "sunny 16" rule used in the camera
+                        light->SetIntensity(100000.0f);
+                        light->SetTemperature(5800.0f);
+                    }
+                }
+                else
+                {
+                    light->SetIntensity(0.0f);
+                }
+            
                 light->SetFlag(LightFlags::Shadows, enabled);
                 light->SetFlag(LightFlags::ShadowsScreenSpace, enabled);
                 light->SetFlag(LightFlags::DayNightCycle, false);
+            }
+            
+            void camera(const bool is_night, const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
+            {
+                // create the camera's root (which will be used for movement)
+                default_camera = World::CreateEntity();
+                default_camera->SetObjectName("physics_body_camera");
+                default_camera->SetPosition(camera_position);
+            
+                // add a physics controller so that the camera can move around
+                Physics* physics_body = default_camera->AddComponent<Physics>();
+                physics_body->SetFriction(1.0f);
+                physics_body->SetFrictionRolling(0.8f);
+                physics_body->SetRestitution(0.1f);
+                physics_body->SetBodyType(BodyType::Controller);
+            
+                // add a camera component
+                Entity* camera = World::CreateEntity();
+                camera->SetObjectName("component_camera");
+                Camera* camera_comp = camera->AddComponent<Camera>();
+                camera->SetParent(default_camera); // if the parent has a physics body, the camera will automatically control it for physics based movement
+                camera->SetPositionLocal(physics_body->GetControllerTopLocal());
+                camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
+            
+                // apply physical camera settings
+                if (is_night)
+                {
+                    // night: ev ~3.0 (street lighting / moonlight)
+                    // lens: fast prime lens (f/1.4) to gather maximum light
+                    // sensor: high iso to boost signal
+                    camera_comp->SetAperture(1.4f);             // f/1.4
+                    camera_comp->SetShutterSpeed(1.0f / 60.0f); // 1/60s
+                    camera_comp->SetIso(1600.0f);               // iso 1600
+                }
+                else
+                {
+                    // day: ev ~15.0 (sunny 16 rule)
+                    // matches the 100,000 lux sun setting
+                    camera_comp->SetAperture(16.0f);             // f/16
+                    camera_comp->SetShutterSpeed(1.0f / 125.0f); // 1/125s
+                    camera_comp->SetIso(100.0f);                 // iso 100
+                }
             }
 
             void floor()
@@ -112,29 +173,6 @@ namespace spartan
                 // add physics components
                 Physics* physics_body = default_floor->AddComponent<Physics>();
                 physics_body->SetBodyType(BodyType::Plane);
-            }
-
-            void camera(const Vector3& camera_position = Vector3(0.0f, 2.0f, -10.0f), const Vector3& camera_rotation = Vector3(0.0f, 0.0f, 0.0f))
-            {
-                // create the camera's root (which will be used for movement)
-                default_camera = World::CreateEntity();
-                default_camera->SetObjectName("physics_body_camera");
-                default_camera->SetPosition(camera_position);
-
-                // add a physics controller so that the camera can move around
-                Physics* physics_body = default_camera->AddComponent<Physics>();
-                physics_body->SetFriction(1.0f);
-                physics_body->SetFrictionRolling(0.8f);
-                physics_body->SetRestitution(0.1f);
-                physics_body->SetBodyType(BodyType::Controller);
-
-                // add a camera component
-                Entity* camera = World::CreateEntity();
-                camera->SetObjectName("component_camera");
-                camera->AddComponent<Camera>();
-                camera->SetParent(default_camera); // if the parent has a physics body, the camera will automatically control it for physics based movement
-                camera->SetPositionLocal(physics_body->GetControllerTopLocal());
-                camera->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
             }
 
             void metal_cube(const Vector3& position)
@@ -591,8 +629,8 @@ namespace spartan
         void create_sponza_4k()
         {
             // set the mood
-            entities::camera(Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            entities::sun(true);
+            entities::camera(false, Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
+            entities::sun(false, true);
             default_light_directional->GetComponent<Light>()->SetIntensity(120000.0f); // lux
             entities::music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
@@ -681,8 +719,8 @@ namespace spartan
 
         void create_minecraft()
         {
-             entities::camera(Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-             entities::sun(true);
+             entities::camera(false, Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
+             entities::sun(false, true);
              entities::music();
 
             // the entire minecraft world is a single mesh so don't optimize or generate lods (it will deteriorate a lot)
@@ -711,9 +749,9 @@ namespace spartan
 
         void create_subway_gi_test()
         {
-            entities::sun(false);
+            entities::sun(false, false);
 
-            entities::camera();
+            entities::camera(true);
             //default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true); // if you do that, you get a GPU crash, fix
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
@@ -750,14 +788,14 @@ namespace spartan
                 const float per_triangle_density_rock        = 0.001f;
 
                 // sun/lighting/mood
-                entities::sun(true);
+                entities::sun(false, true);
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetIntensity(5'000.0f);   // low light too match the sunrise direction
                 sun->SetTemperature(3'800.0f); // kelvin - warm light
                 sun->SetFlag(LightFlags::Volumetric, true);
                 sun->GetEntity()->SetRotation(Quaternion::FromEulerAngles(7.0f, -100.0f, -0.5f)); // sunrise height
 
-                entities::camera(Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
+                entities::camera(false, Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
 
                 // create
@@ -1246,7 +1284,7 @@ namespace spartan
                 // camera
                 {
                     Vector3 camera_position = Vector3(5.0f, 1.5f, -10.0f);
-                    entities::camera(camera_position);
+                    entities::camera(true, camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
                     default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true);
@@ -1287,7 +1325,7 @@ namespace spartan
                                         light->SetLightType(LightType::Point);
                                         light->SetColor(color);
                                         light->SetRange(40.0f);
-                                        light->SetIntensity(20000.0f);
+                                        light->SetIntensity(7000.0f);
                                         light->SetFlag(LightFlags::Shadows,            true);
                                         light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                         light->SetFlag(LightFlags::Volumetric,         false);
@@ -1464,7 +1502,7 @@ namespace spartan
                 Renderer::SetOption(Renderer_Option::Vhs, 1.0f);
             
                 // camera
-                entities::camera(Vector3(5.4084f, 1.8f, 4.7593f));
+                entities::camera(true, Vector3(5.4084f, 1.8f, 4.7593f));
                 default_camera->GetChildByIndex(0)->GetComponent<Camera>()->SetFlag(CameraFlags::Flashlight, true);
             
                 // audio hum
@@ -1728,9 +1766,9 @@ namespace spartan
         {
             void create()
             {
-                entities::camera();
+                entities::camera(false);
                 entities::floor();
-                entities::sun(true);
+                entities::sun(false, true);
                 entities::material_ball(Vector3::Zero);
             }
         }
