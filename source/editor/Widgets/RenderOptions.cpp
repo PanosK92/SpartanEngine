@@ -207,10 +207,11 @@ void RenderOptions::OnVisible()
     {
         display_modes.clear();
         display_modes_string.clear();
-
         for (const DisplayMode& display_mode : Display::GetDisplayModes())
         {
-            if (display_mode.hz == Display::GetRefreshRate())
+            // only include resolutions that match the monitor's current refresh rate (with tolerance for floating-point quirks like 240 vs 239.8 Hz)
+            // quirks like that can exist for NVIDIA for example, but not for AMD, so it's important to be safe like that
+            if (fabs(display_mode.hz - Display::GetRefreshRate()) < 0.1f)
             {
                 display_modes.emplace_back(display_mode);
                 display_modes_string.emplace_back(to_string(display_mode.width) + "x" + to_string(display_mode.height));
