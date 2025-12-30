@@ -912,6 +912,7 @@ namespace spartan
     {
         RHI_Texture* tex_skysphere              = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_sun_glare              = GetOption<bool>(Renderer_Option::SunGlare) ? GetStandardTexture(Renderer_StandardTexture::SunGlare) : nullptr;
 
         cmd_list->BeginTimeblock("skysphere");
         {
@@ -925,6 +926,7 @@ namespace spartan
     
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_sun_glare);
                 cmd_list->Dispatch(tex_skysphere);
             }
             else

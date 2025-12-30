@@ -45,6 +45,7 @@ namespace spartan
         Wireframe,
         Bloom,
         Fog,
+        SunGlare,
         ScreenSpaceAmbientOcclusion,
         ScreenSpaceReflections,
         RayTracedReflections,
@@ -85,6 +86,7 @@ namespace spartan
             case Renderer_Option::Wireframe:                   return "Wireframe";
             case Renderer_Option::Bloom:                       return "Bloom";
             case Renderer_Option::Fog:                         return "Fog";
+            case Renderer_Option::SunGlare:                    return "SunGlare";
             case Renderer_Option::ScreenSpaceAmbientOcclusion: return "ScreenSpaceAmbientOcclusion";
             case Renderer_Option::ScreenSpaceReflections:      return "ScreenSpaceReflections";
             case Renderer_Option::MotionBlur:                  return "MotionBlur";
@@ -314,6 +316,7 @@ namespace spartan
         Noise_blue_6,
         Noise_blue_7,
         Checkerboard,
+        SunGlare,
         Gizmo_light_directional,
         Gizmo_light_point,
         Gizmo_light_spot,

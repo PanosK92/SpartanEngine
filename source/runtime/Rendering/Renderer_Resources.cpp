@@ -629,6 +629,7 @@ namespace spartan
         // misc
         {
             standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
+            standard_texture(Renderer_StandardTexture::SunGlare)     = make_shared<RHI_Texture>(dir_texture + "sun_glare.png");
         }
 
         // black and white

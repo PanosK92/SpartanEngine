@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2025 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,6 +37,8 @@ static const float3 beta_ozone_abs   = float3(0.650e-6, 1.881e-6, 0.085e-6); // 
 static const float g_mie             = 0.80;                                 // mie phase asymmetry factor
 static const int num_view_samples    = 32;                                   // samples along view ray
 static const int num_sun_samples     = 256;                                  // samples along sun ray
+static const float near_horizon      = 0.1f;                                 // flare near-horizon elevation
+static const float glare_max         = 0.7f;                                 // glare maximum size (at noon)
 
 struct sun
 {
@@ -64,6 +66,40 @@ struct sun
     }
 };
 
+struct glare
+{
+    static float compute_scale(float3 sun_dir)
+    {
+        float sun_elevation = saturate(dot(sun_dir, up_direction));
+        return lerp(FLT_MIN, glare_max, sun_elevation);
+    }
+
+    static float3 compute_color(float3 view_dir, float3 sun_dir, float3 sun_color, float3 light_color, float light_intensity)
+    {
+		uint tex2_w, tex2_h;
+    	tex2.GetDimensions(tex2_w, tex2_h);
+    	if (tex2_w == 0 || tex2_h == 0)
+        	return 0.0f; // invalid texture, disabled by render option
+
+        float sun_dot = dot(view_dir, sun_dir);
+        if (sun_dot <= 0.0f)
+            return 0.0f; // no need to render if outside view
+
+        // UV coordinates centered on sun
+        float3 right    = normalize(cross(sun_dir, up_direction));
+        float3 up_local = normalize(cross(right, sun_dir));
+        float2 local_uv = float2(dot(view_dir, right), dot(view_dir, up_local));
+        float2 glare_uv = local_uv / compute_scale(sun_dir) + 0.5f;
+
+        if (all(and(glare_uv >= 0.0f, glare_uv <= 1.0f)))
+        {
+            float4 tex_glare = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), glare_uv, 0.0f);
+            return tex_glare.rgb * tex_glare.a * light_color * light_intensity * sun_color;
+        }
+
+        return 0.0f;
+    }
+};
 
 struct stars
 {
@@ -325,6 +361,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     // artistic touches (stars, moon, sun)
     float3 sun_color      = sun::compute_color(original_view_direction, sun_direction, light_color);
+    float3 glare_color 	  = glare::compute_color(original_view_direction, sun_direction, sun_color, light_color, light.intensity);
     float3 star_color     = stars::compute_color(uv, sun_direction);
     float3 moon_color     = 0.0f;
     float3 moon_direction = -sun_direction;
@@ -338,11 +375,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     {
         atmosphere_color *= 0.3f;
         sun_color         = 0.0f;
+        glare_color       = 0.0f;
         star_color        = 0.0f;
         moon_color        = 0.0f;
     }
 
     // out
-    tex_uav[thread_id.xy] = float4(atmosphere_color + sun_color + star_color + moon_color, 1.0f);
+    tex_uav[thread_id.xy] = float4(atmosphere_color + sun_color + star_color + moon_color + glare_color, 1.0f);
 }
 #endif

@@ -148,6 +148,7 @@ namespace spartan
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
             SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
             SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
+            SetOption(Renderer_Option::SunGlare,                    0.0f);
             SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);

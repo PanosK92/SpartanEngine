@@ -373,6 +373,7 @@ void RenderOptions::OnTickVisible()
                 ImGui::TableHeadersRow();
 
                 option_value("Fog density", Renderer_Option::Fog, "Controls atmospheric fog strength", 0.1f);
+                option_check_box("Sun glare", Renderer_Option::SunGlare, "Toggles sun glare on sky");
 
                 if (option("Wind"))
                 {
