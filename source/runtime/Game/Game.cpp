@@ -732,7 +732,6 @@ namespace spartan
 
         void create_subway_gi_test()
         {
-            entities::sun(LightPreset::Custom, false);
             entities::camera(true);
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
@@ -1251,8 +1250,7 @@ namespace spartan
             void create()
             {
                 entities::music("project\\music\\gran_turismo.wav");
-                entities::sun(LightPreset::Midnight, false);
-                
+
                 // textures
                 texture_brand_logo   = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
                 texture_paint_normal = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\paint_normal.png");

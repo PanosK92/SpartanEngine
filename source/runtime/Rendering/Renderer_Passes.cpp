@@ -968,17 +968,17 @@ namespace spartan
         RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
-
+    
         // define pipeline state
         RHI_PipelineState pso;
         pso.name             = is_transparent_pass ? "light_transparent" : "light";
         pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
-
+    
         // dispatch on the bindless light array and the shadow atlas
         cmd_list->BeginTimeblock(pso.name);
         {
             cmd_list->SetPipelineState(pso);
-
+    
             // textures
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
@@ -987,12 +987,12 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,    light_specular);
             cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_volumetric);
-
+    
             // push constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(static_cast<uint32_t>(World::GetLightCount())), GetOption<float>(Renderer_Option::Fog));
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_count_active_lights), GetOption<float>(Renderer_Option::Fog));
             cmd_list->PushConstants(m_pcb_pass_cpu);
-
+    
             // dispatch
             cmd_list->Dispatch(light_diffuse, GetOption<float>(Renderer_Option::ResolutionScale)); // adds read write barrier for light_diffuse internally
             cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
@@ -1000,7 +1000,7 @@ namespace spartan
         }
         cmd_list->EndTimeblock();
     }
-
+    
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources

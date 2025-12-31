@@ -73,6 +73,7 @@ namespace spartan
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
     unique_ptr<RHI_AccelerationStructure> tlas;
+    uint32_t Renderer::m_count_active_lights = 0;
 
     namespace
     {
@@ -980,23 +981,23 @@ namespace spartan
         const Vector3 camera_pos    = camera_entity ? camera_entity->GetPosition() : Vector3::Zero;
     
         m_bindless_lights.fill(Sb_Light());
-        static uint32_t count;
-        count = 0;
+        
+        // reset the active count so we can track exactly how many lights are uploaded
+        m_count_active_lights    = 0; 
         Light* first_directional = nullptr;
     
         auto fill_light = [&](Light* light_component)
         {
-            //SP_LOG_INFO("Processing light %s", light_component->GetEntity()->GetObjectName().c_str());
-
-            const uint32_t index = count++;
+            const uint32_t index = m_count_active_lights++;
+            
             light_component->SetIndex(index);
             Sb_Light& light_buffer_entry = m_bindless_lights[index];
-
+    
             for (uint32_t i = 0; i < light_component->GetSliceCount(); i++)
             {
                 light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
             }
-
+    
             light_buffer_entry.screen_space_shadows_slice_index  = light_component->GetScreenSpaceShadowsSliceIndex();
             light_buffer_entry.intensity                         = light_component->GetIntensityWatt();
             light_buffer_entry.range                             = light_component->GetRange();
@@ -1016,15 +1017,15 @@ namespace spartan
             {
                 if (i < light_component->GetSliceCount())
                 {
-                    light_buffer_entry.atlas_offsets[i]     = light_component->GetAtlasOffset(i);
-                    light_buffer_entry.atlas_scales[i]      = light_component->GetAtlasScale(i);
-                    const math::Rectangle& rect             = light_component->GetAtlasRectangle(i);
+                    light_buffer_entry.atlas_offsets[i]      = light_component->GetAtlasOffset(i);
+                    light_buffer_entry.atlas_scales[i]       = light_component->GetAtlasScale(i);
+                    const math::Rectangle& rect              = light_component->GetAtlasRectangle(i);
                     light_buffer_entry.atlas_texel_sizes[i] = Vector2(1.0f / rect.width, 1.0f / rect.height);
                 }
                 else
                 {
-                    light_buffer_entry.atlas_offsets[i]     = Vector2::Zero;
-                    light_buffer_entry.atlas_scales[i]      = Vector2::Zero;
+                    light_buffer_entry.atlas_offsets[i]      = Vector2::Zero;
+                    light_buffer_entry.atlas_scales[i]       = Vector2::Zero;
                     light_buffer_entry.atlas_texel_sizes[i] = Vector2::Zero;
                 }
             }
@@ -1038,7 +1039,18 @@ namespace spartan
                 if (light_component->GetLightType() == LightType::Directional)
                 {
                     first_directional = light_component;
+    
+                    // even if disabled (intensity 0 or !active), we must upload it to slot 0
+                    // because the shader hard-assumes slot 0 is the sun.
                     fill_light(light_component);
+                    
+                    // if it was effectively disabled, ensure the uploaded intensity is 0
+                    // so it doesn't affect lighting calculation
+                    if (!light_component->GetEntity()->GetActive())
+                    {
+                        // index is guaranteed to be 0 here since it's the first one we processed
+                        m_bindless_lights[0].intensity = 0.0f;
+                    }
                     break;
                 }
             }
@@ -1049,23 +1061,24 @@ namespace spartan
         {
             if (Light* light_component = entity->GetComponent<Light>())
             {
+                // skip the directional light we already handled
                 if (light_component == first_directional)
                     continue;
-
+    
                 light_component->SetIndex(numeric_limits<uint32_t>::max());
     
                 if (!light_component->GetEntity()->GetActive())
                     continue;
-
+    
                 if (light_component->GetIntensityWatt() <= 0.0f)
                     continue;
-
+    
                 if (Camera* camera = World::GetCamera())
                 {
                     if (!camera->IsInViewFrustum(light_component->GetBoundingBox()))
                         continue;
                 }
-
+    
                 if (light_component->GetLightType() != LightType::Directional)
                 {
                     const float distance_squared      = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
@@ -1073,7 +1086,7 @@ namespace spartan
                     if (distance_squared > draw_distance_squared)
                         continue;
                 }
-
+    
                 fill_light(light_component);
             }
         }
@@ -1081,7 +1094,12 @@ namespace spartan
         // upload to gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * World::GetLightCount());
+        
+        // update only the active lights count so we don't upload garbage data
+        if (m_count_active_lights > 0)
+        {
+            buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * m_count_active_lights);
+        }
     }
 
     void Renderer::UpdatedBoundingBoxes(RHI_CommandList* cmd_list)

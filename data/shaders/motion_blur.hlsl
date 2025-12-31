@@ -90,7 +90,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     float2 center_velocity_uv  = (center_velocity / 2.0f) * shutter_ratio;
     float2 dilated_velocity_uv = (dilated_velocity / 2.0f) * shutter_ratio;
 
-    // compute max velocity for tile (optimization)
+    // compute max velocity for tile
     if (group_index == 0)
     {
         g_tile_max_velocity_sqr = 0;
@@ -125,11 +125,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     float4 center_color = tex.Load(int3(pixel_coord, 0));
     float center_depth  = get_linear_depth(uv);
     float4 accum_color  = center_color;
-    float total_weight  = 1.0f;
-    
+    float total_weight  = 1.0f;   
     float2 search_vector = dilated_velocity_uv;
     float noise          = get_noise(pixel_coord);
-
     [unroll]
     for (uint i = 1; i < g_motion_blur_samples; ++i)
     {
