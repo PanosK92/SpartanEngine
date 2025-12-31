@@ -203,6 +203,7 @@ namespace spartan
         bloom_luminance_c,
         bloom_blend_frame_c,
         bloom_upsample_blend_mip_c,
+        bloom_downsample_c,
         output_c,
         light_integration_brdf_specular_lut_c,
         light_integration_environment_filter_c,
@@ -229,7 +230,6 @@ namespace spartan
         ffx_spd_average_c,
         ffx_spd_min_c,
         ffx_spd_max_c,
-        ffx_spd_luminance_c,
         blit_c,
         occlusion_c,
         icon_c,
@@ -352,8 +352,7 @@ namespace spartan
     {
         Min,
         Max,
-        Average,
-        Luminance
+        Average
     };
 
     class Renderable;

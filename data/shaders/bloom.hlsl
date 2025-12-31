@@ -23,57 +23,115 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+// helper: get luminance
+// standard rec.709 luma coefficients
+float get_luminance(float3 color)
+{
+    return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
+}
+
+// helper: karis average
+// suppresses fireflies by weighting bright pixels less
+// essential for stable bloom without flickering
+float get_karis_weight(float3 color)
+{
+    return 1.0f / (1.0f + get_luminance(color));
+}
+
+// helper: 13-tap downsample
+// this pattern ensures we don't "miss" thin geometry like tube lights
+// during downsampling, preventing the "traveling chunks" effect
+float3 downsample_stable(Texture2D<float4> src, float2 uv, float2 texel_size)
+{
+    // radius: slightly optimized for stability
+    // we use the exact texel centers to maximize bilinear gather
+    float2 d = texel_size.xy;
+
+    // center sample
+    float3 s0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
+    
+    // inner box samples (approx 1.0 pixel offset)
+    float3 s1 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x, -d.y), 0).rgb;
+    float3 s2 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x, -d.y), 0).rgb;
+    float3 s3 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x,  d.y), 0).rgb;
+    float3 s4 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x,  d.y), 0).rgb;
+    
+    // outer box samples (approx 2.0 pixel offset)
+    // this helps capture the "tails" of the light
+    float3 s5 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x * 2, -d.y * 2), 0).rgb;
+    float3 s6 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x * 2, -d.y * 2), 0).rgb;
+    float3 s7 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x * 2,  d.y * 2), 0).rgb;
+    float3 s8 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x * 2,  d.y * 2), 0).rgb;
+
+    // apply karis weights to the center/inner group where fireflies live
+    float w0 = get_karis_weight(s0);
+    float w1 = get_karis_weight(s1);
+    float w2 = get_karis_weight(s2);
+    float w3 = get_karis_weight(s3);
+    float w4 = get_karis_weight(s4);
+    
+    // weights for the 13-tap pattern
+    // center (0.125), inner (0.125), outer (0.03125)
+    // we scale the karis weights by the pattern weights
+    float3 m1 = s0 * w0 * 0.125f;
+    float3 m2 = (s1 * w1 + s2 * w2 + s3 * w3 + s4 * w4) * 0.125f;
+    float3 m3 = (s5 + s6 + s7 + s8) * 0.03125f; // outer box usually doesn't need karis
+    
+    float w_sum = (w0 * 0.125f) + 
+                  ((w1 + w2 + w3 + w4) * 0.125f) + 
+                  (4.0f * 0.03125f);
+
+    return (m1 + m2 + m3) / max(w_sum, 0.00001f);
+}
+
 float3 threshold(float3 color)
 {
-    // physical calibration (watts)
-    // the render buffer is in watts, so we must define the threshold in watts.
-    // calculation: nits / 683 = watts
+    // config: threshold in watts (250 nits)
+    const float THRESHOLD = 0.366f; 
     
-    // threshold: "paper white" (250 nits / 683 = 0.366 watts)
-    const float BLOOM_THRESHOLD = 0.366f; 
-    
-    // knee: smooth transition range (50% of threshold)
-    const float BLOOM_SOFT_KNEE = BLOOM_THRESHOLD * 0.5f;
-    
-    // max brightness: clamp fireflies (50,000 nits / 683 = 73.2 watts)
-    const float MAX_BRIGHTNESS  = 73.2f; 
+    // config: knee (smoothness)
+    const float KNEE = THRESHOLD * 0.5f;
 
-    // 1. clamp fireflies
-    color = min(color, MAX_BRIGHTNESS);
-    
-    // 2. calculate brightness (watts)
-    // using Rec.709 luminance coefficients
-    float brightness = dot(color, float3(0.2126, 0.7152, 0.0722)); 
+    float brightness = get_luminance(color);
 
-    // 3. quadratic threshold (standard curve)
-    float soft = brightness - BLOOM_THRESHOLD + BLOOM_SOFT_KNEE;
-    soft       = clamp(soft, 0.0f, 2.0f * BLOOM_SOFT_KNEE);
-    soft       = soft * soft / (4.0f * BLOOM_SOFT_KNEE + 0.00001f);
+    // standard quadratic curve
+    float soft = brightness - THRESHOLD + KNEE;
+    soft       = clamp(soft, 0.0f, 2.0f * KNEE);
+    soft       = soft * soft / (4.0f * KNEE + 0.00001f);
     
-    float contribution = max(soft, brightness - BLOOM_THRESHOLD);
+    float contribution = max(soft, brightness - THRESHOLD);
     contribution      /= max(brightness, 0.00001f);
     
-    color = color * contribution;
-
-    return color;
+    return color * contribution;
 }
 
 float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
 {
-    const float BLOOM_SPREAD = 4.0f;
+    // config: radius
+    // 3.0 is the sweet spot
+    // it blends the low-res "chunks" together without looking like a grid
+    const float RADIUS = 3.0f;
+    
+    // 9-tap tent filter
+    float4 d = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f) * RADIUS;
 
-    // 9-tap tent filter for quality upsampling
-    float3 c0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0, -1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
-    float3 c1 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0,  1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
-    float3 c2 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 1.0, -1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
-    float3 c3 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 1.0,  1.0) * BLOOM_SPREAD, 0).rgb * (1.0 / 16.0);
-    float3 c4 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2(-1.0,  0.0) * BLOOM_SPREAD, 0).rgb * (2.0 / 16.0);
-    float3 c5 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 1.0,  0.0) * BLOOM_SPREAD, 0).rgb * (2.0 / 16.0);
-    float3 c6 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 0.0, -1.0) * BLOOM_SPREAD, 0).rgb * (2.0 / 16.0);
-    float3 c7 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 0.0,  1.0) * BLOOM_SPREAD, 0).rgb * (2.0 / 16.0);
-    float3 c8 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + texel_size * float2( 0.0,  0.0) * BLOOM_SPREAD, 0).rgb * (4.0 / 16.0);
+    float3 s0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.xy, 0).rgb;
+    float3 s1 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.zy, 0).rgb;
+    float3 s2 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.xw, 0).rgb;
+    float3 s3 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.zw, 0).rgb;
+    
+    float3 s4 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, d.y), 0).rgb;
+    float3 s5 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(0.0f, d.w), 0).rgb;
+    float3 s6 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(d.x, 0.0f), 0).rgb;
+    float3 s7 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(d.z, 0.0f), 0).rgb;
+    
+    float3 s8 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
 
-    return c0 + c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8;
+    return (
+        (s0 + s1 + s2 + s3) * 1.0f +
+        (s4 + s5 + s6 + s7) * 2.0f +
+        s8                  * 4.0f
+    ) * (1.0f / 16.0f);
 }
 
 #if LUMINANCE
@@ -85,12 +143,43 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
     
-    float2 uv         = (thread_id.xy + 0.5) / resolution_out;
-    float3 color      = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
-    float3 filtered   = threshold(color);
+    float2 resolution_in;
+    tex.GetDimensions(resolution_in.x, resolution_in.y);
     
-    // store full hdr value
-    tex_uav[thread_id.xy] = float4(filtered, 1.0);
+    float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
+    float2 texel_size = 1.0f / resolution_in;
+
+    // 1. downsample (stable 13-tap)
+    // critical: we must capture the fireflies here before they alias
+    float3 color = downsample_stable(tex, uv, texel_size);
+    
+    // 2. threshold
+    float3 filtered = threshold(color);
+    
+    tex_uav[thread_id.xy] = float4(filtered, 1.0f);
+}
+#endif
+
+#if DOWNSAMPLE
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
+{
+    float2 resolution_out;
+    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
+    if (any(int2(thread_id.xy) >= resolution_out))
+        return;
+
+    float2 resolution_in;
+    tex.GetDimensions(resolution_in.x, resolution_in.y);
+    
+    float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
+    float2 texel_size = 1.0f / resolution_in;
+
+    // 1. downsample (stable 13-tap)
+    // we continue using 13-tap here to preserve the "shape" of the bloom
+    float3 color = downsample_stable(tex, uv, texel_size);
+    
+    tex_uav[thread_id.xy] = float4(color, 1.0f);
 }
 #endif
 
@@ -103,15 +192,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
     
-    float2 uv         = (thread_id.xy + 0.5) / resolution_out;
-    float2 texel_size = 1.0 / resolution_out;
+    float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
+    float2 texel_size = 1.0f / resolution_out;
     
-    float3 low_mip    = upsample_filter(tex, uv, texel_size);
-    float3 high_mip   = tex_uav[thread_id.xy].rgb;
+    // 1. upsample low mip
+    // the radius of 3.0 inside upsample_filter will blur out the "blocks"
+    float3 low_mip = upsample_filter(tex, uv, texel_size);
     
-    float3 result     = high_mip + low_mip;
-
-    tex_uav[thread_id.xy] = float4(result, 1.0);
+    // 2. add to high mip
+    float3 high_mip = tex_uav[thread_id.xy].rgb;
+    
+    tex_uav[thread_id.xy] = float4(high_mip + low_mip, 1.0f);
 }
 #endif
 

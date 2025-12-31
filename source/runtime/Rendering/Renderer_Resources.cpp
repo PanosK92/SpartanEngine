@@ -397,6 +397,11 @@ namespace spartan
             shader(Renderer_Shader::bloom_luminance_c)->AddDefine("LUMINANCE");
             shader(Renderer_Shader::bloom_luminance_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
 
+            // downsample (stable 13-tap)
+            shader(Renderer_Shader::bloom_downsample_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::bloom_downsample_c)->AddDefine("DOWNSAMPLE");
+            shader(Renderer_Shader::bloom_downsample_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
+
             // upsample blend (with previous mip)
             shader(Renderer_Shader::bloom_upsample_blend_mip_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::bloom_upsample_blend_mip_c)->AddDefine("UPSAMPLE_BLEND_MIP");
@@ -427,10 +432,6 @@ namespace spartan
                 shader(Renderer_Shader::ffx_spd_max_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_max_c)->AddDefine("MAX");
                 shader(Renderer_Shader::ffx_spd_max_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
-
-                shader(Renderer_Shader::ffx_spd_luminance_c) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_luminance_c)->AddDefine("LUMINANCE");
-                shader(Renderer_Shader::ffx_spd_luminance_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
             }
         }
 
