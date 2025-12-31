@@ -34,34 +34,52 @@ namespace spartan
 {
     namespace
     {
-        string file_path = "data/profiling/ProfilingReport.csv";
-        ofstream csv_export_file(file_path);
-        int current_csv_col = 0; // frames by columns
-        int current_csv_row = 0; // frame data by row
+        constexpr const char* file_path_name = "data/profiling/ProfilingReport.csv";
+
+        std::ofstream csv_export_file;
+        filesystem::path file_path(file_path_name);
+        int current_mode_hardware   = 0;
+        int current_csv_col         = 0; // frames by columns
+        int current_csv_row         = 0; // frame data by row
     }
 
-    void CsvExporter::StartRecording()
+    void CsvExporter::StartRecording(int mode_hardware)
     {
         if (csv_export_file.is_open())
         {
-            SP_LOG_INFO("File is already open and recording data.");
+            SP_LOG_WARNING("File is already open and recording data.");
             return;
         }
 
-        csv_export_file.open("ProfilingReport.csv", ios::out | ios::trunc);
-        if (!csv_export_file.good() || !csv_export_file.is_open())
+        try
         {
-            SP_LOG_ERROR("Failed to open CSV file: %s", file_path.c_str());
-            return;
-        }
+            if (file_path.has_parent_path())
+            {
+                filesystem::create_directories(file_path.parent_path());
+            }
 
-        if (current_csv_col == 0)
+            csv_export_file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+
+            csv_export_file.open(file_path, ios::out | ios::trunc);
+
+            if (current_csv_col == 0)
+            {
+                csv_export_file << "Frame ID,";
+                csv_export_file.flush();
+                current_csv_col++;
+            }
+            current_mode_hardware = mode_hardware;
+
+            SP_LOG_INFO("Started recording %s data for CSV report: %s", current_mode_hardware == 0 ? "GPU" : "CPU", file_path.generic_string().c_str());
+        }
+        catch (const filesystem::filesystem_error& e) // directory creation failures
         {
-            csv_export_file << "Frame ID,";
-            current_csv_col++;
+            SP_LOG_ERROR("Filesystem Error: %s", e.what());
         }
-
-        SP_LOG_INFO("Started recording data for CSV report.");
+        catch (const ios_base::failure& e) // file opening or writing failures
+        {
+            SP_LOG_ERROR("File I/O Error: %s", e.what());
+        }
     }
 
     void CsvExporter::WriteFrameData(const TimeBlock& current_time_block, const uint64_t frame_number)
@@ -79,6 +97,9 @@ namespace spartan
             }
             csv_export_file << current_time_block.GetDuration() << ",";
             current_csv_col++;
+
+            // Write on file directly. Can still store data even during a crash.
+            csv_export_file.flush();
         }
     }
 
@@ -92,20 +113,24 @@ namespace spartan
         }
     }
 
-    void CsvExporter::StopRecording(bool is_reset)
+    void CsvExporter::StopRecording(bool has_data_changed)
     {
         if (csv_export_file.is_open())
         {
-            if (is_reset)
-            {
-                current_csv_col = 0;
-                current_csv_row = 0;
-            }
             csv_export_file.flush();
             csv_export_file.close();
-            SP_LOG_INFO("Stopped recording data for CSV report.");
+            current_csv_col = 0;
+            current_csv_row = 0;
+            if (has_data_changed)
+            {
+                SP_LOG_WARNING("Stopped recording data for CSV report %s. Time block data were modified.", file_path.generic_string().c_str());
+            }
+            else
+            {
+                SP_LOG_INFO("Stopped recording %s data for CSV report: %s", current_mode_hardware == 0 ? "GPU" : "CPU", file_path.generic_string().c_str());
+            }
         }
-        else
+        else if (!csv_export_file.is_open() && !has_data_changed)
         {
             SP_LOG_WARNING("Invalid action. There is no active CSV recording.");
         }

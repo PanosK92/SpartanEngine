@@ -22,18 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
+#include "TimeBlock.h"
 //=================
 
 namespace spartan
 {
-    class TimeBlock;
-
     class CsvExporter
     {
     public:
-        static void StartRecording();
+        static void StartRecording(int mode_hardware);
         static void WriteFrameData(const TimeBlock& current_time_block, uint64_t frame_number);
         static void NextFrame();
-        static void StopRecording(bool is_reset = false);
+        static void StopRecording(bool has_data_changed = false);
     };
 }
