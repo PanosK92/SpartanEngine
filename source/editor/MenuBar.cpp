@@ -75,20 +75,20 @@ namespace
             file_dialog->SetOperation(FileDialog_Op_Save);
             show_file_dialog = true;
         }
-        
+
         void ShowWorldLoadDialog()
         {
             file_dialog->SetOperation(FileDialog_Op_Load);
             show_file_dialog = true;
         }
-        
+
         void DrawFileDialog()
         {
             if (show_file_dialog)
             {
                 ImGui::SetNextWindowFocus();
             }
-        
+
             if (file_dialog->Show(&show_file_dialog, editor, nullptr, &file_dialog_selection_path))
             {
                 // load world
@@ -309,7 +309,7 @@ namespace
                         nullptr,
                         cursor_pos_x
                     );
-  
+
                     // renderdoc button
                     static auto renderdoc_visible = [](Widget*) { return false; };
                     static auto renderdoc_press   = [](Widget*)
@@ -330,13 +330,16 @@ namespace
                     );
 
                     // world selection
+                    bool has_no_worlds = spartan::FileSystem::IsDirectoryEmpty("Project");
                     static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
                     static auto world_press   = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
+                    ImGui::BeginDisabled(has_no_worlds);
                     toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Terrain), "World selection window",
                         world_visible,
                         world_press,
                         nullptr
                     );
+                    ImGui::EndDisabled();
                 }
 
                 // buttons from widgets
