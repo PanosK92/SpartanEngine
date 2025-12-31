@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -130,7 +130,7 @@ namespace
         const char* license_text =
             "MIT License"
             "\n\n"
-            "Copyright(c) 2015-2025 Panos Karabelas"
+            "Copyright(c) 2015-2026 Panos Karabelas"
              "\n\n"
             "Permission is hereby granted, free of charge, to any person obtaining a copy"
             "of this software and associated documentation files (the \"Software\"), to deal"

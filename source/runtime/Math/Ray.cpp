@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -151,7 +151,7 @@ namespace spartan::math
 
     float Ray::HitDistance(const Vector3& v1, const Vector3& v2, const Vector3& v3, Vector3* out_normal /*= nullptr*/, Vector3* out_bary /*= nullptr*/) const
     {
-        // Based on Fast, Minimum Storage Ray/Triangle Intersection by Möller & Trumbore
+        // Based on Fast, Minimum Storage Ray/Triangle Intersection by Mï¿½ller & Trumbore
         // http://www.graphics.cornell.edu/pubs/1997/MT97.pdf
         // Calculate edge vectors
         Vector3 edge1(v2 - v1);
