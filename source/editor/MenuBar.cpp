@@ -330,16 +330,13 @@ namespace
                     );
 
                     // world selection
-                    bool has_no_worlds = spartan::FileSystem::IsDirectoryEmpty("Project");
                     static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
                     static auto world_press   = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
-                    ImGui::BeginDisabled(has_no_worlds);
                     toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Terrain), "World selection window",
                         world_visible,
                         world_press,
                         nullptr
                     );
-                    ImGui::EndDisabled();
                 }
 
                 // buttons from widgets
