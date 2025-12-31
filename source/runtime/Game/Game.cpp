@@ -1250,11 +1250,8 @@ namespace spartan
 
             void create()
             {
-                // gran turismo 7 brand central music
                 entities::music("project\\music\\gran_turismo.wav");
-                
-                // no light - dark showroom
-                entities::sun(LightPreset::Custom, false);
+                entities::sun(LightPreset::Midnight, false);
                 
                 // textures
                 texture_brand_logo   = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
