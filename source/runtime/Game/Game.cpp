@@ -614,7 +614,7 @@ namespace spartan
         {
             // set the mood
             entities::camera(false, Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            entities::sun(LightPreset::Noon, true);
+            entities::sun(LightPreset::day, true);
             entities::music("project\\music\\jake_chudnow_olive.wav");
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
@@ -703,7 +703,7 @@ namespace spartan
         void create_minecraft()
         {
              entities::camera(false, Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-             entities::sun(LightPreset::GoldenHour, true);
+             entities::sun(LightPreset::dusk, true);
              entities::music();
 
             // the entire minecraft world is a single mesh so don't optimize or generate lods (it will deteriorate a lot)
@@ -768,7 +768,7 @@ namespace spartan
                 const float per_triangle_density_rock        = 0.001f;
 
                 // sun/lighting/mood
-                entities::sun(LightPreset::GoldenHour, true);
+                entities::sun(LightPreset::dusk, true);
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetFlag(LightFlags::Volumetric, true);
 
@@ -1744,7 +1744,7 @@ namespace spartan
             {
                 entities::camera(false);
                 entities::floor();
-                entities::sun(LightPreset::BlueHour, true);
+                entities::sun(LightPreset::dusk, true);
                 entities::material_ball(Vector3::Zero);
             }
         }

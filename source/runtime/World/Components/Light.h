@@ -59,15 +59,11 @@ namespace spartan
 
     enum class LightPreset
     {
-        Noon,       // bright midday sun
-        Day,        // daylight
-        GoldenHour, // late afternoon with warm orange tones
-        BlueHour,   // twilight with beautiful blue tones
-        Night,      // nighttime with moonlight
-        Dawn,       // early morning sunrise
-        Dusk,       // evening twilight
-        Midnight,   // darkest night
-        Custom      // custom settings
+        dawn,   // sunrise - early morning with warm orange glow
+        day,    // bright midday sun - direct sunlight at peak intensity
+        dusk,   // sunset - evening with warm golden tones
+        night,  // nighttime with soft moonlight
+        custom  // custom settings
     };
 
     enum LightFlags : uint32_t
@@ -169,7 +165,7 @@ namespace spartan
         LightType m_light_type           = LightType::Max;
         Color m_color_rgb                = Color::standard_black;
         float m_temperature_kelvin       = 0.0f;
-        LightPreset m_preset             = LightPreset::Custom;
+        LightPreset m_preset             = LightPreset::custom;
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
         uint32_t m_index                 = 0;

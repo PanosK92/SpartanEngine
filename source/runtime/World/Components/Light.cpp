@@ -193,7 +193,7 @@ namespace spartan
         m_range                = node.attribute("range").as_float(32.0f);
         m_angle_rad            = node.attribute("angle").as_float(math::deg_to_rad * 30.0f);
         m_index                = node.attribute("index").as_uint(0);
-        m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(LightPreset::Custom)));
+        m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(LightPreset::custom)));
     
         UpdateMatrices(); // regenerate view/projection after loading
     }
@@ -340,63 +340,35 @@ namespace spartan
 
         switch (preset)
         {
-        case LightPreset::Noon:
-            // bright midday sun - direct sunlight
-            time_of_day = 0.5f; // 12:00 PM
-            temperature = 5778.0f;
-            intensity = 120000.0f; // lux
-            break;
-
-        case LightPreset::Day:
-            // daylight - overcast sky
-            time_of_day = 0.4f; // 9:36 AM
-            temperature = 6500.0f;
-            intensity = 50000.0f; // lux
-            break;
-
-        case LightPreset::GoldenHour:
-            // late afternoon with warm orange tones
-            time_of_day = 0.65f; // 3:36 PM
-            temperature = 3500.0f;
-            intensity = 15000.0f; // lux
-            break;
-
-        case LightPreset::BlueHour:
-            // twilight with beautiful blue tones
-            time_of_day = 0.72f; // 5:17 PM
-            temperature = 8000.0f;
-            intensity = 2000.0f; // lux
-            break;
-
-        case LightPreset::Night:
-            // nighttime with moonlight
-            time_of_day = 0.8f; // 7:12 PM
-            temperature = 4000.0f;
-            intensity = 0.1f; // lux
-            break;
-
-        case LightPreset::Dawn:
-            // early morning sunrise
+        case LightPreset::dawn:
+            // sunrise - early morning with warm orange glow
             time_of_day = 0.25f; // 6:00 AM
-            temperature = 2000.0f;
-            intensity = 400.0f; // lux
+            temperature = 2500.0f; // warm sunrise orange
+            intensity = 500.0f; // lux - dawn light
             break;
 
-        case LightPreset::Dusk:
-            // evening twilight
-            time_of_day = 0.75f; // 6:00 PM
-            temperature = 3000.0f;
-            intensity = 100.0f; // lux
+        case LightPreset::day:
+            // bright midday sun - direct sunlight at peak intensity
+            time_of_day = 0.5f; // 12:00 PM
+            temperature = 5778.0f; // sun color temperature
+            intensity = 100000.0f; // lux - direct sunlight
             break;
 
-        case LightPreset::Midnight:
-            // darkest night - starlight only
-            time_of_day = 0.0f; // 12:00 AM
-            temperature = 2000.0f;
-            intensity = 0.01f; // lux
+        case LightPreset::dusk:
+            // sunset - evening with warm golden tones
+            time_of_day = 0.69f; // 4:30 PM
+            temperature = 3200.0f; // warm golden
+            intensity = 10000.0f; // lux - golden hour light
             break;
 
-        case LightPreset::Custom:
+        case LightPreset::night:
+            // nighttime with soft moonlight
+            time_of_day = 0.875f; // 9:00 PM
+            temperature = 4100.0f; // moonlight color
+            intensity = 0.3f; // lux - full moon
+            break;
+
+        case LightPreset::custom:
             // do nothing, keep current settings
             return;
         }
