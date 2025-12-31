@@ -140,7 +140,7 @@ namespace spartan
 
             m_options.clear();
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       0.001f); // non-zero values activate it and control the intensity
+            SetOption(Renderer_Option::Bloom,                       1.0f); // non-zero values activate it and control the intensity
             SetOption(Renderer_Option::MotionBlur,                  1.0f);
             SetOption(Renderer_Option::DepthOfField,                1.0f);
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);

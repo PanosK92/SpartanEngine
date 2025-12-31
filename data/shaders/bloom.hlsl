@@ -32,50 +32,43 @@ float get_luminance(float3 color)
 
 // helper: karis average
 // suppresses fireflies by weighting bright pixels less
-// essential for stable bloom without flickering
 float get_karis_weight(float3 color)
 {
     return 1.0f / (1.0f + get_luminance(color));
 }
 
 // helper: 13-tap downsample
-// this pattern ensures we don't "miss" thin geometry like tube lights
-// during downsampling, preventing the "traveling chunks" effect
+// ensures stability for thin geometry like tube lights
 float3 downsample_stable(Texture2D<float4> src, float2 uv, float2 texel_size)
 {
-    // radius: slightly optimized for stability
-    // we use the exact texel centers to maximize bilinear gather
     float2 d = texel_size.xy;
 
     // center sample
     float3 s0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
     
-    // inner box samples (approx 1.0 pixel offset)
+    // inner box
     float3 s1 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x, -d.y), 0).rgb;
     float3 s2 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x, -d.y), 0).rgb;
     float3 s3 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x,  d.y), 0).rgb;
     float3 s4 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x,  d.y), 0).rgb;
     
-    // outer box samples (approx 2.0 pixel offset)
-    // this helps capture the "tails" of the light
+    // outer box
     float3 s5 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x * 2, -d.y * 2), 0).rgb;
     float3 s6 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x * 2, -d.y * 2), 0).rgb;
     float3 s7 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2(-d.x * 2,  d.y * 2), 0).rgb;
     float3 s8 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + float2( d.x * 2,  d.y * 2), 0).rgb;
 
-    // apply karis weights to the center/inner group where fireflies live
+    // karis weights
     float w0 = get_karis_weight(s0);
     float w1 = get_karis_weight(s1);
     float w2 = get_karis_weight(s2);
     float w3 = get_karis_weight(s3);
     float w4 = get_karis_weight(s4);
     
-    // weights for the 13-tap pattern
-    // center (0.125), inner (0.125), outer (0.03125)
-    // we scale the karis weights by the pattern weights
+    // weighted sum
     float3 m1 = s0 * w0 * 0.125f;
     float3 m2 = (s1 * w1 + s2 * w2 + s3 * w3 + s4 * w4) * 0.125f;
-    float3 m3 = (s5 + s6 + s7 + s8) * 0.03125f; // outer box usually doesn't need karis
+    float3 m3 = (s5 + s6 + s7 + s8) * 0.03125f;
     
     float w_sum = (w0 * 0.125f) + 
                   ((w1 + w2 + w3 + w4) * 0.125f) + 
@@ -86,15 +79,13 @@ float3 downsample_stable(Texture2D<float4> src, float2 uv, float2 texel_size)
 
 float3 threshold(float3 color)
 {
-    // config: threshold in watts (250 nits)
+    // config: threshold in watts
     const float THRESHOLD = 0.366f; 
-    
-    // config: knee (smoothness)
-    const float KNEE = THRESHOLD * 0.5f;
+    const float KNEE      = THRESHOLD * 0.5f;
 
     float brightness = get_luminance(color);
 
-    // standard quadratic curve
+    // soft knee curve
     float soft = brightness - THRESHOLD + KNEE;
     soft       = clamp(soft, 0.0f, 2.0f * KNEE);
     soft       = soft * soft / (4.0f * KNEE + 0.00001f);
@@ -108,13 +99,11 @@ float3 threshold(float3 color)
 float3 upsample_filter(Texture2D<float4> src, float2 uv, float2 texel_size)
 {
     // config: radius
-    // 3.0 is the sweet spot
-    // it blends the low-res "chunks" together without looking like a grid
+    // 3.0 creates a smooth cinematic blur
     const float RADIUS = 3.0f;
-    
-    // 9-tap tent filter
     float4 d = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f) * RADIUS;
 
+    // 9-tap tent filter
     float3 s0 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.xy, 0).rgb;
     float3 s1 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.zy, 0).rgb;
     float3 s2 = src.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.xw, 0).rgb;
@@ -149,11 +138,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
     float2 texel_size = 1.0f / resolution_in;
 
-    // 1. downsample (stable 13-tap)
-    // critical: we must capture the fireflies here before they alias
-    float3 color = downsample_stable(tex, uv, texel_size);
-    
-    // 2. threshold
+    float3 color    = downsample_stable(tex, uv, texel_size);
     float3 filtered = threshold(color);
     
     tex_uav[thread_id.xy] = float4(filtered, 1.0f);
@@ -175,8 +160,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
     float2 texel_size = 1.0f / resolution_in;
 
-    // 1. downsample (stable 13-tap)
-    // we continue using 13-tap here to preserve the "shape" of the bloom
     float3 color = downsample_stable(tex, uv, texel_size);
     
     tex_uav[thread_id.xy] = float4(color, 1.0f);
@@ -195,14 +178,17 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float2 uv         = (thread_id.xy + 0.5f) / resolution_out;
     float2 texel_size = 1.0f / resolution_out;
     
-    // 1. upsample low mip
-    // the radius of 3.0 inside upsample_filter will blur out the "blocks"
+    // 1. upsample the lower (blurrier) mip
     float3 low_mip = upsample_filter(tex, uv, texel_size);
     
-    // 2. add to high mip
+    // 2. get the current (sharper) mip
     float3 high_mip = tex_uav[thread_id.xy].rgb;
     
-    tex_uav[thread_id.xy] = float4(high_mip + low_mip, 1.0f);
+    // 3. blend with spread factor
+    const float SPREAD_FACTOR = 1.0f;
+    float3 result = high_mip * SPREAD_FACTOR + low_mip;
+    
+    tex_uav[thread_id.xy] = float4(result, 1.0f);
 }
 #endif
 
@@ -218,8 +204,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float4 color_frame = tex[thread_id.xy];
     float4 color_bloom = tex2[thread_id.xy];
 
+    // correction factor
+    // brings the accumulated energy down to a normalized range
+    // allowing you to pass 1.0 from the engine
+    const float INTENSITY_CORRECTION = 0.001f;
+
     float bloom_intensity = pass_get_f3_value().x;
-    float3 result         = color_frame.rgb + color_bloom.rgb * bloom_intensity;
+    float3 result         = color_frame.rgb + (color_bloom.rgb * INTENSITY_CORRECTION * bloom_intensity);
     
     tex_uav[thread_id.xy] = float4(result, color_frame.a);
 }
