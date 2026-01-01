@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Profiler.h"
+#include "CsvExporter.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_SwapChain.h"
@@ -233,7 +234,9 @@ namespace spartan
 
             // copy
             m_time_blocks_read.push_back(time_block);
+            CsvExporter::WriteFrameData(time_block, Renderer::GetFrameNumber());
         }
+        CsvExporter::NextInterval();
 
         // clear write array
         m_time_blocks_write.clear();

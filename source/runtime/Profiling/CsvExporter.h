@@ -30,9 +30,9 @@ namespace spartan
     class CsvExporter
     {
     public:
-        static void StartRecording(int mode_hardware);
+        static void StartRecording();
         static void WriteFrameData(const TimeBlock& current_time_block, uint64_t frame_number);
-        static void NextFrame();
-        static void StopRecording(bool has_data_changed = false);
+        static void NextInterval();
+        static void StopRecording();
     };
 }

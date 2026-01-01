@@ -146,13 +146,11 @@ void Profiler::OnTickVisible()
             if (ImGui::Selectable("GPU", mode_hardware == 0))
             {
                 mode_hardware = 0;
-                spartan::CsvExporter::StopRecording(true);
             }
 
             if (ImGui::Selectable("CPU", mode_hardware == 1))
             {
                 mode_hardware = 1;
-                spartan::CsvExporter::StopRecording(true);
             }
 
             ImGui::EndCombo();
@@ -166,13 +164,11 @@ void Profiler::OnTickVisible()
             if (ImGui::Selectable("Alphabetically", mode_sort == 0))
             {
                 mode_sort = 0;
-                spartan::CsvExporter::StopRecording(true);
             }
 
             if (ImGui::Selectable("By Duration", mode_sort == 1))
             {
                 mode_sort = 1;
-                spartan::CsvExporter::StopRecording(true);
             }
 
             ImGui::EndCombo();
@@ -187,7 +183,7 @@ void Profiler::OnTickVisible()
         ImGui::SameLine();
         if (ImGui::Button("Start Recording"))
         {
-            spartan::CsvExporter::StartRecording(mode_hardware);
+            spartan::CsvExporter::StartRecording();
         }
         ImGui::SameLine();
         if (ImGui::Button("Stop Recording"))
@@ -228,11 +224,7 @@ void Profiler::OnTickVisible()
             continue;
 
         show_time_block(time_blocks[i]);
-
-        // Csv recording
-        spartan::CsvExporter::WriteFrameData(time_blocks[i], spartan::Renderer::GetFrameNumber());
     }
-    spartan::CsvExporter::NextFrame();
 
     // plot
     ImGui::Separator();
