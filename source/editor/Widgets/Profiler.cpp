@@ -181,15 +181,18 @@ void Profiler::OnTickVisible()
 
         ImGui::Text("CSV:");
         ImGui::SameLine();
-        if (ImGui::Button("Start Recording"))
+        if (ImGui::Button("Start"))
         {
             spartan::CsvExporter::StartRecording();
         }
         ImGui::SameLine();
-        if (ImGui::Button("Stop Recording"))
+        if (ImGui::Button("Stop"))
         {
             spartan::CsvExporter::StopRecording();
         }
+        ImGui::SameLine();
+        bool isCSVExporterRecording = spartan::CsvExporter::IsRecording();
+        ImGui::TextColored(isCSVExporterRecording ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 0.0f, 1.0f), isCSVExporterRecording ? "Recording" : "Not Recording");
 
         ImGui::Separator();
     }

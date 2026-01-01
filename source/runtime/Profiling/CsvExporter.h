@@ -31,6 +31,7 @@ namespace spartan
     {
     public:
         static void StartRecording();
+        static bool IsRecording();
         static void WriteFrameData(const TimeBlock& current_time_block, uint64_t frame_number);
         static void NextInterval();
         static void StopRecording();

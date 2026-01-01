@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "CsvExporter.h"
-
-#include "TimeBlock.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -80,6 +78,11 @@ namespace spartan
         }
     }
 
+    bool CsvExporter::IsRecording()
+    {
+        return csv_export_file.is_open();
+    }
+
     void CsvExporter::WriteFrameData(const TimeBlock& current_time_block, const uint64_t frame_number)
     {
         if (csv_export_file.is_open())
@@ -122,7 +125,7 @@ namespace spartan
             current_csv_row = 0;
             SP_LOG_INFO("Stopped recording profiling data for CSV report: %s", file_path.generic_string().c_str());
         }
-        else if (!csv_export_file.is_open())
+        else
         {
             SP_LOG_WARNING("Invalid action. There is no active CSV recording.");
         }
