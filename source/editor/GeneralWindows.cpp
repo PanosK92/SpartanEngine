@@ -44,7 +44,7 @@ namespace
     static void center_next_window(Editor* editor)
     {
         ImGui::SetNextWindowPos(
-            editor->GetWidget<Viewport>()->GetCenter(), 
+            editor->GetWidget<Viewport>()->GetCenter(),
             ImGuiCond_Appearing, // use appearing so the user can move it if they want
             ImVec2(0.5f, 0.5f)
         );
@@ -53,29 +53,29 @@ namespace
     namespace sponsor
     {
         bool visible = true;
-    
+
         void window()
         {
             if (!visible) return;
-    
+
             center_next_window(editor);
-            
+
             // Added NoResize to keep the tighter layout control
             if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
             {
                 // Use a slightly larger width for better reading flow
                 float content_width = 550.0f * spartan::Window::GetDpiScale();
-                
+
                 ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + content_width);
                 ImGui::Text("I cover the costs for hosting and bandwidth of engine assets.");
                 ImGui::Spacing(); // Breathing room
                 ImGui::Text("If you enjoy the simplicity of running a single script, build, run and have everything just work, please consider sponsoring to help keep everything running smoothly!");
                 ImGui::PopTextWrapPos();
-    
+
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
-    
+
                 // Make the button prominent
                 if (ImGuiSp::button_centered_on_line("Sponsor on GitHub"))
                 {
@@ -89,31 +89,31 @@ namespace
     namespace introduction
     {
         bool visible = true;
-    
+
         void window()
         {
             if (!visible) return;
-    
+
             center_next_window(editor);
-    
+
             if (ImGui::Begin("Welcome", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
             {
                 float content_width = 500.0f * spartan::Window::GetDpiScale();
-                
+
                 ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + content_width);
                 // Visual hierarchy: Icon or emphasis (simulated with text here)
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "[ Note ]"); 
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "[ Note ]");
                 ImGui::SameLine();
                 ImGui::Text("This isn't an engine for the average user.");
-                
+
                 ImGui::Spacing();
                 ImGui::Text("It is designed for advanced research, ideal for game engine and rendering engineers.");
                 ImGui::PopTextWrapPos();
-    
+
                 ImGui::Spacing();
                 ImGui::Separator();
                 ImGui::Spacing();
-    
+
                 if (ImGuiSp::button_centered_on_line("I Understand"))
                 {
                     visible = false;
@@ -159,7 +159,7 @@ namespace
             string contribution;
             string steam_key;
         };
-        
+
        const vector<Contributor> contributors =
         {
             { "Spartan", "Iker Galardi",        "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                                        "N/A" },
@@ -185,24 +185,24 @@ namespace
             {
                 // shift text that the buttons and the text align
                 static const float y_shift = 6.0f;
-            
+
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                 ImGui::Text("Creator");
-            
+
                 ImGui::SameLine();
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                 if (ImGuiSp::button("Panos Karabelas"))
                 {
                     spartan::FileSystem::OpenUrl("https://panoskarabelas.com/");
                 }
-            
+
                 ImGui::SameLine();
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                 if (ImGuiSp::button("GitHub"))
                 {
                     spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
                 }
-            
+
                 ImGui::SameLine();
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() - y_shift);
                 if (ImGuiSp::button("X"))
@@ -220,15 +220,15 @@ namespace
             ImGui::SameLine();
             ImGui::Spacing();
 
-            ImGui::AlignTextToFramePadding(); 
-            
+            ImGui::AlignTextToFramePadding();
+
             if (ImGuiSp::button("Panos Karabelas"))
                 spartan::FileSystem::OpenUrl("https://panoskarabelas.com/");
-                
+
             ImGui::SameLine();
             if (ImGuiSp::button("GitHub"))
                 spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
-                
+
             ImGui::SameLine();
             if (ImGuiSp::button("X"))
                 spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas");
@@ -239,10 +239,10 @@ namespace
 
             // --- Bottom Section: License (Dynamic Height) ---
             ImGui::Text("License");
-            
+
             // Push a darker background color for the text area
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-            
+
             // ImVec2(0.0f, -FLT_MIN) tells ImGui:
             // X = 0.0f      -> "Use all available width"
             // Y = -FLT_MIN  -> "Use all remaining vertical space"
@@ -256,17 +256,17 @@ namespace
             ImGui::EndChild();
             ImGui::PopStyleColor();
         }
-    
+
         void tab_contributors()
         {
             // Use StretchProp so columns resize nicely with the window
             ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp;
-            
+
             // Subtract a bit of height to account for tab bar
-            if (ImGui::BeginTable("##contributors_table", 6, flags, ImVec2(0.0f, -FLT_MIN))) 
+            if (ImGui::BeginTable("##contributors_table", 6, flags, ImVec2(0.0f, -FLT_MIN)))
             {
                 ImGui::TableSetupScrollFreeze(0, 1);
-                
+
                 // Defining weights allows for better default sizing
                 ImGui::TableSetupColumn("Title", ImGuiTableColumnFlags_WidthFixed, 80.0f);
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 120.0f);
@@ -275,26 +275,26 @@ namespace
                 ImGui::TableSetupColumn("Contribution", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("Steam Key");
                 ImGui::TableHeadersRow();
-    
+
                 for (const auto& c : contributors)
                 {
                     ImGui::TableNextRow();
-                    
+
                     // Column 0: Role
                     ImGui::TableSetColumnIndex(0);
                     ImGui::AlignTextToFramePadding(); // Fix vertical alignment
                     ImGui::TextUnformatted(c.role.c_str());
-    
+
                     // Column 1: Name
                     ImGui::TableSetColumnIndex(1);
                     ImGui::AlignTextToFramePadding();
                     ImGui::TextUnformatted(c.name.c_str());
-    
+
                     // Column 2: Country
                     ImGui::TableSetColumnIndex(2);
                     ImGui::AlignTextToFramePadding();
                     ImGui::TextUnformatted(c.country.c_str());
-    
+
                     // Column 3: Button
                     ImGui::TableSetColumnIndex(3);
                     ImGui::PushID(&c);
@@ -304,12 +304,12 @@ namespace
                         spartan::FileSystem::OpenUrl(c.button_url);
                     }
                     ImGui::PopID();
-    
+
                     // Column 4: Contribution
                     ImGui::TableSetColumnIndex(4);
                     ImGui::AlignTextToFramePadding();
                     ImGui::TextUnformatted(c.contribution.c_str());
-    
+
                     // Column 5: Key
                     ImGui::TableSetColumnIndex(5);
                     ImGui::AlignTextToFramePadding();
@@ -318,11 +318,11 @@ namespace
                 ImGui::EndTable();
             }
         }
-    
+
         void tab_libraries()
         {
             ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp;
-            
+
             if (ImGui::BeginTable("##third_party_libs_table", 3, flags, ImVec2(0.0f, -FLT_MIN)))
             {
                 ImGui::TableSetupScrollFreeze(0, 1);
@@ -330,19 +330,19 @@ namespace
                 ImGui::TableSetupColumn("Version", ImGuiTableColumnFlags_WidthFixed, 100.0f);
                 ImGui::TableSetupColumn("Link", ImGuiTableColumnFlags_WidthFixed, 60.0f);
                 ImGui::TableHeadersRow();
-    
+
                 for (const spartan::third_party_lib& lib : spartan::Settings::GetThirdPartyLibs())
                 {
                     ImGui::TableNextRow();
-    
+
                     ImGui::TableSetColumnIndex(0);
                     ImGui::AlignTextToFramePadding();
                     ImGui::TextUnformatted(lib.name.c_str());
-    
+
                     ImGui::TableSetColumnIndex(1);
                     ImGui::AlignTextToFramePadding();
                     ImGui::TextUnformatted(lib.version.c_str());
-    
+
                     ImGui::TableSetColumnIndex(2);
                     ImGui::PushID(lib.url.c_str());
                     if (ImGuiSp::button("URL"))
@@ -354,16 +354,16 @@ namespace
                 ImGui::EndTable();
             }
         }
-    
+
         void window()
         {
             if (!visible) return;
-    
+
             center_next_window(editor);
-    
+
             // fixed size for the About window to prevent it jumping around when switching tabs
             ImGui::SetNextWindowSize(ImVec2(800.0f * spartan::Window::GetDpiScale(), 500.0f * spartan::Window::GetDpiScale()), ImGuiCond_FirstUseEver);
-    
+
             if (ImGui::Begin("About Spartan Engine", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
             {
                 if (ImGui::BeginTabBar("##about_tabs"))
@@ -374,19 +374,19 @@ namespace
                         tab_general();
                         ImGui::EndTabItem();
                     }
-    
+
                     if (ImGui::BeginTabItem("Contributors"))
                     {
                         tab_contributors();
                         ImGui::EndTabItem();
                     }
-    
+
                     if (ImGui::BeginTabItem("Third Party"))
                     {
                         tab_libraries();
                         ImGui::EndTabItem();
                     }
-                    
+
                     ImGui::EndTabBar();
                 }
             }
@@ -397,13 +397,13 @@ namespace
     namespace controls
     {
         bool visible = false;
-    
+
         struct Shortcut
         {
             const char* keys;        // stored as "Ctrl+S"
             const char* description;
         };
-    
+
         static const Shortcut editor_shortcuts[] =
         {
             { "Ctrl+P",       "Toggle this window"       },
@@ -414,18 +414,18 @@ namespace
             { "Alt+Enter",    "Toggle fullscreen"        },
             { "F",            "Focus on entity"          }
         };
-    
+
         static const Shortcut camera_controls[] =
         {
             { "Hold R-Click", "Enable First Person"      },
             { "W, A, S, D",   "Movement"                 },
             { "Q, E",         "Elevation (Up/Down)"      },
             { "Ctrl",         "Crouch"                   },
-            { "Shift",        "Sprint / Fast Move"       }, 
+            { "Shift",        "Sprint / Fast Move"       },
             { "F",            "Toggle Flashlight"        },
             { "L-Click",      "Shoot physics cube"       }
         };
-    
+
         // helper to render "Ctrl" + "S" as distinct visual styling elements
         void render_key_combo(const char* key_string)
         {
@@ -433,29 +433,29 @@ namespace
             std::string delimiter = "+";
             size_t pos = 0;
             std::string token;
-            
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.0f, 0.0f)); 
-            
+
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(2.0f, 0.0f));
+
             // We use a local index to differentiate keys within the same combo (just in case)
             int key_part_index = 0;
             bool first = true;
 
-            while ((pos = s.find(delimiter)) != std::string::npos) 
+            while ((pos = s.find(delimiter)) != std::string::npos)
             {
                 token = s.substr(0, pos);
                 if (!first) { ImGui::SameLine(); ImGui::TextDisabled("+"); ImGui::SameLine(); }
-                
+
                 // PushID ensures that this "Ctrl" button is unique from others
                 ImGui::PushID(key_part_index++);
-                ImGui::SmallButton(token.c_str()); 
+                ImGui::SmallButton(token.c_str());
                 ImGui::PopID();
-                
+
                 s.erase(0, pos + delimiter.length());
                 first = false;
             }
-            
+
             if (!first) { ImGui::SameLine(); ImGui::TextDisabled("+"); ImGui::SameLine(); }
-            
+
             ImGui::PushID(key_part_index++);
             ImGui::SmallButton(s.c_str());
             ImGui::PopID();
@@ -466,19 +466,19 @@ namespace
         void show_shortcut_table(const char* str_id, const Shortcut* shortcuts, size_t count)
         {
             ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY;
-            
+
             if (ImGui::BeginTable(str_id, 2, flags, ImVec2(0.0f, -FLT_MIN)))
             {
                 ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("Key Combination", ImGuiTableColumnFlags_WidthFixed, 180.0f * spartan::Window::GetDpiScale());
-                
+
                 for (size_t i = 0; i < count; i++)
                 {
                     ImGui::TableNextRow();
-                    
+
                     // Push the row index as an ID
                     // This makes "Ctrl" in Row 0 distinct from "Ctrl" in Row 1
-                    ImGui::PushID((int)i); 
+                    ImGui::PushID((int)i);
 
                     // Column 1: Description
                     ImGui::TableSetColumnIndex(0);
@@ -499,13 +499,13 @@ namespace
         {
             if (!visible)
                 return;
-    
+
             // Center the window on first use, but let user move it freely afterwards
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-            
+
             // Set a reasonable default size
             ImGui::SetNextWindowSize(ImVec2(500.0f * spartan::Window::GetDpiScale(), 350.0f * spartan::Window::GetDpiScale()), ImGuiCond_FirstUseEver);
-    
+
             if (ImGui::Begin("Controls & Shortcuts", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking))
             {
                 if (ImGui::BeginTabBar("##controls_tabs"))
@@ -516,14 +516,14 @@ namespace
                         show_shortcut_table("##editor_shortcuts_table", editor_shortcuts, std::size(editor_shortcuts));
                         ImGui::EndTabItem();
                     }
-    
+
                     if (ImGui::BeginTabItem("Camera Controls"))
                     {
                         ImGui::Spacing();
                         show_shortcut_table("##camera_controls_table", camera_controls, std::size(camera_controls));
                         ImGui::EndTabItem();
                     }
-    
+
                     ImGui::EndTabBar();
                 }
             }
@@ -625,6 +625,14 @@ namespace
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
                 if (ImGui::Begin("World Selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
                 {
+                    if (spartan::FileSystem::IsDirectoryEmpty("Project"))
+                    {
+                        visible_world_list = false;
+                        visible_download_prompt = true;
+                        ImGui::End();
+                        return;
+                    }
+
                     const char* text_prompt  = "Select the world you would like to load.";
                     const char* text_warning = "Note: This is a developer build. It is experimental and not guaranteed to behave.";
 
@@ -730,7 +738,7 @@ void GeneralWindows::Initialize(Editor* editor_in)
         else
         {
             if (file_count == 0)
-            { 
+            {
                 worlds::visible_download_prompt = true;
             }
             else // assets.7z is present but not extracted
