@@ -79,7 +79,11 @@ namespace spartan
         Camera,
         Physics,
         Compressed,
-        Max
+        Max,
+        Flow,
+        Circle,
+        Square,
+        Node
     };
 
     class ResourceCache

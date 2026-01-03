@@ -40,7 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGuiSp
 {
-    enum class DragPayloadType
+    enum class DragPayloadType : uint8_t
     {
         Texture,
         Entity,
@@ -50,7 +50,7 @@ namespace ImGuiSp
         Undefined
     };
 
-    enum class ButtonPress
+    enum class ButtonPress : uint8_t
     {
         Yes,
         No,
