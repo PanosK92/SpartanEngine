@@ -69,7 +69,7 @@ namespace spartan
             }
 
             // execute the task outside the lock
-            working_thread_count.fetch_add(1, memory_order_relaxed);
+            working_thread_count.fetch_add(1, memory_order_acq_rel);
             try
             {
                 task();
@@ -78,7 +78,7 @@ namespace spartan
             {
                 // swallow exceptions to avoid terminating the thread
             }
-            working_thread_count.fetch_sub(1, memory_order_relaxed);
+            working_thread_count.fetch_sub(1, memory_order_acq_rel);
         }
     }
 
@@ -139,23 +139,32 @@ namespace spartan
         auto packaged_task = make_shared<std::packaged_task<void()>>(std::forward<Task>(task));
         future<void> fut = packaged_task->get_future();
 
-        unique_lock<mutex> lock(mutex_tasks);
-
-        // wrap the packaged task execution in a simple lambda that will be stored in the deque
-        tasks.emplace_back([packaged_task]()
         {
-            try
-            {
-                (*packaged_task)();
-            }
-            catch (...)
-            {
-                // rethrow inside packaged_task will be captured by future
-                throw;
-            }
-        });
+            unique_lock<mutex> lock(mutex_tasks);
 
-        // notify one thread that there is work
+            // reject tasks if the pool is stopping to avoid hanging futures
+            if (is_stopping)
+            {
+                SP_LOG_WARNING("ThreadPool::AddTask() called while pool is stopping, task will not be executed");
+                return fut;
+            }
+
+            // wrap the packaged task execution in a simple lambda that will be stored in the deque
+            tasks.emplace_back([packaged_task]()
+            {
+                try
+                {
+                    (*packaged_task)();
+                }
+                catch (...)
+                {
+                    // rethrow inside packaged_task will be captured by future
+                    throw;
+                }
+            });
+        }
+
+        // notify outside the lock to avoid waking a thread that immediately blocks
         condition_var.notify_one();
 
         return fut;
@@ -221,15 +230,25 @@ namespace spartan
             tasks.clear();
         }
 
-        // Wait until there are no working threads
-        while (AreTasksRunning())
+        // wait until all queued tasks are consumed and no threads are working
+        while (true)
         {
-            this_thread::sleep_for(chrono::milliseconds(16));
+            {
+                unique_lock<mutex> lock(mutex_tasks);
+                if (tasks.empty() && working_thread_count.load(memory_order_acquire) == 0)
+                    break;
+            }
+            this_thread::sleep_for(chrono::milliseconds(1));
         }
     }
 
     uint32_t ThreadPool::GetThreadCount() { return thread_count; }
-    uint32_t ThreadPool::GetWorkingThreadCount() { return working_thread_count.load(memory_order_relaxed); }
+    uint32_t ThreadPool::GetWorkingThreadCount() { return working_thread_count.load(memory_order_acquire); }
     uint32_t ThreadPool::GetIdleThreadCount() { return (thread_count > GetWorkingThreadCount()) ? (thread_count - GetWorkingThreadCount()) : 0; }
-    bool ThreadPool::AreTasksRunning() { return GetWorkingThreadCount() != 0; }
+
+    bool ThreadPool::AreTasksRunning()
+    {
+        unique_lock<mutex> lock(mutex_tasks);
+        return !tasks.empty() || working_thread_count.load(memory_order_acquire) != 0;
+    }
 }
