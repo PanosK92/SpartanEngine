@@ -214,12 +214,6 @@ namespace spartan
             SetOption(Renderer_Option::Hdr, swapchain->IsHdr() ? 1.0f : 0.0f);
         }
 
-        // tonemapping
-        if (!swapchain->IsHdr())
-        {
-            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::AcesNautilus));
-        }
-
         // load/create resources
         {
             // reduce startup time by doing expensive operations in another thread

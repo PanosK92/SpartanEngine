@@ -201,16 +201,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
     
-    float4 color_frame = tex[thread_id.xy];
-    float4 color_bloom = tex2[thread_id.xy];
-
-    // correction factor
-    // brings the accumulated energy down to a normalized range
-    // allowing you to pass 1.0 from the engine
-    const float INTENSITY_CORRECTION = 0.001f;
-
-    float bloom_intensity = pass_get_f3_value().x;
-    float3 result         = color_frame.rgb + (color_bloom.rgb * INTENSITY_CORRECTION * bloom_intensity);
+    float4 color_frame               = tex[thread_id.xy];
+    float4 color_bloom               = tex2[thread_id.xy];
+    const float INTENSITY_CORRECTION = 0.0005f;
+    float bloom_intensity            = pass_get_f3_value().x;
+    float3 result                    = color_frame.rgb + (color_bloom.rgb * INTENSITY_CORRECTION * bloom_intensity);
     
     tex_uav[thread_id.xy] = float4(result, color_frame.a);
 }
