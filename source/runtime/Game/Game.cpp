@@ -1107,16 +1107,16 @@ namespace spartan
                                     if (!all_transforms.empty())
                                     {
                                         size_t total_count = all_transforms.size();
-                                        size_t split_1     = static_cast<size_t>(total_count * 0.1f); // far layer is 10% of the total count
-                                        size_t split_2     = static_cast<size_t>(total_count * 0.3f); // mid layer is 20% of the total count (so we end at 30%)
+                                        size_t split_1     = static_cast<size_t>(total_count * 0.15f); // far layer is 15% of the total count
+                                        size_t split_2     = static_cast<size_t>(total_count * 0.45f); // mid layer is 30% of the total count (so we end at 45%)
                                         
-                                        // 1. low detail - near
+                                        // 1. low density - far (visible at all distances, sparse coverage)
                                         {
                                             Entity* entity = World::CreateEntity();
                                             entity->SetObjectName("grass_layer_density_low");
                                             entity->SetParent(terrain_tile);
 
-                                            // copy the first 10% of transforms
+                                            // copy the first 15% of transforms
                                             vector<Matrix> far_transforms(all_transforms.begin(), all_transforms.begin() + split_1);
 
                                             Renderable* renderable = entity->AddComponent<Renderable>();
@@ -1127,13 +1127,13 @@ namespace spartan
                                             renderable->SetMaxRenderDistance(render_distance_foliage);
                                         }
 
-                                        // 2. medium detail - medium
+                                        // 2. medium density - medium (adds density at medium range)
                                         {
                                             Entity* entity = World::CreateEntity();
                                             entity->SetObjectName("grass_layer_density_mid");
                                             entity->SetParent(terrain_tile);
 
-                                            // copy the next 20% of transforms
+                                            // copy the next 30% of transforms
                                             vector<Matrix> mid_transforms(all_transforms.begin() + split_1, all_transforms.begin() + split_2);
 
                                             Renderable* renderable = entity->AddComponent<Renderable>();
@@ -1141,16 +1141,16 @@ namespace spartan
                                             renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                             renderable->SetInstances(mid_transforms);
                                             renderable->SetMaterial(material_grass_blade);
-                                            renderable->SetMaxRenderDistance(render_distance_foliage * 0.3f);
+                                            renderable->SetMaxRenderDistance(render_distance_foliage * 0.6f);
                                         }
 
-                                        // 3. high detail - near
+                                        // 3. high density - near (full density up close)
                                         {
                                             Entity* entity = World::CreateEntity();
                                             entity->SetObjectName("grass_layer_density_high");
                                             entity->SetParent(terrain_tile);
 
-                                            // copy the remaining 70% of transforms
+                                            // copy the remaining 55% of transforms
                                             vector<Matrix> near_transforms(all_transforms.begin() + split_2, all_transforms.end());
 
                                             Renderable* renderable = entity->AddComponent<Renderable>();
@@ -1158,7 +1158,7 @@ namespace spartan
                                             renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                             renderable->SetInstances(near_transforms);
                                             renderable->SetMaterial(material_grass_blade);
-                                            renderable->SetMaxRenderDistance(render_distance_foliage * 0.1f);
+                                            renderable->SetMaxRenderDistance(render_distance_foliage * 0.3f);
                                         }
                                     }
                                 }
