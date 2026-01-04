@@ -123,19 +123,19 @@ namespace spartan
                 // apply physical camera settings
                 if (is_night)
                 {
-                    // night: ev ~3.0 (street lighting / moonlight)
-                    // lens: fast prime lens (f/1.4) to gather maximum light
-                    // sensor: high iso to boost signal
-                    camera_comp->SetAperture(1.4f);             // f/1.4
-                    camera_comp->SetShutterSpeed(1.0f / 60.0f); // 1/60s
-                    camera_comp->SetIso(1600.0f);               // iso 1600
+                    // night: ev ~5.0 (street lighting / moonlight)
+                    // lens: fast prime lens (f/2.0) to gather light while maintaining some depth of field
+                    // sensor: moderate iso to balance noise and sensitivity
+                    camera_comp->SetAperture(2.0f);             // f/2.0
+                    camera_comp->SetShutterSpeed(1.0f / 30.0f); // 1/30s
+                    camera_comp->SetIso(800.0f);                // iso 800
                 }
                 else
                 {
-                    // day: ev ~12.0 (general outdoor/mixed lighting)
-                    // more open than sunny 16 to handle scenes with shadows and indirect light
+                    // day: ev ~14.0 (bright outdoor/hazy sun)
+                    // balanced exposure for mixed sun and shade areas
                     // works well with both day (100,000 lux) and dusk (10,000 lux) presets
-                    camera_comp->SetAperture(5.6f);              // f/5.6
+                    camera_comp->SetAperture(11.0f);             // f/11
                     camera_comp->SetShutterSpeed(1.0f / 125.0f); // 1/125s
                     camera_comp->SetIso(100.0f);                 // iso 100
                 }

@@ -28,19 +28,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // port of the c++ siggraph 2025 presentation code
 // ==============================================================================================
 
-// reference white level for sdr (paper white)
-static const float gt7_sdr_paper_white = 250.0f;
+// the input to this tonemapper is scene-linear where ~1.0 = white (like aces/agx)
+// we define a "reference luminance" that maps 1.0 input to a specific nit level for pq math
+// using 80 nits (sdr reference white per bt.1886) keeps the pq math in a sensible range
+static const float gt7_sdr_paper_white = 80.0f;
+static const float gt7_ref_luminance   = 80.0f;
 
-// unit definition: 1.0f in framebuffer = 250 nits
-static const float gt7_ref_luminance = 250.0f;
-
-// helper: engine units (1.0) -> real nits (100)
+// helper: scene-linear (1.0 = white) -> nits for pq math
 float gt7_fb_to_nits(float fb_value)
 {
     return fb_value * gt7_ref_luminance;
 }
 
-// helper: real nits (100) -> engine units (1.0)
+// helper: nits -> scene-linear
 float gt7_nits_to_fb(float physical)
 {
     return physical / gt7_ref_luminance;
@@ -396,19 +396,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (is_hdr)
     {
         // 1. normalize to pq range (0.0 - 1.0 where 1.0 = 10,000 nits)
+        // all tonemappers output scene-linear where 1.0 = white
         const float pq_max_nits = 10000.0f;
-
-        if (tone_mapping != 4) // standard mappers (0-1 output)
-        {
-            // map 1.0 -> max display nits -> normalize to pq 10k
-            color.rgb = (color.rgb * max_nits) / pq_max_nits;
-        }
-        else // gt7 (physical units output)
-        {
-            // convert engine units (1.0 = gt7_ref_luminance) -> nits -> normalize to pq 10k
-            // change: use the constant 'gt7_ref_luminance' (250.0f) instead of hardcoded 100.0f
-            color.rgb = (color.rgb * gt7_ref_luminance) / pq_max_nits;
-        }
+        color.rgb = (color.rgb * max_nits) / pq_max_nits;
 
         // 2. encode (color space conversion + pq curve)
         color.rgb = linear_to_hdr10(color.rgb);
