@@ -132,9 +132,10 @@ namespace spartan
                 }
                 else
                 {
-                    // day: ev ~15.0 (sunny 16 rule)
-                    // matches the 100,000 lux sun setting
-                    camera_comp->SetAperture(16.0f);             // f/16
+                    // day: ev ~12.0 (general outdoor/mixed lighting)
+                    // more open than sunny 16 to handle scenes with shadows and indirect light
+                    // works well with both day (100,000 lux) and dusk (10,000 lux) presets
+                    camera_comp->SetAperture(5.6f);              // f/5.6
                     camera_comp->SetShutterSpeed(1.0f / 125.0f); // 1/125s
                     camera_comp->SetIso(100.0f);                 // iso 100
                 }
