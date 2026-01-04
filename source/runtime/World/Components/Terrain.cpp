@@ -132,15 +132,41 @@ namespace spartan
             vector<TriangleData>& tile_triangle_data = it->second;
             SP_ASSERT(!tile_triangle_data.empty());
 
+            // compute tile bounds from triangle centroids
+            // triangles at tile edges exist in both adjacent tiles, so we need to determine ownership
+            float tile_min_x = numeric_limits<float>::max();
+            float tile_max_x = numeric_limits<float>::lowest();
+            float tile_min_z = numeric_limits<float>::max();
+            float tile_max_z = numeric_limits<float>::lowest();
+            for (const auto& tri : tile_triangle_data)
+            {
+                tile_min_x = min(tile_min_x, tri.centroid.x);
+                tile_max_x = max(tile_max_x, tri.centroid.x);
+                tile_min_z = min(tile_min_z, tri.centroid.z);
+                tile_max_z = max(tile_max_z, tri.centroid.z);
+            }
+
+            // edge exclusion threshold: triangles at max edges belong to the adjacent tile
+            // this prevents double-spawning at tile boundaries
+            const float edge_epsilon = 0.01f;
+            float edge_threshold_x   = tile_max_x - edge_epsilon;
+            float edge_threshold_z   = tile_max_z - edge_epsilon;
+
             // step 1: filter acceptable triangles using precomputed data
             vector<uint32_t> acceptable_triangles;
             acceptable_triangles.reserve(tile_triangle_data.size());
             {
                 for (uint32_t i = 0; i < tile_triangle_data.size(); i++)
                 {
-                    if (tile_triangle_data[i].slope_radians <= prop_desc.max_slope_angle_rad &&
-                        tile_triangle_data[i].height_min >= prop_desc.min_spawn_height &&
-                        tile_triangle_data[i].height_max <= prop_desc.max_spawn_height)
+                    const TriangleData& tri = tile_triangle_data[i];
+
+                    // skip triangles at max edges (they belong to the adjacent tile)
+                    if (tri.centroid.x >= edge_threshold_x || tri.centroid.z >= edge_threshold_z)
+                        continue;
+
+                    if (tri.slope_radians <= prop_desc.max_slope_angle_rad &&
+                        tri.height_min >= prop_desc.min_spawn_height &&
+                        tri.height_max <= prop_desc.max_spawn_height)
                     {
                         acceptable_triangles.push_back(i);
                     }
@@ -156,6 +182,13 @@ namespace spartan
             transforms_out.resize(adjusted_count);
             if (adjusted_count == 0)
                 return;
+
+            // safe bounds for cluster centers (inset by cluster radius to avoid edge cutoff)
+            float safe_min_x = tile_min_x + prop_desc.cluster_radius;
+            float safe_max_x = tile_max_x - prop_desc.cluster_radius;
+            float safe_min_z = tile_min_z + prop_desc.cluster_radius;
+            float safe_max_z = tile_max_z - prop_desc.cluster_radius;
+            bool has_safe_zone = (safe_min_x < safe_max_x) && (safe_min_z < safe_max_z);
 
             // setup clusters
             uint32_t cluster_count              = adjusted_count;
@@ -173,7 +206,8 @@ namespace spartan
                 &clusters,
                 &tile_triangle_data,
                 &acceptable_triangles,
-                &prop_desc
+                &prop_desc,
+                safe_min_x, safe_max_x, safe_min_z, safe_max_z, has_safe_zone
             ]
             (uint32_t start_index, uint32_t end_index)
             {
@@ -181,19 +215,36 @@ namespace spartan
                 const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
                 uniform_int_distribution<> triangle_dist(0, tri_count - 1);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
+                const uint32_t max_attempts = 50; // prevent infinite loops if safe zone is small
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
-                    uint32_t tri_idx  = acceptable_triangles[triangle_dist(generator)];
-                    TriangleData& tri = tile_triangle_data[tri_idx];
+                    Vector3 position;
+                    uint32_t tri_idx;
+                    uint32_t attempts = 0;
+                    
+                    do
+                    {
+                        tri_idx           = acceptable_triangles[triangle_dist(generator)];
+                        TriangleData& tri = tile_triangle_data[tri_idx];
 
-                    // position (xz used as cluster center)
-                    float r1         = dist(generator);
-                    float r2         = dist(generator);
-                    float sqrt_r1    = sqrtf(r1);
-                    float u          = 1.0f - sqrt_r1;
-                    float v          = r2 * sqrt_r1;
-                    Vector3 position = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
-                    clusters[i]      = { position, tri_idx };
+                        // position (xz used as cluster center)
+                        float r1      = dist(generator);
+                        float r2      = dist(generator);
+                        float sqrt_r1 = sqrtf(r1);
+                        float u       = 1.0f - sqrt_r1;
+                        float v       = r2 * sqrt_r1;
+                        position      = tri.v0 + u * tri.v1_minus_v0 + v * tri.v2_minus_v0 + Vector3(0.0f, prop_desc.surface_offset, 0.0f);
+                        attempts++;
+                        
+                        // if no safe zone exists or cluster_radius is 0, accept any position
+                        if (!has_safe_zone || prop_desc.cluster_radius <= 0.0f)
+                            break;
+                            
+                    } while (attempts < max_attempts &&
+                             (position.x < safe_min_x || position.x > safe_max_x ||
+                              position.z < safe_min_z || position.z > safe_max_z));
+                    
+                    clusters[i] = { position, tri_idx };
                 }
             };
             ThreadPool::ParallelLoop(place_cluster, cluster_count);
@@ -223,10 +274,28 @@ namespace spartan
                     }
                     else
                     {
-                        // create organic irregular shape using smooth noise function
-                        // use cluster position as seed for consistent shape per cluster
-                        float cluster_seed = (cl.center_position.x * 12.9898f + cl.center_position.z * 78.233f) * 43758.5453f;
-                        cluster_seed = cluster_seed - floorf(cluster_seed); // normalize to [0, 1]
+                        // create organic irregular shape using layered noise
+                        // use cluster position as seed for consistent but unique shape per cluster
+                        float seed1 = (cl.center_position.x * 12.9898f + cl.center_position.z * 78.233f) * 43758.5453f;
+                        float seed2 = (cl.center_position.x * 39.346f + cl.center_position.z * 11.135f) * 23421.631f;
+                        float seed3 = (cl.center_position.z * 47.134f + cl.center_position.x * 93.271f) * 67823.183f;
+                        seed1 = seed1 - floorf(seed1);
+                        seed2 = seed2 - floorf(seed2);
+                        seed3 = seed3 - floorf(seed3);
+                        
+                        // vary frequencies per cluster using seeds (non-harmonic to avoid regular patterns)
+                        float freq1 = 2.3f + seed1 * 1.4f;  // range [2.3, 3.7]
+                        float freq2 = 3.7f + seed2 * 2.1f;  // range [3.7, 5.8]
+                        float freq3 = 5.1f + seed3 * 2.8f;  // range [5.1, 7.9]
+                        float freq4 = 1.7f + seed1 * 0.8f;  // low frequency for large-scale shape
+                        float freq5 = 7.3f + seed2 * 3.2f;  // high frequency for fine detail
+                        
+                        // phase offsets for each wave layer
+                        float phase1 = seed1 * pi_2;
+                        float phase2 = seed2 * pi_2;
+                        float phase3 = seed3 * pi_2;
+                        float phase4 = (seed1 + seed2) * pi;
+                        float phase5 = (seed2 + seed3) * pi;
                         
                         for (uint32_t t = 0; t < tri_count; t++)
                         {
@@ -235,21 +304,31 @@ namespace spartan
                             Vector2 tri_xz(tri.centroid.x, tri.centroid.z);
                             Vector2 offset = tri_xz - cl_xz;
                             float dist_sq = offset.LengthSquared();
+                            float dist = sqrtf(dist_sq);
                             
-                            // calculate angle for organic shape variation
+                            // calculate angle for shape variation
                             float angle = atan2f(offset.y, offset.x);
                             
-                            // create smooth organic variation using multiple sine waves at different frequencies
-                            // this creates natural blob-like shapes instead of circles
-                            float angle_rad = angle + cluster_seed * pi_2;
-                            float noise1 = sinf(angle_rad * 3.0f) * 0.15f; // primary distortion
-                            float noise2 = sinf(angle_rad * 5.0f) * 0.10f; // secondary detail
-                            float noise3 = sinf(angle_rad * 7.0f) * 0.08f; // fine detail
-                            float noise4 = cosf(angle_rad * 4.0f) * 0.12f; // orthogonal variation
+                            // normalized distance for distance-based variation (0 at center, 1 at radius)
+                            float norm_dist = dist / prop_desc.cluster_radius;
                             
-                            // combine noise layers for organic shape (variation from 0.5x to 1.5x)
-                            float radius_variation = 1.0f + noise1 + noise2 + noise3 + noise4;
-                            radius_variation = fmaxf(0.5f, fminf(1.5f, radius_variation)); // clamp to reasonable range
+                            // layered noise with non-harmonic frequencies and distance modulation
+                            // this creates natural blob-like shapes that vary with distance from center
+                            float noise1 = sinf(angle * freq1 + phase1) * 0.18f;
+                            float noise2 = sinf(angle * freq2 + phase2) * 0.14f;
+                            float noise3 = sinf(angle * freq3 + phase3) * 0.10f;
+                            float noise4 = cosf(angle * freq4 + phase4) * 0.20f; // low freq for overall shape
+                            float noise5 = sinf(angle * freq5 + phase5) * 0.06f; // high freq for detail
+                            
+                            // distance-based variation: edges are more irregular than center
+                            float dist_noise = sinf(norm_dist * 3.14159f + seed1 * 6.28f) * 0.12f * norm_dist;
+                            
+                            // 2d position-based noise for additional irregularity
+                            float pos_noise = sinf(offset.x * 0.3f + seed2 * 10.0f) * cosf(offset.y * 0.3f + seed3 * 10.0f) * 0.08f;
+                            
+                            // combine all noise layers
+                            float radius_variation = 1.0f + noise1 + noise2 + noise3 + noise4 + noise5 + dist_noise + pos_noise;
+                            radius_variation = fmaxf(0.4f, fminf(1.6f, radius_variation)); // clamp to reasonable range
                             
                             float effective_radius = prop_desc.cluster_radius * radius_variation;
                             if (dist_sq <= effective_radius * effective_radius)
