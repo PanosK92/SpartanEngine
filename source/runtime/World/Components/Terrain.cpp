@@ -132,18 +132,55 @@ namespace spartan
             vector<TriangleData>& tile_triangle_data = it->second;
             SP_ASSERT(!tile_triangle_data.empty());
 
-            // compute tile bounds from triangle centroids
+            // compute tile bounds from triangle centroids using parallel reduction
             // triangles at tile edges exist in both adjacent tiles, so we need to determine ownership
+            uint32_t tri_count_bounds = static_cast<uint32_t>(tile_triangle_data.size());
+            uint32_t num_chunks = min(tri_count_bounds, static_cast<uint32_t>(thread::hardware_concurrency()));
+            if (num_chunks == 0) num_chunks = 1;
+            
+            struct Bounds { float min_x, max_x, min_z, max_z; };
+            vector<Bounds> chunk_bounds(num_chunks, { 
+                numeric_limits<float>::max(), numeric_limits<float>::lowest(),
+                numeric_limits<float>::max(), numeric_limits<float>::lowest() 
+            });
+            
+            auto compute_bounds = [&](uint32_t chunk_idx, uint32_t chunk_start, uint32_t chunk_end)
+            {
+                Bounds& b = chunk_bounds[chunk_idx];
+                for (uint32_t i = chunk_start; i < chunk_end; i++)
+                {
+                    const auto& tri = tile_triangle_data[i];
+                    b.min_x = min(b.min_x, tri.centroid.x);
+                    b.max_x = max(b.max_x, tri.centroid.x);
+                    b.min_z = min(b.min_z, tri.centroid.z);
+                    b.max_z = max(b.max_z, tri.centroid.z);
+                }
+            };
+            
+            uint32_t chunk_size = (tri_count_bounds + num_chunks - 1) / num_chunks;
+            auto parallel_bounds = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t c = start; c < end; c++)
+                {
+                    uint32_t chunk_start = c * chunk_size;
+                    uint32_t chunk_end = min(chunk_start + chunk_size, tri_count_bounds);
+                    if (chunk_start < chunk_end)
+                        compute_bounds(c, chunk_start, chunk_end);
+                }
+            };
+            ThreadPool::ParallelLoop(parallel_bounds, num_chunks);
+            
+            // merge chunk results
             float tile_min_x = numeric_limits<float>::max();
             float tile_max_x = numeric_limits<float>::lowest();
             float tile_min_z = numeric_limits<float>::max();
             float tile_max_z = numeric_limits<float>::lowest();
-            for (const auto& tri : tile_triangle_data)
+            for (const auto& b : chunk_bounds)
             {
-                tile_min_x = min(tile_min_x, tri.centroid.x);
-                tile_max_x = max(tile_max_x, tri.centroid.x);
-                tile_min_z = min(tile_min_z, tri.centroid.z);
-                tile_max_z = max(tile_max_z, tri.centroid.z);
+                tile_min_x = min(tile_min_x, b.min_x);
+                tile_max_x = max(tile_max_x, b.max_x);
+                tile_min_z = min(tile_min_z, b.min_z);
+                tile_max_z = max(tile_max_z, b.max_z);
             }
 
             // edge exclusion threshold: triangles at max edges belong to the adjacent tile
@@ -207,15 +244,17 @@ namespace spartan
                 &tile_triangle_data,
                 &acceptable_triangles,
                 &prop_desc,
-                safe_min_x, safe_max_x, safe_min_z, safe_max_z, has_safe_zone
+                safe_min_x, safe_max_x, safe_min_z, safe_max_z, has_safe_zone,
+                tile_index
             ]
             (uint32_t start_index, uint32_t end_index)
             {
-                mt19937 generator(random_device{}());
+                // deterministic seed based on tile and range (avoids expensive random_device)
+                mt19937 generator(tile_index * 1000003u + start_index * 31u + 12345u);
                 const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
                 uniform_int_distribution<> triangle_dist(0, tri_count - 1);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
-                const uint32_t max_attempts = 50; // prevent infinite loops if safe zone is small
+                const uint32_t max_attempts = 50;
                 for (uint32_t i = start_index; i < end_index; i++)
                 {
                     Vector3 position;
@@ -383,11 +422,13 @@ namespace spartan
                 &prop_desc,
                 &cluster_nearby_tris,
                 base_instances_per_cluster,
-                remainder_instances
+                remainder_instances,
+                tile_index
             ]
             (uint32_t start_index, uint32_t end_index)
             {
-                mt19937 generator(random_device{}());
+                // deterministic seed based on tile and range (avoids expensive random_device)
+                mt19937 generator(tile_index * 2000003u + start_index * 37u + 67890u);
                 uniform_real_distribution<float> dist(0.0f, 1.0f);
                 uniform_real_distribution<float> angle_dist(0.0f, 360.0f);
                 uniform_real_distribution<float> scale_dist(prop_desc.min_scale, prop_desc.max_scale);
@@ -457,31 +498,38 @@ namespace spartan
     {
         float compute_surface_area_km2(const vector<RHI_Vertex_PosTexNorTan>& vertices, const vector<uint32_t>& indices)
         {
-            float area_m2 = 0.0f;
-        
-            for (size_t i = 0; i + 2 < indices.size(); i += 3)
+            uint32_t triangle_count = static_cast<uint32_t>(indices.size() / 3);
+            vector<float> partial_areas(triangle_count);
+            
+            auto compute_areas = [&](uint32_t start_tri, uint32_t end_tri)
             {
-                const auto& v0 = vertices[indices[i + 0]].pos;
-                const auto& v1 = vertices[indices[i + 1]].pos;
-                const auto& v2 = vertices[indices[i + 2]].pos;
-        
-                // compute edges
-                Vector3 edge1 = { v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2] };
-                Vector3 edge2 = { v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2] };
-        
-                // cross product
-                Vector3 cross = {
-                    edge1.y * edge2.z - edge1.z * edge2.y,
-                    edge1.z * edge2.x - edge1.x * edge2.z,
-                    edge1.x * edge2.y - edge1.y * edge2.x
-                };
-        
-                // triangle area = 0.5 * length of cross product
-                float triangle_area = 0.5f * sqrtf(cross.x * cross.x + cross.y * cross.y + cross.z * cross.z);
-                area_m2 += triangle_area;
-            }
-        
-            return area_m2 / 1'000'000.0f; // in km²
+                for (uint32_t t = start_tri; t < end_tri; t++)
+                {
+                    size_t i = static_cast<size_t>(t) * 3;
+                    const auto& v0 = vertices[indices[i + 0]].pos;
+                    const auto& v1 = vertices[indices[i + 1]].pos;
+                    const auto& v2 = vertices[indices[i + 2]].pos;
+                    
+                    // compute edges
+                    float e1x = v1[0] - v0[0], e1y = v1[1] - v0[1], e1z = v1[2] - v0[2];
+                    float e2x = v2[0] - v0[0], e2y = v2[1] - v0[1], e2z = v2[2] - v0[2];
+                    
+                    // cross product
+                    float cx = e1y * e2z - e1z * e2y;
+                    float cy = e1z * e2x - e1x * e2z;
+                    float cz = e1x * e2y - e1y * e2x;
+                    
+                    partial_areas[t] = 0.5f * sqrtf(cx * cx + cy * cy + cz * cz);
+                }
+            };
+            ThreadPool::ParallelLoop(compute_areas, triangle_count);
+            
+            // sum partial areas (sequential, but on a small array)
+            float area_m2 = 0.0f;
+            for (float a : partial_areas)
+                area_m2 += a;
+            
+            return area_m2 / 1'000'000.0f;
         }
         
         void get_values_from_height_map(vector<float>& height_data_out, RHI_Texture* height_texture, const float min_y, const float max_y)
@@ -732,8 +780,12 @@ namespace spartan
             
             // copy heights only (more cache-friendly than copying full Vector3)
             vector<float> temp_heights(m_positions.size());
-            for (size_t i = 0; i < m_positions.size(); i++)
-                temp_heights[i] = m_positions[i].y;
+            auto copy_heights = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t i = start; i < end; i++)
+                    temp_heights[i] = m_positions[i].y;
+            };
+            ThreadPool::ParallelLoop(copy_heights, static_cast<uint32_t>(m_positions.size()));
             
             // parallel wind erosion
             auto apply_blur = [&](uint32_t start_idx, uint32_t end_idx)
@@ -836,8 +888,8 @@ namespace spartan
                 return Vector2(hx, hz);
             };
         
-            // random number generation
-            mt19937 gen(random_device{}());
+            // random number generation (deterministic seed for reproducibility)
+            mt19937 gen(width * 3000017u + height * 41u + 11111u);
             uniform_real_distribution<float> dist_x(1.0f, static_cast<float>(width) - 2.0f);
             uniform_real_distribution<float> dist_z(1.0f, static_cast<float>(height) - 2.0f);
         
@@ -977,70 +1029,110 @@ namespace spartan
         {
             SP_ASSERT_MSG(!terrain_vertices.empty(), "Vertices are empty");
         
-            auto compute_vertex_data = [&](uint32_t start, uint32_t end)
+            // process interior vertices (no branching needed)
+            auto compute_interior = [&](uint32_t start, uint32_t end)
             {
                 for (uint32_t index = start; index < end; index++)
                 {
-                    uint32_t i = index % width;
-                    uint32_t j = index / width;
-        
-                    // compute normal using gradients
-                    float h_left, h_right, h_bottom, h_top;
-        
-                    // x-direction gradient
-                    if (i == 0)
+                    // map linear index to 2d interior coordinates (offset by 1)
+                    uint32_t interior_width = width - 2;
+                    uint32_t i = (index % interior_width) + 1;
+                    uint32_t j = (index / interior_width) + 1;
+                    uint32_t vertex_idx = j * width + i;
+                    
+                    // central difference (no boundary checks needed)
+                    float h_left   = terrain_vertices[vertex_idx - 1].pos[1];
+                    float h_right  = terrain_vertices[vertex_idx + 1].pos[1];
+                    float h_bottom = terrain_vertices[vertex_idx - width].pos[1];
+                    float h_top    = terrain_vertices[vertex_idx + width].pos[1];
+                    
+                    float dh_dx = (h_right - h_left) * 0.5f;
+                    float dh_dz = (h_top - h_bottom) * 0.5f;
+                    
+                    // normal
+                    float nx = -dh_dx, ny = 1.0f, nz = -dh_dz;
+                    float inv_len = 1.0f / sqrtf(nx * nx + ny * ny + nz * nz);
+                    nx *= inv_len; ny *= inv_len; nz *= inv_len;
+                    terrain_vertices[vertex_idx].nor[0] = nx;
+                    terrain_vertices[vertex_idx].nor[1] = ny;
+                    terrain_vertices[vertex_idx].nor[2] = nz;
+                    
+                    // tangent (orthogonalized to normal)
+                    float proj = nx; // dot(normal, (1,0,0))
+                    float tx = 1.0f - nx * proj, ty = -ny * proj, tz = -nz * proj;
+                    float t_inv_len = 1.0f / sqrtf(tx * tx + ty * ty + tz * tz);
+                    terrain_vertices[vertex_idx].tan[0] = tx * t_inv_len;
+                    terrain_vertices[vertex_idx].tan[1] = ty * t_inv_len;
+                    terrain_vertices[vertex_idx].tan[2] = tz * t_inv_len;
+                }
+            };
+            
+            uint32_t interior_count = (width - 2) * (height - 2);
+            if (interior_count > 0)
+            {
+                ThreadPool::ParallelLoop(compute_interior, interior_count);
+            }
+            
+            // process edge vertices separately (small count, branching acceptable)
+            auto compute_edges = [&](uint32_t start, uint32_t end)
+            {
+                for (uint32_t edge_idx = start; edge_idx < end; edge_idx++)
+                {
+                    uint32_t i, j;
+                    uint32_t perimeter = 2 * width + 2 * (height - 2);
+                    
+                    // map edge_idx to boundary coordinates
+                    if (edge_idx < width)
                     {
-                        h_left  = terrain_vertices[j * width + i].pos[1];
-                        h_right = terrain_vertices[j * width + i + 1].pos[1];
+                        i = edge_idx; j = 0; // top edge
                     }
-                    else if (i == width - 1)
+                    else if (edge_idx < width + height - 1)
                     {
-                        h_left  = terrain_vertices[j * width + i - 1].pos[1];
-                        h_right = terrain_vertices[j * width + i].pos[1];
-                    } else
-                    {
-                        h_left  = terrain_vertices[j * width + i - 1].pos[1];
-                        h_right = terrain_vertices[j * width + i + 1].pos[1];
+                        i = width - 1; j = edge_idx - width + 1; // right edge
                     }
-                    float dh_dx = (h_right - h_left) / (i == 0 || i == width - 1 ? 1.0f : 2.0f);
-        
-                    // z-direction gradient
-                    if (j == 0)
+                    else if (edge_idx < 2 * width + height - 2)
                     {
-                        h_bottom = terrain_vertices[j * width + i].pos[1];
-                        h_top    = terrain_vertices[(j + 1) * width + i].pos[1];
-                    }
-                    else if (j == height - 1)
-                    {
-                        h_bottom = terrain_vertices[(j - 1) * width + i].pos[1];
-                        h_top    = terrain_vertices[j * width + i].pos[1];
+                        i = 2 * width + height - 3 - edge_idx; j = height - 1; // bottom edge
                     }
                     else
                     {
-                        h_bottom = terrain_vertices[(j - 1) * width + i].pos[1];
-                        h_top    = terrain_vertices[(j + 1) * width + i].pos[1];
+                        i = 0; j = perimeter - edge_idx; // left edge
                     }
-                    float dh_dz = (h_top - h_bottom) / (j == 0 || j == height - 1 ? 1.0f : 2.0f);
-
-                    // normal
-                    Vector3 normal(-dh_dx, 1.0f, -dh_dz);
-                    normal.Normalize();
-                    terrain_vertices[index].nor[0] = normal.x;
-                    terrain_vertices[index].nor[1] = normal.y;
-                    terrain_vertices[index].nor[2] = normal.z;
-        
-                    // tangent
-                    Vector3 tangent(1.0f, 0.0f, 0.0f);
-                    float proj  = Vector3::Dot(normal, tangent);
-                    tangent     -= normal * proj; // Orthogonalize to normal
-                    tangent.Normalize();
-                    terrain_vertices[index].tan[0] = tangent.x;
-                    terrain_vertices[index].tan[1] = tangent.y;
-                    terrain_vertices[index].tan[2] = tangent.z;
+                    
+                    uint32_t index = j * width + i;
+                    
+                    // forward/backward difference at edges
+                    uint32_t i_left  = (i > 0) ? i - 1 : i;
+                    uint32_t i_right = (i < width - 1) ? i + 1 : i;
+                    uint32_t j_bottom = (j > 0) ? j - 1 : j;
+                    uint32_t j_top = (j < height - 1) ? j + 1 : j;
+                    
+                    float h_left   = terrain_vertices[j * width + i_left].pos[1];
+                    float h_right  = terrain_vertices[j * width + i_right].pos[1];
+                    float h_bottom = terrain_vertices[j_bottom * width + i].pos[1];
+                    float h_top    = terrain_vertices[j_top * width + i].pos[1];
+                    
+                    float dh_dx = (h_right - h_left) / ((i_right != i_left) ? static_cast<float>(i_right - i_left) : 1.0f);
+                    float dh_dz = (h_top - h_bottom) / ((j_top != j_bottom) ? static_cast<float>(j_top - j_bottom) : 1.0f);
+                    
+                    float nx = -dh_dx, ny = 1.0f, nz = -dh_dz;
+                    float inv_len = 1.0f / sqrtf(nx * nx + ny * ny + nz * nz);
+                    nx *= inv_len; ny *= inv_len; nz *= inv_len;
+                    terrain_vertices[index].nor[0] = nx;
+                    terrain_vertices[index].nor[1] = ny;
+                    terrain_vertices[index].nor[2] = nz;
+                    
+                    float proj = nx;
+                    float tx = 1.0f - nx * proj, ty = -ny * proj, tz = -nz * proj;
+                    float t_inv_len = 1.0f / sqrtf(tx * tx + ty * ty + tz * tz);
+                    terrain_vertices[index].tan[0] = tx * t_inv_len;
+                    terrain_vertices[index].tan[1] = ty * t_inv_len;
+                    terrain_vertices[index].tan[2] = tz * t_inv_len;
                 }
             };
-        
-            ThreadPool::ParallelLoop(compute_vertex_data, static_cast<uint32_t>(terrain_vertices.size()));
+            
+            uint32_t edge_count = 2 * width + 2 * (height - 2);
+            ThreadPool::ParallelLoop(compute_edges, edge_count);
         }
 
         void apply_perlin_noise(vector<Vector3>& m_positions, uint32_t width, uint32_t height, float amplitude = 5.0f, float frequency = 0.01f, uint32_t octaves = 4, float persistence = 1.0f)
@@ -1055,11 +1147,11 @@ namespace spartan
                 return a + t * (b - a);
             };
         
-            // initialize permutation table and gradients
+            // initialize permutation table and gradients (deterministic seed for reproducibility)
             vector<uint8_t> permutation(512);
             vector<Vector2> gradients(256);
             {
-                mt19937 gen(random_device{}());
+                mt19937 gen(width * 4000037u + height * 53u + 22222u);
                 uniform_real_distribution<float> dist(-1.0f, 1.0f);
         
                 for (uint32_t i = 0; i < 256; ++i)
@@ -1071,17 +1163,17 @@ namespace spartan
                     gradients[i] = grad.Normalized();
                 }
         
-                for (uint32_t i = 0; i < 256; ++i)
-                {
-                    permutation[256 + i] = permutation[i];
-                }
-        
-                // shuffle
+                // shuffle first, then duplicate to second half
                 for (uint32_t i = 255; i > 0; --i)
                 {
-                    uniform_int_distribution<uint32_t> dist(0, i);
-                    uint32_t j = dist(gen);
+                    uniform_int_distribution<uint32_t> swap_dist(0, i);
+                    uint32_t j = swap_dist(gen);
                     swap(permutation[i], permutation[j]);
+                }
+                
+                // duplicate to second half after shuffle
+                for (uint32_t i = 0; i < 256; ++i)
+                {
                     permutation[256 + i] = permutation[i];
                 }
             }
@@ -1502,11 +1594,13 @@ namespace spartan
             auto& mip_bytes = slice.mips[0].bytes;
             mip_bytes.resize(m_dense_width * m_dense_height * sizeof(float));
         
-            auto copy_heights = [this, &mip_bytes](uint32_t start, uint32_t end)
+            // direct pointer cast for faster access
+            float* height_ptr = reinterpret_cast<float*>(mip_bytes.data());
+            auto copy_heights = [this, height_ptr](uint32_t start, uint32_t end)
             {
                 for (uint32_t i = start; i < end; i++)
                 {
-                    memcpy(mip_bytes.data() + i * sizeof(float), &m_positions[i].y, sizeof(float));
+                    height_ptr[i] = m_positions[i].y;
                 }
             };
             ThreadPool::ParallelLoop(copy_heights, m_dense_width * m_dense_height);
