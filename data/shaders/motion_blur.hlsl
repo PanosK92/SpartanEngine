@@ -23,144 +23,207 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const uint g_motion_blur_samples = 32;
-static const float g_velocity_threshold = 0.005f;
-static const float g_color_scale        = 0.5f;
+static const int   SAMPLE_COUNT             = 15;    // samples per direction (total = 2 * count + 1)
+static const float MAX_BLUR_RADIUS_PIXELS   = 40.0f; // maximum blur extent in pixels
+static const float DEPTH_SCALE              = 100.0f; // depth comparison sensitivity
+static const float VELOCITY_SOFT_COMPARE    = 0.02f; // velocity softness for edge detection
+static const float CENTER_WEIGHT            = 1.0f;  // weight for center sample
+static const float SOFT_Z_EXTENT            = 0.1f;  // soft depth extent for bilateral weight
 
-groupshared uint g_tile_max_velocity_sqr;
-
-// find maximum velocity in a 3x3 neighborhood (dilation)
-// uses SampleLevel with UVs to handle resolution mismatches (e.g. 4K color vs 1080p velocity)
-float2 get_velocity_dilated(float2 uv, float2 velocity_texel_size)
+// helper: soft depth comparison (guerrilla games / killzone approach)
+float soft_depth_compare(float depth_a, float depth_b)
 {
-    float2 max_velocity = 0.0f;
-    float max_len       = 0.0f;
-
-    [unroll]
-    for (int y = -1; y <= 1; ++y)
-    {
-        [unroll]
-        for (int x = -1; x <= 1; ++x)
-        {
-            float2 offset = float2(x, y) * velocity_texel_size;
-            float2 v      = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv + offset, 0).xy;
-            float len     = length(v);
-
-            if (len > max_len)
-            {
-                max_len      = len;
-                max_velocity = v;
-            }
-        }
-    }
-    return max_velocity;
+    // returns 1 when depth_a is behind or equal to depth_b, with soft falloff
+    float diff = (depth_a - depth_b) * DEPTH_SCALE;
+    return saturate(1.0f - diff);
 }
 
-// simple interleaved gradient noise to reduce banding
-float get_noise(uint2 pixel_coord)
+// helper: cone weight - samples closer to center contribute more (mcguire approach)
+float cone_weight(float distance_from_center, float blur_length)
 {
-    float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
-    return frac(magic.z * frac(dot(float2(pixel_coord), magic.xy)));
+    return saturate(1.0f - distance_from_center / (blur_length + FLT_MIN));
+}
+
+// helper: cylinder weight - sample contributes based on its own blur coverage
+float cylinder_weight(float sample_blur_length, float distance_from_center)
+{
+    return saturate(1.0f - abs(distance_from_center - sample_blur_length) / (sample_blur_length + FLT_MIN));
+}
+
+// helper: velocity-to-pixel conversion accounting for resolution differences
+float2 velocity_to_pixels(float2 velocity_uv, float2 resolution_color)
+{
+    // velocity is in uv space, convert to pixels
+    return velocity_uv * resolution_color;
+}
+
+// reconstruction filter for plausible motion blur (based on mcguire 2012)
+float4 motion_blur_reconstruction(
+    float2 uv, 
+    float2 pixel_coord,
+    float2 resolution_color, 
+    float2 resolution_velocity,
+    float  shutter_ratio,
+    float  noise
+)
+{
+    // sample center pixel
+    float4 center_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
+    float  center_depth = get_linear_depth(uv);
+    
+    // sample velocity at color resolution uv (handles resolution mismatch)
+    float2 center_velocity_uv     = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).xy;
+    float2 center_velocity_pixels = velocity_to_pixels(center_velocity_uv, resolution_color);
+    float  center_blur_length_raw = length(center_velocity_pixels);
+    
+    // early exit for static or nearly static pixels (check raw velocity before shutter scaling)
+    if (center_blur_length_raw < 0.5f)
+    {
+        return center_color;
+    }
+    
+    // apply shutter ratio after early exit check
+    float center_blur_length = center_blur_length_raw * shutter_ratio;
+    
+    // clamp blur length for performance
+    float clamped_blur_length = min(center_blur_length, MAX_BLUR_RADIUS_PIXELS);
+    
+    // normalized velocity direction (use raw velocity for direction, independent of shutter)
+    float2 velocity_dir = center_velocity_pixels / (center_blur_length_raw + FLT_MIN);
+    
+    // accumulation
+    float4 color_accum   = center_color * CENTER_WEIGHT;
+    float  weight_accum  = CENTER_WEIGHT;
+    
+    // jittered sample offset for temporal stability (integrates with taa)
+    float jitter = (noise - 0.5f) * 2.0f;
+    
+    // sample along velocity direction (both forward and backward)
+    [unroll]
+    for (int i = 1; i <= SAMPLE_COUNT; ++i)
+    {
+        // non-linear sample distribution - more samples near center for smooth gradients
+        float t = (float)i / (float)SAMPLE_COUNT;
+        t = t * t; // quadratic distribution concentrates samples near center
+        
+        // add temporal jitter for smooth accumulation across frames
+        float sample_distance = t * clamped_blur_length + jitter * (clamped_blur_length / (float)SAMPLE_COUNT);
+        sample_distance = max(sample_distance, 0.0f);
+        
+        // sample positions in both directions
+        float2 offset = velocity_dir * sample_distance / resolution_color;
+        float2 uv_forward  = uv + offset;
+        float2 uv_backward = uv - offset;
+        
+        // forward sample
+        if (is_valid_uv(uv_forward))
+        {
+            float4 sample_color         = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_forward, 0);
+            float  sample_depth         = get_linear_depth(uv_forward);
+            float2 sample_velocity_uv   = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv_forward, 0).xy;
+            float2 sample_velocity_px   = velocity_to_pixels(sample_velocity_uv, resolution_color);
+            float  sample_blur_length   = min(length(sample_velocity_px) * shutter_ratio, MAX_BLUR_RADIUS_PIXELS);
+            
+            // bilateral weights based on depth relationship (guerrilla games approach)
+            // foreground samples always contribute, background samples are occluded
+            float depth_weight_forward  = soft_depth_compare(center_depth, sample_depth); // sample in front
+            float depth_weight_backward = soft_depth_compare(sample_depth, center_depth); // center in front
+            
+            // velocity-based weights (mcguire reconstruction filter)
+            float cone     = cone_weight(sample_distance, sample_blur_length);
+            float cylinder = cylinder_weight(sample_blur_length, sample_distance);
+            
+            // combine weights - sample contributes if it could affect this pixel
+            float weight = (depth_weight_forward * cone + depth_weight_backward * cylinder) * 
+                           saturate(sample_blur_length / (clamped_blur_length + FLT_MIN));
+            
+            // soft falloff at the edges for smoother appearance
+            weight *= smoothstep(0.0f, 0.1f, 1.0f - t);
+            
+            color_accum  += sample_color * weight;
+            weight_accum += weight;
+        }
+        
+        // backward sample
+        if (is_valid_uv(uv_backward))
+        {
+            float4 sample_color         = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_backward, 0);
+            float  sample_depth         = get_linear_depth(uv_backward);
+            float2 sample_velocity_uv   = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], uv_backward, 0).xy;
+            float2 sample_velocity_px   = velocity_to_pixels(sample_velocity_uv, resolution_color);
+            float  sample_blur_length   = min(length(sample_velocity_px) * shutter_ratio, MAX_BLUR_RADIUS_PIXELS);
+            
+            // bilateral weights
+            float depth_weight_forward  = soft_depth_compare(center_depth, sample_depth);
+            float depth_weight_backward = soft_depth_compare(sample_depth, center_depth);
+            
+            // velocity weights
+            float cone     = cone_weight(sample_distance, sample_blur_length);
+            float cylinder = cylinder_weight(sample_blur_length, sample_distance);
+            
+            float weight = (depth_weight_forward * cone + depth_weight_backward * cylinder) *
+                           saturate(sample_blur_length / (clamped_blur_length + FLT_MIN));
+            
+            weight *= smoothstep(0.0f, 0.1f, 1.0f - t);
+            
+            color_accum  += sample_color * weight;
+            weight_accum += weight;
+        }
+    }
+    
+    // normalize
+    float4 result = color_accum / (weight_accum + FLT_MIN);
+    
+    // preserve alpha channel
+    result.a = center_color.a;
+    
+    return result;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID, uint group_index : SV_GroupIndex)
 {
-    // 1. get dimensions of the input color (e.g. 4k)
-    float2 resolution_out;
-    tex.GetDimensions(resolution_out.x, resolution_out.y);
-
-    // 2. get dimensions of the velocity buffer (e.g. 1080p)
+    // get buffer dimensions (color/output can be different from velocity)
+    float2 resolution_color;
+    tex.GetDimensions(resolution_color.x, resolution_color.y);
+    
+    float2 resolution_output;
+    tex_uav.GetDimensions(resolution_output.x, resolution_output.y);
+    
     float2 resolution_velocity;
     tex_velocity.GetDimensions(resolution_velocity.x, resolution_velocity.y);
-    float2 velocity_texel_size = 1.0f / resolution_velocity;
-
-    // setup coordinates
-    uint2 pixel_coord = thread_id.xy;
-    float2 uv         = (pixel_coord + 0.5f) / resolution_out;
-
-    // 3. get velocities using UVs to handle the resolution mismatch
-    // center uses point sampling to get the exact velocity for this screen area
-    float2 center_velocity  = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv, 0).xy;
-    float2 dilated_velocity = get_velocity_dilated(uv, velocity_texel_size);
-
-    // physically based motion blur strength
-    float shutter_speed        = pass_get_f3_value().x;
-    float shutter_ratio        = shutter_speed / (buffer_frame.delta_time + FLT_MIN);
-    float2 center_velocity_uv  = (center_velocity / 2.0f) * shutter_ratio;
-    float2 dilated_velocity_uv = (dilated_velocity / 2.0f) * shutter_ratio;
-
-    // compute max velocity for tile
-    if (group_index == 0)
+    
+    // compute pixel coordinate and uv
+    uint2  pixel_coord = thread_id.xy;
+    float2 uv          = (pixel_coord + 0.5f) / resolution_output;
+    
+    // early exit for out of bounds
+    if (any(pixel_coord >= uint2(resolution_output)))
     {
-        g_tile_max_velocity_sqr = 0;
-    }
-    GroupMemoryBarrierWithGroupSync();
-
-    uint velocity_sqr = (uint)(dot(dilated_velocity_uv, dilated_velocity_uv) * 1000000.0f);
-    InterlockedMax(g_tile_max_velocity_sqr, velocity_sqr);
-
-    GroupMemoryBarrierWithGroupSync();
-
-    // early exit if tile has insignificant motion
-    if (sqrt(float(g_tile_max_velocity_sqr) / 1000000.0f) < g_velocity_threshold)
-    {
-        tex_uav[pixel_coord] = tex.Load(int3(pixel_coord, 0));
         return;
     }
-
-    // classify pixel (background vs foreground)
-    float center_speed  = length(center_velocity_uv);
-    float dilated_speed = length(dilated_velocity_uv);
-    bool is_background  = center_speed < (dilated_speed - g_velocity_threshold);
-
-    // early exit if we are static and there is no fast neighbor
-    if (!is_background && center_speed < g_velocity_threshold)
-    {
-         tex_uav[pixel_coord] = tex.Load(int3(pixel_coord, 0));
-         return;
-    }
-
-    // reconstruction loop setup
-    float4 center_color = tex.Load(int3(pixel_coord, 0));
-    float center_depth  = get_linear_depth(uv);
-    float4 accum_color  = center_color;
-    float total_weight  = 1.0f;   
-    float2 search_vector = dilated_velocity_uv;
-    float noise          = get_noise(pixel_coord);
-    [unroll]
-    for (uint i = 1; i < g_motion_blur_samples; ++i)
-    {
-        float t           = (float(i) + noise) / float(g_motion_blur_samples) - 0.5f;
-        float2 sample_uv  = uv + search_vector * t;
-
-        float is_on_screen = step(0.0f, sample_uv.x) * step(sample_uv.x, 1.0f) * step(0.0f, sample_uv.y) * step(sample_uv.y, 1.0f);
-        
-        // bilinear sample for color (smoothness)
-        float4 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0);
-        float sample_depth  = get_linear_depth(sample_uv);
-
-        // depth weighting logic
-        float is_foreground_sample = step(sample_depth, center_depth - 0.01f);
-        float depth_weight         = 1.0f;
-
-        if (is_background)
-        {
-            depth_weight = is_foreground_sample;
-        }
-        else
-        {
-            float depth_diff = abs(center_depth - sample_depth);
-            depth_weight     = exp(-depth_diff);
-        }
-
-        float color_diff   = length(center_color.rgb - sample_color.rgb);
-        float color_weight = exp(-color_diff * g_color_scale);
-
-        float weight  = is_on_screen * depth_weight * color_weight;
-        accum_color  += sample_color * weight;
-        total_weight += weight;
-    }
-
-    tex_uav[pixel_coord] = accum_color / total_weight;
+    
+    // get shutter parameters for physically-based blur
+    // shutter_ratio represents how much of the frame's motion is captured
+    // - ratio < 1: fast shutter, freezes motion (e.g. 1/125s at 60fps = 0.5)
+    // - ratio = 1: shutter matches frame time, standard blur
+    // - ratio > 1: slow shutter, motion spans multiple frames (e.g. 1/30s at 60fps = 2.0)
+    float shutter_speed = pass_get_f3_value().x;
+    float shutter_ratio = clamp(shutter_speed / (buffer_frame.delta_time + FLT_MIN), 0.0f, 3.0f);
+    
+    // generate per-pixel temporal noise for smooth sample distribution across frames
+    // this integrates with taa for artifact-free motion blur
+    float noise = noise_interleaved_gradient(float2(pixel_coord), true);
+    
+    // perform motion blur reconstruction
+    float4 result = motion_blur_reconstruction(
+        uv,
+        float2(pixel_coord),
+        resolution_color,
+        resolution_velocity,
+        shutter_ratio,
+        noise
+    );
+    
+    tex_uav[pixel_coord] = result;
 }
