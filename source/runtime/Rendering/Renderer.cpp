@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
 #include "../Core/Window.h"
+#include "../Core/Timer.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
 #include "../RHI/RHI_Device.h"
@@ -60,6 +61,7 @@ namespace spartan
     // line and icon rendering
     shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
+    vector<PersistentLine> Renderer::m_persistent_lines;
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
@@ -358,6 +360,7 @@ namespace spartan
     
             // update frame constant buffer and add lines to render
             UpdateFrameConstantBuffer(m_cmd_list_present);
+            UpdatePersistentLines();
             AddLinesToBeRendered();
         }
     
