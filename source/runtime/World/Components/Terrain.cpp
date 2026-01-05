@@ -249,20 +249,47 @@ namespace spartan
             };
             ThreadPool::ParallelLoop(place_cluster, cluster_count);
 
-            // compute nearby acceptable triangles per cluster (for snapping to surface)
+            // compute nearby acceptable triangles per cluster using spatial grid
             vector<vector<uint32_t>> cluster_nearby_tris(cluster_count);
+            
+            // build spatial grid for triangle lookup (only if clustering is used)
+            const float max_effective_radius = prop_desc.cluster_radius * 1.6f; // max due to radius_variation clamp
+            const float cell_size = max(max_effective_radius, 1.0f);
+            
+            // compute grid bounds from tile bounds
+            int32_t grid_min_x = static_cast<int32_t>(floorf(tile_min_x / cell_size));
+            int32_t grid_max_x = static_cast<int32_t>(floorf(tile_max_x / cell_size));
+            int32_t grid_min_z = static_cast<int32_t>(floorf(tile_min_z / cell_size));
+            int32_t grid_max_z = static_cast<int32_t>(floorf(tile_max_z / cell_size));
+            int32_t grid_width  = grid_max_x - grid_min_x + 1;
+            int32_t grid_height = grid_max_z - grid_min_z + 1;
+            
+            // populate spatial grid with triangle indices
+            unordered_map<int64_t, vector<uint32_t>> spatial_grid;
+            if (prop_desc.cluster_radius > 0.0f)
+            {
+                for (uint32_t t = 0; t < static_cast<uint32_t>(acceptable_triangles.size()); t++)
+                {
+                    uint32_t tri_idx = acceptable_triangles[t];
+                    TriangleData& tri = tile_triangle_data[tri_idx];
+                    int32_t cell_x = static_cast<int32_t>(floorf(tri.centroid.x / cell_size)) - grid_min_x;
+                    int32_t cell_z = static_cast<int32_t>(floorf(tri.centroid.z / cell_size)) - grid_min_z;
+                    int64_t cell_key = static_cast<int64_t>(cell_z) * grid_width + cell_x;
+                    spatial_grid[cell_key].push_back(t); // store index into acceptable_triangles
+                }
+            }
+            
             auto compute_nearby = [
                 &cluster_nearby_tris,
                 &clusters,
                 &tile_triangle_data,
                 &acceptable_triangles,
-                &prop_desc
+                &prop_desc,
+                &spatial_grid,
+                cell_size, grid_min_x, grid_min_z, grid_width
             ]
             (uint32_t start_index, uint32_t end_index)
             {
-                mt19937 generator(random_device{}());
-                const uint32_t tri_count = static_cast<uint32_t>(acceptable_triangles.size());
-                uniform_int_distribution<> triangle_dist(0, tri_count - 1);
                 for (uint32_t c = start_index; c < end_index; c++)
                 {
                     auto& nearby = cluster_nearby_tris[c];
@@ -275,7 +302,6 @@ namespace spartan
                     else
                     {
                         // create organic irregular shape using layered noise
-                        // use cluster position as seed for consistent but unique shape per cluster
                         float seed1 = (cl.center_position.x * 12.9898f + cl.center_position.z * 78.233f) * 43758.5453f;
                         float seed2 = (cl.center_position.x * 39.346f + cl.center_position.z * 11.135f) * 23421.631f;
                         float seed3 = (cl.center_position.z * 47.134f + cl.center_position.x * 93.271f) * 67823.183f;
@@ -283,57 +309,62 @@ namespace spartan
                         seed2 = seed2 - floorf(seed2);
                         seed3 = seed3 - floorf(seed3);
                         
-                        // vary frequencies per cluster using seeds (non-harmonic to avoid regular patterns)
-                        float freq1 = 2.3f + seed1 * 1.4f;  // range [2.3, 3.7]
-                        float freq2 = 3.7f + seed2 * 2.1f;  // range [3.7, 5.8]
-                        float freq3 = 5.1f + seed3 * 2.8f;  // range [5.1, 7.9]
-                        float freq4 = 1.7f + seed1 * 0.8f;  // low frequency for large-scale shape
-                        float freq5 = 7.3f + seed2 * 3.2f;  // high frequency for fine detail
+                        float freq1 = 2.3f + seed1 * 1.4f;
+                        float freq2 = 3.7f + seed2 * 2.1f;
+                        float freq3 = 5.1f + seed3 * 2.8f;
+                        float freq4 = 1.7f + seed1 * 0.8f;
+                        float freq5 = 7.3f + seed2 * 3.2f;
                         
-                        // phase offsets for each wave layer
                         float phase1 = seed1 * pi_2;
                         float phase2 = seed2 * pi_2;
                         float phase3 = seed3 * pi_2;
                         float phase4 = (seed1 + seed2) * pi;
                         float phase5 = (seed2 + seed3) * pi;
                         
-                        for (uint32_t t = 0; t < tri_count; t++)
+                        // query only nearby grid cells instead of all triangles
+                        float max_radius = prop_desc.cluster_radius * 1.6f;
+                        int32_t cell_x = static_cast<int32_t>(floorf(cl_xz.x / cell_size)) - grid_min_x;
+                        int32_t cell_z = static_cast<int32_t>(floorf(cl_xz.y / cell_size)) - grid_min_z;
+                        int32_t cell_range = static_cast<int32_t>(ceilf(max_radius / cell_size));
+                        
+                        for (int32_t dz = -cell_range; dz <= cell_range; dz++)
                         {
-                            uint32_t tri_idx = acceptable_triangles[t];
-                            TriangleData& tri = tile_triangle_data[tri_idx];
-                            Vector2 tri_xz(tri.centroid.x, tri.centroid.z);
-                            Vector2 offset = tri_xz - cl_xz;
-                            float dist_sq = offset.LengthSquared();
-                            float dist = sqrtf(dist_sq);
-                            
-                            // calculate angle for shape variation
-                            float angle = atan2f(offset.y, offset.x);
-                            
-                            // normalized distance for distance-based variation (0 at center, 1 at radius)
-                            float norm_dist = dist / prop_desc.cluster_radius;
-                            
-                            // layered noise with non-harmonic frequencies and distance modulation
-                            // this creates natural blob-like shapes that vary with distance from center
-                            float noise1 = sinf(angle * freq1 + phase1) * 0.18f;
-                            float noise2 = sinf(angle * freq2 + phase2) * 0.14f;
-                            float noise3 = sinf(angle * freq3 + phase3) * 0.10f;
-                            float noise4 = cosf(angle * freq4 + phase4) * 0.20f; // low freq for overall shape
-                            float noise5 = sinf(angle * freq5 + phase5) * 0.06f; // high freq for detail
-                            
-                            // distance-based variation: edges are more irregular than center
-                            float dist_noise = sinf(norm_dist * 3.14159f + seed1 * 6.28f) * 0.12f * norm_dist;
-                            
-                            // 2d position-based noise for additional irregularity
-                            float pos_noise = sinf(offset.x * 0.3f + seed2 * 10.0f) * cosf(offset.y * 0.3f + seed3 * 10.0f) * 0.08f;
-                            
-                            // combine all noise layers
-                            float radius_variation = 1.0f + noise1 + noise2 + noise3 + noise4 + noise5 + dist_noise + pos_noise;
-                            radius_variation = fmaxf(0.4f, fminf(1.6f, radius_variation)); // clamp to reasonable range
-                            
-                            float effective_radius = prop_desc.cluster_radius * radius_variation;
-                            if (dist_sq <= effective_radius * effective_radius)
+                            for (int32_t dx = -cell_range; dx <= cell_range; dx++)
                             {
-                                nearby.push_back(tri_idx);
+                                int64_t cell_key = static_cast<int64_t>(cell_z + dz) * grid_width + (cell_x + dx);
+                                auto it = spatial_grid.find(cell_key);
+                                if (it == spatial_grid.end())
+                                    continue;
+                                
+                                for (uint32_t t : it->second)
+                                {
+                                    uint32_t tri_idx = acceptable_triangles[t];
+                                    TriangleData& tri = tile_triangle_data[tri_idx];
+                                    Vector2 tri_xz(tri.centroid.x, tri.centroid.z);
+                                    Vector2 offset = tri_xz - cl_xz;
+                                    float dist_sq = offset.LengthSquared();
+                                    float dist = sqrtf(dist_sq);
+                                    
+                                    float angle = atan2f(offset.y, offset.x);
+                                    float norm_dist = dist / prop_desc.cluster_radius;
+                                    
+                                    float noise1 = sinf(angle * freq1 + phase1) * 0.18f;
+                                    float noise2 = sinf(angle * freq2 + phase2) * 0.14f;
+                                    float noise3 = sinf(angle * freq3 + phase3) * 0.10f;
+                                    float noise4 = cosf(angle * freq4 + phase4) * 0.20f;
+                                    float noise5 = sinf(angle * freq5 + phase5) * 0.06f;
+                                    float dist_noise = sinf(norm_dist * 3.14159f + seed1 * 6.28f) * 0.12f * norm_dist;
+                                    float pos_noise = sinf(offset.x * 0.3f + seed2 * 10.0f) * cosf(offset.y * 0.3f + seed3 * 10.0f) * 0.08f;
+                                    
+                                    float radius_variation = 1.0f + noise1 + noise2 + noise3 + noise4 + noise5 + dist_noise + pos_noise;
+                                    radius_variation = fmaxf(0.4f, fminf(1.6f, radius_variation));
+                                    
+                                    float effective_radius = prop_desc.cluster_radius * radius_variation;
+                                    if (dist_sq <= effective_radius * effective_radius)
+                                    {
+                                        nearby.push_back(tri_idx);
+                                    }
+                                }
                             }
                         }
                         if (nearby.empty())
@@ -486,42 +517,45 @@ namespace spartan
         
                 for (uint32_t iteration = 0; iteration < parameters::smoothing; iteration++)
                 {
-                    vector<float> smoothed_height_data = height_data_out; // create a copy to store the smoothed data
-        
-                    for (uint32_t y = 0; y < height; y++)
+                    vector<float> smoothed_height_data(height_data_out.size());
+                    
+                    // parallel box blur
+                    auto smooth_pixel = [&](uint32_t start_idx, uint32_t end_idx)
                     {
-                        for (uint32_t x = 0; x < width; x++)
+                        for (uint32_t idx = start_idx; idx < end_idx; idx++)
                         {
-                            float sum      = height_data_out[y * width + x];
+                            uint32_t x = idx % width;
+                            uint32_t y = idx / width;
+                            
+                            float sum      = height_data_out[idx];
                             uint32_t count = 1;
-        
+                            
                             // iterate over neighboring pixels
                             for (int ny = -1; ny <= 1; ++ny)
                             {
                                 for (int nx = -1; nx <= 1; ++nx)
                                 {
-                                    // skip self/center pixel
                                     if (nx == 0 && ny == 0)
                                         continue;
-        
-                                    uint32_t neighbor_x = x + nx;
-                                    uint32_t neighbor_y = y + ny;
-        
-                                    // check boundaries
-                                    if (neighbor_x >= 0 && neighbor_x < width && neighbor_y >= 0 && neighbor_y < height)
+                                    
+                                    int neighbor_x = static_cast<int>(x) + nx;
+                                    int neighbor_y = static_cast<int>(y) + ny;
+                                    
+                                    if (neighbor_x >= 0 && neighbor_x < static_cast<int>(width) && 
+                                        neighbor_y >= 0 && neighbor_y < static_cast<int>(height))
                                     {
                                         sum += height_data_out[neighbor_y * width + neighbor_x];
                                         count++;
                                     }
                                 }
                             }
-        
-                            // average the sum
-                            smoothed_height_data[y * width + x] = sum / static_cast<float>(count);
+                            
+                            smoothed_height_data[idx] = sum / static_cast<float>(count);
                         }
-                    }
-        
-                    height_data_out = smoothed_height_data;
+                    };
+                    
+                    ThreadPool::ParallelLoop(smooth_pixel, width * height);
+                    height_data_out = move(smoothed_height_data);
                 }
             }
         
@@ -689,53 +723,46 @@ namespace spartan
 
         void apply_wind_erosion(vector<Vector3>& m_positions, uint32_t width, uint32_t height, float wind_strength = 0.3f)
         {
-            // 3x3 gaussian kernel
-            const float kernel[3][3] =
-            {
-                {0.0625f, 0.125f, 0.0625f},
-                {0.125f,  0.25f,  0.125f},
-                {0.0625f, 0.125f, 0.0625f}
+            // 3x3 gaussian kernel (flattened for cache-friendly access)
+            static const float kernel[9] = {
+                0.0625f, 0.125f, 0.0625f,
+                0.125f,  0.25f,  0.125f,
+                0.0625f, 0.125f, 0.0625f
             };
-            const int kernel_size = 3;
-            const int kernel_half = kernel_size / 2;
-        
-            // store original positions for reference
-           vector<Vector3> temp_positions = m_positions;
-           mutex positions_mutex;
-        
-            // sequential wind erosion
-            for (uint32_t z = 0; z < height; ++z)
+            
+            // copy heights only (more cache-friendly than copying full Vector3)
+            vector<float> temp_heights(m_positions.size());
+            for (size_t i = 0; i < m_positions.size(); i++)
+                temp_heights[i] = m_positions[i].y;
+            
+            // parallel wind erosion
+            auto apply_blur = [&](uint32_t start_idx, uint32_t end_idx)
             {
-                for (uint32_t x = 0; x < width; ++x)
+                for (uint32_t idx = start_idx; idx < end_idx; idx++)
                 {
-                    // skip borders to avoid out-of-bounds access
-                    if (x < kernel_half || x >= width - kernel_half || z < kernel_half || z >= height - kernel_half)
+                    uint32_t x = idx % width;
+                    uint32_t z = idx / width;
+                    
+                    // skip borders
+                    if (x < 1 || x >= width - 1 || z < 1 || z >= height - 1)
                         continue;
-        
+                    
                     // apply gaussian convolution
                     float new_height = 0.0f;
-                    for (int kz = -kernel_half; kz <= kernel_half; ++kz)
+                    for (int kz = -1; kz <= 1; ++kz)
                     {
-                        for (int kx = -kernel_half; kx <= kernel_half; ++kx)
+                        for (int kx = -1; kx <= 1; ++kx)
                         {
-                            uint32_t idx = (x + kx) + (z + kz) * width;
-                            new_height += temp_positions[idx].y * kernel[kz + kernel_half][kx + kernel_half];
+                            new_height += temp_heights[(z + kz) * width + (x + kx)] * kernel[(kz + 1) * 3 + (kx + 1)];
                         }
                     }
-        
-                    // update height with wind strength (interpolate between original and convolved height)
-                    uint32_t idx = x + z * width;
-                    float original_height = m_positions[idx].y;
-                    float smoothed_height = new_height;
-                    float final_height = original_height + wind_strength * (smoothed_height - original_height);
-        
-                    // update
-                    {
-                        lock_guard<mutex> lock(positions_mutex);
-                        m_positions[idx].y = final_height;
-                    }
+                    
+                    // update height with wind strength
+                    m_positions[idx].y += wind_strength * (new_height - m_positions[idx].y);
                 }
-            }
+            };
+            
+            ThreadPool::ParallelLoop(apply_blur, width * height);
         }
         
         void apply_erosion(vector<Vector3>& m_positions, uint32_t width, uint32_t height, uint32_t iterations = 1'000'000, uint32_t wind_interval = 50'000)
@@ -901,58 +928,49 @@ namespace spartan
         {
             SP_ASSERT_MSG(!m_positions.empty(), "Positions are empty");
 
-            // offset that centers the mesh
-            Vector3 offset = Vector3( -static_cast<float>(width) * 0.5f, 0.0f, -static_cast<float>(height) * 0.5f);
-
-            uint32_t index = 0;
-            uint32_t k     = 0;
-            for (uint32_t y = 0; y < height - 1; y++)
+            // precompute uv scale factors (avoid repeated division in loop)
+            const float inv_width_minus_one  = 1.0f / static_cast<float>(width - 1);
+            const float inv_height_minus_one = 1.0f / static_cast<float>(height - 1);
+            
+            // generate vertices in parallel (each vertex written exactly once)
+            auto gen_vertices = [&](uint32_t start_idx, uint32_t end_idx)
             {
-                for (uint32_t x = 0; x < width - 1; x++)
+                for (uint32_t idx = start_idx; idx < end_idx; idx++)
                 {
-                    Vector3 position = m_positions[index] + offset;
-
-                    float u = static_cast<float>(x) / static_cast<float>(width - 1);
-                    float v = static_cast<float>(y) / static_cast<float>(height - 1);
-
-                    const uint32_t index_bottom_left  = y * width + x;
-                    const uint32_t index_bottom_right = y * width + x + 1;
-                    const uint32_t index_top_left     = (y + 1) * width + x;
-                    const uint32_t index_top_right    = (y + 1) * width + x + 1;
-
-                    // bottom right of quad
-                    index           = index_bottom_right;
-                    terrain_indices[k]      = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
-
-                    // bottom left of quad
-                    index           = index_bottom_left;
-                    terrain_indices[k + 1]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u, v + 1.0f / (height - 1)));
-
-                    // top left of quad
-                    index           = index_top_left;
-                    terrain_indices[k + 2]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u, v));
-
-                    // bottom right of quad
-                    index           = index_bottom_right;
-                    terrain_indices[k + 3]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u + 1.0f / (width - 1), v + 1.0f / (height - 1)));
-
-                    // top left of quad
-                    index           = index_top_left;
-                    terrain_indices[k + 4]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u, v));
-
-                    // top right of quad
-                    index           = index_top_right;
-                    terrain_indices[k + 5]  = index;
-                    terrain_vertices[index] = RHI_Vertex_PosTexNorTan(m_positions[index], Vector2(u + 1.0f / (width - 1), v));
-
-                    k += 6; // next quad
+                    uint32_t x = idx % width;
+                    uint32_t y = idx / width;
+                    float u = static_cast<float>(x) * inv_width_minus_one;
+                    float v = static_cast<float>(y) * inv_height_minus_one;
+                    terrain_vertices[idx] = RHI_Vertex_PosTexNorTan(m_positions[idx], Vector2(u, v));
                 }
-            }
+            };
+            ThreadPool::ParallelLoop(gen_vertices, width * height);
+            
+            // generate indices in parallel (each quad independent)
+            uint32_t quad_count = (width - 1) * (height - 1);
+            auto gen_indices = [&](uint32_t start_quad, uint32_t end_quad)
+            {
+                for (uint32_t quad = start_quad; quad < end_quad; quad++)
+                {
+                    uint32_t x = quad % (width - 1);
+                    uint32_t y = quad / (width - 1);
+                    uint32_t k = quad * 6;
+                    
+                    uint32_t index_bottom_left  = y * width + x;
+                    uint32_t index_bottom_right = index_bottom_left + 1;
+                    uint32_t index_top_left     = index_bottom_left + width;
+                    uint32_t index_top_right    = index_top_left + 1;
+                    
+                    // two triangles per quad
+                    terrain_indices[k]     = index_bottom_right;
+                    terrain_indices[k + 1] = index_bottom_left;
+                    terrain_indices[k + 2] = index_top_left;
+                    terrain_indices[k + 3] = index_bottom_right;
+                    terrain_indices[k + 4] = index_top_left;
+                    terrain_indices[k + 5] = index_top_right;
+                }
+            };
+            ThreadPool::ParallelLoop(gen_indices, quad_count);
         }
 
         void generate_normals(vector<RHI_Vertex_PosTexNorTan>& terrain_vertices, uint32_t width, uint32_t height)
