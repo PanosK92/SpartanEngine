@@ -1827,7 +1827,7 @@ namespace spartan
         // append icons from entities
         if (!Engine::IsFlagSet(EngineMode::Playing))
         {
-            Vector3 pos_camera = World::GetCamera ? World::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
+            Vector3 pos_camera = World::GetCamera() ? World::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
             for (Entity* entity : World::GetEntities())
             {
                 // icons will eratically move all over the screen if they are close the camera
