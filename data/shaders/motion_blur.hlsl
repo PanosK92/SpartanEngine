@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const int   SAMPLE_COUNT             = 15;    // samples per direction (total = 2 * count + 1)
 static const float MAX_BLUR_RADIUS_PIXELS   = 40.0f; // maximum blur extent in pixels
 static const float DEPTH_SCALE              = 100.0f; // depth comparison sensitivity
-static const float VELOCITY_SOFT_COMPARE    = 0.02f; // velocity softness for edge detection
 static const float CENTER_WEIGHT            = 1.0f;  // weight for center sample
-static const float SOFT_Z_EXTENT            = 0.1f;  // soft depth extent for bilateral weight
+static const int   COHERENCE_SAMPLES        = 4;     // samples for velocity coherence check
+static const float COHERENCE_RADIUS         = 8.0f;  // radius in pixels for coherence sampling
 
 // helper: soft depth comparison (guerrilla games / killzone approach)
 float soft_depth_compare(float depth_a, float depth_b)
@@ -57,6 +57,61 @@ float2 velocity_to_pixels(float2 velocity_uv, float2 resolution_color)
     return velocity_uv * resolution_color;
 }
 
+// helper: compute velocity coherence - measures how consistent velocity is in a neighborhood
+// returns 1.0 for perfectly coherent motion, lower for erratic/jerky motion
+float compute_velocity_coherence(float2 uv, float2 center_velocity, float2 texel_size)
+{
+    float center_length = length(center_velocity);
+    if (center_length < FLT_MIN)
+        return 1.0f;
+    
+    float2 center_dir = center_velocity / center_length;
+    float coherence = 0.0f;
+    
+    // sample velocity at nearby pixels and check direction consistency
+    // use a small cross pattern for efficiency
+    static const float2 offsets[4] = 
+    {
+        float2(-1.0f,  0.0f),
+        float2( 1.0f,  0.0f),
+        float2( 0.0f, -1.0f),
+        float2( 0.0f,  1.0f)
+    };
+    
+    [unroll]
+    for (int i = 0; i < COHERENCE_SAMPLES; ++i)
+    {
+        float2 sample_uv       = uv + offsets[i] * texel_size * COHERENCE_RADIUS;
+        float2 sample_velocity = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).xy;
+        float  sample_length   = length(sample_velocity);
+        
+        if (sample_length > FLT_MIN)
+        {
+            float2 sample_dir = sample_velocity / sample_length;
+            
+            // direction similarity (1 = same direction, 0 = perpendicular, -1 = opposite)
+            float dir_similarity = dot(center_dir, sample_dir);
+            
+            // magnitude similarity (penalize very different speeds)
+            float mag_ratio      = min(center_length, sample_length) / (max(center_length, sample_length) + FLT_MIN);
+            
+            // combine: require both similar direction AND similar magnitude
+            coherence += saturate(dir_similarity) * mag_ratio;
+        }
+        else
+        {
+            // static neighbor next to moving pixel - partial coherence
+            coherence += 0.5f;
+        }
+    }
+    
+    coherence /= (float)COHERENCE_SAMPLES;
+    
+    // apply a curve to be more forgiving of slight variations but harsh on erratic motion
+    // smoothstep makes the transition gradual
+    return smoothstep(0.0f, 0.7f, coherence);
+}
+
 // reconstruction filter for plausible motion blur (based on mcguire 2012)
 float4 motion_blur_reconstruction(
     float2 uv, 
@@ -82,8 +137,20 @@ float4 motion_blur_reconstruction(
         return center_color;
     }
     
-    // apply shutter ratio after early exit check
-    float center_blur_length = center_blur_length_raw * shutter_ratio;
+    // compute velocity coherence - reduces blur for erratic/jerky motion
+    // this prevents ugly smearing when mouse movement is shaky
+    float2 velocity_texel_size = 1.0f / resolution_velocity;
+    float  coherence           = compute_velocity_coherence(uv, center_velocity_uv, velocity_texel_size);
+    
+    // apply shutter ratio and coherence after early exit check
+    // erratic motion (low coherence) produces less blur
+    float center_blur_length = center_blur_length_raw * shutter_ratio * coherence;
+    
+    // if coherence killed the blur, early exit
+    if (center_blur_length < 0.5f)
+    {
+        return center_color;
+    }
     
     // clamp blur length for performance
     float clamped_blur_length = min(center_blur_length, MAX_BLUR_RADIUS_PIXELS);
