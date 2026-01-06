@@ -910,8 +910,10 @@ namespace spartan
 
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_skysphere              = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_skysphere                    = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_lut_atmosphere_scatter       = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
+        RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
 
         cmd_list->BeginTimeblock("skysphere");
         {
@@ -924,6 +926,8 @@ namespace spartan
                 cmd_list->SetPipelineState(pso);
     
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
                 cmd_list->Dispatch(tex_skysphere);
             }
@@ -1094,21 +1098,51 @@ namespace spartan
 
     void Renderer::Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_lut_atmosphere_scatter      = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
+        RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
 
         cmd_list->BeginTimeblock("lut_atmospheric_scattering");
         {
-            // set pipeline state
-            RHI_PipelineState pso;
-            pso.name             = "lut_atmospheric_scattering";
-            pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_lut_c);
-            cmd_list->SetPipelineState(pso);
-        
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
-            cmd_list->Dispatch(tex_lut_atmosphere_scatter);
-        
-            // for the lifetime of the engine, this will be read as an srv, so transition here
-            tex_lut_atmosphere_scatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            // 1. transmittance lut - precomputes optical depth from any point to top of atmosphere
+            {
+                RHI_PipelineState pso;
+                pso.name             = "lut_atmosphere_transmittance";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_transmittance_lut_c);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
+                cmd_list->Dispatch(tex_lut_atmosphere_transmittance);
+
+                tex_lut_atmosphere_transmittance->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            }
+
+            // 2. multi-scatter lut - approximates infinite bounce scattering (needs transmittance lut)
+            {
+                RHI_PipelineState pso;
+                pso.name             = "lut_atmosphere_multiscatter";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_multiscatter_lut_c);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_multiscatter);
+                cmd_list->Dispatch(tex_lut_atmosphere_multiscatter);
+
+                tex_lut_atmosphere_multiscatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            }
+
+            // 3. legacy 3d lut (backward compatibility)
+            {
+                RHI_PipelineState pso;
+                pso.name             = "lut_atmospheric_scattering";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_lut_c);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
+                cmd_list->Dispatch(tex_lut_atmosphere_scatter);
+
+                tex_lut_atmosphere_scatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            }
         }
         cmd_list->EndTimeblock();
     }

@@ -267,8 +267,10 @@ namespace spartan
         if (!render_target(Renderer_RenderTarget::lut_brdf_specular))
         {
             // lookup tables
-            render_target(Renderer_RenderTarget::lut_brdf_specular)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1,  1, RHI_Format::R32G32B32A32_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
-            render_target(Renderer_RenderTarget::lut_atmosphere_scatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
+            render_target(Renderer_RenderTarget::lut_brdf_specular)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512,  1, 1, RHI_Format::R32G32B32A32_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
+            render_target(Renderer_RenderTarget::lut_atmosphere_scatter)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
+            render_target(Renderer_RenderTarget::lut_atmosphere_transmittance)= make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 64,   1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_transmittance");
+            render_target(Renderer_RenderTarget::lut_atmosphere_multiscatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 32,  32,   1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_multiscatter");
 
             // misc
             render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
@@ -443,6 +445,16 @@ namespace spartan
             shader(Renderer_Shader::skysphere_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::skysphere_lut_c)->AddDefine("LUT");
             shader(Renderer_Shader::skysphere_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
+
+            // transmittance lut - precomputes optical depth to atmosphere top
+            shader(Renderer_Shader::skysphere_transmittance_lut_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::skysphere_transmittance_lut_c)->AddDefine("TRANSMITTANCE_LUT");
+            shader(Renderer_Shader::skysphere_transmittance_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", false); // sync - needed by multiscatter
+
+            // multi-scatter lut - approximates infinite bounce scattering
+            shader(Renderer_Shader::skysphere_multiscatter_lut_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::skysphere_multiscatter_lut_c)->AddDefine("MULTISCATTER_LUT");
+            shader(Renderer_Shader::skysphere_multiscatter_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", false); // sync - needed by main pass
         }
 
         // fxaa
