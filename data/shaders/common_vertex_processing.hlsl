@@ -123,11 +123,6 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
     );
 }
 
-float3 extract_position(matrix transform)
-{
-    return float3(transform._31, transform._32, transform._33);
-}
-
 float3x3 rotation_matrix(float3 axis, float angle)
 {
     float c = cos(angle);
