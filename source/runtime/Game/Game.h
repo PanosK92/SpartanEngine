@@ -32,6 +32,7 @@ namespace spartan
         Subway,
         Minecraft,
         Basic,
+        CarTestWip,
         Max
     };
 

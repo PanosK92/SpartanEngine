@@ -38,6 +38,7 @@ SP_WARNINGS_OFF
 #endif
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
+#include <physx/vehicle2/PxVehicleAPI.h>
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
 //============================================
@@ -52,7 +53,364 @@ namespace spartan
 {
     namespace vehicle
     {
-        // it uses the new vehicle2 api
+        // vehicle2 api implementation for a basic 4-wheel vehicle
+        
+        using namespace physx;
+        using namespace physx::vehicle2;
+        
+        // wheel indices for a standard 4-wheel vehicle
+        enum wheel_id
+        {
+            front_left  = 0,
+            front_right = 1,
+            rear_left   = 2,
+            rear_right  = 3,
+            wheel_count = 4
+        };
+        
+        // default vehicle dimensions (in meters)
+        struct vehicle_dimensions
+        {
+            float chassis_length     = 4.5f;   // front to back
+            float chassis_width      = 2.0f;   // side to side
+            float chassis_height     = 0.5f;   // vertical
+            float chassis_mass       = 1500.0f;
+            float wheel_radius       = 0.35f;
+            float wheel_width        = 0.25f;
+            float wheel_mass         = 20.0f;
+            float suspension_travel  = 0.3f;
+            float suspension_height  = 0.4f;   // distance from chassis bottom to wheel center at rest
+        };
+        
+        // vehicle data container
+        struct vehicle_data
+        {
+            PxVehicleAxleDescription             axle_desc;
+            PxVehicleRigidBodyParams             rigid_body_params;
+            PxVehicleWheelParams                 wheel_params[wheel_count];
+            PxVehicleSuspensionParams            suspension_params[wheel_count];
+            PxVehicleSuspensionForceParams       suspension_force_params[wheel_count];
+            PxVehicleSuspensionComplianceParams  suspension_compliance_params[wheel_count];
+            PxVehicleTireForceParams             tire_params[wheel_count];
+            PxVehiclePhysXActor                  physx_actor;
+            PxMaterial*                          material = nullptr;
+        };
+        
+        // compute default wheel positions based on dimensions
+        void compute_wheel_positions(const vehicle_dimensions& dims, PxVec3 out_positions[wheel_count])
+        {
+            const float front_z = dims.chassis_length * 0.35f;   // front wheels slightly forward
+            const float rear_z  = -dims.chassis_length * 0.35f;  // rear wheels slightly back
+            const float half_w  = dims.chassis_width * 0.5f - dims.wheel_width * 0.5f;
+            const float y       = -dims.suspension_height;       // below chassis
+            
+            out_positions[front_left]  = PxVec3(-half_w, y, front_z);
+            out_positions[front_right] = PxVec3( half_w, y, front_z);
+            out_positions[rear_left]   = PxVec3(-half_w, y, rear_z);
+            out_positions[rear_right]  = PxVec3( half_w, y, rear_z);
+        }
+        
+        // initialize axle description for 4 wheels (2 axles, 2 wheels each)
+        void setup_axle_description(PxVehicleAxleDescription& axle_desc)
+        {
+            axle_desc.setToDefault();
+            
+            // front axle: wheels 0 and 1
+            const PxU32 front_wheels[] = { front_left, front_right };
+            axle_desc.addAxle(2, front_wheels);
+            
+            // rear axle: wheels 2 and 3
+            const PxU32 rear_wheels[] = { rear_left, rear_right };
+            axle_desc.addAxle(2, rear_wheels);
+        }
+        
+        // initialize rigid body parameters
+        void setup_rigid_body_params(PxVehicleRigidBodyParams& params, const vehicle_dimensions& dims)
+        {
+            params.mass = dims.chassis_mass;
+            
+            // approximate moment of inertia for a box
+            const float w = dims.chassis_width;
+            const float h = dims.chassis_height;
+            const float l = dims.chassis_length;
+            const float m = dims.chassis_mass;
+            params.moi = PxVec3(
+                (m / 12.0f) * (h * h + l * l),  // around x axis
+                (m / 12.0f) * (w * w + l * l),  // around y axis (yaw)
+                (m / 12.0f) * (w * w + h * h)   // around z axis
+            );
+        }
+        
+        // initialize wheel parameters
+        void setup_wheel_params(PxVehicleWheelParams wheels[wheel_count], const vehicle_dimensions& dims)
+        {
+            for (int i = 0; i < wheel_count; i++)
+            {
+                wheels[i].radius      = dims.wheel_radius;
+                wheels[i].halfWidth   = dims.wheel_width * 0.5f;
+                wheels[i].mass        = dims.wheel_mass;
+                wheels[i].moi         = 0.5f * dims.wheel_mass * dims.wheel_radius * dims.wheel_radius;
+                wheels[i].dampingRate = 0.25f;
+            }
+        }
+        
+        // initialize suspension parameters
+        void setup_suspension_params(PxVehicleSuspensionParams suspension[wheel_count], const vehicle_dimensions& dims)
+        {
+            PxVec3 wheel_positions[wheel_count];
+            compute_wheel_positions(dims, wheel_positions);
+            
+            for (int i = 0; i < wheel_count; i++)
+            {
+                // suspension attachment is at the top of the suspension travel (max compression)
+                PxVec3 attachment_pos = wheel_positions[i];
+                attachment_pos.y += dims.suspension_travel; // move up by travel distance
+                
+                suspension[i].suspensionAttachment = PxTransform(attachment_pos, PxQuat(PxIdentity));
+                suspension[i].suspensionTravelDir  = PxVec3(0.0f, -1.0f, 0.0f); // downward
+                suspension[i].suspensionTravelDist = dims.suspension_travel;
+                suspension[i].wheelAttachment      = PxTransform(PxVec3(0, 0, 0), PxQuat(PxIdentity));
+            }
+        }
+        
+        // initialize suspension force parameters
+        void setup_suspension_force_params(PxVehicleSuspensionForceParams force[wheel_count], const vehicle_dimensions& dims)
+        {
+            // sprung mass per wheel (total mass divided roughly by 4, slightly biased)
+            const float front_sprung_mass = dims.chassis_mass * 0.55f * 0.5f; // 55% front
+            const float rear_sprung_mass  = dims.chassis_mass * 0.45f * 0.5f; // 45% rear
+            
+            // spring stiffness (natural frequency ~2 Hz for comfortable ride)
+            // stiffness = sprung_mass * (2 * pi * freq)^2
+            const float freq = 2.0f;
+            const float omega_squared = (2.0f * PxPi * freq) * (2.0f * PxPi * freq);
+            
+            // damping ratio ~0.3 for street car
+            const float damping_ratio = 0.3f;
+            
+            for (int i = 0; i < wheel_count; i++)
+            {
+                const bool is_front = (i == front_left || i == front_right);
+                const float sprung_mass = is_front ? front_sprung_mass : rear_sprung_mass;
+                
+                force[i].sprungMass = sprung_mass;
+                force[i].stiffness  = sprung_mass * omega_squared;
+                force[i].damping    = 2.0f * damping_ratio * sqrtf(force[i].stiffness * sprung_mass);
+            }
+        }
+        
+        // initialize suspension compliance parameters (defaults - no compliance effects)
+        void setup_suspension_compliance_params(PxVehicleSuspensionComplianceParams compliance[wheel_count])
+        {
+            for (int i = 0; i < wheel_count; i++)
+            {
+                compliance[i].wheelToeAngle.clear();
+                compliance[i].wheelCamberAngle.clear();
+                compliance[i].suspForceAppPoint.clear();
+                compliance[i].tireForceAppPoint.clear();
+            }
+        }
+        
+        // initialize tire force parameters
+        void setup_tire_params(PxVehicleTireForceParams tires[wheel_count], const vehicle_dimensions& dims)
+        {
+            // rest load per tire (assumes level ground, even weight distribution for simplicity)
+            const float gravity = 9.81f;
+            const float total_mass = dims.chassis_mass + dims.wheel_mass * static_cast<float>(wheel_count);
+            const float rest_load = (total_mass * gravity) / static_cast<float>(wheel_count);
+            
+            for (int i = 0; i < wheel_count; i++)
+            {
+                tires[i].latStiffX    = 2.0f;                  // normalized load for max lat stiffness
+                tires[i].latStiffY    = rest_load * 2.0f;      // lateral stiffness at peak
+                tires[i].longStiff    = rest_load * 10.0f;     // longitudinal stiffness
+                tires[i].camberStiff  = 0.0f;                  // no camber effect for simplicity
+                tires[i].restLoad     = rest_load;
+                
+                // friction vs slip curve (typical road tire)
+                tires[i].frictionVsSlip[0][0] = 0.0f;   tires[i].frictionVsSlip[0][1] = 1.0f;   // at zero slip
+                tires[i].frictionVsSlip[1][0] = 0.1f;   tires[i].frictionVsSlip[1][1] = 1.1f;   // peak friction at ~10% slip
+                tires[i].frictionVsSlip[2][0] = 1.0f;   tires[i].frictionVsSlip[2][1] = 0.9f;   // sliding friction
+                
+                // load filter (prevents excessive load variations)
+                tires[i].loadFilter[0][0] = 0.0f;  tires[i].loadFilter[0][1] = 0.0f;
+                tires[i].loadFilter[1][0] = 3.0f;  tires[i].loadFilter[1][1] = 3.0f;
+            }
+        }
+        
+        // create the physx actor for the vehicle
+        bool create_physx_actor(vehicle_data& data, const vehicle_dimensions& dims, PxPhysics* physics, PxScene* scene)
+        {
+            if (!physics || !scene)
+                return false;
+            
+            // create material
+            data.material = physics->createMaterial(0.8f, 0.7f, 0.1f);
+            if (!data.material)
+                return false;
+            
+            // create rigid dynamic body
+            PxTransform initial_pose(PxVec3(0, dims.suspension_height + dims.chassis_height * 0.5f + dims.wheel_radius, 0));
+            PxRigidDynamic* rigid_body = physics->createRigidDynamic(initial_pose);
+            if (!rigid_body)
+            {
+                data.material->release();
+                data.material = nullptr;
+                return false;
+            }
+            
+            // chassis shape (box)
+            PxBoxGeometry chassis_geom(dims.chassis_width * 0.5f, dims.chassis_height * 0.5f, dims.chassis_length * 0.5f);
+            PxShape* chassis_shape = physics->createShape(chassis_geom, *data.material);
+            if (chassis_shape)
+            {
+                rigid_body->attachShape(*chassis_shape);
+                chassis_shape->release();
+            }
+            
+            // set mass properties
+            PxRigidBodyExt::setMassAndUpdateInertia(*rigid_body, data.rigid_body_params.mass);
+            
+            // disable gravity (vehicle2 applies gravity manually)
+            rigid_body->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, true);
+            
+            // enable ccd for fast-moving objects
+            rigid_body->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, true);
+            
+            // add to scene
+            scene->addActor(*rigid_body);
+            
+            // store in vehicle data
+            data.physx_actor.setToDefault();
+            data.physx_actor.rigidBody = rigid_body;
+            
+            // create wheel shapes (cylinders approximated as capsules for simplicity)
+            PxVec3 wheel_positions[wheel_count];
+            compute_wheel_positions(dims, wheel_positions);
+            
+            for (int i = 0; i < wheel_count; i++)
+            {
+                PxCapsuleGeometry wheel_geom(dims.wheel_radius, dims.wheel_width * 0.5f);
+                PxShape* wheel_shape = physics->createShape(wheel_geom, *data.material);
+                if (wheel_shape)
+                {
+                    // rotate capsule to align with lateral axis (z -> x rotation)
+                    PxTransform local_pose(wheel_positions[i], PxQuat(PxHalfPi, PxVec3(0, 0, 1)));
+                    wheel_shape->setLocalPose(local_pose);
+                    
+                    // wheel shapes should not participate in simulation (just visual/query)
+                    wheel_shape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false);
+                    wheel_shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, true);
+                    
+                    rigid_body->attachShape(*wheel_shape);
+                    data.physx_actor.wheelShapes[i] = wheel_shape;
+                    wheel_shape->release();
+                }
+            }
+            
+            return true;
+        }
+        
+        // main setup function: creates a basic 4-wheel vehicle
+        vehicle_data* setup(PxPhysics* physics, PxScene* scene, const vehicle_dimensions* custom_dims = nullptr)
+        {
+            // use default dimensions if none provided
+            vehicle_dimensions dims;
+            if (custom_dims)
+                dims = *custom_dims;
+            
+            // allocate vehicle data
+            vehicle_data* data = new vehicle_data();
+            
+            // setup all components
+            setup_axle_description(data->axle_desc);
+            setup_rigid_body_params(data->rigid_body_params, dims);
+            setup_wheel_params(data->wheel_params, dims);
+            setup_suspension_params(data->suspension_params, dims);
+            setup_suspension_force_params(data->suspension_force_params, dims);
+            setup_suspension_compliance_params(data->suspension_compliance_params);
+            setup_tire_params(data->tire_params, dims);
+            
+            // validate all parameters
+            if (!data->axle_desc.isValid())
+            {
+                SP_LOG_ERROR("vehicle axle description is invalid");
+                delete data;
+                return nullptr;
+            }
+            
+            if (!data->rigid_body_params.isValid())
+            {
+                SP_LOG_ERROR("vehicle rigid body params are invalid");
+                delete data;
+                return nullptr;
+            }
+            
+            for (int i = 0; i < wheel_count; i++)
+            {
+                if (!data->wheel_params[i].isValid())
+                {
+                    SP_LOG_ERROR("vehicle wheel params [%d] are invalid", i);
+                    delete data;
+                    return nullptr;
+                }
+                
+                if (!data->suspension_params[i].isValid())
+                {
+                    SP_LOG_ERROR("vehicle suspension params [%d] are invalid", i);
+                    delete data;
+                    return nullptr;
+                }
+                
+                if (!data->suspension_force_params[i].isValid())
+                {
+                    SP_LOG_ERROR("vehicle suspension force params [%d] are invalid", i);
+                    delete data;
+                    return nullptr;
+                }
+                
+                if (!data->tire_params[i].isValid())
+                {
+                    SP_LOG_ERROR("vehicle tire params [%d] are invalid", i);
+                    delete data;
+                    return nullptr;
+                }
+            }
+            
+            // create physx actor
+            if (!create_physx_actor(*data, dims, physics, scene))
+            {
+                SP_LOG_ERROR("failed to create vehicle physx actor");
+                delete data;
+                return nullptr;
+            }
+            
+            SP_LOG_INFO("vehicle setup complete: 4 wheels, mass=%.0f kg", dims.chassis_mass);
+            return data;
+        }
+        
+        // cleanup function
+        void destroy(vehicle_data* data)
+        {
+            if (!data)
+                return;
+            
+            // release physx actor
+            if (data->physx_actor.rigidBody)
+            {
+                data->physx_actor.rigidBody->release();
+                data->physx_actor.rigidBody = nullptr;
+            }
+            
+            // release material
+            if (data->material)
+            {
+                data->material->release();
+                data->material = nullptr;
+            }
+            
+            delete data;
+        }
     }
 
     namespace
@@ -875,6 +1233,37 @@ namespace spartan
             
             // note: the controller internally references the material, so don't release m_material here
             // it will be released in Remove() when the controller is destroyed
+        }
+        else if (m_body_type == BodyType::Vehicle)
+        {
+            // create vehicle using vehicle2 api
+            vehicle::vehicle_data* vehicle_data = vehicle::setup(physics, scene);
+            if (vehicle_data)
+            {
+                // store the rigid body actor
+                if (vehicle_data->physx_actor.rigidBody)
+                {
+                    m_actors.resize(1, nullptr);
+                    m_actors[0] = vehicle_data->physx_actor.rigidBody;
+                    m_actors_active.resize(1, true);
+                    
+                    // set initial position
+                    Vector3 pos = GetEntity()->GetPosition();
+                    vehicle_data->physx_actor.rigidBody->setGlobalPose(PxTransform(PxVec3(pos.x, pos.y, pos.z)));
+                    
+                    // store user data for raycasts
+                    vehicle_data->physx_actor.rigidBody->userData = reinterpret_cast<void*>(GetEntity());
+                    
+                    SP_LOG_INFO("vehicle physics body created successfully");
+                }
+                
+                // note: vehicle_data is leaked here - will need proper lifecycle management later
+                // for now this is just to get it working
+            }
+            else
+            {
+                SP_LOG_ERROR("failed to create vehicle physics body");
+            }
         }
         else
         {

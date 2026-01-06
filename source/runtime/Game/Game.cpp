@@ -1751,6 +1751,42 @@ namespace spartan
                 entities::material_ball(Vector3::Zero);
             }
         }
+
+        namespace car_test_wip
+        {
+            Entity* vehicle_entity = nullptr;
+
+            void create()
+            {
+                // camera and lighting
+                entities::camera(false, Vector3(0.0f, 5.0f, -15.0f), Vector3(15.0f, 0.0f, 0.0f));
+                entities::sun(LightPreset::dusk, true);
+                entities::floor();
+
+                // create vehicle entity
+                vehicle_entity = World::CreateEntity();
+                vehicle_entity->SetObjectName("vehicle_test");
+                vehicle_entity->SetPosition(Vector3(0.0f, 2.0f, 0.0f));
+
+                // add physics component and set to vehicle type
+                Physics* physics = vehicle_entity->AddComponent<Physics>();
+                physics->SetStatic(false);
+                physics->SetMass(1500.0f);
+                physics->SetBodyType(BodyType::Vehicle);
+
+                // osd info
+                Renderer::SetOption(Renderer_Option::Grid, 1.0f);
+            }
+
+            void tick()
+            {
+                if (!vehicle_entity)
+                    return;
+
+                // display vehicle info
+                Renderer::DrawString("Vehicle Test (WIP) - Debug draw shows physics shapes", Vector2(0.005f, 0.98f));
+            }
+        }
     }
 
     void Game::Shutdown()
@@ -1764,6 +1800,7 @@ namespace spartan
         default_metal_cube                     = nullptr;
         worlds::showroom::texture_brand_logo   = nullptr;
         worlds::showroom::texture_paint_normal = nullptr;
+        worlds::car_test_wip::vehicle_entity   = nullptr;
         meshes.clear();
     }
 
@@ -1782,6 +1819,10 @@ namespace spartan
         else if (loaded_world == DefaultWorld::Forest)
         {
             worlds::forest::tick();
+        }
+        else if (loaded_world == DefaultWorld::CarTestWip)
+        {
+            worlds::car_test_wip::tick();
         }
     }
 
@@ -1811,6 +1852,7 @@ namespace spartan
                 case DefaultWorld::Showroom:     worlds::showroom::create();      break;
                 case DefaultWorld::LiminalSpace: worlds::liminal_space::create(); break;
                 case DefaultWorld::Basic:        worlds::basic::create();         break;
+                case DefaultWorld::CarTestWip:   worlds::car_test_wip::create();  break;
                 default: SP_ASSERT_MSG(false, "Unhandled default world");         break;
             }
 
