@@ -129,6 +129,11 @@ namespace spartan
         void Move(const math::Vector3& offset);
         void Crouch(const bool crouch);
 
+        // vehicle controls (only works when body type is Vehicle)
+        void SetVehicleThrottle(float value);  // 0 to 1
+        void SetVehicleBrake(float value);     // 0 to 1
+        void SetVehicleSteering(float value);  // -1 (left) to 1 (right)
+
     private:
         void Create();
         void CreateBodies();

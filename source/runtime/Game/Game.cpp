@@ -1783,8 +1783,37 @@ namespace spartan
                 if (!vehicle_entity)
                     return;
 
-                // display vehicle info
-                Renderer::DrawString("Vehicle Test (WIP) - Debug draw shows physics shapes", Vector2(0.005f, 0.98f));
+                // get vehicle info from physics component
+                Physics* physics = vehicle_entity->GetComponent<Physics>();
+                if (!physics)
+                    return;
+                
+                // wire input to vehicle controls
+                if (Engine::IsFlagSet(EngineMode::Playing))
+                {
+                    // throttle
+                    physics->SetVehicleThrottle(Input::GetKey(KeyCode::Arrow_Up) ? 1.0f : 0.0f);
+                    
+                    // brake/reverse
+                    physics->SetVehicleBrake(Input::GetKey(KeyCode::Arrow_Down) ? 1.0f : 0.0f);
+                    
+                    // steering
+                    float steering = 0.0f;
+                    if (Input::GetKey(KeyCode::Arrow_Left))  steering = -1.0f;
+                    if (Input::GetKey(KeyCode::Arrow_Right)) steering =  1.0f;
+                    physics->SetVehicleSteering(steering);
+                }
+                
+                // display controls and vehicle info
+                static char speed_text[64];
+                Vector3 velocity = physics->GetLinearVelocity();
+                float speed_kmh = velocity.Length() * 3.6f; // m/s to km/h
+                snprintf(speed_text, sizeof(speed_text), "Speed: %.1f km/h", speed_kmh);
+                
+                Renderer::DrawString("Vehicle Test (WIP)", Vector2(0.005f, 0.90f));
+                Renderer::DrawString("Arrow Keys: Up=Throttle, Down=Brake/Reverse, Left/Right=Steer", Vector2(0.005f, 0.92f));
+                Renderer::DrawString(speed_text, Vector2(0.005f, 0.94f));
+                Renderer::DrawString("Press PLAY to drive!", Vector2(0.005f, 0.96f));
             }
         }
     }

@@ -411,6 +411,165 @@ namespace spartan
             
             delete data;
         }
+        
+        // driving parameters
+        struct drive_input
+        {
+            float throttle = 0.0f;  // 0 to 1
+            float brake    = 0.0f;  // 0 to 1
+            float steering = 0.0f;  // -1 to 1 (left to right)
+        };
+        
+        // active vehicle state
+        static vehicle_data* active_vehicle = nullptr;
+        static drive_input current_input;
+        static drive_input target_input;
+        
+        // driving constants
+        const float max_engine_force    = 15000.0f;  // newtons
+        const float max_brake_force     = 8000.0f;   // newtons
+        const float input_smoothing     = 10.0f;     // throttle/brake response speed
+        const float steering_smoothing  = 20.0f;     // steering response speed (faster)
+        
+        void set_active_vehicle(vehicle_data* data)
+        {
+            active_vehicle = data;
+            current_input = drive_input();
+            target_input = drive_input();
+        }
+        
+        vehicle_data* get_active_vehicle()
+        {
+            return active_vehicle;
+        }
+        
+        // control functions - call these from game code
+        void set_throttle(float value)
+        {
+            target_input.throttle = PxClamp(value, 0.0f, 1.0f);
+        }
+        
+        void set_brake(float value)
+        {
+            target_input.brake = PxClamp(value, 0.0f, 1.0f);
+        }
+        
+        void set_steering(float value)
+        {
+            target_input.steering = PxClamp(value, -1.0f, 1.0f);
+        }
+        
+        // tick function to update vehicle physics (called from Physics::Tick)
+        void tick(float delta_time)
+        {
+            if (!active_vehicle || !active_vehicle->physx_actor.rigidBody)
+                return;
+            
+            PxRigidDynamic* body = active_vehicle->physx_actor.rigidBody->is<PxRigidDynamic>();
+            if (!body)
+                return;
+            
+            // lerp inputs for smoother control (steering is faster)
+            float lerp_factor = 1.0f - expf(-input_smoothing * delta_time);
+            float steer_lerp  = 1.0f - expf(-steering_smoothing * delta_time);
+            current_input.throttle = current_input.throttle + (target_input.throttle - current_input.throttle) * lerp_factor;
+            current_input.brake    = current_input.brake + (target_input.brake - current_input.brake) * lerp_factor;
+            current_input.steering = current_input.steering + (target_input.steering - current_input.steering) * steer_lerp;
+            
+            // get vehicle's local directions
+            PxTransform pose = body->getGlobalPose();
+            PxVec3 forward = pose.q.rotate(PxVec3(0, 0, 1));  // z is forward
+            PxVec3 up      = PxVec3(0, 1, 0);                 // world up for steering
+            
+            // get current velocity info
+            PxVec3 velocity = body->getLinearVelocity();
+            float forward_speed = velocity.dot(forward);
+            float speed = velocity.magnitude();
+            
+            // apply driving force (forward)
+            if (current_input.throttle > 0.01f)
+            {
+                PxVec3 drive_force = forward * max_engine_force * current_input.throttle;
+                body->addForce(drive_force, PxForceMode::eFORCE);
+            }
+            
+            // apply braking/reverse
+            if (current_input.brake > 0.01f)
+            {
+                if (forward_speed > 1.0f)
+                {
+                    // moving forward significantly, apply brakes (opposing velocity)
+                    PxVec3 brake_force = -forward * max_brake_force * current_input.brake;
+                    body->addForce(brake_force, PxForceMode::eFORCE);
+                }
+                else if (forward_speed > 0.1f)
+                {
+                    // moving forward slowly, stronger braking to stop
+                    PxVec3 brake_force = -forward * max_brake_force * 2.0f * current_input.brake;
+                    body->addForce(brake_force, PxForceMode::eFORCE);
+                }
+                else
+                {
+                    // stopped or moving backward, apply reverse thrust
+                    PxVec3 reverse_force = -forward * max_engine_force * 0.6f * current_input.brake;
+                    body->addForce(reverse_force, PxForceMode::eFORCE);
+                }
+            }
+            
+            // apply steering torque
+            if (fabsf(current_input.steering) > 0.01f)
+            {
+                // strong steering torque for responsive turning
+                float steer_torque = current_input.steering * 100000.0f;
+                
+                // scale with speed: more effective at higher speeds, but still works when slow
+                if (speed > 0.1f)
+                {
+                    float speed_factor = PxClamp(speed / 10.0f, 0.5f, 2.0f);
+                    steer_torque *= speed_factor;
+                    
+                    // invert steering when reversing
+                    if (forward_speed < -0.1f)
+                        steer_torque = -steer_torque;
+                }
+                else
+                {
+                    // when nearly stopped, allow some steering but reduced
+                    steer_torque *= 0.5f;
+                }
+                
+                body->addTorque(up * steer_torque, PxForceMode::eFORCE);
+            }
+            
+            // apply gravity manually (vehicle2 requires this)
+            PxVec3 gravity(0.0f, -9.81f * active_vehicle->rigid_body_params.mass, 0.0f);
+            body->addForce(gravity, PxForceMode::eFORCE);
+            
+            // damping for stability (low angular damping for responsive steering)
+            body->setLinearDamping(0.5f);
+            body->setAngularDamping(0.5f);
+        }
+        
+        // get current speed for display
+        float get_speed_kmh()
+        {
+            if (!active_vehicle || !active_vehicle->physx_actor.rigidBody)
+                return 0.0f;
+            
+            PxRigidDynamic* body = active_vehicle->physx_actor.rigidBody->is<PxRigidDynamic>();
+            if (!body)
+                return 0.0f;
+            
+            PxVec3 velocity = body->getLinearVelocity();
+            float speed_ms = velocity.magnitude();
+            return speed_ms * 3.6f; // m/s to km/h
+        }
+        
+        // get current steering for display
+        float get_steering()
+        {
+            return current_input.steering;
+        }
     }
 
     namespace
@@ -552,6 +711,46 @@ namespace spartan
                 Vector3 entity_pos = GetEntity()->GetPosition();
                 static_cast<PxCapsuleController*>(m_controller)->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
                 m_velocity = Vector3::Zero;
+            }
+        }
+        else if (m_body_type == BodyType::Vehicle)
+        {
+            if (Engine::IsFlagSet(EngineMode::Playing))
+            {
+                // update vehicle physics (input is set externally via vehicle::set_throttle/brake/steering)
+                float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+                vehicle::tick(delta_time);
+                
+                // sync physx -> entity
+                if (!m_actors.empty() && m_actors[0])
+                {
+                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+                    PxTransform pose = actor->getGlobalPose();
+                    GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
+                    GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                }
+            }
+            else
+            {
+                // editor mode: sync entity -> physx, reset velocities
+                if (!m_actors.empty() && m_actors[0])
+                {
+                    Vector3 pos = GetEntity()->GetPosition();
+                    Quaternion rot = GetEntity()->GetRotation();
+                    PxTransform pose(
+                        PxVec3(pos.x, pos.y, pos.z),
+                        PxQuat(rot.x, rot.y, rot.z, rot.w)
+                    );
+                    
+                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+                    actor->setGlobalPose(pose);
+                    
+                    if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+                    {
+                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+                    }
+                }
             }
         }
         else if (!m_is_static)
@@ -1176,6 +1375,30 @@ namespace spartan
         GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
     }
 
+    void Physics::SetVehicleThrottle(float value)
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        vehicle::set_throttle(value);
+    }
+
+    void Physics::SetVehicleBrake(float value)
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        vehicle::set_brake(value);
+    }
+
+    void Physics::SetVehicleSteering(float value)
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        vehicle::set_steering(value);
+    }
+
     void Physics::Create()
     {
         // clear previous state
@@ -1253,6 +1476,9 @@ namespace spartan
                     
                     // store user data for raycasts
                     vehicle_data->physx_actor.rigidBody->userData = reinterpret_cast<void*>(GetEntity());
+                    
+                    // set as active vehicle for driving
+                    vehicle::set_active_vehicle(vehicle_data);
                     
                     SP_LOG_INFO("vehicle physics body created successfully");
                 }
