@@ -71,7 +71,7 @@ namespace spartan::math
             if (!approximate_equals(length_squared, 1.0f) && length_squared > 0.0f)
             {
             #ifdef __AVX2__
-                // load x, y, z into an AVX vector (set w component to 0)
+                // load x, y, z into an sse vector (set w component to 0)
                 __m128 vec = _mm_set_ps(0.0f, z, y, x);
                 
                 // calculate the length squared (dot product of vec with itself)
@@ -80,8 +80,13 @@ namespace spartan::math
                 // calculate reciprocal square root of the length
                 __m128 inv_sqrt = _mm_rsqrt_ps(dot);
                 
-                // normalize vec by multiplying with inv_sqrt
-                vec = _mm_mul_ps(vec, inv_sqrt);
+                // newton-raphson refinement for better precision: x' = x * (1.5 - 0.5 * d * x * x)
+                __m128 half    = _mm_set1_ps(0.5f);
+                __m128 three   = _mm_set1_ps(3.0f);
+                __m128 refined = _mm_mul_ps(_mm_mul_ps(half, inv_sqrt), _mm_sub_ps(three, _mm_mul_ps(dot, _mm_mul_ps(inv_sqrt, inv_sqrt))));
+                
+                // normalize vec by multiplying with refined inv_sqrt
+                vec = _mm_mul_ps(vec, refined);
                 
                 // store back the normalized values
                 x = _mm_cvtss_f32(vec);
@@ -95,7 +100,7 @@ namespace spartan::math
                 z *= length_inverted;
             #endif
             }
-        };
+        }
 
         [[nodiscard]] Vector3 Normalized() const
         {
@@ -112,14 +117,26 @@ namespace spartan::math
             return (abs(1.0f - LengthSquared()) < THRESH_VECTOR_NORMALIZED);
         }
 
-        float Max()
+        float Max() const
         {
             return std::max(std::max(x, y), z);
         }
 
+        float Min() const
+        {
+            return std::min(std::min(x, y), z);
+        }
+
         [[nodiscard]] static float Dot(const Vector3& v1, const Vector3& v2) 
         { 
+        #ifdef __AVX2__
+            __m128 a = _mm_set_ps(0.0f, v1.z, v1.y, v1.x);
+            __m128 b = _mm_set_ps(0.0f, v2.z, v2.y, v2.x);
+            __m128 dot = _mm_dp_ps(a, b, 0x71); // dot product of x, y, z, result in lowest element
+            return _mm_cvtss_f32(dot);
+        #else
             return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z);
+        #endif
         }
         
         [[nodiscard]] float Dot(const Vector3& rhs) const 
@@ -130,11 +147,28 @@ namespace spartan::math
 
         [[nodiscard]] static Vector3 Cross(const Vector3& v1, const Vector3& v2)
         {
+        #ifdef __AVX2__
+            __m128 a = _mm_set_ps(0.0f, v1.z, v1.y, v1.x);
+            __m128 b = _mm_set_ps(0.0f, v2.z, v2.y, v2.x);
+            
+            // cross product using shuffle: (a.yzx * b.zxy) - (a.zxy * b.yzx)
+            __m128 a_yzx = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 0, 2, 1));
+            __m128 b_zxy = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 1, 0, 2));
+            __m128 a_zxy = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 1, 0, 2));
+            __m128 b_yzx = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 0, 2, 1));
+            
+            __m128 result = _mm_sub_ps(_mm_mul_ps(a_yzx, b_zxy), _mm_mul_ps(a_zxy, b_yzx));
+            
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
             return Vector3(
                 v1.y * v2.z - v2.y * v1.z,
                 -(v1.x * v2.z - v2.x * v1.z),
                 v1.x * v2.y - v2.x * v1.y
             );
+        #endif
         }
 
         [[nodiscard]] Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
@@ -176,13 +210,23 @@ namespace spartan::math
         #endif
         }
 
-        // Returns a copy of /vector/ with its magnitude clamped to /maxLength/
+        // returns a copy of /vector/ with its magnitude clamped to /max_length/
         void ClampMagnitude(float max_length)
         {
             const float sqrmag = LengthSquared();
 
             if (sqrmag > max_length * max_length)
             {
+            #ifdef __AVX2__
+                // combine normalize and scale into a single multiplication
+                const float scale = max_length / sqrt(sqrmag);
+                __m128 vec = _mm_set_ps(0.0f, z, y, x);
+                __m128 s = _mm_set1_ps(scale);
+                __m128 result = _mm_mul_ps(vec, s);
+                x = _mm_cvtss_f32(result);
+                y = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1)));
+                z = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2)));
+            #else
                 const float mag = sqrt(sqrmag);
 
                 // these intermediate variables force the intermediate result to be
@@ -196,6 +240,7 @@ namespace spartan::math
                 x = normalized_x * max_length;
                 y = normalized_y * max_length;
                 z = normalized_z * max_length;
+            #endif
             }
         }
 
@@ -221,45 +266,87 @@ namespace spartan::math
 
         void Floor()
         {
+        #ifdef __AVX2__
+            __m128 vec = _mm_set_ps(0.0f, z, y, x);
+            vec = _mm_floor_ps(vec);
+            x = _mm_cvtss_f32(vec);
+            y = _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(1, 1, 1, 1)));
+            z = _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 2, 2)));
+        #else
             x = floor(x);
             y = floor(y);
             z = floor(z);
+        #endif
         }
 
         static Vector3 Round(const Vector3& vec)
         {
+        #ifdef __AVX2__
+            __m128 v = _mm_set_ps(0.0f, vec.z, vec.y, vec.x);
+            v = _mm_round_ps(v, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);
+            return Vector3(_mm_cvtss_f32(v),
+                           _mm_cvtss_f32(_mm_shuffle_ps(v, v, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(v, v, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
             return Vector3{
                 std::round(vec.x),
                 std::round(vec.y),
                 std::round(vec.z)
             };
+        #endif
         }
 
-
         // return absolute vector
-        [[nodiscard]] Vector3 Abs() const { return Vector3(abs(x), abs(y), abs(z)); }
+        [[nodiscard]] Vector3 Abs() const
+        {
+        #ifdef __AVX2__
+            __m128 vec = _mm_set_ps(0.0f, z, y, x);
+            // clear sign bit using andnot with sign mask
+            __m128 sign_mask = _mm_set1_ps(-0.0f);
+            vec = _mm_andnot_ps(sign_mask, vec);
+            return Vector3(_mm_cvtss_f32(vec),
+                           _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(vec, vec, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
+            return Vector3(abs(x), abs(y), abs(z));
+        #endif
+        }
 
         // linear interpolation with another vector
-        Vector3 Lerp(const Vector3& v, float t) const                          { return *this * (1.0f - t) + v * t; }
+        Vector3 Lerp(const Vector3& v, float t) const
+        {
+        #ifdef __AVX2__
+            __m128 a = _mm_set_ps(0.0f, z, y, x);
+            __m128 b = _mm_set_ps(0.0f, v.z, v.y, v.x);
+            __m128 tv = _mm_set1_ps(t);
+            __m128 one_minus_t = _mm_set1_ps(1.0f - t);
+            
+            // a * (1-t) + b * t using fma
+            __m128 result = _mm_fmadd_ps(b, tv, _mm_mul_ps(a, one_minus_t));
+            
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
+            return *this * (1.0f - t) + v * t;
+        #endif
+        }
         static Vector3 Lerp(const Vector3& a, const Vector3& b, const float t) { return a + (b - a) * t; }
 
         Vector3 operator*(const Vector3& b) const
         {
         #ifdef __AVX2__
-            // create an __m128 vector from the components of this Vector3, with padding
+            // create an __m128 vector from the components of this vector3, with padding
             __m128 thisVec = _mm_set_ps(0.0f, z, y, x);
-            // create an __m128 vector from the components of the input Vector3, with padding
+            // create an __m128 vector from the components of the input vector3, with padding
             __m128 bVec    = _mm_set_ps(0.0f, b.z, b.y, b.x);
-            // oerform element-wise multiplication of the two vectors
+            // perform element-wise multiplication of the two vectors
             __m128 result  = _mm_mul_ps(thisVec, bVec);
             
-            // temporary array to hold the result (we need to extract the data from the SIMD register)
-            float res[4];
-            // store the result from the SIMD register into the array
-            _mm_storeu_ps(res, result);
-
-            // return a new Vector3 constructed from the result, ignoring the padding (res[3])
-            return Vector3(res[0], res[1], res[2]);
+            // extract results directly (faster than storing to memory)
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
         #else
             return Vector3(
                 x * b.x,
@@ -271,20 +358,38 @@ namespace spartan::math
         
         static Vector3 Min(const Vector3& a, const Vector3& b)
         {
+        #ifdef __AVX2__
+            __m128 va = _mm_set_ps(0.0f, a.z, a.y, a.x);
+            __m128 vb = _mm_set_ps(0.0f, b.z, b.y, b.x);
+            __m128 result = _mm_min_ps(va, vb);
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
             return Vector3(
                 a.x < b.x ? a.x : b.x,
                 a.y < b.y ? a.y : b.y,
                 a.z < b.z ? a.z : b.z
             );
+        #endif
         }
         
         static Vector3 Max(const Vector3& a, const Vector3& b)
         {
+        #ifdef __AVX2__
+            __m128 va = _mm_set_ps(0.0f, a.z, a.y, a.x);
+            __m128 vb = _mm_set_ps(0.0f, b.z, b.y, b.x);
+            __m128 result = _mm_max_ps(va, vb);
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
             return Vector3(
                 a.x > b.x ? a.x : b.x,
                 a.y > b.y ? a.y : b.y,
                 a.z > b.z ? a.z : b.z
             );
+        #endif
         }
 
         void operator*=(const Vector3& b)
@@ -308,14 +413,35 @@ namespace spartan::math
             z *= value;
         }
 
-        Vector3 operator+(const Vector3& b) const   { return Vector3(x + b.x, y + b.y, z + b.z); }
+        Vector3 operator+(const Vector3& b) const
+        {
+        #ifdef __AVX2__
+            __m128 va = _mm_set_ps(0.0f, z, y, x);
+            __m128 vb = _mm_set_ps(0.0f, b.z, b.y, b.x);
+            __m128 result = _mm_add_ps(va, vb);
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
+            return Vector3(x + b.x, y + b.y, z + b.z);
+        #endif
+        }
         Vector3 operator+(const float value) const  { return Vector3(x + value, y + value, z + value); }
 
         void operator+=(const Vector3& b)
         {
+        #ifdef __AVX2__
+            __m128 va = _mm_set_ps(0.0f, z, y, x);
+            __m128 vb = _mm_set_ps(0.0f, b.z, b.y, b.x);
+            __m128 result = _mm_add_ps(va, vb);
+            x = _mm_cvtss_f32(result);
+            y = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1)));
+            z = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2)));
+        #else
             x += b.x;
             y += b.y;
             z += b.z;
+        #endif
         }
 
         void operator+=(const float value)
@@ -325,24 +451,66 @@ namespace spartan::math
             z += value;
         }
 
-        Vector3 operator-(const Vector3& b) const   { return Vector3(x - b.x, y - b.y, z - b.z); }
+        Vector3 operator-(const Vector3& b) const
+        {
+        #ifdef __AVX2__
+            __m128 va = _mm_set_ps(0.0f, z, y, x);
+            __m128 vb = _mm_set_ps(0.0f, b.z, b.y, b.x);
+            __m128 result = _mm_sub_ps(va, vb);
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
+            return Vector3(x - b.x, y - b.y, z - b.z);
+        #endif
+        }
         Vector3 operator-(const float value) const  { return Vector3(x - value, y - value, z - value); }
 
         void operator-=(const Vector3& rhs)
         {
+        #ifdef __AVX2__
+            __m128 va = _mm_set_ps(0.0f, z, y, x);
+            __m128 vb = _mm_set_ps(0.0f, rhs.z, rhs.y, rhs.x);
+            __m128 result = _mm_sub_ps(va, vb);
+            x = _mm_cvtss_f32(result);
+            y = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1)));
+            z = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2)));
+        #else
             x -= rhs.x;
             y -= rhs.y;
             z -= rhs.z;
+        #endif
         }
 
-        Vector3 operator/(const Vector3& rhs) const { return Vector3(x / rhs.x, y / rhs.y, z / rhs.z); }
+        Vector3 operator/(const Vector3& rhs) const
+        {
+        #ifdef __AVX2__
+            __m128 va = _mm_set_ps(1.0f, z, y, x);
+            __m128 vb = _mm_set_ps(1.0f, rhs.z, rhs.y, rhs.x);
+            __m128 result = _mm_div_ps(va, vb);
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
+            return Vector3(x / rhs.x, y / rhs.y, z / rhs.z);
+        #endif
+        }
         Vector3 operator/(const float rhs) const    { return Vector3(x / rhs, y / rhs, z / rhs); }
 
         void operator/=(const Vector3& rhs)
         {
+        #ifdef __AVX2__
+            __m128 va = _mm_set_ps(1.0f, z, y, x);
+            __m128 vb = _mm_set_ps(1.0f, rhs.z, rhs.y, rhs.x);
+            __m128 result = _mm_div_ps(va, vb);
+            x = _mm_cvtss_f32(result);
+            y = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1)));
+            z = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2)));
+        #else
             x /= rhs.x;
             y /= rhs.y;
             z /= rhs.z;
+        #endif
         }
 
         // test for equality without using epsilon
@@ -381,6 +549,6 @@ namespace spartan::math
         static const Vector3 InfinityNeg;
     };
 
-    // Reverse order operators
+    // reverse order operators
     inline  Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
 }
