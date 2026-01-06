@@ -617,6 +617,7 @@ namespace spartan
             entities::camera(false, Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
             entities::sun(LightPreset::day, true);
             entities::music("project\\music\\jake_chudnow_olive.wav");
+            entities::floor();
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
             const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
@@ -734,6 +735,7 @@ namespace spartan
         void create_subway_gi_test()
         {
             entities::camera(true);
+            entities::floor();
 
             if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
             {
