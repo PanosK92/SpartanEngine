@@ -50,12 +50,6 @@ namespace spartan
         Max
     };
 
-    struct PhysicsBodyMeshData
-    {
-        std::vector<uint32_t> indices;
-        std::vector<RHI_Vertex_PosTexNorTan> vertices;
-    };
-
     class Physics : public Component
     {
     public:
@@ -68,6 +62,9 @@ namespace spartan
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
+        
+        // static cleanup (call before physics world shutdown)
+        static void Shutdown();
 
         // mass
         constexpr static inline float mass_from_volume = FLT_MAX;
@@ -146,12 +143,10 @@ namespace spartan
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
         math::Vector3 m_velocity       = math::Vector3::Zero;
         BodyType m_body_type           = BodyType::Max;
-        uint32_t terrain_width         = 0;
-        uint32_t terrain_length        = 0;
-        void* m_controller             = nullptr;
-        void* m_material               = nullptr;
-        void* m_mesh                   = nullptr;
-        std::vector<void*> m_actors    = { nullptr };
-        std::vector<PhysicsBodyMeshData> m_mesh_data;
+        void* m_controller               = nullptr;
+        void* m_material                 = nullptr;
+        void* m_mesh                     = nullptr;
+        std::vector<void*> m_actors      = { nullptr };
+        std::vector<bool> m_actors_active; // tracks which actors are currently in the scene (for distance-based activation)
     };
 }

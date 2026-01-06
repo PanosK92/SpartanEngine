@@ -66,7 +66,20 @@ namespace spartan
         const float distance_deactivate_squared = distance_deactivate * distance_deactivate;
         const float distance_activate_squared   = distance_activate * distance_activate;
 
-        void* controller_manager = nullptr;
+        PxControllerManager* controller_manager = nullptr;
+
+        // helper to build lock flags from position and rotation lock vectors
+        PxRigidDynamicLockFlags build_lock_flags(const Vector3& position_lock, const Vector3& rotation_lock)
+        {
+            PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
+            if (position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+            if (position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+            if (position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+            if (rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+            if (rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+            if (rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+            return flags;
+        }
     }
 
     Physics::Physics(Entity* entity) : Component(entity)
@@ -85,7 +98,6 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, void*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh, void*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_actors, vector<void*>);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh_data, vector<PhysicsBodyMeshData>);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_body_type, SetBodyType, BodyType);
     }
 
@@ -99,13 +111,29 @@ namespace spartan
         Component::Initialize();
     }
 
+    void Physics::Shutdown()
+    {
+        // release the controller manager (created lazily when first controller is made)
+        if (controller_manager)
+        {
+            controller_manager->release();
+            controller_manager = nullptr;
+        }
+    }
+
     void Physics::Remove()
     {
         if (m_controller)
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
-            m_material   = nullptr; // the controller owns the material
+            
+            // release the material that was created for this controller
+            if (m_material)
+            {
+                static_cast<PxMaterial*>(m_material)->release();
+                m_material = nullptr;
+            }
         }
 
         for (auto* body : m_actors)
@@ -118,6 +146,7 @@ namespace spartan
             }
         }
         m_actors.clear();
+        m_actors_active.clear();
 
         if (PxMaterial* material = static_cast<PxMaterial*>(m_material))
         {
@@ -154,8 +183,11 @@ namespace spartan
                 GetEntity()->SetPosition(pos);
 
                 // compute velocity for xz
-                m_velocity.x = (pos.x - pos_previous.x) / delta_time;
-                m_velocity.z = (pos.z - pos_previous.z) / delta_time;
+                if (delta_time > 0.0f)
+                {
+                    m_velocity.x = (pos.x - pos_previous.x) / delta_time;
+                    m_velocity.z = (pos.z - pos_previous.z) / delta_time;
+                }
             }
             else
             {
@@ -167,6 +199,9 @@ namespace spartan
         else if (!m_is_static)
         {
             Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+            if (!renderable)
+                return;
+
             for (uint32_t i = 0; i < m_actors.size(); i++)
             {
                 if (!m_actors[i])
@@ -247,38 +282,47 @@ namespace spartan
         }
 
         // distance-based activation/deactivation for static actors
+        // this optimization prevents the physics scene from being overwhelmed with distant static colliders
         if (m_body_type != BodyType::Controller && m_is_static)
         {
-            if (Camera* camera = World::GetCamera())
+            Camera* camera = World::GetCamera();
+            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+            if (camera && renderable)
             {
                 const Vector3 camera_pos = camera->GetEntity()->GetPosition();
-                if (Renderable* renderable = GetEntity()->GetComponent<Renderable>())
+                
+                // ensure tracking vector matches actor count
+                if (m_actors_active.size() != m_actors.size())
                 {
-                    for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+                    m_actors_active.resize(m_actors.size(), true); // assume initially active
+                }
+
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+                {
+                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
+                    if (!actor)
+                        continue;
+
+                    // compute distance to actor
+                    Vector3 closest_point = renderable->HasInstancing()
+                        ? renderable->GetInstance(i, true).GetTranslation()
+                        : renderable->GetBoundingBox().GetClosestPoint(camera_pos);
+                    const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
+
+                    // use hysteresis to prevent flickering at boundary
+                    const bool is_active     = m_actors_active[i];
+                    const bool should_remove = is_active && (distance_squared > distance_deactivate_squared);
+                    const bool should_add    = !is_active && (distance_squared <= distance_activate_squared);
+
+                    if (should_remove)
                     {
-                        if (PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]))
-                        {
-                            Vector3 closest_point = Vector3::Zero;
-                            if (renderable->HasInstancing())
-                            {
-                                closest_point = renderable->GetInstance(i, true).GetTranslation();
-                            }
-                            else
-                            {
-                                closest_point = renderable->GetBoundingBox().GetClosestPoint(camera_pos);
-                            }
-
-                            const float distance_to_camera = Vector3::DistanceSquared(camera_pos, closest_point);
-                            if (distance_to_camera > distance_deactivate_squared)
-                            {
-                                PhysicsWorld::RemoveActor(actor);
-                            }
-                            else if (distance_to_camera <= distance_activate_squared)
-                            {
-                                PhysicsWorld::AddActor(actor);
-                            }
-                        }
-
+                        PhysicsWorld::RemoveActor(actor);
+                        m_actors_active[i] = false;
+                    }
+                    else if (should_add)
+                    {
+                        PhysicsWorld::AddActor(actor);
+                        m_actors_active[i] = true;
                     }
                 }
             }
@@ -552,14 +596,7 @@ namespace spartan
         {
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
-                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                dynamic->setRigidDynamicLockFlags(flags);
+                dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
             }
         }
     }
@@ -579,14 +616,7 @@ namespace spartan
         {
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
-                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                dynamic->setRigidDynamicLockFlags(flags);
+                dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
             }
         }
     }
@@ -688,18 +718,16 @@ namespace spartan
     float Physics::GetCapsuleVolume()
     {
         // total volume is the sum of the cylinder and two hemispheres
-        float radius      = GetCapsuleRadius(); // radius is max of x and z scale divided by 2
-        Vector3 scale     = GetEntity()->GetScale();
-        float half_height = scale.y * 0.5f;   // half the height of the cylindrical part
+        const float radius = GetCapsuleRadius();
+        const Vector3 scale = GetEntity()->GetScale();
 
         // cylinder volume: π * r² * h (clamp to avoid negative height)
-        float cylinder_height = max(0.0f, scale.y - 2.0f * radius);
-        float cylinder_volume = math::pi * radius * radius * cylinder_height;
+        const float cylinder_height = max(0.0f, scale.y - 2.0f * radius);
+        const float cylinder_volume = math::pi * radius * radius * cylinder_height;
 
         // sphere volume (two hemispheres = one full sphere): (4/3) * π * r³
-        float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
+        const float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
 
-        // total volume
         return cylinder_volume + sphere_volume;
     }
 
@@ -840,12 +868,13 @@ namespace spartan
             if (!m_controller)
             {
                 SP_LOG_ERROR("failed to create capsule controller");
-                desc.material->release();
+                static_cast<PxMaterial*>(m_material)->release();
+                m_material = nullptr;
                 return;
             }
             
-            // cleanup
-            desc.material->release();
+            // note: the controller internally references the material, so don't release m_material here
+            // it will be released in Remove() when the controller is destroyed
         }
         else
         {
@@ -872,13 +901,17 @@ namespace spartan
                 // simplify geometry
                 const float volume        = renderable->GetBoundingBox().GetVolume();
                 const float max_volume    = 100000.0f;
-                const float volume_factor = clamp(volume / max_volume, 0.0f, 1.0f); // aka simplification ratio
-                size_t min_index_count    = min<size_t>(indices.size(), 256);
-                size_t target_index_count = clamp<size_t>(static_cast<size_t>(indices.size() * volume_factor), min_index_count, 16'000);
+                // simplify geometry based on volume (larger objects get more detail)
+                const float volume_factor       = clamp(volume / max_volume, 0.0f, 1.0f);
+                const size_t min_index_count    = min<size_t>(indices.size(), 256);
+                const size_t max_index_count    = 16'000;
+                const size_t target_index_count = clamp<size_t>(static_cast<size_t>(indices.size() * volume_factor), min_index_count, max_index_count);
                 geometry_processing::simplify(indices, vertices, target_index_count, false, false);
-                if (target_index_count > 16000)
+                
+                // warn if we hit the complexity cap (original mesh was very detailed)
+                if (indices.size() > max_index_count && target_index_count == max_index_count)
                 {
-                    SP_LOG_WARNING("Mesh '%s' was simplified to %d indices. It's still complex and may impact physics performance.", renderable->GetEntity()->GetObjectName().c_str(), target_index_count);
+                    SP_LOG_WARNING("Mesh '%s' was simplified to %zu indices. It's still complex and may impact physics performance.", renderable->GetEntity()->GetObjectName().c_str(), target_index_count);
                 }
 
                 // convert vertices to physx format
@@ -974,8 +1007,10 @@ namespace spartan
         }
 
         // create bodies and shapes
-        m_actors.resize(renderable->GetInstanceCount(), nullptr);
-        for (uint32_t i = 0; i < renderable->GetInstanceCount(); i++)
+        const uint32_t instance_count = renderable->GetInstanceCount();
+        m_actors.resize(instance_count, nullptr);
+        m_actors_active.resize(instance_count, true); // all actors start active
+        for (uint32_t i = 0; i < instance_count; i++)
         {
             math::Matrix transform = renderable->HasInstancing() ? renderable->GetInstance(i, true) : GetEntity()->GetMatrix();
             PxTransform pose(
@@ -1001,14 +1036,7 @@ namespace spartan
                         PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
                         PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
                     }
-                    PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                    if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                    if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                    if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                    if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                    if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                    if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                    dynamic->setRigidDynamicLockFlags(flags);
+                    dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
                 }
             }
         

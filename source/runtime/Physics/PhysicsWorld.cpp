@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
 #include "../World/Components/Camera.h"
+#include "../World/Components/Physics.h"
 #include "../World/World.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
@@ -245,6 +246,9 @@ namespace spartan
     {
         // cleanup picking
         picking::UnpickBody();
+
+        // release controller manager (owned by physics component system)
+        Physics::Shutdown();
 
         // release physx resources
         PX_RELEASE(scene);
