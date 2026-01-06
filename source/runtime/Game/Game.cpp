@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../Geometry/GeometryGeneration.h"
 #include "../Geometry/GeometryProcessing.h"
+#include "../Physics/Car.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -1846,16 +1847,51 @@ namespace spartan
                     physics->SetVehicleSteering(steering);
                 }
 
-                // osd
-                static char speed_text[64];
+                // osd - vehicle info
+                static char text_buffer[128];
                 Vector3 velocity = physics->GetLinearVelocity();
                 float speed_kmh = velocity.Length() * 3.6f;
-                snprintf(speed_text, sizeof(speed_text), "Speed: %.1f km/h", speed_kmh);
-
-                Renderer::DrawString("Vehicle Test (WIP)", Vector2(0.005f, 0.90f));
-                Renderer::DrawString("Arrow Keys: Up=Throttle, Down=Brake/Reverse, Left/Right=Steer", Vector2(0.005f, 0.92f));
-                Renderer::DrawString(speed_text, Vector2(0.005f, 0.94f));
-                Renderer::DrawString("Press PLAY to drive!", Vector2(0.005f, 0.96f));
+                
+                float y_pos = 0.70f;
+                const float line_spacing = 0.02f;
+                
+                Renderer::DrawString("Vehicle Test (WIP)", Vector2(0.005f, y_pos));
+                y_pos += line_spacing;
+                
+                snprintf(text_buffer, sizeof(text_buffer), "Speed: %.1f km/h", speed_kmh);
+                Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
+                y_pos += line_spacing;
+                
+                snprintf(text_buffer, sizeof(text_buffer), "Throttle: %.0f%%  Brake: %.0f%%  Steer: %.2f",
+                    physics->GetVehicleThrottle() * 100.0f, physics->GetVehicleBrake() * 100.0f, physics->GetVehicleSteering());
+                Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
+                y_pos += line_spacing * 1.5f;
+                
+                // per-wheel metrics
+                Renderer::DrawString("Wheel Metrics:", Vector2(0.005f, y_pos));
+                y_pos += line_spacing;
+                
+                const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
+                for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+                {
+                    WheelIndex wheel = static_cast<WheelIndex>(i);
+                    bool grounded = physics->IsWheelGrounded(wheel);
+                    float compression = physics->GetWheelCompression(wheel) * 100.0f;
+                    float force_kn = physics->GetWheelSuspensionForce(wheel) / 1000.0f;
+                    
+                    snprintf(text_buffer, sizeof(text_buffer), "  %s: %s  Comp: %.0f%%  Force: %.1f kN",
+                        wheel_names[i],
+                        grounded ? "GND" : "AIR",
+                        compression,
+                        force_kn);
+                    Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
+                    y_pos += line_spacing;
+                }
+                
+                y_pos += line_spacing * 0.5f;
+                Renderer::DrawString("Arrow Keys: Up=Throttle, Down=Brake/Reverse, Left/Right=Steer", Vector2(0.005f, y_pos));
+                y_pos += line_spacing;
+                Renderer::DrawString("Press PLAY to drive!", Vector2(0.005f, y_pos));
             }
         }
         //====================================================================================

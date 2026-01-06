@@ -983,6 +983,48 @@ namespace spartan
             radius, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z, scale.x);
     }
 
+    float Physics::GetVehicleThrottle() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_throttle();
+    }
+
+    float Physics::GetVehicleBrake() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_brake();
+    }
+
+    float Physics::GetVehicleSteering() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_steering();
+    }
+
+    bool Physics::IsWheelGrounded(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::is_wheel_grounded(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelCompression(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_compression(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelSuspensionForce(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_suspension_force(static_cast<int>(wheel));
+    }
+
     void Physics::UpdateWheelTransforms()
     {
         if (m_body_type != BodyType::Vehicle || !Engine::IsFlagSet(EngineMode::Playing))

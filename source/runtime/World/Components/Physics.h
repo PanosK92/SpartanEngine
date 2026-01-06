@@ -156,6 +156,14 @@ namespace spartan
         void SetWheelRadius(float radius);
         float GetWheelRadius() const { return m_wheel_radius; }
         void ComputeWheelRadiusFromEntity(Entity* wheel_entity); // auto-compute from mesh AABB
+        
+        // vehicle metrics (read-only, for display/debugging)
+        float GetVehicleThrottle() const;
+        float GetVehicleBrake() const;
+        float GetVehicleSteering() const;
+        bool IsWheelGrounded(WheelIndex wheel) const;
+        float GetWheelCompression(WheelIndex wheel) const;
+        float GetWheelSuspensionForce(WheelIndex wheel) const;
 
     private:
         void UpdateWheelTransforms();
