@@ -1731,7 +1731,7 @@ namespace spartan
 
             void create()
             {
-                entities::camera(false, Vector3(0.0f, 5.0f, -5.0f), Vector3(5.0f, 0.0f, 0.0f));
+                entities::camera(false, Vector3(0.0f, 5.0f, -15.0f), Vector3(5.0f, 0.0f, 0.0f));
                 entities::sun(LightPreset::dusk, true);
                 entities::floor();
 
@@ -1758,7 +1758,62 @@ namespace spartan
                     default_car->SetScaleLocal(1.0f);
                 }
 
-                Renderer::SetOption(Renderer_Option::Grid, 1.0f);
+                // load wheel and create 4 instances for the vehicle
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
+                {
+                    Entity* wheel_base = mesh->GetRootEntity()->GetChildByIndex(0);
+                    wheel_base->SetScale(0.15f);
+                    if (wheel_base)
+                    {
+                        // set material on the base wheel
+                        if (Renderable* renderable = wheel_base->GetComponent<Renderable>())
+                        {
+                            Material* material = renderable->GetMaterial();
+                            material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
+                            material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
+                            material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
+                            material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
+                        }
+
+                        // wheel positions relative to vehicle (laferrari dimensions)
+                        const float wheel_x = 0.95f;  // half width
+                        const float wheel_y = 0.35f;  // height from ground
+                        const float front_z = 1.45f;  // front axle position
+                        const float rear_z  = -1.35f; // rear axle position
+
+                        // front left wheel (use the base)
+                        Entity* wheel_fl = wheel_base;
+                        wheel_fl->SetObjectName("wheel_front_left");
+                        wheel_fl->SetParent(vehicle_entity);
+                        wheel_fl->SetPositionLocal(Vector3(-wheel_x, wheel_y, front_z));
+
+                        // front right wheel (clone and mirror)
+                        Entity* wheel_fr = wheel_base->Clone();
+                        wheel_fr->SetObjectName("wheel_front_right");
+                        wheel_fr->SetParent(vehicle_entity);
+                        wheel_fr->SetPositionLocal(Vector3(wheel_x, wheel_y, front_z));
+                        wheel_fr->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Up, math::pi)); // rotate to face outward
+
+                        // rear left wheel (clone)
+                        Entity* wheel_rl = wheel_base->Clone();
+                        wheel_rl->SetObjectName("wheel_rear_left");
+                        wheel_rl->SetParent(vehicle_entity);
+                        wheel_rl->SetPositionLocal(Vector3(-wheel_x, wheel_y, rear_z));
+
+                        // rear right wheel (clone and mirror)
+                        Entity* wheel_rr = wheel_base->Clone();
+                        wheel_rr->SetObjectName("wheel_rear_right");
+                        wheel_rr->SetParent(vehicle_entity);
+                        wheel_rr->SetPositionLocal(Vector3(wheel_x, wheel_y, rear_z));
+                        wheel_rr->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Up, math::pi)); // rotate to face outward
+
+                        // hook up wheel entities to the physics component
+                        physics->SetWheelEntity(WheelIndex::FrontLeft,  wheel_fl);
+                        physics->SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
+                        physics->SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
+                        physics->SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
+                    }
+                }
             }
 
             void tick()
