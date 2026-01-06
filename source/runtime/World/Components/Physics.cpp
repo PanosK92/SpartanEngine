@@ -729,6 +729,9 @@ namespace spartan
                     GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
                     GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
                 }
+
+                // update wheel entity transforms (spin and steering)
+                UpdateWheelTransforms();
             }
             else
             {
@@ -1397,6 +1400,97 @@ namespace spartan
             return;
         
         vehicle::set_steering(value);
+    }
+
+    void Physics::SetWheelEntity(WheelIndex wheel, Entity* entity)
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            SP_LOG_WARNING("SetWheelEntity only works with Vehicle body type");
+            return;
+        }
+
+        int index = static_cast<int>(wheel);
+        if (index >= 0 && index < static_cast<int>(WheelIndex::Count))
+        {
+            m_wheel_entities[index] = entity;
+        }
+    }
+
+    Entity* Physics::GetWheelEntity(WheelIndex wheel) const
+    {
+        int index = static_cast<int>(wheel);
+        if (index >= 0 && index < static_cast<int>(WheelIndex::Count))
+        {
+            return m_wheel_entities[index];
+        }
+        return nullptr;
+    }
+
+    void Physics::UpdateWheelTransforms()
+    {
+        if (m_body_type != BodyType::Vehicle || !Engine::IsFlagSet(EngineMode::Playing))
+            return;
+
+        // get vehicle speed for wheel spin
+        float speed = 0.0f;
+        float forward_speed = 0.0f;
+        if (!m_actors.empty() && m_actors[0])
+        {
+            PxRigidDynamic* body = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>();
+            if (body)
+            {
+                PxVec3 velocity = body->getLinearVelocity();
+                PxTransform pose = body->getGlobalPose();
+                PxVec3 forward = pose.q.rotate(PxVec3(0, 0, 1));
+                forward_speed = velocity.dot(forward);
+                speed = velocity.magnitude();
+            }
+        }
+
+        // get steering angle from vehicle system
+        float steering = vehicle::get_steering();
+        const float max_steering_angle = 35.0f * math::deg_to_rad; // max steering angle in radians
+        float steering_angle = steering * max_steering_angle;
+
+        // update wheel spin rotation based on speed
+        // wheel rotation = distance / radius, distance = speed * dt
+        const float wheel_radius = 0.35f; // from vehicle_dimensions
+        float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+        float rotation_delta = (forward_speed * delta_time) / wheel_radius;
+        m_wheel_rotation += rotation_delta;
+
+        // keep rotation in reasonable bounds to avoid float precision issues
+        const float two_pi = 2.0f * math::pi;
+        while (m_wheel_rotation > two_pi) m_wheel_rotation -= two_pi;
+        while (m_wheel_rotation < -two_pi) m_wheel_rotation += two_pi;
+
+        // update each wheel entity
+        for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+        {
+            Entity* wheel_entity = m_wheel_entities[i];
+            if (!wheel_entity)
+                continue;
+
+            bool is_front_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::FrontRight));
+            bool is_left_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::RearLeft));
+
+            // wheel spin rotation (around the axle - X axis in local space)
+            Quaternion spin_rotation = Quaternion::FromAxisAngle(Vector3::Right, m_wheel_rotation);
+
+            // steering rotation for front wheels only (around Y axis)
+            Quaternion steer_rotation = Quaternion::Identity;
+            if (is_front_wheel)
+            {
+                steer_rotation = Quaternion::FromAxisAngle(Vector3::Up, steering_angle);
+            }
+
+            // combine rotations: first spin, then steer
+            // note: for left wheels, we might need to flip the spin direction depending on model orientation
+            Quaternion final_rotation = steer_rotation * spin_rotation;
+
+            wheel_entity->SetRotationLocal(final_rotation);
+        }
     }
 
     void Physics::Create()

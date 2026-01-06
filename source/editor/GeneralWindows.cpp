@@ -551,7 +551,7 @@ namespace
             { "Subway",            "GI test. No lights, only emissive textures",                         "Complete" , "Moderate",       2600 },
             { "Minecraft",         "Blocky aesthetic",                                                   "Complete" , "Light",          2100 },
             { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          2100 },
-            { "Car Test",          "PhysX car",                                                          "Prototype", "Light",          2100 }
+            { "Drivable Car",       "PhysX Vehicle2 API",                                                "Prototype", "Light",          2100 }
         };
         int world_index = 0;
 

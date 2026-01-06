@@ -398,10 +398,6 @@ namespace spartan
             world_time::tick();
             Game::Tick();
         }
-        else
-        {
-            Game::EditorTick();
-        }
     }
 
     bool World::SaveToFile(string file_path)

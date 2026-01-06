@@ -51,6 +51,16 @@ namespace spartan
         Max
     };
 
+    // wheel indices for vehicles
+    enum class WheelIndex
+    {
+        FrontLeft  = 0,
+        FrontRight = 1,
+        RearLeft   = 2,
+        RearRight  = 3,
+        Count      = 4
+    };
+
     class Physics : public Component
     {
     public:
@@ -134,7 +144,12 @@ namespace spartan
         void SetVehicleBrake(float value);     // 0 to 1
         void SetVehicleSteering(float value);  // -1 (left) to 1 (right)
 
+        // vehicle wheel entities (visual meshes that rotate with physics)
+        void SetWheelEntity(WheelIndex wheel, Entity* entity);
+        Entity* GetWheelEntity(WheelIndex wheel) const;
+
     private:
+        void UpdateWheelTransforms();
         void Create();
         void CreateBodies();
 
@@ -154,5 +169,9 @@ namespace spartan
         void* m_mesh                     = nullptr;
         std::vector<void*> m_actors      = { nullptr };
         std::vector<bool> m_actors_active; // tracks which actors are currently in the scene (for distance-based activation)
+
+        // vehicle wheel entities and state
+        Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
+        float m_wheel_rotation = 0.0f; // cumulative wheel spin rotation (radians)
     };
 }

@@ -57,7 +57,7 @@ namespace spartan
         namespace subway        { void create(); }
         namespace minecraft     { void create(); }
         namespace basic         { void create(); }
-        namespace car_test_wip  { void create(); void tick(); }
+        namespace drivable_car  { void create(); void tick(); }
     }
     //======================================================
 
@@ -94,7 +94,7 @@ namespace spartan
             worlds::subway::create,        // Subway
             worlds::minecraft::create,     // Minecraft
             worlds::basic::create,         // Basic
-            worlds::car_test_wip::create,  // CarTestWip
+            worlds::drivable_car::create,  // DrivableCar
         };
 
         constexpr tick_fn world_tick[] =
@@ -106,7 +106,7 @@ namespace spartan
             nullptr,                       // Subway (no tick)
             nullptr,                       // Minecraft (no tick)
             nullptr,                       // Basic (no tick)
-            worlds::car_test_wip::tick,    // CarTestWip
+            worlds::drivable_car::tick,    // CarTestWip
         };
 
         static_assert(size(world_create) == static_cast<size_t>(DefaultWorld::Max), "world_create out of sync with DefaultWorld enum");
@@ -473,15 +473,18 @@ namespace spartan
                 }
 
                 // physics for all car parts
-                vector<Entity*> car_parts;
-                default_car->GetDescendants(&car_parts);
-                for (Entity* car_part : car_parts)
+                if (physics)
                 {
-                    if (car_part->GetComponent<Renderable>())
+                    vector<Entity*> car_parts;
+                    default_car->GetDescendants(&car_parts);
+                    for (Entity* car_part : car_parts)
                     {
-                        Physics* physics = car_part->AddComponent<Physics>();
-                        physics->SetKinematic(true);
-                        physics->SetBodyType(BodyType::Mesh);
+                        if (car_part->GetComponent<Renderable>())
+                        {
+                            Physics* physics_body = car_part->AddComponent<Physics>();
+                            physics_body->SetKinematic(true);
+                            physics_body->SetBodyType(BodyType::Mesh);
+                        }
                     }
                 }
             }
@@ -1721,14 +1724,14 @@ namespace spartan
         }
         //====================================================================================
 
-        //= CAR TEST =========================================================================
-        namespace car_test_wip
+        //= DRIVABLE CAR =========================================================================
+        namespace drivable_car
         {
             Entity* vehicle_entity = nullptr;
 
             void create()
             {
-                entities::camera(false, Vector3(0.0f, 5.0f, -15.0f), Vector3(15.0f, 0.0f, 0.0f));
+                entities::camera(false, Vector3(0.0f, 5.0f, -5.0f), Vector3(5.0f, 0.0f, 0.0f));
                 entities::sun(LightPreset::dusk, true);
                 entities::floor();
 
@@ -1742,6 +1745,18 @@ namespace spartan
                 physics->SetStatic(false);
                 physics->SetMass(1500.0f);
                 physics->SetBodyType(BodyType::Vehicle);
+
+                // use existing car function for the body (handles all materials)
+                car::create(Vector3::Zero, false, nullptr);
+
+                // parent the car body to the vehicle entity
+                if (default_car)
+                {
+                    default_car->SetParent(vehicle_entity);
+                    default_car->SetPositionLocal(Vector3(0.0f, 0.0f, 0.0f));
+                    default_car->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f)); // rotate 90 degrees around X to face forward
+                    default_car->SetScaleLocal(1.0f);
+                }
 
                 Renderer::SetOption(Renderer_Option::Grid, 1.0f);
             }
@@ -1796,7 +1811,7 @@ namespace spartan
         default_metal_cube                     = nullptr;
         worlds::showroom::texture_brand_logo   = nullptr;
         worlds::showroom::texture_paint_normal = nullptr;
-        worlds::car_test_wip::vehicle_entity   = nullptr;
+        worlds::drivable_car::vehicle_entity   = nullptr;
         meshes.clear();
     }
 
@@ -1813,11 +1828,6 @@ namespace spartan
                 fn();
             }
         }
-    }
-
-    void Game::EditorTick()
-    {
-
     }
 
     void Game::Load(DefaultWorld default_world)
