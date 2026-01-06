@@ -55,7 +55,6 @@ namespace spartan
     {
         // vehicle2 api implementation for a basic 4-wheel vehicle
         
-        using namespace physx;
         using namespace physx::vehicle2;
         
         // wheel indices for a standard 4-wheel vehicle
@@ -420,10 +419,22 @@ namespace spartan
             float steering = 0.0f;  // -1 to 1 (left to right)
         };
         
+        // suspension state per wheel
+        struct wheel_state
+        {
+            float suspension_compression = 0.0f; // 0 = fully extended, 1 = fully compressed
+            float previous_compression   = 0.0f; // for damping calculation
+            bool  is_grounded            = false;
+            PxVec3 contact_point         = PxVec3(0, 0, 0);
+            PxVec3 contact_normal        = PxVec3(0, 1, 0);
+        };
+        
         // active vehicle state
         static vehicle_data* active_vehicle = nullptr;
         static drive_input current_input;
         static drive_input target_input;
+        static wheel_state wheel_states[wheel_count];
+        static vehicle_dimensions active_dims;
         
         // driving constants
         const float max_engine_force    = 15000.0f;  // newtons
@@ -431,11 +442,27 @@ namespace spartan
         const float input_smoothing     = 10.0f;     // throttle/brake response speed
         const float steering_smoothing  = 20.0f;     // steering response speed (faster)
         
-        void set_active_vehicle(vehicle_data* data)
+        void set_active_vehicle(vehicle_data* data, const vehicle_dimensions* dims = nullptr)
         {
             active_vehicle = data;
             current_input = drive_input();
             target_input = drive_input();
+            
+            // reset wheel states
+            for (int i = 0; i < wheel_count; i++)
+            {
+                wheel_states[i] = wheel_state();
+            }
+            
+            // store dimensions
+            if (dims)
+            {
+                active_dims = *dims;
+            }
+            else
+            {
+                active_dims = vehicle_dimensions();
+            }
         }
         
         vehicle_data* get_active_vehicle()
@@ -459,6 +486,108 @@ namespace spartan
             target_input.steering = PxClamp(value, -1.0f, 1.0f);
         }
         
+        // perform suspension raycast for a single wheel
+        void update_wheel_suspension(int wheel_index, PxRigidDynamic* body, PxScene* scene, float delta_time)
+        {
+            PxTransform pose = body->getGlobalPose();
+            
+            // compute wheel attachment point in world space
+            PxVec3 wheel_positions[wheel_count];
+            compute_wheel_positions(active_dims, wheel_positions);
+            
+            // transform wheel position to world space (at rest position)
+            PxVec3 local_attach = wheel_positions[wheel_index];
+            local_attach.y += active_dims.suspension_travel; // attachment point is at top of suspension travel
+            PxVec3 world_attach = pose.transform(local_attach);
+            
+            // raycast downward from attachment point (use world down, not local)
+            PxVec3 ray_dir(0, -1, 0);
+            // use a longer ray to ensure we hit ground even when vehicle is high
+            float ray_length = active_dims.suspension_travel * 3.0f + active_dims.wheel_radius * 2.0f + 5.0f;
+            
+            PxRaycastBuffer hit;
+            PxQueryFilterData filter;
+            filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+            
+            wheel_state& ws = wheel_states[wheel_index];
+            ws.previous_compression = ws.suspension_compression;
+            
+            if (scene->raycast(world_attach, ray_dir, ray_length, hit, PxHitFlag::eDEFAULT, filter))
+            {
+                // check if we hit something other than ourselves
+                if (hit.block.actor && hit.block.actor != body)
+                {
+                    // check if hit is within suspension range
+                    float max_suspension_distance = active_dims.suspension_travel + active_dims.wheel_radius;
+                    if (hit.block.distance <= max_suspension_distance)
+                    {
+                        ws.is_grounded = true;
+                        ws.contact_point = hit.block.position;
+                        ws.contact_normal = hit.block.normal;
+                        
+                        // calculate suspension compression
+                        float actual_distance = hit.block.distance - active_dims.wheel_radius;
+                        actual_distance = PxMax(actual_distance, 0.0f);
+                        
+                        // compression: 0 = fully extended, 1 = fully compressed
+                        ws.suspension_compression = PxClamp(1.0f - (actual_distance / active_dims.suspension_travel), 0.0f, 1.0f);
+                    }
+                    else
+                    {
+                        // ground is too far for suspension, but we detected it
+                        ws.is_grounded = false;
+                        ws.suspension_compression = 0.0f;
+                    }
+                }
+                else
+                {
+                    ws.is_grounded = false;
+                    ws.suspension_compression = 0.0f;
+                }
+            }
+            else
+            {
+                ws.is_grounded = false;
+                ws.suspension_compression = 0.0f;
+            }
+        }
+        
+        // apply suspension force for a single wheel
+        void apply_wheel_forces(int wheel_index, PxRigidDynamic* body, float delta_time)
+        {
+            wheel_state& ws = wheel_states[wheel_index];
+            
+            if (!ws.is_grounded)
+                return;
+            
+            // get suspension parameters for this wheel
+            const PxVehicleSuspensionForceParams& force_params = active_vehicle->suspension_force_params[wheel_index];
+            
+            // spring force: F = stiffness * compression * travel
+            float spring_force = force_params.stiffness * ws.suspension_compression * active_dims.suspension_travel;
+            
+            // damper force: F = damping * velocity
+            float compression_velocity = (ws.suspension_compression - ws.previous_compression) / delta_time;
+            float damper_force = force_params.damping * compression_velocity * active_dims.suspension_travel;
+            
+            // total suspension force (upward)
+            float total_force = spring_force - damper_force;
+            total_force = PxMax(total_force, 0.0f); // suspension can only push, not pull
+            
+            // apply force at wheel contact point
+            PxVec3 force_dir = ws.contact_normal;
+            PxVec3 force_vec = force_dir * total_force;
+            
+            // compute wheel world position for force application
+            PxTransform pose = body->getGlobalPose();
+            PxVec3 wheel_positions[wheel_count];
+            compute_wheel_positions(active_dims, wheel_positions);
+            PxVec3 world_wheel_pos = pose.transform(wheel_positions[wheel_index]);
+            
+            // apply force at wheel position (creates torque for body roll/pitch)
+            PxRigidBodyExt::addForceAtPos(*body, force_vec, world_wheel_pos, PxForceMode::eFORCE);
+        }
+        
         // tick function to update vehicle physics (called from Physics::Tick)
         void tick(float delta_time)
         {
@@ -469,7 +598,7 @@ namespace spartan
             if (!body)
                 return;
             
-            // lerp inputs for smoother control (steering is faster)
+            // lerp inputs for smoother control
             float lerp_factor = 1.0f - expf(-input_smoothing * delta_time);
             float steer_lerp  = 1.0f - expf(-steering_smoothing * delta_time);
             current_input.throttle = current_input.throttle + (target_input.throttle - current_input.throttle) * lerp_factor;
@@ -479,75 +608,115 @@ namespace spartan
             // get vehicle's local directions
             PxTransform pose = body->getGlobalPose();
             PxVec3 forward = pose.q.rotate(PxVec3(0, 0, 1));  // z is forward
-            PxVec3 up      = PxVec3(0, 1, 0);                 // world up for steering
+            PxVec3 right   = pose.q.rotate(PxVec3(1, 0, 0));  // x is right
+            PxVec3 up      = PxVec3(0, 1, 0);                 // world up
             
             // get current velocity info
             PxVec3 velocity = body->getLinearVelocity();
             float forward_speed = velocity.dot(forward);
+            float lateral_speed = velocity.dot(right);
             float speed = velocity.magnitude();
             
-            // apply driving force (forward)
+            // convert to km/h for intuitive tuning
+            float speed_kmh = speed * 3.6f;
+            float forward_speed_kmh = forward_speed * 3.6f;
+            
+            // apply driving force (forward) - with speed-dependent reduction for realistic top speed
             if (current_input.throttle > 0.01f)
             {
-                PxVec3 drive_force = forward * max_engine_force * current_input.throttle;
+                // reduce power at high speeds (simulates air resistance and engine power curve)
+                float power_factor = 1.0f - PxClamp(speed_kmh / 250.0f, 0.0f, 0.85f);
+                PxVec3 drive_force = forward * max_engine_force * current_input.throttle * power_factor;
                 body->addForce(drive_force, PxForceMode::eFORCE);
             }
             
             // apply braking/reverse
             if (current_input.brake > 0.01f)
             {
-                if (forward_speed > 1.0f)
+                if (forward_speed_kmh > 5.0f)
                 {
-                    // moving forward significantly, apply brakes (opposing velocity)
+                    // moving forward, apply brakes
                     PxVec3 brake_force = -forward * max_brake_force * current_input.brake;
                     body->addForce(brake_force, PxForceMode::eFORCE);
                 }
-                else if (forward_speed > 0.1f)
+                else if (forward_speed_kmh > 1.0f)
                 {
-                    // moving forward slowly, stronger braking to stop
-                    PxVec3 brake_force = -forward * max_brake_force * 2.0f * current_input.brake;
+                    // moving forward slowly, stronger brakes to stop completely
+                    PxVec3 brake_force = -forward * max_brake_force * 1.5f * current_input.brake;
                     body->addForce(brake_force, PxForceMode::eFORCE);
                 }
                 else
                 {
-                    // stopped or moving backward, apply reverse thrust
-                    PxVec3 reverse_force = -forward * max_engine_force * 0.6f * current_input.brake;
+                    // stopped or reversing - apply reverse thrust (max ~60 km/h reverse)
+                    float reverse_speed_kmh = -forward_speed_kmh;
+                    float reverse_power = 1.0f - PxClamp(reverse_speed_kmh / 60.0f, 0.0f, 0.9f);
+                    PxVec3 reverse_force = -forward * max_engine_force * 0.8f * current_input.brake * reverse_power;
                     body->addForce(reverse_force, PxForceMode::eFORCE);
                 }
             }
             
-            // apply steering torque
+            // steering - requires some forward motion to turn (prevents spinning in place)
             if (fabsf(current_input.steering) > 0.01f)
             {
-                // strong steering torque for responsive turning
-                float steer_torque = current_input.steering * 100000.0f;
+                float abs_speed_kmh = fabsf(forward_speed_kmh);
                 
-                // scale with speed: more effective at higher speeds, but still works when slow
-                if (speed > 0.1f)
+                // need at least 2 km/h to steer at all
+                if (abs_speed_kmh > 2.0f)
                 {
-                    float speed_factor = PxClamp(speed / 10.0f, 0.5f, 2.0f);
-                    steer_torque *= speed_factor;
+                    float base_steer_torque = 40000.0f;
+                    
+                    // steering ramps up from 2 km/h to 10 km/h, then reduces at high speeds
+                    float speed_factor = 1.0f;
+                    if (abs_speed_kmh < 10.0f)
+                    {
+                        // ramp up: 0.3 at 2 km/h, 1.0 at 10 km/h
+                        speed_factor = 0.3f + 0.7f * (abs_speed_kmh - 2.0f) / 8.0f;
+                    }
+                    else if (abs_speed_kmh > 80.0f)
+                    {
+                        // reduce at high speeds to prevent sudden spins
+                        speed_factor = 1.0f - 0.5f * PxClamp((abs_speed_kmh - 80.0f) / 100.0f, 0.0f, 1.0f);
+                    }
+                    
+                    float steer_torque = current_input.steering * base_steer_torque * speed_factor;
                     
                     // invert steering when reversing
-                    if (forward_speed < -0.1f)
+                    if (forward_speed < 0.0f)
                         steer_torque = -steer_torque;
+                    
+                    body->addTorque(up * steer_torque, PxForceMode::eFORCE);
                 }
-                else
-                {
-                    // when nearly stopped, allow some steering but reduced
-                    steer_torque *= 0.5f;
-                }
-                
-                body->addTorque(up * steer_torque, PxForceMode::eFORCE);
             }
             
-            // apply gravity manually (vehicle2 requires this)
+            // lateral friction - prevents sliding sideways (tire grip)
+            float lateral_friction_coeff = 6000.0f;
+            PxVec3 lateral_friction = -right * lateral_speed * lateral_friction_coeff;
+            body->addForce(lateral_friction, PxForceMode::eFORCE);
+            
+            // rolling resistance (small constant drag)
+            if (speed > 0.5f)
+            {
+                PxVec3 rolling_resistance = -velocity.getNormalized() * 300.0f;
+                body->addForce(rolling_resistance, PxForceMode::eFORCE);
+            }
+            
+            // apply gravity manually (vehicle2 requires this since we disabled it on the actor)
             PxVec3 gravity(0.0f, -9.81f * active_vehicle->rigid_body_params.mass, 0.0f);
             body->addForce(gravity, PxForceMode::eFORCE);
             
-            // damping for stability (low angular damping for responsive steering)
-            body->setLinearDamping(0.5f);
-            body->setAngularDamping(0.5f);
+            // low linear damping for higher top speed, moderate angular damping for controlled steering
+            body->setLinearDamping(0.1f);
+            body->setAngularDamping(2.0f);
+            
+            // simple suspension simulation - update wheel states based on chassis height
+            PxScene* scene = body->getScene();
+            if (scene)
+            {
+                for (int i = 0; i < wheel_count; i++)
+                {
+                    update_wheel_suspension(i, body, scene, delta_time);
+                }
+            }
         }
         
         // get current speed for display
@@ -569,6 +738,32 @@ namespace spartan
         float get_steering()
         {
             return current_input.steering;
+        }
+        
+        // get suspension compression for a wheel (0 = extended, 1 = compressed)
+        float get_wheel_compression(int wheel_index)
+        {
+            if (wheel_index >= 0 && wheel_index < wheel_count)
+            {
+                return wheel_states[wheel_index].suspension_compression;
+            }
+            return 0.0f;
+        }
+        
+        // check if wheel is grounded
+        bool is_wheel_grounded(int wheel_index)
+        {
+            if (wheel_index >= 0 && wheel_index < wheel_count)
+            {
+                return wheel_states[wheel_index].is_grounded;
+            }
+            return false;
+        }
+        
+        // get suspension travel distance
+        float get_suspension_travel()
+        {
+            return active_dims.suspension_travel;
         }
     }
 
@@ -1427,6 +1622,84 @@ namespace spartan
         return nullptr;
     }
 
+    void Physics::SetChassisEntity(Entity* entity)
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            SP_LOG_WARNING("SetChassisEntity only works with Vehicle body type");
+            return;
+        }
+
+        m_chassis_entity = entity;
+        if (entity)
+        {
+            // store base position so we can offset from it
+            m_chassis_base_pos = entity->GetPositionLocal();
+            SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f)", 
+                entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z);
+        }
+        else
+        {
+            SP_LOG_WARNING("SetChassisEntity: entity is null!");
+        }
+    }
+
+    void Physics::SetWheelRadius(float radius)
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            SP_LOG_WARNING("SetWheelRadius only works with Vehicle body type");
+            return;
+        }
+
+        m_wheel_radius = radius;
+        
+        // also update the vehicle dimensions in the vehicle namespace
+        vehicle::active_dims.wheel_radius = radius;
+        
+        SP_LOG_INFO("SetWheelRadius: wheel radius set to %.3f", radius);
+    }
+
+    void Physics::ComputeWheelRadiusFromEntity(Entity* wheel_entity)
+    {
+        if (!wheel_entity)
+        {
+            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel_entity is null");
+            return;
+        }
+
+        // get the renderable component to access the bounding box
+        Renderable* renderable = wheel_entity->GetComponent<Renderable>();
+        if (!renderable)
+        {
+            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel entity has no Renderable component");
+            return;
+        }
+
+        // get the aabb and compute radius from it
+        // wheel radius is half the height (Y) or half the max of width/depth (X/Z)
+        // depending on wheel orientation - typically height for a wheel standing upright
+        BoundingBox aabb = renderable->GetBoundingBox();
+        Vector3 extents = aabb.GetExtents(); // half-sizes
+        
+        // for a wheel, the radius is typically the larger of X or Z extents
+        // (Y would be the wheel width/thickness)
+        // but this depends on the model's orientation - let's take the max of all axes
+        // and then account for the entity's scale
+        Vector3 scale = wheel_entity->GetScale();
+        float scaled_x = extents.x * scale.x;
+        float scaled_y = extents.y * scale.y;
+        float scaled_z = extents.z * scale.z;
+        
+        // the radius is the largest extent (wheels are usually symmetric)
+        float radius = max(max(scaled_x, scaled_y), scaled_z);
+        
+        SetWheelRadius(radius);
+        
+        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f, scale: %.3f)", 
+            radius, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z, scale.x);
+    }
+
     void Physics::UpdateWheelTransforms()
     {
         if (m_body_type != BodyType::Vehicle || !Engine::IsFlagSet(EngineMode::Playing))
@@ -1435,12 +1708,14 @@ namespace spartan
         // get vehicle speed for wheel spin
         float speed = 0.0f;
         float forward_speed = 0.0f;
+        PxVec3 angular_velocity(0, 0, 0);
         if (!m_actors.empty() && m_actors[0])
         {
             PxRigidDynamic* body = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>();
             if (body)
             {
                 PxVec3 velocity = body->getLinearVelocity();
+                angular_velocity = body->getAngularVelocity();
                 PxTransform pose = body->getGlobalPose();
                 PxVec3 forward = pose.q.rotate(PxVec3(0, 0, 1));
                 forward_speed = velocity.dot(forward);
@@ -1450,22 +1725,23 @@ namespace spartan
 
         // get steering angle from vehicle system
         float steering = vehicle::get_steering();
-        const float max_steering_angle = 35.0f * math::deg_to_rad; // max steering angle in radians
+        const float max_steering_angle = 35.0f * math::deg_to_rad;
         float steering_angle = steering * max_steering_angle;
 
+        // get suspension travel for chassis positioning
+        float suspension_travel = vehicle::get_suspension_travel();
+
         // update wheel spin rotation based on speed
-        // wheel rotation = distance / radius, distance = speed * dt
-        const float wheel_radius = 0.35f; // from vehicle_dimensions
         float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-        float rotation_delta = (forward_speed * delta_time) / wheel_radius;
+        float rotation_delta = (forward_speed * delta_time) / m_wheel_radius;
         m_wheel_rotation += rotation_delta;
 
-        // keep rotation in reasonable bounds to avoid float precision issues
+        // keep rotation in reasonable bounds
         const float two_pi = 2.0f * math::pi;
         while (m_wheel_rotation > two_pi) m_wheel_rotation -= two_pi;
         while (m_wheel_rotation < -two_pi) m_wheel_rotation += two_pi;
 
-        // update each wheel entity
+        // update each wheel entity (rotation only - wheels stay at base positions)
         for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
         {
             Entity* wheel_entity = m_wheel_entities[i];
@@ -1473,7 +1749,7 @@ namespace spartan
                 continue;
 
             bool is_front_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::FrontRight));
-            bool is_left_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::RearLeft));
+            bool is_right_wheel = (i == static_cast<int>(WheelIndex::FrontRight) || i == static_cast<int>(WheelIndex::RearRight));
 
             // wheel spin rotation (around the axle - X axis in local space)
             Quaternion spin_rotation = Quaternion::FromAxisAngle(Vector3::Right, m_wheel_rotation);
@@ -1484,12 +1760,101 @@ namespace spartan
             {
                 steer_rotation = Quaternion::FromAxisAngle(Vector3::Up, steering_angle);
             }
+            
+            // mirror rotation for right side wheels
+            Quaternion mirror_rotation = Quaternion::Identity;
+            if (is_right_wheel)
+            {
+                mirror_rotation = Quaternion::FromAxisAngle(Vector3::Up, math::pi);
+            }
 
-            // combine rotations: first spin, then steer
-            // note: for left wheels, we might need to flip the spin direction depending on model orientation
-            Quaternion final_rotation = steer_rotation * spin_rotation;
-
+            // combine rotations
+            Quaternion final_rotation = steer_rotation * spin_rotation * mirror_rotation;
             wheel_entity->SetRotationLocal(final_rotation);
+        }
+
+        // update chassis position based on acceleration (makes the body pitch and roll)
+        if (m_chassis_entity)
+        {
+            // get acceleration by comparing current velocity to previous
+            static PxVec3 prev_velocity(0, 0, 0);
+            PxVec3 current_velocity(0, 0, 0);
+            
+            if (!m_actors.empty() && m_actors[0])
+            {
+                PxRigidDynamic* body = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>();
+                if (body)
+                {
+                    current_velocity = body->getLinearVelocity();
+                }
+            }
+            
+            // calculate acceleration (velocity change per second)
+            PxVec3 acceleration = (current_velocity - prev_velocity) / delta_time;
+            prev_velocity = current_velocity;
+            
+            // get vehicle forward direction for longitudinal acceleration
+            PxTransform pose(PxIdentity);
+            if (!m_actors.empty() && m_actors[0])
+            {
+                pose = static_cast<PxRigidActor*>(m_actors[0])->getGlobalPose();
+            }
+            PxVec3 forward_dir = pose.q.rotate(PxVec3(0, 0, 1));
+            PxVec3 right_dir = pose.q.rotate(PxVec3(1, 0, 0));
+            
+            // longitudinal acceleration (forward/backward) -> pitch
+            float forward_accel = acceleration.dot(forward_dir);
+            
+            // lateral acceleration (left/right) -> roll  
+            float lateral_accel = acceleration.dot(right_dir);
+            
+            // also include angular velocity for roll during turning
+            float turn_rate = angular_velocity.y;
+            
+            // pitch: nose dives under braking, squats under acceleration
+            // scale: ~3 degrees per 1g of acceleration (realistic for sports car)
+            float target_pitch = -forward_accel * 0.03f; // increased scale for visibility
+            float max_pitch = 10.0f * math::deg_to_rad;
+            target_pitch = std::clamp(target_pitch, -max_pitch, max_pitch);
+            
+            // roll: body leans outward in turns
+            // scale: ~4 degrees per 1g of lateral acceleration + turn rate effect
+            float target_roll = -lateral_accel * 0.04f - turn_rate * 0.08f;
+            float max_roll = 8.0f * math::deg_to_rad;
+            target_roll = std::clamp(target_roll, -max_roll, max_roll);
+            
+            // smooth the pitch and roll for natural suspension feel
+            // lower = softer/bouncier suspension, higher = stiffer/sportier
+            static float current_pitch = 0.0f;
+            static float current_roll = 0.0f;
+            float smoothing = 6.0f; // sports car stiffness
+            float lerp_factor = 1.0f - expf(-smoothing * delta_time);
+            
+            current_pitch += (target_pitch - current_pitch) * lerp_factor;
+            current_roll += (target_roll - current_roll) * lerp_factor;
+            
+            // apply rotation to chassis
+            // the car model is rotated 90° around X to face forward
+            // after this rotation: pitch = around X (nose up/down), roll = around Z (lean left/right)
+            Quaternion base_rotation = Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f);
+            
+            // apply pitch and roll in the car's local space (after base rotation)
+            // pitch rotates around local X (tilts nose up/down)
+            // roll rotates around local Z (tilts left/right)
+            Quaternion pitch_rotation = Quaternion::FromAxisAngle(Vector3::Right, current_pitch);
+            Quaternion roll_rotation = Quaternion::FromAxisAngle(Vector3::Forward, current_roll);
+            
+            // order: base first, then pitch, then roll
+            m_chassis_entity->SetRotationLocal(base_rotation * pitch_rotation * roll_rotation);
+        }
+        else
+        {
+            static bool logged_no_chassis = false;
+            if (!logged_no_chassis)
+            {
+                SP_LOG_WARNING("UpdateWheelTransforms: m_chassis_entity is null!");
+                logged_no_chassis = true;
+            }
         }
     }
 
@@ -1554,7 +1919,8 @@ namespace spartan
         else if (m_body_type == BodyType::Vehicle)
         {
             // create vehicle using vehicle2 api
-            vehicle::vehicle_data* vehicle_data = vehicle::setup(physics, scene);
+            vehicle::vehicle_dimensions dims;
+            vehicle::vehicle_data* vehicle_data = vehicle::setup(physics, scene, &dims);
             if (vehicle_data)
             {
                 // store the rigid body actor
@@ -1571,8 +1937,8 @@ namespace spartan
                     // store user data for raycasts
                     vehicle_data->physx_actor.rigidBody->userData = reinterpret_cast<void*>(GetEntity());
                     
-                    // set as active vehicle for driving
-                    vehicle::set_active_vehicle(vehicle_data);
+                    // set as active vehicle for driving (pass dimensions for suspension)
+                    vehicle::set_active_vehicle(vehicle_data, &dims);
                     
                     SP_LOG_INFO("vehicle physics body created successfully");
                 }

@@ -147,6 +147,15 @@ namespace spartan
         // vehicle wheel entities (visual meshes that rotate with physics)
         void SetWheelEntity(WheelIndex wheel, Entity* entity);
         Entity* GetWheelEntity(WheelIndex wheel) const;
+        
+        // vehicle chassis entity (visual body that bounces on suspension)
+        void SetChassisEntity(Entity* entity);
+        Entity* GetChassisEntity() const { return m_chassis_entity; }
+        
+        // vehicle wheel radius (used for spin calculation and physics)
+        void SetWheelRadius(float radius);
+        float GetWheelRadius() const { return m_wheel_radius; }
+        void ComputeWheelRadiusFromEntity(Entity* wheel_entity); // auto-compute from mesh AABB
 
     private:
         void UpdateWheelTransforms();
@@ -173,5 +182,11 @@ namespace spartan
         // vehicle wheel entities and state
         Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
         float m_wheel_rotation = 0.0f; // cumulative wheel spin rotation (radians)
+        float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
+        
+        // vehicle chassis entity and suspension state
+        Entity* m_chassis_entity          = nullptr;
+        math::Vector3 m_chassis_base_pos  = math::Vector3::Zero; // base local position of chassis
+        float m_chassis_suspension_offset = 0.0f;                // current suspension offset (smoothed)
     };
 }

@@ -1762,7 +1762,7 @@ namespace spartan
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
                 {
                     Entity* wheel_base = mesh->GetRootEntity()->GetChildByIndex(0);
-                    wheel_base->SetScale(0.15f);
+                    wheel_base->SetScale(0.1f);
                     if (wheel_base)
                     {
                         // set material on the base wheel
@@ -1812,7 +1812,16 @@ namespace spartan
                         physics->SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
                         physics->SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
                         physics->SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
+                        
+                        // compute wheel radius from the actual wheel mesh
+                        physics->ComputeWheelRadiusFromEntity(wheel_fl);
                     }
+                }
+
+                // hook up chassis entity (the ferrari body that bounces on the suspension)
+                if (default_car)
+                {
+                    physics->SetChassisEntity(default_car);
                 }
             }
 
