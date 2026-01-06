@@ -56,7 +56,7 @@ static const float3 ground_albedo      = float3(0.3, 0.3, 0.3);
 // sampling quality
 static const int transmittance_samples = 40;
 static const int multiscatter_samples  = 20;
-static const int scattering_samples    = 32;
+static const int scattering_samples    = 48;
 
 // ============================================================================
 // utility functions
@@ -441,19 +441,14 @@ float3 compute_sky_luminance(
     float phase_r = rayleigh_phase(cos_theta);
     float phase_m = cornette_shanks_phase(cos_theta, mie_g);
     
-    // integrate with uniform samples
-    float dt = (t_max - t_min) / scattering_samples;
     float3 luminance = float3(0.0, 0.0, 0.0);
     float3 transmittance = float3(1.0, 1.0, 1.0);
     
-    // previous sample values for trapezoidal integration
-    float t_prev = t_min;
-    float3 sample_pos_prev = position + view_dir * t_min;
-    float height_prev = get_height(sample_pos_prev);
+    // uniform sampling with analytical integration for clean results
+    float dt = (t_max - t_min) / scattering_samples;
     
     for (int i = 0; i < scattering_samples; i++)
     {
-        // uniform sample position (center of each interval)
         float t = t_min + (i + jitter) * dt;
         float3 sample_pos = position + view_dir * t;
         float height = get_height(sample_pos);
@@ -465,24 +460,28 @@ float3 compute_sky_luminance(
         float rayleigh_d = get_rayleigh_density(height);
         float mie_d = get_mie_density(height);
         
-        // transmittance to sun with sub-texel precision
+        // transmittance to sun
         float3 up_at_sample = normalize(sample_pos - earth_center);
         float cos_sun = dot(up_at_sample, sun_dir);
-        float2 sun_uv = transmittance_lut_params_to_uv(height + earth_radius, cos_sun);
-        float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb;
+        
+        // when sun is below local horizon, no direct light reaches this point
+        // aggressive fade to prevent brightness spikes near horizon
+        float sun_visible = smoothstep(-0.05, 0.1, cos_sun);
+        
+        float2 sun_uv = transmittance_lut_params_to_uv(height + earth_radius, max(cos_sun, 0.0));
+        float3 trans_sun = transmittance_lut.SampleLevel(samp, sun_uv, 0).rgb * sun_visible;
         
         // single scattering
         float3 scatter_r = rayleigh_scatter * rayleigh_d * phase_r;
         float3 scatter_m = mie_scatter * mie_d * phase_m;
         float3 scattering = (scatter_r + scatter_m) * trans_sun;
         
-        // multi-scattering contribution
-        float2 ms_uv = float2(cos_sun * 0.5 + 0.5, saturate(height / (atmosphere_radius - earth_radius)));
-        float3 ms = multiscatter_lut.SampleLevel(samp, ms_uv, 0).rgb;
+        // multi-scattering contribution (also attenuated when sun below local horizon)
+        float2 ms_uv = float2(max(cos_sun, 0.0) * 0.5 + 0.5, saturate(height / (atmosphere_radius - earth_radius)));
+        float3 ms = multiscatter_lut.SampleLevel(samp, ms_uv, 0).rgb * sun_visible;
         float3 ms_scatter = (rayleigh_scatter * rayleigh_d + mie_scatter * mie_d) * ms;
         
         // analytical integration of exponential transmittance (more accurate than discrete)
-        // uses: integral of scatter * exp(-extinction * t) = scatter * (1 - exp(-extinction * dt)) / extinction
         float3 total_scatter = scattering + ms_scatter;
         float3 scatter_int = total_scatter * (1.0 - exp(-extinction * dt)) / max(extinction, 1e-6);
         
@@ -504,18 +503,20 @@ float3 compute_sky_luminance(
 float3 compute_sun_disc(float3 view_dir, float3 sun_dir, float3 transmittance)
 {
     float cos_angle = dot(view_dir, sun_dir);
-    float angle = acos(saturate(cos_angle));
     
-    // anti-aliased sun edge using smooth transition
-    // transition width based on angular pixel size (approximated)
-    float edge_softness = sun_angular_radius * 0.15;
-    float sun_edge = smoothstep(sun_angular_radius + edge_softness, sun_angular_radius - edge_softness, angle);
+    // wider edge softness for smooth anti-aliased sun disc
+    float edge_softness = sun_angular_radius * 0.5;
+    float cos_inner = cos(max(0.0, sun_angular_radius - edge_softness));
+    float cos_outer = cos(sun_angular_radius + edge_softness);
     
-    // physically-based limb darkening (solar limb darkening law)
-    // uses approximate coefficients for visible light
-    float r = saturate(angle / sun_angular_radius);
-    float mu = safe_sqrt(1.0 - r * r); // cos of angle from disc center
-    float limb_darkening = 0.3 + 0.93 * mu - 0.23 * mu * mu; // empirical solar model
+    // smoothstep for smooth falloff
+    float sun_edge = smoothstep(cos_outer, cos_inner, cos_angle);
+    
+    // limb darkening
+    float angle_approx = safe_sqrt(2.0 * max(0.0, 1.0 - cos_angle));
+    float r = saturate(angle_approx / sun_angular_radius);
+    float mu = safe_sqrt(1.0 - r * r);
+    float limb_darkening = 0.3 + 0.93 * mu - 0.23 * mu * mu;
     
     return sun_illuminance * transmittance * sun_edge * limb_darkening * 1000.0;
 }
@@ -563,13 +564,8 @@ struct stars
             return float3(0.0, 0.0, 0.0);
         
         float3 color = float3(0.0, 0.0, 0.0);
-        float2 star_uv = uv * 150.0;
+        float2 star_uv = uv * 400.0;
         float2 cell = floor(star_uv);
-        
-        // screen-space derivatives for anti-aliasing
-        float2 duv_dx = ddx(star_uv);
-        float2 duv_dy = ddy(star_uv);
-        float pixel_size = max(length(duv_dx), length(duv_dy));
         
         for (int y = -1; y <= 1; y++)
         {
@@ -578,19 +574,15 @@ struct stars
                 float2 cell_center = cell + float2(x, y) + 0.5;
                 float2 hash = hash22(cell_center);
                 
-                if (hash.x > 0.98)
+                if (hash.x > 0.97)
                 {
                     float2 star_pos = cell_center + (hash - 0.5) * 0.5;
                     float dist = length(star_uv - star_pos);
                     
-                    // adaptive kernel width based on pixel size for anti-aliasing
-                    float kernel_width = max(0.15, pixel_size * 0.5);
+                    // small, sharp star points
+                    float kernel_width = 0.04; // much smaller kernel
                     float brightness = exp(-dist * dist / (kernel_width * kernel_width));
-                    brightness *= (hash.x - 0.98) * 50.0;
-                    
-                    // magnitude-based twinkling (optional subtle variation)
-                    float twinkle = 0.9 + 0.1 * sin(hash.y * 100.0);
-                    brightness *= twinkle;
+                    brightness *= (hash.x - 0.97) * 30.0;
                     
                     float temp = lerp(4000.0, 12000.0, hash.y);
                     color += blackbody(temp) * brightness * night_factor;
@@ -612,26 +604,26 @@ float3 compute_moon(float3 view_dir, float3 sun_dir)
     
     float cos_angle = dot(view_dir, moon_dir);
     float moon_radius = 0.015;
-    float angle = acos(saturate(cos_angle));
     
-    // anti-aliased moon disc with soft edge
+    // work in cosine space to avoid acos instability
+    float cos_moon_radius = cos(moon_radius);
     float edge_softness = moon_radius * 0.1;
-    float moon_disc = smoothstep(moon_radius + edge_softness, moon_radius - edge_softness, angle);
+    float cos_inner = cos(moon_radius - edge_softness);
+    float cos_outer = cos(moon_radius + edge_softness);
+    float moon_disc = smoothstep(cos_outer, cos_inner, cos_angle);
     
-    // lunar phase with terminator softening
-    float phase_angle = acos(saturate(dot(moon_dir, sun_dir)));
-    float phase = saturate(cos(phase_angle) * 0.5 + 0.5);
-    
-    // subtle limb darkening for moon
-    float r = saturate(angle / moon_radius);
+    // stable angle approximation for limb darkening
+    float angle_approx = safe_sqrt(2.0 * max(0.0, 1.0 - cos_angle));
+    float r = saturate(angle_approx / moon_radius);
     float limb = safe_sqrt(1.0 - r * r);
     float moon_limb = 0.7 + 0.3 * limb;
     
-    float3 moon_color = float3(0.8, 0.85, 0.95) * 0.02;
+    // moon is full when opposite sun (always the case since moon_dir = -sun_dir)
+    float3 moon_color_val = float3(0.8, 0.85, 0.95) * 0.02;
     
     float night_factor = saturate(-dot(sun_dir, up_direction) * 3.0);
     
-    return moon_color * moon_disc * phase * moon_limb * night_factor;
+    return moon_color_val * moon_disc * moon_limb * night_factor;
 }
 
 // ============================================================================
@@ -743,11 +735,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         view_dir.y = -view_dir.y;
     }
     
-    // get sun direction from light
+    // get sun direction from light (normalize to avoid precision issues)
     Light light;
     Surface surface;
     light.Build(0, surface);
-    float3 sun_dir = -light.forward;
+    float3 sun_dir = normalize(-light.forward);
+    
+    // sun elevation for day/night transition
+    // elevation: 1 = overhead, 0 = horizon, negative = below horizon
+    float sun_elevation = dot(sun_dir, up_direction);
+    
+    // day/night factor based on sun elevation
+    // use exponential falloff that's continuous and drops quickly below horizon
+    // at elevation 0: day_factor = 0.5
+    // at elevation 0.1: day_factor ≈ 0.82
+    // at elevation -0.1: day_factor ≈ 0.18
+    // at elevation -0.2: day_factor ≈ 0.05
+    float day_factor = 1.0 / (1.0 + exp(-sun_elevation * 20.0)); // sigmoid centered at horizon
     
     // camera position in atmosphere
     float3 camera_pos = buffer_frame.camera_position;
@@ -759,7 +763,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     else if (camera_height > atmosphere_radius - earth_radius)
         camera_pos = earth_center + normalize(camera_pos - earth_center) * (atmosphere_radius - 1.0);
     
-    // uniform sampling (jitter removed to eliminate visible noise)
+    // center sampling for clean, stable results
     float jitter = 0.5;
     
     // compute sky luminance (with mirrored direction if below horizon)
@@ -780,17 +784,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     if (is_below_horizon)
     {
-        // below horizon: darken to simulate diffuse ground bounce
-        luminance *= 0.3;
+        // darken to simulate diffuse ground bounce when doing IBL
+        luminance *= 0.3f;
     }
     else
     {
-        // above horizon: add sun disc
-        float3 cam_up = normalize(camera_pos - earth_center);
-        float cos_sun = dot(cam_up, sun_dir);
-        float2 sun_uv = transmittance_lut_params_to_uv(length(camera_pos - earth_center), cos_sun);
-        float3 sun_transmittance = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), sun_uv, 0).rgb;
-        sun_color = compute_sun_disc(original_view_dir, sun_dir, sun_transmittance);
+        // sun disc visible until it sets below horizon
+        if (sun_elevation > -0.02)
+        {
+            float3 cam_up = normalize(camera_pos - earth_center);
+            float cos_sun = dot(cam_up, sun_dir);
+            float2 sun_uv = transmittance_lut_params_to_uv(length(camera_pos - earth_center), max(cos_sun, 0.0));
+            float3 sun_transmittance = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), sun_uv, 0).rgb;
+            
+            // fade sun disc as it crosses the horizon (eclipsed by horizon)
+            float sun_horizon_fade = smoothstep(-0.02, 0.02, sun_elevation);
+            sun_color = compute_sun_disc(original_view_dir, sun_dir, sun_transmittance) * sun_horizon_fade;
+        }
         
         // stars (only at night)
         star_color = stars::compute_color(uv, sun_dir);
@@ -803,7 +813,19 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float intensity_scale = saturate(light.intensity / 100000.0);
     intensity_scale = lerp(0.5, 1.5, intensity_scale);
     
-    tex_uav[thread_id.xy] = float4((luminance + sun_color + star_color + moon_color) * intensity_scale, 1.0);
+    // apply day/night darkening to atmospheric scattering
+    luminance *= day_factor;
+    
+    // subtle night sky ambient (deep blue) when sun is below horizon
+    float night_factor = 1.0 - day_factor;
+    float3 night_ambient = float3(0.001, 0.002, 0.004) * night_factor; // very subtle deep blue
+    
+    float3 final_color = (luminance + night_ambient + sun_color + star_color + moon_color) * intensity_scale;
+    
+    // safety: prevent any unexpected brightness spikes
+    final_color = min(final_color, 100.0);
+    
+    tex_uav[thread_id.xy] = float4(final_color, 1.0);
 }
 
 #endif

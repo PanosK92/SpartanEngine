@@ -615,7 +615,7 @@ namespace spartan
         {
             // set the mood
             entities::camera(false, Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
-            entities::sun(LightPreset::day, true);
+            entities::sun(LightPreset::dusk, true);
             entities::music("project\\music\\jake_chudnow_olive.wav");
             entities::floor();
             Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);

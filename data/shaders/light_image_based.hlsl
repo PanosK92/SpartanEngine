@@ -36,18 +36,12 @@ float3 gtao_multi_bounce(float visibility, float3 albedo)
 
 float3 get_dominant_specular_direction(float3 normal, float3 view_dir, float roughness)
 {
-    // perfect reflection direction
+    // frostbite/epic dominant direction - biases toward normal as roughness increases
+    // this better represents where most specular energy comes from for rough surfaces
     float3 reflection = reflect(-view_dir, normal);
-    
-    // bias toward normal for rough surfaces to reduce artifacts
-    const float roughness_threshold = 0.8f;
-    if (roughness > roughness_threshold)
-    {
-        float blend = (roughness - roughness_threshold) / (1.0f - roughness_threshold);
-        reflection  = normalize(lerp(reflection, normal, blend * 0.1f));
-    }
-    
-    return reflection;
+    float smoothness  = 1.0f - roughness;
+    float factor      = smoothness * (sqrt(smoothness) + roughness);
+    return normalize(lerp(normal, reflection, factor));
 }
 
 float3 fresnel_schlick_roughness(float cos_theta, float3 F0, float roughness)
@@ -70,31 +64,40 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     // view and energy calculations
-    const float3 view_dir        = normalize(-surface.camera_to_pixel);
-    const float n_dot_v          = saturate(dot(surface.normal, view_dir));
-    const float3 F               = fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness);
+    const float3 view_dir = normalize(-surface.camera_to_pixel);
+    const float n_dot_v   = saturate(dot(surface.normal, view_dir));
+    
+    // split-sum approximation: use F0 (not full fresnel) as the LUT already encodes fresnel response
     const float2 envBRDF         = tex2.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
-    const float3 specular_energy = F * envBRDF.x + envBRDF.y;
-    const float3 diffuse_energy  = compute_diffuse_energy(specular_energy, surface.metallic);
+    const float3 specular_energy = surface.F0 * envBRDF.x + envBRDF.y;
+    
+    // diffuse energy uses roughness-modified fresnel for proper energy conservation
+    const float3 F              = fresnel_schlick_roughness(n_dot_v, surface.F0, surface.roughness);
+    const float3 diffuse_energy = compute_diffuse_energy(F, surface.metallic);
 
     // specular reflection setup
     float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, view_dir, surface.roughness);
     float mip_count_environment        = pass_get_f3_value().x;
-    float mip_level                    = lerp(0.0f, mip_count_environment - 1.0f, surface.roughness);
+    float mip_level                    = surface.roughness * surface.roughness * (mip_count_environment - 1.0f);
     
-    // specular occlusion (prevent reflection leakage using bent normal)
-    float bent_reflection_factor       = saturate(dot(surface.bent_normal, dominant_specular_direction));
-    float specular_occlusion           = surface.occlusion * saturate(bent_reflection_factor + (1.0f - surface.roughness));
+    // specular occlusion - lagarde & de rousiers 2014 physically-based approximation
+    float bent_reflection_factor = saturate(dot(surface.bent_normal, dominant_specular_direction));
+    float specular_occlusion     = saturate(pow(n_dot_v + surface.occlusion, exp2(-16.0f * surface.roughness - 1.0f)) - 1.0f + surface.occlusion);
+    specular_occlusion          *= bent_reflection_factor;
+    
+    // horizon occlusion - prevents reflections from below the surface plane
+    float horizon       = saturate(1.0f + dot(dominant_specular_direction, surface.normal));
+    specular_occlusion *= horizon * horizon;
 
     // environment sampling
-    float3 specular_skysphere          = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
-    float3 diffuse_skysphere           = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
+    float3 specular_skysphere = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
+    float3 diffuse_skysphere  = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
     
     // apply energy and occlusion
-    // multi-bounce is applied to diffuse ONLY, specular relies on simple occlusion
-    float3 diffuse_occlusion           = gtao_multi_bounce(surface.occlusion, surface.albedo.rgb);
-    float3 diffuse_ibl                 = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
-    float3 specular_ibl                = specular_skysphere * specular_energy * specular_occlusion;
+    // multi-bounce ao for diffuse, physically-based occlusion + horizon fade for specular
+    float3 diffuse_occlusion = gtao_multi_bounce(surface.occlusion, surface.albedo.rgb);
+    float3 diffuse_ibl       = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
+    float3 specular_ibl      = specular_skysphere * specular_energy * specular_occlusion;
 
     // combine ibl
     float3 ibl  = diffuse_ibl + specular_ibl;
