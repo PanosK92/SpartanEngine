@@ -46,29 +46,25 @@ namespace car
     //=======================================================================================
     
     // driving
-    inline constexpr float max_engine_force   = 55000.0f; // newtons (~950hp laferrari, massive torque at low speeds)
-    inline constexpr float max_brake_force    = 12000.0f; // newtons per wheel (carbon ceramics)
-    inline constexpr float brake_bias_front   = 0.6f;     // 60% front, 40% rear (typical for fwd/rwd)
-    inline constexpr float input_smoothing    = 10.0f;    // throttle/brake response speed
-    inline constexpr float steering_smoothing = 20.0f;    // steering response speed
-
+    inline constexpr float max_engine_force          = 55000.0f; // newtons (~950hp laferrari, massive torque at low speeds)
+    inline constexpr float max_brake_force           = 12000.0f; // newtons per wheel (carbon ceramics)
+    inline constexpr float brake_bias_front          = 0.6f;     // 60% front, 40% rear (typical for fwd/rwd)
+    inline constexpr float input_smoothing           = 10.0f;    // throttle/brake response speed
+    inline constexpr float steering_smoothing        = 20.0f;    // steering response speed
     // tire model
-    inline constexpr float tire_friction_coeff = 0.95f;    // base friction coefficient (high-performance tires)
-    inline constexpr float min_speed_for_slip  = 0.5f;     // m/s, threshold for slip calculations
-    
+    inline constexpr float tire_friction_coeff       = 0.95f;    // base friction coefficient (high-performance tires)
+    inline constexpr float min_speed_for_slip        = 0.5f;     // m/s, threshold for slip calculations    
     // suspension - anti-roll bars control understeer/oversteer balance
-    // softer front + stiffer rear = less understeer (more tail-happy)
     inline constexpr float front_anti_roll_stiffness = 6000.0f;  // n/m, soft front = more front grip
     inline constexpr float rear_anti_roll_stiffness  = 28000.0f; // n/m, stiff rear = less rear grip = car rotates
     inline constexpr float max_suspension_force      = 35000.0f; // n, prevents explosive forces on hard impacts
     inline constexpr float front_suspension_freq     = 2.8f;     // hz (supercar: stiff springs, precise handling)
-    inline constexpr float rear_suspension_freq      = 3.2f;     // hz (rear slightly stiffer for stability)
-    
+    inline constexpr float rear_suspension_freq      = 3.2f;     // hz (rear slightly stiffer for stability)   
     // aerodynamics
-    inline constexpr float drag_coefficient     = 0.35f;   // cd, typical sedan 0.30-0.35, sports 0.28-0.32
-    inline constexpr float frontal_area         = 2.2f;    // m², typical sedan ~2.0-2.4
-    inline constexpr float air_density          = 1.225f;  // kg/m³ at sea level
-    inline constexpr float rolling_resistance_coeff = 0.015f; // typical tire on asphalt 0.010-0.020
+    inline constexpr float drag_coefficient          = 0.35f;    // cd, typical sedan 0.30-0.35, sports 0.28-0.32
+    inline constexpr float frontal_area              = 2.2f;     // m², typical sedan ~2.0-2.4
+    inline constexpr float air_density               = 1.225f;   // kg/m³ at sea level
+    inline constexpr float rolling_resistance_coeff  = 0.015f;   // typical tire on asphalt 0.010-0.020
 
     //=======================================================================================
     // enums and types
@@ -113,7 +109,7 @@ namespace car
         PxVehicleSuspensionComplianceParams  suspension_compliance_params[wheel_count];
         PxVehicleTireForceParams             tire_params[wheel_count];
         PxVehiclePhysXActor                  physx_actor;
-        PxMaterial*                          material = nullptr;
+        PxMaterial* material = nullptr;
     };
     
     // driving parameters
@@ -149,7 +145,7 @@ namespace car
     // global state
     //=======================================================================================
     
-    inline static vehicle_data*       active_vehicle = nullptr;
+    inline static vehicle_data* active_vehicle = nullptr;
     inline static drive_input         current_input;
     inline static drive_input         target_input;
     inline static wheel_state         wheel_states[wheel_count];
@@ -698,27 +694,26 @@ namespace car
         
         // anti-roll bar: front axle (couples fl and fr)
         // when car rolls right, left compresses more (positive diff)
-        // anti-roll bar resists this by reducing left force and increasing right force
+        // anti-roll bar resists this by PUSHING left (compressed) UP and PULLING right (extended) DOWN
         {
             float compression_diff = wheel_states[front_left].suspension_compression - wheel_states[front_right].suspension_compression;
             float anti_roll_force  = compression_diff * front_anti_roll_stiffness * active_dims.suspension_travel;
             
             if (wheel_states[front_left].is_grounded)
-                forces[front_left] -= anti_roll_force;  // reduce force on more compressed side
+                forces[front_left] += anti_roll_force;  // Push compressed side UP (resist roll)
             if (wheel_states[front_right].is_grounded)
-                forces[front_right] += anti_roll_force; // increase force on less compressed side
+                forces[front_right] -= anti_roll_force; // Pull extended side DOWN
         }
         
         // anti-roll bar: rear axle (couples rl and rr)
-        // stiffer rear anti-roll = less rear grip in corners = promotes rotation
         {
             float compression_diff = wheel_states[rear_left].suspension_compression - wheel_states[rear_right].suspension_compression;
             float anti_roll_force  = compression_diff * rear_anti_roll_stiffness * active_dims.suspension_travel;
             
             if (wheel_states[rear_left].is_grounded)
-                forces[rear_left] -= anti_roll_force;   // reduce force on more compressed side
+                forces[rear_left] += anti_roll_force;
             if (wheel_states[rear_right].is_grounded)
-                forces[rear_right] += anti_roll_force;  // increase force on less compressed side
+                forces[rear_right] -= anti_roll_force;
         }
         
         // clamp final forces and apply
@@ -730,6 +725,10 @@ namespace car
         {
             forces[i] = PxClamp(forces[i], 0.0f, max_suspension_force);
             
+            // Store the final normal force as the tire load for friction calculations
+            // This ensures damping and ARB forces correctly affect available grip
+            wheel_states[i].tire_load = forces[i];
+
             if (forces[i] > 0.0f && wheel_states[i].is_grounded)
             {
                 PxVec3 force_dir      = wheel_states[i].contact_normal;
@@ -835,8 +834,17 @@ namespace car
             ws.lateral_force      = 0.0f;
             ws.longitudinal_force = 0.0f;
             
-            // wheel spins freely when not grounded (decays slowly)
-            ws.angular_velocity *= 0.99f;
+            // check handbrake even when not grounded
+            bool is_rear_wheel = (wheel_index == rear_left || wheel_index == rear_right);
+            if (is_rear_wheel && handbrake_input > 0.01f)
+            {
+                ws.angular_velocity = 0.0f; // handbrake locks wheels
+            }
+            else
+            {
+                // wheel spins freely when not grounded (decays slowly)
+                ws.angular_velocity *= 0.99f;
+            }
             ws.wheel_rotation += ws.angular_velocity * delta_time;
             return;
         }
@@ -967,26 +975,50 @@ namespace car
         const PxVehicleWheelParams& wheel_params = active_vehicle->wheel_params[wheel_index];
         float target_angular_velocity = vx / active_dims.wheel_radius;
         
-        // tire force creates reaction torque on wheel (slows down spinning wheels)
-        float tire_torque = -raw_longitudinal_force * active_dims.wheel_radius;
-        float angular_accel = tire_torque / wheel_params.moi;
+        // check if handbrake is locking this wheel
+        bool handbrake_locked = (is_rear && handbrake_input > 0.01f);
         
-        ws.angular_velocity += angular_accel * delta_time;
-        
-        // apply ground matching only when slip is extreme (prevents numerical instability)
-        // high threshold allows proper wheelspin and power oversteer
-        float abs_slip = fabsf(ws.slip_ratio);
-        if (abs_slip > 0.6f) // only correct when slip exceeds 60%
+        if (handbrake_locked)
         {
+            // handbrake locks the rear wheels completely - no rotation at all
+            ws.angular_velocity = 0.0f;
+        }
+        else
+        {
+            // tire force creates reaction torque on wheel (slows down spinning wheels)
+            float tire_torque = -raw_longitudinal_force * active_dims.wheel_radius;
+            float angular_accel = tire_torque / wheel_params.moi;
+            
+            ws.angular_velocity += angular_accel * delta_time;
+            
+            // ground matching: wheel speed should converge to ground speed
+            // - when coasting (no input): match quickly to prevent phantom acceleration
+            // - when driving: only correct at extreme slip to allow wheelspin
+            float abs_slip = fabsf(ws.slip_ratio);
             float speed_error = target_angular_velocity - ws.angular_velocity;
-            // gentle correction - let the car be wild
-            float correction_strength = (abs_slip - 0.6f) * 3.0f;
-            correction_strength = PxMin(correction_strength, 2.0f);
-            float blend_factor = 1.0f - expf(-correction_strength * delta_time);
-            ws.angular_velocity += speed_error * blend_factor;
+            
+            // check if we're coasting (no throttle and no brake, or this is a front wheel)
+            bool is_coasting = (current_input.throttle < 0.01f && current_input.brake < 0.01f);
+            bool is_front_wheel = !is_rear;
+            
+            if (is_coasting || is_front_wheel)
+            {
+                // quickly match wheel speed to ground when not actively driving
+                float blend_factor = 1.0f - expf(-8.0f * delta_time);
+                ws.angular_velocity += speed_error * blend_factor;
+            }
+            else if (abs_slip > 0.6f)
+            {
+                // only correct driven wheels at extreme slip to allow wheelspin
+                float correction_strength = (abs_slip - 0.6f) * 3.0f;
+                correction_strength = PxMin(correction_strength, 2.0f);
+                float blend_factor = 1.0f - expf(-correction_strength * delta_time);
+                ws.angular_velocity += speed_error * blend_factor;
+            }
+            
+            ws.angular_velocity *= (1.0f - wheel_params.dampingRate * delta_time);
         }
         
-        ws.angular_velocity *= (1.0f - wheel_params.dampingRate * delta_time);
         ws.wheel_rotation += ws.angular_velocity * delta_time;
     }
     
@@ -1010,8 +1042,8 @@ namespace car
             float wheel_angle = wheel_angles[i];
             
             // wheel direction vectors
-            float cos_steer      = cosf(wheel_angle);
-            float sin_steer      = sinf(wheel_angle);
+            float cos_steer        = cosf(wheel_angle);
+            float sin_steer        = sinf(wheel_angle);
             PxVec3 wheel_forward = chassis_forward * cos_steer + chassis_right * sin_steer;
             PxVec3 wheel_lateral = chassis_right * cos_steer - chassis_forward * sin_steer;
             
@@ -1130,16 +1162,13 @@ namespace car
         }
         
         // handbrake: locks rear wheels for drifting
-        // real handbrakes are cable-operated and weaker than hydraulic brakes
-        // but they lock instantly which is what causes the rear to break loose
+        // this must run AFTER throttle/brake to override them
         if (handbrake_input > 0.01f)
         {
             for (int i = rear_left; i <= rear_right; i++)
             {
-                // instant lock - just kill the wheel spin directly
-                // this creates maximum slip without excessive braking force
-                float lock_strength = handbrake_input;
-                wheel_states[i].angular_velocity *= (1.0f - lock_strength);
+                // instant lock - force wheel rotation to zero
+                wheel_states[i].angular_velocity = 0.0f;
             }
         }
         
@@ -1189,7 +1218,7 @@ namespace car
         
         // damping helps settle the car without affecting handling too much
         body->setLinearDamping(0.05f);
-        body->setAngularDamping(0.8f);  // higher to reduce pitch/roll oscillations
+        body->setAngularDamping(0.05f); // Reduced from 0.8 to allow natural rotation
         
         // suspension and tire simulation
         PxScene* scene = body->getScene();
@@ -1201,25 +1230,11 @@ namespace car
             update_wheel_suspension(i, body, scene, delta_time);
         
         // pass 2: apply suspension forces with anti-roll bars
+        // this now also calculates and stores the correct tire_load including damping/arb
         apply_suspension_forces(body, delta_time);
         
-        // pass 3: calculate tire loads from suspension compression
-        // this creates proper weight transfer during accel/braking/cornering
-        for (int i = 0; i < wheel_count; i++)
-        {
-            if (wheel_states[i].is_grounded)
-            {
-                const PxVehicleSuspensionForceParams& force_params = active_vehicle->suspension_force_params[i];
-                float displacement = wheel_states[i].suspension_compression * active_dims.suspension_travel;
-                wheel_states[i].tire_load = PxMax(force_params.stiffness * displacement, 0.0f);
-            }
-            else
-            {
-                wheel_states[i].tire_load = 0.0f;
-            }
-        }
-        
-        // pass 4: calculate and apply tire forces (lateral + longitudinal with friction circle)
+        // pass 3: calculate and apply tire forces (lateral + longitudinal with friction circle)
+        // (Tire loads are already computed in pass 2)
         for (int i = 0; i < wheel_count; i++)
             calculate_tire_forces(i, body, wheel_angles[i], delta_time);
         
