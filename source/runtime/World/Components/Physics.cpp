@@ -937,8 +937,45 @@ namespace spartan
 
         m_wheel_radius = radius;
         
-        // also update the vehicle dimensions in the vehicle namespace
+        // update the wheel radius in vehicle dimensions (for physics contact calculations)
         car::active_dims.wheel_radius = radius;
+        
+        // recalculate and update body height based on actual wheel radius
+        // the physics body was initially created with default wheel_radius, so we need to adjust
+        if (!m_actors.empty() && m_actors[0])
+        {
+            PxRigidDynamic* body = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>();
+            if (body)
+            {
+                // calculate correct body height for this wheel radius
+                const float expected_compression = 0.35f;
+                const float expected_sag = expected_compression * car::active_dims.suspension_travel;
+                const float correct_body_height = radius + car::active_dims.suspension_height + expected_sag;
+                
+                // update body position with correct height
+                PxTransform pose = body->getGlobalPose();
+                pose.p.y = correct_body_height;
+                body->setGlobalPose(pose);
+                
+                // also update the physics wheel shape geometries to match the actual wheel radius
+                car::vehicle_data* vehicle = car::get_active_vehicle();
+                if (vehicle)
+                {
+                    for (int i = 0; i < static_cast<int>(car::wheel_count); i++)
+                    {
+                        PxShape* wheel_shape = vehicle->physx_actor.wheelShapes[i];
+                        if (wheel_shape)
+                        {
+                            // update capsule geometry with correct radius
+                            PxCapsuleGeometry new_geom(radius, car::active_dims.wheel_width * 0.5f);
+                            wheel_shape->setGeometry(new_geom);
+                        }
+                    }
+                }
+                
+                SP_LOG_INFO("SetWheelRadius: adjusted body height to %.3f and wheel shapes for radius %.3f", correct_body_height, radius);
+            }
+        }
         
         SP_LOG_INFO("SetWheelRadius: wheel radius set to %.3f", radius);
     }
@@ -959,28 +996,29 @@ namespace spartan
             return;
         }
 
-        // get the aabb and compute radius from it
-        // wheel radius is half the height (Y) or half the max of width/depth (X/Z)
-        // depending on wheel orientation - typically height for a wheel standing upright
+        // force bounding box update to reflect current entity transform (including scale)
+        // this is needed because the bounding box is lazily updated during Tick()
+        renderable->Tick();
+
+        // get the aabb - this is in world space (transformed by entity matrix including scale)
         BoundingBox aabb = renderable->GetBoundingBox();
-        Vector3 extents = aabb.GetExtents(); // half-sizes
+        Vector3 extents = aabb.GetExtents(); // half-sizes, already scaled
         
-        // for a wheel, the radius is typically the larger of X or Z extents
-        // (Y would be the wheel width/thickness)
-        // but this depends on the model's orientation - let's take the max of all axes
-        // and then account for the entity's scale
-        Vector3 scale = wheel_entity->GetScale();
-        float scaled_x = extents.x * scale.x;
-        float scaled_y = extents.y * scale.y;
-        float scaled_z = extents.z * scale.z;
-        
-        // the radius is the largest extent (wheels are usually symmetric)
-        float radius = max(max(scaled_x, scaled_y), scaled_z);
+        // the wheel radius is the largest extent (wheels are usually symmetric)
+        // for a wheel mesh, this gives us the actual visual radius
+        float radius = max(max(extents.x, extents.y), extents.z);
         
         SetWheelRadius(radius);
         
-        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f, scale: %.3f)", 
-            radius, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z, scale.x);
+        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)", 
+            radius, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z);
+    }
+
+    float Physics::GetSuspensionHeight() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::active_dims.suspension_height;
     }
 
     float Physics::GetVehicleThrottle() const
@@ -1023,6 +1061,34 @@ namespace spartan
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_wheel_suspension_force(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelSlipAngle(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_slip_angle(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelSlipRatio(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_slip_ratio(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelTireLoad(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_tire_load(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelLateralForce(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_lateral_force(static_cast<int>(wheel));
     }
 
     void Physics::UpdateWheelTransforms()
@@ -1255,9 +1321,12 @@ namespace spartan
                     m_actors[0] = vehicle_data->physx_actor.rigidBody;
                     m_actors_active.resize(1, true);
                     
-                    // set initial position
+                    // set initial position - use physics-calculated height for proper ground contact
+                    // the car::setup already calculated correct body height accounting for suspension sag
+                    // we just use entity's X and Z, but keep the physics Y
                     Vector3 pos = GetEntity()->GetPosition();
-                    vehicle_data->physx_actor.rigidBody->setGlobalPose(PxTransform(PxVec3(pos.x, pos.y, pos.z)));
+                    PxTransform current_pose = vehicle_data->physx_actor.rigidBody->getGlobalPose();
+                    vehicle_data->physx_actor.rigidBody->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
                     
                     // store user data for raycasts
                     vehicle_data->physx_actor.rigidBody->userData = reinterpret_cast<void*>(GetEntity());

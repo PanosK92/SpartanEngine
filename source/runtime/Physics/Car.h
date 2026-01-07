@@ -40,6 +40,28 @@ namespace car
     // vehicle2 api implementation for a basic 4-wheel vehicle
     using namespace physx;
     using namespace physx::vehicle2;
+
+    //=======================================================================================
+    // constants
+    //=======================================================================================
+    
+    // driving
+    inline constexpr float max_engine_force   = 15000.0f; // newtons
+    inline constexpr float max_brake_force    = 8000.0f;  // newtons
+    inline constexpr float input_smoothing    = 10.0f;    // throttle/brake response speed
+    inline constexpr float steering_smoothing = 20.0f;    // steering response speed
+
+    // tire model
+    inline constexpr float tire_friction_coeff = 1.0f;  // base friction coefficient (dry asphalt)
+    inline constexpr float min_speed_for_slip  = 0.5f;  // m/s, threshold for slip calculations
+    
+    // suspension
+    inline constexpr float anti_roll_stiffness   = 15000.0f; // n/m, prevents excessive body roll
+    inline constexpr float max_suspension_force  = 25000.0f; // n, prevents explosive forces on hard impacts
+
+    //=======================================================================================
+    // enums and types
+    //=======================================================================================
     
     // wheel indices for a standard 4-wheel vehicle
     enum wheel_id
@@ -50,19 +72,23 @@ namespace car
         rear_right  = 3,
         wheel_count = 4
     };
+
+    //=======================================================================================
+    // data structures
+    //=======================================================================================
     
     // default vehicle dimensions (in meters)
     struct vehicle_dimensions
     {
-        float chassis_length     = 4.5f;   // front to back
-        float chassis_width      = 2.0f;   // side to side
-        float chassis_height     = 0.5f;   // vertical
-        float chassis_mass       = 1500.0f;
-        float wheel_radius       = 0.35f;
-        float wheel_width        = 0.25f;
-        float wheel_mass         = 20.0f;
-        float suspension_travel  = 0.3f;
-        float suspension_height  = 0.4f;   // distance from chassis bottom to wheel center at rest
+        float chassis_length    = 4.5f;    // front to back
+        float chassis_width     = 2.0f;    // side to side
+        float chassis_height    = 0.5f;    // vertical
+        float chassis_mass      = 1500.0f;
+        float wheel_radius      = 0.35f;
+        float wheel_width       = 0.25f;
+        float wheel_mass        = 20.0f;
+        float suspension_travel = 0.3f;
+        float suspension_height = 0.4f;    // distance from chassis bottom to wheel center at rest
     };
     
     // vehicle data container
@@ -79,30 +105,77 @@ namespace car
         PxMaterial*                          material = nullptr;
     };
     
+    // driving parameters
+    struct drive_input
+    {
+        float throttle = 0.0f;  // 0 to 1
+        float brake    = 0.0f;  // 0 to 1
+        float steering = 0.0f;  // -1 to 1 (left to right)
+    };
+    
+    // suspension state per wheel
+    struct wheel_state
+    {
+        float suspension_compression = 0.0f; // 0 = fully extended, 1 = fully compressed
+        float previous_compression   = 0.0f; // for damping calculation
+        bool  is_grounded            = false;
+        PxVec3 contact_point         = PxVec3(0, 0, 0);
+        PxVec3 contact_normal        = PxVec3(0, 1, 0);
+        
+        // tire slip state (for pacejka model)
+        float slip_angle         = 0.0f; // radians, lateral slip
+        float slip_ratio         = 0.0f; // longitudinal slip (-1 to 1)
+        float tire_load          = 0.0f; // vertical load on tire (newtons)
+        float lateral_force      = 0.0f; // resulting lateral force
+        float longitudinal_force = 0.0f; // resulting longitudinal force
+    };
+
+    //=======================================================================================
+    // global state
+    //=======================================================================================
+    
+    inline static vehicle_data*       active_vehicle = nullptr;
+    inline static drive_input         current_input;
+    inline static drive_input         target_input;
+    inline static wheel_state         wheel_states[wheel_count];
+    inline static vehicle_dimensions  active_dims;
+
+    //=======================================================================================
+    // helper functions
+    //=======================================================================================
+    
+    // bounds check helper for wheel index
+    inline bool is_valid_wheel_index(int wheel_index)
+    {
+        return wheel_index >= 0 && wheel_index < wheel_count;
+    }
+
     // compute default wheel positions based on dimensions
     inline void compute_wheel_positions(const vehicle_dimensions& dims, PxVec3 out_positions[wheel_count])
     {
-        const float front_z = dims.chassis_length * 0.35f;   // front wheels slightly forward
-        const float rear_z  = -dims.chassis_length * 0.35f;  // rear wheels slightly back
+        const float front_z = dims.chassis_length * 0.35f;  // front wheels slightly forward
+        const float rear_z  = -dims.chassis_length * 0.35f; // rear wheels slightly back
         const float half_w  = dims.chassis_width * 0.5f - dims.wheel_width * 0.5f;
-        const float y       = -dims.suspension_height;       // below chassis
+        const float y       = -dims.suspension_height;      // below chassis
         
         out_positions[front_left]  = PxVec3(-half_w, y, front_z);
         out_positions[front_right] = PxVec3( half_w, y, front_z);
         out_positions[rear_left]   = PxVec3(-half_w, y, rear_z);
         out_positions[rear_right]  = PxVec3( half_w, y, rear_z);
     }
+
+    //=======================================================================================
+    // setup functions
+    //=======================================================================================
     
     // initialize axle description for 4 wheels (2 axles, 2 wheels each)
     inline void setup_axle_description(PxVehicleAxleDescription& axle_desc)
     {
         axle_desc.setToDefault();
         
-        // front axle: wheels 0 and 1
         const PxU32 front_wheels[] = { front_left, front_right };
         axle_desc.addAxle(2, front_wheels);
         
-        // rear axle: wheels 2 and 3
         const PxU32 rear_wheels[] = { rear_left, rear_right };
         axle_desc.addAxle(2, rear_wheels);
     }
@@ -147,10 +220,10 @@ namespace car
         {
             // suspension attachment is at the top of the suspension travel (max compression)
             PxVec3 attachment_pos = wheel_positions[i];
-            attachment_pos.y += dims.suspension_travel; // move up by travel distance
+            attachment_pos.y += dims.suspension_travel;
             
             suspension[i].suspensionAttachment = PxTransform(attachment_pos, PxQuat(PxIdentity));
-            suspension[i].suspensionTravelDir  = PxVec3(0.0f, -1.0f, 0.0f); // downward
+            suspension[i].suspensionTravelDir  = PxVec3(0.0f, -1.0f, 0.0f);
             suspension[i].suspensionTravelDist = dims.suspension_travel;
             suspension[i].wheelAttachment      = PxTransform(PxVec3(0, 0, 0), PxQuat(PxIdentity));
         }
@@ -163,7 +236,7 @@ namespace car
         const float front_sprung_mass = dims.chassis_mass * 0.55f * 0.5f; // 55% front
         const float rear_sprung_mass  = dims.chassis_mass * 0.45f * 0.5f; // 45% rear
         
-        // spring stiffness (natural frequency ~1.5 Hz for stable ride)
+        // spring stiffness (natural frequency ~1.5 hz for stable ride)
         // stiffness = sprung_mass * (2 * pi * freq)^2
         const float freq = 1.5f;
         const float omega_squared = (2.0f * PxPi * freq) * (2.0f * PxPi * freq);
@@ -199,22 +272,22 @@ namespace car
     inline void setup_tire_params(PxVehicleTireForceParams tires[wheel_count], const vehicle_dimensions& dims)
     {
         // rest load per tire (assumes level ground, even weight distribution for simplicity)
-        const float gravity = 9.81f;
+        const float gravity    = 9.81f;
         const float total_mass = dims.chassis_mass + dims.wheel_mass * static_cast<float>(wheel_count);
-        const float rest_load = (total_mass * gravity) / static_cast<float>(wheel_count);
+        const float rest_load  = (total_mass * gravity) / static_cast<float>(wheel_count);
         
         for (int i = 0; i < wheel_count; i++)
         {
-            tires[i].latStiffX    = 2.0f;                  // normalized load for max lat stiffness
-            tires[i].latStiffY    = rest_load * 2.0f;      // lateral stiffness at peak
-            tires[i].longStiff    = rest_load * 10.0f;     // longitudinal stiffness
-            tires[i].camberStiff  = 0.0f;                  // no camber effect for simplicity
-            tires[i].restLoad     = rest_load;
+            tires[i].latStiffX   = 2.0f;             // normalized load for max lat stiffness
+            tires[i].latStiffY   = rest_load * 2.0f; // lateral stiffness at peak
+            tires[i].longStiff   = rest_load * 10.0f;// longitudinal stiffness
+            tires[i].camberStiff = 0.0f;             // no camber effect for simplicity
+            tires[i].restLoad    = rest_load;
             
             // friction vs slip curve (typical road tire)
-            tires[i].frictionVsSlip[0][0] = 0.0f;   tires[i].frictionVsSlip[0][1] = 1.0f;   // at zero slip
-            tires[i].frictionVsSlip[1][0] = 0.1f;   tires[i].frictionVsSlip[1][1] = 1.1f;   // peak friction at ~10% slip
-            tires[i].frictionVsSlip[2][0] = 1.0f;   tires[i].frictionVsSlip[2][1] = 0.9f;   // sliding friction
+            tires[i].frictionVsSlip[0][0] = 0.0f;  tires[i].frictionVsSlip[0][1] = 1.0f;  // at zero slip
+            tires[i].frictionVsSlip[1][0] = 0.1f;  tires[i].frictionVsSlip[1][1] = 1.1f;  // peak friction at ~10% slip
+            tires[i].frictionVsSlip[2][0] = 1.0f;  tires[i].frictionVsSlip[2][1] = 0.9f;  // sliding friction
             
             // load filter (prevents excessive load variations)
             tires[i].loadFilter[0][0] = 0.0f;  tires[i].loadFilter[0][1] = 0.0f;
@@ -234,7 +307,15 @@ namespace car
             return false;
         
         // create rigid dynamic body
-        PxTransform initial_pose(PxVec3(0, dims.suspension_height + dims.chassis_height * 0.5f + dims.wheel_radius, 0));
+        // the suspension will compress under the car's weight (typically ~30-40% at rest)
+        // we need to account for this "sag" so wheels sit on ground at equilibrium
+        // expected_sag ≈ (weight per wheel) / stiffness ≈ compression_ratio * suspension_travel
+        const float expected_compression = 0.35f; // typical rest compression
+        const float expected_sag = expected_compression * dims.suspension_travel;
+        
+        // body height = wheel_radius (wheel touches ground) + suspension_height + sag compensation
+        const float body_height = dims.wheel_radius + dims.suspension_height + expected_sag;
+        PxTransform initial_pose(PxVec3(0, body_height, 0));
         PxRigidDynamic* rigid_body = physics->createRigidDynamic(initial_pose);
         if (!rigid_body)
         {
@@ -297,7 +378,7 @@ namespace car
         
         return true;
     }
-        
+    
     // main setup function: creates a basic 4-wheel vehicle
     inline vehicle_data* setup(PxPhysics* physics, PxScene* scene, const vehicle_dimensions* custom_dims = nullptr)
     {
@@ -382,14 +463,12 @@ namespace car
         if (!data)
             return;
         
-        // release physx actor
         if (data->physx_actor.rigidBody)
         {
             data->physx_actor.rigidBody->release();
             data->physx_actor.rigidBody = nullptr;
         }
         
-        // release material
         if (data->material)
         {
             data->material->release();
@@ -398,67 +477,32 @@ namespace car
         
         delete data;
     }
-    
-    // driving parameters
-    struct drive_input
-    {
-        float throttle = 0.0f;  // 0 to 1
-        float brake    = 0.0f;  // 0 to 1
-        float steering = 0.0f;  // -1 to 1 (left to right)
-    };
-    
-    // suspension state per wheel
-    struct wheel_state
-    {
-        float suspension_compression = 0.0f; // 0 = fully extended, 1 = fully compressed
-        float previous_compression   = 0.0f; // for damping calculation
-        bool  is_grounded            = false;
-        PxVec3 contact_point         = PxVec3(0, 0, 0);
-        PxVec3 contact_normal        = PxVec3(0, 1, 0);
-    };
-    
-    // active vehicle state
-    inline static vehicle_data* active_vehicle = nullptr;
-    inline static drive_input current_input;
-    inline static drive_input target_input;
-    inline static wheel_state wheel_states[wheel_count];
-    inline static vehicle_dimensions active_dims;
-    
-    // driving constants
-    const float max_engine_force    = 15000.0f;  // newtons
-    const float max_brake_force     = 8000.0f;   // newtons
-    const float input_smoothing     = 10.0f;     // throttle/brake response speed
-    const float steering_smoothing  = 20.0f;     // steering response speed (faster)
+
+    //=======================================================================================
+    // active vehicle management
+    //=======================================================================================
     
     inline void set_active_vehicle(vehicle_data* data, const vehicle_dimensions* dims = nullptr)
     {
         active_vehicle = data;
-        current_input = drive_input();
-        target_input = drive_input();
+        current_input  = drive_input();
+        target_input   = drive_input();
         
-        // reset wheel states
         for (int i = 0; i < wheel_count; i++)
-        {
             wheel_states[i] = wheel_state();
-        }
         
-        // store dimensions
-        if (dims)
-        {
-            active_dims = *dims;
-        }
-        else
-        {
-            active_dims = vehicle_dimensions();
-        }
+        active_dims = dims ? *dims : vehicle_dimensions();
     }
     
     inline vehicle_data* get_active_vehicle()
     {
         return active_vehicle;
     }
+
+    //=======================================================================================
+    // control input
+    //=======================================================================================
     
-    // control functions - call these from game code
     inline void set_throttle(float value)
     {
         target_input.throttle = PxClamp(value, 0.0f, 1.0f);
@@ -473,7 +517,11 @@ namespace car
     {
         target_input.steering = PxClamp(value, -1.0f, 1.0f);
     }
-        
+
+    //=======================================================================================
+    // suspension simulation
+    //=======================================================================================
+    
     // perform suspension raycast for a single wheel
     inline void update_wheel_suspension(int wheel_index, PxRigidDynamic* body, PxScene* scene, float delta_time)
     {
@@ -485,12 +533,11 @@ namespace car
         
         // transform wheel position to world space (at rest position)
         PxVec3 local_attach = wheel_positions[wheel_index];
-        local_attach.y += active_dims.suspension_travel; // attachment point is at top of suspension travel
+        local_attach.y += active_dims.suspension_travel;
         PxVec3 world_attach = pose.transform(local_attach);
         
         // raycast downward from attachment point (use world down, not local)
         PxVec3 ray_dir(0, -1, 0);
-        // use a longer ray to ensure we hit ground even when vehicle is high
         float ray_length = active_dims.suspension_travel * 3.0f + active_dims.wheel_radius * 2.0f + 5.0f;
         
         PxRaycastBuffer hit;
@@ -509,8 +556,8 @@ namespace car
                 float max_suspension_distance = active_dims.suspension_travel + active_dims.wheel_radius;
                 if (hit.block.distance <= max_suspension_distance)
                 {
-                    ws.is_grounded = true;
-                    ws.contact_point = hit.block.position;
+                    ws.is_grounded    = true;
+                    ws.contact_point  = hit.block.position;
                     ws.contact_normal = hit.block.normal;
                     
                     // calculate suspension compression
@@ -523,28 +570,22 @@ namespace car
                 else
                 {
                     // ground is too far for suspension, but we detected it
-                    ws.is_grounded = false;
+                    ws.is_grounded            = false;
                     ws.suspension_compression = 0.0f;
                 }
             }
             else
             {
-                ws.is_grounded = false;
+                ws.is_grounded            = false;
                 ws.suspension_compression = 0.0f;
             }
         }
         else
         {
-            ws.is_grounded = false;
+            ws.is_grounded            = false;
             ws.suspension_compression = 0.0f;
         }
     }
-    
-    // anti-roll bar stiffness (prevents excessive body roll)
-    inline constexpr float anti_roll_stiffness = 15000.0f; // N/m
-    
-    // maximum suspension force per wheel (prevents explosive forces on hard impacts)
-    inline constexpr float max_suspension_force = 25000.0f; // N
     
     // calculate suspension force for a single wheel (doesn't apply it)
     inline float calculate_wheel_force(int wheel_index, float delta_time)
@@ -554,7 +595,6 @@ namespace car
         if (!ws.is_grounded)
             return 0.0f;
         
-        // get suspension parameters for this wheel
         const PxVehicleSuspensionForceParams& force_params = active_vehicle->suspension_force_params[wheel_index];
         
         // spring force: F = stiffness * displacement
@@ -562,17 +602,13 @@ namespace car
         float spring_force = force_params.stiffness * displacement;
         
         // damper force: F = damping * velocity
-        // when compressing (velocity > 0), damper resists by adding upward force
-        // when extending (velocity < 0), damper resists by reducing upward force
         float compression_velocity = (ws.suspension_compression - ws.previous_compression) / delta_time;
-        compression_velocity = PxClamp(compression_velocity, -5.0f, 5.0f); // limit velocity to prevent spikes
+        compression_velocity = PxClamp(compression_velocity, -5.0f, 5.0f);
         float damper_force = force_params.damping * compression_velocity * active_dims.suspension_travel;
         
-        // total suspension force (spring + damper, both resist motion)
+        // total suspension force (spring + damper)
         float total_force = spring_force + damper_force;
-        total_force = PxClamp(total_force, 0.0f, max_suspension_force); // suspension can only push, with limit
-        
-        return total_force;
+        return PxClamp(total_force, 0.0f, max_suspension_force);
     }
     
     // apply all suspension forces with anti-roll bars
@@ -584,14 +620,12 @@ namespace car
         // calculate base suspension forces for all wheels
         float forces[wheel_count];
         for (int i = 0; i < wheel_count; i++)
-        {
             forces[i] = calculate_wheel_force(i, delta_time);
-        }
         
-        // anti-roll bar: front axle (couples FL and FR)
+        // anti-roll bar: front axle (couples fl and fr)
         {
             float compression_diff = wheel_states[front_left].suspension_compression - wheel_states[front_right].suspension_compression;
-            float anti_roll_force = compression_diff * anti_roll_stiffness * active_dims.suspension_travel;
+            float anti_roll_force  = compression_diff * anti_roll_stiffness * active_dims.suspension_travel;
             
             if (wheel_states[front_left].is_grounded)
                 forces[front_left] -= anti_roll_force;
@@ -599,10 +633,10 @@ namespace car
                 forces[front_right] += anti_roll_force;
         }
         
-        // anti-roll bar: rear axle (couples RL and RR)
+        // anti-roll bar: rear axle (couples rl and rr)
         {
             float compression_diff = wheel_states[rear_left].suspension_compression - wheel_states[rear_right].suspension_compression;
-            float anti_roll_force = compression_diff * anti_roll_stiffness * active_dims.suspension_travel;
+            float anti_roll_force  = compression_diff * anti_roll_stiffness * active_dims.suspension_travel;
             
             if (wheel_states[rear_left].is_grounded)
                 forces[rear_left] -= anti_roll_force;
@@ -610,37 +644,131 @@ namespace car
                 forces[rear_right] += anti_roll_force;
         }
         
-        // clamp final forces
-        for (int i = 0; i < wheel_count; i++)
-        {
-            forces[i] = PxClamp(forces[i], 0.0f, max_suspension_force);
-        }
-        
-        // apply forces at wheel positions
+        // clamp final forces and apply
         PxTransform pose = body->getGlobalPose();
         PxVec3 wheel_positions[wheel_count];
         compute_wheel_positions(active_dims, wheel_positions);
         
         for (int i = 0; i < wheel_count; i++)
         {
+            forces[i] = PxClamp(forces[i], 0.0f, max_suspension_force);
+            
             if (forces[i] > 0.0f && wheel_states[i].is_grounded)
             {
-                PxVec3 force_dir = wheel_states[i].contact_normal;
-                PxVec3 force_vec = force_dir * forces[i];
+                PxVec3 force_dir      = wheel_states[i].contact_normal;
+                PxVec3 force_vec      = force_dir * forces[i];
                 PxVec3 world_wheel_pos = pose.transform(wheel_positions[i]);
                 
                 PxRigidBodyExt::addForceAtPos(*body, force_vec, world_wheel_pos, PxForceMode::eFORCE);
             }
         }
     }
+
+    //=======================================================================================
+    // tire simulation
+    //=======================================================================================
     
-    // legacy single-wheel function (kept for compatibility, but use apply_suspension_forces instead)
-    inline void apply_wheel_forces(int wheel_index, PxRigidDynamic* body, float delta_time)
+    // calculate tire slip and forces for a single wheel (viscous + grip limit model)
+    inline void calculate_tire_forces(int wheel_index, PxRigidDynamic* body, float steering_angle)
     {
-        // now handled by apply_suspension_forces for proper anti-roll bar support
+        wheel_state& ws = wheel_states[wheel_index];
+        
+        if (!ws.is_grounded || ws.tire_load <= 0.0f)
+        {
+            ws.slip_angle         = 0.0f;
+            ws.slip_ratio         = 0.0f;
+            ws.lateral_force      = 0.0f;
+            ws.longitudinal_force = 0.0f;
+            return;
+        }
+        
+        PxTransform pose = body->getGlobalPose();
+        
+        // get velocity at wheel contact point (includes body rotation)
+        PxVec3 wheel_positions[wheel_count];
+        compute_wheel_positions(active_dims, wheel_positions);
+        PxVec3 world_wheel_pos = pose.transform(wheel_positions[wheel_index]);
+        
+        PxVec3 wheel_velocity = body->getLinearVelocity();
+        PxVec3 angular_vel    = body->getAngularVelocity();
+        PxVec3 r = world_wheel_pos - pose.p;
+        wheel_velocity += angular_vel.cross(r);
+        
+        // get wheel orientation (steering for front wheels)
+        float wheel_angle = 0.0f;
+        bool is_front     = (wheel_index == front_left || wheel_index == front_right);
+        if (is_front)
+            wheel_angle = steering_angle;
+        
+        // wheel direction vectors in world space
+        PxVec3 chassis_forward = pose.q.rotate(PxVec3(0, 0, 1));
+        PxVec3 chassis_right   = pose.q.rotate(PxVec3(1, 0, 0));
+        float cos_steer        = cosf(wheel_angle);
+        float sin_steer        = sinf(wheel_angle);
+        PxVec3 wheel_forward   = chassis_forward * cos_steer + chassis_right * sin_steer;
+        PxVec3 wheel_lateral   = chassis_right * cos_steer - chassis_forward * sin_steer;
+        
+        // project velocity onto ground plane
+        PxVec3 ground_velocity = wheel_velocity - ws.contact_normal * wheel_velocity.dot(ws.contact_normal);
+        
+        // get lateral and longitudinal velocity components
+        float vy = ground_velocity.dot(wheel_lateral);
+        float vx = ground_velocity.dot(wheel_forward);
+        
+        // store slip angle for display
+        ws.slip_angle = atan2f(vy, fabsf(vx) + 0.5f);
+        ws.slip_ratio = 0.0f;
+        
+        // lateral force: directly opposes lateral velocity (viscous damping model)
+        const float lateral_stiffness = 8000.0f;
+        float raw_force = -vy * lateral_stiffness;
+        
+        // clamp to grip limit (friction circle)
+        float max_force    = tire_friction_coeff * ws.tire_load;
+        ws.lateral_force   = PxClamp(raw_force, -max_force, max_force);
+        ws.longitudinal_force = 0.0f;
     }
     
-    // tick function to update vehicle physics (called from Physics::Tick)
+    // apply tire forces for all wheels
+    inline void apply_tire_forces(PxRigidDynamic* body, float steering_angle)
+    {
+        PxTransform pose = body->getGlobalPose();
+        PxVec3 wheel_positions[wheel_count];
+        compute_wheel_positions(active_dims, wheel_positions);
+        
+        PxVec3 chassis_forward = pose.q.rotate(PxVec3(0, 0, 1));
+        PxVec3 chassis_right   = pose.q.rotate(PxVec3(1, 0, 0));
+        
+        for (int i = 0; i < wheel_count; i++)
+        {
+            wheel_state& ws = wheel_states[i];
+            
+            if (!ws.is_grounded || ws.tire_load <= 0.0f)
+                continue;
+            
+            // get wheel orientation
+            float wheel_angle = 0.0f;
+            bool is_front     = (i == front_left || i == front_right);
+            if (is_front)
+                wheel_angle = steering_angle;
+            
+            // wheel lateral direction
+            float cos_steer      = cosf(wheel_angle);
+            float sin_steer      = sinf(wheel_angle);
+            PxVec3 wheel_lateral = chassis_right * cos_steer - chassis_forward * sin_steer;
+            
+            // apply lateral force
+            PxVec3 tire_force      = wheel_lateral * ws.lateral_force;
+            PxVec3 world_wheel_pos = pose.transform(wheel_positions[i]);
+            PxRigidBodyExt::addForceAtPos(*body, tire_force, world_wheel_pos, PxForceMode::eFORCE);
+        }
+    }
+
+    //=======================================================================================
+    // main update
+    //=======================================================================================
+    
+    // tick function to update vehicle physics (called from physics::tick)
     inline void tick(float delta_time)
     {
         if (!active_vehicle || !active_vehicle->physx_actor.rigidBody)
@@ -659,21 +787,17 @@ namespace car
         
         // get vehicle's local directions
         PxTransform pose = body->getGlobalPose();
-        PxVec3 forward = pose.q.rotate(PxVec3(0, 0, 1));  // z is forward
-        PxVec3 right   = pose.q.rotate(PxVec3(1, 0, 0));  // x is right
-        PxVec3 up      = PxVec3(0, 1, 0);                 // world up
+        PxVec3 forward   = pose.q.rotate(PxVec3(0, 0, 1));
+        PxVec3 right     = pose.q.rotate(PxVec3(1, 0, 0));
         
         // get current velocity info
-        PxVec3 velocity = body->getLinearVelocity();
-        float forward_speed = velocity.dot(forward);
-        float lateral_speed = velocity.dot(right);
-        float speed = velocity.magnitude();
-        
-        // convert to km/h for intuitive tuning
-        float speed_kmh = speed * 3.6f;
+        PxVec3 velocity       = body->getLinearVelocity();
+        float forward_speed   = velocity.dot(forward);
+        float speed           = velocity.magnitude();
+        float speed_kmh       = speed * 3.6f;
         float forward_speed_kmh = forward_speed * 3.6f;
         
-        // apply driving force (forward) - with speed-dependent reduction for realistic top speed
+        // apply driving force
         if (current_input.throttle > 0.01f)
         {
             // reduce power at high speeds (simulates air resistance and engine power curve)
@@ -701,49 +825,19 @@ namespace car
             {
                 // stopped or reversing - apply reverse thrust (max ~60 km/h reverse)
                 float reverse_speed_kmh = -forward_speed_kmh;
-                float reverse_power = 1.0f - PxClamp(reverse_speed_kmh / 60.0f, 0.0f, 0.9f);
-                PxVec3 reverse_force = -forward * max_engine_force * 0.8f * current_input.brake * reverse_power;
+                float reverse_power     = 1.0f - PxClamp(reverse_speed_kmh / 60.0f, 0.0f, 0.9f);
+                PxVec3 reverse_force    = -forward * max_engine_force * 0.8f * current_input.brake * reverse_power;
                 body->addForce(reverse_force, PxForceMode::eFORCE);
             }
         }
         
-        // steering - requires some forward motion to turn (prevents spinning in place)
-        if (fabsf(current_input.steering) > 0.01f)
-        {
-            float abs_speed_kmh = fabsf(forward_speed_kmh);
-            
-            // need at least 2 km/h to steer at all
-            if (abs_speed_kmh > 2.0f)
-            {
-                float base_steer_torque = 40000.0f;
-                
-                // steering ramps up from 2 km/h to 10 km/h, then reduces at high speeds
-                float speed_factor = 1.0f;
-                if (abs_speed_kmh < 10.0f)
-                {
-                    // ramp up: 0.3 at 2 km/h, 1.0 at 10 km/h
-                    speed_factor = 0.3f + 0.7f * (abs_speed_kmh - 2.0f) / 8.0f;
-                }
-                else if (abs_speed_kmh > 80.0f)
-                {
-                    // reduce at high speeds to prevent sudden spins
-                    speed_factor = 1.0f - 0.5f * PxClamp((abs_speed_kmh - 80.0f) / 100.0f, 0.0f, 1.0f);
-                }
-                
-                float steer_torque = current_input.steering * base_steer_torque * speed_factor;
-                
-                // invert steering when reversing
-                if (forward_speed < 0.0f)
-                    steer_torque = -steer_torque;
-                
-                body->addTorque(up * steer_torque, PxForceMode::eFORCE);
-            }
-        }
+        // steering angle (speed-dependent reduction at high speeds)
+        const float max_steering_angle = 35.0f * (PxPi / 180.0f);
+        float steering_reduction = 1.0f;
+        if (speed_kmh > 60.0f)
+            steering_reduction = 1.0f - 0.6f * PxClamp((speed_kmh - 60.0f) / 140.0f, 0.0f, 1.0f);
         
-        // lateral friction - prevents sliding sideways (tire grip)
-        float lateral_friction_coeff = 6000.0f;
-        PxVec3 lateral_friction = -right * lateral_speed * lateral_friction_coeff;
-        body->addForce(lateral_friction, PxForceMode::eFORCE);
+        float steering_angle = current_input.steering * max_steering_angle * steering_reduction;
         
         // rolling resistance (small constant drag)
         if (speed > 0.5f)
@@ -756,26 +850,48 @@ namespace car
         PxVec3 gravity(0.0f, -9.81f * active_vehicle->rigid_body_params.mass, 0.0f);
         body->addForce(gravity, PxForceMode::eFORCE);
         
-        // low linear damping for higher top speed, higher angular damping for stability
-        body->setLinearDamping(0.1f);
-        body->setAngularDamping(3.0f);
+        // low damping - tire forces handle most of the vehicle dynamics
+        body->setLinearDamping(0.05f);
+        body->setAngularDamping(0.5f);
         
-        // suspension simulation - update wheel states then apply all forces together
+        // suspension and tire simulation
         PxScene* scene = body->getScene();
-        if (scene)
+        if (!scene)
+            return;
+        
+        // pass 1: update all wheel states (raycasts)
+        for (int i = 0; i < wheel_count; i++)
+            update_wheel_suspension(i, body, scene, delta_time);
+        
+        // pass 2: apply suspension forces with anti-roll bars
+        apply_suspension_forces(body, delta_time);
+        
+        // pass 3: calculate tire loads from suspension
+        for (int i = 0; i < wheel_count; i++)
         {
-            // first pass: update all wheel states (raycasts)
-            for (int i = 0; i < wheel_count; i++)
+            if (wheel_states[i].is_grounded)
             {
-                update_wheel_suspension(i, body, scene, delta_time);
+                const PxVehicleSuspensionForceParams& force_params = active_vehicle->suspension_force_params[i];
+                float displacement = wheel_states[i].suspension_compression * active_dims.suspension_travel;
+                wheel_states[i].tire_load = PxMax(force_params.stiffness * displacement, 0.0f);
             }
-            
-            // second pass: apply forces with anti-roll bars
-            apply_suspension_forces(body, delta_time);
+            else
+            {
+                wheel_states[i].tire_load = 0.0f;
+            }
         }
+        
+        // pass 4: calculate and apply tire forces
+        for (int i = 0; i < wheel_count; i++)
+            calculate_tire_forces(i, body, steering_angle);
+        
+        apply_tire_forces(body, steering_angle);
     }
+
+    //=======================================================================================
+    // accessors (state queries)
+    //=======================================================================================
     
-    // get current speed for display
     inline float get_speed_kmh()
     {
         if (!active_vehicle || !active_vehicle->physx_actor.rigidBody)
@@ -785,59 +901,27 @@ namespace car
         if (!body)
             return 0.0f;
         
-        PxVec3 velocity = body->getLinearVelocity();
-        float speed_ms = velocity.magnitude();
-        return speed_ms * 3.6f; // m/s to km/h
+        return body->getLinearVelocity().magnitude() * 3.6f;
     }
     
-    // get current steering for display
-    inline float get_steering()
-    {
-        return current_input.steering;
-    }
+    inline float get_steering()           { return current_input.steering; }
+    inline float get_throttle()           { return current_input.throttle; }
+    inline float get_brake()              { return current_input.brake;    }
+    inline float get_suspension_travel()  { return active_dims.suspension_travel; }
     
-    // get suspension compression for a wheel (0 = extended, 1 = compressed)
     inline float get_wheel_compression(int wheel_index)
     {
-        if (wheel_index >= 0 && wheel_index < wheel_count)
-        {
-            return wheel_states[wheel_index].suspension_compression;
-        }
-        return 0.0f;
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].suspension_compression : 0.0f;
     }
     
-    // check if wheel is grounded
     inline bool is_wheel_grounded(int wheel_index)
     {
-        if (wheel_index >= 0 && wheel_index < wheel_count)
-        {
-            return wheel_states[wheel_index].is_grounded;
-        }
-        return false;
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].is_grounded : false;
     }
     
-    // get suspension travel distance
-    inline float get_suspension_travel()
-    {
-        return active_dims.suspension_travel;
-    }
-    
-    // get current throttle input (0-1)
-    inline float get_throttle()
-    {
-        return current_input.throttle;
-    }
-    
-    // get current brake input (0-1)
-    inline float get_brake()
-    {
-        return current_input.brake;
-    }
-    
-    // get suspension force for a wheel (newtons)
     inline float get_wheel_suspension_force(int wheel_index)
     {
-        if (wheel_index < 0 || wheel_index >= wheel_count || !active_vehicle)
+        if (!is_valid_wheel_index(wheel_index) || !active_vehicle)
             return 0.0f;
         
         const wheel_state& ws = wheel_states[wheel_index];
@@ -845,16 +929,32 @@ namespace car
             return 0.0f;
         
         const PxVehicleSuspensionForceParams& force_params = active_vehicle->suspension_force_params[wheel_index];
-        float spring_force = force_params.stiffness * ws.suspension_compression * active_dims.suspension_travel;
-        return spring_force;
+        return force_params.stiffness * ws.suspension_compression * active_dims.suspension_travel;
     }
     
-    // get wheel name for display
     inline const char* get_wheel_name(int wheel_index)
     {
         static const char* names[] = { "FL", "FR", "RL", "RR" };
-        if (wheel_index >= 0 && wheel_index < wheel_count)
-            return names[wheel_index];
-        return "??";
+        return is_valid_wheel_index(wheel_index) ? names[wheel_index] : "??";
+    }
+    
+    inline float get_wheel_slip_angle(int wheel_index)
+    {
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].slip_angle : 0.0f;
+    }
+    
+    inline float get_wheel_slip_ratio(int wheel_index)
+    {
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].slip_ratio : 0.0f;
+    }
+    
+    inline float get_wheel_tire_load(int wheel_index)
+    {
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].tire_load : 0.0f;
+    }
+    
+    inline float get_wheel_lateral_force(int wheel_index)
+    {
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].lateral_force : 0.0f;
     }
 }

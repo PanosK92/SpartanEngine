@@ -1762,11 +1762,18 @@ namespace spartan
                 // load wheel and create 4 instances for the vehicle
                 if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend"))
                 {
-                    Entity* wheel_base = mesh->GetRootEntity()->GetChildByIndex(0);
-                    wheel_base->SetScale(0.1f);
+                    Entity* wheel_root = mesh->GetRootEntity();
+                    Entity* wheel_base = wheel_root->GetChildByIndex(0);
                     if (wheel_base)
                     {
-                        // set material on the base wheel
+                        // remove and delete parent - makes all math simpler down the line
+                        wheel_base->SetParent(nullptr);
+                        World::RemoveEntity(wheel_root);
+                        
+                        // scale to fit the car
+                        wheel_base->SetScale(0.2f);
+
+                        // set material
                         if (Renderable* renderable = wheel_base->GetComponent<Renderable>())
                         {
                             Material* material = renderable->GetMaterial();
@@ -1776,11 +1783,18 @@ namespace spartan
                             material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
                         }
 
-                        // wheel positions relative to vehicle (laferrari dimensions)
-                        const float wheel_x = 0.95f;  // half width
-                        const float wheel_y = 0.35f;  // height from ground
-                        const float front_z = 1.45f;  // front axle position
-                        const float rear_z  = -1.35f; // rear axle position
+                        // compute wheel radius from the now-standalone entity
+                        physics->ComputeWheelRadiusFromEntity(wheel_base);
+                        const float wheel_radius = physics->GetWheelRadius();
+
+                        // wheel positions relative to vehicle body center (laferrari dimensions)
+                        // physics wheel shapes are at Y = -suspension_height relative to body center
+                        // the visual wheel mesh has its origin at the center of the rim, matching the physics shape center
+                        const float suspension_height = physics->GetSuspensionHeight();
+                        const float wheel_x = 0.95f;
+                        const float wheel_y = -suspension_height;
+                        const float front_z = 1.45f;
+                        const float rear_z  = -1.35f;
 
                         // front left wheel (use the base)
                         Entity* wheel_fl = wheel_base;
@@ -1813,9 +1827,6 @@ namespace spartan
                         physics->SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
                         physics->SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
                         physics->SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
-                        
-                        // compute wheel radius from the actual wheel mesh
-                        physics->ComputeWheelRadiusFromEntity(wheel_fl);
                     }
                 }
 
@@ -1868,7 +1879,7 @@ namespace spartan
                 y_pos += line_spacing * 1.5f;
                 
                 // per-wheel metrics
-                Renderer::DrawString("Wheel Metrics:", Vector2(0.005f, y_pos));
+                Renderer::DrawString("Wheel Metrics (Pacejka Tire Model):", Vector2(0.005f, y_pos));
                 y_pos += line_spacing;
                 
                 const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
@@ -1876,14 +1887,16 @@ namespace spartan
                 {
                     WheelIndex wheel = static_cast<WheelIndex>(i);
                     bool grounded = physics->IsWheelGrounded(wheel);
-                    float compression = physics->GetWheelCompression(wheel) * 100.0f;
-                    float force_kn = physics->GetWheelSuspensionForce(wheel) / 1000.0f;
+                    float slip_deg = physics->GetWheelSlipAngle(wheel) * 57.2958f; // rad to deg
+                    float lat_force_kn = physics->GetWheelLateralForce(wheel) / 1000.0f;
+                    float load_kn = physics->GetWheelTireLoad(wheel) / 1000.0f;
                     
-                    snprintf(text_buffer, sizeof(text_buffer), "  %s: %s  Comp: %.0f%%  Force: %.1f kN",
+                    snprintf(text_buffer, sizeof(text_buffer), "  %s: %s  Slip: %+5.1f deg  Lat: %+5.1f kN  Load: %.1f kN",
                         wheel_names[i],
                         grounded ? "GND" : "AIR",
-                        compression,
-                        force_kn);
+                        slip_deg,
+                        lat_force_kn,
+                        load_kn);
                     Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
                     y_pos += line_spacing;
                 }
