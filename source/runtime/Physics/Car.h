@@ -46,18 +46,29 @@ namespace car
     //=======================================================================================
     
     // driving
-    inline constexpr float max_engine_force   = 15000.0f; // newtons
-    inline constexpr float max_brake_force    = 8000.0f;  // newtons
+    inline constexpr float max_engine_force   = 15000.0f; // newtons (peak torque ~250nm at wheel with 0.35m radius)
+    inline constexpr float max_brake_force    = 8000.0f;  // newtons per wheel
+    inline constexpr float brake_bias_front   = 0.6f;     // 60% front, 40% rear (typical for fwd/rwd)
     inline constexpr float input_smoothing    = 10.0f;    // throttle/brake response speed
     inline constexpr float steering_smoothing = 20.0f;    // steering response speed
 
     // tire model
-    inline constexpr float tire_friction_coeff = 1.0f;  // base friction coefficient (dry asphalt)
-    inline constexpr float min_speed_for_slip  = 0.5f;  // m/s, threshold for slip calculations
+    inline constexpr float tire_friction_coeff = 1.0f;     // base friction coefficient (dry asphalt ~1.0)
+    inline constexpr float min_speed_for_slip  = 0.5f;     // m/s, threshold for slip calculations
     
-    // suspension
-    inline constexpr float anti_roll_stiffness   = 15000.0f; // n/m, prevents excessive body roll
-    inline constexpr float max_suspension_force  = 25000.0f; // n, prevents explosive forces on hard impacts
+    // suspension - anti-roll bars control understeer/oversteer balance
+    // softer front + stiffer rear = less understeer
+    inline constexpr float front_anti_roll_stiffness = 8000.0f;  // n/m, soft front = more front grip
+    inline constexpr float rear_anti_roll_stiffness  = 20000.0f; // n/m, stiff rear = less rear grip = car rotates
+    inline constexpr float max_suspension_force      = 25000.0f; // n, prevents explosive forces on hard impacts
+    inline constexpr float front_suspension_freq     = 1.5f;     // hz
+    inline constexpr float rear_suspension_freq      = 1.8f;     // hz
+    
+    // aerodynamics
+    inline constexpr float drag_coefficient     = 0.35f;   // cd, typical sedan 0.30-0.35, sports 0.28-0.32
+    inline constexpr float frontal_area         = 2.2f;    // m², typical sedan ~2.0-2.4
+    inline constexpr float air_density          = 1.225f;  // kg/m³ at sea level
+    inline constexpr float rolling_resistance_coeff = 0.015f; // typical tire on asphalt 0.010-0.020
 
     //=======================================================================================
     // enums and types
@@ -185,15 +196,26 @@ namespace car
     {
         params.mass = dims.chassis_mass;
         
-        // approximate moment of inertia for a box
+        // moment of inertia calculation
+        // real cars have mass distributed differently than a uniform box:
+        // - mass concentrated low (engine, drivetrain)
+        // - mass spread along length (passengers, fuel tank)
+        // we use empirical multipliers based on real vehicle data
         const float w = dims.chassis_width;
         const float h = dims.chassis_height;
         const float l = dims.chassis_length;
         const float m = dims.chassis_mass;
+        
+        // base box inertia
+        float ixx = (m / 12.0f) * (h * h + l * l); // roll
+        float iyy = (m / 12.0f) * (w * w + l * l); // yaw
+        float izz = (m / 12.0f) * (w * w + h * h); // pitch
+        
+        // empirical adjustments - slightly reduced yaw for responsive steering
         params.moi = PxVec3(
-            (m / 12.0f) * (h * h + l * l),  // around x axis
-            (m / 12.0f) * (w * w + l * l),  // around y axis (yaw)
-            (m / 12.0f) * (w * w + h * h)   // around z axis
+            ixx * 1.0f,  // roll
+            iyy * 1.0f,  // yaw - normal
+            izz * 1.0f   // pitch
         );
     }
     
@@ -202,11 +224,20 @@ namespace car
     {
         for (int i = 0; i < wheel_count; i++)
         {
-            wheels[i].radius      = dims.wheel_radius;
-            wheels[i].halfWidth   = dims.wheel_width * 0.5f;
-            wheels[i].mass        = dims.wheel_mass;
-            wheels[i].moi         = 0.5f * dims.wheel_mass * dims.wheel_radius * dims.wheel_radius;
-            wheels[i].dampingRate = 0.25f;
+            wheels[i].radius    = dims.wheel_radius;
+            wheels[i].halfWidth = dims.wheel_width * 0.5f;
+            wheels[i].mass      = dims.wheel_mass;
+            
+            // moment of inertia for a solid cylinder: I = 0.5 * m * r^2
+            // wheels are more like rings (tire has mass at outer edge), so use ~0.8 factor
+            wheels[i].moi = 0.8f * dims.wheel_mass * dims.wheel_radius * dims.wheel_radius;
+            
+            // damping rate - how quickly wheel rotation decays without drive/brake
+            // this simulates bearing friction and drag
+            // front wheels (non-driven in rwd) have less damping
+            // rear wheels (driven) have slight engine braking effect
+            const bool is_front = (i == front_left || i == front_right);
+            wheels[i].dampingRate = is_front ? 0.15f : 0.25f;
         }
     }
     
@@ -232,27 +263,38 @@ namespace car
     // initialize suspension force parameters
     inline void setup_suspension_force_params(PxVehicleSuspensionForceParams force[wheel_count], const vehicle_dimensions& dims)
     {
-        // sprung mass per wheel (total mass divided roughly by 4, slightly biased)
-        const float front_sprung_mass = dims.chassis_mass * 0.55f * 0.5f; // 55% front
-        const float rear_sprung_mass  = dims.chassis_mass * 0.45f * 0.5f; // 45% rear
+        // sprung mass per wheel - weight distribution affects handling:
+        // - front heavy = understeer, rear heavy = oversteer
+        // using 50/50 for neutral balance (sports car like)
+        const float front_weight_bias = 0.50f;
+        const float front_sprung_mass = dims.chassis_mass * front_weight_bias * 0.5f;
+        const float rear_sprung_mass  = dims.chassis_mass * (1.0f - front_weight_bias) * 0.5f;
         
-        // spring stiffness (natural frequency ~1.5 hz for stable ride)
-        // stiffness = sprung_mass * (2 * pi * freq)^2
-        const float freq = 1.5f;
-        const float omega_squared = (2.0f * PxPi * freq) * (2.0f * PxPi * freq);
+        // spring stiffness: k = m * (2 * pi * f)^2
+        // different frequencies front vs rear creates handling balance:
+        // - softer front = more grip during braking, better turn-in
+        // - stiffer rear = more stable, less oversteer on exit
+        const float front_omega_sq = (2.0f * PxPi * front_suspension_freq) * (2.0f * PxPi * front_suspension_freq);
+        const float rear_omega_sq  = (2.0f * PxPi * rear_suspension_freq) * (2.0f * PxPi * rear_suspension_freq);
         
-        // damping ratio ~0.6 for critically damped (stable, minimal oscillation)
-        // real cars are 0.2-0.4 but games need higher for stability
-        const float damping_ratio = 0.6f;
+        // damping ratio: 1.0 = critically damped (no oscillation)
+        // real cars: 0.2-0.4 (comfort), 0.5-0.7 (sport), 0.8+ (race)
+        // we use different ratios: higher compression, lower rebound for better control
+        const float damping_ratio_compression = 0.4f; // bump absorption
+        const float damping_ratio_rebound     = 0.5f; // return speed
+        const float avg_damping_ratio = (damping_ratio_compression + damping_ratio_rebound) * 0.5f;
         
         for (int i = 0; i < wheel_count; i++)
         {
             const bool is_front = (i == front_left || i == front_right);
             const float sprung_mass = is_front ? front_sprung_mass : rear_sprung_mass;
+            const float omega_sq = is_front ? front_omega_sq : rear_omega_sq;
             
             force[i].sprungMass = sprung_mass;
-            force[i].stiffness  = sprung_mass * omega_squared;
-            force[i].damping    = 2.0f * damping_ratio * sqrtf(force[i].stiffness * sprung_mass);
+            force[i].stiffness  = sprung_mass * omega_sq;
+            
+            // critical damping: c = 2 * sqrt(k * m), then multiply by ratio
+            force[i].damping = 2.0f * avg_damping_ratio * sqrtf(force[i].stiffness * sprung_mass);
         }
     }
     
@@ -271,27 +313,45 @@ namespace car
     // initialize tire force parameters
     inline void setup_tire_params(PxVehicleTireForceParams tires[wheel_count], const vehicle_dimensions& dims)
     {
-        // rest load per tire (assumes level ground, even weight distribution for simplicity)
+        // rest load per tire (assumes level ground, 50/50 weight distribution)
         const float gravity    = 9.81f;
         const float total_mass = dims.chassis_mass + dims.wheel_mass * static_cast<float>(wheel_count);
-        const float rest_load  = (total_mass * gravity) / static_cast<float>(wheel_count);
+        const float front_load = (total_mass * gravity * 0.50f) / 2.0f; // 50% front
+        const float rear_load  = (total_mass * gravity * 0.50f) / 2.0f; // 50% rear
         
         for (int i = 0; i < wheel_count; i++)
         {
-            tires[i].latStiffX   = 2.0f;             // normalized load for max lat stiffness
-            tires[i].latStiffY   = rest_load * 2.0f; // lateral stiffness at peak
-            tires[i].longStiff   = rest_load * 10.0f;// longitudinal stiffness
-            tires[i].camberStiff = 0.0f;             // no camber effect for simplicity
+            const bool is_front = (i == front_left || i == front_right);
+            const float rest_load = is_front ? front_load : rear_load;
+            
+            // lateral stiffness: how quickly lateral force builds with slip angle
+            // real tires: ~150-300 n per degree per 1000n load
+            // latStiffX = normalized load at which stiffness saturates
+            // latStiffY = max lateral stiffness (n/rad at rest load)
+            tires[i].latStiffX   = 2.0f;
+            tires[i].latStiffY   = 200.0f * (180.0f / PxPi) * (rest_load / 1000.0f); // ~200 n/deg cornering stiffness
+            
+            // longitudinal stiffness: resistance to wheel spin/lockup
+            // typically 5-15x lateral stiffness
+            tires[i].longStiff   = tires[i].latStiffY * 8.0f;
+            
+            // camber thrust (force from tire lean) - simplified to zero
+            tires[i].camberStiff = 0.0f;
             tires[i].restLoad    = rest_load;
             
-            // friction vs slip curve (typical road tire)
-            tires[i].frictionVsSlip[0][0] = 0.0f;  tires[i].frictionVsSlip[0][1] = 1.0f;  // at zero slip
-            tires[i].frictionVsSlip[1][0] = 0.1f;  tires[i].frictionVsSlip[1][1] = 1.1f;  // peak friction at ~10% slip
-            tires[i].frictionVsSlip[2][0] = 1.0f;  tires[i].frictionVsSlip[2][1] = 0.9f;  // sliding friction
+            // friction vs slip curve - models tire behavior from grip to slide
+            // based on real tire data: peak grip at ~8-12% slip, then drops to sliding friction
+            // [0] = at zero slip: friction starts at 1.0 (linear region)
+            // [1] = at peak slip (~8 deg or ~0.14 rad): friction peaks at 1.05 (slight overshoot)
+            // [2] = full slide: friction drops to 0.85-0.90 (sliding/kinetic friction)
+            tires[i].frictionVsSlip[0][0] = 0.0f;    tires[i].frictionVsSlip[0][1] = 1.0f;
+            tires[i].frictionVsSlip[1][0] = 0.14f;   tires[i].frictionVsSlip[1][1] = 1.05f;
+            tires[i].frictionVsSlip[2][0] = 1.0f;    tires[i].frictionVsSlip[2][1] = 0.85f;
             
-            // load filter (prevents excessive load variations)
-            tires[i].loadFilter[0][0] = 0.0f;  tires[i].loadFilter[0][1] = 0.0f;
-            tires[i].loadFilter[1][0] = 3.0f;  tires[i].loadFilter[1][1] = 3.0f;
+            // load filter: prevents unrealistic spikes in tire load
+            // [0] = min load multiplier, [1] = max load multiplier
+            tires[i].loadFilter[0][0] = 0.0f;  tires[i].loadFilter[0][1] = 0.2f;  // min 20% at zero load
+            tires[i].loadFilter[1][0] = 3.0f;  tires[i].loadFilter[1][1] = 2.5f;  // max 250% at 3x load
         }
     }
     
@@ -623,25 +683,27 @@ namespace car
             forces[i] = calculate_wheel_force(i, delta_time);
         
         // anti-roll bar: front axle (couples fl and fr)
+        // softer front anti-roll = more front grip in corners = less understeer
         {
             float compression_diff = wheel_states[front_left].suspension_compression - wheel_states[front_right].suspension_compression;
-            float anti_roll_force  = compression_diff * anti_roll_stiffness * active_dims.suspension_travel;
+            float anti_roll_force  = compression_diff * front_anti_roll_stiffness * active_dims.suspension_travel;
             
             if (wheel_states[front_left].is_grounded)
-                forces[front_left] -= anti_roll_force;
+                forces[front_left] += anti_roll_force;
             if (wheel_states[front_right].is_grounded)
-                forces[front_right] += anti_roll_force;
+                forces[front_right] -= anti_roll_force;
         }
         
         // anti-roll bar: rear axle (couples rl and rr)
+        // stiffer rear anti-roll = less rear grip in corners = promotes rotation
         {
             float compression_diff = wheel_states[rear_left].suspension_compression - wheel_states[rear_right].suspension_compression;
-            float anti_roll_force  = compression_diff * anti_roll_stiffness * active_dims.suspension_travel;
+            float anti_roll_force  = compression_diff * rear_anti_roll_stiffness * active_dims.suspension_travel;
             
             if (wheel_states[rear_left].is_grounded)
-                forces[rear_left] -= anti_roll_force;
+                forces[rear_left] += anti_roll_force;
             if (wheel_states[rear_right].is_grounded)
-                forces[rear_right] += anti_roll_force;
+                forces[rear_right] -= anti_roll_force;
         }
         
         // clamp final forces and apply
@@ -668,7 +730,32 @@ namespace car
     // tire simulation
     //=======================================================================================
     
-    // calculate tire slip and forces for a single wheel (viscous + grip limit model)
+    // simplified pacejka-like tire model
+    // returns normalized force (0-1) for a given slip value
+    inline float tire_force_curve(float slip, float peak_slip, float peak_force, float slide_force)
+    {
+        // piecewise linear approximation of pacejka magic formula
+        // - linear rise to peak at peak_slip
+        // - gradual decline to sliding friction beyond peak
+        float abs_slip = fabsf(slip);
+        float sign = slip >= 0.0f ? 1.0f : -1.0f;
+        
+        if (abs_slip < peak_slip)
+        {
+            // linear region: force rises with slip
+            return sign * (abs_slip / peak_slip) * peak_force;
+        }
+        else
+        {
+            // saturation region: force declines toward sliding friction
+            float excess = abs_slip - peak_slip;
+            float decay = expf(-excess * 0.5f); // smooth exponential decay
+            float force = slide_force + (peak_force - slide_force) * decay;
+            return sign * force;
+        }
+    }
+    
+    // calculate tire slip and forces for a single wheel using slip-angle model
     inline void calculate_tire_forces(int wheel_index, PxRigidDynamic* body, float steering_angle)
     {
         wheel_state& ws = wheel_states[wheel_index];
@@ -696,7 +783,7 @@ namespace car
         
         // get wheel orientation (steering for front wheels)
         float wheel_angle = 0.0f;
-        bool is_front     = (wheel_index == front_left || wheel_index == front_right);
+        bool is_front = (wheel_index == front_left || wheel_index == front_right);
         if (is_front)
             wheel_angle = steering_angle;
         
@@ -708,25 +795,45 @@ namespace car
         PxVec3 wheel_forward   = chassis_forward * cos_steer + chassis_right * sin_steer;
         PxVec3 wheel_lateral   = chassis_right * cos_steer - chassis_forward * sin_steer;
         
-        // project velocity onto ground plane
+        // project velocity onto ground plane (contact patch plane)
         PxVec3 ground_velocity = wheel_velocity - ws.contact_normal * wheel_velocity.dot(ws.contact_normal);
+        float ground_speed = ground_velocity.magnitude();
         
         // get lateral and longitudinal velocity components
-        float vy = ground_velocity.dot(wheel_lateral);
-        float vx = ground_velocity.dot(wheel_forward);
+        float vy = ground_velocity.dot(wheel_lateral);   // lateral velocity (side slip)
+        float vx = ground_velocity.dot(wheel_forward);   // longitudinal velocity
         
-        // store slip angle for display
-        ws.slip_angle = atan2f(vy, fabsf(vx) + 0.5f);
-        ws.slip_ratio = 0.0f;
+        // calculate slip angle (angle between wheel heading and travel direction)
+        // slip angle is what generates lateral force in real tires
+        if (ground_speed > min_speed_for_slip)
+        {
+            // proper slip angle: arctan(vy/vx)
+            // positive slip angle = wheel pointing more inward than travel direction
+            ws.slip_angle = atan2f(vy, fabsf(vx) + 0.1f);
+        }
+        else
+        {
+            // at very low speeds, use velocity-proportional model to avoid instability
+            ws.slip_angle = vy * 0.5f; // small angle approximation
+        }
         
-        // lateral force: directly opposes lateral velocity (viscous damping model)
-        const float lateral_stiffness = 8000.0f;
-        float raw_force = -vy * lateral_stiffness;
+        // simple viscous tire model: force opposes lateral velocity
+        // this is stable and predictable - the force directly fights sideways motion
+        float max_lateral_force = tire_friction_coeff * ws.tire_load;
         
-        // clamp to grip limit (friction circle)
-        float max_force    = tire_friction_coeff * ws.tire_load;
-        ws.lateral_force   = PxClamp(raw_force, -max_force, max_force);
-        ws.longitudinal_force = 0.0f;
+        // lateral stiffness scales with tire load for realistic feel
+        float lateral_stiffness = 12000.0f * (ws.tire_load / 4000.0f);
+        lateral_stiffness = PxClamp(lateral_stiffness, 4000.0f, 20000.0f);
+        
+        // force = -stiffness * lateral_velocity, clamped to grip limit
+        float raw_lateral_force = -vy * lateral_stiffness;
+        ws.lateral_force = PxClamp(raw_lateral_force, -max_lateral_force, max_lateral_force);
+        
+        // slip ratio for longitudinal forces (acceleration/braking)
+        // slip ratio = (wheel_speed - ground_speed) / max(wheel_speed, ground_speed)
+        // for now we don't track wheel angular velocity, so estimate from throttle/brake
+        ws.slip_ratio = 0.0f; // will be set by drive force application
+        ws.longitudinal_force = 0.0f; // drive forces handled separately in tick()
     }
     
     // apply tire forces for all wheels
@@ -791,58 +898,122 @@ namespace car
         PxVec3 right     = pose.q.rotate(PxVec3(1, 0, 0));
         
         // get current velocity info
-        PxVec3 velocity       = body->getLinearVelocity();
-        float forward_speed   = velocity.dot(forward);
-        float speed           = velocity.magnitude();
-        float speed_kmh       = speed * 3.6f;
+        PxVec3 velocity         = body->getLinearVelocity();
+        float forward_speed     = velocity.dot(forward);
+        float speed             = velocity.magnitude();
+        float speed_kmh         = speed * 3.6f;
         float forward_speed_kmh = forward_speed * 3.6f;
         
-        // apply driving force
+        // wheel positions for force application
+        PxVec3 wheel_positions[wheel_count];
+        compute_wheel_positions(active_dims, wheel_positions);
+        
+        // apply driving force at rear wheels (rwd) for proper weight transfer
+        // weight transfers to rear under acceleration, giving rear wheels more grip
         if (current_input.throttle > 0.01f)
         {
-            // reduce power at high speeds (simulates air resistance and engine power curve)
+            // engine power curve: peak torque at mid rpm, falls off at high rpm
+            // approximated as power reduction at high speeds
             float power_factor = 1.0f - PxClamp(speed_kmh / 250.0f, 0.0f, 0.85f);
-            PxVec3 drive_force = forward * max_engine_force * current_input.throttle * power_factor;
-            body->addForce(drive_force, PxForceMode::eFORCE);
+            float drive_force_magnitude = max_engine_force * current_input.throttle * power_factor;
+            
+            // distribute to rear wheels (for rwd - adjust for fwd/awd as needed)
+            // only apply force if wheel is grounded
+            for (int i = rear_left; i <= rear_right; i++)
+            {
+                if (wheel_states[i].is_grounded && wheel_states[i].tire_load > 0.0f)
+                {
+                    PxVec3 force_per_wheel = forward * (drive_force_magnitude * 0.5f);
+                    PxVec3 world_pos = pose.transform(wheel_positions[i]);
+                    PxRigidBodyExt::addForceAtPos(*body, force_per_wheel, world_pos, PxForceMode::eFORCE);
+                }
+            }
         }
         
-        // apply braking/reverse
+        // apply braking at all wheels with front bias for stability
+        // weight transfers forward under braking, front wheels get more grip
         if (current_input.brake > 0.01f)
         {
-            if (forward_speed_kmh > 5.0f)
+            if (forward_speed_kmh > 3.0f)
             {
-                // moving forward, apply brakes
-                PxVec3 brake_force = -forward * max_brake_force * current_input.brake;
-                body->addForce(brake_force, PxForceMode::eFORCE);
-            }
-            else if (forward_speed_kmh > 1.0f)
-            {
-                // moving forward slowly, stronger brakes to stop completely
-                PxVec3 brake_force = -forward * max_brake_force * 1.5f * current_input.brake;
-                body->addForce(brake_force, PxForceMode::eFORCE);
+                // moving forward: apply brakes with front bias
+                float total_brake = max_brake_force * current_input.brake;
+                float front_brake = total_brake * brake_bias_front * 0.5f;
+                float rear_brake  = total_brake * (1.0f - brake_bias_front) * 0.5f;
+                
+                // front wheels
+                for (int i = front_left; i <= front_right; i++)
+                {
+                    if (wheel_states[i].is_grounded)
+                    {
+                        PxVec3 brake_force = -forward * front_brake;
+                        PxVec3 world_pos = pose.transform(wheel_positions[i]);
+                        PxRigidBodyExt::addForceAtPos(*body, brake_force, world_pos, PxForceMode::eFORCE);
+                    }
+                }
+                // rear wheels
+                for (int i = rear_left; i <= rear_right; i++)
+                {
+                    if (wheel_states[i].is_grounded)
+                    {
+                        PxVec3 brake_force = -forward * rear_brake;
+                        PxVec3 world_pos = pose.transform(wheel_positions[i]);
+                        PxRigidBodyExt::addForceAtPos(*body, brake_force, world_pos, PxForceMode::eFORCE);
+                    }
+                }
             }
             else
             {
-                // stopped or reversing - apply reverse thrust (max ~60 km/h reverse)
-                float reverse_speed_kmh = -forward_speed_kmh;
-                float reverse_power     = 1.0f - PxClamp(reverse_speed_kmh / 60.0f, 0.0f, 0.9f);
-                PxVec3 reverse_force    = -forward * max_engine_force * 0.8f * current_input.brake * reverse_power;
-                body->addForce(reverse_force, PxForceMode::eFORCE);
+                // stopped or already reversing: apply reverse thrust (max ~50 km/h reverse)
+                float reverse_speed_kmh = PxMax(-forward_speed_kmh, 0.0f);
+                float reverse_power = 1.0f - PxClamp(reverse_speed_kmh / 50.0f, 0.0f, 0.9f);
+                float reverse_force = max_engine_force * 0.5f * current_input.brake * reverse_power;
+                
+                // apply at rear wheels
+                for (int i = rear_left; i <= rear_right; i++)
+                {
+                    if (wheel_states[i].is_grounded)
+                    {
+                        PxVec3 force = -forward * (reverse_force * 0.5f);
+                        PxVec3 world_pos = pose.transform(wheel_positions[i]);
+                        PxRigidBodyExt::addForceAtPos(*body, force, world_pos, PxForceMode::eFORCE);
+                    }
+                }
             }
         }
         
-        // steering angle (speed-dependent reduction at high speeds)
-        const float max_steering_angle = 35.0f * (PxPi / 180.0f);
+        // steering angle - minimal speed reduction for responsive handling
+        const float max_steering_angle = 40.0f * (PxPi / 180.0f);
         float steering_reduction = 1.0f;
-        if (speed_kmh > 60.0f)
-            steering_reduction = 1.0f - 0.6f * PxClamp((speed_kmh - 60.0f) / 140.0f, 0.0f, 1.0f);
-        
+        if (speed_kmh > 80.0f)
+        {
+            // gentle reduction: 100% at 80km/h down to 70% at 200km/h
+            steering_reduction = 1.0f - 0.3f * PxClamp((speed_kmh - 80.0f) / 120.0f, 0.0f, 1.0f);
+        }
         float steering_angle = current_input.steering * max_steering_angle * steering_reduction;
         
-        // rolling resistance (small constant drag)
-        if (speed > 0.5f)
+        // aerodynamic drag: f = 0.5 * rho * cd * a * v^2
+        // this is the correct physics formula for air resistance
+        if (speed > 1.0f)
         {
-            PxVec3 rolling_resistance = -velocity.getNormalized() * 300.0f;
+            float drag_force = 0.5f * air_density * drag_coefficient * frontal_area * speed * speed;
+            PxVec3 drag = -velocity.getNormalized() * drag_force;
+            body->addForce(drag, PxForceMode::eFORCE);
+        }
+        
+        // rolling resistance: proportional to normal load (weight on tires)
+        // f = crr * n, where n is normal force
+        float total_tire_load = 0.0f;
+        for (int i = 0; i < wheel_count; i++)
+        {
+            if (wheel_states[i].is_grounded)
+                total_tire_load += wheel_states[i].tire_load;
+        }
+        
+        if (speed > 0.1f && total_tire_load > 0.0f)
+        {
+            float rolling_force = rolling_resistance_coeff * total_tire_load;
+            PxVec3 rolling_resistance = -velocity.getNormalized() * rolling_force;
             body->addForce(rolling_resistance, PxForceMode::eFORCE);
         }
         
@@ -850,9 +1021,9 @@ namespace car
         PxVec3 gravity(0.0f, -9.81f * active_vehicle->rigid_body_params.mass, 0.0f);
         body->addForce(gravity, PxForceMode::eFORCE);
         
-        // low damping - tire forces handle most of the vehicle dynamics
+        // minimal damping - tire forces handle vehicle dynamics
         body->setLinearDamping(0.05f);
-        body->setAngularDamping(0.5f);
+        body->setAngularDamping(0.3f);
         
         // suspension and tire simulation
         PxScene* scene = body->getScene();
@@ -866,7 +1037,8 @@ namespace car
         // pass 2: apply suspension forces with anti-roll bars
         apply_suspension_forces(body, delta_time);
         
-        // pass 3: calculate tire loads from suspension
+        // pass 3: calculate tire loads from suspension compression
+        // this creates proper weight transfer during accel/braking/cornering
         for (int i = 0; i < wheel_count; i++)
         {
             if (wheel_states[i].is_grounded)
@@ -881,7 +1053,7 @@ namespace car
             }
         }
         
-        // pass 4: calculate and apply tire forces
+        // pass 4: calculate and apply tire lateral forces (cornering)
         for (int i = 0; i < wheel_count; i++)
             calculate_tire_forces(i, body, steering_angle);
         
