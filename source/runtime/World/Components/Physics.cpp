@@ -1113,6 +1113,34 @@ namespace spartan
         return fabsf(angular_vel) * 9.5493f;
     }
 
+    float Physics::GetWheelTemperature(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_temperature(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelLoadTransfer(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_load_transfer(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelEffectiveLoad(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_effective_load(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelTempGripFactor(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 1.0f;
+        return car::get_wheel_temp_grip_factor(static_cast<int>(wheel));
+    }
+
     void Physics::UpdateWheelTransforms()
     {
         if (m_body_type != BodyType::Vehicle || !Engine::IsFlagSet(EngineMode::Playing))

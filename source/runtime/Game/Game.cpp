@@ -1915,7 +1915,7 @@ namespace spartan
                 // per-wheel metrics header
                 Renderer::DrawString("Tire Physics:", Vector2(0.005f, y_pos));
                 y_pos += line_spacing;
-                Renderer::DrawString("       GND   Slip Angle   Slip Ratio   Lat Force   Long Force   Load", Vector2(0.005f, y_pos));
+                Renderer::DrawString("       GND   Slip Angle   Slip Ratio   Lat Force   Long Force   Load    Transfer", Vector2(0.005f, y_pos));
                 y_pos += line_spacing;
                 
                 const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
@@ -1928,15 +1928,57 @@ namespace spartan
                     float lat_force_kn  = physics->GetWheelLateralForce(wheel) / 1000.0f;
                     float long_force_kn = physics->GetWheelLongitudinalForce(wheel) / 1000.0f;
                     float load_kn       = physics->GetWheelTireLoad(wheel) / 1000.0f;
+                    float transfer_kn   = physics->GetWheelLoadTransfer(wheel) / 1000.0f;
                     
-                    snprintf(text_buffer, sizeof(text_buffer), "  %s:  %s   %+6.1f deg   %+6.1f %%    %+5.1f kN    %+5.1f kN   %.1f kN",
+                    snprintf(text_buffer, sizeof(text_buffer), "  %s:  %s   %+6.1f deg   %+6.1f %%    %+5.1f kN    %+5.1f kN   %.1f kN  %+.1f kN",
                         wheel_names[i],
                         grounded ? "YES" : " - ",
                         slip_angle,
                         slip_ratio,
                         lat_force_kn,
                         long_force_kn,
-                        load_kn);
+                        load_kn,
+                        transfer_kn);
+                    Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
+                    y_pos += line_spacing;
+                }
+                
+                // tire temperature and grip
+                y_pos += line_spacing * 0.5f;
+                Renderer::DrawString("Tire Temperature:", Vector2(0.005f, y_pos));
+                y_pos += line_spacing;
+                for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+                {
+                    WheelIndex wheel = static_cast<WheelIndex>(i);
+                    float temp        = physics->GetWheelTemperature(wheel);
+                    float grip_factor = physics->GetWheelTempGripFactor(wheel);
+                    
+                    // temperature bar: cold (blue) < optimal (green) < hot (red)
+                    // optimal is around 90c, range is +/- 30c
+                    int bar_len = static_cast<int>((temp / 150.0f) * 20.0f);
+                    bar_len = bar_len > 20 ? 20 : (bar_len < 0 ? 0 : bar_len);
+                    
+                    char bar[32];
+                    for (int j = 0; j < 20; j++)
+                    {
+                        if (j < bar_len)
+                        {
+                            // cold < 60, optimal 60-120, hot > 120
+                            float bar_temp = (j / 20.0f) * 150.0f;
+                            if (bar_temp < 60.0f)
+                                bar[j] = '-';       // cold
+                            else if (bar_temp < 120.0f)
+                                bar[j] = '=';       // optimal range
+                            else
+                                bar[j] = '+';       // hot
+                        }
+                        else
+                            bar[j] = '.';
+                    }
+                    bar[20] = '\0';
+                    
+                    snprintf(text_buffer, sizeof(text_buffer), "  %s: [%s] %3.0fC  Grip: %.0f%%",
+                        wheel_names[i], bar, temp, grip_factor * 100.0f);
                     Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
                     y_pos += line_spacing;
                 }
