@@ -1732,7 +1732,6 @@ namespace spartan
 
             void create()
             {
-                 Renderer::SetOption(Renderer_Option::PerformanceMetrics, 1.0f);
                 entities::camera(false, Vector3(0.0f, 5.0f, -15.0f), Vector3(5.0f, 0.0f, 0.0f));
                 entities::sun(LightPreset::dusk, true);
                 entities::floor();
@@ -1755,7 +1754,7 @@ namespace spartan
                 if (default_car)
                 {
                     default_car->SetParent(vehicle_entity);
-                    default_car->SetPositionLocal(Vector3(0.0f, 0.0f, 0.0f));
+                    default_car->SetPositionLocal(Vector3(0.0f, -0.65f, 0.0f)); // adjust chassis to match the physics
                     default_car->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f)); // rotate 90 degrees around X to face forward
                     default_car->SetScaleLocal(1.0f);
                 }
@@ -1922,7 +1921,8 @@ namespace spartan
                 {
                     WheelIndex wheel = static_cast<WheelIndex>(i);
                     float compression = physics->GetWheelCompression(wheel);
-                    int bar_len = static_cast<int>(compression * 20.0f);
+                    // invert: show fewer bars when compressed (spring is shorter)
+                    int bar_len = static_cast<int>((1.0f - compression) * 20.0f);
                     bar_len = bar_len > 20 ? 20 : bar_len;
                     
                     char bar[32];
