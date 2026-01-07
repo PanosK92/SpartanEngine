@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -207,10 +207,11 @@ void RenderOptions::OnVisible()
     {
         display_modes.clear();
         display_modes_string.clear();
-
         for (const DisplayMode& display_mode : Display::GetDisplayModes())
         {
-            if (display_mode.hz == Display::GetRefreshRate())
+            // only include resolutions that match the monitor's current refresh rate (with tolerance for floating-point quirks like 240 vs 239.8 Hz)
+            // quirks like that can exist for NVIDIA for example, but not for AMD, so it's important to be safe like that
+            if (fabs(display_mode.hz - Display::GetRefreshRate()) < 0.1f)
             {
                 display_modes.emplace_back(display_mode);
                 display_modes_string.emplace_back(to_string(display_mode.width) + "x" + to_string(display_mode.height));
@@ -319,17 +320,12 @@ void RenderOptions::OnTickVisible()
                     ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr));
                     option_value("Gamma", Renderer_Option::Gamma);
                     ImGui::EndDisabled();
-                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation");
-
-                    bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
-                    ImGui::BeginDisabled(!hdr_enabled);
-                    option_value("White point (nits)", Renderer_Option::WhitePoint, "Target luminance of peak white", 1.0f);
-                    ImGui::EndDisabled();
+                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation", 0.1f, -1.0f);
                 }
 
                 if (option("Tone Mapping"))
                 {
-                    static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Off" };
+                    static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Gran Turismo 7", "Off" };
                     uint32_t index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
                     if (option_combo_box("Algorithm", tonemapping, index))
                     {

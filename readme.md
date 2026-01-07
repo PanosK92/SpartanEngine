@@ -78,6 +78,7 @@ The Forest is the most advanced and demanding world. It features **256 million**
   - Auto-exposure
   - Physical light units (lumens & kelvin)
   - Frustum & occlusion (Hi-Z) culling
+  - Gran Turismo 7 tonemapper as a default for photometric color accuracy.
 - Post-processing
   - Tonemappers: ACES, AgX, others
   - HDR10 output

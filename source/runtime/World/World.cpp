@@ -1,5 +1,5 @@
-﻿/*
-Copyright(c) 2015-2025 Panos Karabelas
+/*
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -398,10 +398,6 @@ namespace spartan
             world_time::tick();
             Game::Tick();
         }
-        else
-        {
-            Game::EditorTick();
-        }
     }
 
     bool World::SaveToFile(string file_path)
@@ -742,5 +738,14 @@ namespace spartan
     float World::GetTimeOfDay(bool use_real_world_time)
     {
         return world_time::get_time_of_day(use_real_world_time);
+    }
+
+    void World::SetTimeOfDay(float time_of_day)
+    {
+        if (time_of_day < 0.0f)
+            time_of_day = 0.0f;
+        else if (time_of_day > 1.0f)
+            time_of_day = 1.0f;
+        world_time::time_of_day = time_of_day;
     }
 }

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,8 @@ using namespace spartan::math;
 
 namespace
 {
+    int resource_search_count = 0;
+
     void print_memory(uint64_t memory)
     {
         if (memory == 0)
@@ -48,6 +50,33 @@ namespace
             ImGui::Text("%.1f Mb", static_cast<float>(memory) / 1000.0f / 1000.0f);
         }
     }
+
+    bool contains_search_ignore_case(const char* cstr_haystack, const char* cstr_needle)
+    {
+        string_view str_h = cstr_haystack;
+        string_view str_n = cstr_needle;
+
+        const auto it = ranges::search(str_h, str_n,
+                                 [](unsigned char a, unsigned char b)
+                                 {
+                                     return std::tolower(a) == std::tolower(b);
+                                 }).begin();
+
+        return it != str_h.end();
+    }
+
+    bool is_resource_searched(IResource* resource, const char* cstr_needle)
+    {
+        if (const SpartanObject* object = dynamic_cast<SpartanObject*>(resource))
+        {
+            return contains_search_ignore_case(resource->GetResourceTypeCstr(), cstr_needle)
+                    || contains_search_ignore_case(to_string(object->GetObjectId()).c_str(), cstr_needle)
+                    || contains_search_ignore_case(object->GetObjectName().c_str(), cstr_needle)
+                    || contains_search_ignore_case(resource->GetResourceFilePath().c_str(), cstr_needle);
+        }
+
+        return false;
+    }
 }
 
 ResourceViewer::ResourceViewer(Editor* editor) : Widget(editor)
@@ -61,7 +90,16 @@ void ResourceViewer::OnTickVisible()
     auto resources = ResourceCache::GetResources();
     const float memory_usage = ResourceCache::GetMemoryUsage() / 1000.0f / 1000.0f;
 
-    ImGui::Text("Resource count: %d, Memory usage: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage));
+    ImGui::Text("Resource count in scene: %d, Memory usage: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage));
+    ImGui::Separator();
+    static char search_buffer[128] = "";
+    ImGui::InputTextWithHint("##resource_viewer_search", "Search by type, ID, name or path in case insensitive format", search_buffer, IM_ARRAYSIZE(search_buffer));
+    if (search_buffer[0] != '\0')
+    {
+        ImGui::SameLine();
+        ImGui::Text("%d result%s", resource_search_count, resource_search_count > 1 ? "s" : "");
+        resource_search_count = 0;
+    }
     ImGui::Separator();
 
     static ImGuiTableFlags flags =
@@ -132,6 +170,14 @@ void ResourceViewer::OnTickVisible()
         {
             if (const SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
             {
+                if (search_buffer[0] != '\0')
+                {
+                    if (!is_resource_searched(resource.get(), search_buffer))
+                        continue;
+
+                    resource_search_count++;
+                }
+
                 // Switch row
                 ImGui::TableNextRow();
 

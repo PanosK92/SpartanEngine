@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -123,11 +123,6 @@ float4x4 compose_instance_transform(min16float instance_position_x, min16float i
     );
 }
 
-float3 extract_position(matrix transform)
-{
-    return float3(transform._31, transform._32, transform._33);
-}
-
 float3x3 rotation_matrix(float3 axis, float angle)
 {
     float c = cos(angle);
@@ -228,7 +223,7 @@ struct vertex_processing
             float vertex_phase   = (position_world.x + position_world.z) * 0.05f;
 
             // horizontal sway: sine wave modulated by wind gusts
-            float wind_phase      = time * sway_frequency + instance_phase;
+            float wind_phase    = time * sway_frequency + instance_phase;
             float horizontal_wave = sin(wind_phase + vertex_phase) * 0.5f;
     
             // apply gust modulation: low-frequency noise varies intensity 0.7x-1.0x
@@ -258,12 +253,20 @@ struct vertex_processing
             // update normals and tangents to reflect bending
             float3 vertical_offset = float3(0.0f, vertical_offset_y, 0.0f);
             float3 total_offset    = horizontal_offset + vertical_offset;
-            float bend_amount      = length(total_offset) * 0.5f * height_factor;
-            float3 bend_dir        = normalize(total_offset);
-            vertex.normal         += bend_dir * bend_amount;
-            vertex.normal          = normalize(vertex.normal);
-            vertex.tangent        += bend_dir * bend_amount * 0.5f;
-            vertex.tangent         = normalize(vertex.tangent);
+            
+            // check squared length to prevent division by zero (NaN) when offset is near zero
+            float offset_sq = dot(total_offset, total_offset);   
+            if (offset_sq > 0.000001f)
+            {
+                float bend_amount = sqrt(offset_sq) * 0.5f * height_factor;
+                float3 bend_dir   = total_offset * rsqrt(offset_sq); // optimized normalize
+                
+                vertex.normal    += bend_dir * bend_amount;
+                vertex.normal     = normalize(vertex.normal);
+                
+                vertex.tangent   += bend_dir * bend_amount * 0.5f;
+                vertex.tangent    = normalize(vertex.tangent);
+            }
         }
     }
 };

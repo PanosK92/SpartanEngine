@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -97,7 +97,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // initialize output accumulators
     float3 out_diffuse    = 0.0f;
     float3 out_specular   = 0.0f;
-    float  out_shadow     = 1.0f;
     float3 out_volumetric = 0.0f;
 
     // pre-compute common terms (alpha and occlusion)
@@ -188,13 +187,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // accumulate into output buffers
         out_diffuse    += write_diffuse;
         out_specular   += write_specular;
-        out_shadow     *= write_shadow;  // multiply shadows (all lights must be unshadowed)
         out_volumetric += write_volumetric;
     }
 
     // write results to output buffers
     tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,    1.0f));
     tex_uav2[thread_id.xy] = validate_output(float4(out_specular,   1.0f));
-    tex_uav3[thread_id.xy] = validate_output(out_shadow);
-    tex_uav4[thread_id.xy] = validate_output(float4(out_volumetric, 1.0f));
+    tex_uav3[thread_id.xy] = validate_output(float4(out_volumetric, 1.0f));
 }

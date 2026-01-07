@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -92,6 +92,7 @@ namespace spartan
         uint32_t m_image_index   = 0;
         uint32_t semaphore_index = 0;
         void* m_sdl_window       = nullptr;
+        subscription_handle m_window_resize_event_handle;
         std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_image_acquired_semaphore;
 
         // rhi

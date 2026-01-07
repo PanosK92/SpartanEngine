@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,7 +8,7 @@ to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
 
-The abofe copyright notice and this permission notice shall be included in
+The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -163,10 +163,17 @@ struct Light
 
     float compute_attenuation_distance(const float3 surface_position)
     {
-        float distance_to_pixel = length(surface_position - position);
-        float attenuation       = saturate(1.0f - distance_to_pixel / far);
-
-        return attenuation * attenuation;
+        float d = length(surface_position - position);
+        
+        // 1. Physically correct Inverse Square Law
+        // We add a small epsilon (0.0001) to prevent division by zero at the light source
+        float attenuation_phys = 1.0f / (d * d + 0.0001f);
+    
+        // 2. Windowing function (Forces light to 0 at 'far' distance)
+        float distance_falloff  = saturate(1.0f - d / far);
+        distance_falloff       *= distance_falloff; // square it for smoother fade
+    
+        return attenuation_phys * distance_falloff;
     }
 
     float compute_attenuation_angle()

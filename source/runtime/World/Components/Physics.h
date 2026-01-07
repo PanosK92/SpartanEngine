@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -47,13 +47,18 @@ namespace spartan
         Capsule,
         Mesh,
         Controller,
+        Vehicle,
         Max
     };
 
-    struct PhysicsBodyMeshData
+    // wheel indices for vehicles
+    enum class WheelIndex
     {
-        std::vector<uint32_t> indices;
-        std::vector<RHI_Vertex_PosTexNorTan> vertices;
+        FrontLeft  = 0,
+        FrontRight = 1,
+        RearLeft   = 2,
+        RearRight  = 3,
+        Count      = 4
     };
 
     class Physics : public Component
@@ -68,6 +73,9 @@ namespace spartan
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
+        
+        // static cleanup (call before physics world shutdown)
+        static void Shutdown();
 
         // mass
         constexpr static inline float mass_from_volume = FLT_MAX;
@@ -131,7 +139,48 @@ namespace spartan
         void Move(const math::Vector3& offset);
         void Crouch(const bool crouch);
 
+        // vehicle controls (only works when body type is Vehicle)
+        void SetVehicleThrottle(float value);   // 0 to 1
+        void SetVehicleBrake(float value);      // 0 to 1
+        void SetVehicleSteering(float value);   // -1 (left) to 1 (right)
+        void SetVehicleHandbrake(float value);  // 0 to 1 (locks rear wheels for drifting)
+
+        // vehicle wheel entities (visual meshes that rotate with physics)
+        void SetWheelEntity(WheelIndex wheel, Entity* entity);
+        Entity* GetWheelEntity(WheelIndex wheel) const;
+        
+        // vehicle chassis entity (visual body that bounces on suspension)
+        void SetChassisEntity(Entity* entity);
+        Entity* GetChassisEntity() const { return m_chassis_entity; }
+        
+        // vehicle wheel radius (used for spin calculation and physics)
+        void SetWheelRadius(float radius);
+        float GetWheelRadius() const { return m_wheel_radius; }
+        float GetSuspensionHeight() const; // distance from body center to wheel center
+        void ComputeWheelRadiusFromEntity(Entity* wheel_entity); // auto-compute from mesh AABB
+        
+        // vehicle metrics (read-only, for display/debugging)
+        float GetVehicleThrottle() const;
+        float GetVehicleBrake() const;
+        float GetVehicleSteering() const;
+        float GetVehicleHandbrake() const;
+        bool IsWheelGrounded(WheelIndex wheel) const;
+        float GetWheelCompression(WheelIndex wheel) const;
+        float GetWheelSuspensionForce(WheelIndex wheel) const;
+        float GetWheelSlipAngle(WheelIndex wheel) const;
+        float GetWheelSlipRatio(WheelIndex wheel) const;
+        float GetWheelTireLoad(WheelIndex wheel) const;
+        float GetWheelLateralForce(WheelIndex wheel) const;
+        float GetWheelLongitudinalForce(WheelIndex wheel) const;
+        float GetWheelAngularVelocity(WheelIndex wheel) const;  // rad/s
+        float GetWheelRPM(WheelIndex wheel) const;              // revolutions per minute
+        float GetWheelTemperature(WheelIndex wheel) const;      // celsius
+        float GetWheelLoadTransfer(WheelIndex wheel) const;     // newtons
+        float GetWheelEffectiveLoad(WheelIndex wheel) const;    // tire_load + load_transfer
+        float GetWheelTempGripFactor(WheelIndex wheel) const;   // 0.85-1.0 multiplier
+
     private:
+        void UpdateWheelTransforms();
         void Create();
         void CreateBodies();
 
@@ -146,12 +195,21 @@ namespace spartan
         math::Vector3 m_center_of_mass = math::Vector3::Zero;
         math::Vector3 m_velocity       = math::Vector3::Zero;
         BodyType m_body_type           = BodyType::Max;
-        uint32_t terrain_width         = 0;
-        uint32_t terrain_length        = 0;
-        void* m_controller             = nullptr;
-        void* m_material               = nullptr;
-        void* m_mesh                   = nullptr;
-        std::vector<void*> m_actors    = { nullptr };
-        std::vector<PhysicsBodyMeshData> m_mesh_data;
+        void* m_controller               = nullptr;
+        void* m_material                 = nullptr;
+        void* m_mesh                     = nullptr;
+        std::vector<void*> m_actors      = { nullptr };
+        std::vector<bool> m_actors_active; // tracks which actors are currently in the scene (for distance-based activation)
+
+        // vehicle wheel entities and state
+        Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
+        float m_wheel_rotation = 0.0f; // cumulative wheel spin rotation (radians)
+        float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
+        float m_wheel_mesh_center_offset_y = 0.0f; // offset from entity origin to mesh center (for non-centered meshes)
+        
+        // vehicle chassis entity and suspension state
+        Entity* m_chassis_entity          = nullptr;
+        math::Vector3 m_chassis_base_pos  = math::Vector3::Zero; // base local position of chassis
+        float m_chassis_suspension_offset = 0.0f;                // current suspension offset (smoothed)
     };
 }
