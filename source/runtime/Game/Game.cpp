@@ -1761,8 +1761,8 @@ namespace spartan
                 if (default_car)
                 {
                     default_car->SetParent(vehicle_entity);
-                    default_car->SetPositionLocal(Vector3(0.0f, -0.65f, 0.0f)); // adjust chassis to match the physics
-                    default_car->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f)); // rotate 90 degrees around X to face forward
+                    default_car->SetPositionLocal(Vector3(0.0f, ::car::get_chassis_visual_offset_y(), 0.0f));
+                    default_car->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f)); // rotate 90 degrees around x to face forward
                     default_car->SetScaleLocal(1.0f);
                 }
 
@@ -1800,11 +1800,13 @@ namespace spartan
                         // set material
                         if (Renderable* renderable = wheel_base->GetComponent<Renderable>())
                         {
-                            Material* material = renderable->GetMaterial();
+                            shared_ptr<Material> material = make_shared<Material>();
                             material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
                             material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
                             material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
                             material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
+                            material->SetResourceName("tire" + string(EXTENSION_MATERIAL));
+                            renderable->SetMaterial(material);
                         }
 
                         // compute wheel radius from the now-standalone entity
