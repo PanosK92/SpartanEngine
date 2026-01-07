@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -57,6 +57,15 @@ namespace spartan
         custom           // custom intensity
     };
 
+    enum class LightPreset
+    {
+        dawn,   // sunrise - early morning with warm orange glow
+        day,    // bright midday sun - direct sunlight at peak intensity
+        dusk,   // sunset - evening with warm golden tones
+        night,  // nighttime with soft moonlight
+        custom  // custom settings
+    };
+
     enum LightFlags : uint32_t
     {
         Shadows            = 1U << 0,
@@ -100,9 +109,9 @@ namespace spartan
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt() const;
 
-        // bias
-        static float GetBias()            { return -0.0007f; }
-        static float GetBiasSlopeScaled() { return -1.2f; }
+        // preset
+        void SetPreset(const LightPreset preset);
+        LightPreset GetPreset() const { return m_preset; }
 
         // range
         void SetRange(float range);
@@ -156,6 +165,7 @@ namespace spartan
         LightType m_light_type           = LightType::Max;
         Color m_color_rgb                = Color::standard_black;
         float m_temperature_kelvin       = 0.0f;
+        LightPreset m_preset             = LightPreset::custom;
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
         uint32_t m_index                 = 0;

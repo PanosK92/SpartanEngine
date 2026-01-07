@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
 #include "../Core/Window.h"
+#include "../Core/Timer.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
 #include "../RHI/RHI_Device.h"
@@ -40,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
+#include <World/Components/Volume.h>
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
@@ -59,6 +61,7 @@ namespace spartan
     // line and icon rendering
     shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
+    vector<PersistentLine> Renderer::m_persistent_lines;
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
@@ -72,6 +75,7 @@ namespace spartan
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
     unique_ptr<RHI_AccelerationStructure> tlas;
+    uint32_t Renderer::m_count_active_lights = 0;
 
     namespace
     {
@@ -137,17 +141,16 @@ namespace spartan
             bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements();
 
             m_options.clear();
-            SetOption(Renderer_Option::WhitePoint,                  350.0f);
             SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f);  // non-zero values activate it and control the intensity
+            SetOption(Renderer_Option::Bloom,                       1.0f); // non-zero values activate it and control the intensity
             SetOption(Renderer_Option::MotionBlur,                  1.0f);
             SetOption(Renderer_Option::DepthOfField,                1.0f);
             SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
             SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
             SetOption(Renderer_Option::RayTracedReflections,        RHI_Device::IsSupportedRayTracing() ? 0.0f : 0.0f);
             SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
+            SetOption(Renderer_Option::Sharpness,                   0.0f); // becomes the upscaler's sharpness as well
+            SetOption(Renderer_Option::Fog,                         1.0);  // controls the intensity of the distance/height and volumetric fog, it's the particle density
             SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
             SetOption(Renderer_Option::ResolutionScale,             1.0f);
             SetOption(Renderer_Option::VariableRateShading,         0.0f);
@@ -162,6 +165,7 @@ namespace spartan
             SetOption(Renderer_Option::Dithering,                   0.0f);
             SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
             SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
+            SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::GranTurismo7)); // works for both hdr and sdr, and accepts photometric units (nits) while allow for great color accuracy
 
             // set wind direction and strength
             {
@@ -210,12 +214,6 @@ namespace spartan
             );
 
             SetOption(Renderer_Option::Hdr, swapchain->IsHdr() ? 1.0f : 0.0f);
-        }
-
-        // tonemapping
-        if (!swapchain->IsHdr())
-        {
-            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::AcesNautilus));
         }
 
         // load/create resources
@@ -362,6 +360,7 @@ namespace spartan
     
             // update frame constant buffer and add lines to render
             UpdateFrameConstantBuffer(m_cmd_list_present);
+            UpdatePersistentLines();
             AddLinesToBeRendered();
         }
     
@@ -576,7 +575,6 @@ namespace spartan
         m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
         m_cb_frame_cpu.hdr_enabled         = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
         m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
-        m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
         m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
@@ -745,7 +743,59 @@ namespace spartan
 
     unordered_map<Renderer_Option, float>& Renderer::GetOptions()
     {
-        return m_options;
+        // local scratchpad
+        static unordered_map<Renderer_Option, float> resolved_options;
+        resolved_options = m_options;
+    
+        if (!World::GetCamera() || !World::GetCamera()->GetEntity())
+            return resolved_options;
+    
+        Vector3 cam_pos = World::GetCamera()->GetEntity()->GetPosition();
+        
+        // how many meters deep you must be to reach 100% volume influence
+        // 0.1f means "at 10cm depth, I am fully active"
+        const float blend_depth = 0.5f; 
+    
+        const auto& entities = World::GetEntities();
+        for (const auto& entity : entities)
+        {
+            Volume* volume = entity->GetComponent<Volume>();
+            if (!volume) continue;
+    
+            // 1. transform local box to world space
+            // (crucial: otherwise you compare world camera vs local box at 0,0,0)
+            const math::BoundingBox& local_box = volume->GetBoundingBox();
+            const Matrix& transform            = entity->GetMatrix();
+            math::BoundingBox world_box        = local_box * transform; // or local_box.Transform(transform)
+    
+            // 2. fast early exit
+            if (!world_box.Contains(cam_pos))
+                continue;
+    
+            // 3. calculate depth (distance to nearest face inside)
+            // since we are inside, all these deltas are positive
+            Vector3 d_min = cam_pos - world_box.GetMin();
+            Vector3 d_max = world_box.GetMax() - cam_pos;
+    
+            // the "depth" is the smallest distance to any of the 6 faces
+            float depth = min(d_min.x, d_max.x);
+            depth       = min(depth, min(d_min.y, d_max.y));
+            depth       = min(depth, min(d_min.z, d_max.z));
+    
+            // 4. calculate alpha
+            // depth 0.0 (surface) -> alpha 0.0
+            // depth 0.5 (inside)  -> alpha 1.0
+            float alpha = clamp(depth / blend_depth, 0.0f, 1.0f);
+    
+            // 5. blend
+            for (const auto& [option, vol_value] : volume->GetOptions())
+            {
+                float& current_val = resolved_options[option];
+                current_val        = lerp(current_val, vol_value, alpha);
+            }
+        }
+    
+        return resolved_options;
     }
 
     void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options)
@@ -928,23 +978,23 @@ namespace spartan
         const Vector3 camera_pos    = camera_entity ? camera_entity->GetPosition() : Vector3::Zero;
     
         m_bindless_lights.fill(Sb_Light());
-        static uint32_t count;
-        count = 0;
+        
+        // reset the active count so we can track exactly how many lights are uploaded
+        m_count_active_lights    = 0; 
         Light* first_directional = nullptr;
     
         auto fill_light = [&](Light* light_component)
         {
-            //SP_LOG_INFO("Processing light %s", light_component->GetEntity()->GetObjectName().c_str());
-
-            const uint32_t index = count++;
+            const uint32_t index = m_count_active_lights++;
+            
             light_component->SetIndex(index);
             Sb_Light& light_buffer_entry = m_bindless_lights[index];
-
+    
             for (uint32_t i = 0; i < light_component->GetSliceCount(); i++)
             {
                 light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
             }
-
+    
             light_buffer_entry.screen_space_shadows_slice_index  = light_component->GetScreenSpaceShadowsSliceIndex();
             light_buffer_entry.intensity                         = light_component->GetIntensityWatt();
             light_buffer_entry.range                             = light_component->GetRange();
@@ -964,15 +1014,15 @@ namespace spartan
             {
                 if (i < light_component->GetSliceCount())
                 {
-                    light_buffer_entry.atlas_offsets[i]     = light_component->GetAtlasOffset(i);
-                    light_buffer_entry.atlas_scales[i]      = light_component->GetAtlasScale(i);
-                    const math::Rectangle& rect             = light_component->GetAtlasRectangle(i);
+                    light_buffer_entry.atlas_offsets[i]      = light_component->GetAtlasOffset(i);
+                    light_buffer_entry.atlas_scales[i]       = light_component->GetAtlasScale(i);
+                    const math::Rectangle& rect              = light_component->GetAtlasRectangle(i);
                     light_buffer_entry.atlas_texel_sizes[i] = Vector2(1.0f / rect.width, 1.0f / rect.height);
                 }
                 else
                 {
-                    light_buffer_entry.atlas_offsets[i]     = Vector2::Zero;
-                    light_buffer_entry.atlas_scales[i]      = Vector2::Zero;
+                    light_buffer_entry.atlas_offsets[i]      = Vector2::Zero;
+                    light_buffer_entry.atlas_scales[i]       = Vector2::Zero;
                     light_buffer_entry.atlas_texel_sizes[i] = Vector2::Zero;
                 }
             }
@@ -986,7 +1036,18 @@ namespace spartan
                 if (light_component->GetLightType() == LightType::Directional)
                 {
                     first_directional = light_component;
+    
+                    // even if disabled (intensity 0 or !active), we must upload it to slot 0
+                    // because the shader hard-assumes slot 0 is the sun.
                     fill_light(light_component);
+                    
+                    // if it was effectively disabled, ensure the uploaded intensity is 0
+                    // so it doesn't affect lighting calculation
+                    if (!light_component->GetEntity()->GetActive())
+                    {
+                        // index is guaranteed to be 0 here since it's the first one we processed
+                        m_bindless_lights[0].intensity = 0.0f;
+                    }
                     break;
                 }
             }
@@ -997,23 +1058,24 @@ namespace spartan
         {
             if (Light* light_component = entity->GetComponent<Light>())
             {
+                // skip the directional light we already handled
                 if (light_component == first_directional)
                     continue;
-
+    
                 light_component->SetIndex(numeric_limits<uint32_t>::max());
     
                 if (!light_component->GetEntity()->GetActive())
                     continue;
-
+    
                 if (light_component->GetIntensityWatt() <= 0.0f)
                     continue;
-
+    
                 if (Camera* camera = World::GetCamera())
                 {
                     if (!camera->IsInViewFrustum(light_component->GetBoundingBox()))
                         continue;
                 }
-
+    
                 if (light_component->GetLightType() != LightType::Directional)
                 {
                     const float distance_squared      = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
@@ -1021,7 +1083,7 @@ namespace spartan
                     if (distance_squared > draw_distance_squared)
                         continue;
                 }
-
+    
                 fill_light(light_component);
             }
         }
@@ -1029,7 +1091,12 @@ namespace spartan
         // upload to gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * World::GetLightCount());
+        
+        // update only the active lights count so we don't upload garbage data
+        if (m_count_active_lights > 0)
+        {
+            buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * m_count_active_lights);
+        }
     }
 
     void Renderer::UpdatedBoundingBoxes(RHI_CommandList* cmd_list)

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
+#include "World/Components/Volume.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -47,9 +48,11 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace
 {
+    std::unique_ptr<ButtonColorPicker> m_material_color_picker;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
     #define column_pos_x 180.0f * spartan::Window::GetDpiScale()
     #define item_width   120.0f * spartan::Window::GetDpiScale()
-
     string context_menu_id;
     Component* copied_component = nullptr;
 
@@ -212,6 +215,7 @@ void Properties::OnTickVisible()
                 ShowRenderable(renderable);
                 ShowMaterial(material);
                 ShowPhysics(entity->GetComponent<Physics>());
+                ShowVolume(entity->GetComponent<Volume>());
 
                 ShowAddComponentButton();
             }
@@ -1169,6 +1173,82 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
     component_end();
 }
 
+void Properties::ShowVolume(spartan::Volume* volume) const
+{
+    if (!volume)
+        return;
+
+    if (component_begin("Volume", volume))
+    {
+        // reflect
+        const math::BoundingBox& bounding_box = volume->GetBoundingBox();
+        Vector3 min = bounding_box.GetMin();
+        Vector3 max = bounding_box.GetMax();
+
+        // min/max
+        ImGuiSp::vector3("Min", min, false);
+        ImGuiSp::vector3("Max", max, false);
+
+        // map
+        if (min != bounding_box.GetMin() || max != bounding_box.GetMax())
+        {
+            volume->SetBoundingBox(math::BoundingBox(min, max));
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Overrides");
+
+        // scrollable area of render options
+        if (ImGui::BeginChild("##vol_overrides", ImVec2(0, 250.0f), true))
+        {
+            // iterate over all possible renderer options
+            for (const auto& [option, global_value] : Renderer::GetOptions())
+            {
+                ImGui::PushID(static_cast<int>(option));
+
+                // determine if option is overridden
+                bool is_active   = volume->GetOptions().find(option) != volume->GetOptions().end();
+                const char* name = renderer_option_to_string(option);
+
+                // checkbox (enable/disable override)
+                if (ImGui::Checkbox(name, &is_active))
+                {
+                    if (is_active)
+                    {
+                        volume->SetOption(option, global_value);
+                    }
+                    else
+                    {
+                        volume->RemoveOption(option);
+                    }
+                }
+
+                // float value (if active)
+                if (is_active)
+                {
+                    ImGui::SameLine();
+                    
+                    // ux: set a fixed width for the slider so they align nicely
+                    ImGui::PushItemWidth(100.0f);
+                    
+                    float value = volume->GetOption(option);
+                    // use ## to hide the label since the checkbox already shows it
+                    if (ImGuiSp::draw_float_wrap("##v", &value, 0.1f)) 
+                    {
+                        volume->SetOption(option, value);
+                    }
+                    
+                    ImGui::PopItemWidth();
+                }
+
+                ImGui::PopID();
+            }
+        }
+        ImGui::EndChild();
+    }
+    component_end();
+}
+
 void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
@@ -1232,6 +1312,11 @@ void Properties::ComponentContextMenu_Add() const
                 }
 
                 ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem("Volume"))
+            {
+                entity->AddComponent<Volume>();
             }
         }
 

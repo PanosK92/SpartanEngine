@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -101,9 +101,12 @@ namespace spartan
 
     void Renderer::CreateRasterizerStates()
     {
-        float bias              = Light::GetBias();
+        // we set hardware bias to 0.0f because we are using
+        // we do normal offset bias in the shader
+        // hardware bias is linear in Z-buffer space and effectively uncontrollable across different cascades/projections
+        float bias              = 0.0f;
         float bias_clamp        = 0.0f;
-        float bias_slope_scaled = Light::GetBiasSlopeScaled();
+        float bias_slope_scaled = 0.0f;
         float line_width        = 3.0f;
 
         #define rasterizer_state(x) rasterizer_states[static_cast<uint8_t>(x)]
@@ -223,7 +226,6 @@ namespace spartan
 
                 render_target(Renderer_RenderTarget::light_diffuse)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_diffuse");
                 render_target(Renderer_RenderTarget::light_specular)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_specular");
-                render_target(Renderer_RenderTarget::light_shadow)     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R8_Unorm,        flags, "light_shadow");
                 render_target(Renderer_RenderTarget::light_volumetric) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_volumetric");
             }
 
@@ -265,8 +267,10 @@ namespace spartan
         if (!render_target(Renderer_RenderTarget::lut_brdf_specular))
         {
             // lookup tables
-            render_target(Renderer_RenderTarget::lut_brdf_specular)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512, 1,  1, RHI_Format::R32G32B32A32_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
-            render_target(Renderer_RenderTarget::lut_atmosphere_scatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
+            render_target(Renderer_RenderTarget::lut_brdf_specular)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 512, 512,  1, 1, RHI_Format::R32G32B32A32_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_brdf_specular");
+            render_target(Renderer_RenderTarget::lut_atmosphere_scatter)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_scatter");
+            render_target(Renderer_RenderTarget::lut_atmosphere_transmittance)= make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 64,   1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_transmittance");
+            render_target(Renderer_RenderTarget::lut_atmosphere_multiscatter) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 32,  32,   1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "lut_atmosphere_multiscatter");
 
             // misc
             render_target(Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 4096, 4096, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
@@ -395,6 +399,11 @@ namespace spartan
             shader(Renderer_Shader::bloom_luminance_c)->AddDefine("LUMINANCE");
             shader(Renderer_Shader::bloom_luminance_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
 
+            // downsample (stable 13-tap)
+            shader(Renderer_Shader::bloom_downsample_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::bloom_downsample_c)->AddDefine("DOWNSAMPLE");
+            shader(Renderer_Shader::bloom_downsample_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "bloom.hlsl", async);
+
             // upsample blend (with previous mip)
             shader(Renderer_Shader::bloom_upsample_blend_mip_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::bloom_upsample_blend_mip_c)->AddDefine("UPSAMPLE_BLEND_MIP");
@@ -425,10 +434,6 @@ namespace spartan
                 shader(Renderer_Shader::ffx_spd_max_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_max_c)->AddDefine("MAX");
                 shader(Renderer_Shader::ffx_spd_max_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
-
-                shader(Renderer_Shader::ffx_spd_luminance_c) = make_shared<RHI_Shader>();
-                shader(Renderer_Shader::ffx_spd_luminance_c)->AddDefine("LUMINANCE");
-                shader(Renderer_Shader::ffx_spd_luminance_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
             }
         }
 
@@ -440,6 +445,16 @@ namespace spartan
             shader(Renderer_Shader::skysphere_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::skysphere_lut_c)->AddDefine("LUT");
             shader(Renderer_Shader::skysphere_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
+
+            // transmittance lut - precomputes optical depth to atmosphere top
+            shader(Renderer_Shader::skysphere_transmittance_lut_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::skysphere_transmittance_lut_c)->AddDefine("TRANSMITTANCE_LUT");
+            shader(Renderer_Shader::skysphere_transmittance_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", false); // sync - needed by multiscatter
+
+            // multi-scatter lut - approximates infinite bounce scattering
+            shader(Renderer_Shader::skysphere_multiscatter_lut_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::skysphere_multiscatter_lut_c)->AddDefine("MULTISCATTER_LUT");
+            shader(Renderer_Shader::skysphere_multiscatter_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", false); // sync - needed by main pass
         }
 
         // fxaa

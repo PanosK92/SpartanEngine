@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,8 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Console.h"
+
+#include <ranges>
+#include <utility>
 #include "Window.h"
 #include "../ImGui/ImGui_Extension.h"
+#include "Commands/Console/ConsoleCommands.h"
 //===================================
 
 //= NAMESPACES =========
@@ -34,10 +38,9 @@ using namespace math;
 
 namespace
 {
-    ImVec4 color_to_imvec4(const Color& color)
-    {
-        return { color.r, color.g, color.b, color.a };
-    }
+    // Uncomment to enable.
+    //TConsoleVar CVarConsoleTest_Int("console.test.int", 12, "int test console var");
+
 }
 
 Console::Console(Editor* editor) : Widget(editor)
@@ -77,7 +80,7 @@ void Console::OnTickVisible()
         }
         ImGui::PopStyleColor();
         ImGui::SameLine();
-        ImGui::Text("%d", m_log_type_count[index]);
+        ImGui::Text("%u", m_log_type_count[index]);
         ImGui::SameLine();
     };
 
@@ -91,98 +94,225 @@ void Console::OnTickVisible()
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
     ImGui::Separator();
 
+    // calculate split sizes
+    const float input_height = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
+    const float autocomplete_height = m_show_autocomplete ? 200.0f * spartan::Window::GetDpiScale() : 0.0f;
+    const float available_height = ImGui::GetContentRegionAvail().y;
+    const float log_height = available_height - input_height - autocomplete_height;
+
     // safety first
-    lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
-    // content properties
-    static const ImGuiTableFlags table_flags =
-        ImGuiTableFlags_RowBg        |
-        ImGuiTableFlags_BordersOuter |
-        ImGuiTableFlags_ScrollX      |
-        ImGuiTableFlags_ScrollY;
-
-    static const ImVec2 size = ImVec2(-1.0f);
-
-    // content
-    if (ImGui::BeginTable("##widget_console_content", 1, table_flags, size))
+    // log output section
     {
-        // logs
-        for (uint32_t row = 0; row < m_logs.size(); row++)
+        static const ImGuiTableFlags table_flags =
+            ImGuiTableFlags_RowBg        |
+            ImGuiTableFlags_BordersOuter |
+            ImGuiTableFlags_ScrollX      |
+            ImGuiTableFlags_ScrollY;
+
+        const ImVec2 log_size = ImVec2(-1.0f, log_height);
+
+        if (ImGui::BeginTable("##console_log_output", 1, table_flags, log_size))
         {
-            LogPackage& log = m_logs[row];
+            ImGuiListClipper clipper;
 
-            // text and visibility filters
-            if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
+            int visible_count = 0;
+            for (const LogPackage& log : m_logs)
             {
-                // switch row
-                ImGui::TableNextRow();
-                ImGui::TableSetColumnIndex(0);
-
-                // log
-                ImGui::PushID(row);
+                if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
                 {
-                    if(log.error_level != 0) // dont style info text's color
-                    { 
-                        ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
-                    }
+                    visible_count++;
+                }
+            }
 
-                    ImGui::TextUnformatted(log.text.c_str());
+            clipper.Begin(visible_count);
+            while (clipper.Step())
+            {
+                int visible_index = 0;
+                for (uint32_t row = 0; row < m_logs.size() && visible_index < clipper.DisplayEnd; row++)
+                {
+                    LogPackage& log = m_logs[row];
 
-                    if(log.error_level != 0)
-                    { 
-                        ImGui::PopStyleColor(1);
-                    }
-
-                    // context menu
-                    if (ImGui::BeginPopupContextItem("##widget_console_contextMenu"))
+                    if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
                     {
-                        if (ImGui::MenuItem("Copy"))
+                        if (visible_index >= clipper.DisplayStart)
                         {
-                            ImGui::LogToClipboard();
-                            ImGui::LogText("%s", log.text.c_str());
-                            ImGui::LogFinish();
+                            // switch row
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+
+                            // log
+                            ImGui::PushID(static_cast<int>(row));
+                            {
+                                if (log.error_level != 0)
+                                {
+                                    ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
+                                }
+
+                                ImGui::TextUnformatted(log.text.c_str());
+
+                                if (log.error_level != 0)
+                                {
+                                    ImGui::PopStyleColor(1);
+                                }
+
+                                if (ImGui::BeginPopupContextItem("##console_context_menu"))
+                                {
+                                    if (ImGui::MenuItem("Copy"))
+                                    {
+                                        ImGui::LogToClipboard();
+                                        ImGui::LogText("%s", log.text.c_str());
+                                        ImGui::LogFinish();
+                                    }
+
+                                    ImGui::Separator();
+
+                                    if (ImGui::MenuItem("Search"))
+                                    {
+                                        FileSystem::OpenUrl("https://www.google.com/search?q=" + log.text);
+                                    }
+
+                                    ImGui::EndPopup();
+                                }
+                            }
+                            ImGui::PopID();
                         }
-
-                        ImGui::Separator();
-
-                        if (ImGui::MenuItem("Search"))
-                        {
-                            FileSystem::OpenUrl("https://www.google.com/search?q=" + log.text);
-                        }
-
-                        ImGui::EndPopup();
+                        visible_index++;
                     }
                 }
+            }
+
+            if (m_scroll_to_bottom)
+            {
+                ImGui::SetScrollHereY(1.0f);
+                m_scroll_to_bottom = false;
+            }
+
+            ImGui::EndTable();
+        }
+    }
+
+    if (m_show_autocomplete && !m_filtered_cvars.empty())
+    {
+        ImGui::Separator();
+
+        static const ImGuiTableFlags table_flags =
+            ImGuiTableFlags_RowBg           |
+            ImGuiTableFlags_BordersOuter    |
+            ImGuiTableFlags_ScrollY         |
+            ImGuiTableFlags_Resizable       |
+            ImGuiTableFlags_SizingStretchProp;
+
+        const ImVec2 autocomplete_size = ImVec2(-1.0f, autocomplete_height);
+
+        if (ImGui::BeginTable("##console_autocomplete", 3, table_flags, autocomplete_size))
+        {
+            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 0.4f);
+            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.2f);
+            ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 0.4f);
+            ImGui::TableHeadersRow();
+
+            for (size_t i = 0; i < m_filtered_cvars.size(); i++)
+            {
+                const ConsoleVariable* cvar = ConsoleRegistry::Get().Find(m_filtered_cvars[i]);
+
+                ImGui::TableNextRow();
+                ImGui::PushID(static_cast<int>(i));
+
+                bool is_selected = (std::cmp_equal(i, m_autocomplete_selection));
+                if (is_selected)
+                {
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
+                }
+
+                ImGui::TableSetColumnIndex(0);
+                if (ImGui::Selectable(std::string(cvar->m_name).c_str(), is_selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick))
+                {
+                    m_autocomplete_selection = static_cast<int>(i);
+                    if (ImGui::IsMouseDoubleClicked(0))
+                    {
+                        ApplyAutocomplete();
+                    }
+                }
+
+                ImGui::TableSetColumnIndex(1);
+                std::string value_str = ConsoleRegistry::Get().GetValueAsString(cvar->m_name).value();
+                ImGui::TextUnformatted(value_str.c_str());
+
+                ImGui::TableSetColumnIndex(2);
+                ImGui::TextWrapped("%s", std::string(cvar->m_hint).c_str());
+
                 ImGui::PopID();
+            }
+
+            ImGui::EndTable();
+        }
+    }
+
+    {
+        ImGui::Separator();
+
+        ImGui::SetNextItemWidth(-1.0f);
+
+        ImGuiInputTextFlags input_flags =
+            ImGuiInputTextFlags_EnterReturnsTrue |
+            ImGuiInputTextFlags_CallbackHistory  |
+            ImGuiInputTextFlags_CallbackAlways;
+
+        bool reclaim_focus = false;
+
+        if (ImGui::InputText("##console_input", m_input_buffer, IM_ARRAYSIZE(m_input_buffer), input_flags, [](ImGuiInputTextCallbackData* data) -> int
+        {
+            Console* console = static_cast<Console*>(data->UserData);
+            return console->InputCallback(data);
+        }, this))
+        {
+            ExecuteCommand(m_input_buffer);
+            m_input_buffer[0] = '\0';
+            m_show_autocomplete = false;
+            reclaim_focus = true;
+        }
+
+        if (ImGui::IsItemActive())
+        {
+            if (m_show_autocomplete && !m_filtered_cvars.empty())
+            {
+                if (ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+                {
+                    m_autocomplete_selection = (m_autocomplete_selection + 1) % static_cast<int>(m_filtered_cvars.size());
+                }
+                else if (ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+                {
+                    m_autocomplete_selection = (m_autocomplete_selection - 1 + static_cast<int>(m_filtered_cvars.size())) % static_cast<int>(m_filtered_cvars.size());
+                }
+                else if (ImGui::IsKeyPressed(ImGuiKey_Tab))
+                {
+                    ApplyAutocomplete();
+                    reclaim_focus = true;
+                }
             }
         }
 
-        // scroll to bottom (if requested)
-        if (m_scroll_to_bottom)
+        if (ImGui::IsWindowAppearing() || reclaim_focus)
         {
-            ImGui::SetScrollHereY();
-            m_scroll_to_bottom = false;
+            ImGui::SetKeyboardFocusHere(-1);
         }
-
-        ImGui::EndTable();
     }
 }
 
 void Console::AddLogPackage(const LogPackage& package)
 {
-    lock_guard lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
-    // save to deque
     m_logs.push_back(package);
     if (static_cast<uint32_t>(m_logs.size()) > m_log_max_count)
     {
         m_logs.pop_front();
     }
 
-    // update count
     m_log_type_count[package.error_level]++;
 
-    // if the user is displaying this type of messages, scroll to bottom
     if (m_log_type_visibility[package.error_level])
     {
         m_scroll_to_bottom = true;
@@ -199,4 +329,137 @@ void Console::Clear()
     m_log_type_count[2] = 0;
 
     spartan::Log::Clear();
+}
+
+void Console::UpdateAutocomplete()
+{
+    m_filtered_cvars.clear();
+    m_autocomplete_selection = 0;
+
+    std::string input = m_input_buffer;
+
+    if (input.empty())
+    {
+        m_show_autocomplete = false;
+        return;
+    }
+
+    std::string input_lower = input;
+    ranges::transform(input_lower, input_lower.begin(), ::tolower);
+
+    const auto& all_cvars = ConsoleRegistry::Get().GetAll();
+    for (const auto& cvar : all_cvars | views::values)
+    {
+        std::string name_lower = std::string(cvar.m_name);
+        ranges::transform(name_lower, name_lower.begin(), ::tolower);
+
+        if (name_lower.find(input_lower) != std::string::npos)
+        {
+            m_filtered_cvars.push_back(cvar.m_name);
+        }
+    }
+
+    m_show_autocomplete = !m_filtered_cvars.empty();
+}
+
+void Console::ApplyAutocomplete()
+{
+    if (!m_show_autocomplete || m_filtered_cvars.empty() || m_autocomplete_selection < 0)
+    {
+        return;
+    }
+
+    const ConsoleVariable* selected = ConsoleRegistry::Get().Find(m_filtered_cvars[m_autocomplete_selection]);
+
+    std::string completion = std::string(selected->m_name) + " ";
+    strncpy_s(m_input_buffer, completion.c_str(), IM_ARRAYSIZE(m_input_buffer) - 1);
+    m_input_buffer[IM_ARRAYSIZE(m_input_buffer) - 1] = '\0';
+
+    m_show_autocomplete = false;
+}
+
+int Console::InputCallback(ImGuiInputTextCallbackData* data)
+{
+    switch (data->EventFlag)
+    {
+    case ImGuiInputTextFlags_CallbackHistory:
+        {
+            const int prev_pos = m_history_position;
+            if (data->EventKey == ImGuiKey_UpArrow && !m_show_autocomplete)
+            {
+                if (m_history_position == -1)
+                {
+                    m_history_position = static_cast<int>(m_command_history.size()) - 1;
+                }
+                else if (m_history_position > 0)
+                {
+                    m_history_position--;
+                }
+            }
+            else if (data->EventKey == ImGuiKey_DownArrow && !m_show_autocomplete)
+            {
+                if (m_history_position != -1)
+                {
+                    m_history_position++;
+                    if (std::cmp_greater_equal(m_history_position, m_command_history.size()))
+                    {
+                        m_history_position = -1;
+                    }
+                }
+            }
+
+            if (prev_pos != m_history_position)
+            {
+                const char* history_str = (m_history_position >= 0) ? m_command_history[m_history_position].c_str() : "";
+                data->DeleteChars(0, data->BufTextLen);
+                data->InsertChars(0, history_str);
+            }
+            break;
+        }
+    case ImGuiInputTextFlags_CallbackAlways:
+        {
+            UpdateAutocomplete();
+            break;
+        }
+    }
+    return 0;
+}
+
+void Console::ExecuteCommand(const char* command)
+{
+    if (command[0] == '\0')
+    {
+        return;
+    }
+
+    m_command_history.emplace_back(command);
+    m_history_position = -1;
+
+    std::string cmd_str = command;
+    size_t space_pos = cmd_str.find(' ');
+
+    if (space_pos != std::string::npos)
+    {
+        std::string cvar_name = cmd_str.substr(0, space_pos);
+        std::string value_str = cmd_str.substr(space_pos + 1);
+
+        if (ConsoleRegistry::Get().SetValueFromString(cvar_name, value_str))
+        {
+            SP_LOG_INFO("Setting %s to %s", cvar_name.c_str(), value_str.c_str())
+        }
+        else
+        {
+            SP_LOG_WARNING("Failed to set %s to %s", cvar_name.c_str(), value_str.c_str())
+        }
+    }
+    else
+    {
+        if (std::optional<std::string> maybe_val = ConsoleRegistry::Get().GetValueAsString(command); maybe_val.has_value())
+        {
+            const char* Val = maybe_val.value().c_str();
+            SP_LOG_WARNING("Current Value of %s : ", command, Val)
+        }
+    }
+
+    m_scroll_to_bottom = true;
 }

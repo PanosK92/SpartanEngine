@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -501,8 +501,8 @@ namespace spartan
         {
             static const array<float, 3> grass_distance_thresholds =
             {
-                20.0f, // lod0: (high detail, 5 segments)
-                40.0f, // lod1: (medium, 3 segments)
+                20.0f, // lod0: (high detail, 3 segments)
+                40.0f, // lod1: (medium, 2 segments)
                 80.0f  // lod2: (low, 1 segment)
             };
             for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(grass_distance_thresholds.size())); i++)

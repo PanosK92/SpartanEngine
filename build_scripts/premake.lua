@@ -45,6 +45,7 @@ function solution_configuration()
         location ".."
         language "C++"
         configurations { "debug", "release" }
+        flags { "FatalWarnings" }
 
         filter { "configurations:debug" }
             defines { "DEBUG" }

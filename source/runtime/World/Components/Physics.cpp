@@ -1,5 +1,5 @@
-﻿/*
-Copyright(c) 2015-2025 Panos Karabelas
+/*
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../Physics/PhysicsWorld.h"
+#include "../../Physics/Car.h"
 #include "../../Geometry/GeometryProcessing.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
@@ -37,7 +38,6 @@ SP_WARNINGS_OFF
     #undef _DEBUG
 #endif
 #define PX_PHYSX_STATIC_LIB
-#include <physx/PxPhysicsAPI.h>
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
 //============================================
@@ -50,11 +50,6 @@ using namespace physx;
 
 namespace spartan
 {
-    namespace vehicle
-    {
-        // it uses the new vehicle2 api
-    }
-
     namespace
     {
         const float distance_deactivate = 80.0f;
@@ -66,7 +61,20 @@ namespace spartan
         const float distance_deactivate_squared = distance_deactivate * distance_deactivate;
         const float distance_activate_squared   = distance_activate * distance_activate;
 
-        void* controller_manager = nullptr;
+        PxControllerManager* controller_manager = nullptr;
+
+        // helper to build lock flags from position and rotation lock vectors
+        PxRigidDynamicLockFlags build_lock_flags(const Vector3& position_lock, const Vector3& rotation_lock)
+        {
+            PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
+            if (position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
+            if (position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
+            if (position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
+            if (rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
+            if (rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
+            if (rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
+            return flags;
+        }
     }
 
     Physics::Physics(Entity* entity) : Component(entity)
@@ -85,7 +93,6 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, void*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh, void*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_actors, vector<void*>);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh_data, vector<PhysicsBodyMeshData>);
         SP_REGISTER_ATTRIBUTE_VALUE_SET(m_body_type, SetBodyType, BodyType);
     }
 
@@ -99,13 +106,29 @@ namespace spartan
         Component::Initialize();
     }
 
+    void Physics::Shutdown()
+    {
+        // release the controller manager (created lazily when first controller is made)
+        if (controller_manager)
+        {
+            controller_manager->release();
+            controller_manager = nullptr;
+        }
+    }
+
     void Physics::Remove()
     {
         if (m_controller)
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
-            m_material   = nullptr; // the controller owns the material
+            
+            // release the material that was created for this controller
+            if (m_material)
+            {
+                static_cast<PxMaterial*>(m_material)->release();
+                m_material = nullptr;
+            }
         }
 
         for (auto* body : m_actors)
@@ -118,6 +141,7 @@ namespace spartan
             }
         }
         m_actors.clear();
+        m_actors_active.clear();
 
         if (PxMaterial* material = static_cast<PxMaterial*>(m_material))
         {
@@ -154,8 +178,11 @@ namespace spartan
                 GetEntity()->SetPosition(pos);
 
                 // compute velocity for xz
-                m_velocity.x = (pos.x - pos_previous.x) / delta_time;
-                m_velocity.z = (pos.z - pos_previous.z) / delta_time;
+                if (delta_time > 0.0f)
+                {
+                    m_velocity.x = (pos.x - pos_previous.x) / delta_time;
+                    m_velocity.z = (pos.z - pos_previous.z) / delta_time;
+                }
             }
             else
             {
@@ -164,9 +191,55 @@ namespace spartan
                 m_velocity = Vector3::Zero;
             }
         }
+        else if (m_body_type == BodyType::Vehicle)
+        {
+            if (Engine::IsFlagSet(EngineMode::Playing))
+            {
+                // update vehicle physics (input is set externally via vehicle::set_throttle/brake/steering)
+                float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+                car::tick(delta_time);
+                
+                // sync physx -> entity
+                if (!m_actors.empty() && m_actors[0])
+                {
+                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+                    PxTransform pose = actor->getGlobalPose();
+                    GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
+                    GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
+                }
+
+                // update wheel entity transforms (spin and steering)
+                UpdateWheelTransforms();
+            }
+            else
+            {
+                // editor mode: sync entity -> physx, reset velocities
+                if (!m_actors.empty() && m_actors[0])
+                {
+                    Vector3 pos = GetEntity()->GetPosition();
+                    Quaternion rot = GetEntity()->GetRotation();
+                    PxTransform pose(
+                        PxVec3(pos.x, pos.y, pos.z),
+                        PxQuat(rot.x, rot.y, rot.z, rot.w)
+                    );
+                    
+                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+                    actor->setGlobalPose(pose);
+                    
+                    if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+                    {
+                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+                    }
+                }
+            }
+        }
         else if (!m_is_static)
         {
             Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+            if (!renderable)
+                return;
+
             for (uint32_t i = 0; i < m_actors.size(); i++)
             {
                 if (!m_actors[i])
@@ -247,38 +320,47 @@ namespace spartan
         }
 
         // distance-based activation/deactivation for static actors
+        // this optimization prevents the physics scene from being overwhelmed with distant static colliders
         if (m_body_type != BodyType::Controller && m_is_static)
         {
-            if (Camera* camera = World::GetCamera())
+            Camera* camera = World::GetCamera();
+            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+            if (camera && renderable)
             {
                 const Vector3 camera_pos = camera->GetEntity()->GetPosition();
-                if (Renderable* renderable = GetEntity()->GetComponent<Renderable>())
+                
+                // ensure tracking vector matches actor count
+                if (m_actors_active.size() != m_actors.size())
                 {
-                    for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+                    m_actors_active.resize(m_actors.size(), true); // assume initially active
+                }
+
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+                {
+                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
+                    if (!actor)
+                        continue;
+
+                    // compute distance to actor
+                    Vector3 closest_point = renderable->HasInstancing()
+                        ? renderable->GetInstance(i, true).GetTranslation()
+                        : renderable->GetBoundingBox().GetClosestPoint(camera_pos);
+                    const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
+
+                    // use hysteresis to prevent flickering at boundary
+                    const bool is_active     = m_actors_active[i];
+                    const bool should_remove = is_active && (distance_squared > distance_deactivate_squared);
+                    const bool should_add    = !is_active && (distance_squared <= distance_activate_squared);
+
+                    if (should_remove)
                     {
-                        if (PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]))
-                        {
-                            Vector3 closest_point = Vector3::Zero;
-                            if (renderable->HasInstancing())
-                            {
-                                closest_point = renderable->GetInstance(i, true).GetTranslation();
-                            }
-                            else
-                            {
-                                closest_point = renderable->GetBoundingBox().GetClosestPoint(camera_pos);
-                            }
-
-                            const float distance_to_camera = Vector3::DistanceSquared(camera_pos, closest_point);
-                            if (distance_to_camera > distance_deactivate_squared)
-                            {
-                                PhysicsWorld::RemoveActor(actor);
-                            }
-                            else if (distance_to_camera <= distance_activate_squared)
-                            {
-                                PhysicsWorld::AddActor(actor);
-                            }
-                        }
-
+                        PhysicsWorld::RemoveActor(actor);
+                        m_actors_active[i] = false;
+                    }
+                    else if (should_add)
+                    {
+                        PhysicsWorld::AddActor(actor);
+                        m_actors_active[i] = true;
                     }
                 }
             }
@@ -552,14 +634,7 @@ namespace spartan
         {
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
-                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                dynamic->setRigidDynamicLockFlags(flags);
+                dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
             }
         }
     }
@@ -579,14 +654,7 @@ namespace spartan
         {
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
-                PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                dynamic->setRigidDynamicLockFlags(flags);
+                dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
             }
         }
     }
@@ -688,18 +756,16 @@ namespace spartan
     float Physics::GetCapsuleVolume()
     {
         // total volume is the sum of the cylinder and two hemispheres
-        float radius      = GetCapsuleRadius(); // radius is max of x and z scale divided by 2
-        Vector3 scale     = GetEntity()->GetScale();
-        float half_height = scale.y * 0.5f;   // half the height of the cylindrical part
+        const float radius = GetCapsuleRadius();
+        const Vector3 scale = GetEntity()->GetScale();
 
         // cylinder volume: π * r² * h (clamp to avoid negative height)
-        float cylinder_height = max(0.0f, scale.y - 2.0f * radius);
-        float cylinder_volume = math::pi * radius * radius * cylinder_height;
+        const float cylinder_height = max(0.0f, scale.y - 2.0f * radius);
+        const float cylinder_volume = math::pi * radius * radius * cylinder_height;
 
         // sphere volume (two hemispheres = one full sphere): (4/3) * π * r³
-        float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
+        const float sphere_volume = (4.0f / 3.0f) * math::pi * radius * radius * radius;
 
-        // total volume
         return cylinder_volume + sphere_volume;
     }
 
@@ -790,6 +856,359 @@ namespace spartan
         GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
     }
 
+    void Physics::SetVehicleThrottle(float value)
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        car::set_throttle(value);
+    }
+
+    void Physics::SetVehicleBrake(float value)
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        car::set_brake(value);
+    }
+
+    void Physics::SetVehicleSteering(float value)
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        car::set_steering(value);
+    }
+
+    void Physics::SetVehicleHandbrake(float value)
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        car::set_handbrake(value);
+    }
+
+    void Physics::SetWheelEntity(WheelIndex wheel, Entity* entity)
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            SP_LOG_WARNING("SetWheelEntity only works with Vehicle body type");
+            return;
+        }
+
+        int index = static_cast<int>(wheel);
+        if (index >= 0 && index < static_cast<int>(WheelIndex::Count))
+        {
+            m_wheel_entities[index] = entity;
+        }
+    }
+
+    Entity* Physics::GetWheelEntity(WheelIndex wheel) const
+    {
+        int index = static_cast<int>(wheel);
+        if (index >= 0 && index < static_cast<int>(WheelIndex::Count))
+        {
+            return m_wheel_entities[index];
+        }
+        return nullptr;
+    }
+
+    void Physics::SetChassisEntity(Entity* entity)
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            SP_LOG_WARNING("SetChassisEntity only works with Vehicle body type");
+            return;
+        }
+
+        m_chassis_entity = entity;
+        if (entity)
+        {
+            // store base position so we can offset from it
+            m_chassis_base_pos = entity->GetPositionLocal();
+            SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f)", 
+                entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z);
+        }
+        else
+        {
+            SP_LOG_WARNING("SetChassisEntity: entity is null!");
+        }
+    }
+
+    void Physics::SetWheelRadius(float radius)
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            SP_LOG_WARNING("SetWheelRadius only works with Vehicle body type");
+            return;
+        }
+
+        m_wheel_radius = radius;
+        
+        // update the wheel radius in vehicle config (for physics contact calculations)
+        car::cfg.wheel_radius = radius;
+        
+        // recalculate and update body height based on actual wheel radius
+        if (car::body)
+        {
+            // calculate correct body height using actual spring stiffness
+            float front_mass_per_wheel = car::cfg.mass * 0.40f * 0.5f;
+            float front_omega = 2.0f * math::pi * car::tuning::front_spring_freq;
+            float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
+            float front_load = front_mass_per_wheel * 9.81f;
+            float expected_sag = std::clamp(front_load / front_stiffness, 0.0f, car::cfg.suspension_travel * 0.8f);
+            const float correct_body_height = radius + car::cfg.suspension_height + expected_sag;
+            
+            // update body position with correct height
+            PxTransform pose = car::body->getGlobalPose();
+            pose.p.y = correct_body_height;
+            car::body->setGlobalPose(pose);
+            
+            // recompute wheel constants with new radius
+            car::compute_constants();
+            
+            SP_LOG_INFO("SetWheelRadius: adjusted body height to %.3f for radius %.3f", correct_body_height, radius);
+        }
+        
+        SP_LOG_INFO("SetWheelRadius: wheel radius set to %.3f", radius);
+    }
+
+    void Physics::ComputeWheelRadiusFromEntity(Entity* wheel_entity)
+    {
+        if (!wheel_entity)
+        {
+            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel_entity is null");
+            return;
+        }
+
+        // get the renderable component to access the bounding box
+        Renderable* renderable = wheel_entity->GetComponent<Renderable>();
+        if (!renderable)
+        {
+            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel entity has no Renderable component");
+            return;
+        }
+
+        // force bounding box update to reflect current entity transform (including scale)
+        // this is needed because the bounding box is lazily updated during Tick()
+        renderable->Tick();
+
+        // get the aabb - this is in world space (transformed by entity matrix including scale)
+        BoundingBox aabb = renderable->GetBoundingBox();
+        Vector3 extents = aabb.GetExtents(); // half-sizes, already scaled
+        
+        // the wheel radius is the largest extent (wheels are usually symmetric)
+        // for a wheel mesh, this gives us the actual visual radius
+        float radius = max(max(extents.x, extents.y), extents.z);
+        
+        // compute the offset from entity origin to mesh center
+        // this handles meshes that don't have their origin at geometric center
+        Vector3 aabb_center = aabb.GetCenter();
+        Vector3 entity_pos = wheel_entity->GetPosition();
+        m_wheel_mesh_center_offset_y = aabb_center.y - entity_pos.y;
+        
+        SetWheelRadius(radius);
+        
+        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f, center_offset_y=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)", 
+            radius, m_wheel_mesh_center_offset_y, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z);
+    }
+
+    float Physics::GetSuspensionHeight() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::cfg.suspension_height;
+    }
+
+    float Physics::GetVehicleThrottle() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_throttle();
+    }
+
+    float Physics::GetVehicleBrake() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_brake();
+    }
+
+    float Physics::GetVehicleSteering() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_steering();
+    }
+
+    float Physics::GetVehicleHandbrake() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_handbrake();
+    }
+
+    bool Physics::IsWheelGrounded(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::is_wheel_grounded(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelCompression(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_compression(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelSuspensionForce(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_suspension_force(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelSlipAngle(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_slip_angle(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelSlipRatio(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_slip_ratio(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelTireLoad(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_tire_load(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelLateralForce(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_lateral_force(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelLongitudinalForce(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_longitudinal_force(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelAngularVelocity(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_angular_velocity(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelRPM(WheelIndex wheel) const
+    {
+        // convert angular velocity (rad/s) to RPM
+        // rpm = (rad/s) * (60 / 2π) = (rad/s) * 9.5493
+        float angular_vel = GetWheelAngularVelocity(wheel);
+        return fabsf(angular_vel) * 9.5493f;
+    }
+
+    float Physics::GetWheelTemperature(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_temperature(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelLoadTransfer(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_load_transfer(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelEffectiveLoad(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_effective_load(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelTempGripFactor(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 1.0f;
+        return car::get_wheel_temp_grip_factor(static_cast<int>(wheel));
+    }
+
+    void Physics::UpdateWheelTransforms()
+    {
+        if (m_body_type != BodyType::Vehicle || !Engine::IsFlagSet(EngineMode::Playing))
+            return;
+
+        // get steering angle from vehicle system
+        float steering = car::get_steering();
+        const float max_steering_angle = 35.0f * math::deg_to_rad;
+        float steering_angle = steering * max_steering_angle;
+        
+        // get suspension parameters for position calculation
+        float suspension_height = car::cfg.suspension_height;
+        float suspension_travel = car::cfg.suspension_travel;
+
+        // update each wheel entity using physics rotation and position data
+        for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+        {
+            Entity* wheel_entity = m_wheel_entities[i];
+            if (!wheel_entity)
+                continue;
+
+            bool is_front_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::FrontRight));
+            bool is_right_wheel = (i == static_cast<int>(WheelIndex::FrontRight) || i == static_cast<int>(WheelIndex::RearRight));
+
+            // update wheel Y position based on suspension compression
+            // compression: 0 = fully extended (wheel at lowest), 1 = fully compressed (wheel at highest)
+            float compression = car::get_wheel_compression(i);
+            Vector3 current_pos = wheel_entity->GetPositionLocal();
+            
+            // base Y is at -suspension_height (fully extended position)
+            // as compression increases, wheel moves UP by compression * suspension_travel
+            // subtract mesh center offset to account for meshes with non-centered origin
+            float visual_y = -suspension_height + compression * suspension_travel - m_wheel_mesh_center_offset_y;
+            wheel_entity->SetPositionLocal(Vector3(current_pos.x, visual_y, current_pos.z));
+
+            // get wheel rotation from physics (each wheel has its own rotation)
+            float wheel_rotation = car::get_wheel_rotation(i);
+            Quaternion spin_rotation = Quaternion::FromAxisAngle(Vector3::Right, wheel_rotation);
+
+            // steering rotation for front wheels only (around Y axis)
+            Quaternion steer_rotation = Quaternion::Identity;
+            if (is_front_wheel)
+            {
+                steer_rotation = Quaternion::FromAxisAngle(Vector3::Up, steering_angle);
+            }
+            
+            // mirror rotation for right side wheels
+            Quaternion mirror_rotation = Quaternion::Identity;
+            if (is_right_wheel)
+            {
+                mirror_rotation = Quaternion::FromAxisAngle(Vector3::Up, math::pi);
+            }
+
+            // combine rotations
+            Quaternion final_rotation = steer_rotation * spin_rotation * mirror_rotation;
+            wheel_entity->SetRotationLocal(final_rotation);
+        }
+
+        // note: chassis entity is a child of vehicle_entity, which already follows car::body
+        // so the chassis inherits the physics transform automatically - no extra update needed
+    }
+
     void Physics::Create()
     {
         // clear previous state
@@ -840,12 +1259,40 @@ namespace spartan
             if (!m_controller)
             {
                 SP_LOG_ERROR("failed to create capsule controller");
-                desc.material->release();
+                static_cast<PxMaterial*>(m_material)->release();
+                m_material = nullptr;
                 return;
             }
             
-            // cleanup
-            desc.material->release();
+            // note: the controller internally references the material, so don't release m_material here
+            // it will be released in Remove() when the controller is destroyed
+        }
+        else if (m_body_type == BodyType::Vehicle)
+        {
+            // create vehicle
+            if (car::create(physics, scene))
+            {
+                // store the rigid body actor
+                m_actors.resize(1, nullptr);
+                m_actors[0] = car::body;
+                m_actors_active.resize(1, true);
+                
+                // set initial position - use physics-calculated height for proper ground contact
+                // car::create already set correct body height accounting for suspension sag
+                // we just use entity's X and Z, but keep the physics Y
+                Vector3 pos = GetEntity()->GetPosition();
+                PxTransform current_pose = car::body->getGlobalPose();
+                car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
+                
+                // store user data for raycasts
+                car::body->userData = reinterpret_cast<void*>(GetEntity());
+                
+                SP_LOG_INFO("vehicle physics body created successfully");
+            }
+            else
+            {
+                SP_LOG_ERROR("failed to create vehicle physics body");
+            }
         }
         else
         {
@@ -872,13 +1319,17 @@ namespace spartan
                 // simplify geometry
                 const float volume        = renderable->GetBoundingBox().GetVolume();
                 const float max_volume    = 100000.0f;
-                const float volume_factor = clamp(volume / max_volume, 0.0f, 1.0f); // aka simplification ratio
-                size_t min_index_count    = min<size_t>(indices.size(), 256);
-                size_t target_index_count = clamp<size_t>(static_cast<size_t>(indices.size() * volume_factor), min_index_count, 16'000);
+                // simplify geometry based on volume (larger objects get more detail)
+                const float volume_factor       = clamp(volume / max_volume, 0.0f, 1.0f);
+                const size_t min_index_count    = min<size_t>(indices.size(), 256);
+                const size_t max_index_count    = 16'000;
+                const size_t target_index_count = clamp<size_t>(static_cast<size_t>(indices.size() * volume_factor), min_index_count, max_index_count);
                 geometry_processing::simplify(indices, vertices, target_index_count, false, false);
-                if (target_index_count > 16000)
+                
+                // warn if we hit the complexity cap (original mesh was very detailed)
+                if (indices.size() > max_index_count && target_index_count == max_index_count)
                 {
-                    SP_LOG_WARNING("Mesh '%s' was simplified to %d indices. It's still complex and may impact physics performance.", renderable->GetEntity()->GetObjectName().c_str(), target_index_count);
+                    SP_LOG_WARNING("Mesh '%s' was simplified to %zu indices. It's still complex and may impact physics performance.", renderable->GetEntity()->GetObjectName().c_str(), target_index_count);
                 }
 
                 // convert vertices to physx format
@@ -974,8 +1425,10 @@ namespace spartan
         }
 
         // create bodies and shapes
-        m_actors.resize(renderable->GetInstanceCount(), nullptr);
-        for (uint32_t i = 0; i < renderable->GetInstanceCount(); i++)
+        const uint32_t instance_count = renderable->GetInstanceCount();
+        m_actors.resize(instance_count, nullptr);
+        m_actors_active.resize(instance_count, true); // all actors start active
+        for (uint32_t i = 0; i < instance_count; i++)
         {
             math::Matrix transform = renderable->HasInstancing() ? renderable->GetInstance(i, true) : GetEntity()->GetMatrix();
             PxTransform pose(
@@ -1001,14 +1454,7 @@ namespace spartan
                         PxVec3 p(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
                         PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &p);
                     }
-                    PxRigidDynamicLockFlags flags = PxRigidDynamicLockFlags(0);
-                    if (m_position_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_X;
-                    if (m_position_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Y;
-                    if (m_position_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_LINEAR_Z;
-                    if (m_rotation_lock.x) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_X;
-                    if (m_rotation_lock.y) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y;
-                    if (m_rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
-                    dynamic->setRigidDynamicLockFlags(flags);
+                    dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
                 }
             }
         

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -267,22 +267,25 @@ namespace spartan
             }
         }
 
-        void resize_texture(const vector<byte>& src_data, uint32_t src_width, uint32_t src_height, vector<byte>& dst_data, uint32_t dst_width, uint32_t dst_height)
+        void resize_texture(const vector<byte>& src_data, uint32_t src_width, uint32_t src_height, uint32_t src_channels, vector<byte>& dst_data, uint32_t dst_width, uint32_t dst_height)
         {
-            SP_ASSERT_MSG(src_data.size() == src_width * src_height * 4, "Invalid source data size");
+            SP_ASSERT_MSG(src_channels >= 1 && src_channels <= 4, "Invalid channel count");
+            SP_ASSERT_MSG(src_data.size() == src_width * src_height * src_channels, "Invalid source data size");
             dst_data.resize(dst_width * dst_height * 4);
 
             auto get_pixel = [&](uint32_t x, uint32_t y) -> Vector4
             {
                 x = clamp(x, 0u, src_width - 1);
                 y = clamp(y, 0u, src_height - 1);
-                uint32_t index = (y * src_width + x) * 4;
-                return Vector4(
-                    static_cast<float>(src_data[index + 0]) / 255.0f,
-                    static_cast<float>(src_data[index + 1]) / 255.0f,
-                    static_cast<float>(src_data[index + 2]) / 255.0f,
-                    static_cast<float>(src_data[index + 3]) / 255.0f
-                );
+                uint32_t index = (y * src_width + x) * src_channels;
+
+                // handle different channel counts - expand to RGBA
+                float r = static_cast<float>(src_data[index + 0]) / 255.0f;
+                float g = (src_channels >= 2) ? static_cast<float>(src_data[index + 1]) / 255.0f : r;
+                float b = (src_channels >= 3) ? static_cast<float>(src_data[index + 2]) / 255.0f : r;
+                float a = (src_channels >= 4) ? static_cast<float>(src_data[index + 3]) / 255.0f : 1.0f;
+
+                return Vector4(r, g, b, a);
             };
 
             for (uint32_t y = 0; y < dst_height; ++y)
@@ -437,6 +440,7 @@ namespace spartan
                                     texture_alpha_mask->GetMip(0, 0).bytes,
                                     texture_alpha_mask->GetWidth(),
                                     texture_alpha_mask->GetHeight(),
+                                    texture_alpha_mask->GetChannelCount(),
                                     resized_mask,
                                     texture_color->GetWidth(),
                                     texture_color->GetHeight()
@@ -491,19 +495,19 @@ namespace spartan
                         // resize if necessary
                         if (texture_occlusion && (texture_occlusion->GetWidth() != max_width || texture_occlusion->GetHeight() != max_height))
                         {
-                            texture_processing::resize_texture(texture_occlusion->GetMip(0, 0).bytes, texture_occlusion->GetWidth(), texture_occlusion->GetHeight(), occlusion_data, max_width, max_height);
+                            texture_processing::resize_texture(texture_occlusion->GetMip(0, 0).bytes, texture_occlusion->GetWidth(), texture_occlusion->GetHeight(), texture_occlusion->GetChannelCount(), occlusion_data, max_width, max_height);
                         }
                         if (texture_roughness && (texture_roughness->GetWidth() != max_width || texture_roughness->GetHeight() != max_height))
                         {
-                            texture_processing::resize_texture(texture_roughness->GetMip(0, 0).bytes, texture_roughness->GetWidth(), texture_roughness->GetHeight(), roughness_data, max_width, max_height);
+                            texture_processing::resize_texture(texture_roughness->GetMip(0, 0).bytes, texture_roughness->GetWidth(), texture_roughness->GetHeight(), texture_roughness->GetChannelCount(), roughness_data, max_width, max_height);
                         }
                         if (texture_metalness && (texture_metalness->GetWidth() != max_width || texture_metalness->GetHeight() != max_height))
                         {
-                            texture_processing::resize_texture(texture_metalness->GetMip(0, 0).bytes, texture_metalness->GetWidth(), texture_metalness->GetHeight(), metalness_data, max_width, max_height);
+                            texture_processing::resize_texture(texture_metalness->GetMip(0, 0).bytes, texture_metalness->GetWidth(), texture_metalness->GetHeight(), texture_metalness->GetChannelCount(), metalness_data, max_width, max_height);
                         }
                         if (texture_height && (texture_height->GetWidth() != max_width || texture_height->GetHeight() != max_height))
                         {
-                            texture_processing::resize_texture(texture_height->GetMip(0, 0).bytes, texture_height->GetWidth(), texture_height->GetHeight(), height_data, max_width, max_height);
+                            texture_processing::resize_texture(texture_height->GetMip(0, 0).bytes, texture_height->GetWidth(), texture_height->GetHeight(), texture_height->GetChannelCount(), height_data, max_width, max_height);
                         }
         
                         texture_processing::pack_occlusion_roughness_metalness_height(
