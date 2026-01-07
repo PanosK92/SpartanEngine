@@ -46,23 +46,23 @@ namespace car
     //=======================================================================================
     
     // driving
-    inline constexpr float max_engine_force   = 15000.0f; // newtons (peak torque ~250nm at wheel with 0.35m radius)
-    inline constexpr float max_brake_force    = 8000.0f;  // newtons per wheel
+    inline constexpr float max_engine_force   = 55000.0f; // newtons (~950hp laferrari, massive torque at low speeds)
+    inline constexpr float max_brake_force    = 12000.0f; // newtons per wheel (carbon ceramics)
     inline constexpr float brake_bias_front   = 0.6f;     // 60% front, 40% rear (typical for fwd/rwd)
     inline constexpr float input_smoothing    = 10.0f;    // throttle/brake response speed
     inline constexpr float steering_smoothing = 20.0f;    // steering response speed
 
     // tire model
-    inline constexpr float tire_friction_coeff = 1.0f;     // base friction coefficient (dry asphalt ~1.0)
+    inline constexpr float tire_friction_coeff = 0.95f;    // base friction coefficient (high-performance tires)
     inline constexpr float min_speed_for_slip  = 0.5f;     // m/s, threshold for slip calculations
     
     // suspension - anti-roll bars control understeer/oversteer balance
-    // softer front + stiffer rear = less understeer
-    inline constexpr float front_anti_roll_stiffness = 8000.0f;  // n/m, soft front = more front grip
-    inline constexpr float rear_anti_roll_stiffness  = 20000.0f; // n/m, stiff rear = less rear grip = car rotates
-    inline constexpr float max_suspension_force      = 25000.0f; // n, prevents explosive forces on hard impacts
-    inline constexpr float front_suspension_freq     = 1.5f;     // hz
-    inline constexpr float rear_suspension_freq      = 1.8f;     // hz
+    // softer front + stiffer rear = less understeer (more tail-happy)
+    inline constexpr float front_anti_roll_stiffness = 6000.0f;  // n/m, soft front = more front grip
+    inline constexpr float rear_anti_roll_stiffness  = 28000.0f; // n/m, stiff rear = less rear grip = car rotates
+    inline constexpr float max_suspension_force      = 35000.0f; // n, prevents explosive forces on hard impacts
+    inline constexpr float front_suspension_freq     = 2.8f;     // hz (supercar: stiff springs, precise handling)
+    inline constexpr float rear_suspension_freq      = 3.2f;     // hz (rear slightly stiffer for stability)
     
     // aerodynamics
     inline constexpr float drag_coefficient     = 0.35f;   // cd, typical sedan 0.30-0.35, sports 0.28-0.32
@@ -98,8 +98,8 @@ namespace car
         float wheel_radius      = 0.35f;
         float wheel_width       = 0.25f;
         float wheel_mass        = 20.0f;
-        float suspension_travel = 0.3f;
-        float suspension_height = 0.4f;    // distance from chassis bottom to wheel center at rest
+        float suspension_travel = 0.10f;   // supercar: very limited travel (stiff, low)
+        float suspension_height = 0.35f;   // distance from chassis bottom to wheel center at rest
     };
     
     // vehicle data container
@@ -215,10 +215,12 @@ namespace car
         float izz = (m / 12.0f) * (w * w + h * h); // roll (rotation around z/forward axis)
         
         // empirical adjustments for realistic car mass distribution
+        // real cars have heavy components (engine, gearbox) spread along length
+        // this makes pitch much harder than a uniform box would suggest
         params.moi = PxVec3(
-            ixx * 1.0f,  // pitch
-            iyy * 1.0f,  // yaw
-            izz * 1.0f   // roll
+            ixx * 2.5f,  // pitch - much higher to prevent wheelies
+            iyy * 1.2f,  // yaw - slightly higher for stability
+            izz * 1.5f   // roll - higher to reduce body roll
         );
     }
     
@@ -268,8 +270,8 @@ namespace car
     {
         // sprung mass per wheel - weight distribution affects handling:
         // - front heavy = understeer, rear heavy = oversteer
-        // using 50/50 for neutral balance (sports car like)
-        const float front_weight_bias = 0.50f;
+        // laferrari is mid-rear engine: 40% front, 60% rear = tail happy
+        const float front_weight_bias = 0.40f;
         const float front_sprung_mass = dims.chassis_mass * front_weight_bias * 0.5f;
         const float rear_sprung_mass  = dims.chassis_mass * (1.0f - front_weight_bias) * 0.5f;
         
@@ -282,9 +284,9 @@ namespace car
         
         // damping ratio: 1.0 = critically damped (no oscillation)
         // real cars: 0.2-0.4 (comfort), 0.5-0.7 (sport), 0.8+ (race)
-        // we use different ratios: higher compression, lower rebound for better control
-        const float damping_ratio_compression = 0.4f; // bump absorption
-        const float damping_ratio_rebound     = 0.5f; // return speed
+        // laferrari: race-level damping for precise, planted feel
+        const float damping_ratio_compression = 0.65f; // firm bump absorption
+        const float damping_ratio_rebound     = 0.75f; // quick return, no wallow
         const float avg_damping_ratio = (damping_ratio_compression + damping_ratio_rebound) * 0.5f;
         
         for (int i = 0; i < wheel_count; i++)
@@ -566,6 +568,8 @@ namespace car
     // control input
     //=======================================================================================
     
+    inline static float handbrake_input = 0.0f;
+    
     inline void set_throttle(float value)
     {
         target_input.throttle = PxClamp(value, 0.0f, 1.0f);
@@ -579,6 +583,11 @@ namespace car
     inline void set_steering(float value)
     {
         target_input.steering = PxClamp(value, -1.0f, 1.0f);
+    }
+    
+    inline void set_handbrake(float value)
+    {
+        handbrake_input = PxClamp(value, 0.0f, 1.0f);
     }
 
     //=======================================================================================
@@ -932,6 +941,15 @@ namespace car
         float long_normalized = tire_force_curve(ws.slip_ratio, peak_slip_ratio, peak_force, slide_force);
         float raw_longitudinal_force = long_normalized * max_tire_force;
         
+        // handbrake special case: reduce longitudinal (braking) force on rear wheels
+        // this makes the handbrake break traction without heavy braking/nose dive
+        bool is_rear = (wheel_index == rear_left || wheel_index == rear_right);
+        if (is_rear && handbrake_input > 0.01f)
+        {
+            // locked sliding wheels have much less braking grip than rolling wheels
+            raw_longitudinal_force *= (1.0f - handbrake_input * 0.85f);
+        }
+        
         // friction circle: combined lateral and longitudinal forces cannot exceed max grip
         // this is fundamental to realistic tire behavior
         float combined_force = sqrtf(raw_lateral_force * raw_lateral_force + raw_longitudinal_force * raw_longitudinal_force);
@@ -955,15 +973,15 @@ namespace car
         
         ws.angular_velocity += angular_accel * delta_time;
         
-        // apply ground matching only when slip is excessive (prevents runaway wheelspin)
-        // but don't fight against drive torque during normal acceleration/braking
+        // apply ground matching only when slip is extreme (prevents numerical instability)
+        // high threshold allows proper wheelspin and power oversteer
         float abs_slip = fabsf(ws.slip_ratio);
-        if (abs_slip > 0.3f) // only correct when slip exceeds 30%
+        if (abs_slip > 0.6f) // only correct when slip exceeds 60%
         {
             float speed_error = target_angular_velocity - ws.angular_velocity;
-            // stronger correction at higher slip
-            float correction_strength = (abs_slip - 0.3f) * 10.0f;
-            correction_strength = PxMin(correction_strength, 5.0f);
+            // gentle correction - let the car be wild
+            float correction_strength = (abs_slip - 0.6f) * 3.0f;
+            correction_strength = PxMin(correction_strength, 2.0f);
             float blend_factor = 1.0f - expf(-correction_strength * delta_time);
             ws.angular_velocity += speed_error * blend_factor;
         }
@@ -1111,6 +1129,20 @@ namespace car
             }
         }
         
+        // handbrake: locks rear wheels for drifting
+        // real handbrakes are cable-operated and weaker than hydraulic brakes
+        // but they lock instantly which is what causes the rear to break loose
+        if (handbrake_input > 0.01f)
+        {
+            for (int i = rear_left; i <= rear_right; i++)
+            {
+                // instant lock - just kill the wheel spin directly
+                // this creates maximum slip without excessive braking force
+                float lock_strength = handbrake_input;
+                wheel_states[i].angular_velocity *= (1.0f - lock_strength);
+            }
+        }
+        
         // ackermann steering with speed-dependent reduction
         float steering_reduction = 1.0f;
         if (speed_kmh > 80.0f)
@@ -1155,9 +1187,9 @@ namespace car
         PxVec3 gravity(0.0f, -9.81f * active_vehicle->rigid_body_params.mass, 0.0f);
         body->addForce(gravity, PxForceMode::eFORCE);
         
-        // minimal damping - tire forces handle vehicle dynamics
+        // damping helps settle the car without affecting handling too much
         body->setLinearDamping(0.05f);
-        body->setAngularDamping(0.3f);
+        body->setAngularDamping(0.8f);  // higher to reduce pitch/roll oscillations
         
         // suspension and tire simulation
         PxScene* scene = body->getScene();
@@ -1213,6 +1245,7 @@ namespace car
     inline float get_steering()           { return current_input.steering; }
     inline float get_throttle()           { return current_input.throttle; }
     inline float get_brake()              { return current_input.brake;    }
+    inline float get_handbrake()          { return handbrake_input;        }
     inline float get_suspension_travel()  { return active_dims.suspension_travel; }
     
     inline float get_wheel_compression(int wheel_index)

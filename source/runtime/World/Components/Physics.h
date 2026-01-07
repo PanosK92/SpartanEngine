@@ -140,9 +140,10 @@ namespace spartan
         void Crouch(const bool crouch);
 
         // vehicle controls (only works when body type is Vehicle)
-        void SetVehicleThrottle(float value);  // 0 to 1
-        void SetVehicleBrake(float value);     // 0 to 1
-        void SetVehicleSteering(float value);  // -1 (left) to 1 (right)
+        void SetVehicleThrottle(float value);   // 0 to 1
+        void SetVehicleBrake(float value);      // 0 to 1
+        void SetVehicleSteering(float value);   // -1 (left) to 1 (right)
+        void SetVehicleHandbrake(float value);  // 0 to 1 (locks rear wheels for drifting)
 
         // vehicle wheel entities (visual meshes that rotate with physics)
         void SetWheelEntity(WheelIndex wheel, Entity* entity);
@@ -162,6 +163,7 @@ namespace spartan
         float GetVehicleThrottle() const;
         float GetVehicleBrake() const;
         float GetVehicleSteering() const;
+        float GetVehicleHandbrake() const;
         bool IsWheelGrounded(WheelIndex wheel) const;
         float GetWheelCompression(WheelIndex wheel) const;
         float GetWheelSuspensionForce(WheelIndex wheel) const;

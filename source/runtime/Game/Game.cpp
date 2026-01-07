@@ -1733,6 +1733,13 @@ namespace spartan
             void create()
             {
                 entities::camera(false, Vector3(0.0f, 5.0f, -15.0f), Vector3(5.0f, 0.0f, 0.0f));
+                
+                // disable fps camera controls - only the car should be controlled
+                if (Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>())
+                {
+                    camera->SetFlag(CameraFlags::CanBeControlled, false);
+                }
+                
                 entities::sun(LightPreset::dusk, true);
                 entities::floor();
 
@@ -1757,6 +1764,11 @@ namespace spartan
                     default_car->SetPositionLocal(Vector3(0.0f, -0.65f, 0.0f)); // adjust chassis to match the physics
                     default_car->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f)); // rotate 90 degrees around X to face forward
                     default_car->SetScaleLocal(1.0f);
+                }
+
+                // hide original wheels
+                {
+
                 }
 
                 // load wheel and create 4 instances for the vehicle
@@ -1851,6 +1863,7 @@ namespace spartan
                 {
                     physics->SetVehicleThrottle(Input::GetKey(KeyCode::Arrow_Up) ? 1.0f : 0.0f);
                     physics->SetVehicleBrake(Input::GetKey(KeyCode::Arrow_Down) ? 1.0f : 0.0f);
+                    physics->SetVehicleHandbrake(Input::GetKey(KeyCode::Space) ? 1.0f : 0.0f);
 
                     float steering = 0.0f;
                     if (Input::GetKey(KeyCode::Arrow_Left))  steering = -1.0f;
@@ -1877,10 +1890,11 @@ namespace spartan
                 y_pos += line_spacing;
                 
                 // inputs
-                snprintf(text_buffer, sizeof(text_buffer), "Throttle: %.0f%%   Brake/Rev: %.0f%%   Steer: %+.0f%%",
+                snprintf(text_buffer, sizeof(text_buffer), "Throttle: %.0f%%   Brake/Rev: %.0f%%   Steer: %+.0f%%   Handbrake: %.0f%%",
                     physics->GetVehicleThrottle() * 100.0f,
                     physics->GetVehicleBrake() * 100.0f,
-                    physics->GetVehicleSteering() * 100.0f);
+                    physics->GetVehicleSteering() * 100.0f,
+                    physics->GetVehicleHandbrake() * 100.0f);
                 Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
                 y_pos += line_spacing * 1.5f;
                 
@@ -1937,7 +1951,7 @@ namespace spartan
                 }
                 
                 y_pos += line_spacing * 0.5f;
-                Renderer::DrawString("Controls: Arrow Keys (Up=Throttle, Down=Brake/Reverse, L/R=Steer)", Vector2(0.005f, y_pos));
+                Renderer::DrawString("Controls: Arrows (Up=Throttle, Down=Brake/Reverse, L/R=Steer), Space=Handbrake", Vector2(0.005f, y_pos));
             }
         }
         //====================================================================================

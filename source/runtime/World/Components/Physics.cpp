@@ -880,6 +880,14 @@ namespace spartan
         car::set_steering(value);
     }
 
+    void Physics::SetVehicleHandbrake(float value)
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        car::set_handbrake(value);
+    }
+
     void Physics::SetWheelEntity(WheelIndex wheel, Entity* entity)
     {
         if (m_body_type != BodyType::Vehicle)
@@ -1040,6 +1048,13 @@ namespace spartan
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_steering();
+    }
+
+    float Physics::GetVehicleHandbrake() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_handbrake();
     }
 
     bool Physics::IsWheelGrounded(WheelIndex wheel) const
