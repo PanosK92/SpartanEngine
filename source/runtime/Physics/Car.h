@@ -133,6 +133,10 @@ namespace car
         PxVec3 contact_point         = PxVec3(0, 0, 0);
         PxVec3 contact_normal        = PxVec3(0, 1, 0);
         
+        // wheel rotation state
+        float angular_velocity   = 0.0f; // rad/s, wheel spin rate
+        float wheel_rotation     = 0.0f; // cumulative rotation for visual (radians)
+        
         // tire slip state (for pacejka model)
         float slip_angle         = 0.0f; // radians, lateral slip
         float slip_ratio         = 0.0f; // longitudinal slip (-1 to 1)
@@ -197,25 +201,24 @@ namespace car
         params.mass = dims.chassis_mass;
         
         // moment of inertia calculation
-        // real cars have mass distributed differently than a uniform box:
-        // - mass concentrated low (engine, drivetrain)
-        // - mass spread along length (passengers, fuel tank)
-        // we use empirical multipliers based on real vehicle data
+        // coordinate system: x = right, y = up, z = forward
+        // ixx = rotation around x-axis (pitch), iyy = rotation around y-axis (yaw), izz = rotation around z-axis (roll)
+        // for a box: I_axis = (m/12) * (a² + b²) where a,b are the two dimensions perpendicular to the axis
         const float w = dims.chassis_width;
         const float h = dims.chassis_height;
         const float l = dims.chassis_length;
         const float m = dims.chassis_mass;
         
-        // base box inertia
-        float ixx = (m / 12.0f) * (h * h + l * l); // roll
-        float iyy = (m / 12.0f) * (w * w + l * l); // yaw
-        float izz = (m / 12.0f) * (w * w + h * h); // pitch
+        // base box inertia (correct formulas for each axis)
+        float ixx = (m / 12.0f) * (h * h + l * l); // pitch (rotation around x/right axis)
+        float iyy = (m / 12.0f) * (w * w + l * l); // yaw (rotation around y/up axis)
+        float izz = (m / 12.0f) * (w * w + h * h); // roll (rotation around z/forward axis)
         
-        // empirical adjustments - slightly reduced yaw for responsive steering
+        // empirical adjustments for realistic car mass distribution
         params.moi = PxVec3(
-            ixx * 1.0f,  // roll
-            iyy * 1.0f,  // yaw - normal
-            izz * 1.0f   // pitch
+            ixx * 1.0f,  // pitch
+            iyy * 1.0f,  // yaw
+            izz * 1.0f   // roll
         );
     }
     
@@ -662,9 +665,11 @@ namespace car
         float spring_force = force_params.stiffness * displacement;
         
         // damper force: F = damping * velocity
-        float compression_velocity = (ws.suspension_compression - ws.previous_compression) / delta_time;
-        compression_velocity = PxClamp(compression_velocity, -5.0f, 5.0f);
-        float damper_force = force_params.damping * compression_velocity * active_dims.suspension_travel;
+        // compression_velocity is in compression units per second, convert to m/s
+        float compression_change = ws.suspension_compression - ws.previous_compression;
+        float velocity_mps = (compression_change * active_dims.suspension_travel) / delta_time;
+        velocity_mps = PxClamp(velocity_mps, -5.0f, 5.0f);
+        float damper_force = force_params.damping * velocity_mps;
         
         // total suspension force (spring + damper)
         float total_force = spring_force + damper_force;
@@ -683,15 +688,16 @@ namespace car
             forces[i] = calculate_wheel_force(i, delta_time);
         
         // anti-roll bar: front axle (couples fl and fr)
-        // softer front anti-roll = more front grip in corners = less understeer
+        // when car rolls right, left compresses more (positive diff)
+        // anti-roll bar resists this by reducing left force and increasing right force
         {
             float compression_diff = wheel_states[front_left].suspension_compression - wheel_states[front_right].suspension_compression;
             float anti_roll_force  = compression_diff * front_anti_roll_stiffness * active_dims.suspension_travel;
             
             if (wheel_states[front_left].is_grounded)
-                forces[front_left] += anti_roll_force;
+                forces[front_left] -= anti_roll_force;  // reduce force on more compressed side
             if (wheel_states[front_right].is_grounded)
-                forces[front_right] -= anti_roll_force;
+                forces[front_right] += anti_roll_force; // increase force on less compressed side
         }
         
         // anti-roll bar: rear axle (couples rl and rr)
@@ -701,9 +707,9 @@ namespace car
             float anti_roll_force  = compression_diff * rear_anti_roll_stiffness * active_dims.suspension_travel;
             
             if (wheel_states[rear_left].is_grounded)
-                forces[rear_left] += anti_roll_force;
+                forces[rear_left] -= anti_roll_force;   // reduce force on more compressed side
             if (wheel_states[rear_right].is_grounded)
-                forces[rear_right] -= anti_roll_force;
+                forces[rear_right] += anti_roll_force;  // increase force on less compressed side
         }
         
         // clamp final forces and apply
@@ -729,6 +735,59 @@ namespace car
     //=======================================================================================
     // tire simulation
     //=======================================================================================
+    
+    // ackermann steering geometry: inner wheel turns more than outer wheel
+    // returns steering angles for left and right wheels given input steering
+    // use_ackermann: true for forward motion, false for reverse (simpler equal angles)
+    inline void calculate_ackermann_steering(float input_steering, float& left_angle, float& right_angle, bool use_ackermann = true)
+    {
+        const float max_steering_angle = 40.0f * (PxPi / 180.0f);
+        float base_angle = input_steering * max_steering_angle;
+        
+        if (fabsf(base_angle) < 0.001f)
+        {
+            left_angle  = 0.0f;
+            right_angle = 0.0f;
+            return;
+        }
+        
+        // when reversing, use simple equal steering angles for stability
+        // ackermann geometry is designed for forward motion
+        if (!use_ackermann)
+        {
+            left_angle  = base_angle;
+            right_angle = base_angle;
+            return;
+        }
+        
+        // wheelbase and track width for ackermann calculation
+        float wheelbase  = active_dims.chassis_length * 0.7f;  // front-to-rear wheel distance
+        float track      = active_dims.chassis_width - active_dims.wheel_width;
+        float half_track = track * 0.5f;
+        
+        // turn radius from base steering angle (center of rear axle)
+        float turn_radius = wheelbase / tanf(fabsf(base_angle));
+        
+        // inner wheel needs sharper angle (smaller radius)
+        // outer wheel needs shallower angle (larger radius)
+        float inner_radius = turn_radius - half_track;
+        float outer_radius = turn_radius + half_track;
+        
+        float inner_angle = atanf(wheelbase / PxMax(inner_radius, 0.1f));
+        float outer_angle = atanf(wheelbase / PxMax(outer_radius, 0.1f));
+        
+        // apply to correct wheel based on steering direction
+        if (base_angle > 0.0f) // turning right
+        {
+            right_angle = inner_angle;  // right wheel is inner
+            left_angle  = outer_angle;  // left wheel is outer
+        }
+        else // turning left
+        {
+            left_angle  = -inner_angle; // left wheel is inner
+            right_angle = -outer_angle; // right wheel is outer
+        }
+    }
     
     // simplified pacejka-like tire model
     // returns normalized force (0-1) for a given slip value
@@ -756,7 +815,7 @@ namespace car
     }
     
     // calculate tire slip and forces for a single wheel using slip-angle model
-    inline void calculate_tire_forces(int wheel_index, PxRigidDynamic* body, float steering_angle)
+    inline void calculate_tire_forces(int wheel_index, PxRigidDynamic* body, float wheel_angle, float delta_time)
     {
         wheel_state& ws = wheel_states[wheel_index];
         
@@ -766,6 +825,10 @@ namespace car
             ws.slip_ratio         = 0.0f;
             ws.lateral_force      = 0.0f;
             ws.longitudinal_force = 0.0f;
+            
+            // wheel spins freely when not grounded (decays slowly)
+            ws.angular_velocity *= 0.99f;
+            ws.wheel_rotation += ws.angular_velocity * delta_time;
             return;
         }
         
@@ -781,12 +844,6 @@ namespace car
         PxVec3 r = world_wheel_pos - pose.p;
         wheel_velocity += angular_vel.cross(r);
         
-        // get wheel orientation (steering for front wheels)
-        float wheel_angle = 0.0f;
-        bool is_front = (wheel_index == front_left || wheel_index == front_right);
-        if (is_front)
-            wheel_angle = steering_angle;
-        
         // wheel direction vectors in world space
         PxVec3 chassis_forward = pose.q.rotate(PxVec3(0, 0, 1));
         PxVec3 chassis_right   = pose.q.rotate(PxVec3(1, 0, 0));
@@ -801,43 +858,122 @@ namespace car
         
         // get lateral and longitudinal velocity components
         float vy = ground_velocity.dot(wheel_lateral);   // lateral velocity (side slip)
-        float vx = ground_velocity.dot(wheel_forward);   // longitudinal velocity
+        float vx = ground_velocity.dot(wheel_forward);   // longitudinal velocity (can be negative when reversing)
         
-        // calculate slip angle (angle between wheel heading and travel direction)
-        // slip angle is what generates lateral force in real tires
-        if (ground_speed > min_speed_for_slip)
+        // wheel surface speed from angular velocity
+        float wheel_speed = ws.angular_velocity * active_dims.wheel_radius;
+        
+        // calculate slip ratio (longitudinal slip)
+        // slip_ratio = (wheel_speed - ground_speed) / max(|wheel_speed|, |ground_speed|)
+        // positive = wheel spinning faster than ground (acceleration wheelspin)
+        // negative = wheel spinning slower than ground (braking lockup)
+        float max_speed = PxMax(fabsf(wheel_speed), fabsf(vx));
+        if (max_speed > min_speed_for_slip)
         {
-            // proper slip angle: arctan(vy/vx)
-            // positive slip angle = wheel pointing more inward than travel direction
-            ws.slip_angle = atan2f(vy, fabsf(vx) + 0.1f);
+            ws.slip_ratio = (wheel_speed - vx) / max_speed;
+            ws.slip_ratio = PxClamp(ws.slip_ratio, -1.0f, 1.0f);
         }
         else
         {
-            // at very low speeds, use velocity-proportional model to avoid instability
-            ws.slip_angle = vy * 0.5f; // small angle approximation
+            ws.slip_ratio = 0.0f;
         }
         
-        // simple viscous tire model: force opposes lateral velocity
-        // this is stable and predictable - the force directly fights sideways motion
-        float max_lateral_force = tire_friction_coeff * ws.tire_load;
+        // calculate slip angle (lateral slip)
+        // slip angle determines how much lateral force the tire generates
+        // the force should ALWAYS resist lateral velocity (vy), regardless of forward/reverse
+        // 
+        // when going forward (vx > 0): standard slip angle
+        // when going backward (vx < 0): slip angle magnitude is the same, force still resists vy
+        //
+        // the key insight: lateral tire force should always fight sideways motion
+        // the direction of travel (forward/reverse) only affects how the car responds
+        // to steering, which is handled by force application points
+        if (fabsf(vx) > min_speed_for_slip)
+        {
+            // slip angle magnitude based on geometry
+            // use fabsf(vx) so slip angle is symmetric for forward/reverse
+            ws.slip_angle = atan2f(vy, fabsf(vx));
+        }
+        else if (ground_speed > min_speed_for_slip * 0.5f)
+        {
+            // moving mostly sideways - use limited lateral response
+            ws.slip_angle = atan2f(vy, min_speed_for_slip);
+        }
+        else
+        {
+            ws.slip_angle = 0.0f;
+        }
         
-        // lateral stiffness scales with tire load for realistic feel
-        float lateral_stiffness = 12000.0f * (ws.tire_load / 4000.0f);
-        lateral_stiffness = PxClamp(lateral_stiffness, 4000.0f, 20000.0f);
+        // pacejka-style tire forces using tire_force_curve
+        // peak slip values based on tire data
+        const float peak_slip_angle = 8.0f * (PxPi / 180.0f);  // ~8 degrees for lateral
+        const float peak_slip_ratio = 0.10f;                    // ~10% for longitudinal
+        const float peak_force      = 1.0f;                     // normalized peak grip
+        const float slide_force     = 0.85f;                    // sliding friction ~85% of peak
         
-        // force = -stiffness * lateral_velocity, clamped to grip limit
-        float raw_lateral_force = -vy * lateral_stiffness;
-        ws.lateral_force = PxClamp(raw_lateral_force, -max_lateral_force, max_lateral_force);
+        // maximum forces based on tire load and friction
+        float max_tire_force = tire_friction_coeff * ws.tire_load;
         
-        // slip ratio for longitudinal forces (acceleration/braking)
-        // slip ratio = (wheel_speed - ground_speed) / max(wheel_speed, ground_speed)
-        // for now we don't track wheel angular velocity, so estimate from throttle/brake
-        ws.slip_ratio = 0.0f; // will be set by drive force application
-        ws.longitudinal_force = 0.0f; // drive forces handled separately in tick()
+        // lateral force from slip angle (using pacejka curve)
+        float lat_normalized = tire_force_curve(ws.slip_angle, peak_slip_angle, peak_force, slide_force);
+        float raw_lateral_force = -lat_normalized * max_tire_force;
+        
+        // stability: at extreme slip angles (>45 degrees), reduce force to prevent oscillations
+        // this happens during aggressive reverse steering or spin-outs
+        float abs_slip_angle = fabsf(ws.slip_angle);
+        if (abs_slip_angle > PxPi * 0.25f) // > 45 degrees
+        {
+            // linear reduction from 100% at 45 deg to 50% at 90 deg
+            float reduction = 1.0f - 0.5f * PxClamp((abs_slip_angle - PxPi * 0.25f) / (PxPi * 0.25f), 0.0f, 1.0f);
+            raw_lateral_force *= reduction;
+        }
+        
+        // longitudinal force from slip ratio (using pacejka curve)
+        float long_normalized = tire_force_curve(ws.slip_ratio, peak_slip_ratio, peak_force, slide_force);
+        float raw_longitudinal_force = long_normalized * max_tire_force;
+        
+        // friction circle: combined lateral and longitudinal forces cannot exceed max grip
+        // this is fundamental to realistic tire behavior
+        float combined_force = sqrtf(raw_lateral_force * raw_lateral_force + raw_longitudinal_force * raw_longitudinal_force);
+        if (combined_force > max_tire_force && combined_force > 0.0f)
+        {
+            float scale = max_tire_force / combined_force;
+            raw_lateral_force *= scale;
+            raw_longitudinal_force *= scale;
+        }
+        
+        ws.lateral_force = raw_lateral_force;
+        ws.longitudinal_force = raw_longitudinal_force;
+        
+        // update wheel angular velocity based on forces and ground contact
+        const PxVehicleWheelParams& wheel_params = active_vehicle->wheel_params[wheel_index];
+        float target_angular_velocity = vx / active_dims.wheel_radius;
+        
+        // tire force creates reaction torque on wheel (slows down spinning wheels)
+        float tire_torque = -raw_longitudinal_force * active_dims.wheel_radius;
+        float angular_accel = tire_torque / wheel_params.moi;
+        
+        ws.angular_velocity += angular_accel * delta_time;
+        
+        // apply ground matching only when slip is excessive (prevents runaway wheelspin)
+        // but don't fight against drive torque during normal acceleration/braking
+        float abs_slip = fabsf(ws.slip_ratio);
+        if (abs_slip > 0.3f) // only correct when slip exceeds 30%
+        {
+            float speed_error = target_angular_velocity - ws.angular_velocity;
+            // stronger correction at higher slip
+            float correction_strength = (abs_slip - 0.3f) * 10.0f;
+            correction_strength = PxMin(correction_strength, 5.0f);
+            float blend_factor = 1.0f - expf(-correction_strength * delta_time);
+            ws.angular_velocity += speed_error * blend_factor;
+        }
+        
+        ws.angular_velocity *= (1.0f - wheel_params.dampingRate * delta_time);
+        ws.wheel_rotation += ws.angular_velocity * delta_time;
     }
     
-    // apply tire forces for all wheels
-    inline void apply_tire_forces(PxRigidDynamic* body, float steering_angle)
+    // apply tire forces for all wheels (both lateral and longitudinal)
+    inline void apply_tire_forces(PxRigidDynamic* body, const float wheel_angles[wheel_count])
     {
         PxTransform pose = body->getGlobalPose();
         PxVec3 wheel_positions[wheel_count];
@@ -853,19 +989,16 @@ namespace car
             if (!ws.is_grounded || ws.tire_load <= 0.0f)
                 continue;
             
-            // get wheel orientation
-            float wheel_angle = 0.0f;
-            bool is_front     = (i == front_left || i == front_right);
-            if (is_front)
-                wheel_angle = steering_angle;
+            float wheel_angle = wheel_angles[i];
             
-            // wheel lateral direction
+            // wheel direction vectors
             float cos_steer      = cosf(wheel_angle);
             float sin_steer      = sinf(wheel_angle);
+            PxVec3 wheel_forward = chassis_forward * cos_steer + chassis_right * sin_steer;
             PxVec3 wheel_lateral = chassis_right * cos_steer - chassis_forward * sin_steer;
             
-            // apply lateral force
-            PxVec3 tire_force      = wheel_lateral * ws.lateral_force;
+            // combined tire force (lateral + longitudinal)
+            PxVec3 tire_force = wheel_lateral * ws.lateral_force + wheel_forward * ws.longitudinal_force;
             PxVec3 world_wheel_pos = pose.transform(wheel_positions[i]);
             PxRigidBodyExt::addForceAtPos(*body, tire_force, world_wheel_pos, PxForceMode::eFORCE);
         }
@@ -908,89 +1041,90 @@ namespace car
         PxVec3 wheel_positions[wheel_count];
         compute_wheel_positions(active_dims, wheel_positions);
         
-        // apply driving force at rear wheels (rwd) for proper weight transfer
-        // weight transfers to rear under acceleration, giving rear wheels more grip
+        // apply drive torque to rear wheels (rwd) via wheel angular velocity
+        // this creates proper wheelspin under hard acceleration
         if (current_input.throttle > 0.01f)
         {
             // engine power curve: peak torque at mid rpm, falls off at high rpm
-            // approximated as power reduction at high speeds
             float power_factor = 1.0f - PxClamp(speed_kmh / 250.0f, 0.0f, 0.85f);
-            float drive_force_magnitude = max_engine_force * current_input.throttle * power_factor;
+            float drive_torque = max_engine_force * active_dims.wheel_radius * current_input.throttle * power_factor;
             
-            // distribute to rear wheels (for rwd - adjust for fwd/awd as needed)
-            // only apply force if wheel is grounded
+            // apply torque to rear wheels (rwd)
             for (int i = rear_left; i <= rear_right; i++)
             {
-                if (wheel_states[i].is_grounded && wheel_states[i].tire_load > 0.0f)
-                {
-                    PxVec3 force_per_wheel = forward * (drive_force_magnitude * 0.5f);
-                    PxVec3 world_pos = pose.transform(wheel_positions[i]);
-                    PxRigidBodyExt::addForceAtPos(*body, force_per_wheel, world_pos, PxForceMode::eFORCE);
-                }
+                const PxVehicleWheelParams& wheel_params = active_vehicle->wheel_params[i];
+                float angular_accel = (drive_torque * 0.5f) / wheel_params.moi;
+                wheel_states[i].angular_velocity += angular_accel * delta_time;
             }
         }
         
-        // apply braking at all wheels with front bias for stability
-        // weight transfers forward under braking, front wheels get more grip
+        // brake input has dual function:
+        // - when going forward: apply brakes
+        // - when stopped or going backward: apply reverse thrust
         if (current_input.brake > 0.01f)
         {
             if (forward_speed_kmh > 3.0f)
             {
-                // moving forward: apply brakes with front bias
-                float total_brake = max_brake_force * current_input.brake;
-                float front_brake = total_brake * brake_bias_front * 0.5f;
-                float rear_brake  = total_brake * (1.0f - brake_bias_front) * 0.5f;
+                // going forward: apply brakes with front bias
+                float total_brake_torque = max_brake_force * active_dims.wheel_radius * current_input.brake;
+                float front_torque = total_brake_torque * brake_bias_front * 0.5f;
+                float rear_torque  = total_brake_torque * (1.0f - brake_bias_front) * 0.5f;
                 
-                // front wheels
-                for (int i = front_left; i <= front_right; i++)
+                // brake torque opposes wheel rotation
+                for (int i = 0; i < wheel_count; i++)
                 {
-                    if (wheel_states[i].is_grounded)
+                    const PxVehicleWheelParams& wheel_params = active_vehicle->wheel_params[i];
+                    bool is_front = (i == front_left || i == front_right);
+                    float torque = is_front ? front_torque : rear_torque;
+                    
+                    float sign = wheel_states[i].angular_velocity >= 0.0f ? -1.0f : 1.0f;
+                    float angular_accel = sign * torque / wheel_params.moi;
+                    
+                    // don't let brakes reverse wheel direction
+                    float new_velocity = wheel_states[i].angular_velocity + angular_accel * delta_time;
+                    if ((wheel_states[i].angular_velocity > 0.0f && new_velocity < 0.0f) ||
+                        (wheel_states[i].angular_velocity < 0.0f && new_velocity > 0.0f))
                     {
-                        PxVec3 brake_force = -forward * front_brake;
-                        PxVec3 world_pos = pose.transform(wheel_positions[i]);
-                        PxRigidBodyExt::addForceAtPos(*body, brake_force, world_pos, PxForceMode::eFORCE);
+                        wheel_states[i].angular_velocity = 0.0f;
                     }
-                }
-                // rear wheels
-                for (int i = rear_left; i <= rear_right; i++)
-                {
-                    if (wheel_states[i].is_grounded)
+                    else
                     {
-                        PxVec3 brake_force = -forward * rear_brake;
-                        PxVec3 world_pos = pose.transform(wheel_positions[i]);
-                        PxRigidBodyExt::addForceAtPos(*body, brake_force, world_pos, PxForceMode::eFORCE);
+                        wheel_states[i].angular_velocity = new_velocity;
                     }
                 }
             }
             else
             {
-                // stopped or already reversing: apply reverse thrust (max ~50 km/h reverse)
+                // stopped or going backward: apply reverse drive torque
+                // reverse gets ~80% of forward power (realistic for most transmissions)
                 float reverse_speed_kmh = PxMax(-forward_speed_kmh, 0.0f);
-                float reverse_power = 1.0f - PxClamp(reverse_speed_kmh / 50.0f, 0.0f, 0.9f);
-                float reverse_force = max_engine_force * 0.5f * current_input.brake * reverse_power;
+                float reverse_power = 1.0f - PxClamp(reverse_speed_kmh / 80.0f, 0.0f, 0.85f);
+                float reverse_torque = max_engine_force * 0.8f * active_dims.wheel_radius * current_input.brake * reverse_power;
                 
-                // apply at rear wheels
+                // apply negative torque to rear wheels for reverse (split between 2 wheels)
                 for (int i = rear_left; i <= rear_right; i++)
                 {
-                    if (wheel_states[i].is_grounded)
-                    {
-                        PxVec3 force = -forward * (reverse_force * 0.5f);
-                        PxVec3 world_pos = pose.transform(wheel_positions[i]);
-                        PxRigidBodyExt::addForceAtPos(*body, force, world_pos, PxForceMode::eFORCE);
-                    }
+                    const PxVehicleWheelParams& wheel_params = active_vehicle->wheel_params[i];
+                    float angular_accel = -reverse_torque / (wheel_params.moi * 2.0f);
+                    wheel_states[i].angular_velocity += angular_accel * delta_time;
                 }
             }
         }
         
-        // steering angle - minimal speed reduction for responsive handling
-        const float max_steering_angle = 40.0f * (PxPi / 180.0f);
+        // ackermann steering with speed-dependent reduction
         float steering_reduction = 1.0f;
         if (speed_kmh > 80.0f)
         {
             // gentle reduction: 100% at 80km/h down to 70% at 200km/h
             steering_reduction = 1.0f - 0.3f * PxClamp((speed_kmh - 80.0f) / 120.0f, 0.0f, 1.0f);
         }
-        float steering_angle = current_input.steering * max_steering_angle * steering_reduction;
+        float adjusted_steering = current_input.steering * steering_reduction;
+        
+        // calculate steering angles for each wheel
+        // use ackermann geometry only when going forward; simpler equal angles when reversing
+        bool use_ackermann = forward_speed >= 0.0f;
+        float wheel_angles[wheel_count] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        calculate_ackermann_steering(adjusted_steering, wheel_angles[front_left], wheel_angles[front_right], use_ackermann);
         
         // aerodynamic drag: f = 0.5 * rho * cd * a * v^2
         // this is the correct physics formula for air resistance
@@ -1053,11 +1187,11 @@ namespace car
             }
         }
         
-        // pass 4: calculate and apply tire lateral forces (cornering)
+        // pass 4: calculate and apply tire forces (lateral + longitudinal with friction circle)
         for (int i = 0; i < wheel_count; i++)
-            calculate_tire_forces(i, body, steering_angle);
+            calculate_tire_forces(i, body, wheel_angles[i], delta_time);
         
-        apply_tire_forces(body, steering_angle);
+        apply_tire_forces(body, wheel_angles);
     }
 
     //=======================================================================================
@@ -1128,5 +1262,20 @@ namespace car
     inline float get_wheel_lateral_force(int wheel_index)
     {
         return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].lateral_force : 0.0f;
+    }
+    
+    inline float get_wheel_longitudinal_force(int wheel_index)
+    {
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].longitudinal_force : 0.0f;
+    }
+    
+    inline float get_wheel_angular_velocity(int wheel_index)
+    {
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].angular_velocity : 0.0f;
+    }
+    
+    inline float get_wheel_rotation(int wheel_index)
+    {
+        return is_valid_wheel_index(wheel_index) ? wheel_states[wheel_index].wheel_rotation : 0.0f;
     }
 }

@@ -169,6 +169,9 @@ namespace spartan
         float GetWheelSlipRatio(WheelIndex wheel) const;
         float GetWheelTireLoad(WheelIndex wheel) const;
         float GetWheelLateralForce(WheelIndex wheel) const;
+        float GetWheelLongitudinalForce(WheelIndex wheel) const;
+        float GetWheelAngularVelocity(WheelIndex wheel) const;  // rad/s
+        float GetWheelRPM(WheelIndex wheel) const;              // revolutions per minute
 
     private:
         void UpdateWheelTransforms();

@@ -1091,6 +1091,28 @@ namespace spartan
         return car::get_wheel_lateral_force(static_cast<int>(wheel));
     }
 
+    float Physics::GetWheelLongitudinalForce(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_longitudinal_force(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelAngularVelocity(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_angular_velocity(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelRPM(WheelIndex wheel) const
+    {
+        // convert angular velocity (rad/s) to RPM
+        // rpm = (rad/s) * (60 / 2π) = (rad/s) * 9.5493
+        float angular_vel = GetWheelAngularVelocity(wheel);
+        return fabsf(angular_vel) * 9.5493f;
+    }
+
     void Physics::UpdateWheelTransforms()
     {
         if (m_body_type != BodyType::Vehicle || !Engine::IsFlagSet(EngineMode::Playing))

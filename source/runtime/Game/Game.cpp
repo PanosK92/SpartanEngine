@@ -1732,6 +1732,7 @@ namespace spartan
 
             void create()
             {
+                 Renderer::SetOption(Renderer_Option::PerformanceMetrics, 1.0f);
                 entities::camera(false, Vector3(0.0f, 5.0f, -15.0f), Vector3(5.0f, 0.0f, 0.0f));
                 entities::sun(LightPreset::dusk, true);
                 entities::floor();
@@ -1858,53 +1859,85 @@ namespace spartan
                     physics->SetVehicleSteering(steering);
                 }
 
-                // osd - vehicle info
-                static char text_buffer[128];
+                // osd - vehicle telemetry
+                static char text_buffer[256];
                 Vector3 velocity = physics->GetLinearVelocity();
                 float speed_kmh = velocity.Length() * 3.6f;
                 
-                float y_pos = 0.70f;
-                const float line_spacing = 0.02f;
+                float y_pos = 0.58f;
+                const float line_spacing = 0.018f;
                 
-                Renderer::DrawString("Vehicle Test (WIP)", Vector2(0.005f, y_pos));
-                y_pos += line_spacing;
+                // header
+                Renderer::DrawString("Vehicle Telemetry", Vector2(0.005f, y_pos));
+                y_pos += line_spacing * 1.2f;
                 
-                snprintf(text_buffer, sizeof(text_buffer), "Speed: %.1f km/h", speed_kmh);
+                // speed and rpm (average of driven wheels)
+                float avg_rpm = (physics->GetWheelRPM(WheelIndex::RearLeft) + physics->GetWheelRPM(WheelIndex::RearRight)) * 0.5f;
+                snprintf(text_buffer, sizeof(text_buffer), "Speed: %.1f km/h   RPM: %.0f", speed_kmh, avg_rpm);
                 Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
                 y_pos += line_spacing;
                 
-                snprintf(text_buffer, sizeof(text_buffer), "Throttle: %.0f%%  Brake: %.0f%%  Steer: %.2f",
-                    physics->GetVehicleThrottle() * 100.0f, physics->GetVehicleBrake() * 100.0f, physics->GetVehicleSteering());
+                // inputs
+                snprintf(text_buffer, sizeof(text_buffer), "Throttle: %.0f%%   Brake/Rev: %.0f%%   Steer: %+.0f%%",
+                    physics->GetVehicleThrottle() * 100.0f,
+                    physics->GetVehicleBrake() * 100.0f,
+                    physics->GetVehicleSteering() * 100.0f);
                 Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
                 y_pos += line_spacing * 1.5f;
                 
-                // per-wheel metrics
-                Renderer::DrawString("Wheel Metrics (Pacejka Tire Model):", Vector2(0.005f, y_pos));
+                // per-wheel metrics header
+                Renderer::DrawString("Tire Physics:", Vector2(0.005f, y_pos));
+                y_pos += line_spacing;
+                Renderer::DrawString("       GND   Slip Angle   Slip Ratio   Lat Force   Long Force   Load", Vector2(0.005f, y_pos));
                 y_pos += line_spacing;
                 
                 const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
                 for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
                 {
                     WheelIndex wheel = static_cast<WheelIndex>(i);
-                    bool grounded = physics->IsWheelGrounded(wheel);
-                    float slip_deg = physics->GetWheelSlipAngle(wheel) * 57.2958f; // rad to deg
-                    float lat_force_kn = physics->GetWheelLateralForce(wheel) / 1000.0f;
-                    float load_kn = physics->GetWheelTireLoad(wheel) / 1000.0f;
+                    bool grounded       = physics->IsWheelGrounded(wheel);
+                    float slip_angle    = physics->GetWheelSlipAngle(wheel) * 57.2958f;     // rad to deg
+                    float slip_ratio    = physics->GetWheelSlipRatio(wheel) * 100.0f;       // to percentage
+                    float lat_force_kn  = physics->GetWheelLateralForce(wheel) / 1000.0f;
+                    float long_force_kn = physics->GetWheelLongitudinalForce(wheel) / 1000.0f;
+                    float load_kn       = physics->GetWheelTireLoad(wheel) / 1000.0f;
                     
-                    snprintf(text_buffer, sizeof(text_buffer), "  %s: %s  Slip: %+5.1f deg  Lat: %+5.1f kN  Load: %.1f kN",
+                    snprintf(text_buffer, sizeof(text_buffer), "  %s:  %s   %+6.1f deg   %+6.1f %%    %+5.1f kN    %+5.1f kN   %.1f kN",
                         wheel_names[i],
-                        grounded ? "GND" : "AIR",
-                        slip_deg,
+                        grounded ? "YES" : " - ",
+                        slip_angle,
+                        slip_ratio,
                         lat_force_kn,
+                        long_force_kn,
                         load_kn);
                     Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
                     y_pos += line_spacing;
                 }
                 
+                // suspension compression visual
                 y_pos += line_spacing * 0.5f;
-                Renderer::DrawString("Arrow Keys: Up=Throttle, Down=Brake/Reverse, Left/Right=Steer", Vector2(0.005f, y_pos));
+                Renderer::DrawString("Suspension:", Vector2(0.005f, y_pos));
                 y_pos += line_spacing;
-                Renderer::DrawString("Press PLAY to drive!", Vector2(0.005f, y_pos));
+                for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+                {
+                    WheelIndex wheel = static_cast<WheelIndex>(i);
+                    float compression = physics->GetWheelCompression(wheel);
+                    int bar_len = static_cast<int>(compression * 20.0f);
+                    bar_len = bar_len > 20 ? 20 : bar_len;
+                    
+                    char bar[32];
+                    for (int j = 0; j < 20; j++)
+                        bar[j] = (j < bar_len) ? '|' : '.';
+                    bar[20] = '\0';
+                    
+                    snprintf(text_buffer, sizeof(text_buffer), "  %s: [%s] %.0f%%",
+                        wheel_names[i], bar, compression * 100.0f);
+                    Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
+                    y_pos += line_spacing;
+                }
+                
+                y_pos += line_spacing * 0.5f;
+                Renderer::DrawString("Controls: Arrow Keys (Up=Throttle, Down=Brake/Reverse, L/R=Steer)", Vector2(0.005f, y_pos));
             }
         }
         //====================================================================================
