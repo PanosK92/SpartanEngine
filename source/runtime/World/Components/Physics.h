@@ -205,6 +205,7 @@ namespace spartan
         Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
         float m_wheel_rotation = 0.0f; // cumulative wheel spin rotation (radians)
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
+        float m_wheel_mesh_center_offset_y = 0.0f; // offset from entity origin to mesh center (for non-centered meshes)
         
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;

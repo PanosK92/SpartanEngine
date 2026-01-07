@@ -1732,7 +1732,7 @@ namespace spartan
 
             void create()
             {
-                entities::camera(false, Vector3(0.0f, 5.0f, -15.0f), Vector3(5.0f, 0.0f, 0.0f));
+                entities::camera(false, Vector3(0.0f, 5.0f, -10.0f), Vector3(5.0f, 0.0f, 0.0f));
                 
                 // disable fps camera controls - only the car should be controlled
                 if (Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>())

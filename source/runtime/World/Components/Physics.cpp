@@ -1001,10 +1001,16 @@ namespace spartan
         // for a wheel mesh, this gives us the actual visual radius
         float radius = max(max(extents.x, extents.y), extents.z);
         
+        // compute the offset from entity origin to mesh center
+        // this handles meshes that don't have their origin at geometric center
+        Vector3 aabb_center = aabb.GetCenter();
+        Vector3 entity_pos = wheel_entity->GetPosition();
+        m_wheel_mesh_center_offset_y = aabb_center.y - entity_pos.y;
+        
         SetWheelRadius(radius);
         
-        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)", 
-            radius, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z);
+        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f, center_offset_y=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)", 
+            radius, m_wheel_mesh_center_offset_y, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z);
     }
 
     float Physics::GetSuspensionHeight() const
@@ -1150,8 +1156,12 @@ namespace spartan
         float steering = car::get_steering();
         const float max_steering_angle = 35.0f * math::deg_to_rad;
         float steering_angle = steering * max_steering_angle;
+        
+        // get suspension parameters for position calculation
+        float suspension_height = car::cfg.suspension_height;
+        float suspension_travel = car::cfg.suspension_travel;
 
-        // update each wheel entity using physics rotation data
+        // update each wheel entity using physics rotation and position data
         for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
         {
             Entity* wheel_entity = m_wheel_entities[i];
@@ -1160,6 +1170,17 @@ namespace spartan
 
             bool is_front_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::FrontRight));
             bool is_right_wheel = (i == static_cast<int>(WheelIndex::FrontRight) || i == static_cast<int>(WheelIndex::RearRight));
+
+            // update wheel Y position based on suspension compression
+            // compression: 0 = fully extended (wheel at lowest), 1 = fully compressed (wheel at highest)
+            float compression = car::get_wheel_compression(i);
+            Vector3 current_pos = wheel_entity->GetPositionLocal();
+            
+            // base Y is at -suspension_height (fully extended position)
+            // as compression increases, wheel moves UP by compression * suspension_travel
+            // subtract mesh center offset to account for meshes with non-centered origin
+            float visual_y = -suspension_height + compression * suspension_travel - m_wheel_mesh_center_offset_y;
+            wheel_entity->SetPositionLocal(Vector3(current_pos.x, visual_y, current_pos.z));
 
             // get wheel rotation from physics (each wheel has its own rotation)
             float wheel_rotation = car::get_wheel_rotation(i);

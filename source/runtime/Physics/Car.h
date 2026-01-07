@@ -406,49 +406,102 @@ PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass);
     
     inline void update_suspension(PxScene* scene, float dt)
     {
-PxTransform pose = body->getGlobalPose();
+        PxTransform pose = body->getGlobalPose();
         
-        // use chassis local down direction for proper slope handling
-PxVec3 local_down = pose.q.rotate(PxVec3(0, -1, 0));
+        // local coordinate axes
+        PxVec3 local_down  = pose.q.rotate(PxVec3(0, -1, 0));
+        PxVec3 local_fwd   = pose.q.rotate(PxVec3(0, 0, 1));
+        PxVec3 local_right = pose.q.rotate(PxVec3(1, 0, 0));
+        
+        // contact patch ray pattern offsets (in tire-local space)
+        // pattern: center + 6 points around the contact patch (front/rear + left/right)
+        //
+        //     [FL]----[FC]----[FR]     <- front edge (angled forward by ~tire radius)
+        //       \      |      /
+        //        \    [C]    /         <- center
+        //         \    |    /
+        //     [RL]----[RC]----[RR]     <- rear edge (angled back by ~tire radius)
+        //
+        const int ray_count = 7;
+        float half_width = cfg.wheel_width * 0.4f;  // slightly inside tire edges
+        float patch_length = cfg.wheel_radius * 0.7f; // contact patch fore/aft extent
+        
+        // ray offsets: {forward, right} relative to wheel center
+        // these get transformed to world space for each wheel
+        PxVec2 ray_offsets[ray_count] = {
+            PxVec2(0.0f, 0.0f),              // center
+            PxVec2(patch_length, 0.0f),       // front center
+            PxVec2(patch_length, -half_width), // front left
+            PxVec2(patch_length, half_width),  // front right
+            PxVec2(-patch_length, 0.0f),      // rear center
+            PxVec2(-patch_length, -half_width),// rear left
+            PxVec2(-patch_length, half_width)  // rear right
+        };
+        
+        PxQueryFilterData filter;
+        filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+        
+        float ray_len = cfg.suspension_travel + cfg.wheel_radius + 0.5f;
+        float max_dist = cfg.suspension_travel + cfg.wheel_radius;
         
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
             w.prev_compression = w.compression;
             
-            // raycast from suspension attachment point
-PxVec3 attach = wheel_offsets[i];
+            // suspension attachment point (top of travel)
+            PxVec3 attach = wheel_offsets[i];
             attach.y += cfg.suspension_travel;
-PxVec3 world_attach = pose.transform(attach);
+            PxVec3 world_attach = pose.transform(attach);
             
-            float ray_len = cfg.suspension_travel + cfg.wheel_radius + 0.5f;
-PxRaycastBuffer hit;
-PxQueryFilterData filter;
-            filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+            // cast rays across contact patch, find closest hit (highest ground point)
+            float min_ground_dist = FLT_MAX;
+            PxVec3 best_contact_point = PxVec3(0);
+            PxVec3 accumulated_normal = PxVec3(0);
+            int hit_count = 0;
             
-            if (scene->raycast(world_attach, local_down, ray_len, hit, PxHitFlag::eDEFAULT, filter) &&
-                hit.block.actor && hit.block.actor != body)
+            for (int r = 0; r < ray_count; r++)
             {
-                float max_dist = cfg.suspension_travel + cfg.wheel_radius;
-                if (hit.block.distance <= max_dist)
+                // compute ray origin: attachment point + offset in wheel plane
+                PxVec3 offset = local_fwd * ray_offsets[r].x + local_right * ray_offsets[r].y;
+                PxVec3 ray_origin = world_attach + offset;
+                
+                PxRaycastBuffer hit;
+                if (scene->raycast(ray_origin, local_down, ray_len, hit, PxHitFlag::eDEFAULT, filter) &&
+                    hit.block.actor && hit.block.actor != body)
                 {
-                    w.grounded = true;
-                    w.contact_point = hit.block.position;
-                    w.contact_normal = hit.block.normal;
+                    float ground_dist = hit.block.distance;
                     
-                    float dist = PxMax(hit.block.distance - cfg.wheel_radius, 0.0f);
-                    w.compression = PxClamp(1.0f - dist / cfg.suspension_travel, 0.0f, 1.0f);
+                    if (ground_dist <= max_dist)
+                    {
+                        hit_count++;
+                        accumulated_normal += hit.block.normal;
+                        
+                        // track the closest hit (highest ground contact)
+                        if (ground_dist < min_ground_dist)
+                        {
+                            min_ground_dist = ground_dist;
+                            best_contact_point = hit.block.position;
+                        }
+                    }
                 }
-                else
-                {
-                    w.grounded = false;
-                    w.compression = 0.0f;
-                }
+            }
+            
+            if (hit_count > 0)
+            {
+                w.grounded = true;
+                w.contact_point = best_contact_point;
+                w.contact_normal = accumulated_normal.getNormalized(); // average normal
+                
+                // compression based on closest ground contact
+                float dist_from_rest = min_ground_dist - cfg.wheel_radius;
+                w.compression = PxClamp(1.0f - dist_from_rest / cfg.suspension_travel, 0.0f, 1.0f);
             }
             else
             {
                 w.grounded = false;
                 w.compression = 0.0f;
+                w.contact_normal = PxVec3(0, 1, 0);
             }
         }
     }
@@ -603,7 +656,11 @@ PxTransform pose = body->getGlobalPose();
             float raw_slip_ratio = (max_v > tuning::min_slip_speed)
                 ? PxClamp((wheel_speed - vx) / max_v, -1.0f, 1.0f)
                 : 0.0f;
-            float raw_slip_angle = (fabsf(vx) > tuning::min_slip_speed)
+            
+            // slip angle: use ground_speed threshold instead of vx
+            // this ensures lateral grip when sliding sideways with little forward motion
+            // atan2f handles vx=0 correctly (returns ±π/2 for pure lateral motion)
+            float raw_slip_angle = (ground_speed > tuning::min_slip_speed)
                 ? atan2f(vy, fabsf(vx))
                 : 0.0f;
             
