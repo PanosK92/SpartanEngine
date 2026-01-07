@@ -544,14 +544,14 @@ namespace
 
         const WorldEntry worlds[] =
         {
-            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" , "Light",          2100 },
-            { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", 5600 },
-            { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype", "Light",          2100 },
-            { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      2600 },
-            { "Subway",            "GI test. No lights, only emissive textures",                         "Complete" , "Moderate",       2600 },
-            { "Minecraft",         "Blocky aesthetic",                                                   "Complete" , "Light",          2100 },
-            { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          2100 },
-            { "Drivable Car",       "PhysX Vehicle2 API",                                                "Prototype", "Light",          2100 }
+            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" ,  "Light",          2100 },
+            { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype",  "Very demanding", 5600 },
+            { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype",  "Light",          2100 },
+            { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" ,  "Demanding",      2600 },
+            { "Subway",            "GI test. No lights, only emissive textures",                         "Prototype" , "Moderate",       2600 },
+            { "Minecraft",         "Blocky aesthetic",                                                   "Complete" ,  "Light",          2100 },
+            { "Basic",             "Light, camera, floor",                                               "Complete" ,  "Light",          2100 },
+            { "Drivable Car",      "PhysX Vehicle2 API",                                                 "Prototype",  "Light",          2100 }
         };
         int world_index = 0;
 

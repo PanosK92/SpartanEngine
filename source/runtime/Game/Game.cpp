@@ -1766,9 +1766,21 @@ namespace spartan
                     default_car->SetScaleLocal(1.0f);
                 }
 
-                // hide original wheels
+                // ramp
                 {
+                    default_metal_cube = World::CreateEntity();
+                    default_metal_cube->SetObjectName("ramp");
+                    default_metal_cube->SetPosition(Vector3(6.6f, 0.0f, 3.2f));
+                    default_metal_cube->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 5.3f));
+                    default_metal_cube->SetScale(Vector3(5.8f, 1.0f, 5.4f));
 
+                    Renderable* renderable = default_metal_cube->AddComponent<Renderable>();
+                    renderable->SetMesh(MeshType::Cube);
+                    renderable->SetDefaultMaterial();
+
+                    Physics* physics_body = default_metal_cube->AddComponent<Physics>();
+                    physics_body->SetMass(Physics::mass_from_volume);
+                    physics_body->SetBodyType(BodyType::Box);
                 }
 
                 // load wheel and create 4 instances for the vehicle

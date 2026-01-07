@@ -945,44 +945,29 @@ namespace spartan
 
         m_wheel_radius = radius;
         
-        // update the wheel radius in vehicle dimensions (for physics contact calculations)
-        car::active_dims.wheel_radius = radius;
+        // update the wheel radius in vehicle config (for physics contact calculations)
+        car::cfg.wheel_radius = radius;
         
         // recalculate and update body height based on actual wheel radius
-        // the physics body was initially created with default wheel_radius, so we need to adjust
-        if (!m_actors.empty() && m_actors[0])
+        if (car::body)
         {
-            PxRigidDynamic* body = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>();
-            if (body)
-            {
-                // calculate correct body height for this wheel radius
-                const float expected_compression = 0.35f;
-                const float expected_sag = expected_compression * car::active_dims.suspension_travel;
-                const float correct_body_height = radius + car::active_dims.suspension_height + expected_sag;
-                
-                // update body position with correct height
-                PxTransform pose = body->getGlobalPose();
-                pose.p.y = correct_body_height;
-                body->setGlobalPose(pose);
-                
-                // also update the physics wheel shape geometries to match the actual wheel radius
-                car::vehicle_data* vehicle = car::get_active_vehicle();
-                if (vehicle)
-                {
-                    for (int i = 0; i < static_cast<int>(car::wheel_count); i++)
-                    {
-                        PxShape* wheel_shape = vehicle->physx_actor.wheelShapes[i];
-                        if (wheel_shape)
-                        {
-                            // update capsule geometry with correct radius
-                            PxCapsuleGeometry new_geom(radius, car::active_dims.wheel_width * 0.5f);
-                            wheel_shape->setGeometry(new_geom);
-                        }
-                    }
-                }
-                
-                SP_LOG_INFO("SetWheelRadius: adjusted body height to %.3f and wheel shapes for radius %.3f", correct_body_height, radius);
-            }
+            // calculate correct body height using actual spring stiffness
+            float front_mass_per_wheel = car::cfg.mass * 0.40f * 0.5f;
+            float front_omega = 2.0f * math::pi * car::tuning::front_spring_freq;
+            float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
+            float front_load = front_mass_per_wheel * 9.81f;
+            float expected_sag = std::clamp(front_load / front_stiffness, 0.0f, car::cfg.suspension_travel * 0.8f);
+            const float correct_body_height = radius + car::cfg.suspension_height + expected_sag;
+            
+            // update body position with correct height
+            PxTransform pose = car::body->getGlobalPose();
+            pose.p.y = correct_body_height;
+            car::body->setGlobalPose(pose);
+            
+            // recompute wheel constants with new radius
+            car::compute_constants();
+            
+            SP_LOG_INFO("SetWheelRadius: adjusted body height to %.3f for radius %.3f", correct_body_height, radius);
         }
         
         SP_LOG_INFO("SetWheelRadius: wheel radius set to %.3f", radius);
@@ -1026,7 +1011,7 @@ namespace spartan
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
-        return car::active_dims.suspension_height;
+        return car::cfg.suspension_height;
     }
 
     float Physics::GetVehicleThrottle() const
@@ -1133,43 +1118,12 @@ namespace spartan
         if (m_body_type != BodyType::Vehicle || !Engine::IsFlagSet(EngineMode::Playing))
             return;
 
-        // get vehicle speed for wheel spin
-        float speed = 0.0f;
-        float forward_speed = 0.0f;
-        PxVec3 angular_velocity(0, 0, 0);
-        if (!m_actors.empty() && m_actors[0])
-        {
-            PxRigidDynamic* body = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>();
-            if (body)
-            {
-                PxVec3 velocity = body->getLinearVelocity();
-                angular_velocity = body->getAngularVelocity();
-                PxTransform pose = body->getGlobalPose();
-                PxVec3 forward = pose.q.rotate(PxVec3(0, 0, 1));
-                forward_speed = velocity.dot(forward);
-                speed = velocity.magnitude();
-            }
-        }
-
         // get steering angle from vehicle system
         float steering = car::get_steering();
         const float max_steering_angle = 35.0f * math::deg_to_rad;
         float steering_angle = steering * max_steering_angle;
 
-        // get suspension travel for chassis positioning
-        float suspension_travel = car::get_suspension_travel();
-
-        // update wheel spin rotation based on speed
-        float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-        float rotation_delta = (forward_speed * delta_time) / m_wheel_radius;
-        m_wheel_rotation += rotation_delta;
-
-        // keep rotation in reasonable bounds
-        const float two_pi = 2.0f * math::pi;
-        while (m_wheel_rotation > two_pi) m_wheel_rotation -= two_pi;
-        while (m_wheel_rotation < -two_pi) m_wheel_rotation += two_pi;
-
-        // update each wheel entity (rotation only - wheels stay at base positions)
+        // update each wheel entity using physics rotation data
         for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
         {
             Entity* wheel_entity = m_wheel_entities[i];
@@ -1179,8 +1133,9 @@ namespace spartan
             bool is_front_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::FrontRight));
             bool is_right_wheel = (i == static_cast<int>(WheelIndex::FrontRight) || i == static_cast<int>(WheelIndex::RearRight));
 
-            // wheel spin rotation (around the axle - X axis in local space)
-            Quaternion spin_rotation = Quaternion::FromAxisAngle(Vector3::Right, m_wheel_rotation);
+            // get wheel rotation from physics (each wheel has its own rotation)
+            float wheel_rotation = car::get_wheel_rotation(i);
+            Quaternion spin_rotation = Quaternion::FromAxisAngle(Vector3::Right, wheel_rotation);
 
             // steering rotation for front wheels only (around Y axis)
             Quaternion steer_rotation = Quaternion::Identity;
@@ -1201,89 +1156,8 @@ namespace spartan
             wheel_entity->SetRotationLocal(final_rotation);
         }
 
-        // update chassis position based on acceleration (makes the body pitch and roll)
-        if (m_chassis_entity)
-        {
-            // get acceleration by comparing current velocity to previous
-            static PxVec3 prev_velocity(0, 0, 0);
-            PxVec3 current_velocity(0, 0, 0);
-            
-            if (!m_actors.empty() && m_actors[0])
-            {
-                PxRigidDynamic* body = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>();
-                if (body)
-                {
-                    current_velocity = body->getLinearVelocity();
-                }
-            }
-            
-            // calculate acceleration (velocity change per second)
-            PxVec3 acceleration = (current_velocity - prev_velocity) / delta_time;
-            prev_velocity = current_velocity;
-            
-            // get vehicle forward direction for longitudinal acceleration
-            PxTransform pose(PxIdentity);
-            if (!m_actors.empty() && m_actors[0])
-            {
-                pose = static_cast<PxRigidActor*>(m_actors[0])->getGlobalPose();
-            }
-            PxVec3 forward_dir = pose.q.rotate(PxVec3(0, 0, 1));
-            PxVec3 right_dir = pose.q.rotate(PxVec3(1, 0, 0));
-            
-            // longitudinal acceleration (forward/backward) -> pitch
-            float forward_accel = acceleration.dot(forward_dir);
-            
-            // lateral acceleration (left/right) -> roll  
-            float lateral_accel = acceleration.dot(right_dir);
-            
-            // also include angular velocity for roll during turning
-            float turn_rate = angular_velocity.y;
-            
-            // pitch: nose dives under braking, squats under acceleration
-            // scale: ~3 degrees per 1g of acceleration (realistic for sports car)
-            float target_pitch = -forward_accel * 0.03f; // increased scale for visibility
-            float max_pitch = 10.0f * math::deg_to_rad;
-            target_pitch = std::clamp(target_pitch, -max_pitch, max_pitch);
-            
-            // roll: body leans outward in turns
-            // scale: ~4 degrees per 1g of lateral acceleration + turn rate effect
-            float target_roll = -lateral_accel * 0.04f - turn_rate * 0.08f;
-            float max_roll = 8.0f * math::deg_to_rad;
-            target_roll = std::clamp(target_roll, -max_roll, max_roll);
-            
-            // smooth the pitch and roll for natural suspension feel
-            // lower = softer/bouncier suspension, higher = stiffer/sportier
-            static float current_pitch = 0.0f;
-            static float current_roll = 0.0f;
-            float smoothing = 6.0f; // sports car stiffness
-            float lerp_factor = 1.0f - expf(-smoothing * delta_time);
-            
-            current_pitch += (target_pitch - current_pitch) * lerp_factor;
-            current_roll += (target_roll - current_roll) * lerp_factor;
-            
-            // apply rotation to chassis
-            // the car model is rotated 90° around X to face forward
-            // after this rotation: pitch = around X (nose up/down), roll = around Z (lean left/right)
-            Quaternion base_rotation = Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f);
-            
-            // apply pitch and roll in the car's local space (after base rotation)
-            // pitch rotates around local X (tilts nose up/down)
-            // roll rotates around local Z (tilts left/right)
-            Quaternion pitch_rotation = Quaternion::FromAxisAngle(Vector3::Right, current_pitch);
-            Quaternion roll_rotation = Quaternion::FromAxisAngle(Vector3::Forward, current_roll);
-            
-            // order: base first, then pitch, then roll
-            m_chassis_entity->SetRotationLocal(base_rotation * pitch_rotation * roll_rotation);
-        }
-        else
-        {
-            static bool logged_no_chassis = false;
-            if (!logged_no_chassis)
-            {
-                SP_LOG_WARNING("UpdateWheelTransforms: m_chassis_entity is null!");
-                logged_no_chassis = true;
-            }
-        }
+        // note: chassis entity is a child of vehicle_entity, which already follows car::body
+        // so the chassis inherits the physics transform automatically - no extra update needed
     }
 
     void Physics::Create()
@@ -1346,36 +1220,25 @@ namespace spartan
         }
         else if (m_body_type == BodyType::Vehicle)
         {
-            // create vehicle using vehicle2 api
-            car::vehicle_dimensions dims;
-            car::vehicle_data* vehicle_data = car::setup(physics, scene, &dims);
-            if (vehicle_data)
+            // create vehicle
+            if (car::create(physics, scene))
             {
                 // store the rigid body actor
-                if (vehicle_data->physx_actor.rigidBody)
-                {
-                    m_actors.resize(1, nullptr);
-                    m_actors[0] = vehicle_data->physx_actor.rigidBody;
-                    m_actors_active.resize(1, true);
-                    
-                    // set initial position - use physics-calculated height for proper ground contact
-                    // the car::setup already calculated correct body height accounting for suspension sag
-                    // we just use entity's X and Z, but keep the physics Y
-                    Vector3 pos = GetEntity()->GetPosition();
-                    PxTransform current_pose = vehicle_data->physx_actor.rigidBody->getGlobalPose();
-                    vehicle_data->physx_actor.rigidBody->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
-                    
-                    // store user data for raycasts
-                    vehicle_data->physx_actor.rigidBody->userData = reinterpret_cast<void*>(GetEntity());
-                    
-                    // set as active vehicle for driving (pass dimensions for suspension)
-                    car::set_active_vehicle(vehicle_data, &dims);
-                    
-                    SP_LOG_INFO("vehicle physics body created successfully");
-                }
+                m_actors.resize(1, nullptr);
+                m_actors[0] = car::body;
+                m_actors_active.resize(1, true);
                 
-                // note: vehicle_data is leaked here - will need proper lifecycle management later
-                // for now this is just to get it working
+                // set initial position - use physics-calculated height for proper ground contact
+                // car::create already set correct body height accounting for suspension sag
+                // we just use entity's X and Z, but keep the physics Y
+                Vector3 pos = GetEntity()->GetPosition();
+                PxTransform current_pose = car::body->getGlobalPose();
+                car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
+                
+                // store user data for raycasts
+                car::body->userData = reinterpret_cast<void*>(GetEntity());
+                
+                SP_LOG_INFO("vehicle physics body created successfully");
             }
             else
             {
