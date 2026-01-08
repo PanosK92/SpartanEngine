@@ -1050,7 +1050,13 @@ namespace spartan
         {
             hash_combine(m_height_map_seed->GetWidth());
             hash_combine(m_height_map_seed->GetHeight());
-            hash_combine(m_height_map_seed->GetObjectId());
+
+            // hash the file path (stable across runs) instead of object id (random per run)
+            const string& file_path = m_height_map_seed->GetResourceFilePath();
+            for (char c : file_path)
+            {
+                hash_combine(static_cast<uint64_t>(c));
+            }
         }
 
         return hash;

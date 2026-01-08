@@ -156,24 +156,66 @@ struct vertex_processing
         float3 base_wind_dir      = normalize(wind + float3(1e-6f, 0.0f, 1e-6f));
         float3 instance_up        = normalize(transform[1].xyz);
         
+        // camera-facing bias for grass (ghost of tsushima technique)
+        // rotates blades partially toward camera when edge-on to maintain visual density
+        if (surface.is_grass_blade())
+        {
+            const float camera_bias_strength = 0.6f; // 0 = no bias, 1 = full billboard
+            
+            // get camera direction in horizontal plane
+            float3 to_camera    = buffer_frame.camera_position - position_world;
+            float3 to_camera_xz = normalize(float3(to_camera.x, 0.0f, to_camera.z));
+            
+            // blade normal is the z-axis of the transform (perpendicular to blade surface)
+            float3 blade_normal    = normalize(transform[2].xyz);
+            float3 blade_normal_xz = normalize(float3(blade_normal.x, 0.0f, blade_normal.z) + float3(1e-6f, 0.0f, 1e-6f));
+            
+            // calculate how edge-on we are: 1 = facing camera, 0 = edge-on
+            float facing_dot  = abs(dot(blade_normal_xz, to_camera_xz));
+            float edge_factor = 1.0f - facing_dot; // higher when more edge-on
+            
+            // apply bias - stronger when more edge-on
+            float bias_amount = edge_factor * edge_factor * camera_bias_strength; // squared for smooth falloff
+            
+            // calculate rotation to face camera
+            float3 cross_result = cross(blade_normal_xz, to_camera_xz);
+            float rotation_sign = sign(cross_result.y);
+            float angle_to_camera = acos(saturate(facing_dot));
+            float bias_angle = angle_to_camera * bias_amount * rotation_sign;
+            
+            // rotate around world up axis for horizontal rotation only
+            float3x3 bias_rot = rotation_matrix(float3(0.0f, 1.0f, 0.0f), bias_angle);
+            
+            // apply rotation - use instance base position from transform
+            float3 instance_pos = float3(transform[3].x, transform[3].y, transform[3].z);
+            float3 offset       = position_world - instance_pos;
+            position_world      = instance_pos + mul(bias_rot, offset);
+            vertex.normal       = normalize(mul(bias_rot, vertex.normal));
+            vertex.tangent      = normalize(mul(bias_rot, vertex.tangent));
+        }
+        
         // wind simulation
         if (surface.is_grass_blade() || surface.is_flower())
         {
             const float base_scale    = 0.025f;                              // spatial scale for noise sampling
             const float time_scale    = 0.1f * (1.0f + base_wind_magnitude); // animation speed scales with wind strength
             const float sway_amp      = base_wind_magnitude * 2.5f;          // maximum bend angle multiplier
-            const float max_angle_deg = 75.0f;                            // maximum rotation angle to prevent ground intersection
+            const float max_angle_deg = 75.0f;                               // maximum rotation angle to prevent ground intersection
             
             // height-based flexibility: stiffer at base, more flexible at tip
             MaterialParameters material = GetMaterial();
             float height_percent        = saturate(vertex.uv_misc.z / max(material.local_height, 0.001f));
             float height_factor         = pow(height_percent, 1.5f);
             
+            // per-instance variation: subtle intensity multiplier (preserves wave patterns)
+            float3 instance_pos  = float3(transform[3].x, transform[3].y, transform[3].z);
+            float instance_var   = frac(dot(instance_pos.xz, float2(12.9898f, 78.233f))) * 0.3f + 0.85f; // 0.85 to 1.15
+            
             // layered noise for natural sway: broad base pattern + faster gust layer
             float2 uv   = position_world.xz * base_scale + base_wind_dir.xz * time * time_scale;
             float sway  = noise_perlin(uv) * 0.7f;
             sway       += noise_perlin(uv * 2.0f + float2(time * 0.5f, 0.0f)) * 0.3f;
-            sway        = sway * sway_amp * height_factor;
+            sway        = sway * sway_amp * height_factor * instance_var;
 
             // wind direction variation for natural randomness
             float dir_var   = noise_perlin(position_world.xz * 0.01f + time * 0.05f) * (PI / 6.0f);
@@ -188,8 +230,11 @@ struct vertex_processing
             max_allowed_angle                 = max(0.0f, max_allowed_angle);
 
             // rotate blade around axis perpendicular to wind direction
-            float3 axis = normalize(cross(instance_up, bend_dir));
-            float angle = sway * (50.0f * DEG_TO_RAD);
+            // fallback to world right if instance_up is parallel to bend_dir
+            float3 raw_axis       = cross(instance_up, bend_dir);
+            float axis_length_sq  = dot(raw_axis, raw_axis);
+            float3 axis           = axis_length_sq > 0.0001f ? raw_axis * rsqrt(axis_length_sq) : float3(1.0f, 0.0f, 0.0f);
+            float angle           = sway * (50.0f * DEG_TO_RAD);
             
             // clamp angle to prevent ground intersection
             float angle_abs     = abs(angle);
@@ -197,12 +242,11 @@ struct vertex_processing
             
             float3x3 rot = rotation_matrix(axis, clamped_angle);
 
-            // apply rotation to position, normal, and tangent
-            float3 base_pos = position_world - position_local;
-            float3 offset   = position_world - base_pos;
-            position_world  = base_pos + mul(rot, offset);
-            vertex.normal   = normalize(mul(rot, vertex.normal));
-            vertex.tangent  = normalize(mul(rot, vertex.tangent));
+            // apply rotation around instance base position
+            float3 offset  = position_world - instance_pos;
+            position_world = instance_pos + mul(rot, offset);
+            vertex.normal  = normalize(mul(rot, vertex.normal));
+            vertex.tangent = normalize(mul(rot, vertex.tangent));
         }
         else if (surface.has_wind_animation()) // tree branch/leaf wind sway
         {
@@ -231,7 +275,7 @@ struct vertex_processing
             horizontal_wave *= (0.7f + 0.3f * gust_noise) * base_wind_magnitude;
 
             // apply horizontal displacement in wind direction, scaled by height
-            float3 horizontal_dir    = float3(base_wind_dir.x, 0.0f, base_wind_dir.z);
+            float3 horizontal_dir    = normalize(float3(base_wind_dir.x, 0.0f, base_wind_dir.z) + float3(1e-6f, 0.0f, 1e-6f));
             float3 horizontal_offset = horizontal_dir * horizontal_wave * horizontal_amplitude * height_factor;
             position_world          += horizontal_offset;
 

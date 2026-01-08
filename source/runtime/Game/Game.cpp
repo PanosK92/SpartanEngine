@@ -982,7 +982,7 @@ namespace spartan
                 Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
                 const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
-                const float scale      = 2.0f;
+                const float scale      = 1.5f;
 
                 // main building
                 uint32_t mesh_flags = Mesh::GetDefaultFlags();
@@ -1040,18 +1040,24 @@ namespace spartan
                     entity->SetScale(scale);
 
                     // leaf material
-                    if (Material* material = entity->GetDescendantByName("IvySim_Leaves")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::CullMode,                  static_cast<float>(RHI_CullMode::None));
-                        material->SetProperty(MaterialProperty::WindAnimation,             1.0f);
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering,      1.0f);
-                        material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
+                    if (Entity* leaves = entity->GetDescendantByName("IvySim_Leaves"))
+                    { 
+                        if (Material* material = leaves->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::CullMode,                   static_cast<float>(RHI_CullMode::None));
+                            material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
+                            material->SetProperty(MaterialProperty::SubsurfaceScattering,       1.0f);
+                            material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
+                        }
                     }
 
                     // stem material
-                    if (Material* material = entity->GetDescendantByName("IvySim_Stems")->GetComponent<Renderable>()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                    if (Entity* stems = entity->GetDescendantByName("IvySim_Stems"))
+                    { 
+                        if (Material* material = stems->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
+                        }
                     }
                 }
             }
@@ -1147,11 +1153,11 @@ namespace spartan
 
                 // drivable car near the player
                 {
-                    car::Config car_config;
-                    car_config.position       = Vector3(-1470.0f, 20.0f, 1490.0f); // slightly in front of camera
-                    car_config.drivable       = true;
-                    car_config.show_telemetry = true;
-                    car::create(car_config);
+                    //car::Config car_config;
+                    //car_config.position       = Vector3(-1470.0f, 20.0f, 1490.0f); // slightly in front of camera
+                    //car_config.drivable       = true;
+                    //car_config.show_telemetry = true;
+                    //car::create(car_config);
                 }
 
                 // terrain root
@@ -1212,8 +1218,8 @@ namespace spartan
                         shared_ptr<Material> material = terrain->GetMaterial();
                         material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingX, 1000.0f);
-                        material->SetProperty(MaterialProperty::TextureTilingY, 1000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingX, 2000.0f);
+                        material->SetProperty(MaterialProperty::TextureTilingY, 2000.0f);
 
                         // grass layer
                         material->SetTexture(MaterialTextureType::Color,     "project\\materials\\whispy_grass_meadow\\albedo.png",    0);
@@ -1419,7 +1425,7 @@ namespace spartan
                                 entity->SetParent(terrain_tile);
 
                                 vector<Matrix> transforms;
-                                terrain->FindTransforms(tile_index, TerrainProp::Tree, entity, per_triangle_density_tree, 0.04f, transforms);
+                                terrain->FindTransforms(tile_index, TerrainProp::Tree, entity, per_triangle_density_tree, 0.026f, transforms);
 
                                 if (Entity* trunk = entity->GetChildByIndex(0))
                                 {
@@ -1450,7 +1456,7 @@ namespace spartan
                                 entity->SetParent(terrain_tile);
 
                                 vector<Matrix> transforms;
-                                terrain->FindTransforms(tile_index, TerrainProp::Rock, entity, per_triangle_density_rock, 1.0f, transforms);
+                                terrain->FindTransforms(tile_index, TerrainProp::Rock, entity, per_triangle_density_rock, 0.64f, transforms);
 
                                 if (Entity* rock_entity = entity->GetDescendantByName("untitled"))
                                 {
@@ -1533,7 +1539,7 @@ namespace spartan
                                 entity->SetParent(terrain_tile);
 
                                 vector<Matrix> transforms;
-                                terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 1.0f, transforms);
+                                terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 0.64f, transforms);
 
                                 Renderable* renderable = entity->AddComponent<Renderable>();
                                 renderable->SetMesh(mesh_flower.get());
