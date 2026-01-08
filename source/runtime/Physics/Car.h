@@ -41,7 +41,7 @@ namespace car
     namespace tuning
     {
         // engine/brakes
-        constexpr float engine_force               = 18000.0f; 
+        constexpr float engine_force               = 18000.0f;
         constexpr float brake_force                = 12000.0f;
         constexpr float brake_bias_front           = 0.65f;
         constexpr float reverse_power_ratio        = 0.5f;
@@ -85,8 +85,8 @@ namespace car
         constexpr float rear_spring_freq           = 1.5f;
         constexpr float damping_ratio              = 0.75f;
         
-        constexpr float front_arb_stiffness        = 3500.0f; 
-        constexpr float rear_arb_stiffness         = 1500.0f; 
+        constexpr float front_arb_stiffness        = 3500.0f;
+        constexpr float rear_arb_stiffness         = 1500.0f;
         
         constexpr float max_susp_force             = 35000.0f;
         constexpr float max_damper_velocity        = 5.0f;
@@ -149,19 +149,21 @@ namespace car
     
     struct wheel
     {
-        float  compression       = 0.0f;
-        float  prev_compression  = 0.0f;
-        bool   grounded          = false;
-        PxVec3 contact_point     = PxVec3(0);
-        PxVec3 contact_normal    = PxVec3(0, 1, 0);
-        float  angular_velocity  = 0.0f;
-        float  rotation          = 0.0f;
-        float  tire_load         = 0.0f;
-        float  slip_angle        = 0.0f;
-        float  slip_ratio        = 0.0f;
-        float  lateral_force     = 0.0f;
-        float  longitudinal_force= 0.0f;
-        float  temperature       = tuning::tire_ambient_temp;
+        float  compression         = 0.0f;         // actual wheel position (smoothed)
+        float  target_compression  = 0.0f;         // where ground wants wheel to be
+        float  prev_compression    = 0.0f;
+        float  compression_velocity= 0.0f;         // wheel vertical velocity for smooth travel
+        bool   grounded            = false;
+        PxVec3 contact_point       = PxVec3(0);
+        PxVec3 contact_normal      = PxVec3(0, 1, 0);
+        float  angular_velocity    = 0.0f;
+        float  rotation            = 0.0f;
+        float  tire_load           = 0.0f;
+        float  slip_angle          = 0.0f;
+        float  slip_ratio          = 0.0f;
+        float  lateral_force       = 0.0f;
+        float  longitudinal_force  = 0.0f;
+        float  temperature         = tuning::tire_ambient_temp;
     };
     
     struct input_state
@@ -355,25 +357,42 @@ namespace car
         PxVec3 local_fwd   = pose.q.rotate(PxVec3(0, 0, 1));
         PxVec3 local_right = pose.q.rotate(PxVec3(1, 0, 0));
         
-        // multi-ray contact patch: center + 6 surrounding points
+        // multi-ray contact patch with wheel curvature
+        // rays at front/back of wheel start higher to match circular profile
         const int ray_count = 7;
         float half_width = cfg.wheel_width * 0.4f;
-        float patch_length = cfg.wheel_radius * 0.7f;
         
-        PxVec2 ray_offsets[ray_count] = {
-            PxVec2(0.0f, 0.0f),
-            PxVec2(patch_length, 0.0f),
-            PxVec2(patch_length, -half_width),
-            PxVec2(patch_length, half_width),
-            PxVec2(-patch_length, 0.0f),
-            PxVec2(-patch_length, -half_width),
-            PxVec2(-patch_length, half_width)
+        // sample points along the wheel's circular profile
+        // at distance x from center, wheel surface height = radius - sqrt(radius² - x²)
+        auto get_curvature_height = [&](float x_offset) -> float
+        {
+            float r = cfg.wheel_radius;
+            float x = PxMin(fabsf(x_offset), r * 0.95f); // clamp to avoid sqrt of negative
+            return r - sqrtf(r * r - x * x);
+        };
+        
+        // sample at 3 distances: center, mid-radius, and near edge
+        float dist_near = cfg.wheel_radius * 0.4f;
+        float dist_far  = cfg.wheel_radius * 0.75f;
+        float height_near = get_curvature_height(dist_near);
+        float height_far  = get_curvature_height(dist_far);
+        
+        // ray offsets: (forward, sideways, height due to curvature)
+        PxVec3 ray_offsets[ray_count] = {
+            PxVec3(0.0f,       0.0f,        0.0f),         // center bottom
+            PxVec3(dist_near,  0.0f,        height_near),  // front near
+            PxVec3(dist_far,   0.0f,        height_far),   // front far (higher up the curve)
+            PxVec3(-dist_near, 0.0f,        height_near),  // back near
+            PxVec3(-dist_far,  0.0f,        height_far),   // back far
+            PxVec3(0.0f,       -half_width, 0.0f),         // left
+            PxVec3(0.0f,        half_width, 0.0f)          // right
         };
         
         PxQueryFilterData filter;
         filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
         
-        float ray_len = cfg.suspension_travel + cfg.wheel_radius + 0.5f;
+        float max_curvature_height = height_far; // highest ray offset
+        float ray_len = cfg.suspension_travel + cfg.wheel_radius + max_curvature_height + 0.5f;
         float max_dist = cfg.suspension_travel + cfg.wheel_radius;
         
         for (int i = 0; i < wheel_count; i++)
@@ -392,20 +411,25 @@ namespace car
             
             for (int r = 0; r < ray_count; r++)
             {
-                PxVec3 offset = local_fwd * ray_offsets[r].x + local_right * ray_offsets[r].y;
+                // apply horizontal offset and raise ray origin by curvature height
+                PxVec3 offset = local_fwd * ray_offsets[r].x + local_right * ray_offsets[r].y - local_down * ray_offsets[r].z;
                 PxVec3 ray_origin = world_attach + offset;
                 
                 PxRaycastBuffer hit;
                 if (scene->raycast(ray_origin, local_down, ray_len, hit, PxHitFlag::eDEFAULT, filter) &&
                     hit.block.actor && hit.block.actor != body)
                 {
-                    if (hit.block.distance <= max_dist)
+                    // adjust hit distance by curvature offset for fair comparison
+                    // rays starting higher have farther to travel to reach the same ground
+                    float adjusted_dist = hit.block.distance - ray_offsets[r].z;
+                    
+                    if (adjusted_dist <= max_dist)
                     {
                         hit_count++;
                         accumulated_normal += hit.block.normal;
-                        if (hit.block.distance < min_ground_dist)
+                        if (adjusted_dist < min_ground_dist)
                         {
-                            min_ground_dist = hit.block.distance;
+                            min_ground_dist = adjusted_dist;
                             best_contact_point = hit.block.position;
                         }
                     }
@@ -418,13 +442,40 @@ namespace car
                 w.contact_point = best_contact_point;
                 w.contact_normal = accumulated_normal.getNormalized();
                 float dist_from_rest = min_ground_dist - cfg.wheel_radius;
-                w.compression = PxClamp(1.0f - dist_from_rest / cfg.suspension_travel, 0.0f, 1.0f);
+                w.target_compression = PxClamp(1.0f - dist_from_rest / cfg.suspension_travel, 0.0f, 1.0f);
             }
             else
             {
                 w.grounded = false;
-                w.compression = 0.0f;
+                w.target_compression = 0.0f;
                 w.contact_normal = PxVec3(0, 1, 0);
+            }
+            
+            // simulate wheel travel with spring-damper dynamics for smooth motion
+            // this prevents the wheel from snapping to new heights instantly
+            float compression_error = w.target_compression - w.compression;
+            
+            // spring force pushes wheel toward target, damper resists velocity
+            float wheel_spring_force = spring_stiffness[i] * compression_error;
+            float wheel_damper_force = -spring_damping[i] * w.compression_velocity * 0.5f;
+            
+            // acceleration = force / unsprung mass (wheel mass)
+            float wheel_accel = (wheel_spring_force + wheel_damper_force) / cfg.wheel_mass;
+            
+            // integrate velocity and position
+            w.compression_velocity += wheel_accel * dt;
+            w.compression += w.compression_velocity * dt;
+            
+            // clamp to valid range and handle bottoming out
+            if (w.compression > 1.0f)
+            {
+                w.compression = 1.0f;
+                w.compression_velocity = PxMin(w.compression_velocity, 0.0f);
+            }
+            else if (w.compression < 0.0f)
+            {
+                w.compression = 0.0f;
+                w.compression_velocity = PxMax(w.compression_velocity, 0.0f);
             }
         }
     }
@@ -448,8 +499,8 @@ namespace car
             float displacement = w.compression * cfg.suspension_travel;
             float spring_f = spring_stiffness[i] * displacement;
             
-            // damper velocity from compression rate (handles both chassis and ground movement)
-            float susp_vel = (dt > 0.0f) ? (w.compression - w.prev_compression) * cfg.suspension_travel / dt : 0.0f;
+            // use tracked compression velocity for damping (more accurate than finite difference)
+            float susp_vel = w.compression_velocity * cfg.suspension_travel;
             susp_vel = PxClamp(susp_vel, -tuning::max_damper_velocity, tuning::max_damper_velocity);
             float damper_f = spring_damping[i] * susp_vel;
             
