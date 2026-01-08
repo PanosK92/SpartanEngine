@@ -911,6 +911,10 @@ namespace spartan
                 Vector3(0.0f, 3.0f, -10.0f) // chase
             };
 
+            // need camera for inside/outside detection
+            if (!default_camera)
+                return;
+
             // cached references
             bool inside_the_car             = default_camera->GetChildrenCount() == 0;
             Entity* sound_door_entity       = default_car->GetChildByName("sound_door");
@@ -921,6 +925,36 @@ namespace spartan
             AudioSource* audio_source_idle  = sound_idle_entity  ? sound_idle_entity->GetComponent<AudioSource>()  : nullptr;
             if (!audio_source_door || !audio_source_start || !audio_source_idle)
                 return;
+
+            // engine sound: disabled for now (RPM simulation needs work)
+            // TODO: re-enable once RPM is properly tied to car speed
+            /*
+            if (vehicle_entity)
+            {
+                Physics* physics = vehicle_entity->GetComponent<Physics>();
+                if (physics)
+                {
+                    if (!audio_source_idle->IsPlaying())
+                    {
+                        audio_source_idle->PlayClip();
+                    }
+                    
+                    float engine_rpm = physics->GetEngineRPM();
+                    float idle_rpm = 1000.0f;
+                    float redline_rpm = physics->GetRedlineRPM();
+                    
+                    float rpm_normalized = (engine_rpm - idle_rpm) / (redline_rpm - idle_rpm);
+                    rpm_normalized = std::max(0.0f, std::min(1.0f, rpm_normalized));
+                    
+                    float pitch_curve = rpm_normalized * rpm_normalized * 0.3f + rpm_normalized * 0.7f;
+                    float pitch = 0.7f + pitch_curve * 2.8f;
+                    audio_source_idle->SetPitch(pitch);
+                    
+                    float volume = 0.5f + rpm_normalized * 0.5f;
+                    audio_source_idle->SetVolume(volume);
+                }
+            }
+            */
 
             // enter/exit car
             if (Input::GetKeyDown(KeyCode::E))
@@ -933,6 +967,7 @@ namespace spartan
                     camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
                     camera->SetRotationLocal(Quaternion::Identity);
                     audio_source_start->PlayClip();
+                    // audio_source_idle->PlayClip(); // disabled for now
                     inside_the_car = true;
                 }
                 else
