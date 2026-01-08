@@ -85,14 +85,13 @@ The Forest is the most advanced and demanding world. It features **256 million**
   - Post-processing effects: FXAA, bloom, motion blur, depth of field, chromatic aberration
 
 #### Car Simulation
-- Hybrid Pacejka tire model with linear low-speed friction for stable static holding.
-- Physically accurate combined slip (friction circle) simulating traction loss under load.
-- Real-time tire thermodynamics linking grip levels to thermal windows.
-- Custom inertia tensor scaling for realistic polar moment and chassis stability.
-- Simulated aerodynamics including drag, rolling resistance, and downforce.
-- Configurable Limited Slip Differential (LSD) with asymmetric locking.
-- Multi-ray suspension with non-linear compression and anti-roll bars.
-- Dynamic steering geometry blending Ackermann and Parallel systems based on speed.
+- Pacejka based tire model with combined slip, load sensitivity, and low speed stability
+- Tire thermodynamics with slip heating, rolling heat, airflow cooling, and grip windows
+- Multi ray suspension with spring damper dynamics and anti roll bars
+- Full drivetrain simulation with engine torque curve, clutch, engine braking, and automatic gearbox
+- Limited slip differential with preload and asymmetric accel decel locking
+- Traction control, ABS, and handbrake induced rear slip
+- Aerodynamics including drag, rolling resistance, and front rear downforce
 
 #### General
 
