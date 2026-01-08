@@ -744,9 +744,13 @@ namespace spartan
             Renderer::DrawString("Vehicle Telemetry", Vector2(0.005f, y_pos));
             y_pos += line_spacing * 1.2f;
             
-            // speed and rpm (average of driven wheels)
-            float avg_rpm = (physics->GetWheelRPM(WheelIndex::RearLeft) + physics->GetWheelRPM(WheelIndex::RearRight)) * 0.5f;
-            snprintf(text_buffer, sizeof(text_buffer), "Speed: %.1f km/h   RPM: %.0f", speed_kmh, avg_rpm);
+            // speed, gear, and engine rpm
+            float engine_rpm = physics->GetEngineRPM();
+            float redline = physics->GetRedlineRPM();
+            const char* gear_str = physics->GetCurrentGearString();
+            bool is_shifting = physics->IsShifting();
+            snprintf(text_buffer, sizeof(text_buffer), "Speed: %.1f km/h   Gear: [%s]%s   Engine: %.0f / %.0f RPM", 
+                speed_kmh, gear_str, is_shifting ? "*" : "", engine_rpm, redline);
             Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
             y_pos += line_spacing;
             

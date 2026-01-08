@@ -1209,6 +1209,48 @@ namespace spartan
             return 0.0f;
         return car::get_tc_reduction();
     }
+    
+    int Physics::GetCurrentGear() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 1; // neutral
+        return car::get_current_gear();
+    }
+    
+    const char* Physics::GetCurrentGearString() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return "N";
+        return car::get_current_gear_string();
+    }
+    
+    float Physics::GetEngineRPM() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_current_engine_rpm();
+    }
+    
+    float Physics::GetEngineTorque() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_engine_torque_current();
+    }
+    
+    float Physics::GetRedlineRPM() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_redline_rpm();
+    }
+    
+    bool Physics::IsShifting() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::get_is_shifting();
+    }
 
     void Physics::UpdateWheelTransforms()
     {
