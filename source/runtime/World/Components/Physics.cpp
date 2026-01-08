@@ -1155,6 +1155,60 @@ namespace spartan
             return 1.0f;
         return car::get_wheel_temp_grip_factor(static_cast<int>(wheel));
     }
+    
+    void Physics::SetAbsEnabled(bool enabled)
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::set_abs_enabled(enabled);
+    }
+    
+    bool Physics::GetAbsEnabled() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::get_abs_enabled();
+    }
+    
+    bool Physics::IsAbsActive(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::is_abs_active(static_cast<int>(wheel));
+    }
+    
+    bool Physics::IsAbsActiveAny() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::is_abs_active_any();
+    }
+    
+    void Physics::SetTcEnabled(bool enabled)
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::set_tc_enabled(enabled);
+    }
+    
+    bool Physics::GetTcEnabled() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::get_tc_enabled();
+    }
+    
+    bool Physics::IsTcActive() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::is_tc_active();
+    }
+    
+    float Physics::GetTcReduction() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_tc_reduction();
+    }
 
     void Physics::UpdateWheelTransforms()
     {

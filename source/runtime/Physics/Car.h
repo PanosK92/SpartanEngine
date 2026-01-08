@@ -130,6 +130,18 @@ namespace car
         // damping
         constexpr float linear_damping             = 0.05f;
         constexpr float angular_damping            = 0.5f;
+        
+        // abs (anti-lock braking system)
+        inline bool  abs_enabled            = false;  // toggle abs on/off
+        constexpr float abs_slip_threshold  = 0.15f;  // slip ratio at which abs activates
+        constexpr float abs_release_rate    = 0.7f;   // brake pressure reduction when abs triggers (0-1)
+        constexpr float abs_pulse_frequency = 15.0f;  // abs modulation frequency in hz
+        
+        // traction control
+        inline bool  tc_enabled             = false;  // toggle traction control on/off
+        constexpr float tc_slip_threshold   = 0.12f;  // slip ratio at which tc activates
+        constexpr float tc_power_reduction  = 0.6f;   // throttle reduction when tc triggers (0-1)
+        constexpr float tc_response_rate    = 8.0f;   // how fast tc reacts (higher = faster)
     }
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
@@ -188,6 +200,10 @@ namespace car
     inline static float           sprung_mass[wheel_count];
     inline static PxVec3          prev_velocity = PxVec3(0);
     inline static PxVec3          chassis_acceleration = PxVec3(0);
+    inline static float           abs_phase = 0.0f;            // abs pulse timing
+    inline static bool            abs_active[wheel_count] = {}; // per-wheel abs state
+    inline static float           tc_reduction = 0.0f;          // current tc power reduction
+    inline static bool            tc_active = false;            // is tc currently intervening
 
     // helpers
     inline bool  is_front(int i)                { return i == front_left || i == front_right; }
@@ -263,11 +279,17 @@ namespace car
         
         // reset state
         for (int i = 0; i < wheel_count; i++)
+        {
             wheels[i] = wheel();
+            abs_active[i] = false;
+        }
         input = input_state();
         input_target = input_state();
         prev_velocity = PxVec3(0);
         chassis_acceleration = PxVec3(0);
+        abs_phase = 0.0f;
+        tc_reduction = 0.0f;
+        tc_active = false;
         
         material = physics->createMaterial(0.8f, 0.7f, 0.1f);
         if (!material)
@@ -700,7 +722,46 @@ namespace car
         {
             float speed_kmh = body->getLinearVelocity().magnitude() * 3.6f;
             float power = 1.0f - PxClamp(speed_kmh / tuning::max_forward_speed, 0.0f, tuning::max_power_reduction);
-            apply_lsd_torque(tuning::engine_force * cfg.wheel_radius * input.throttle * power, dt);
+            
+            // traction control: detect wheelspin and reduce power
+            float effective_throttle = input.throttle;
+            tc_active = false;
+            
+            if (tuning::tc_enabled)
+            {
+                // check rear wheel slip (driven wheels)
+                float max_slip = 0.0f;
+                for (int i = rear_left; i <= rear_right; i++)
+                {
+                    if (wheels[i].grounded && wheels[i].slip_ratio > 0.0f) // positive slip = wheelspin
+                        max_slip = PxMax(max_slip, wheels[i].slip_ratio);
+                }
+                
+                // calculate target reduction based on how much slip exceeds threshold
+                float target_reduction = 0.0f;
+                if (max_slip > tuning::tc_slip_threshold)
+                {
+                    tc_active = true;
+                    float excess_slip = max_slip - tuning::tc_slip_threshold;
+                    target_reduction = PxClamp(excess_slip * 5.0f, 0.0f, tuning::tc_power_reduction);
+                }
+                
+                // smooth the tc intervention
+                tc_reduction = lerp(tc_reduction, target_reduction, exp_decay(tuning::tc_response_rate, dt));
+                effective_throttle *= (1.0f - tc_reduction);
+            }
+            else
+            {
+                tc_reduction = 0.0f;
+            }
+            
+            apply_lsd_torque(tuning::engine_force * cfg.wheel_radius * effective_throttle * power, dt);
+        }
+        else
+        {
+            // decay tc reduction when off throttle
+            tc_reduction = lerp(tc_reduction, 0.0f, exp_decay(tuning::tc_response_rate * 2.0f, dt));
+            tc_active = false;
         }
         
         // brake or reverse
@@ -712,9 +773,28 @@ namespace car
                 float front_t = total_torque * tuning::brake_bias_front * 0.5f;
                 float rear_t = total_torque * (1.0f - tuning::brake_bias_front) * 0.5f;
                 
+                // update abs pulse phase
+                abs_phase += tuning::abs_pulse_frequency * dt;
+                if (abs_phase > 1.0f) abs_phase -= 1.0f;
+                
                 for (int i = 0; i < wheel_count; i++)
                 {
                     float t = is_front(i) ? front_t : rear_t;
+                    
+                    // abs: detect wheel lockup and modulate brake pressure
+                    abs_active[i] = false;
+                    if (tuning::abs_enabled && wheels[i].grounded)
+                    {
+                        float slip = fabsf(wheels[i].slip_ratio);
+                        if (slip > tuning::abs_slip_threshold)
+                        {
+                            abs_active[i] = true;
+                            // pulse the brakes - reduce pressure when slip exceeds threshold
+                            float pulse = (abs_phase < 0.5f) ? tuning::abs_release_rate : 1.0f;
+                            t *= pulse;
+                        }
+                    }
+                    
                     float sign = wheels[i].angular_velocity >= 0.0f ? -1.0f : 1.0f;
                     float new_w = wheels[i].angular_velocity + sign * t / wheel_moi[i] * dt;
                     
@@ -883,4 +963,15 @@ namespace car
         const float offset = 0.1f; // this is just get the mesh to look right on top of the wheels
         return -(cfg.height * 0.5f + cfg.suspension_height) + offset;
     }
+    
+    // assist accessors/setters
+    inline void set_abs_enabled(bool enabled) { tuning::abs_enabled = enabled; }
+    inline bool get_abs_enabled()             { return tuning::abs_enabled; }
+    inline bool is_abs_active(int i)          { return is_valid_wheel(i) && abs_active[i]; }
+    inline bool is_abs_active_any()           { return abs_active[0] || abs_active[1] || abs_active[2] || abs_active[3]; }
+    
+    inline void  set_tc_enabled(bool enabled) { tuning::tc_enabled = enabled; }
+    inline bool  get_tc_enabled()             { return tuning::tc_enabled; }
+    inline bool  is_tc_active()               { return tc_active; }
+    inline float get_tc_reduction()           { return tc_reduction; } // how much power is being cut (0-1)
 }

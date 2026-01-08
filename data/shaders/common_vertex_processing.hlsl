@@ -160,7 +160,7 @@ struct vertex_processing
         // rotates blades partially toward camera when edge-on to maintain visual density
         if (surface.is_grass_blade())
         {
-            const float camera_bias_strength = 0.6f; // 0 = no bias, 1 = full billboard
+            const float camera_bias_strength = 0.7f; // 0 = no bias, 1 = full billboard
             
             // get camera direction in horizontal plane
             float3 to_camera    = buffer_frame.camera_position - position_world;

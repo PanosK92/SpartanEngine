@@ -757,6 +757,17 @@ namespace spartan
                 physics->GetVehicleSteering() * 100.0f,
                 physics->GetVehicleHandbrake() * 100.0f);
             Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
+            y_pos += line_spacing;
+            
+            // driver assists status
+            bool abs_active = physics->IsAbsActiveAny();
+            bool tc_active  = physics->IsTcActive();
+            snprintf(text_buffer, sizeof(text_buffer), "Assists:  ABS [%s] %s   TC [%s] %s",
+                physics->GetAbsEnabled() ? "ON" : "--",
+                abs_active ? "<ACTIVE>" : "",
+                physics->GetTcEnabled() ? "ON" : "--",
+                tc_active ? "<ACTIVE>" : "");
+            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
             y_pos += line_spacing * 1.5f;
             
             // per-wheel metrics header

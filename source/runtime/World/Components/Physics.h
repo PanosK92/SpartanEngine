@@ -178,6 +178,17 @@ namespace spartan
         float GetWheelLoadTransfer(WheelIndex wheel) const;     // newtons
         float GetWheelEffectiveLoad(WheelIndex wheel) const;    // tire_load + load_transfer
         float GetWheelTempGripFactor(WheelIndex wheel) const;   // 0.85-1.0 multiplier
+        
+        // driver assists
+        void SetAbsEnabled(bool enabled);
+        bool GetAbsEnabled() const;
+        bool IsAbsActive(WheelIndex wheel) const;               // is abs intervening on this wheel
+        bool IsAbsActiveAny() const;                            // is abs intervening on any wheel
+        
+        void SetTcEnabled(bool enabled);
+        bool GetTcEnabled() const;
+        bool IsTcActive() const;                                // is traction control intervening
+        float GetTcReduction() const;                           // current power reduction (0-1)
 
     private:
         void UpdateWheelTransforms();
