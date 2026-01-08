@@ -84,7 +84,7 @@ The Forest is the most advanced and demanding world. It features **256 million**
   - HDR10 output
   - Post-processing effects: FXAA, bloom, motion blur, depth of field, chromatic aberration
 
-###### Car Simulation
+#### Car Simulation
 - Hybrid Pacejka tire model with linear low-speed friction for stable static holding.
 - Physically accurate combined slip (friction circle) simulating traction loss under load.
 - Real-time tire thermodynamics linking grip levels to thermal windows.
@@ -94,7 +94,7 @@ The Forest is the most advanced and demanding world. It features **256 million**
 - Multi-ray suspension with non-linear compression and anti-roll bars.
 - Dynamic steering geometry blending Ackermann and Parallel systems based on spee
 
-###### General
+#### General
 
 - Project & Input
   - One-click project generation
