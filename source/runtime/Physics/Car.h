@@ -41,95 +41,95 @@ namespace car
     namespace tuning
     {
         // engine/brakes
-        constexpr float engine_force             = 18000.0f; 
-        constexpr float brake_force              = 12000.0f;
-        constexpr float brake_bias_front         = 0.65f;
-        constexpr float reverse_power_ratio      = 0.5f;
+        constexpr float engine_force               = 18000.0f; 
+        constexpr float brake_force                = 12000.0f;
+        constexpr float brake_bias_front           = 0.65f;
+        constexpr float reverse_power_ratio        = 0.5f;
         
         // input response
-        constexpr float throttle_smoothing       = 10.0f;
-        constexpr float steering_smoothing       = 15.0f;
+        constexpr float throttle_smoothing         = 10.0f;
+        constexpr float steering_smoothing         = 15.0f;
         
         // tires - pacejka (Unchanged)
-        constexpr float lat_B  = 12.0f;
-        constexpr float lat_C  = 1.4f;
-        constexpr float lat_D  = 1.0f;
-        constexpr float lat_E  = 0.6f;
-        constexpr float long_B = 20.0f;
-        constexpr float long_C = 1.5f;
-        constexpr float long_D = 1.0f;
-        constexpr float long_E = -0.5f;
+        constexpr float lat_B                      = 12.0f;
+        constexpr float lat_C                      = 1.4f;
+        constexpr float lat_D                      = 1.0f;
+        constexpr float lat_E                      = 0.6f;
+        constexpr float long_B                     = 20.0f;
+        constexpr float long_C                     = 1.5f;
+        constexpr float long_D                     = 1.0f;
+        constexpr float long_E                     = -0.5f;
         
         // tire grip
-        constexpr float tire_friction         = 1.5f; 
-        constexpr float min_slip_speed        = 0.5f;
-        constexpr float load_sensitivity      = 0.92f;
-        constexpr float load_reference        = 4000.0f;
-        constexpr float rear_grip_ratio       = 1.0f;
+        constexpr float tire_friction              = 1.5f;
+        constexpr float min_slip_speed             = 0.5f;
+        constexpr float load_sensitivity           = 0.92f;
+        constexpr float load_reference             = 4000.0f;
+        constexpr float rear_grip_ratio            = 1.0f;
         
         // tire temperature (Unchanged)
-        constexpr float tire_ambient_temp        = 50.0f;
-        constexpr float tire_optimal_temp        = 90.0f;
-        constexpr float tire_temp_range          = 50.0f;
-        constexpr float tire_heat_from_slip      = 25.0f;
-        constexpr float tire_heat_from_rolling   = 0.15f;
-        constexpr float tire_cooling_rate        = 2.0f;
-        constexpr float tire_cooling_airflow     = 0.05f;
-        constexpr float tire_grip_temp_factor    = 0.15f;
-        constexpr float tire_min_temp            = 10.0f;
-        constexpr float tire_max_temp            = 150.0f;
-        constexpr float tire_relaxation_length   = 0.3f;
+        constexpr float tire_ambient_temp          = 50.0f;
+        constexpr float tire_optimal_temp          = 90.0f;
+        constexpr float tire_temp_range            = 50.0f;
+        constexpr float tire_heat_from_slip        = 25.0f;
+        constexpr float tire_heat_from_rolling     = 0.15f;
+        constexpr float tire_cooling_rate          = 2.0f;
+        constexpr float tire_cooling_airflow       = 0.05f;
+        constexpr float tire_grip_temp_factor      = 0.15f;
+        constexpr float tire_min_temp              = 10.0f;
+        constexpr float tire_max_temp              = 150.0f;
+        constexpr float tire_relaxation_length     = 0.3f;
         
         // suspension
-        constexpr float front_spring_freq        = 1.6f;
-        constexpr float rear_spring_freq         = 1.5f;
-        constexpr float damping_ratio            = 0.75f;
+        constexpr float front_spring_freq          = 1.6f;
+        constexpr float rear_spring_freq           = 1.5f;
+        constexpr float damping_ratio              = 0.75f;
         
-        constexpr float front_arb_stiffness      = 3500.0f; 
-        constexpr float rear_arb_stiffness       = 1500.0f; 
+        constexpr float front_arb_stiffness        = 3500.0f; 
+        constexpr float rear_arb_stiffness         = 1500.0f; 
         
-        constexpr float max_susp_force           = 35000.0f;
-        constexpr float max_damper_velocity      = 5.0f;
+        constexpr float max_susp_force             = 35000.0f;
+        constexpr float max_damper_velocity        = 5.0f;
         
         // aerodynamics
-        constexpr float drag_coeff               = 0.35f;
-        constexpr float frontal_area             = 2.2f;
-        constexpr float air_density              = 1.225f;
-        constexpr float rolling_resistance       = 0.015f;
-        constexpr float lift_coeff_front         = -0.3f;
-        constexpr float lift_coeff_rear          = -0.4f;
-        constexpr float downforce_center_height  = 0.3f;
+        constexpr float drag_coeff                 = 0.35f;
+        constexpr float frontal_area               = 2.2f;
+        constexpr float air_density                = 1.225f;
+        constexpr float rolling_resistance         = 0.015f;
+        constexpr float lift_coeff_front           = -0.3f;
+        constexpr float lift_coeff_rear            = -0.4f;
+        constexpr float downforce_center_height    = 0.3f;
         
         // steering
         constexpr float max_steer_angle            = 0.65f;
-        constexpr float high_speed_steer_reduction = 0.4f; 
+        constexpr float high_speed_steer_reduction = 0.4f;
         constexpr float pneumatic_trail            = 0.03f;
         constexpr float self_align_gain            = 0.5f;
         
         // wheel behavior
-        constexpr float airborne_wheel_decay     = 0.99f;
-        constexpr float bearing_friction         = 0.2f;
-        constexpr float ground_match_rate        = 8.0f;
-        constexpr float handbrake_sliding_factor = 0.75f;
+        constexpr float airborne_wheel_decay       = 0.99f;
+        constexpr float bearing_friction           = 0.2f;
+        constexpr float ground_match_rate          = 8.0f;
+        constexpr float handbrake_sliding_factor   = 0.75f;
         
         // limited slip differential
-        constexpr float lsd_preload              = 100.0f;
-        constexpr float lsd_lock_ratio_accel     = 0.4f;
-        constexpr float lsd_lock_ratio_decel     = 0.2f;
+        constexpr float lsd_preload                = 100.0f;
+        constexpr float lsd_lock_ratio_accel       = 0.4f;
+        constexpr float lsd_lock_ratio_decel       = 0.2f;
         
         // thresholds
-        constexpr float input_deadzone           = 0.01f;
-        constexpr float steering_deadzone        = 0.001f;
-        constexpr float braking_speed_threshold  = 3.0f;
+        constexpr float input_deadzone             = 0.01f;
+        constexpr float steering_deadzone          = 0.001f;
+        constexpr float braking_speed_threshold    = 3.0f;
         
         // speed limits
-        constexpr float max_forward_speed        = 320.0f;
-        constexpr float max_reverse_speed        = 80.0f;
-        constexpr float max_power_reduction      = 0.85f;
+        constexpr float max_forward_speed          = 320.0f;
+        constexpr float max_reverse_speed          = 80.0f;
+        constexpr float max_power_reduction        = 0.85f;
         
         // damping
-        constexpr float linear_damping           = 0.05f;
-        constexpr float angular_damping          = 0.5f;
+        constexpr float linear_damping             = 0.05f;
+        constexpr float angular_damping            = 0.5f;
     }
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
@@ -567,15 +567,19 @@ namespace car
                 lat_f  = PxClamp(-vy / tuning::min_slip_speed, -1.0f, 1.0f) * peak_force;
             }
             
-            // temperature
+            // temperature - normalize friction work by reference load to get sensible heating rates
             float rolling_heat = fabsf(wheel_speed) * tuning::tire_heat_from_rolling;
             float cooling = tuning::tire_cooling_rate + ground_speed * tuning::tire_cooling_airflow;
             float temp_delta = w.temperature - tuning::tire_ambient_temp;
+            float force_magnitude = sqrtf(long_f * long_f + lat_f * lat_f);
+            float normalized_force = force_magnitude / tuning::load_reference;
             float friction_work = (max_v > tuning::min_slip_speed)
-                ? sqrtf(long_f * long_f + lat_f * lat_f) * (fabsf(w.slip_angle) + fabsf(w.slip_ratio))
-                : sqrtf(long_f * long_f + lat_f * lat_f) * 0.01f;
+                ? normalized_force * (fabsf(w.slip_angle) + fabsf(w.slip_ratio))
+                : normalized_force * 0.01f;
             
-            w.temperature += (friction_work * tuning::tire_heat_from_slip + rolling_heat - cooling * (temp_delta / PxMax(temp_delta, 30.0f))) * dt;
+            float heating = friction_work * tuning::tire_heat_from_slip + rolling_heat;
+            float cooling_factor = (temp_delta > 0.0f) ? PxMin(temp_delta / 30.0f, 1.0f) : 0.0f;
+            w.temperature += (heating - cooling * cooling_factor) * dt;
             w.temperature = PxClamp(w.temperature, tuning::tire_min_temp, tuning::tire_max_temp);
             
             // handbrake: sliding friction on rear
