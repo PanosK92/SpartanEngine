@@ -92,7 +92,7 @@ The Forest is the most advanced and demanding world. It features **256 million**
 - Simulated aerodynamics including drag, rolling resistance, and downforce.
 - Configurable Limited Slip Differential (LSD) with asymmetric locking.
 - Multi-ray suspension with non-linear compression and anti-roll bars.
-- Dynamic steering geometry blending Ackermann and Parallel systems based on spee
+- Dynamic steering geometry blending Ackermann and Parallel systems based on speed.
 
 #### General
 
