@@ -1732,7 +1732,7 @@ namespace spartan
 
             void create()
             {
-                entities::camera(false, Vector3(0.0f, 5.0f, -10.0f), Vector3(5.0f, 0.0f, 0.0f));
+                entities::camera(false, Vector3(0.0f, 2.5f, -10.0f), Vector3(5.0f, 0.0f, 0.0f));
                 
                 // disable fps camera controls - only the car should be controlled
                 if (Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>())
@@ -1768,17 +1768,17 @@ namespace spartan
 
                 // ramp
                 {
-                    default_metal_cube = World::CreateEntity();
-                    default_metal_cube->SetObjectName("ramp");
-                    default_metal_cube->SetPosition(Vector3(6.6f, 0.0f, 3.2f));
-                    default_metal_cube->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 5.3f));
-                    default_metal_cube->SetScale(Vector3(5.8f, 1.0f, 5.4f));
+                    Entity* entity = World::CreateEntity();
+                    entity->SetObjectName("ramp");
+                    entity->SetPosition(Vector3(6.6f, 0.0f, 3.2f));
+                    entity->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 5.3f));
+                    entity->SetScale(Vector3(5.8f, 1.0f, 5.4f));
 
-                    Renderable* renderable = default_metal_cube->AddComponent<Renderable>();
+                    Renderable* renderable = entity->AddComponent<Renderable>();
                     renderable->SetMesh(MeshType::Cube);
                     renderable->SetDefaultMaterial();
 
-                    Physics* physics_body = default_metal_cube->AddComponent<Physics>();
+                    Physics* physics_body = entity->AddComponent<Physics>();
                     physics_body->SetMass(Physics::mass_from_volume);
                     physics_body->SetBodyType(BodyType::Box);
                 }
