@@ -58,7 +58,7 @@ namespace spartan
         namespace subway        { void create(); }
         namespace minecraft     { void create(); }
         namespace basic         { void create(); }
-        namespace drivable_car  { void create(); void tick(); }
+        namespace car_simulation  { void create(); void tick(); }
     }
     //======================================================
 
@@ -95,7 +95,7 @@ namespace spartan
             worlds::subway::create,        // Subway
             worlds::minecraft::create,     // Minecraft
             worlds::basic::create,         // Basic
-            worlds::drivable_car::create,  // DrivableCar
+            worlds::car_simulation::create,  // DrivableCar
         };
 
         constexpr tick_fn world_tick[] =
@@ -107,7 +107,7 @@ namespace spartan
             nullptr,                       // Subway (no tick)
             nullptr,                       // Minecraft (no tick)
             nullptr,                       // Basic (no tick)
-            worlds::drivable_car::tick,    // CarTestWip
+            worlds::car_simulation::tick,    // CarTestWip
         };
 
         static_assert(size(world_create) == static_cast<size_t>(DefaultWorld::Max), "world_create out of sync with DefaultWorld enum");
@@ -1725,8 +1725,8 @@ namespace spartan
         }
         //====================================================================================
 
-        //= DRIVABLE CAR =========================================================================
-        namespace drivable_car
+        //== CAR SIMULATION ==================================================================
+        namespace car_simulation
         {
             Entity* vehicle_entity = nullptr;
 
@@ -2027,7 +2027,7 @@ namespace spartan
         default_metal_cube                     = nullptr;
         worlds::showroom::texture_brand_logo   = nullptr;
         worlds::showroom::texture_paint_normal = nullptr;
-        worlds::drivable_car::vehicle_entity   = nullptr;
+        worlds::car_simulation::vehicle_entity   = nullptr;
         meshes.clear();
     }
 
