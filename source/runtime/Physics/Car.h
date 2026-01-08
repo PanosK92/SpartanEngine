@@ -41,16 +41,16 @@ namespace car
     namespace tuning
     {
         // engine/brakes
-        constexpr float engine_force             = 55000.0f;
+        constexpr float engine_force             = 18000.0f; 
         constexpr float brake_force              = 12000.0f;
-        constexpr float brake_bias_front         = 0.6f;
-        constexpr float reverse_power_ratio      = 0.8f;
+        constexpr float brake_bias_front         = 0.65f;
+        constexpr float reverse_power_ratio      = 0.5f;
         
         // input response
         constexpr float throttle_smoothing       = 10.0f;
-        constexpr float steering_smoothing       = 20.0f;
+        constexpr float steering_smoothing       = 15.0f;
         
-        // tires - pacejka: D * sin(C * atan(B*x - E*(B*x - atan(B*x))))
+        // tires - pacejka (Unchanged)
         constexpr float lat_B  = 12.0f;
         constexpr float lat_C  = 1.4f;
         constexpr float lat_D  = 1.0f;
@@ -61,13 +61,13 @@ namespace car
         constexpr float long_E = -0.5f;
         
         // tire grip
-        constexpr float tire_friction         = 1.6f;
+        constexpr float tire_friction         = 1.5f; 
         constexpr float min_slip_speed        = 0.5f;
         constexpr float load_sensitivity      = 0.92f;
         constexpr float load_reference        = 4000.0f;
-        constexpr float rear_grip_ratio       = 0.92f;
+        constexpr float rear_grip_ratio       = 1.0f;
         
-        // tire temperature
+        // tire temperature (Unchanged)
         constexpr float tire_ambient_temp        = 50.0f;
         constexpr float tire_optimal_temp        = 90.0f;
         constexpr float tire_temp_range          = 50.0f;
@@ -81,11 +81,13 @@ namespace car
         constexpr float tire_relaxation_length   = 0.3f;
         
         // suspension
-        constexpr float front_spring_freq        = 1.3f;
+        constexpr float front_spring_freq        = 1.6f;
         constexpr float rear_spring_freq         = 1.5f;
-        constexpr float damping_ratio            = 0.65f;
-        constexpr float front_arb_stiffness      = 2000.0f;
-        constexpr float rear_arb_stiffness       = 4000.0f;
+        constexpr float damping_ratio            = 0.75f;
+        
+        constexpr float front_arb_stiffness      = 3500.0f; 
+        constexpr float rear_arb_stiffness       = 1500.0f; 
+        
         constexpr float max_susp_force           = 35000.0f;
         constexpr float max_damper_velocity      = 5.0f;
         
@@ -99,8 +101,8 @@ namespace car
         constexpr float downforce_center_height  = 0.3f;
         
         // steering
-        constexpr float max_steer_angle            = 0.698f;
-        constexpr float high_speed_steer_reduction = 0.3f;
+        constexpr float max_steer_angle            = 0.65f;
+        constexpr float high_speed_steer_reduction = 0.4f; 
         constexpr float pneumatic_trail            = 0.03f;
         constexpr float self_align_gain            = 0.5f;
         
@@ -111,7 +113,7 @@ namespace car
         constexpr float handbrake_sliding_factor = 0.75f;
         
         // limited slip differential
-        constexpr float lsd_preload              = 50.0f;
+        constexpr float lsd_preload              = 100.0f;
         constexpr float lsd_lock_ratio_accel     = 0.4f;
         constexpr float lsd_lock_ratio_decel     = 0.2f;
         
@@ -121,13 +123,13 @@ namespace car
         constexpr float braking_speed_threshold  = 3.0f;
         
         // speed limits
-        constexpr float max_forward_speed        = 250.0f;
+        constexpr float max_forward_speed        = 320.0f;
         constexpr float max_reverse_speed        = 80.0f;
         constexpr float max_power_reduction      = 0.85f;
         
         // damping
         constexpr float linear_damping           = 0.05f;
-        constexpr float angular_damping          = 0.05f;
+        constexpr float angular_damping          = 0.5f;
     }
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
@@ -492,143 +494,104 @@ namespace car
     inline void apply_tire_forces(float wheel_angles[wheel_count], float dt)
     {
         PxTransform pose = body->getGlobalPose();
-        PxVec3 chassis_fwd = pose.q.rotate(PxVec3(0, 0, 1));
+        PxVec3 chassis_fwd   = pose.q.rotate(PxVec3(0, 0, 1));
         PxVec3 chassis_right = pose.q.rotate(PxVec3(1, 0, 0));
         
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
             
-            // airborne handling
+            // airborne
             if (!w.grounded || w.tire_load <= 0.0f)
             {
                 w.slip_angle = w.slip_ratio = w.lateral_force = w.longitudinal_force = 0.0f;
+                w.angular_velocity = (is_rear(i) && input.handbrake > tuning::input_deadzone)
+                    ? 0.0f : w.angular_velocity * tuning::airborne_wheel_decay;
                 
-                if (is_rear(i) && input.handbrake > tuning::input_deadzone)
-                    w.angular_velocity = 0.0f;
-                else
-                    w.angular_velocity *= tuning::airborne_wheel_decay;
-                
-                // accelerated cooling
-                float temp_above_ambient = w.temperature - tuning::tire_ambient_temp;
-                if (temp_above_ambient > 0.0f)
-                    w.temperature -= tuning::tire_cooling_rate * 3.0f * (temp_above_ambient / 60.0f) * dt;
+                float temp_above = w.temperature - tuning::tire_ambient_temp;
+                if (temp_above > 0.0f)
+                    w.temperature -= tuning::tire_cooling_rate * 3.0f * (temp_above / 60.0f) * dt;
                 w.temperature = PxMax(w.temperature, tuning::tire_ambient_temp);
-                
                 w.rotation += w.angular_velocity * dt;
                 continue;
             }
             
-            // velocity at contact projected to ground plane
+            // velocities
             PxVec3 world_pos = pose.transform(wheel_offsets[i]);
             PxVec3 vel = body->getLinearVelocity() + body->getAngularVelocity().cross(world_pos - pose.p);
             vel -= w.contact_normal * vel.dot(w.contact_normal);
             
-            // wheel-aligned directions
             float cs = cosf(wheel_angles[i]), sn = sinf(wheel_angles[i]);
             PxVec3 wheel_fwd = chassis_fwd * cs + chassis_right * sn;
             PxVec3 wheel_lat = chassis_right * cs - chassis_fwd * sn;
             
             float vx = vel.dot(wheel_fwd);
             float vy = vel.dot(wheel_lat);
-            float wheel_speed = w.angular_velocity * cfg.wheel_radius;
+            float wheel_speed  = w.angular_velocity * cfg.wheel_radius;
             float ground_speed = sqrtf(vx * vx + vy * vy);
-            
-            // temperature and max force calculation
-            float rolling_heat = fabsf(wheel_speed) * tuning::tire_heat_from_rolling;
-            float cooling = tuning::tire_cooling_rate + ground_speed * tuning::tire_cooling_airflow;
-            float temp_delta = w.temperature - tuning::tire_ambient_temp;
-            float net_cooling = cooling * (temp_delta / PxMax(temp_delta, 30.0f));
-            
-            // Note: slip heat added later after we know slip
-            
-            float load_adjusted = load_sensitive_grip(PxMax(w.tire_load, 0.0f));
-            float temp_grip = get_tire_temp_grip_factor(w.temperature);
-            float max_force = tuning::tire_friction * load_adjusted * temp_grip;
-
-            float lat_f = 0.0f;
-            float long_f = 0.0f;
-
-            // Hybrid Pacejka / Linear Friction Model
             float max_v = PxMax(fabsf(wheel_speed), fabsf(vx));
             
-            // Threshold for switching from Pacejka to Linear
-            // Using min_slip_speed (0.5f) is a good threshold
+            // grip capacity
+            float peak_force = tuning::tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f)) * get_tire_temp_grip_factor(w.temperature);
+            
+            // tire forces: combined slip pacejka at speed, linear model at low speed
+            float lat_f = 0.0f, long_f = 0.0f;
+            
             if (max_v > tuning::min_slip_speed)
             {
-                // HIGH SPEED: Standard Pacejka Model
                 float raw_slip_ratio = PxClamp((wheel_speed - vx) / max_v, -1.0f, 1.0f);
                 float raw_slip_angle = atan2f(vy, fabsf(vx));
-
-                // tire relaxation
+                
                 float blend = exp_decay(ground_speed / tuning::tire_relaxation_length, dt);
                 w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, blend);
                 w.slip_angle = lerp(w.slip_angle, raw_slip_angle, blend);
-
-                lat_f  = -tire_force_lateral(w.slip_angle) * max_force;
-                long_f =  tire_force_longitudinal(w.slip_ratio) * max_force;
+                
+                // normalize slips by stiffness (B) to combine them
+                float norm_lat  = w.slip_angle * tuning::lat_B;
+                float norm_long = w.slip_ratio * tuning::long_B;
+                float combined  = sqrtf(norm_lat * norm_lat + norm_long * norm_long);
+                
+                if (combined > 0.001f)
+                {
+                    float force_mag = pacejka(combined / tuning::lat_B, tuning::lat_B, tuning::lat_C, tuning::lat_D, tuning::lat_E) * peak_force;
+                    lat_f  = -force_mag * (norm_lat / combined);
+                    long_f =  force_mag * (norm_long / combined);
+                    if (is_rear(i)) lat_f *= tuning::rear_grip_ratio;
+                }
             }
             else
             {
-                // LOW SPEED: Linear "Stiffness" Model
-                // When below the threshold, Pacejka is unstable/zero
-                // We linearly interpolate force based on the velocity difference
-                // This acts as a damper/spring to bring velocity to exactly 0
-                
-                // Reset tracked slip for telemetry
-                w.slip_ratio = 0.0f; 
-                w.slip_angle = 0.0f;
-
-                // Calculate normalized difference (-1 to 1) over the min_slip_speed range
-                // If vx is 0.5 and wheel is 0, this returns -1.0 * max_force (full braking)
-                float ratio_long = PxClamp((wheel_speed - vx) / tuning::min_slip_speed, -1.0f, 1.0f);
-                float ratio_lat  = PxClamp(-vy / tuning::min_slip_speed, -1.0f, 1.0f);
-
-                long_f = ratio_long * max_force;
-                lat_f  = ratio_lat * max_force;
+                // low speed linear model
+                w.slip_ratio = w.slip_angle = 0.0f;
+                long_f = PxClamp((wheel_speed - vx) / tuning::min_slip_speed, -1.0f, 1.0f) * peak_force;
+                lat_f  = PxClamp(-vy / tuning::min_slip_speed, -1.0f, 1.0f) * peak_force;
             }
-
-            // Apply temperature heat from slip/friction
-            float force_mag = sqrtf(long_f * long_f + lat_f * lat_f);
-            float friction_work = force_mag * (fabsf(w.slip_angle) + fabsf(w.slip_ratio)); // Approx for high speed
-            // For low speed, we just approximate heat from the force magnitude
-            if (max_v <= tuning::min_slip_speed) friction_work = force_mag * 0.01f; 
             
-            w.temperature += (friction_work * tuning::tire_heat_from_slip + rolling_heat - net_cooling) * dt;
+            // temperature
+            float rolling_heat = fabsf(wheel_speed) * tuning::tire_heat_from_rolling;
+            float cooling = tuning::tire_cooling_rate + ground_speed * tuning::tire_cooling_airflow;
+            float temp_delta = w.temperature - tuning::tire_ambient_temp;
+            float friction_work = (max_v > tuning::min_slip_speed)
+                ? sqrtf(long_f * long_f + lat_f * lat_f) * (fabsf(w.slip_angle) + fabsf(w.slip_ratio))
+                : sqrtf(long_f * long_f + lat_f * lat_f) * 0.01f;
+            
+            w.temperature += (friction_work * tuning::tire_heat_from_slip + rolling_heat - cooling * (temp_delta / PxMax(temp_delta, 30.0f))) * dt;
             w.temperature = PxClamp(w.temperature, tuning::tire_min_temp, tuning::tire_max_temp);
-
-            if (is_rear(i))
-                lat_f *= tuning::rear_grip_ratio;
-            
-            // friction circle (cap total force)
-            float combined = sqrtf(lat_f * lat_f + long_f * long_f);
-            if (combined > max_force)
-            {
-                float scale = max_force / combined;
-                lat_f *= scale;
-                long_f *= scale;
-            }
             
             // handbrake: sliding friction on rear
             if (is_rear(i) && input.handbrake > tuning::input_deadzone)
             {
-                float sliding_f = tuning::handbrake_sliding_factor * max_force;
-                // If moving, apply sliding friction opposite to velocity
-                if (fabsf(vx) > 0.01f)
-                    long_f = (vx > 0.0f ? -1.0f : 1.0f) * sliding_f * input.handbrake;
-                else
-                    long_f = 0.0f; // Static hold handled by linear model above if we weren't overriding, but strictly sliding friction drops to 0 at true 0
-                
+                float sliding_f = tuning::handbrake_sliding_factor * peak_force;
+                long_f = (fabsf(vx) > 0.01f) ? ((vx > 0.0f ? -1.0f : 1.0f) * sliding_f * input.handbrake) : 0.0f;
                 lat_f *= (1.0f - 0.5f * input.handbrake);
             }
-
+            
             w.lateral_force = lat_f;
             w.longitudinal_force = long_f;
             
-            PxVec3 tire_force = wheel_lat * lat_f + wheel_fwd * long_f;
-            PxRigidBodyExt::addForceAtPos(*body, tire_force, world_pos, PxForceMode::eFORCE);
+            PxRigidBodyExt::addForceAtPos(*body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos, PxForceMode::eFORCE);
             
-            // wheel rotation update
+            // wheel rotation
             if (is_rear(i) && input.handbrake > tuning::input_deadzone)
             {
                 w.angular_velocity = 0.0f;
@@ -638,18 +601,13 @@ namespace car
                 float target_w = vx / cfg.wheel_radius;
                 w.angular_velocity += (-long_f * cfg.wheel_radius / wheel_moi[i]) * dt;
                 
-                // ground matching when coasting or low speed
-                bool coasting = input.throttle < tuning::input_deadzone && input.brake < tuning::input_deadzone;
-                
-                // ground matching strength at low speeds to prevent micro-jitter
                 float match_rate = (ground_speed < tuning::min_slip_speed) ? tuning::ground_match_rate * 2.0f : tuning::ground_match_rate;
-
+                bool coasting = input.throttle < 0.01f && input.brake < 0.01f;
                 if (coasting || is_front(i) || ground_speed < tuning::min_slip_speed)
                     w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(match_rate, dt));
                 
                 w.angular_velocity *= (1.0f - tuning::bearing_friction * dt);
             }
-            
             w.rotation += w.angular_velocity * dt;
         }
     }
