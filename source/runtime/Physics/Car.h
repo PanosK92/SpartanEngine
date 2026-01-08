@@ -81,9 +81,9 @@ namespace car
         constexpr float tire_relaxation_length     = 0.3f;
         
         // suspension
-        constexpr float front_spring_freq          = 1.6f;
-        constexpr float rear_spring_freq           = 1.5f;
-        constexpr float damping_ratio              = 0.75f;
+        constexpr float front_spring_freq          = 1.5f;   // hz (lower = softer springs)
+        constexpr float rear_spring_freq           = 1.4f;   // hz
+        constexpr float damping_ratio              = 0.85f;  // 0.7-1.0 (higher = less bounce on rebound)
         
         constexpr float front_arb_stiffness        = 3500.0f;
         constexpr float rear_arb_stiffness         = 1500.0f;
@@ -103,6 +103,7 @@ namespace car
         // steering
         constexpr float max_steer_angle            = 0.65f;
         constexpr float high_speed_steer_reduction = 0.4f;
+        constexpr float steering_rate              = 1.5f;   // max steering change per second (lock-to-lock in ~1.3s)
         constexpr float pneumatic_trail            = 0.03f;
         constexpr float self_align_gain            = 0.5f;
         
@@ -354,8 +355,15 @@ namespace car
 
     inline void update_input(float dt)
     {
-        // steering: smooth
-        input.steering = lerp(input.steering, input_target.steering, exp_decay(tuning::steering_smoothing, dt));
+        // steering: rate-limited (simulates steering rack/hydraulic speed limit)
+        float steering_diff = input_target.steering - input.steering;
+        float max_change = tuning::steering_rate * dt;
+        if (steering_diff > max_change)
+            input.steering += max_change;
+        else if (steering_diff < -max_change)
+            input.steering -= max_change;
+        else
+            input.steering = input_target.steering;
         
         // throttle/brake: instant release, smooth press
         if (input_target.throttle < input.throttle)
@@ -782,14 +790,15 @@ namespace car
                     float t = is_front(i) ? front_t : rear_t;
                     
                     // abs: detect wheel lockup and modulate brake pressure
+                    // negative slip_ratio = wheel slower than ground = lockup
                     abs_active[i] = false;
                     if (tuning::abs_enabled && wheels[i].grounded)
                     {
-                        float slip = fabsf(wheels[i].slip_ratio);
+                        float slip = -wheels[i].slip_ratio; // negate so lockup is positive
                         if (slip > tuning::abs_slip_threshold)
                         {
                             abs_active[i] = true;
-                            // pulse the brakes - reduce pressure when slip exceeds threshold
+                            // pulse the brakes - alternate between reduced and full pressure
                             float pulse = (abs_phase < 0.5f) ? tuning::abs_release_rate : 1.0f;
                             t *= pulse;
                         }
@@ -807,11 +816,20 @@ namespace car
             }
             else
             {
-                // reverse
+                // reverse - no abs needed at low speed
+                for (int i = 0; i < wheel_count; i++)
+                    abs_active[i] = false;
+                
                 float rev_speed = PxMax(-forward_speed_kmh, 0.0f);
                 float power = 1.0f - PxClamp(rev_speed / tuning::max_reverse_speed, 0.0f, tuning::max_power_reduction);
                 apply_lsd_torque(-tuning::engine_force * tuning::reverse_power_ratio * cfg.wheel_radius * input.brake * power, dt);
             }
+        }
+        else
+        {
+            // not braking - clear abs state
+            for (int i = 0; i < wheel_count; i++)
+                abs_active[i] = false;
         }
         
         // handbrake locks rear
