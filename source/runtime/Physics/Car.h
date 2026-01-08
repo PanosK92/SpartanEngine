@@ -495,9 +495,6 @@ namespace car
         PxVec3 chassis_fwd = pose.q.rotate(PxVec3(0, 0, 1));
         PxVec3 chassis_right = pose.q.rotate(PxVec3(1, 0, 0));
         
-        float chassis_speed = body->getLinearVelocity().magnitude();
-        float low_speed_scale = PxClamp(chassis_speed / tuning::min_slip_speed, 0.0f, 1.0f);
-        
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
@@ -537,48 +534,73 @@ namespace car
             float wheel_speed = w.angular_velocity * cfg.wheel_radius;
             float ground_speed = sqrtf(vx * vx + vy * vy);
             
-            // slip calculation
-            float max_v = PxMax(fabsf(wheel_speed), fabsf(vx));
-            float raw_slip_ratio = (max_v > tuning::min_slip_speed)
-                ? PxClamp((wheel_speed - vx) / max_v, -1.0f, 1.0f) : 0.0f;
-            float raw_slip_angle = (ground_speed > tuning::min_slip_speed)
-                ? atan2f(vy, fabsf(vx)) : 0.0f;
-            
-            // tire relaxation
-            if (ground_speed > tuning::min_slip_speed)
-            {
-                float blend = exp_decay(ground_speed / tuning::tire_relaxation_length, dt);
-                w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, blend);
-                w.slip_angle = lerp(w.slip_angle, raw_slip_angle, blend);
-            }
-            else
-            {
-                w.slip_ratio = raw_slip_ratio;
-                w.slip_angle = raw_slip_angle;
-            }
-            
-            // temperature
-            float slip_heat = (fabsf(w.slip_angle) + fabsf(w.slip_ratio)) * tuning::tire_heat_from_slip;
+            // temperature and max force calculation
             float rolling_heat = fabsf(wheel_speed) * tuning::tire_heat_from_rolling;
             float cooling = tuning::tire_cooling_rate + ground_speed * tuning::tire_cooling_airflow;
             float temp_delta = w.temperature - tuning::tire_ambient_temp;
             float net_cooling = cooling * (temp_delta / PxMax(temp_delta, 30.0f));
             
-            w.temperature += (slip_heat + rolling_heat - net_cooling) * dt;
-            w.temperature = PxClamp(w.temperature, tuning::tire_min_temp, tuning::tire_max_temp);
+            // Note: slip heat added later after we know slip
             
-            // tire forces from pacejka + load sensitivity + temperature
             float load_adjusted = load_sensitive_grip(PxMax(w.tire_load, 0.0f));
             float temp_grip = get_tire_temp_grip_factor(w.temperature);
             float max_force = tuning::tire_friction * load_adjusted * temp_grip;
+
+            float lat_f = 0.0f;
+            float long_f = 0.0f;
+
+            // Hybrid Pacejka / Linear Friction Model
+            float max_v = PxMax(fabsf(wheel_speed), fabsf(vx));
             
-            float lat_f = -tire_force_lateral(w.slip_angle) * max_force;
-            float long_f = tire_force_longitudinal(w.slip_ratio) * max_force;
+            // Threshold for switching from Pacejka to Linear
+            // Using min_slip_speed (0.5f) is a good threshold
+            if (max_v > tuning::min_slip_speed)
+            {
+                // HIGH SPEED: Standard Pacejka Model
+                float raw_slip_ratio = PxClamp((wheel_speed - vx) / max_v, -1.0f, 1.0f);
+                float raw_slip_angle = atan2f(vy, fabsf(vx));
+
+                // tire relaxation
+                float blend = exp_decay(ground_speed / tuning::tire_relaxation_length, dt);
+                w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, blend);
+                w.slip_angle = lerp(w.slip_angle, raw_slip_angle, blend);
+
+                lat_f  = -tire_force_lateral(w.slip_angle) * max_force;
+                long_f =  tire_force_longitudinal(w.slip_ratio) * max_force;
+            }
+            else
+            {
+                // LOW SPEED: Linear "Stiffness" Model
+                // When below the threshold, Pacejka is unstable/zero
+                // We linearly interpolate force based on the velocity difference
+                // This acts as a damper/spring to bring velocity to exactly 0
+                
+                // Reset tracked slip for telemetry
+                w.slip_ratio = 0.0f; 
+                w.slip_angle = 0.0f;
+
+                // Calculate normalized difference (-1 to 1) over the min_slip_speed range
+                // If vx is 0.5 and wheel is 0, this returns -1.0 * max_force (full braking)
+                float ratio_long = PxClamp((wheel_speed - vx) / tuning::min_slip_speed, -1.0f, 1.0f);
+                float ratio_lat  = PxClamp(-vy / tuning::min_slip_speed, -1.0f, 1.0f);
+
+                long_f = ratio_long * max_force;
+                lat_f  = ratio_lat * max_force;
+            }
+
+            // Apply temperature heat from slip/friction
+            float force_mag = sqrtf(long_f * long_f + lat_f * lat_f);
+            float friction_work = force_mag * (fabsf(w.slip_angle) + fabsf(w.slip_ratio)); // Approx for high speed
+            // For low speed, we just approximate heat from the force magnitude
+            if (max_v <= tuning::min_slip_speed) friction_work = force_mag * 0.01f; 
             
+            w.temperature += (friction_work * tuning::tire_heat_from_slip + rolling_heat - net_cooling) * dt;
+            w.temperature = PxClamp(w.temperature, tuning::tire_min_temp, tuning::tire_max_temp);
+
             if (is_rear(i))
                 lat_f *= tuning::rear_grip_ratio;
             
-            // friction circle
+            // friction circle (cap total force)
             float combined = sqrtf(lat_f * lat_f + long_f * long_f);
             if (combined > max_force)
             {
@@ -591,15 +613,15 @@ namespace car
             if (is_rear(i) && input.handbrake > tuning::input_deadzone)
             {
                 float sliding_f = tuning::handbrake_sliding_factor * max_force;
-                if (fabsf(vx) > tuning::min_slip_speed)
+                // If moving, apply sliding friction opposite to velocity
+                if (fabsf(vx) > 0.01f)
                     long_f = (vx > 0.0f ? -1.0f : 1.0f) * sliding_f * input.handbrake;
+                else
+                    long_f = 0.0f; // Static hold handled by linear model above if we weren't overriding, but strictly sliding friction drops to 0 at true 0
+                
                 lat_f *= (1.0f - 0.5f * input.handbrake);
             }
-            
-            // low speed scaling to prevent drift at standstill
-            lat_f *= low_speed_scale;
-            long_f *= low_speed_scale;
-            
+
             w.lateral_force = lat_f;
             w.longitudinal_force = long_f;
             
@@ -618,8 +640,12 @@ namespace car
                 
                 // ground matching when coasting or low speed
                 bool coasting = input.throttle < tuning::input_deadzone && input.brake < tuning::input_deadzone;
+                
+                // ground matching strength at low speeds to prevent micro-jitter
+                float match_rate = (ground_speed < tuning::min_slip_speed) ? tuning::ground_match_rate * 2.0f : tuning::ground_match_rate;
+
                 if (coasting || is_front(i) || ground_speed < tuning::min_slip_speed)
-                    w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(tuning::ground_match_rate, dt));
+                    w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(match_rate, dt));
                 
                 w.angular_velocity *= (1.0f - tuning::bearing_friction * dt);
             }
