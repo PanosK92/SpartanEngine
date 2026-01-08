@@ -924,7 +924,7 @@ namespace spartan
                 {
                     camera = default_car->GetChildByName("component_camera");
                     camera->SetParent(default_camera);
-                    camera->SetPositionLocal(Vector3(0.0f, 1.8f, 0.0f));
+                    camera->SetPositionLocal(default_camera->GetComponent<Physics>()->GetControllerTopLocal());
                     camera->SetRotationLocal(Quaternion::Identity);
                     default_camera->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
                     audio_source_idle->StopClip();
@@ -1144,6 +1144,15 @@ namespace spartan
 
                 entities::camera(false, Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
                 Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+
+                // drivable car near the player
+                {
+                    car::Config car_config;
+                    car_config.position       = Vector3(-1470.0f, 20.0f, 1490.0f); // slightly in front of camera
+                    car_config.drivable       = true;
+                    car_config.show_telemetry = true;
+                    car::create(car_config);
+                }
 
                 // terrain root
                 default_terrain = World::CreateEntity();

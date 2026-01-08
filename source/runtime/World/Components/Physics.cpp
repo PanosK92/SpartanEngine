@@ -54,8 +54,14 @@ namespace spartan
     {
         const float distance_deactivate = 80.0f;
         const float distance_activate   = 40.0f;
-        const float standing_height     = 1.8f;
-        const float crouch_height       = 0.7f;
+
+        // average european male: ~1.78m tall, eye level at ~1.65m
+        // capsule total height = cylinder_height + 2 * radius
+        // we want total height = 1.8m, with radius 0.25m
+        // so cylinder_height = 1.8 - 0.5 = 1.3m
+        const float controller_radius   = 0.25f;
+        const float standing_height     = 1.3f;  // cylinder height (total = 1.3 + 0.5 = 1.8m)
+        const float crouch_height       = 0.5f;  // cylinder height when crouching (total = 0.5 + 0.5 = 1.0m)
 
         // derivatives
         const float distance_deactivate_squared = distance_deactivate * distance_deactivate;
@@ -787,8 +793,11 @@ namespace spartan
         float height                    = controller->getHeight();
         float radius                    = controller->getRadius();
         
-        // relative local position to the top of the capsule (from the capsule's center)
-        return Vector3(0.0f, (height * 0.5f) + radius, 0.0f);
+        // for an average european male (1.8m), eye level is at ~1.65m from the ground
+        // that's about 0.15m below the top of the head
+        // this returns eye level position relative to capsule center (where camera should be)
+        const float eye_offset_from_top = 0.13f;
+        return Vector3(0.0f, (height * 0.5f) + radius - eye_offset_from_top, 0.0f);
     }
 
     void Physics::SetStatic(bool is_static)
@@ -1234,7 +1243,7 @@ namespace spartan
             }
 
             PxCapsuleControllerDesc desc;
-            desc.radius           = 0.5f; // stable size for ground contact
+            desc.radius           = controller_radius;
             desc.height           = standing_height;
             desc.climbingMode     = PxCapsuleClimbingMode::eEASY; // easier handling on steps/slopes
             desc.stepOffset       = 0.3f; // keep under half a meter for better stepping
