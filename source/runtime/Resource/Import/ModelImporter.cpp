@@ -54,9 +54,8 @@ namespace spartan
         string file_path;
         string model_name;
         string model_directory;
-        Mesh* mesh                = nullptr;
-        const aiScene* scene      = nullptr;
-        atomic<uint32_t> pending_texture_loads{0};
+        Mesh* mesh           = nullptr;
+        const aiScene* scene = nullptr;
     };
 
     namespace
@@ -183,8 +182,9 @@ namespace spartan
             return "";
         }
 
-        void load_material_texture_async(
-            ImportContext& ctx,
+        // load texture synchronously (original working behavior)
+        bool load_material_texture(
+            const string& model_directory,
             shared_ptr<Material> material,
             const aiMaterial* material_assimp,
             const MaterialTextureType texture_type,
@@ -194,66 +194,65 @@ namespace spartan
         {
             // determine texture type (prefer pbr)
             aiTextureType type_assimp = aiTextureType_NONE;
-            if (material_assimp->GetTextureCount(texture_type_assimp_pbr) > 0)
-            {
-                type_assimp = texture_type_assimp_pbr;
-            }
-            else if (material_assimp->GetTextureCount(texture_type_assimp_legacy) > 0)
-            {
-                type_assimp = texture_type_assimp_legacy;
-            }
+            type_assimp = material_assimp->GetTextureCount(texture_type_assimp_pbr) > 0 ? texture_type_assimp_pbr : type_assimp;
+            type_assimp = (type_assimp == aiTextureType_NONE) ? (material_assimp->GetTextureCount(texture_type_assimp_legacy) > 0 ? texture_type_assimp_legacy : type_assimp) : type_assimp;
 
-            if (type_assimp == aiTextureType_NONE || material_assimp->GetTextureCount(type_assimp) == 0)
-                return;
+            // check if the material has any textures
+            if (material_assimp->GetTextureCount(type_assimp) == 0)
+                return true;
 
             // get texture path
             aiString texture_path;
             if (material_assimp->GetTexture(type_assimp, 0, &texture_path) != AI_SUCCESS)
-                return;
+                return false;
 
             // resolve actual file path
-            const string resolved_path = resolve_texture_path(texture_path.data, ctx.model_directory);
-            if (resolved_path.empty() || !FileSystem::IsSupportedImageFile(resolved_path))
-                return;
+            const string resolved_path = resolve_texture_path(texture_path.data, model_directory);
+            if (!FileSystem::IsSupportedImageFile(resolved_path))
+                return false;
 
-            // check cache first
-            const string tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(resolved_path);
-            shared_ptr<RHI_Texture> cached_texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
-
-            if (cached_texture)
+            // load the texture and set it to the material
             {
-                material->SetTexture(texture_type, cached_texture);
-            }
-            else
-            {
-                // load asynchronously via threadpool
-                ctx.pending_texture_loads.fetch_add(1, memory_order_relaxed);
+                const string tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(resolved_path);
+                shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
 
-                ThreadPool::AddTask([&ctx, material, texture_type, resolved_path, type_assimp]()
+                if (texture)
+                {
+                    material->SetTexture(texture_type, texture);
+                }
+                else
                 {
                     material->SetTexture(texture_type, resolved_path);
-
-                    // fix: materials with diffuse texture should not be tinted black/gray
-                    if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
-                    {
-                        material->SetProperty(MaterialProperty::ColorR, 1.0f);
-                        material->SetProperty(MaterialProperty::ColorG, 1.0f);
-                        material->SetProperty(MaterialProperty::ColorB, 1.0f);
-                        material->SetProperty(MaterialProperty::ColorA, 1.0f);
-                    }
-
-                    ctx.pending_texture_loads.fetch_sub(1, memory_order_relaxed);
-                });
+                }
             }
 
-            // immediate fix for diffuse textures (cached case)
-            if (cached_texture && (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE))
+            // fix: materials with diffuse texture should not be tinted black/gray
+            if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
             {
                 material->SetProperty(MaterialProperty::ColorR, 1.0f);
                 material->SetProperty(MaterialProperty::ColorG, 1.0f);
                 material->SetProperty(MaterialProperty::ColorB, 1.0f);
                 material->SetProperty(MaterialProperty::ColorA, 1.0f);
             }
+
+            // fix: some models pass a normal map as a height map and vice versa
+            if (texture_type == MaterialTextureType::Normal || texture_type == MaterialTextureType::Height)
+            {
+                if (RHI_Texture* texture = material->GetTexture(texture_type))
+                {
+                    MaterialTextureType proper_type = texture_type;
+                    proper_type = (proper_type == MaterialTextureType::Normal && texture->IsGrayscale())  ? MaterialTextureType::Height : proper_type;
+                    proper_type = (proper_type == MaterialTextureType::Height && !texture->IsGrayscale()) ? MaterialTextureType::Normal : proper_type;
+
+                    if (proper_type != texture_type)
+                    {
+                        material->SetTexture(texture_type, nullptr);
+                        material->SetTexture(proper_type, texture);
+                    }
+                }
+            }
+
+            return true;
         }
 
         shared_ptr<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp)
@@ -261,18 +260,20 @@ namespace spartan
             SP_ASSERT(material_assimp != nullptr);
             shared_ptr<Material> material = make_shared<Material>();
 
-            // parallel texture loading - all 8 texture types load simultaneously
-            load_material_texture_async(ctx, material, material_assimp, MaterialTextureType::Color,     aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-            load_material_texture_async(ctx, material, material_assimp, MaterialTextureType::Roughness, aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS);
-            load_material_texture_async(ctx, material, material_assimp, MaterialTextureType::Metalness, aiTextureType_METALNESS,         aiTextureType_NONE);
-            load_material_texture_async(ctx, material, material_assimp, MaterialTextureType::Normal,    aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
-            load_material_texture_async(ctx, material, material_assimp, MaterialTextureType::Occlusion, aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
-            load_material_texture_async(ctx, material, material_assimp, MaterialTextureType::Emission,  aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
-            load_material_texture_async(ctx, material, material_assimp, MaterialTextureType::Height,    aiTextureType_HEIGHT,            aiTextureType_NONE);
-            load_material_texture_async(ctx, material, material_assimp, MaterialTextureType::AlphaMask, aiTextureType_OPACITY,           aiTextureType_NONE);
+            // synchronous texture loading (async was causing race conditions with texture packing)
+            // note: gltf uses aiTextureType_GLTF_METALLIC_ROUGHNESS for combined metallic-roughness texture
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Color,     aiTextureType_BASE_COLOR,              aiTextureType_DIFFUSE);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Roughness, aiTextureType_GLTF_METALLIC_ROUGHNESS, aiTextureType_DIFFUSE_ROUGHNESS);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Metalness, aiTextureType_GLTF_METALLIC_ROUGHNESS, aiTextureType_METALNESS);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Normal,    aiTextureType_NORMAL_CAMERA,           aiTextureType_NORMALS);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Occlusion, aiTextureType_AMBIENT_OCCLUSION,       aiTextureType_LIGHTMAP);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Emission,  aiTextureType_EMISSION_COLOR,          aiTextureType_EMISSIVE);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Height,    aiTextureType_HEIGHT,                  aiTextureType_NONE);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::AlphaMask, aiTextureType_OPACITY,                 aiTextureType_NONE);
 
-            // gltf detection
-            const bool is_gltf = FileSystem::GetExtensionFromFilePath(ctx.file_path) == ".gltf";
+            // gltf detection (including .glb binary format)
+            const string extension = FileSystem::GetExtensionFromFilePath(ctx.file_path);
+            const bool is_gltf = (extension == ".gltf") || (extension == ".glb");
             material->SetProperty(MaterialProperty::Gltf, is_gltf ? 1.0f : 0.0f);
 
             // name
@@ -586,12 +587,6 @@ namespace spartan
 
             // recursively parse nodes
             ParseNode(ctx, ctx.scene->mRootNode);
-
-            // wait for all async texture loads to complete
-            while (ctx.pending_texture_loads.load(memory_order_relaxed) > 0)
-            {
-                this_thread::sleep_for(chrono::milliseconds(1));
-            }
 
             // update model geometry
             {

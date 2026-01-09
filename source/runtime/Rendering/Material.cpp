@@ -797,19 +797,28 @@ namespace spartan
 
         ThreadPool::AddTask([this]()
         {
-            lock_guard<mutex> lock(m_mutex);
-
-            // prepare all textures for gpu
-            for (RHI_Texture* texture : m_textures)
             {
-                if (texture && texture->GetResourceState() == ResourceState::Max)
+                lock_guard<mutex> lock(m_mutex);
+
+                // prepare all textures for gpu
+                for (RHI_Texture* texture : m_textures)
                 {
-                    texture->SetFlag(RHI_Texture_DontPrepareForGpu, false);
-                    texture->PrepareForGpu();
+                    if (texture && texture->GetResourceState() == ResourceState::Max)
+                    {
+                        texture->SetFlag(RHI_Texture_DontPrepareForGpu, false);
+                        texture->PrepareForGpu();
+                    }
                 }
+
+                m_resource_state = ResourceState::PreparedForGpu;
             }
 
-            m_resource_state = ResourceState::PreparedForGpu;
+            // check if textures were set during preparation (async texture loading race condition)
+            // if so, trigger another preparation cycle to repack with the new textures
+            if (m_needs_repack)
+            {
+                PrepareForGpu();
+            }
         });
     }
 
