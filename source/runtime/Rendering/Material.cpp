@@ -659,13 +659,12 @@ namespace spartan
 
         // check if the texture is actually changing
         RHI_Texture* previous_texture = m_textures[array_index];
-        if (previous_texture == texture)
-            return;
-
+        bool texture_changed = (previous_texture != texture);
+        
         m_textures[array_index] = texture;
 
-        // mark for repacking if this texture type contributes to the packed texture
-        if (IsPackableTextureType(texture_type))
+        // mark for repacking if this texture type contributes to the packed texture and actually changed
+        if (texture_changed && IsPackableTextureType(texture_type))
         {
             m_needs_repack = true;
 

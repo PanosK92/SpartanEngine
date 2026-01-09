@@ -115,7 +115,11 @@ namespace spartan
         const string material_name = node.attribute("material_name").as_string();
         if (!material_name.empty() && !m_material_default)
         {
-            m_material = ResourceCache::GetByName<Material>(material_name).get();
+            shared_ptr<Material> material = ResourceCache::GetByName<Material>(material_name);
+            if (material)
+            {
+                SetMaterial(material);
+            }
         }
         else if (m_material_default)
         {

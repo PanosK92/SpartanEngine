@@ -82,9 +82,19 @@ namespace spartan
         size_t compute_material_hash(Material* material)
         {
             size_t hash = 17; // FNV-1a seed
+
+            // include resource state so async preparation completion triggers an update
+            hash = (hash * 31) ^ static_cast<size_t>(material->GetResourceState());
+
             for (const auto* texture : material->GetTextures())
             {
                 hash = (hash * 31) ^ reinterpret_cast<size_t>(texture);
+
+                // include texture's resource state so async texture preparation triggers an update
+                if (texture)
+                {
+                    hash = (hash * 31) ^ static_cast<size_t>(texture->GetResourceState());
+                }
             }
             for (const float prop : material->GetProperties())
             {
