@@ -591,13 +591,11 @@ namespace spartan
             // set material
             if (Renderable* renderable = wheel_base->GetComponent<Renderable>())
             {
-                shared_ptr<Material> material = make_shared<Material>();
+                Material* material = renderable->GetMaterial();
                 material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
                 material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
                 material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
                 material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
-                material->SetResourceName("tire" + string(EXTENSION_MATERIAL));
-                renderable->SetMaterial(material);
             }
 
             // compute wheel radius from the now-standalone entity

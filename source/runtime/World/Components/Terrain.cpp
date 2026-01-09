@@ -457,7 +457,7 @@ namespace spartan
             bool create_border
         )
         {
-            vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
+            vector<byte> height_data = height_texture->GetMip(0, 0)->bytes;
             SP_ASSERT(height_data.size() > 0);
         
             // map texture bytes to height values

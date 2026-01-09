@@ -779,18 +779,9 @@ void Properties::ShowMaterial(Material* material) const
         ImGui::SameLine(column_pos_x);
         ImGui::Text(material->GetObjectName().c_str());
 
-        // optimized
-        bool optimized = material->GetProperty(MaterialProperty::Optimized) != 0.0f;
-        {
-            ImGui::Text("Optimized");
-            ImGui::SameLine(column_pos_x);
-            ImGui::Text(optimized ? "Yes" : "No");
-            ImGuiSp::tooltip("Optimized materials can't be modified");
-        }
-
         // texture slots
         {
-            const auto show_property = [this, &material, &optimized](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
+            const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
             {
                 bool show_texture  = mat_tex      != MaterialTextureType::Max;
                 bool show_modifier = mat_property != MaterialProperty::Max;
@@ -812,7 +803,6 @@ void Properties::ShowMaterial(Material* material) const
                 }
         
                 // texture
-                ImGui::BeginDisabled(optimized);
                 if (show_texture)
                 {
                     // for the current texture type (mat_tex), show all its slots
@@ -842,7 +832,6 @@ void Properties::ShowMaterial(Material* material) const
                         ImGui::SameLine();
                     }
                 }
-                ImGui::EndDisabled();
         
                 // modifier/multiplier
                 if (show_modifier)
