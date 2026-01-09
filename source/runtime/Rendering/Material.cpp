@@ -463,10 +463,14 @@ namespace spartan
         
                 // step 2: pack occlusion, roughness, metalness, and height into a single texture
                 {
-                    bool textures_are_compressed = (texture_occlusion && texture_occlusion->IsCompressedFormat()) ||
-                        (texture_roughness && texture_roughness->IsCompressedFormat()) ||
-                        (texture_metalness && texture_metalness->IsCompressedFormat()) ||
-                        (texture_height && texture_height->IsCompressedFormat());
+                    // helper to check if texture data is available for packing
+                    auto has_packable_data = [](RHI_Texture* tex) -> bool
+                    {
+                        if (!tex || tex->IsCompressedFormat())
+                            return false;
+                        RHI_Texture_Mip* mip = tex->GetMip(0, 0);
+                        return mip && !mip->bytes.empty();
+                    };
         
                     // generate unique name including slot to handle multi-slot materials (e.g. terrain)
                     string tex_name = material->GetObjectName() + "_packed_slot" + to_string(slot);
@@ -479,7 +483,7 @@ namespace spartan
                         texture_packed = nullptr;
                     }
 
-                    if (!textures_are_compressed)
+                    // always create packed texture - use material properties as fallback when texture data is unavailable
                     {
                         // create packed texture
                         texture_packed = make_shared<RHI_Texture>
@@ -497,29 +501,35 @@ namespace spartan
                         texture_packed->AllocateMip();
         
                         const size_t packed_size = max_width * max_height * 4;
-                        vector<byte> occlusion_data = texture_processing::get_texture_data_or_default(texture_occlusion, packed_size, static_cast<byte>(255));
-                        vector<byte> roughness_data = texture_processing::get_texture_data_or_default(texture_roughness, packed_size, static_cast<byte>(255));
-                        vector<byte> metalness_data = texture_processing::get_texture_data_or_default(texture_metalness, packed_size, static_cast<byte>(0));
-                        if (!texture_metalness && material->GetProperty(MaterialProperty::Metalness) != 0.0f)
-                        {
-                            fill(metalness_data.begin(), metalness_data.end(), static_cast<byte>(255)); // all ones
-                        }
-                        vector<byte> height_data = texture_processing::get_texture_data_or_default(texture_height, packed_size, static_cast<byte>(127));
+
+                        // get texture data or use material property-based defaults
+                        // when textures are compressed or have empty bytes, fall back to material properties
+                        byte roughness_default = static_cast<byte>(material->GetProperty(MaterialProperty::Roughness) * 255.0f);
+                        byte metalness_default = static_cast<byte>(material->GetProperty(MaterialProperty::Metalness) * 255.0f);
+
+                        vector<byte> occlusion_data = texture_processing::get_texture_data_or_default(
+                            has_packable_data(texture_occlusion) ? texture_occlusion : nullptr, packed_size, static_cast<byte>(255));
+                        vector<byte> roughness_data = texture_processing::get_texture_data_or_default(
+                            has_packable_data(texture_roughness) ? texture_roughness : nullptr, packed_size, roughness_default);
+                        vector<byte> metalness_data = texture_processing::get_texture_data_or_default(
+                            has_packable_data(texture_metalness) ? texture_metalness : nullptr, packed_size, metalness_default);
+                        vector<byte> height_data = texture_processing::get_texture_data_or_default(
+                            has_packable_data(texture_height) ? texture_height : nullptr, packed_size, static_cast<byte>(127));
         
-                        // resize if necessary
-                        if (texture_occlusion && (texture_occlusion->GetWidth() != max_width || texture_occlusion->GetHeight() != max_height))
+                        // resize if necessary (only when texture data is available)
+                        if (has_packable_data(texture_occlusion) && (texture_occlusion->GetWidth() != max_width || texture_occlusion->GetHeight() != max_height))
                         {
                             texture_processing::resize_texture(texture_occlusion->GetMip(0, 0)->bytes, texture_occlusion->GetWidth(), texture_occlusion->GetHeight(), texture_occlusion->GetChannelCount(), occlusion_data, max_width, max_height);
                         }
-                        if (texture_roughness && (texture_roughness->GetWidth() != max_width || texture_roughness->GetHeight() != max_height))
+                        if (has_packable_data(texture_roughness) && (texture_roughness->GetWidth() != max_width || texture_roughness->GetHeight() != max_height))
                         {
                             texture_processing::resize_texture(texture_roughness->GetMip(0, 0)->bytes, texture_roughness->GetWidth(), texture_roughness->GetHeight(), texture_roughness->GetChannelCount(), roughness_data, max_width, max_height);
                         }
-                        if (texture_metalness && (texture_metalness->GetWidth() != max_width || texture_metalness->GetHeight() != max_height))
+                        if (has_packable_data(texture_metalness) && (texture_metalness->GetWidth() != max_width || texture_metalness->GetHeight() != max_height))
                         {
                             texture_processing::resize_texture(texture_metalness->GetMip(0, 0)->bytes, texture_metalness->GetWidth(), texture_metalness->GetHeight(), texture_metalness->GetChannelCount(), metalness_data, max_width, max_height);
                         }
-                        if (texture_height && (texture_height->GetWidth() != max_width || texture_height->GetHeight() != max_height))
+                        if (has_packable_data(texture_height) && (texture_height->GetWidth() != max_width || texture_height->GetHeight() != max_height))
                         {
                             texture_processing::resize_texture(texture_height->GetMip(0, 0)->bytes, texture_height->GetWidth(), texture_height->GetHeight(), texture_height->GetChannelCount(), height_data, max_width, max_height);
                         }

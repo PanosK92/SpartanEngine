@@ -406,21 +406,16 @@ namespace spartan
 
                 for (Entity* descendant : descendants)
                 {
-                    if (Renderable* renderable = descendant->GetComponent<Renderable>())
-                    {
-                        if (Material* material = renderable->GetMaterial())
-                        {
-                            string material_name = to_lower(material->GetObjectName());
+                     string entity_name = to_lower(descendant->GetObjectName());
             
-                            if (material_name.find("disc")  != string::npos ||
-                                material_name.find("tread") != string::npos ||
-                                material_name.find("rim")   != string::npos ||
-                                material_name.find("Material.144") != string::npos)
-                            {
-                                descendant->SetActive(false);
-                            }
-                        }
-                    }
+                     if (entity_name.find("tire 1")    != string::npos ||
+                         entity_name.find("tire 2")    != string::npos ||
+                         entity_name.find("tire 3")    != string::npos ||
+                         entity_name.find("tire 4")    != string::npos ||
+                         entity_name.find("brakerear") != string::npos) // all four have this prefix
+                     {
+                         descendant->SetActive(false);
+                     }
                 }
             }
             
