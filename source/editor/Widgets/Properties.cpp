@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
+#include "Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -1190,25 +1191,32 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         // scrollable area of render options
         if (ImGui::BeginChild("##vol_overrides", ImVec2(0, 250.0f), true))
         {
-            // iterate over all possible renderer options
-            for (const auto& [option, global_value] : Renderer::GetOptions())
+            // iterate over all renderer options (those starting with "r.")
+            int id_counter = 0;
+            for (const auto& [cvar_name, cvar] : ConsoleRegistry::Get().GetAll())
             {
-                ImGui::PushID(static_cast<int>(option));
+                // only include renderer options
+                if (cvar_name.size() < 2 || cvar_name[0] != 'r' || cvar_name[1] != '.')
+                    continue;
+
+                string name(cvar_name);
+                float global_value = get<float>(*cvar.m_value_ptr);
+
+                ImGui::PushID(id_counter++);
 
                 // determine if option is overridden
-                bool is_active   = volume->GetOptions().find(option) != volume->GetOptions().end();
-                const char* name = renderer_option_to_string(option);
+                bool is_active = volume->GetOptions().find(name) != volume->GetOptions().end();
 
                 // checkbox (enable/disable override)
-                if (ImGui::Checkbox(name, &is_active))
+                if (ImGui::Checkbox(name.c_str(), &is_active))
                 {
                     if (is_active)
                     {
-                        volume->SetOption(option, global_value);
+                        volume->SetOption(name.c_str(), global_value);
                     }
                     else
                     {
-                        volume->RemoveOption(option);
+                        volume->RemoveOption(name.c_str());
                     }
                 }
 
@@ -1220,11 +1228,11 @@ void Properties::ShowVolume(spartan::Volume* volume) const
                     // ux: set a fixed width for the slider so they align nicely
                     ImGui::PushItemWidth(100.0f);
                     
-                    float value = volume->GetOption(option);
+                    float value = volume->GetOption(name.c_str());
                     // use ## to hide the label since the checkbox already shows it
                     if (ImGuiSp::draw_float_wrap("##v", &value, 0.1f)) 
                     {
-                        volume->SetOption(option, value);
+                        volume->SetOption(name.c_str(), value);
                     }
                     
                     ImGui::PopItemWidth();

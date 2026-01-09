@@ -354,10 +354,10 @@ namespace spartan
         // reset renderer options to defaults
         void set_base_renderer_options()
         {
-            Renderer::SetOption(Renderer_Option::Dithering,           0.0f);
-            Renderer::SetOption(Renderer_Option::ChromaticAberration, 0.0f);
-            Renderer::SetOption(Renderer_Option::Grid,                0.0f);
-            Renderer::SetOption(Renderer_Option::Vhs,                 0.0f);
+            set_render_option("r.dithering",           0.0f);
+            set_render_option("r.chromatic_aberration", 0.0f);
+            set_render_option("r.grid",                0.0f);
+            set_render_option("r.vhs",                 0.0f);
         }
     }
 
@@ -1197,7 +1197,7 @@ namespace spartan
                 sun->SetFlag(LightFlags::Volumetric, true);
 
                 entities::camera(false, Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
-                Renderer::SetOption(Renderer_Option::Grid, 0.0f);
+                set_render_option("r.grid", 0.0f);
 
                 // drivable car near the player
                 {
@@ -1765,9 +1765,9 @@ namespace spartan
                 }
 
                 // renderer options
-                Renderer::SetOption(Renderer_Option::PerformanceMetrics, 0.0f);
-                Renderer::SetOption(Renderer_Option::Lights,             0.0f);
-                Renderer::SetOption(Renderer_Option::Dithering,          0.0f);
+                set_render_option("r.performance_metrics", 0.0f);
+                set_render_option("r.lights",              0.0f);
+                set_render_option("r.dithering",           0.0f);
             }
 
             void tick()
@@ -1869,8 +1869,8 @@ namespace spartan
                 }
 
                 // renderer
-                Renderer::SetOption(Renderer_Option::ChromaticAberration, 1.0f);
-                Renderer::SetOption(Renderer_Option::Vhs, 1.0f);
+                set_render_option("r.chromatic_aberration", 1.0f);
+                set_render_option("r.vhs", 1.0f);
 
                 // camera with flashlight
                 entities::camera(true, Vector3(5.4084f, 1.8f, 4.7593f));
@@ -2181,6 +2181,9 @@ namespace spartan
                     physics_body->SetMass(Physics::mass_from_volume);
                     physics_body->SetBodyType(BodyType::Box);
                 }
+
+                // make room for the telemetry display
+                set_render_option("r.performance_metrics", 0.0f);
             }
         }
         //====================================================================================

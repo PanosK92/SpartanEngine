@@ -233,13 +233,13 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
-        if (GetOption<bool>(Renderer_Option::PickingRay))
+        if (cvar_picking_ray.GetValueAs<bool>())
         {
             Ray ray = World::GetCamera()->ComputePickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * World::GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         
-        if (GetOption<bool>(Renderer_Option::Lights))
+        if (cvar_lights.GetValueAs<bool>())
         {
             if (Camera* camera = World::GetCamera())
             {
@@ -290,7 +290,7 @@ namespace spartan
             }
         }
         
-        if (GetOption<bool>(Renderer_Option::Aabb))
+        if (cvar_aabb.GetValueAs<bool>())
         {
             auto get_color = [](Renderable* renderable)
             {

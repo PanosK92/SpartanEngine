@@ -160,6 +160,13 @@ namespace spartan
             return std::get<T>(m_storage);
         }
 
+        /** returns the value cast to a different type (e.g., float to bool) */
+        template<typename U>
+        U GetValueAs() const
+        {
+            return static_cast<U>(std::get<T>(m_storage));
+        }
+
         /** tries to return the expected value from the type, will return nullptr if type is not found. */
         T* GetValuePtr() const
         {

@@ -164,7 +164,7 @@ namespace spartan
             if (mip_bias_new != mip_bias)
             {
                 mip_bias         = mip_bias_new;
-                float anisotropy = GetOption<float>(Renderer_Option::Anisotropy);
+                float anisotropy = cvar_anisotropy.GetValue();
                 sampler(Renderer_Sampler::Anisotropic_wrap, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
             }
         }

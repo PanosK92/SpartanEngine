@@ -24,7 +24,8 @@ connection with the software or the use or other dealings in the software.
 //= includes ===================================
 #include "Component.h"
 #include "../../Math/BoundingBox.h"
-#include ".././Rendering/Renderer_Definitions.h"
+#include <unordered_map>
+#include <string>
 //==============================================
 
 namespace spartan
@@ -45,17 +46,17 @@ namespace spartan
         const math::BoundingBox& GetBoundingBox() const   { return m_bounding_box; }
         void SetBoundingBox(const math::BoundingBox& box) { m_bounding_box = box; }
 
-        // options
-        void SetOption(Renderer_Option option, float value);
-        void RemoveOption(Renderer_Option option);
-        float GetOption(Renderer_Option option) const;
-        const std::unordered_map<Renderer_Option, float>& GetOptions() const { return m_options; }
+        // options (use cvar names like "r.bloom", "r.fog" as keys)
+        void SetOption(const char* name, float value);
+        void RemoveOption(const char* name);
+        float GetOption(const char* name) const;
+        const std::unordered_map<std::string, float>& GetOptions() const { return m_options; }
 
     private:
         // the shape of the volume
         math::BoundingBox m_bounding_box;
 
         // the user defined overrides
-        std::unordered_map<Renderer_Option, float> m_options;
+        std::unordered_map<std::string, float> m_options;
     };
 }

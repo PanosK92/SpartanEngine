@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Geometry/Mesh.h"
 #include "Renderer_Buffers.h"
 #include "../Font/Font.h"
+#include "../Commands/Console/ConsoleCommands.h"
 #include <unordered_map>
 #include <atomic>
 #include "../Math/Rectangle.h"
@@ -46,6 +47,44 @@ namespace spartan
         class BoundingBox;
         class Frustum;
     }
+
+    // renderer cvars (defined in Renderer.cpp, use .GetValue() or .GetValueAs<T>() for direct access in hot paths)
+    extern TConsoleVar<float> cvar_aabb;
+    extern TConsoleVar<float> cvar_picking_ray;
+    extern TConsoleVar<float> cvar_grid;
+    extern TConsoleVar<float> cvar_transform_handle;
+    extern TConsoleVar<float> cvar_selection_outline;
+    extern TConsoleVar<float> cvar_lights;
+    extern TConsoleVar<float> cvar_audio_sources;
+    extern TConsoleVar<float> cvar_performance_metrics;
+    extern TConsoleVar<float> cvar_physics;
+    extern TConsoleVar<float> cvar_wireframe;
+    extern TConsoleVar<float> cvar_bloom;
+    extern TConsoleVar<float> cvar_fog;
+    extern TConsoleVar<float> cvar_ssao;
+    extern TConsoleVar<float> cvar_ssr;
+    extern TConsoleVar<float> cvar_ray_traced_reflections;
+    extern TConsoleVar<float> cvar_motion_blur;
+    extern TConsoleVar<float> cvar_depth_of_field;
+    extern TConsoleVar<float> cvar_film_grain;
+    extern TConsoleVar<float> cvar_vhs;
+    extern TConsoleVar<float> cvar_chromatic_aberration;
+    extern TConsoleVar<float> cvar_dithering;
+    extern TConsoleVar<float> cvar_sharpness;
+    extern TConsoleVar<float> cvar_anisotropy;
+    extern TConsoleVar<float> cvar_tonemapping;
+    extern TConsoleVar<float> cvar_antialiasing_upsampling;
+    extern TConsoleVar<float> cvar_hdr;
+    extern TConsoleVar<float> cvar_gamma;
+    extern TConsoleVar<float> cvar_vsync;
+    extern TConsoleVar<float> cvar_variable_rate_shading;
+    extern TConsoleVar<float> cvar_resolution_scale;
+    extern TConsoleVar<float> cvar_dynamic_resolution;
+    extern TConsoleVar<float> cvar_occlusion_culling;
+    extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
+
+    // helper to set render option with validation (clamping, feature checks)
+    void set_render_option(const char* name, float value);
 
     struct ShadowSlice
     {
@@ -85,12 +124,6 @@ namespace spartan
         static void DrawString(const char* text, const math::Vector2& position_screen_percentage);
         static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
-        // options (backed by console variables, blended with volume overrides)
-        template<typename T>
-        static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[option]); }
-        static void SetOption(Renderer_Option option, float value);
-        static std::unordered_map<Renderer_Option, float>& GetOptions();
-        static void SetOptions(const std::unordered_map<Renderer_Option, float>& options);
 
         // swapchain
         static RHI_SwapChain* GetSwapChain();

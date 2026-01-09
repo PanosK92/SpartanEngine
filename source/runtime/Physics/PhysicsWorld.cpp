@@ -297,7 +297,7 @@ namespace spartan
                 picking::MovePickedBody();
             }
         }
-        else if (Renderer::GetOption<bool>(Renderer_Option::Physics))
+        else if (cvar_physics.GetValueAs<bool>())
         {
             // render debug visuals (accessing while the simulation is running can result in undefined behavior)
             const PxRenderBuffer& rb = scene->getRenderBuffer();

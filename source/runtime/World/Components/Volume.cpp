@@ -54,20 +54,20 @@ namespace spartan
         Renderer::DrawBox(transformed_box);
     }
 
-    void Volume::SetOption(Renderer_Option option, float value)
+    void Volume::SetOption(const char* name, float value)
     {
-        m_options[option] = value;
+        m_options[name] = value;
     }
 
-    void Volume::RemoveOption(Renderer_Option option)
+    void Volume::RemoveOption(const char* name)
     {
-        m_options.erase(option);
+        m_options.erase(name);
     }
 
-    float Volume::GetOption(Renderer_Option option) const
+    float Volume::GetOption(const char* name) const
     {
         // try to find the specific override
-        auto it = m_options.find(option);
+        auto it = m_options.find(name);
         if (it != m_options.end())
         {
             return it->second;

@@ -763,7 +763,7 @@ namespace spartan
         if (m_pso.render_target_depth_texture != nullptr)
         {
             RHI_Texture* rt = m_pso.render_target_depth_texture;
-            if (Renderer::GetOption<float>(Renderer_Option::ResolutionScale) == 1.0f)
+            if (cvar_resolution_scale.GetValue() == 1.0f)
             { 
                 SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
             }
