@@ -85,7 +85,7 @@ namespace spartan
         static void DrawString(const char* text, const math::Vector2& position_screen_percentage);
         static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
-        // options
+        // options (backed by console variables, blended with volume overrides)
         template<typename T>
         static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[option]); }
         static void SetOption(Renderer_Option option, float value);

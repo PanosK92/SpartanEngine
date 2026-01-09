@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
+#include "../Commands/Console/ConsoleCommands.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -89,22 +90,104 @@ namespace spartan
         const uint8_t swap_chain_buffer_count = 2;
 
         // misc
-        unordered_map<Renderer_Option, float> m_options;
         uint64_t frame_num                   = 0;
         math::Vector2 jitter_offset          = math::Vector2::Zero;
         const uint32_t resolution_shadow_min = 128;
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
- 
+
+        // debug visualization
+        TConsoleVar<float> cvar_aabb                          ("r.aabb",                           0.0f,  "draw axis-aligned bounding boxes");
+        TConsoleVar<float> cvar_picking_ray                   ("r.picking_ray",                    0.0f,  "draw picking ray");
+        TConsoleVar<float> cvar_grid                          ("r.grid",                           1.0f,  "draw editor grid");
+        TConsoleVar<float> cvar_transform_handle              ("r.transform_handle",               1.0f,  "draw transform handles");
+        TConsoleVar<float> cvar_selection_outline             ("r.selection_outline",              1.0f,  "draw selection outline");
+        TConsoleVar<float> cvar_lights                        ("r.lights",                         1.0f,  "draw light icons");
+        TConsoleVar<float> cvar_audio_sources                 ("r.audio_sources",                  1.0f,  "draw audio source icons");
+        TConsoleVar<float> cvar_performance_metrics           ("r.performance_metrics",            1.0f,  "show performance metrics");
+        TConsoleVar<float> cvar_physics                       ("r.physics",                        0.0f,  "draw physics debug");
+        TConsoleVar<float> cvar_wireframe                     ("r.wireframe",                      0.0f,  "render in wireframe mode");
+        // post-processing
+        TConsoleVar<float> cvar_bloom                         ("r.bloom",                          1.0f,  "bloom intensity, 0 to disable");
+        TConsoleVar<float> cvar_fog                           ("r.fog",                            1.0f,  "fog intensity/particle density");
+        TConsoleVar<float> cvar_ssao                          ("r.ssao",                           1.0f,  "screen space ambient occlusion");
+        TConsoleVar<float> cvar_ssr                           ("r.ssr",                            1.0f,  "screen space reflections");
+        TConsoleVar<float> cvar_ray_traced_reflections        ("r.ray_traced_reflections",         0.0f,  "ray traced reflections (wip)");
+        TConsoleVar<float> cvar_motion_blur                   ("r.motion_blur",                    1.0f,  "motion blur");
+        TConsoleVar<float> cvar_depth_of_field                ("r.depth_of_field",                 1.0f,  "depth of field");
+        TConsoleVar<float> cvar_film_grain                    ("r.film_grain",                     0.0f,  "film grain effect");
+        TConsoleVar<float> cvar_vhs                           ("r.vhs",                            0.0f,  "vhs retro effect");
+        TConsoleVar<float> cvar_chromatic_aberration          ("r.chromatic_aberration",           0.0f,  "chromatic aberration");
+        TConsoleVar<float> cvar_dithering                     ("r.dithering",                      0.0f,  "dithering to reduce banding");
+        TConsoleVar<float> cvar_sharpness                     ("r.sharpness",                      0.0f,  "sharpening intensity");
+        // quality settings
+        TConsoleVar<float> cvar_anisotropy                    ("r.anisotropy",                     16.0f, "anisotropic filtering level (0-16)");
+        TConsoleVar<float> cvar_tonemapping                   ("r.tonemapping",                    4.0f,  "tonemapping algorithm index");
+        TConsoleVar<float> cvar_antialiasing_upsampling       ("r.antialiasing_upsampling",        2.0f,  "aa/upsampling method index");
+        // display
+        TConsoleVar<float> cvar_hdr                           ("r.hdr",                            0.0f,  "enable hdr output");
+        TConsoleVar<float> cvar_gamma                         ("r.gamma",                          2.2f,  "display gamma");
+        TConsoleVar<float> cvar_vsync                         ("r.vsync",                          0.0f,  "vertical sync");
+        // resolution
+        TConsoleVar<float> cvar_variable_rate_shading         ("r.variable_rate_shading",          0.0f,  "variable rate shading");
+        TConsoleVar<float> cvar_resolution_scale              ("r.resolution_scale",               1.0f,  "render resolution scale (0.5-1.0)");
+        TConsoleVar<float> cvar_dynamic_resolution            ("r.dynamic_resolution",             0.0f,  "automatic resolution scaling");
+        // misc
+        TConsoleVar<float> cvar_occlusion_culling             ("r.occlusion_culling",              0.0f,  "occlusion culling (dev)");
+        TConsoleVar<float> cvar_auto_exposure_adaptation_speed("r.auto_exposure_adaptation_speed", 0.5f,  "auto exposure adaptation speed, negative disables");
+
+        // map from enum to cvar pointer for easy lookup
+        TConsoleVar<float>* get_cvar(Renderer_Option option)
+        {
+            switch (option)
+            {
+                case Renderer_Option::Aabb:                        return &cvar_aabb;
+                case Renderer_Option::PickingRay:                  return &cvar_picking_ray;
+                case Renderer_Option::Grid:                        return &cvar_grid;
+                case Renderer_Option::TransformHandle:             return &cvar_transform_handle;
+                case Renderer_Option::SelectionOutline:            return &cvar_selection_outline;
+                case Renderer_Option::Lights:                      return &cvar_lights;
+                case Renderer_Option::AudioSources:                return &cvar_audio_sources;
+                case Renderer_Option::PerformanceMetrics:          return &cvar_performance_metrics;
+                case Renderer_Option::Physics:                     return &cvar_physics;
+                case Renderer_Option::Wireframe:                   return &cvar_wireframe;
+                case Renderer_Option::Bloom:                       return &cvar_bloom;
+                case Renderer_Option::Fog:                         return &cvar_fog;
+                case Renderer_Option::ScreenSpaceAmbientOcclusion: return &cvar_ssao;
+                case Renderer_Option::ScreenSpaceReflections:      return &cvar_ssr;
+                case Renderer_Option::RayTracedReflections:        return &cvar_ray_traced_reflections;
+                case Renderer_Option::MotionBlur:                  return &cvar_motion_blur;
+                case Renderer_Option::DepthOfField:                return &cvar_depth_of_field;
+                case Renderer_Option::FilmGrain:                   return &cvar_film_grain;
+                case Renderer_Option::Vhs:                         return &cvar_vhs;
+                case Renderer_Option::ChromaticAberration:         return &cvar_chromatic_aberration;
+                case Renderer_Option::Anisotropy:                  return &cvar_anisotropy;
+                case Renderer_Option::Tonemapping:                 return &cvar_tonemapping;
+                case Renderer_Option::AntiAliasing_Upsampling:     return &cvar_antialiasing_upsampling;
+                case Renderer_Option::Sharpness:                   return &cvar_sharpness;
+                case Renderer_Option::Dithering:                   return &cvar_dithering;
+                case Renderer_Option::Hdr:                         return &cvar_hdr;
+                case Renderer_Option::Gamma:                       return &cvar_gamma;
+                case Renderer_Option::Vsync:                       return &cvar_vsync;
+                case Renderer_Option::VariableRateShading:         return &cvar_variable_rate_shading;
+                case Renderer_Option::ResolutionScale:             return &cvar_resolution_scale;
+                case Renderer_Option::DynamicResolution:           return &cvar_dynamic_resolution;
+                case Renderer_Option::OcclusionCulling:            return &cvar_occlusion_culling;
+                case Renderer_Option::AutoExposureAdaptationSpeed: return &cvar_auto_exposure_adaptation_speed;
+                default:
+                    SP_ASSERT_MSG(false, "Renderer_Option not handled");
+                    return nullptr;
+            }
+        }
 
         void dynamic_resolution()
         {
-            if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
+            if (cvar_dynamic_resolution.GetValue() != 0.0f)
             {
                 float gpu_time_target   = 16.67f;                                               // target for 60 FPS
                 float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
-                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
+                float screen_percentage = cvar_resolution_scale.GetValue();
                 float gpu_time          = Profiler::GetTimeGpuLast();
 
                 if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
@@ -136,36 +219,13 @@ namespace spartan
             RHI_Device::Initialize();
         }
 
-        // options
+        // options - cvars are initialized with defaults, but some need runtime values
         {
-            bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements();
-
-            m_options.clear();
-            SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f); // non-zero values activate it and control the intensity
-            SetOption(Renderer_Option::MotionBlur,                  1.0f);
-            SetOption(Renderer_Option::DepthOfField,                1.0f);
-            SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
-            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
-            SetOption(Renderer_Option::RayTracedReflections,        RHI_Device::IsSupportedRayTracing() ? 0.0f : 0.0f);
-            SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f); // becomes the upscaler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0);  // controls the intensity of the distance/height and volumetric fog, it's the particle density
-            SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
-            SetOption(Renderer_Option::ResolutionScale,             1.0f);
-            SetOption(Renderer_Option::VariableRateShading,         0.0f);
-            SetOption(Renderer_Option::Vsync,                       0.0f);
-            SetOption(Renderer_Option::TransformHandle,             1.0f);
-            SetOption(Renderer_Option::SelectionOutline,            1.0f);
-            SetOption(Renderer_Option::Grid,                        1.0f);
-            SetOption(Renderer_Option::Lights,                      1.0f);
-            SetOption(Renderer_Option::AudioSources,                1.0f);
-            SetOption(Renderer_Option::Physics,                     0.0f);
-            SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
-            SetOption(Renderer_Option::Dithering,                   0.0f);
-            SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
-            SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
-            SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::GranTurismo7)); // works for both hdr and sdr, and accepts photometric units (nits) while allow for great color accuracy
+            // set gamma from display
+            SetOption(Renderer_Option::Gamma, Display::GetGamma());
+            
+            // set tonemapping to gran turismo 7 (works for both hdr and sdr)
+            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::GranTurismo7));
 
             // set wind direction and strength
             {
@@ -648,7 +708,6 @@ namespace spartan
     {
         // clamp value
         {
-            // anisotropy
             if (option == Renderer_Option::Anisotropy)
             {
                 value = clamp(value, 0.0f, 16.0f);
@@ -659,8 +718,13 @@ namespace spartan
             }
         }
 
+        // get the cvar for this option
+        TConsoleVar<float>* cvar = get_cvar(option);
+        if (!cvar)
+            return;
+
         // early exit if the value is already set
-        if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
+        if (cvar->GetValue() == value)
             return;
 
         // reject changes (if needed)
@@ -700,12 +764,11 @@ namespace spartan
             }
         }
 
-        // set new value
-        m_options[option] = value;
+        // set new value via console registry
+        ConsoleRegistry::Get().SetValueFromString(cvar->GetName(), to_string(value));
 
         // handle cascading changes
         {
-            // upsampling and anti-aliasing
             if (option == Renderer_Option::AntiAliasing_Upsampling)
             {
                 // reset history for temporal filters
@@ -743,9 +806,18 @@ namespace spartan
 
     unordered_map<Renderer_Option, float>& Renderer::GetOptions()
     {
-        // local scratchpad
+        // build map from cvars for compatibility with volume blending and settings save/load
         static unordered_map<Renderer_Option, float> resolved_options;
-        resolved_options = m_options;
+        resolved_options.clear();
+        for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)
+        {
+            Renderer_Option option = static_cast<Renderer_Option>(i);
+            TConsoleVar<float>* cvar = get_cvar(option);
+            if (cvar)
+            {
+                resolved_options[option] = cvar->GetValue();
+            }
+        }
     
         if (!World::GetCamera() || !World::GetCamera()->GetEntity())
             return resolved_options;
@@ -800,7 +872,10 @@ namespace spartan
 
     void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options)
     {
-        m_options = options;
+        for (const auto& [option, value] : options)
+        {
+            SetOption(option, value);
+        }
     }
 
     RHI_SwapChain* Renderer::GetSwapChain()

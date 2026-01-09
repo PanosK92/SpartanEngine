@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2026 Panos Karabelas
+Copyright(c) 2015-2026 Bryan Casagrande
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <optional>
 #include <unordered_map>
 //===============================
-
 
 namespace spartan
 {
@@ -138,23 +137,30 @@ namespace spartan
     {
     public:
 
-        // A default placeholder callback
-        static void DefaultCallback(const CVarVariant&) { /** Intentionally empty */ }
+        // a default placeholder callback
+        static void DefaultCallback(const CVarVariant&) { /** intentionally empty */ }
 
         constexpr TConsoleVar(std::string_view name, T default_value, std::string_view hint, void(*callback)(const CVarVariant&) = DefaultCallback)
-            : m_storage(default_value)
+            : m_name(name)
+            , m_storage(default_value)
         {
             ConsoleVariable Var(name, hint, &m_storage, m_storage, callback);
             ConsoleRegistry::Get().Register(Var);
         }
 
-        /** Returns the expected value of the type, will assert if not correct type */
+        /** returns the name of this console variable */
+        std::string_view GetName() const
+        {
+            return m_name;
+        }
+
+        /** returns the expected value of the type, will assert if not correct type */
         T GetValue() const
         {
             return std::get<T>(m_storage);
         }
 
-        /** Tries to return the expected value from the type, will return nullptr if type is not found. */
+        /** tries to return the expected value from the type, will return nullptr if type is not found. */
         T* GetValuePtr() const
         {
             return std::get_if<T>(&m_storage);
@@ -167,7 +173,10 @@ namespace spartan
 
     private:
 
-        /** Internal storage of this type */
+        /** name of this console variable */
+        std::string_view m_name;
+
+        /** internal storage of this type */
         CVarVariant m_storage;
     };
 }
