@@ -35,10 +35,11 @@ void ray_gen()
     uint2 launch_size = DispatchRaysDimensions().xy;
     float2 uv         = (launch_id + 0.5f) / launch_size;
     
+    // debug: blue = no geometry (depth at far plane)
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
-    if (depth <= 0.0f) // far plane, no reflection
+    if (depth <= 0.0f)
     {
-        tex_uav[launch_id] = float4(0, 0, 0, 0);
+        tex_uav[launch_id] = float4(0, 0, 1, 1); // blue - no geometry at this pixel
         return;
     }
     
@@ -67,7 +68,7 @@ void ray_gen()
 [shader("miss")]
 void miss(inout Payload payload : SV_RayPayload)
 {
-    payload.color = float3(0, 0, 0); // black
+    payload.color = float3(1, 0, 0); // red - ray missed all geometry
 }
 
 [shader("closesthit")]

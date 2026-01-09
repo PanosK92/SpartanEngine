@@ -337,7 +337,11 @@ namespace spartan
         if (!m_mesh)
             return 0;
 
-        return m_mesh->GetBlas()->GetDeviceAddress();
+        RHI_AccelerationStructure* blas = m_mesh->GetBlas();
+        if (!blas)
+            return 0;
+
+        return blas->GetDeviceAddress();
     }
 
     Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)

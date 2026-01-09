@@ -410,7 +410,12 @@ namespace spartan
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
 
-        if (m_blas && !m_sub_meshes.empty())
+        // already built
+        if (m_blas)
+            return;
+
+        // nothing to build
+        if (m_sub_meshes.empty())
             return;
 
         vector<RHI_AccelerationStructureGeometry> geometries;

@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
+#include "../RHI/RHI_AccelerationStructure.h"
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_RasterizerState.h"
@@ -722,7 +723,10 @@ namespace spartan
 
         cmd_list->BeginTimeblock("transparency_reflection_refraction");
         {
-            if (cvar_ssr.GetValueAs<bool>())
+            bool use_ray_traced = cvar_ray_traced_reflections.GetValueAs<bool>();
+            bool use_ssr        = cvar_ssr.GetValueAs<bool>() && !use_ray_traced; // ray traced takes priority over ssr
+
+            if (use_ssr)
             { 
                 cmd_list->BeginMarker("ssr");
                 {
@@ -749,8 +753,9 @@ namespace spartan
                 }
                 cmd_list->EndMarker();
             }
-            else if (!cleared)
+            else if (!cleared && !use_ray_traced)
             {
+                // only clear if neither ssr nor ray traced reflections wrote to this texture
                 cmd_list->ClearTexture(tex_ssr, Color::standard_transparent);
                 cleared = true;
             }
@@ -787,6 +792,21 @@ namespace spartan
         
         cmd_list->BeginTimeblock("ray_traced_reflections");
         {
+            // check if we have a valid tlas before doing anything
+            RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
+            if (!tlas || !tlas->GetRhiResource())
+            {
+                // debug: clear to yellow when tlas is missing - helps identify if blas/tlas building is failing
+                tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
+                cmd_list->ClearTexture(tex_reflections, Color(1.0f, 1.0f, 0.0f, 1.0f));
+                cmd_list->EndTimeblock();
+                return;
+            }
+
+            // transition output texture to general layout for uav writes
+            tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
+            cmd_list->InsertBarrierReadWrite(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
+
             // set pipeline state
             RHI_PipelineState pso;
             pso.name                   = "ray_traced_reflections";
@@ -801,16 +821,11 @@ namespace spartan
                 uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
                 m_std_reflections = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "reflections_sbt");
             }
-            // Update handles every frame in case pipeline changed (UpdateHandles needs pipeline to be set first)
+            // update handles every frame in case pipeline changed (UpdateHandles needs pipeline to be set first)
             m_std_reflections->UpdateHandles(cmd_list);
 
             // set output textures and acceleration structure
             SetCommonTextures(cmd_list);
-            RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
-            if (!tlas)
-            {
-                SP_LOG_WARNING("Top-level acceleration structure is null. Ray tracing will not work. Ensure UpdateAccelerationStructures is enabled.");
-            }
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
 
             // set output texture
@@ -820,6 +835,9 @@ namespace spartan
             uint32_t width  = tex_reflections->GetWidth();
             uint32_t height = tex_reflections->GetHeight();
             cmd_list->TraceRays(width, height, m_std_reflections.get());
+
+            // ensure writes complete before the texture is read
+            cmd_list->InsertBarrierReadWrite(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
