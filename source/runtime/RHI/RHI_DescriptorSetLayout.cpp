@@ -108,6 +108,8 @@ namespace spartan
                 return;
             }
         }
+        
+        // texture not found in descriptors - this is expected if shader doesn't use this binding
     }
 
     void RHI_DescriptorSetLayout::SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas)
@@ -120,6 +122,7 @@ namespace spartan
                 return;
             }
         }
+        // acceleration structure not found in descriptors - this is expected if shader doesn't use TLAS
     }
 
     void RHI_DescriptorSetLayout::ClearDescriptorData()

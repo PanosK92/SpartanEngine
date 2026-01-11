@@ -998,7 +998,11 @@ namespace spartan
 
     void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height, RHI_Buffer* shader_binding_table)
     {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(shader_binding_table && shader_binding_table->GetType() == RHI_Buffer_Type::ShaderBindingTable);
+
+        // bind descriptor sets (same as draw/dispatch)
+        PreDraw();
 
         // load extension func once
         static PFN_vkCmdTraceRaysKHR pfn_vk_cmd_trace_rays_khr = nullptr;
@@ -1527,6 +1531,9 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         m_descriptor_layout_current->SetAccelerationStructure(static_cast<uint32_t>(slot), tlas);
+        
+        // mark descriptor set as needing to be bound
+        descriptor_sets::bind_dynamic = true;
     }
 
     void RHI_CommandList::SetBuffer(const uint32_t slot, RHI_Buffer* buffer) const

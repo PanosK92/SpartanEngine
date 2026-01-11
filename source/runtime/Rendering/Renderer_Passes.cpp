@@ -828,8 +828,8 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
 
-            // set output texture
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_reflections);
+            // set output texture (as UAV for ray tracing write)
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_reflections, rhi_all_mips, 0, true);
  
             // trace full screen (match tex resolution)
             uint32_t width  = tex_reflections->GetWidth();

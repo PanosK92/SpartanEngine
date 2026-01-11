@@ -1224,6 +1224,8 @@ namespace spartan
 
         // bottom-level acceleration structures
         {
+            uint32_t blas_built = 0;
+            uint32_t blas_skipped = 0;
             for (Entity* entity : World::GetEntities())
             {
                 if (!entity->GetActive())
@@ -1234,8 +1236,17 @@ namespace spartan
                     if (!renderable->HasAccelerationStructure())
                     {
                         renderable->BuildAccelerationStructure(cmd_list);
+                        if (renderable->HasAccelerationStructure())
+                            blas_built++;
+                        else
+                            blas_skipped++;
                     }
                 }
+            }
+            
+            if (blas_built > 0 || blas_skipped > 0)
+            {
+                SP_LOG_INFO("Ray tracing: built %u BLAS, skipped %u (no sub-meshes)", blas_built, blas_skipped);
             }
         }
 
@@ -1281,9 +1292,20 @@ namespace spartan
                 }
             }
     
+            static uint32_t last_instance_count = 0;
             if (!instances.empty())
             {
+                if (instances.size() != last_instance_count)
+                {
+                    SP_LOG_INFO("Ray tracing: building TLAS with %zu instances", instances.size());
+                    last_instance_count = static_cast<uint32_t>(instances.size());
+                }
                 tlas->BuildTopLevel(cmd_list, instances);
+            }
+            else if (last_instance_count != 0)
+            {
+                SP_LOG_WARNING("Ray tracing: no valid instances for TLAS (check that renderables have BLAS and materials)");
+                last_instance_count = 0;
             }
         }
     }

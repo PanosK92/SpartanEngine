@@ -148,12 +148,13 @@ namespace spartan
                     continue;
                 }
 
-                accel_index++;
-                // Store handle in persistent vector so pointer remains valid
-                accel_struct_handles.push_back(static_cast<VkAccelerationStructureKHR>(tlas->GetRhiResource()));
-                info_accel_structs[accel_index].sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-                info_accel_structs[accel_index].accelerationStructureCount = 1;
-                info_accel_structs[accel_index].pAccelerationStructures    = &accel_struct_handles.back();
+            accel_index++;
+            // store handle in persistent vector so pointer remains valid
+            accel_struct_handles.push_back(static_cast<VkAccelerationStructureKHR>(tlas->GetRhiResource()));
+            info_accel_structs[accel_index].sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+            info_accel_structs[accel_index].pNext                      = nullptr;
+            info_accel_structs[accel_index].accelerationStructureCount = 1;
+            info_accel_structs[accel_index].pAccelerationStructures    = &accel_struct_handles.back();
                 descriptor_index_start                                     = accel_index;
                 descriptor_cnt                                             = 1;
             }

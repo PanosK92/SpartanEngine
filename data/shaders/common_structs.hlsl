@@ -178,13 +178,12 @@ struct Light
 
     float compute_attenuation_angle()
     {
-        float cos_outer         = cos(angle);
-        float cos_inner         = cos(angle * 0.9f);
-        float cos_outer_squared = cos_outer * cos_outer;
-        float scale             = 1.0f / max(0.001f, cos_inner - cos_outer);
-        float offset            = -cos_outer * scale;
-        float cd                = dot(to_pixel, forward);
-        float attenuation       = saturate(cd * scale + offset);
+        float cos_outer   = cos(angle);
+        float cos_inner   = cos(angle * 0.9f);
+        float scale       = 1.0f / max(0.001f, cos_inner - cos_outer);
+        float offset      = -cos_outer * scale;
+        float cd          = dot(to_pixel, forward);
+        float attenuation = saturate(cd * scale + offset);
         
         return attenuation * attenuation;
     }
