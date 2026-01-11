@@ -178,6 +178,8 @@ namespace spartan
         float GetWheelLoadTransfer(WheelIndex wheel) const;     // newtons
         float GetWheelEffectiveLoad(WheelIndex wheel) const;    // tire_load + load_transfer
         float GetWheelTempGripFactor(WheelIndex wheel) const;   // 0.85-1.0 multiplier
+        float GetWheelBrakeTemp(WheelIndex wheel) const;        // brake temperature in celsius
+        float GetWheelBrakeEfficiency(WheelIndex wheel) const;  // 0.6-1.0 multiplier based on brake temp
         
         // driver assists
         void SetAbsEnabled(bool enabled);
@@ -189,6 +191,19 @@ namespace spartan
         bool GetTcEnabled() const;
         bool IsTcActive() const;                                // is traction control intervening
         float GetTcReduction() const;                           // current power reduction (0-1)
+        
+        // turbo
+        void SetTurboEnabled(bool enabled);
+        bool GetTurboEnabled() const;
+        float GetBoostPressure() const;                         // current boost pressure (bar)
+        float GetBoostMaxPressure() const;                      // max boost pressure (bar)
+        
+        // transmission mode
+        void SetManualTransmission(bool enabled);
+        bool GetManualTransmission() const;
+        void ShiftUp();
+        void ShiftDown();
+        void ShiftToNeutral();
         
         // engine and gearbox
         int GetCurrentGear() const;                             // gear index (0=R, 1=N, 2-8=1st-7th)

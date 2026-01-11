@@ -1156,6 +1156,20 @@ namespace spartan
         return car::get_wheel_temp_grip_factor(static_cast<int>(wheel));
     }
     
+    float Physics::GetWheelBrakeTemp(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_brake_temp(static_cast<int>(wheel));
+    }
+    
+    float Physics::GetWheelBrakeEfficiency(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 1.0f;
+        return car::get_wheel_brake_efficiency(static_cast<int>(wheel));
+    }
+    
     void Physics::SetAbsEnabled(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)
@@ -1208,6 +1222,64 @@ namespace spartan
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_tc_reduction();
+    }
+    
+    void Physics::SetTurboEnabled(bool enabled)
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::set_turbo_enabled(enabled);
+    }
+    
+    bool Physics::GetTurboEnabled() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::get_turbo_enabled();
+    }
+    
+    float Physics::GetBoostPressure() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_boost_pressure();
+    }
+    
+    float Physics::GetBoostMaxPressure() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_boost_max_pressure();
+    }
+    
+    void Physics::SetManualTransmission(bool enabled)
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::set_manual_transmission(enabled);
+    }
+    
+    bool Physics::GetManualTransmission() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::get_manual_transmission();
+    }
+    
+    void Physics::ShiftUp()
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::shift_up();
+    }
+    
+    void Physics::ShiftDown()
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::shift_down();
+    }
+    
+    void Physics::ShiftToNeutral()
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::shift_to_neutral();
     }
     
     int Physics::GetCurrentGear() const

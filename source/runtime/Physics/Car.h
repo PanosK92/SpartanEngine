@@ -57,11 +57,20 @@ namespace car
         constexpr float shift_down_rpm         = 3500.0f;
         constexpr float shift_time             = 0.05f;
         constexpr float clutch_engagement_rate = 8.0f;
+        constexpr float drivetrain_efficiency  = 0.88f;  // ~12% loss through gearbox/diff
+        inline bool     manual_transmission    = false;
         
         // brakes
         constexpr float brake_force            = 12000.0f;
         constexpr float brake_bias_front       = 0.65f;
         constexpr float reverse_power_ratio    = 0.5f;
+        constexpr float brake_ambient_temp     = 200.0f;   // celsius
+        constexpr float brake_optimal_temp     = 400.0f;
+        constexpr float brake_fade_temp        = 700.0f;
+        constexpr float brake_max_temp         = 900.0f;
+        constexpr float brake_heat_coefficient = 0.015f;
+        constexpr float brake_cooling_rate     = 50.0f;
+        constexpr float brake_cooling_airflow  = 0.8f;
         
         // input
         constexpr float throttle_smoothing     = 10.0f;
@@ -101,6 +110,8 @@ namespace car
         constexpr float front_spring_freq    = 1.5f;
         constexpr float rear_spring_freq     = 1.4f;
         constexpr float damping_ratio        = 0.85f;
+        constexpr float damping_bump_ratio   = 0.7f;   // compression (softer)
+        constexpr float damping_rebound_ratio = 1.3f;  // extension (stiffer)
         constexpr float front_arb_stiffness  = 3500.0f;
         constexpr float rear_arb_stiffness   = 1500.0f;
         constexpr float max_susp_force       = 35000.0f;
@@ -121,6 +132,12 @@ namespace car
         constexpr float steering_rate              = 1.5f;
         constexpr float pneumatic_trail            = 0.03f;
         constexpr float self_align_gain            = 0.5f;
+        
+        // alignment (camber/toe in radians)
+        constexpr float front_camber = -1.5f * (3.14159265f / 180.0f);  // negative camber
+        constexpr float rear_camber  = -1.0f * (3.14159265f / 180.0f);
+        constexpr float front_toe    =  0.1f * (3.14159265f / 180.0f);  // slight toe-in
+        constexpr float rear_toe     =  0.2f * (3.14159265f / 180.0f);
         
         // wheel
         constexpr float airborne_wheel_decay     = 0.99f;
@@ -158,9 +175,26 @@ namespace car
         constexpr float tc_slip_threshold = 0.08f;
         constexpr float tc_power_reduction = 0.8f;
         constexpr float tc_response_rate  = 15.0f;
+        
+        // turbo/boost
+        inline bool     turbo_enabled         = false;
+        constexpr float boost_max_pressure    = 1.2f;   // bar
+        constexpr float boost_spool_rate      = 3.0f;
+        constexpr float boost_wastegate_rpm   = 7500.0f;
+        constexpr float boost_torque_mult     = 0.35f;
+        constexpr float boost_min_rpm         = 2500.0f;
+        
+        // surface friction multipliers
+        constexpr float surface_friction_asphalt     = 1.0f;
+        constexpr float surface_friction_concrete    = 0.95f;
+        constexpr float surface_friction_wet_asphalt = 0.7f;
+        constexpr float surface_friction_gravel      = 0.6f;
+        constexpr float surface_friction_grass       = 0.4f;
+        constexpr float surface_friction_ice         = 0.1f;
     }
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
+    enum surface_type { surface_asphalt = 0, surface_concrete, surface_wet_asphalt, surface_gravel, surface_grass, surface_ice, surface_count };
     
     struct config
     {
@@ -177,21 +211,23 @@ namespace car
     
     struct wheel
     {
-        float  compression          = 0.0f;
-        float  target_compression   = 0.0f;
-        float  prev_compression     = 0.0f;
-        float  compression_velocity = 0.0f;
-        bool   grounded             = false;
-        PxVec3 contact_point        = PxVec3(0);
-        PxVec3 contact_normal       = PxVec3(0, 1, 0);
-        float  angular_velocity     = 0.0f;
-        float  rotation             = 0.0f;
-        float  tire_load            = 0.0f;
-        float  slip_angle           = 0.0f;
-        float  slip_ratio           = 0.0f;
-        float  lateral_force        = 0.0f;
-        float  longitudinal_force   = 0.0f;
-        float  temperature          = tuning::tire_ambient_temp;
+        float        compression          = 0.0f;
+        float        target_compression   = 0.0f;
+        float        prev_compression     = 0.0f;
+        float        compression_velocity = 0.0f;
+        bool         grounded             = false;
+        PxVec3       contact_point        = PxVec3(0);
+        PxVec3       contact_normal       = PxVec3(0, 1, 0);
+        float        angular_velocity     = 0.0f;
+        float        rotation             = 0.0f;
+        float        tire_load            = 0.0f;
+        float        slip_angle           = 0.0f;
+        float        slip_ratio           = 0.0f;
+        float        lateral_force        = 0.0f;
+        float        longitudinal_force   = 0.0f;
+        float        temperature          = tuning::tire_ambient_temp;
+        float        brake_temp           = tuning::brake_ambient_temp;
+        surface_type contact_surface      = surface_asphalt;
     };
     
     struct input_state
@@ -227,6 +263,7 @@ namespace car
     inline static float           clutch = 1.0f;
     inline static float           shift_cooldown = 0.0f;
     inline static int             last_shift_direction = 0;
+    inline static float           boost_pressure = 0.0f;
 
     // helpers
     inline bool  is_front(int i)                { return i == front_left || i == front_right; }
@@ -260,6 +297,72 @@ namespace car
     {
         float penalty = PxClamp(fabsf(temperature - tuning::tire_optimal_temp) / tuning::tire_temp_range, 0.0f, 1.0f);
         return 1.0f - penalty * tuning::tire_grip_temp_factor;
+    }
+    
+    inline float get_camber_grip_factor(int wheel_index, float slip_angle)
+    {
+        float camber = is_front(wheel_index) ? tuning::front_camber : tuning::rear_camber;
+        // optimal camber matches slip angle direction for better contact patch
+        float effective_camber = camber - slip_angle * 0.3f;
+        return 1.0f - fabsf(effective_camber) * 0.1f;
+    }
+    
+    inline float get_surface_friction(surface_type surface)
+    {
+        switch (surface)
+        {
+            case surface_asphalt:     return tuning::surface_friction_asphalt;
+            case surface_concrete:    return tuning::surface_friction_concrete;
+            case surface_wet_asphalt: return tuning::surface_friction_wet_asphalt;
+            case surface_gravel:      return tuning::surface_friction_gravel;
+            case surface_grass:       return tuning::surface_friction_grass;
+            case surface_ice:         return tuning::surface_friction_ice;
+            default:                  return 1.0f;
+        }
+    }
+    
+    inline float get_brake_efficiency(float temp)
+    {
+        if (temp < tuning::brake_optimal_temp)
+        {
+            // cold brakes - reduced efficiency
+            float t = (temp - tuning::brake_ambient_temp) / (tuning::brake_optimal_temp - tuning::brake_ambient_temp);
+            return 0.85f + 0.15f * PxClamp(t, 0.0f, 1.0f);
+        }
+        else if (temp < tuning::brake_fade_temp)
+        {
+            // optimal to fade range
+            float t = (temp - tuning::brake_optimal_temp) / (tuning::brake_fade_temp - tuning::brake_optimal_temp);
+            return 1.0f - 0.4f * t;
+        }
+        else
+        {
+            // severe fade
+            return 0.6f;
+        }
+    }
+    
+    inline void update_boost(float throttle, float rpm, float dt)
+    {
+        if (!tuning::turbo_enabled)
+        {
+            boost_pressure = lerp(boost_pressure, 0.0f, exp_decay(tuning::boost_spool_rate * 3.0f, dt));
+            return;
+        }
+        
+        float target = 0.0f;
+        if (throttle > 0.3f && rpm > tuning::boost_min_rpm)
+        {
+            target = tuning::boost_max_pressure * PxMin((rpm - tuning::boost_min_rpm) / 4000.0f, 1.0f);
+            
+            // wastegate limits boost at high rpm
+            if (rpm > tuning::boost_wastegate_rpm)
+                target *= PxMax(0.0f, 1.0f - (rpm - tuning::boost_wastegate_rpm) / 2000.0f);
+        }
+        
+        // spool up slower than spool down
+        float rate = (target > boost_pressure) ? tuning::boost_spool_rate : tuning::boost_spool_rate * 2.0f;
+        boost_pressure = lerp(boost_pressure, target, exp_decay(rate, dt));
     }
     
     inline float get_engine_torque(float rpm)
@@ -331,6 +434,10 @@ namespace car
             }
             return;
         }
+        
+        // skip automatic logic if manual transmission
+        if (tuning::manual_transmission)
+            return;
         
         float speed_kmh = forward_speed * 3.6f;
         
@@ -450,7 +557,8 @@ namespace car
         
         for (int i = 0; i < wheel_count; i++)
         {
-            wheel_moi[i] = 0.8f * cfg.wheel_mass * cfg.wheel_radius * cfg.wheel_radius;
+            // wheels are more like hollow rings with tire - coefficient ~1.0
+            wheel_moi[i] = cfg.wheel_mass * cfg.wheel_radius * cfg.wheel_radius;
             
             float freq  = is_front(i) ? tuning::front_spring_freq : tuning::rear_spring_freq;
             float mass  = is_front(i) ? front_mass : rear_mass;
@@ -490,6 +598,7 @@ namespace car
         clutch = 1.0f;
         shift_cooldown = 0.0f;
         last_shift_direction = 0;
+        boost_pressure = 0.0f;
         
         material = physics->createMaterial(0.8f, 0.7f, 0.1f);
         if (!material)
@@ -690,7 +799,9 @@ namespace car
             float displacement = w.compression * cfg.suspension_travel;
             float spring_f = spring_stiffness[i] * displacement;
             float susp_vel = PxClamp(w.compression_velocity * cfg.suspension_travel, -tuning::max_damper_velocity, tuning::max_damper_velocity);
-            float damper_f = spring_damping[i] * susp_vel;
+            // bump/rebound split - different damping for compression vs extension
+            float damper_ratio = (susp_vel > 0.0f) ? tuning::damping_bump_ratio : tuning::damping_rebound_ratio;
+            float damper_f = spring_damping[i] * susp_vel * damper_ratio;
             
             forces[i] = PxClamp(spring_f + damper_f, 0.0f, tuning::max_susp_force);
         }
@@ -768,7 +879,12 @@ namespace car
             float ground_speed = sqrtf(vx * vx + vy * vy);
             float max_v = PxMax(fabsf(wheel_speed), fabsf(vx));
             
-            float peak_force = tuning::tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f)) * get_tire_temp_grip_factor(w.temperature);
+            // combine all grip factors: base friction, load sensitivity, temperature, camber, surface
+            float base_grip = tuning::tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f));
+            float temp_factor = get_tire_temp_grip_factor(w.temperature);
+            float camber_factor = get_camber_grip_factor(i, w.slip_angle);
+            float surface_factor = get_surface_friction(w.contact_surface);
+            float peak_force = base_grip * temp_factor * camber_factor * surface_factor;
             
             // tire forces
             float lat_f = 0.0f, long_f = 0.0f;
@@ -928,10 +1044,16 @@ namespace car
                 wheels[rear_right].angular_velocity -= wheel_brake_torque / wheel_moi[rear_right] * dt;
         }
         
+        // update turbo boost
+        update_boost(input.throttle, engine_rpm, dt);
+        
         // throttle to rear wheels
         if (input.throttle > tuning::input_deadzone && current_gear >= 2)
         {
-            float engine_torque = get_engine_torque(engine_rpm) * input.throttle;
+            // base engine torque with boost
+            float base_torque = get_engine_torque(engine_rpm);
+            float boosted_torque = base_torque * (1.0f + boost_pressure * tuning::boost_torque_mult);
+            float engine_torque = boosted_torque * input.throttle;
             
             // traction control
             tc_active = false;
@@ -958,7 +1080,7 @@ namespace car
             }
             
             float gear_ratio = tuning::gear_ratios[current_gear] * tuning::final_drive;
-            float wheel_torque = engine_torque * gear_ratio * clutch;
+            float wheel_torque = engine_torque * gear_ratio * clutch * tuning::drivetrain_efficiency;
             if (is_shifting) wheel_torque *= 0.3f;
             
             apply_lsd_torque(wheel_torque, dt);
@@ -997,6 +1119,15 @@ namespace car
                 for (int i = 0; i < wheel_count; i++)
                 {
                     float t = is_front(i) ? front_t : rear_t;
+                    
+                    // brake temperature and fade
+                    float brake_efficiency = get_brake_efficiency(wheels[i].brake_temp);
+                    t *= brake_efficiency;
+                    
+                    // heat brakes based on energy dissipation
+                    float heat = fabsf(wheels[i].angular_velocity) * t * tuning::brake_heat_coefficient * dt;
+                    wheels[i].brake_temp += heat;
+                    wheels[i].brake_temp = PxMin(wheels[i].brake_temp, tuning::brake_max_temp);
                     
                     abs_active[i] = false;
                     if (tuning::abs_enabled && wheels[i].grounded && -wheels[i].slip_ratio > tuning::abs_slip_threshold)
@@ -1083,11 +1214,16 @@ namespace car
             : 1.0f;
         
         float base = input.steering * tuning::max_steer_angle * reduction;
-        out_angles[rear_left] = out_angles[rear_right] = 0.0f;
+        
+        // rear toe (positive = toe-in, adds stability)
+        out_angles[rear_left]  = tuning::rear_toe;
+        out_angles[rear_right] = -tuning::rear_toe;
         
         if (fabsf(base) < tuning::steering_deadzone)
         {
-            out_angles[front_left] = out_angles[front_right] = 0.0f;
+            // front toe when not steering
+            out_angles[front_left]  = tuning::front_toe;
+            out_angles[front_right] = -tuning::front_toe;
             return;
         }
         
@@ -1101,12 +1237,22 @@ namespace car
             float inner = atanf(wheelbase / PxMax(turn_r - half_track, 0.1f));
             float outer = atanf(wheelbase / PxMax(turn_r + half_track, 0.1f));
             
-            if (base > 0.0f) { out_angles[front_right] = inner; out_angles[front_left] = outer; }
-            else             { out_angles[front_left] = -inner; out_angles[front_right] = -outer; }
+            // add toe to steering angles
+            if (base > 0.0f)
+            {
+                out_angles[front_right] = inner + tuning::front_toe;
+                out_angles[front_left]  = outer - tuning::front_toe;
+            }
+            else
+            {
+                out_angles[front_left]  = -inner + tuning::front_toe;
+                out_angles[front_right] = -outer - tuning::front_toe;
+            }
         }
         else
         {
-            out_angles[front_left] = out_angles[front_right] = base;
+            out_angles[front_left]  = base + tuning::front_toe;
+            out_angles[front_right] = base - tuning::front_toe;
         }
     }
 
@@ -1124,6 +1270,18 @@ namespace car
         PxVec3 vel = body->getLinearVelocity();
         float forward_speed = vel.dot(fwd);
         float speed_kmh = vel.magnitude() * 3.6f;
+        
+        // cool brakes (airflow + ambient)
+        for (int i = 0; i < wheel_count; i++)
+        {
+            float cooling = tuning::brake_cooling_rate + vel.magnitude() * tuning::brake_cooling_airflow;
+            float temp_above_ambient = wheels[i].brake_temp - tuning::brake_ambient_temp;
+            if (temp_above_ambient > 0.0f)
+            {
+                wheels[i].brake_temp -= cooling * (temp_above_ambient / 200.0f) * dt;
+                wheels[i].brake_temp = PxMax(wheels[i].brake_temp, tuning::brake_ambient_temp);
+            }
+        }
         
         update_chassis_acceleration(dt);
         
@@ -1196,13 +1354,81 @@ namespace car
     inline bool  is_tc_active()               { return tc_active; }
     inline float get_tc_reduction()           { return tc_reduction; }
     
+    // manual transmission
+    inline void set_manual_transmission(bool enabled) { tuning::manual_transmission = enabled; }
+    inline bool get_manual_transmission()             { return tuning::manual_transmission; }
+    
+    inline void shift_up()
+    {
+        if (!tuning::manual_transmission || is_shifting || current_gear >= tuning::gear_count - 1)
+            return;
+        if (current_gear == 0) // from reverse, go to neutral first
+            current_gear = 1;
+        else
+            current_gear++;
+        is_shifting = true;
+        shift_timer = tuning::shift_time;
+        last_shift_direction = 1;
+    }
+    
+    inline void shift_down()
+    {
+        if (!tuning::manual_transmission || is_shifting || current_gear <= 0)
+            return;
+        if (current_gear == 1) // from neutral, go to reverse
+            current_gear = 0;
+        else
+            current_gear--;
+        is_shifting = true;
+        shift_timer = tuning::shift_time;
+        last_shift_direction = -1;
+    }
+    
+    inline void shift_to_neutral()
+    {
+        if (!tuning::manual_transmission || is_shifting)
+            return;
+        current_gear = 1;
+        is_shifting = true;
+        shift_timer = tuning::shift_time;
+    }
+    
     inline int          get_current_gear()          { return current_gear; }
     inline const char*  get_current_gear_string()   { return get_gear_string(); }
     inline float        get_current_engine_rpm()    { return engine_rpm; }
     inline bool         get_is_shifting()           { return is_shifting; }
     inline float        get_clutch()                { return clutch; }
-    inline float        get_engine_torque_current() { return get_engine_torque(engine_rpm); }
+    inline float        get_engine_torque_current() { return get_engine_torque(engine_rpm) * (1.0f + boost_pressure * tuning::boost_torque_mult); }
     inline float        get_redline_rpm()           { return tuning::engine_redline_rpm; }
     inline float        get_max_rpm()               { return tuning::engine_max_rpm; }
     inline float        get_idle_rpm()              { return tuning::engine_idle_rpm; }
+    
+    // turbo/boost
+    inline void  set_turbo_enabled(bool enabled) { tuning::turbo_enabled = enabled; }
+    inline bool  get_turbo_enabled()             { return tuning::turbo_enabled; }
+    inline float get_boost_pressure()            { return boost_pressure; }
+    inline float get_boost_max_pressure()        { return tuning::boost_max_pressure; }
+    
+    // brake temperature
+    inline float get_wheel_brake_temp(int i)       { return is_valid_wheel(i) ? wheels[i].brake_temp : 0.0f; }
+    inline float get_wheel_brake_efficiency(int i) { return is_valid_wheel(i) ? get_brake_efficiency(wheels[i].brake_temp) : 1.0f; }
+    
+    // surface type
+    inline void set_wheel_surface(int i, surface_type surface)
+    {
+        if (is_valid_wheel(i))
+            wheels[i].contact_surface = surface;
+    }
+    inline surface_type get_wheel_surface(int i) { return is_valid_wheel(i) ? wheels[i].contact_surface : surface_asphalt; }
+    inline const char* get_surface_name(surface_type surface)
+    {
+        static const char* names[] = { "Asphalt", "Concrete", "Wet", "Gravel", "Grass", "Ice" };
+        return (surface >= 0 && surface < surface_count) ? names[surface] : "Unknown";
+    }
+    
+    // alignment getters
+    inline float get_front_camber() { return tuning::front_camber; }
+    inline float get_rear_camber()  { return tuning::rear_camber; }
+    inline float get_front_toe()    { return tuning::front_toe; }
+    inline float get_rear_toe()     { return tuning::rear_toe; }
 }

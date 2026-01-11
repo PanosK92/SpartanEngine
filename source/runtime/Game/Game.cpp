@@ -759,11 +759,13 @@ namespace spartan
             // driver assists status
             bool abs_active = physics->IsAbsActiveAny();
             bool tc_active  = physics->IsTcActive();
-            snprintf(text_buffer, sizeof(text_buffer), "Assists:  ABS [%s] %s   TC [%s] %s",
+            snprintf(text_buffer, sizeof(text_buffer), "Assists:  ABS [%s] %s   TC [%s] %s   Turbo [%s]   Trans [%s]",
                 physics->GetAbsEnabled() ? "ON" : "--",
                 abs_active ? "<ACTIVE>" : "",
                 physics->GetTcEnabled() ? "ON" : "--",
-                tc_active ? "<ACTIVE>" : "");
+                tc_active ? "<ACTIVE>" : "",
+                physics->GetTurboEnabled() ? "ON" : "--",
+                physics->GetManualTransmission() ? "MT" : "AT");
             Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
             y_pos += line_spacing * 1.5f;
             
@@ -798,22 +800,24 @@ namespace spartan
                 y_pos += line_spacing;
             }
             
-            // tire temperature and grip
+            // tire and brake temperature
             y_pos += line_spacing * 0.5f;
-            Renderer::DrawString("Tire Temperature:", Vector2(0.005f, y_pos));
+            Renderer::DrawString("Tire & Brake Temperature:", Vector2(0.005f, y_pos));
             y_pos += line_spacing;
             for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
             {
                 WheelIndex wheel = static_cast<WheelIndex>(i);
-                float temp        = physics->GetWheelTemperature(wheel);
-                float grip_factor = physics->GetWheelTempGripFactor(wheel);
+                float temp             = physics->GetWheelTemperature(wheel);
+                float grip_factor      = physics->GetWheelTempGripFactor(wheel);
+                float brake_temp       = physics->GetWheelBrakeTemp(wheel);
+                float brake_efficiency = physics->GetWheelBrakeEfficiency(wheel);
                 
-                // temperature bar: cold (blue) < optimal (green) < hot (red)
+                // tire temperature bar: cold (blue) < optimal (green) < hot (red)
                 // optimal is around 90c, range is +/- 30c
                 int bar_len = static_cast<int>((temp / 150.0f) * 20.0f);
                 bar_len = bar_len > 20 ? 20 : (bar_len < 0 ? 0 : bar_len);
                 
-                char bar[32];
+                char tire_bar[32];
                 for (int j = 0; j < 20; j++)
                 {
                     if (j < bar_len)
@@ -821,19 +825,43 @@ namespace spartan
                         // cold < 60, optimal 60-120, hot > 120
                         float bar_temp = (j / 20.0f) * 150.0f;
                         if (bar_temp < 60.0f)
-                            bar[j] = '-';       // cold
+                            tire_bar[j] = '-';       // cold
                         else if (bar_temp < 120.0f)
-                            bar[j] = '=';       // optimal range
+                            tire_bar[j] = '=';       // optimal range
                         else
-                            bar[j] = '+';       // hot
+                            tire_bar[j] = '+';       // hot
                     }
                     else
-                        bar[j] = '.';
+                        tire_bar[j] = '.';
                 }
-                bar[20] = '\0';
+                tire_bar[20] = '\0';
                 
-                snprintf(text_buffer, sizeof(text_buffer), "  %s: [%s] %3.0fC  Grip: %.0f%%",
-                    wheel_names[i], bar, temp, grip_factor * 100.0f);
+                // brake temperature bar: cold < 400, optimal 400-700, fade > 700
+                int brake_bar_len = static_cast<int>((brake_temp / 900.0f) * 10.0f);
+                brake_bar_len = brake_bar_len > 10 ? 10 : (brake_bar_len < 0 ? 0 : brake_bar_len);
+                
+                char brake_bar[16];
+                for (int j = 0; j < 10; j++)
+                {
+                    if (j < brake_bar_len)
+                    {
+                        // cold < 400, optimal 400-700, fade > 700
+                        float bar_temp = (j / 10.0f) * 900.0f;
+                        if (bar_temp < 400.0f)
+                            brake_bar[j] = '-';       // cold
+                        else if (bar_temp < 700.0f)
+                            brake_bar[j] = '=';       // optimal
+                        else
+                            brake_bar[j] = '!';       // fade
+                    }
+                    else
+                        brake_bar[j] = '.';
+                }
+                brake_bar[10] = '\0';
+                
+                snprintf(text_buffer, sizeof(text_buffer), "  %s: Tire[%s] %3.0fC Grip:%.0f%%  Brake[%s] %3.0fC Eff:%.0f%%",
+                    wheel_names[i], tire_bar, temp, grip_factor * 100.0f,
+                    brake_bar, brake_temp, brake_efficiency * 100.0f);
                 Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
                 y_pos += line_spacing;
             }
