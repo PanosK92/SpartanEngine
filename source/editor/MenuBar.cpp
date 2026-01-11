@@ -380,16 +380,15 @@ namespace
 
         float get_total_width()
         {
-            // 3 buttons width + separator gap
+            // 3 buttons width + separator gap + margin
             float dpi = spartan::Window::GetDpiScale();
-            return (3.0f * (icon_size_base + button_padding_x * 2.0f) + separator_gap) * dpi;
+            float margin = 2.0f;
+            return (3.0f * (icon_size_base + button_padding_x * 2.0f) + separator_gap + margin) * dpi;
         }
 
         void tick(float menubar_height)
         {
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            const float size_avail_x      = viewport->Size.x;
-            const float dpi               = spartan::Window::GetDpiScale();
+            const float dpi = spartan::Window::GetDpiScale();
             
             const float icon_size_scaled = icon_size_base * dpi;
             const float button_width     = icon_size_scaled + button_padding_x * 2.0f * dpi;
@@ -399,8 +398,10 @@ namespace
             const float button_height = icon_size_scaled + button_padding_y * 2.0f * dpi;
             const float offset_y = (menubar_height - button_height) * 0.5f;
             
-            // position first button - 3 buttons from right edge, flush with window edge
-            float start_x = size_avail_x - (3.0f * button_width);
+            // position first button - use window width and account for small margin
+            const float window_width = ImGui::GetWindowWidth();
+            const float margin = 2.0f * dpi;  // small margin from edge
+            float start_x = window_width - (3.0f * button_width) - margin;
             ImGui::SetCursorPosX(start_x);
             ImGui::SetCursorPosY(offset_y);
             
