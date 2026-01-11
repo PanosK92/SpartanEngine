@@ -424,17 +424,15 @@ namespace spartan
                 // body main - red clearcoat paint
                 if (Material* material = car_entity->GetDescendantByName("Object_12")->GetComponent<Renderable>()->GetMaterial())
                 {
-                    shared_ptr<Material> new_material = make_shared<Material>();
-                    new_material->SetResourceName("car_paint" + string(EXTENSION_MATERIAL));
-                    new_material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                    new_material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                    new_material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
-                    new_material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
-                    new_material->SetTexture(MaterialTextureType::Normal, "project\\models\\ferrari_laferrari\\paint_normal.png");
-                    new_material->SetProperty(MaterialProperty::Normal, 0.03f);
-                    new_material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
-                    new_material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
-                    car_entity->GetDescendantByName("Object_12")->GetComponent<Renderable>()->SetMaterial(new_material);
+                    material->SetResourceName("car_paint" + string(EXTENSION_MATERIAL));
+                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
+                    material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
+                    material->SetProperty(MaterialProperty::Normal, 0.03f);
+                    material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
+                    material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
+                    //material->SetTexture(MaterialTextureType::Normal, "project\\models\\ferrari_laferrari\\paint_normal.png"); fix: it doesn't tile wile
                 }
 
                 // body metallic/carbon parts
@@ -1743,7 +1741,7 @@ namespace spartan
                                     light->SetLightType(LightType::Point);
                                     light->SetColor(color);
                                     light->SetRange(40.0f);
-                                    light->SetIntensity(7000.0f);
+                                    light->SetIntensity(3500.0f);
                                     light->SetFlag(LightFlags::Shadows,            true);
                                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                     light->SetFlag(LightFlags::Volumetric,         false);
