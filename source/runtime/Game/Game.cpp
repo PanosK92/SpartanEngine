@@ -782,7 +782,7 @@ namespace spartan
             // per-wheel metrics header
             Renderer::DrawString("Tire Physics:", Vector2(0.005f, y_pos));
             y_pos += line_spacing;
-            Renderer::DrawString("       GND   Slip Angle   Slip Ratio   Lat Force   Long Force   Load    Transfer", Vector2(0.005f, y_pos));
+            Renderer::DrawString("       GND   Slip Angle   Slip Ratio   Lat Force   Long Force", Vector2(0.005f, y_pos));
             y_pos += line_spacing;
             
             const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
@@ -795,17 +795,15 @@ namespace spartan
                 float lat_force_kn  = physics->GetWheelLateralForce(wheel) / 1000.0f;
                 float long_force_kn = physics->GetWheelLongitudinalForce(wheel) / 1000.0f;
                 float load_kn       = physics->GetWheelTireLoad(wheel) / 1000.0f;
-                float transfer_kn   = physics->GetWheelLoadTransfer(wheel) / 1000.0f;
                 
-                snprintf(text_buffer, sizeof(text_buffer), "  %s:  %s   %+6.1f deg   %+6.1f %%    %+5.1f kN    %+5.1f kN   %.1f kN  %+.1f kN",
+                snprintf(text_buffer, sizeof(text_buffer), "  %s:  %s   %+6.1f deg   %+6.1f %%    %+5.1f kN    %+5.1f kN   %.1f kN",
                     wheel_names[i],
                     grounded ? "YES" : " - ",
                     slip_angle,
                     slip_ratio,
                     lat_force_kn,
                     long_force_kn,
-                    load_kn,
-                    transfer_kn);
+                    load_kn);
                 Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
                 y_pos += line_spacing;
             }

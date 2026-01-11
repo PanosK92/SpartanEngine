@@ -1171,20 +1171,6 @@ namespace spartan
         return car::get_wheel_temperature(static_cast<int>(wheel));
     }
 
-    float Physics::GetWheelLoadTransfer(WheelIndex wheel) const
-    {
-        if (m_body_type != BodyType::Vehicle)
-            return 0.0f;
-        return car::get_wheel_load_transfer(static_cast<int>(wheel));
-    }
-
-    float Physics::GetWheelEffectiveLoad(WheelIndex wheel) const
-    {
-        if (m_body_type != BodyType::Vehicle)
-            return 0.0f;
-        return car::get_wheel_effective_load(static_cast<int>(wheel));
-    }
-
     float Physics::GetWheelTempGripFactor(WheelIndex wheel) const
     {
         if (m_body_type != BodyType::Vehicle)

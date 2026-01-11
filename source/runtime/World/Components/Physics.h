@@ -175,8 +175,6 @@ namespace spartan
         float GetWheelAngularVelocity(WheelIndex wheel) const;  // rad/s
         float GetWheelRPM(WheelIndex wheel) const;              // revolutions per minute
         float GetWheelTemperature(WheelIndex wheel) const;      // celsius
-        float GetWheelLoadTransfer(WheelIndex wheel) const;     // newtons
-        float GetWheelEffectiveLoad(WheelIndex wheel) const;    // tire_load + load_transfer
         float GetWheelTempGripFactor(WheelIndex wheel) const;   // 0.85-1.0 multiplier
         float GetWheelBrakeTemp(WheelIndex wheel) const;        // brake temperature in celsius
         float GetWheelBrakeEfficiency(WheelIndex wheel) const;  // 0.6-1.0 multiplier based on brake temp

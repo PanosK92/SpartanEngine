@@ -178,7 +178,7 @@ namespace car
         
         // turbo/boost
         inline bool     turbo_enabled         = false;
-        constexpr float boost_max_pressure    = 1.2f;   // bar
+        constexpr float boost_max_pressure    = 1.2f; // bar
         constexpr float boost_spool_rate      = 3.0f;
         constexpr float boost_wastegate_rpm   = 7500.0f;
         constexpr float boost_torque_mult     = 0.35f;
@@ -193,8 +193,8 @@ namespace car
         constexpr float surface_friction_ice         = 0.1f;
         
         // debug visualization
-        inline bool draw_raycasts   = true;   // draw wheel raycast lines
-        inline bool draw_suspension = true;   // draw suspension travel
+        inline bool draw_raycasts   = true; // draw wheel raycast lines
+        inline bool draw_suspension = true; // draw suspension travel
     }
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
@@ -325,37 +325,30 @@ namespace car
     
     inline float get_surface_friction(surface_type surface)
     {
-        switch (surface)
-        {
-            case surface_asphalt:     return tuning::surface_friction_asphalt;
-            case surface_concrete:    return tuning::surface_friction_concrete;
-            case surface_wet_asphalt: return tuning::surface_friction_wet_asphalt;
-            case surface_gravel:      return tuning::surface_friction_gravel;
-            case surface_grass:       return tuning::surface_friction_grass;
-            case surface_ice:         return tuning::surface_friction_ice;
-            default:                  return 1.0f;
-        }
+        static constexpr float friction[] = {
+            tuning::surface_friction_asphalt,
+            tuning::surface_friction_concrete,
+            tuning::surface_friction_wet_asphalt,
+            tuning::surface_friction_gravel,
+            tuning::surface_friction_grass,
+            tuning::surface_friction_ice
+        };
+        return (surface >= 0 && surface < surface_count) ? friction[surface] : 1.0f;
     }
     
     inline float get_brake_efficiency(float temp)
     {
+        // cold brakes: 85% -> 100%, optimal: 100% -> 60% fade, severe fade: 60%
+        if (temp >= tuning::brake_fade_temp) return 0.6f;
+        
         if (temp < tuning::brake_optimal_temp)
         {
-            // cold brakes - reduced efficiency
-            float t = (temp - tuning::brake_ambient_temp) / (tuning::brake_optimal_temp - tuning::brake_ambient_temp);
-            return 0.85f + 0.15f * PxClamp(t, 0.0f, 1.0f);
+            float t = PxClamp((temp - tuning::brake_ambient_temp) / (tuning::brake_optimal_temp - tuning::brake_ambient_temp), 0.0f, 1.0f);
+            return 0.85f + 0.15f * t;
         }
-        else if (temp < tuning::brake_fade_temp)
-        {
-            // optimal to fade range
-            float t = (temp - tuning::brake_optimal_temp) / (tuning::brake_fade_temp - tuning::brake_optimal_temp);
-            return 1.0f - 0.4f * t;
-        }
-        else
-        {
-            // severe fade
-            return 0.6f;
-        }
+        
+        float t = (temp - tuning::brake_optimal_temp) / (tuning::brake_fade_temp - tuning::brake_optimal_temp);
+        return 1.0f - 0.4f * t;
     }
     
     inline void update_boost(float throttle, float rpm, float dt)
@@ -552,7 +545,8 @@ namespace car
         return (current_gear >= 0 && current_gear < tuning::gear_count) ? names[current_gear] : "?";
     }
     
-    inline int get_gear() { return current_gear; }
+    // these are kept for backwards compatibility, prefer the get_current_* versions below
+    inline int get_gear()       { return current_gear; }
     inline float get_engine_rpm() { return engine_rpm; }
 
     inline void compute_constants()
@@ -568,18 +562,16 @@ namespace car
         wheel_offsets[rear_left]   = PxVec3(-half_w, y, rear_z);
         wheel_offsets[rear_right]  = PxVec3( half_w, y, rear_z);
         
-        float front_mass = cfg.mass * 0.40f * 0.5f;
-        float rear_mass  = cfg.mass * 0.60f * 0.5f;
+        // per-axle sprung mass: 40% front, 60% rear, split per wheel
+        float axle_mass[2] = { cfg.mass * 0.40f * 0.5f, cfg.mass * 0.60f * 0.5f };
+        float freq[2]      = { tuning::front_spring_freq, tuning::rear_spring_freq };
         
         for (int i = 0; i < wheel_count; i++)
         {
-            // wheels are more like hollow rings with tire - coefficient ~1.0
-            wheel_moi[i] = cfg.wheel_mass * cfg.wheel_radius * cfg.wheel_radius;
-            
-            float freq  = is_front(i) ? tuning::front_spring_freq : tuning::rear_spring_freq;
-            float mass  = is_front(i) ? front_mass : rear_mass;
-            float omega = 2.0f * PxPi * freq;
-            
+            int axle      = is_front(i) ? 0 : 1;
+            float mass    = axle_mass[axle];
+            float omega   = 2.0f * PxPi * freq[axle];
+            wheel_moi[i]  = cfg.wheel_mass * cfg.wheel_radius * cfg.wheel_radius;
             sprung_mass[i]      = mass;
             spring_stiffness[i] = mass * omega * omega;
             spring_damping[i]   = 2.0f * tuning::damping_ratio * sqrtf(spring_stiffness[i] * mass);
@@ -1038,44 +1030,28 @@ namespace car
         float wheel_driven_rpm = wheel_rpm_to_engine_rpm(fabsf(avg_wheel_rpm), current_gear);
         
         // clutch logic
-        if (is_shifting)
-            clutch = 0.2f;
-        else if (current_gear == 1)
-            clutch = 0.0f;
-        else if (fabsf(forward_speed_ms) < 2.0f && input.throttle > 0.1f)
-            clutch = lerp(clutch, 1.0f, exp_decay(tuning::clutch_engagement_rate, dt));
-        else
-            clutch = 1.0f;
+        if (is_shifting)                                          clutch = 0.2f;
+        else if (current_gear == 1)                               clutch = 0.0f;
+        else if (fabsf(forward_speed_ms) < 2.0f && input.throttle > 0.1f) clutch = lerp(clutch, 1.0f, exp_decay(tuning::clutch_engagement_rate, dt));
+        else                                                      clutch = 1.0f;
         
-        // engine rpm
+        // engine rpm (free_rev_rpm is throttle-controlled rpm when clutch is disengaged)
+        float free_rev_rpm = tuning::engine_idle_rpm + input.throttle * (tuning::engine_redline_rpm - tuning::engine_idle_rpm) * 0.7f;
         if (current_gear == 1)
-        {
-            float rpm_target = tuning::engine_idle_rpm + input.throttle * (tuning::engine_redline_rpm - tuning::engine_idle_rpm) * 0.7f;
-            engine_rpm = lerp(engine_rpm, rpm_target, exp_decay(8.0f, dt));
-        }
+            engine_rpm = lerp(engine_rpm, free_rev_rpm, exp_decay(8.0f, dt));
         else if (clutch < 0.9f)
-        {
-            float free_rev_rpm = tuning::engine_idle_rpm + input.throttle * (tuning::engine_redline_rpm - tuning::engine_idle_rpm) * 0.7f;
-            float target_rpm = lerp(free_rev_rpm, PxMax(wheel_driven_rpm, tuning::engine_idle_rpm), clutch);
-            engine_rpm = lerp(engine_rpm, target_rpm, exp_decay(10.0f, dt));
-        }
+            engine_rpm = lerp(engine_rpm, lerp(free_rev_rpm, PxMax(wheel_driven_rpm, tuning::engine_idle_rpm), clutch), exp_decay(10.0f, dt));
         else
-        {
             engine_rpm = PxMax(wheel_driven_rpm, tuning::engine_idle_rpm);
-        }
         engine_rpm = PxClamp(engine_rpm, tuning::engine_idle_rpm, tuning::engine_max_rpm);
         
-        // engine braking
+        // engine braking - apply resistance to rear wheels when coasting in gear
         if (input.throttle < tuning::input_deadzone && clutch > 0.5f && current_gear >= 2)
         {
-            float engine_brake_torque = tuning::engine_friction * engine_rpm * 0.1f;
-            float gear_ratio = fabsf(tuning::gear_ratios[current_gear]) * tuning::final_drive;
-            float wheel_brake_torque = engine_brake_torque * gear_ratio * 0.5f;
-            
-            if (wheels[rear_left].angular_velocity > 0.0f)
-                wheels[rear_left].angular_velocity -= wheel_brake_torque / wheel_moi[rear_left] * dt;
-            if (wheels[rear_right].angular_velocity > 0.0f)
-                wheels[rear_right].angular_velocity -= wheel_brake_torque / wheel_moi[rear_right] * dt;
+            float wheel_brake_torque = tuning::engine_friction * engine_rpm * 0.1f * fabsf(tuning::gear_ratios[current_gear]) * tuning::final_drive * 0.5f;
+            for (int i = rear_left; i <= rear_right; i++)
+                if (wheels[i].angular_velocity > 0.0f)
+                    wheels[i].angular_velocity -= wheel_brake_torque / wheel_moi[i] * dt;
         }
         
         // update turbo boost
@@ -1347,16 +1323,20 @@ namespace car
         return is_valid_wheel(i) ? names[i] : "??";
     }
     
-    inline float get_wheel_compression(int i)       { return is_valid_wheel(i) ? wheels[i].compression : 0.0f; }
-    inline bool  is_wheel_grounded(int i)           { return is_valid_wheel(i) && wheels[i].grounded; }
-    inline float get_wheel_slip_angle(int i)        { return is_valid_wheel(i) ? wheels[i].slip_angle : 0.0f; }
-    inline float get_wheel_slip_ratio(int i)        { return is_valid_wheel(i) ? wheels[i].slip_ratio : 0.0f; }
-    inline float get_wheel_tire_load(int i)         { return is_valid_wheel(i) ? wheels[i].tire_load : 0.0f; }
-    inline float get_wheel_lateral_force(int i)     { return is_valid_wheel(i) ? wheels[i].lateral_force : 0.0f; }
-    inline float get_wheel_longitudinal_force(int i){ return is_valid_wheel(i) ? wheels[i].longitudinal_force : 0.0f; }
-    inline float get_wheel_angular_velocity(int i)  { return is_valid_wheel(i) ? wheels[i].angular_velocity : 0.0f; }
-    inline float get_wheel_rotation(int i)          { return is_valid_wheel(i) ? wheels[i].rotation : 0.0f; }
-    inline float get_wheel_temperature(int i)       { return is_valid_wheel(i) ? wheels[i].temperature : 0.0f; }
+    // wheel property accessors - return 0/false for invalid indices
+    #define WHEEL_GETTER(name, field) inline float get_wheel_##name(int i) { return is_valid_wheel(i) ? wheels[i].field : 0.0f; }
+    WHEEL_GETTER(compression, compression)
+    WHEEL_GETTER(slip_angle, slip_angle)
+    WHEEL_GETTER(slip_ratio, slip_ratio)
+    WHEEL_GETTER(tire_load, tire_load)
+    WHEEL_GETTER(lateral_force, lateral_force)
+    WHEEL_GETTER(longitudinal_force, longitudinal_force)
+    WHEEL_GETTER(angular_velocity, angular_velocity)
+    WHEEL_GETTER(rotation, rotation)
+    WHEEL_GETTER(temperature, temperature)
+    #undef WHEEL_GETTER
+    
+    inline bool is_wheel_grounded(int i) { return is_valid_wheel(i) && wheels[i].grounded; }
     
     inline float get_wheel_suspension_force(int i)
     {
@@ -1364,8 +1344,7 @@ namespace car
         return spring_stiffness[i] * wheels[i].compression * cfg.suspension_travel;
     }
     
-    inline float get_wheel_load_transfer(int i)  { return 0.0f; }
-    inline float get_wheel_effective_load(int i) { return is_valid_wheel(i) ? wheels[i].tire_load : 0.0f; }
+    // note: load transfer is implicitly handled via suspension compression affecting tire_load
     
     inline float get_wheel_temp_grip_factor(int i)
     {
@@ -1381,7 +1360,7 @@ namespace car
     inline void set_abs_enabled(bool enabled) { tuning::abs_enabled = enabled; }
     inline bool get_abs_enabled()             { return tuning::abs_enabled; }
     inline bool is_abs_active(int i)          { return is_valid_wheel(i) && abs_active[i]; }
-    inline bool is_abs_active_any()           { return abs_active[0] || abs_active[1] || abs_active[2] || abs_active[3]; }
+    inline bool is_abs_active_any()           { for (int i = 0; i < wheel_count; i++) if (abs_active[i]) return true; return false; }
     
     inline void  set_tc_enabled(bool enabled) { tuning::tc_enabled = enabled; }
     inline bool  get_tc_enabled()             { return tuning::tc_enabled; }
@@ -1392,44 +1371,38 @@ namespace car
     inline void set_manual_transmission(bool enabled) { tuning::manual_transmission = enabled; }
     inline bool get_manual_transmission()             { return tuning::manual_transmission; }
     
-    inline void shift_up()
+    inline void begin_shift(int direction)
     {
-        if (!tuning::manual_transmission || is_shifting || current_gear >= tuning::gear_count - 1)
-            return;
-        if (current_gear == 0) // from reverse, go to neutral first
-            current_gear = 1;
-        else
-            current_gear++;
         is_shifting = true;
         shift_timer = tuning::shift_time;
-        last_shift_direction = 1;
+        last_shift_direction = direction;
+    }
+    
+    inline void shift_up()
+    {
+        if (!tuning::manual_transmission || is_shifting || current_gear >= tuning::gear_count - 1) return;
+        current_gear = (current_gear == 0) ? 1 : current_gear + 1; // from reverse, go to neutral first
+        begin_shift(1);
     }
     
     inline void shift_down()
     {
-        if (!tuning::manual_transmission || is_shifting || current_gear <= 0)
-            return;
-        if (current_gear == 1) // from neutral, go to reverse
-            current_gear = 0;
-        else
-            current_gear--;
-        is_shifting = true;
-        shift_timer = tuning::shift_time;
-        last_shift_direction = -1;
+        if (!tuning::manual_transmission || is_shifting || current_gear <= 0) return;
+        current_gear = (current_gear == 1) ? 0 : current_gear - 1; // from neutral, go to reverse
+        begin_shift(-1);
     }
     
     inline void shift_to_neutral()
     {
-        if (!tuning::manual_transmission || is_shifting)
-            return;
+        if (!tuning::manual_transmission || is_shifting) return;
         current_gear = 1;
-        is_shifting = true;
-        shift_timer = tuning::shift_time;
+        begin_shift(0);
     }
     
-    inline int          get_current_gear()          { return current_gear; }
-    inline const char*  get_current_gear_string()   { return get_gear_string(); }
-    inline float        get_current_engine_rpm()    { return engine_rpm; }
+    // aliases for get_gear() and get_engine_rpm()
+    inline int         get_current_gear()        { return current_gear; }
+    inline const char* get_current_gear_string() { return get_gear_string(); }
+    inline float       get_current_engine_rpm()  { return engine_rpm; }
     inline bool         get_is_shifting()           { return is_shifting; }
     inline float        get_clutch()                { return clutch; }
     inline float        get_engine_torque_current() { return get_engine_torque(engine_rpm) * (1.0f + boost_pressure * tuning::boost_torque_mult); }
