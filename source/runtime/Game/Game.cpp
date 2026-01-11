@@ -1685,7 +1685,7 @@ namespace spartan
                     {
                         Entity* floor_tube_lights = mesh->GetRootEntity();
                         floor_tube_lights->SetObjectName("tube_lights_and_floor");
-                        floor_tube_lights->SetScale(2.0f);
+                        floor_tube_lights->SetScale(1.0f);
 
                         // tube light setup helper
                         auto setup_tube_light = [floor_tube_lights](const char* descendant_name, Color color)

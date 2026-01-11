@@ -29,6 +29,7 @@ static const float DEPTH_SCALE              = 100.0f; // depth comparison sensit
 static const float CENTER_WEIGHT            = 1.0f;  // weight for center sample
 static const int   COHERENCE_SAMPLES        = 4;     // samples for velocity coherence check
 static const float COHERENCE_RADIUS         = 8.0f;  // radius in pixels for coherence sampling
+static const float TARGET_FRAME_TIME        = 1.0f / 60.0f; // fixed reference frame time for stable blur (60fps baseline)
 
 // helper: soft depth comparison (guerrilla games / killzone approach)
 float soft_depth_compare(float depth_a, float depth_b)
@@ -275,8 +276,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_G
     // - ratio < 1: fast shutter, freezes motion (e.g. 1/125s at 60fps = 0.5)
     // - ratio = 1: shutter matches frame time, standard blur
     // - ratio > 1: slow shutter, motion spans multiple frames (e.g. 1/30s at 60fps = 2.0)
+    // 
+    // important: use fixed target frame time instead of actual delta_time for stability
+    // velocity buffer already contains per-frame motion, so using variable delta_time
+    // causes jittery/unstable blur when frame rate fluctuates
     float shutter_speed = pass_get_f3_value().x;
-    float shutter_ratio = clamp(shutter_speed / (buffer_frame.delta_time + FLT_MIN), 0.0f, 3.0f);
+    float shutter_ratio = clamp(shutter_speed / TARGET_FRAME_TIME, 0.0f, 3.0f);
     
     // generate per-pixel temporal noise for smooth sample distribution across frames
     // this integrates with taa for artifact-free motion blur
