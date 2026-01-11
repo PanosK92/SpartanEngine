@@ -183,7 +183,7 @@ namespace spartan
         frame_output,
         frame_output_2,
         ssao,
-        ssr,
+        reflections,
         sss,
         skysphere,
         bloom,

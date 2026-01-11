@@ -718,7 +718,7 @@ namespace spartan
         static bool cleared = false;
 
         RHI_Texture* tex_frame             = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::ssr);
+        RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::reflections);
         RHI_Texture* tex_refraction_source = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
 
         cmd_list->BeginTimeblock("transparency_reflection_refraction");
@@ -788,7 +788,7 @@ namespace spartan
             return;
 
         // get resources
-        RHI_Texture* tex_reflections = GetRenderTarget(Renderer_RenderTarget::ssr);
+        RHI_Texture* tex_reflections = GetRenderTarget(Renderer_RenderTarget::reflections);
         
         cmd_list->BeginTimeblock("ray_traced_reflections");
         {
@@ -824,13 +824,14 @@ namespace spartan
             // update handles every frame in case pipeline changed (UpdateHandles needs pipeline to be set first)
             m_std_reflections->UpdateHandles(cmd_list);
 
-            // set output textures and acceleration structure
+            // set textures and acceleration structure
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
 
             // set output texture (as UAV for ray tracing write)
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_reflections, rhi_all_mips, 0, true);
- 
+
             // trace full screen (match tex resolution)
             uint32_t width  = tex_reflections->GetWidth();
             uint32_t height = tex_reflections->GetHeight();

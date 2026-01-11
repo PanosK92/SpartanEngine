@@ -35,79 +35,83 @@ void ray_gen()
     uint2 launch_size = DispatchRaysDimensions().xy;
     float2 uv         = (launch_id + 0.5f) / launch_size;
     
-    // debug: blue = no geometry (depth at far plane)
+    // check if there's geometry at this pixel
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
     {
-        tex_uav[launch_id] = float4(0, 0, 1, 1); // blue - no geometry at this pixel
+        tex_uav[launch_id] = float4(0, 0, 0, 0);
         return;
     }
     
-    float3 pos_vs    = get_position_view_space(uv);
+    // compute reflection ray in world space
+    float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
-    float3 normal_vs = normalize(mul(float4(normal_ws, 0.0f), buffer_frame.view).xyz);
-    float3 V         = normalize(-pos_vs);     // view dir from surface to camera
-    float3 R         = reflect(-V, normal_vs); // reflection dir 
-    float3 pos_ws    = mul(float4(pos_vs, 1.0f), buffer_frame.view_inverted).xyz;
-    float3 R_ws      = mul(float4(R, 0.0f), buffer_frame.view_inverted).xyz;
+    float3 V         = normalize(buffer_frame.camera_position - pos_ws);
+    float3 R         = reflect(-V, normal_ws);
     
+    // offset along normal and reflection direction to escape source surface
+    float3 ray_origin = pos_ws + normal_ws * 0.05f + R * 0.05f;
+    
+    // setup ray - use TMin to skip very close hits (self-intersection)
     RayDesc ray;
-    ray.Origin = pos_ws + normal_ws * 0.01f; // offset to avoid self-intersection
-    ray.Direction = normalize(R_ws);
-    ray.TMin      = 0.001f;
-    ray.TMax      = 10000.0f;
+    ray.Origin    = ray_origin;
+    ray.Direction = normalize(R);
+    ray.TMin      = 0.01f;
+    ray.TMax      = 1000.0f;
     
+    // trace
     Payload payload;
     payload.color = float3(0, 0, 0);
+    TraceRay(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 1, 0, ray, payload);
     
-    TraceRay(tlas, 0, 0xFF, 0, 1, 0, ray, payload);
-    
+    // output raw reflection color
     tex_uav[launch_id] = float4(payload.color, 1.0f);
 }
 
 [shader("miss")]
 void miss(inout Payload payload : SV_RayPayload)
 {
-    payload.color = float3(1, 0, 0); // red - ray missed all geometry
+    // sample skysphere for missed rays
+    float3 ray_dir = WorldRayDirection();
+    float2 uv      = direction_sphere_uv(ray_dir);
+    payload.color  = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uv, 0).rgb;
 }
 
 [shader("closesthit")]
 void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
-    // 1. Determine which instance / primitive was hit =
-    uint instanceIndex  = InstanceID();     // per instance in TLAS
-    uint primitiveIndex = PrimitiveIndex(); // triangle index in BLAS
-
-    //// 2. Fetch material for this instance
-    //MaterialParameters mat = material_parameters[instanceIndex];
-    //
-    //// 3. Interpolate vertex data
-    //// todo: vertex buffers bound as SRVs
-    //uint3 triVertexIndices = index_buffer[primitiveIndex * 3 + uint3(0, 1, 2)];
-    //
-    //float3 pos0 = vertex_positions[triVertexIndices.x];
-    //float3 pos1 = vertex_positions[triVertexIndices.y];
-    //float3 pos2 = vertex_positions[triVertexIndices.z];
-    //
-    //float3 n0 = vertex_normals[triVertexIndices.x];
-    //float3 n1 = vertex_normals[triVertexIndices.y];
-    //float3 n2 = vertex_normals[triVertexIndices.z];
-    //
-    //float2 uv0 = vertex_uvs[triVertexIndices.x];
-    //float2 uv1 = vertex_uvs[triVertexIndices.y];
-    //float2 uv2 = vertex_uvs[triVertexIndices.z];
-    //
-    //// barycentric coordinates from intersection
-    //float u = attribs.Barycentrics.x;
-    //float v = attribs.Barycentrics.y;
-    //float w = 1.0f - u - v;
-    //
-    //float3 normal_vs = normalize(n0 * w + n1 * u + n2 * v);
-    //float2 uv = uv0 * w + uv1 * u + uv2 * v;
-    //
-    //// 4. Sample diffuse texture using interpolated UV
-    //float3 albedo = mat.diffuse_map.Sample(GET_SAMPLER(sampler_linear_clamp), uv).rgb;
-
-    // 5. Set payload color
-    payload.color = float3(0, 1, 0);
+    // material index from tlas instance custom data
+    uint material_index = InstanceID();
+    MaterialParameters mat = material_parameters[material_index];
+    
+    // hit position
+    float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    float3 V       = -WorldRayDirection();
+    
+    // base albedo from material
+    float3 albedo = mat.color.rgb;
+    
+    // procedural uvs from world position (xz plane)
+    float2 procedural_uv = frac(hit_pos.xz * mat.tiling);
+    
+    // sample albedo from bindless texture array
+    uint albedo_texture_index = material_index + material_texture_index_albedo;
+    float4 sampled_albedo     = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), procedural_uv, 2);
+    
+    // use texture if valid
+    if (sampled_albedo.a > 0.01f)
+    {
+        albedo = sampled_albedo.rgb * mat.color.rgb;
+    }
+    
+    // simple directional lighting
+    float3 light_dir     = normalize(float3(0.5f, 1.0f, 0.3f));
+    float3 pseudo_normal = V;
+    float n_dot_l        = saturate(dot(pseudo_normal, light_dir) * 0.5f + 0.5f); // half-lambert
+    
+    // ambient + diffuse
+    float3 ambient   = float3(0.15f, 0.17f, 0.2f);
+    float3 lit_color = albedo * (ambient + n_dot_l * 0.85f);
+    
+    payload.color = lit_color;
 }
