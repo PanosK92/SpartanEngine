@@ -60,7 +60,7 @@ namespace spartan
         float titlebar_height       = 40.0f;  // default height, updated by editor
         float titlebar_button_width = 150.0f; // default width, updated by editor  
         const float resize_border   = 8.0f;   // thickness of resize borders
-        bool titlebar_has_hovered_item = false; // set by editor when imgui items are hovered
+        int titlebar_hovered_frames = 0;      // persistence counter for hover state
 
         SDL_HitTestResult hit_test_callback(SDL_Window* win, const SDL_Point* area, void* data)
         {
@@ -95,8 +95,9 @@ namespace spartan
                 // exclude window buttons area on the right
                 if (x < w - static_cast<int>(titlebar_button_width))
                 {
-                    // only allow dragging when no imgui items are hovered/active
-                    if (!titlebar_has_hovered_item)
+                    // only allow dragging when no imgui items were hovered recently
+                    // use persistence to avoid timing issues between hit test and imgui frame
+                    if (titlebar_hovered_frames == 0)
                     {
                         return SDL_HITTEST_DRAGGABLE;
                     }
@@ -566,6 +567,16 @@ namespace spartan
 
     void Window::SetTitleBarHovered(bool hovered)
     {
-        titlebar_has_hovered_item = hovered;
+        // use persistence to avoid timing issues between sdl hit test and imgui frame
+        // when hovered, set counter high; when not hovered, decrement until zero
+        const int persistence_frames = 3;
+        if (hovered)
+        {
+            titlebar_hovered_frames = persistence_frames;
+        }
+        else if (titlebar_hovered_frames > 0)
+        {
+            titlebar_hovered_frames--;
+        }
     }
 }

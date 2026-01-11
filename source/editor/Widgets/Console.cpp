@@ -94,11 +94,10 @@ void Console::OnTickVisible()
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
     ImGui::Separator();
 
-    // calculate split sizes
+    // calculate split sizes - no longer reserving space for autocomplete (it's a popup now)
     const float input_height = ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y;
-    const float autocomplete_height = m_show_autocomplete ? 200.0f * spartan::Window::GetDpiScale() : 0.0f;
     const float available_height = ImGui::GetContentRegionAvail().y;
-    const float log_height = available_height - input_height - autocomplete_height;
+    const float log_height = available_height - input_height;
 
     // safety first
     std::scoped_lock lock(m_mutex);
@@ -193,111 +192,154 @@ void Console::OnTickVisible()
         }
     }
 
-    if (m_show_autocomplete && !m_filtered_cvars.empty())
+    // input field
+    ImGui::Separator();
+    ImGui::SetNextItemWidth(-1.0f);
+
+    ImGuiInputTextFlags input_flags =
+        ImGuiInputTextFlags_EnterReturnsTrue |
+        ImGuiInputTextFlags_CallbackHistory  |
+        ImGuiInputTextFlags_CallbackAlways;
+
+    bool reclaim_focus = false;
+
+    // store input field position for popup placement
+    ImVec2 input_pos = ImGui::GetCursorScreenPos();
+    float input_width = ImGui::GetContentRegionAvail().x;
+
+    if (ImGui::InputText("##console_input", m_input_buffer, IM_ARRAYSIZE(m_input_buffer), input_flags, [](ImGuiInputTextCallbackData* data) -> int
     {
-        ImGui::Separator();
+        Console* console = static_cast<Console*>(data->UserData);
+        return console->InputCallback(data);
+    }, this))
+    {
+        ExecuteCommand(m_input_buffer);
+        m_input_buffer[0] = '\0';
+        m_show_autocomplete = false;
+        reclaim_focus = true;
+    }
 
-        static const ImGuiTableFlags table_flags =
-            ImGuiTableFlags_RowBg           |
-            ImGuiTableFlags_BordersOuter    |
-            ImGuiTableFlags_ScrollY         |
-            ImGuiTableFlags_Resizable       |
-            ImGuiTableFlags_SizingStretchProp;
+    bool input_active = ImGui::IsItemActive();
 
-        const ImVec2 autocomplete_size = ImVec2(-1.0f, autocomplete_height);
-
-        if (ImGui::BeginTable("##console_autocomplete", 3, table_flags, autocomplete_size))
+    if (input_active)
+    {
+        if (m_show_autocomplete && !m_filtered_cvars.empty())
         {
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 0.4f);
-            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.2f);
-            ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 0.4f);
-            ImGui::TableHeadersRow();
-
-            for (size_t i = 0; i < m_filtered_cvars.size(); i++)
+            if (ImGui::IsKeyPressed(ImGuiKey_DownArrow))
             {
-                const ConsoleVariable* cvar = ConsoleRegistry::Get().Find(m_filtered_cvars[i]);
-
-                ImGui::TableNextRow();
-                ImGui::PushID(static_cast<int>(i));
-
-                bool is_selected = (std::cmp_equal(i, m_autocomplete_selection));
-                if (is_selected)
-                {
-                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
-                }
-
-                ImGui::TableSetColumnIndex(0);
-                if (ImGui::Selectable(std::string(cvar->m_name).c_str(), is_selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick))
-                {
-                    m_autocomplete_selection = static_cast<int>(i);
-                    if (ImGui::IsMouseDoubleClicked(0))
-                    {
-                        ApplyAutocomplete();
-                    }
-                }
-
-                ImGui::TableSetColumnIndex(1);
-                std::string value_str = ConsoleRegistry::Get().GetValueAsString(cvar->m_name).value();
-                ImGui::TextUnformatted(value_str.c_str());
-
-                ImGui::TableSetColumnIndex(2);
-                ImGui::TextWrapped("%s", std::string(cvar->m_hint).c_str());
-
-                ImGui::PopID();
+                m_autocomplete_selection = (m_autocomplete_selection + 1) % static_cast<int>(m_filtered_cvars.size());
             }
-
-            ImGui::EndTable();
+            else if (ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+            {
+                m_autocomplete_selection = (m_autocomplete_selection - 1 + static_cast<int>(m_filtered_cvars.size())) % static_cast<int>(m_filtered_cvars.size());
+            }
+            else if (ImGui::IsKeyPressed(ImGuiKey_Tab))
+            {
+                ApplyAutocomplete();
+                reclaim_focus = true;
+            }
+            else if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+            {
+                m_show_autocomplete = false;
+            }
         }
     }
 
+    if (ImGui::IsWindowAppearing() || reclaim_focus)
     {
-        ImGui::Separator();
+        ImGui::SetKeyboardFocusHere(-1);
+    }
 
-        ImGui::SetNextItemWidth(-1.0f);
+    // autocomplete popup - rendered as a floating window above the input
+    if (m_show_autocomplete && !m_filtered_cvars.empty())
+    {
+        const float popup_max_height = 250.0f * spartan::Window::GetDpiScale();
+        const float row_height = ImGui::GetTextLineHeightWithSpacing();
+        const float header_height = row_height + ImGui::GetStyle().ItemSpacing.y;
+        const float content_height = std::min(popup_max_height, header_height + row_height * static_cast<float>(m_filtered_cvars.size()));
 
-        ImGuiInputTextFlags input_flags =
-            ImGuiInputTextFlags_EnterReturnsTrue |
-            ImGuiInputTextFlags_CallbackHistory  |
-            ImGuiInputTextFlags_CallbackAlways;
+        // position popup above the input field
+        ImVec2 popup_pos = ImVec2(input_pos.x, input_pos.y - content_height - ImGui::GetStyle().ItemSpacing.y);
 
-        bool reclaim_focus = false;
+        ImGui::SetNextWindowPos(popup_pos);
+        ImGui::SetNextWindowSize(ImVec2(input_width, content_height));
+        ImGui::SetNextWindowBgAlpha(0.92f);
 
-        if (ImGui::InputText("##console_input", m_input_buffer, IM_ARRAYSIZE(m_input_buffer), input_flags, [](ImGuiInputTextCallbackData* data) -> int
+        ImGuiWindowFlags popup_flags =
+            ImGuiWindowFlags_NoTitleBar      |
+            ImGuiWindowFlags_NoResize        |
+            ImGuiWindowFlags_NoMove          |
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoFocusOnAppearing;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));
+
+        if (ImGui::Begin("##console_autocomplete_popup", nullptr, popup_flags))
         {
-            Console* console = static_cast<Console*>(data->UserData);
-            return console->InputCallback(data);
-        }, this))
-        {
-            ExecuteCommand(m_input_buffer);
-            m_input_buffer[0] = '\0';
-            m_show_autocomplete = false;
-            reclaim_focus = true;
-        }
+            static const ImGuiTableFlags table_flags =
+                ImGuiTableFlags_RowBg            |
+                ImGuiTableFlags_ScrollY          |
+                ImGuiTableFlags_SizingStretchProp;
 
-        if (ImGui::IsItemActive())
-        {
-            if (m_show_autocomplete && !m_filtered_cvars.empty())
+            if (ImGui::BeginTable("##console_autocomplete", 3, table_flags))
             {
-                if (ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 0.4f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.2f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch, 0.4f);
+                ImGui::TableHeadersRow();
+
+                for (size_t i = 0; i < m_filtered_cvars.size(); i++)
                 {
-                    m_autocomplete_selection = (m_autocomplete_selection + 1) % static_cast<int>(m_filtered_cvars.size());
+                    const ConsoleVariable* cvar = ConsoleRegistry::Get().Find(m_filtered_cvars[i]);
+
+                    ImGui::TableNextRow();
+                    ImGui::PushID(static_cast<int>(i));
+
+                    bool is_selected = (std::cmp_equal(i, m_autocomplete_selection));
+                    if (is_selected)
+                    {
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
+                    }
+
+                    ImGui::TableSetColumnIndex(0);
+                    if (ImGui::Selectable(std::string(cvar->m_name).c_str(), is_selected, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick))
+                    {
+                        m_autocomplete_selection = static_cast<int>(i);
+                        if (ImGui::IsMouseDoubleClicked(0))
+                        {
+                            ApplyAutocomplete();
+                        }
+                    }
+
+                    // scroll to keep selected item visible
+                    if (is_selected && ImGui::IsKeyPressed(ImGuiKey_DownArrow))
+                    {
+                        ImGui::SetScrollHereY(0.5f);
+                    }
+                    if (is_selected && ImGui::IsKeyPressed(ImGuiKey_UpArrow))
+                    {
+                        ImGui::SetScrollHereY(0.5f);
+                    }
+
+                    ImGui::TableSetColumnIndex(1);
+                    std::string value_str = ConsoleRegistry::Get().GetValueAsString(cvar->m_name).value();
+                    ImGui::TextUnformatted(value_str.c_str());
+
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::TextWrapped("%s", std::string(cvar->m_hint).c_str());
+
+                    ImGui::PopID();
                 }
-                else if (ImGui::IsKeyPressed(ImGuiKey_UpArrow))
-                {
-                    m_autocomplete_selection = (m_autocomplete_selection - 1 + static_cast<int>(m_filtered_cvars.size())) % static_cast<int>(m_filtered_cvars.size());
-                }
-                else if (ImGui::IsKeyPressed(ImGuiKey_Tab))
-                {
-                    ApplyAutocomplete();
-                    reclaim_focus = true;
-                }
+
+                ImGui::EndTable();
             }
         }
+        ImGui::End();
 
-        if (ImGui::IsWindowAppearing() || reclaim_focus)
-        {
-            ImGui::SetKeyboardFocusHere(-1);
-        }
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar(2);
     }
 }
 
