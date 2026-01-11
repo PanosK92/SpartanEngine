@@ -276,7 +276,20 @@ namespace
             {
                 ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 18.0f, MenuBar::GetPaddingY() - 5.0f });
                 static auto is_playing     = [](Widget*) { return spartan::Engine::IsFlagSet(spartan::EngineMode::Playing); };
-                static auto toggle_playing = [](Widget*) { spartan::Engine::ToggleFlag(spartan::EngineMode::Playing); };
+                static auto toggle_playing = [](Widget*)
+                {
+                    spartan::Engine::ToggleFlag(spartan::EngineMode::Playing);
+                    
+                    // disable imgui keyboard navigation in play mode to avoid conflicts with game input
+                    if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
+                    {
+                        ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+                    }
+                    else
+                    {
+                        ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+                    }
+                };
                 toolbar_button(
                     spartan::ResourceCache::GetIcon(spartan::IconType::Play), "Play",
                     is_playing,
