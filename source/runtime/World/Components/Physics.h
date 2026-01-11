@@ -212,6 +212,16 @@ namespace spartan
         float GetEngineTorque() const;                          // current engine torque output (Nm)
         float GetRedlineRPM() const;                            // engine redline rpm
         bool IsShifting() const;                                // is gearbox currently shifting
+        
+        // debug visualization
+        void SetDrawRaycasts(bool enabled);
+        bool GetDrawRaycasts() const;
+        void SetDrawSuspension(bool enabled);
+        bool GetDrawSuspension() const;
+        void DrawDebugVisualization();                          // call each frame to draw debug lines
+        
+        // sync physics wheel positions from wheel entity positions
+        void SyncWheelOffsetsFromEntities();
 
     private:
         void UpdateWheelTransforms();
@@ -240,6 +250,7 @@ namespace spartan
         float m_wheel_rotation = 0.0f; // cumulative wheel spin rotation (radians)
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
         float m_wheel_mesh_center_offset_y = 0.0f; // offset from entity origin to mesh center (for non-centered meshes)
+        bool m_wheel_offsets_synced = false; // flag to ensure wheel offsets are synced from entities once
         
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;

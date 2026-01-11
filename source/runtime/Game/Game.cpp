@@ -767,7 +767,17 @@ namespace spartan
                 physics->GetTurboEnabled() ? "ON" : "--",
                 physics->GetManualTransmission() ? "MT" : "AT");
             Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
+            y_pos += line_spacing;
+            
+            // debug visualization status
+            snprintf(text_buffer, sizeof(text_buffer), "Debug:    Raycasts [%s]   Suspension [%s]",
+                physics->GetDrawRaycasts() ? "ON" : "--",
+                physics->GetDrawSuspension() ? "ON" : "--");
+            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
             y_pos += line_spacing * 1.5f;
+            
+            // draw debug visualization
+            physics->DrawDebugVisualization();
             
             // per-wheel metrics header
             Renderer::DrawString("Tire Physics:", Vector2(0.005f, y_pos));

@@ -191,6 +191,10 @@ namespace car
         constexpr float surface_friction_gravel      = 0.6f;
         constexpr float surface_friction_grass       = 0.4f;
         constexpr float surface_friction_ice         = 0.1f;
+        
+        // debug visualization
+        inline bool draw_raycasts   = true;   // draw wheel raycast lines
+        inline bool draw_suspension = true;   // draw suspension travel
     }
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
@@ -264,6 +268,18 @@ namespace car
     inline static float           shift_cooldown = 0.0f;
     inline static int             last_shift_direction = 0;
     inline static float           boost_pressure = 0.0f;
+    
+    // debug visualization data
+    struct debug_ray
+    {
+        PxVec3 origin;
+        PxVec3 hit_point;
+        bool   hit;
+    };
+    constexpr int debug_rays_per_wheel = 7;
+    inline static debug_ray debug_rays[wheel_count][debug_rays_per_wheel];
+    inline static PxVec3    debug_suspension_top[wheel_count];
+    inline static PxVec3    debug_suspension_bottom[wheel_count];
 
     // helpers
     inline bool  is_front(int i)                { return i == front_left || i == front_right; }
@@ -734,10 +750,18 @@ namespace car
                 PxVec3 offset = local_fwd * ray_offsets[r].x + local_right * ray_offsets[r].y - local_down * ray_offsets[r].z;
                 PxVec3 ray_origin = world_attach + offset;
                 
+                // store debug ray origin
+                debug_rays[i][r].origin = ray_origin;
+                debug_rays[i][r].hit = false;
+                
                 PxRaycastBuffer hit;
                 if (scene->raycast(ray_origin, local_down, ray_len, hit, PxHitFlag::eDEFAULT, filter) &&
                     hit.block.actor && hit.block.actor != body)
                 {
+                    // store debug ray hit point
+                    debug_rays[i][r].hit_point = hit.block.position;
+                    debug_rays[i][r].hit = true;
+                    
                     float adjusted_dist = hit.block.distance - ray_offsets[r].z;
                     if (adjusted_dist <= max_dist)
                     {
@@ -750,7 +774,17 @@ namespace car
                         }
                     }
                 }
+                else
+                {
+                    // no hit - show ray extending to max length
+                    debug_rays[i][r].hit_point = ray_origin + local_down * ray_len;
+                }
             }
+            
+            // store debug suspension positions
+            debug_suspension_top[i] = world_attach;
+            PxVec3 wheel_center = world_attach + local_down * (cfg.suspension_travel * (1.0f - w.compression) + cfg.wheel_radius);
+            debug_suspension_bottom[i] = wheel_center;
             
             if (hit_count > 0)
             {
@@ -1431,4 +1465,49 @@ namespace car
     inline float get_rear_camber()  { return tuning::rear_camber; }
     inline float get_front_toe()    { return tuning::front_toe; }
     inline float get_rear_toe()     { return tuning::rear_toe; }
+    
+    // wheel offset setters (for syncing with actual wheel mesh positions)
+    inline void set_wheel_offset(int wheel, float x, float z)
+    {
+        if (wheel >= 0 && wheel < wheel_count)
+        {
+            wheel_offsets[wheel].x = x;
+            wheel_offsets[wheel].z = z;
+            // y stays as -suspension_height (set in compute_constants)
+        }
+    }
+    
+    inline PxVec3 get_wheel_offset(int wheel)
+    {
+        if (wheel >= 0 && wheel < wheel_count)
+            return wheel_offsets[wheel];
+        return PxVec3(0);
+    }
+    
+    // debug visualization
+    inline void set_draw_raycasts(bool enabled)   { tuning::draw_raycasts = enabled; }
+    inline bool get_draw_raycasts()               { return tuning::draw_raycasts; }
+    inline void set_draw_suspension(bool enabled) { tuning::draw_suspension = enabled; }
+    inline bool get_draw_suspension()             { return tuning::draw_suspension; }
+    
+    inline void get_debug_ray(int wheel, int ray, PxVec3& origin, PxVec3& hit_point, bool& hit)
+    {
+        if (wheel >= 0 && wheel < wheel_count && ray >= 0 && ray < debug_rays_per_wheel)
+        {
+            origin    = debug_rays[wheel][ray].origin;
+            hit_point = debug_rays[wheel][ray].hit_point;
+            hit       = debug_rays[wheel][ray].hit;
+        }
+    }
+    
+    inline void get_debug_suspension(int wheel, PxVec3& top, PxVec3& bottom)
+    {
+        if (wheel >= 0 && wheel < wheel_count)
+        {
+            top    = debug_suspension_top[wheel];
+            bottom = debug_suspension_bottom[wheel];
+        }
+    }
+    
+    inline int get_debug_rays_per_wheel() { return debug_rays_per_wheel; }
 }

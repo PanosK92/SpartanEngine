@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Physics/PhysicsWorld.h"
 #include "../../Physics/Car.h"
 #include "../../Geometry/GeometryProcessing.h"
+#include "../../Rendering/Renderer.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
     #define _DEBUG 1
@@ -201,6 +202,13 @@ namespace spartan
         {
             if (Engine::IsFlagSet(EngineMode::Playing))
             {
+                // sync wheel offsets from entity positions once at start of play
+                if (!m_wheel_offsets_synced)
+                {
+                    SyncWheelOffsetsFromEntities();
+                    m_wheel_offsets_synced = true;
+                }
+                
                 // update vehicle physics (input is set externally via vehicle::set_throttle/brake/steering)
                 float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
                 car::tick(delta_time);
@@ -220,6 +228,8 @@ namespace spartan
             else
             {
                 // editor mode: sync entity -> physx, reset velocities
+                m_wheel_offsets_synced = false; // reset so offsets re-sync on next play
+                
                 if (!m_actors.empty() && m_actors[0])
                 {
                     Vector3 pos = GetEntity()->GetPosition();
@@ -909,6 +919,32 @@ namespace spartan
         if (index >= 0 && index < static_cast<int>(WheelIndex::Count))
         {
             m_wheel_entities[index] = entity;
+            
+            // sync the physics wheel offset from the entity position
+            if (entity)
+            {
+                Entity* vehicle_entity = GetEntity();
+                if (vehicle_entity)
+                {
+                    // transform wheel world position to vehicle-local space
+                    Vector3 vehicle_world_pos = vehicle_entity->GetPosition();
+                    Quaternion vehicle_world_rot = vehicle_entity->GetRotation();
+                    Quaternion vehicle_world_rot_inv = vehicle_world_rot.Conjugate();
+                    
+                    // try to get the actual mesh center from the renderable's bounding box
+                    Vector3 wheel_world_pos = entity->GetPosition();
+                    Renderable* renderable = entity->GetComponent<Renderable>();
+                    if (renderable)
+                    {
+                        renderable->Tick();
+                        BoundingBox aabb = renderable->GetBoundingBox();
+                        wheel_world_pos = aabb.GetCenter();
+                    }
+                    
+                    Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
+                    car::set_wheel_offset(index, local_pos.x, local_pos.z);
+                }
+            }
         }
     }
 
@@ -1322,6 +1358,120 @@ namespace spartan
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::get_is_shifting();
+    }
+    
+    void Physics::SetDrawRaycasts(bool enabled)
+    {
+        car::set_draw_raycasts(enabled);
+    }
+    
+    bool Physics::GetDrawRaycasts() const
+    {
+        return car::get_draw_raycasts();
+    }
+    
+    void Physics::SetDrawSuspension(bool enabled)
+    {
+        car::set_draw_suspension(enabled);
+    }
+    
+    bool Physics::GetDrawSuspension() const
+    {
+        return car::get_draw_suspension();
+    }
+    
+    void Physics::DrawDebugVisualization()
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        using namespace physx;
+        
+        // colors for visualization
+        const Color color_ray_hit    = Color(0.0f, 1.0f, 0.0f, 1.0f);   // green - ray hit ground
+        const Color color_ray_miss   = Color(1.0f, 0.0f, 0.0f, 1.0f);   // red - ray missed
+        const Color color_susp_top   = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - suspension top
+        const Color color_susp_bot   = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - suspension bottom/wheel
+        
+        // draw raycasts
+        if (car::get_draw_raycasts())
+        {
+            int rays_per_wheel = car::get_debug_rays_per_wheel();
+            for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
+            {
+                for (int r = 0; r < rays_per_wheel; r++)
+                {
+                    PxVec3 origin, hit_point;
+                    bool hit;
+                    car::get_debug_ray(w, r, origin, hit_point, hit);
+                    
+                    math::Vector3 from(origin.x, origin.y, origin.z);
+                    math::Vector3 to(hit_point.x, hit_point.y, hit_point.z);
+                    
+                    Renderer::DrawLine(from, to, hit ? color_ray_hit : color_ray_miss, hit ? color_ray_hit : color_ray_miss);
+                }
+            }
+        }
+        
+        // draw suspension
+        if (car::get_draw_suspension())
+        {
+            for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
+            {
+                PxVec3 top, bottom;
+                car::get_debug_suspension(w, top, bottom);
+                
+                math::Vector3 susp_top(top.x, top.y, top.z);
+                math::Vector3 susp_bottom(bottom.x, bottom.y, bottom.z);
+                
+                Renderer::DrawLine(susp_top, susp_bottom, color_susp_top, color_susp_bot);
+            }
+        }
+    }
+    
+    void Physics::SyncWheelOffsetsFromEntities()
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return;
+        
+        Entity* vehicle_entity = GetEntity();
+        if (!vehicle_entity)
+            return;
+        
+        // get vehicle's world transform to convert wheel world positions to vehicle-local space
+        Vector3 vehicle_world_pos = vehicle_entity->GetPosition();
+        Quaternion vehicle_world_rot = vehicle_entity->GetRotation();
+        Quaternion vehicle_world_rot_inv = vehicle_world_rot.Conjugate();
+        
+        for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+        {
+            Entity* wheel_entity = m_wheel_entities[i];
+            if (!wheel_entity)
+                continue;
+            
+            // try to get the actual mesh center from the renderable's bounding box
+            // this handles meshes where the origin is not at the geometric center
+            Vector3 wheel_world_pos = wheel_entity->GetPosition();
+            
+            Renderable* renderable = wheel_entity->GetComponent<Renderable>();
+            if (renderable)
+            {
+                renderable->Tick(); // ensure bounding box is up to date
+                BoundingBox aabb = renderable->GetBoundingBox();
+                wheel_world_pos = aabb.GetCenter(); // use mesh center instead of entity origin
+            }
+            
+            // transform to vehicle-local space
+            // this handles cases where wheel is a child of an intermediate entity (e.g. "model")
+            Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
+            
+            // update the physics wheel offset x and z to match the mesh position
+            car::set_wheel_offset(i, local_pos.x, local_pos.z);
+            
+            SP_LOG_INFO("SyncWheelOffsetsFromEntities: wheel %d offset set to (%.3f, %.3f)", i, local_pos.x, local_pos.z);
+        }
+        
+        SP_LOG_INFO("SyncWheelOffsetsFromEntities: wheel offsets synced from entity positions");
     }
 
     void Physics::UpdateWheelTransforms()
