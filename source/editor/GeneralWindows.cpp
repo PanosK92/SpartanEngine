@@ -50,7 +50,8 @@ namespace
         );
     }
 
-    namespace sponsor
+    // merged welcome window (combines introduction and sponsor into one)
+    namespace welcome
     {
         bool visible = true;
 
@@ -58,17 +59,39 @@ namespace
         {
             if (!visible) return;
 
-            center_next_window(editor);
+            // position below the world selection window so they don't overlap
+            ImVec2 viewport_center = editor->GetWidget<Viewport>()->GetCenter();
+            ImGui::SetNextWindowPos(
+                ImVec2(viewport_center.x, viewport_center.y + 200.0f * spartan::Window::GetDpiScale()),
+                ImGuiCond_Appearing,
+                ImVec2(0.5f, 0.0f) // anchor at top-center so it extends downward
+            );
 
-            // Added NoResize to keep the tighter layout control
-            if (ImGui::Begin("Support Spartan Engine", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+            if (ImGui::Begin("Welcome", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
             {
-                // Use a slightly larger width for better reading flow
-                float content_width = 550.0f * spartan::Window::GetDpiScale();
+                float content_width = 500.0f * spartan::Window::GetDpiScale();
 
                 ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + content_width);
+
+                // introduction section
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "[ Note ]");
+                ImGui::SameLine();
+                ImGui::Text("This isn't an engine for the average user.");
+                ImGui::Spacing();
+                ImGui::Text("It is designed for advanced research, ideal for game engine and rendering engineers.");
+
+                ImGui::PopTextWrapPos();
+
+                ImGui::Spacing();
+                ImGui::Separator();
+                ImGui::Spacing();
+
+                // sponsor section
+                ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + content_width);
+                ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Support ]");
+                ImGui::SameLine();
                 ImGui::Text("I cover the costs for hosting and bandwidth of engine assets.");
-                ImGui::Spacing(); // Breathing room
+                ImGui::Spacing();
                 ImGui::Text("If you enjoy the simplicity of running a single script, build, run and have everything just work, please consider sponsoring to help keep everything running smoothly!");
                 ImGui::PopTextWrapPos();
 
@@ -76,47 +99,20 @@ namespace
                 ImGui::Separator();
                 ImGui::Spacing();
 
-                // Make the button prominent
-                if (ImGuiSp::button_centered_on_line("Sponsor on GitHub"))
-                {
-                    spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
-                }
-            }
-            ImGui::End();
-        }
-    }
+                // buttons
+                float button_width = 140.0f;
+                float total_width  = button_width * 2 + ImGui::GetStyle().ItemSpacing.x;
+                float offset_x     = (ImGui::GetContentRegionAvail().x - total_width) * 0.5f;
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
-    namespace introduction
-    {
-        bool visible = true;
-
-        void window()
-        {
-            if (!visible) return;
-
-            center_next_window(editor);
-
-            if (ImGui::Begin("Welcome", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
-            {
-                float content_width = 500.0f * spartan::Window::GetDpiScale();
-
-                ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + content_width);
-                // Visual hierarchy: Icon or emphasis (simulated with text here)
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "[ Note ]");
-                ImGui::SameLine();
-                ImGui::Text("This isn't an engine for the average user.");
-
-                ImGui::Spacing();
-                ImGui::Text("It is designed for advanced research, ideal for game engine and rendering engineers.");
-                ImGui::PopTextWrapPos();
-
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Spacing();
-
-                if (ImGuiSp::button_centered_on_line("I Understand"))
+                if (ImGui::Button("I Understand", ImVec2(button_width, 0)))
                 {
                     visible = false;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Sponsor", ImVec2(button_width, 0)))
+                {
+                    spartan::FileSystem::OpenUrl("https://github.com/sponsors/PanosK92");
                 }
             }
             ImGui::End();
@@ -722,9 +718,8 @@ void GeneralWindows::Initialize(Editor* editor_in)
 {
     editor = editor_in;
 
-    // the sponsor window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
-    sponsor::visible      = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
-    introduction::visible = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
+    // the welcome window only shows up if the editor.ini file doesn't exist, which means that this is the first ever run
+    welcome::visible = !spartan::FileSystem::Exists(ImGui::GetIO().IniFilename);
 
     // world download
     {
@@ -755,8 +750,7 @@ void GeneralWindows::Tick()
     // windows
     {
         worlds::window();
-        introduction::window();
-        sponsor::window();
+        welcome::window();
         about::window();
         controls::window();
     }
