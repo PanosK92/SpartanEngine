@@ -329,7 +329,7 @@ namespace spartan
         if (!m_mesh)
             return false;
 
-        return m_mesh->GetBlas() != nullptr;
+        return m_mesh->HasBlas(m_sub_mesh_index);
     }
 
     uint64_t Renderable::GetAccelerationStructureDeviceAddress() const
@@ -337,7 +337,7 @@ namespace spartan
         if (!m_mesh)
             return 0;
 
-        RHI_AccelerationStructure* blas = m_mesh->GetBlas();
+        RHI_AccelerationStructure* blas = m_mesh->GetBlas(m_sub_mesh_index);
         if (!blas)
             return 0;
 

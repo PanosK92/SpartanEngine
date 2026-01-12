@@ -125,8 +125,9 @@ namespace spartan
         uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
 
-        // acceleration structure
-        RHI_AccelerationStructure* GetBlas() const { return m_blas.get(); }
+        // acceleration structure - one blas per sub-mesh to avoid shared geometry issues
+        RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const;
+        bool HasBlas(uint32_t sub_mesh_index) const;
 
     private:
         // geometry
@@ -137,7 +138,7 @@ namespace spartan
         // gpu buffers
         std::unique_ptr<RHI_Buffer> m_vertex_buffer;
         std::unique_ptr<RHI_Buffer> m_index_buffer;
-        std::unique_ptr<RHI_AccelerationStructure> m_blas;
+        std::vector<std::unique_ptr<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh
 
         // misc
         std::mutex m_mutex;

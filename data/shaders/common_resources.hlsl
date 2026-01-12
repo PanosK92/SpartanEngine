@@ -110,6 +110,7 @@ struct MaterialParameters
     float clearcoat;
     float clearcoat_roughness;
     
+    bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }
     bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }
     bool has_texture_roughness() { return (flags & (1 << 3))  != 0; }
     bool has_texture_metalness() { return (flags & (1 << 4))  != 0; }

@@ -24,13 +24,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // debug visualization toggle
-// when enabled: green = hit, red = miss, blue = no geometry
+// 0 = normal rendering
+// 1 = green = hit, red = miss, blue = no geometry
+// 2 = visualize UVs (R=U, G=V)
+// 3 = visualize normals  
+// 4 = visualize instance index
+// 5 = material color only (no texture)
+// 6 = visualize primitive index
+// 7 = visualize index values (diagnose index buffer reading)
+// 8 = visualize vertex offset (diagnose vertex buffer reading)
 #define DEBUG_RAY_TRACING 0
 
 struct [raypayload] Payload
 {
     float3 color : read(caller, closesthit, miss) : write(caller, closesthit, miss);
-#if DEBUG_RAY_TRACING
+#if DEBUG_RAY_TRACING == 1
     bool hit     : read(caller) : write(closesthit, miss);
 #endif
 };
@@ -46,7 +54,7 @@ void ray_gen()
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
     {
-#if DEBUG_RAY_TRACING
+#if DEBUG_RAY_TRACING == 1
         tex_uav[launch_id] = float4(0, 0, 1, 1); // blue = no geometry
 #else
         // sample skysphere (tex3) for pixels with no geometry
@@ -88,7 +96,7 @@ void ray_gen()
     // trace
     Payload payload;
     payload.color = float3(0, 0, 0);
-#if DEBUG_RAY_TRACING
+#if DEBUG_RAY_TRACING == 1
     payload.hit   = false;
 #endif
     
@@ -99,8 +107,8 @@ void ray_gen()
     
     TraceRay(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 1, 0, ray, payload);
     
-    // output - debug mode shows green for hits, red for misses
-#if DEBUG_RAY_TRACING
+    // output - debug mode 1 shows green for hits, red for misses
+#if DEBUG_RAY_TRACING == 1
     tex_uav[launch_id] = payload.hit ? float4(0, 1, 0, 1) : float4(1, 0, 0, 1);
 #else
     tex_uav[launch_id] = float4(payload.color, 1.0f);
@@ -110,7 +118,7 @@ void ray_gen()
 [shader("miss")]
 void miss(inout Payload payload : SV_RayPayload)
 {
-#if DEBUG_RAY_TRACING
+#if DEBUG_RAY_TRACING == 1
     payload.hit = false;
 #endif
     
@@ -132,8 +140,9 @@ static const uint VERTEX_STRIDE = 44;
 [shader("closesthit")]
 void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
-#if DEBUG_RAY_TRACING
+#if DEBUG_RAY_TRACING == 1
     payload.hit = true;
+    return;
 #endif
     
     // material index from tlas instance custom data
@@ -176,6 +185,51 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     
     // transform normal to world space
     float3 normal_world = normalize(mul(normal_object, (float3x3)ObjectToWorld4x3()));
+
+#if DEBUG_RAY_TRACING == 2
+    // visualize raw uvs (before tiling) as colors
+    payload.color = float3(frac(texcoord.x), frac(texcoord.y), 0);
+    return;
+#elif DEBUG_RAY_TRACING == 3
+    // visualize world normals
+    payload.color = normal_world * 0.5f + 0.5f;
+    return;
+#elif DEBUG_RAY_TRACING == 4
+    // visualize instance index (different color per instance)
+    float hue = frac(instance_index * 0.1f);
+    payload.color = float3(hue, 1.0f - hue, frac(hue * 2.0f));
+    return;
+#elif DEBUG_RAY_TRACING == 5
+    // material color only (no texture) with simple lighting
+    float3 light_dir = normalize(float3(0.5f, 1.0f, 0.3f));
+    float n_dot_l    = saturate(dot(normal_world, light_dir) * 0.5f + 0.5f);
+    payload.color    = mat.color.rgb * n_dot_l;
+    return;
+#elif DEBUG_RAY_TRACING == 6
+    // visualize primitive index - helps identify triangle access patterns
+    float prim_hue = frac(primitive_index * 0.001f);
+    payload.color = float3(prim_hue, frac(prim_hue * 3.0f), frac(prim_hue * 7.0f));
+    return;
+#elif DEBUG_RAY_TRACING == 7
+    // visualize index values - if mangled, indices are being read wrong
+    // valid indices should give smooth color variation
+    // random/noisy = index buffer reading is broken
+    payload.color = float3(
+        frac(float(i0) * 0.001f),
+        frac(float(i1) * 0.001f),
+        frac(float(i2) * 0.001f)
+    );
+    return;
+#elif DEBUG_RAY_TRACING == 8
+    // visualize computed vertex byte offset - should be smooth
+    // if noisy, the vertex offset calculation is wrong
+    payload.color = float3(
+        frac(float(v0_offset) * 0.00001f),
+        frac(float(geo.vertex_offset) * 0.001f),
+        frac(float(geo.index_offset) * 0.001f)
+    );
+    return;
+#endif
     
     // apply material tiling to uvs
     texcoord = texcoord * mat.tiling + mat.offset;
@@ -183,14 +237,17 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     // base albedo from material
     float3 albedo = mat.color.rgb;
     
-    // sample albedo texture using actual mesh uvs
-    uint albedo_texture_index = material_index + material_texture_index_albedo;
-    float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, 2);
-    
-    // use texture if valid
-    if (sampled_albedo.a > 0.01f)
+    // sample albedo texture if material has one
+    if (mat.has_texture_albedo())
     {
-        albedo = sampled_albedo.rgb * mat.color.rgb;
+        uint albedo_texture_index = material_index + material_texture_index_albedo;
+        float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, 2);
+        
+        // use texture if valid
+        if (sampled_albedo.a > 0.01f)
+        {
+            albedo = sampled_albedo.rgb * mat.color.rgb;
+        }
     }
     
     // simple directional lighting using actual surface normal

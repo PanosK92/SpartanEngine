@@ -1293,12 +1293,13 @@ namespace spartan
                         instance.device_address                              = device_address;
 
                         // build row-major 3x4 transform for vulkan
-                        // engine matrix: column-major storage, translation in row 3 (m30, m31, m32)
-                        // vktransformmatrixkhr: row-major 3x4, translation in last column
+                        // engine uses row vectors (point * matrix), vulkan uses column vectors (matrix * point)
+                        // so we need to transpose the 3x3 rotation part
+                        // translation stays in the last column
                         const Matrix& m = renderable->GetEntity()->GetMatrix();
-                        instance.transform[0]  = m.m00; instance.transform[1]  = m.m01; instance.transform[2]  = m.m02; instance.transform[3]  = m.m30;
-                        instance.transform[4]  = m.m10; instance.transform[5]  = m.m11; instance.transform[6]  = m.m12; instance.transform[7]  = m.m31;
-                        instance.transform[8]  = m.m20; instance.transform[9]  = m.m21; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
+                        instance.transform[0]  = m.m00; instance.transform[1]  = m.m10; instance.transform[2]  = m.m20; instance.transform[3]  = m.m30;
+                        instance.transform[4]  = m.m01; instance.transform[5]  = m.m11; instance.transform[6]  = m.m21; instance.transform[7]  = m.m31;
+                        instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
 
                         instances.push_back(instance);
 
