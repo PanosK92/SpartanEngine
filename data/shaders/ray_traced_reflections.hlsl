@@ -51,10 +51,10 @@ void ray_gen()
 #else
         // sample skysphere (tex3) for pixels with no geometry
         // use far plane position to compute view direction (avoids issues with depth=0)
-        float3 far_pos  = get_position(1.0f, uv);
-        float3 ray_dir  = normalize(far_pos - buffer_frame.camera_position);
-        float2 sky_uv   = direction_sphere_uv(ray_dir);
-        float3 sky_col  = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, 0).rgb;
+        float3 far_pos     = get_position(1.0f, uv);
+        float3 ray_dir     = normalize(far_pos - buffer_frame.camera_position);
+        float2 sky_uv      = direction_sphere_uv(ray_dir);
+        float3 sky_col     = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, 0).rgb;
         tex_uav[launch_id] = float4(sky_col, 0.0f);
 #endif
         return;
@@ -63,7 +63,7 @@ void ray_gen()
     // check surface roughness - skip ray tracing for fully rough (diffuse) surfaces
     float4 material_sample = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     float roughness        = material_sample.r;
-    if (roughness >= 0.95f) // near-fully rough surfaces don't reflect
+    if (roughness >= 0.9f) // near-fully rough surfaces don't reflect
     {
         tex_uav[launch_id] = float4(0, 0, 0, 0);
         return;
