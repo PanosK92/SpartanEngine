@@ -827,7 +827,16 @@ namespace spartan
             // set textures and acceleration structure
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::skysphere));
+            
+            // ensure skysphere is in shader read layout for sampling
+            RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+            
+            // geometry info buffer for vertex/index access in hit shader
+            // reset offset to bind from start (Update advances offset for ring buffer pattern)
+            GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
+            cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
 
             // set output texture (as UAV for ray tracing write)
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_reflections, rhi_all_mips, 0, true);

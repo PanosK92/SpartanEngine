@@ -89,6 +89,12 @@ namespace spartan
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
             }
+            
+            // save device address for ray tracing vertex/index buffer access
+            if (RHI_Device::IsSupportedRayTracing() && (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index))
+            {
+                m_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource);
+            }
         }
         else if (m_type == RHI_Buffer_Type::Storage)
         {

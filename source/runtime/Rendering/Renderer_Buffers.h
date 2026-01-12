@@ -207,4 +207,15 @@ namespace spartan
         math::Vector3 max;
         float padding2;
     };
+
+    // ray tracing geometry info for vertex/index buffer access
+    struct Sb_GeometryInfo
+    {
+        uint64_t vertex_buffer_address;
+        uint64_t index_buffer_address;
+        uint32_t vertex_offset;
+        uint32_t index_offset;
+        uint32_t vertex_count;
+        uint32_t index_count;
+    };
 }

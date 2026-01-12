@@ -166,6 +166,30 @@ Texture3D tex3d : register(t13);
 // noise
 Texture2D tex_perlin : register(t14);
 
+// ray tracing geometry info for vertex buffer access (indexed by InstanceIndex())
+// matches c++ Sb_GeometryInfo struct
+struct GeometryInfo
+{
+    uint2 vertex_buffer_address; // uint64_t split into two uint32_t (low, high)
+    uint2 index_buffer_address;  // uint64_t split into two uint32_t (low, high)
+    uint vertex_offset;
+    uint index_offset;
+    uint vertex_count;
+    uint index_count;
+};
+
+// vertex structure matching c++ RHI_Vertex_PosTexNorTan (44 bytes)
+struct RtVertex
+{
+    float3 position;  // 12 bytes
+    float2 texcoord;  // 8 bytes  
+    float3 normal;    // 12 bytes
+    float3 tangent;   // 12 bytes
+};
+
+// ray tracing geometry info buffer
+RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
+
 // bindless arrays
 Texture2D material_textures[]                            : register(t15, space1);
 StructuredBuffer<MaterialParameters> material_parameters : register(t16, space2);

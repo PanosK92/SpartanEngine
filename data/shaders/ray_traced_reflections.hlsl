@@ -49,8 +49,23 @@ void ray_gen()
 #if DEBUG_RAY_TRACING
         tex_uav[launch_id] = float4(0, 0, 1, 1); // blue = no geometry
 #else
-        tex_uav[launch_id] = float4(0, 0, 0, 0);
+        // sample skysphere (tex3) for pixels with no geometry
+        // use far plane position to compute view direction (avoids issues with depth=0)
+        float3 far_pos  = get_position(1.0f, uv);
+        float3 ray_dir  = normalize(far_pos - buffer_frame.camera_position);
+        float2 sky_uv   = direction_sphere_uv(ray_dir);
+        float3 sky_col  = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, 0).rgb;
+        tex_uav[launch_id] = float4(sky_col, 0.0f);
 #endif
+        return;
+    }
+    
+    // check surface roughness - skip ray tracing for fully rough (diffuse) surfaces
+    float4 material_sample = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    float roughness        = material_sample.r;
+    if (roughness >= 0.95f) // near-fully rough surfaces don't reflect
+    {
+        tex_uav[launch_id] = float4(0, 0, 0, 0);
         return;
     }
     
@@ -76,6 +91,12 @@ void ray_gen()
 #if DEBUG_RAY_TRACING
     payload.hit   = false;
 #endif
+    
+    // touch geometry_infos to ensure it's included in the pipeline layout (used in closest_hit)
+    // this is a no-op that the compiler won't optimize away due to the buffer access
+    if (geometry_infos[0].vertex_count == 0xFFFFFFFF)
+        return;
+    
     TraceRay(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 1, 0, ray, payload);
     
     // output - debug mode shows green for hits, red for misses
@@ -99,6 +120,15 @@ void miss(inout Payload payload : SV_RayPayload)
     payload.color  = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uv, 0).rgb;
 }
 
+// helper to reconstruct uint64 address from two uint32 values
+uint64_t make_address(uint2 addr)
+{
+    return uint64_t(addr.x) | (uint64_t(addr.y) << 32);
+}
+
+// vertex stride in bytes (float3 pos + float2 tex + float3 nor + float3 tan = 44 bytes)
+static const uint VERTEX_STRIDE = 44;
+
 [shader("closesthit")]
 void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
@@ -110,31 +140,52 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     uint material_index = InstanceID();
     MaterialParameters mat = material_parameters[material_index];
     
-    // hit position and view direction
-    float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    float3 V       = -WorldRayDirection();
+    // get geometry info for this instance
+    uint instance_index = InstanceIndex();
+    GeometryInfo geo    = geometry_infos[instance_index];
+    
+    // get triangle indices using buffer device address
+    uint64_t index_addr   = make_address(geo.index_buffer_address);
+    uint primitive_index  = PrimitiveIndex();
+    uint index_offset     = (geo.index_offset + primitive_index * 3) * 4; // 3 indices per tri, 4 bytes per uint
+    
+    uint i0 = vk::RawBufferLoad<uint>(index_addr + index_offset + 0);
+    uint i1 = vk::RawBufferLoad<uint>(index_addr + index_offset + 4);
+    uint i2 = vk::RawBufferLoad<uint>(index_addr + index_offset + 8);
+    
+    // get vertex buffer address
+    uint64_t vertex_addr = make_address(geo.vertex_buffer_address);
+    uint v0_offset       = (geo.vertex_offset + i0) * VERTEX_STRIDE;
+    uint v1_offset       = (geo.vertex_offset + i1) * VERTEX_STRIDE;
+    uint v2_offset       = (geo.vertex_offset + i2) * VERTEX_STRIDE;
+    
+    // load vertex data (position: 0, texcoord: 12, normal: 20, tangent: 32)
+    float2 uv0 = vk::RawBufferLoad<float2>(vertex_addr + v0_offset + 12);
+    float2 uv1 = vk::RawBufferLoad<float2>(vertex_addr + v1_offset + 12);
+    float2 uv2 = vk::RawBufferLoad<float2>(vertex_addr + v2_offset + 12);
+    
+    float3 n0 = vk::RawBufferLoad<float3>(vertex_addr + v0_offset + 20);
+    float3 n1 = vk::RawBufferLoad<float3>(vertex_addr + v1_offset + 20);
+    float3 n2 = vk::RawBufferLoad<float3>(vertex_addr + v2_offset + 20);
+    
+    // barycentric interpolation
+    float3 bary = float3(1.0f - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
+    
+    float2 texcoord      = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
+    float3 normal_object = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
+    
+    // transform normal to world space
+    float3 normal_world = normalize(mul(normal_object, (float3x3)ObjectToWorld4x3()));
+    
+    // apply material tiling to uvs
+    texcoord = texcoord * mat.tiling + mat.offset;
     
     // base albedo from material
     float3 albedo = mat.color.rgb;
     
-    // triplanar mapping - use view direction as pseudo-normal for blending weights
-    // this gives better results on curved surfaces than single-plane projection
-    float3 blend_weights = abs(V);
-    blend_weights = blend_weights / (blend_weights.x + blend_weights.y + blend_weights.z + 0.001f);
-    
-    // compute uvs for each projection plane
-    float2 uv_x = hit_pos.yz * mat.tiling; // project onto yz plane (for x-facing surfaces)
-    float2 uv_y = hit_pos.xz * mat.tiling; // project onto xz plane (for y-facing surfaces like floors)
-    float2 uv_z = hit_pos.xy * mat.tiling; // project onto xy plane (for z-facing surfaces)
-    
-    // sample albedo from bindless texture array using triplanar
+    // sample albedo texture using actual mesh uvs
     uint albedo_texture_index = material_index + material_texture_index_albedo;
-    float4 sample_x = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv_x, 2);
-    float4 sample_y = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv_y, 2);
-    float4 sample_z = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv_z, 2);
-    
-    // blend samples based on surface orientation
-    float4 sampled_albedo = sample_x * blend_weights.x + sample_y * blend_weights.y + sample_z * blend_weights.z;
+    float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, 2);
     
     // use texture if valid
     if (sampled_albedo.a > 0.01f)
@@ -142,9 +193,9 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
         albedo = sampled_albedo.rgb * mat.color.rgb;
     }
     
-    // simple directional lighting
+    // simple directional lighting using actual surface normal
     float3 light_dir = normalize(float3(0.5f, 1.0f, 0.3f));
-    float n_dot_l    = saturate(dot(V, light_dir) * 0.5f + 0.5f); // half-lambert with view as pseudo-normal
+    float n_dot_l    = saturate(dot(normal_world, light_dir) * 0.5f + 0.5f); // half-lambert
     
     // ambient + diffuse
     float3 ambient   = float3(0.15f, 0.17f, 0.2f);

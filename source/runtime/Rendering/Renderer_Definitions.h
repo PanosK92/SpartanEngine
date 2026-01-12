@@ -90,15 +90,16 @@ namespace spartan
 
     enum class Renderer_BindingsUav
     {
-        tex         = 0,
-        tex2        = 1,
-        tex3        = 2,
-        tex4        = 3,
-        tex3d       = 4,
-        tex_sss     = 5,
-        visibility  = 6,
-        sb_spd      = 7,
-        tex_spd     = 8,
+        tex           = 0,
+        tex2          = 1,
+        tex3          = 2,
+        tex4          = 3,
+        tex3d         = 4,
+        tex_sss       = 5,
+        visibility    = 6,
+        sb_spd        = 7,
+        tex_spd       = 8,
+        geometry_info = 20, // ray tracing geometry info buffer
     };
 
     enum class Renderer_Shader : uint8_t
@@ -220,6 +221,7 @@ namespace spartan
         AABBs,
         Visibility,
         VisibilityPrevious,
+        GeometryInfo,
         Max
     };
 

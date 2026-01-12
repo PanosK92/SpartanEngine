@@ -1239,6 +1239,10 @@ namespace spartan
                     SP_ASSERT(support.features.depthClamp == VK_TRUE);
                     features.features.depthClamp = VK_TRUE;
 
+                    // 64-bit integers in shaders (needed for buffer device address)
+                    SP_ASSERT(support.features.shaderInt64 == VK_TRUE);
+                    features.features.shaderInt64 = VK_TRUE;
+
                     // anisotropic filtering
                     SP_ASSERT(support.features.samplerAnisotropy == VK_TRUE);
                     features.features.samplerAnisotropy = VK_TRUE;

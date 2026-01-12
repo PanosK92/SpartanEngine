@@ -1262,6 +1262,7 @@ namespace spartan
             constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // matches VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
 
             vector<RHI_AccelerationStructureInstance> instances;
+            vector<Sb_GeometryInfo> geometry_infos;
             for (Entity* entity : World::GetEntities())
             {
                 if (!entity->GetActive())
@@ -1274,6 +1275,12 @@ namespace spartan
                         // skip if blas doesn't exist (mesh might not have sub_meshes yet)
                         uint64_t device_address = renderable->GetAccelerationStructureDeviceAddress();
                         if (device_address == 0)
+                            continue;
+
+                        // skip if buffers aren't ready
+                        RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
+                        RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
+                        if (!vertex_buffer || !index_buffer)
                             continue;
 
                         RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
@@ -1294,6 +1301,16 @@ namespace spartan
                         instance.transform[8]  = m.m20; instance.transform[9]  = m.m21; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
 
                         instances.push_back(instance);
+
+                        // build geometry info for vertex/index buffer access in hit shader
+                        Sb_GeometryInfo geo_info     = {};
+                        geo_info.vertex_buffer_address = vertex_buffer->GetDeviceAddress();
+                        geo_info.index_buffer_address  = index_buffer->GetDeviceAddress();
+                        geo_info.vertex_offset       = renderable->GetVertexOffset(0); // lod 0
+                        geo_info.index_offset        = renderable->GetIndexOffset(0);
+                        geo_info.vertex_count        = renderable->GetVertexCount(0);
+                        geo_info.index_count         = renderable->GetIndexCount(0);
+                        geometry_infos.push_back(geo_info);
                     }
                 }
             }
@@ -1307,6 +1324,9 @@ namespace spartan
                     last_instance_count = static_cast<uint32_t>(instances.size());
                 }
                 tlas->BuildTopLevel(cmd_list, instances);
+
+                // update geometry info buffer for hit shader vertex access
+                GetBuffer(Renderer_Buffer::GeometryInfo)->Update(cmd_list, geometry_infos.data(), static_cast<uint32_t>(geometry_infos.size() * sizeof(Sb_GeometryInfo)));
             }
             else if (last_instance_count != 0)
             {
