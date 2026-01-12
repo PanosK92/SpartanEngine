@@ -23,9 +23,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+// debug visualization toggle
+// when enabled: green = hit, red = miss, blue = no geometry
+#define DEBUG_RAY_TRACING 0
+
 struct [raypayload] Payload
 {
     float3 color : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+#if DEBUG_RAY_TRACING
+    bool hit     : read(caller) : write(closesthit, miss);
+#endif
 };
 
 [shader("raygeneration")]
@@ -39,7 +46,11 @@ void ray_gen()
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
     {
+#if DEBUG_RAY_TRACING
+        tex_uav[launch_id] = float4(0, 0, 1, 1); // blue = no geometry
+#else
         tex_uav[launch_id] = float4(0, 0, 0, 0);
+#endif
         return;
     }
     
@@ -62,15 +73,26 @@ void ray_gen()
     // trace
     Payload payload;
     payload.color = float3(0, 0, 0);
+#if DEBUG_RAY_TRACING
+    payload.hit   = false;
+#endif
     TraceRay(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 1, 0, ray, payload);
     
-    // output raw reflection color
+    // output - debug mode shows green for hits, red for misses
+#if DEBUG_RAY_TRACING
+    tex_uav[launch_id] = payload.hit ? float4(0, 1, 0, 1) : float4(1, 0, 0, 1);
+#else
     tex_uav[launch_id] = float4(payload.color, 1.0f);
+#endif
 }
 
 [shader("miss")]
 void miss(inout Payload payload : SV_RayPayload)
 {
+#if DEBUG_RAY_TRACING
+    payload.hit = false;
+#endif
+    
     // sample skysphere for missed rays
     float3 ray_dir = WorldRayDirection();
     float2 uv      = direction_sphere_uv(ray_dir);
@@ -80,23 +102,39 @@ void miss(inout Payload payload : SV_RayPayload)
 [shader("closesthit")]
 void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
+#if DEBUG_RAY_TRACING
+    payload.hit = true;
+#endif
+    
     // material index from tlas instance custom data
     uint material_index = InstanceID();
     MaterialParameters mat = material_parameters[material_index];
     
-    // hit position
+    // hit position and view direction
     float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     float3 V       = -WorldRayDirection();
     
     // base albedo from material
     float3 albedo = mat.color.rgb;
     
-    // procedural uvs from world position (xz plane)
-    float2 procedural_uv = frac(hit_pos.xz * mat.tiling);
+    // triplanar mapping - use view direction as pseudo-normal for blending weights
+    // this gives better results on curved surfaces than single-plane projection
+    float3 blend_weights = abs(V);
+    blend_weights = blend_weights / (blend_weights.x + blend_weights.y + blend_weights.z + 0.001f);
     
-    // sample albedo from bindless texture array
+    // compute uvs for each projection plane
+    float2 uv_x = hit_pos.yz * mat.tiling; // project onto yz plane (for x-facing surfaces)
+    float2 uv_y = hit_pos.xz * mat.tiling; // project onto xz plane (for y-facing surfaces like floors)
+    float2 uv_z = hit_pos.xy * mat.tiling; // project onto xy plane (for z-facing surfaces)
+    
+    // sample albedo from bindless texture array using triplanar
     uint albedo_texture_index = material_index + material_texture_index_albedo;
-    float4 sampled_albedo     = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), procedural_uv, 2);
+    float4 sample_x = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv_x, 2);
+    float4 sample_y = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv_y, 2);
+    float4 sample_z = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv_z, 2);
+    
+    // blend samples based on surface orientation
+    float4 sampled_albedo = sample_x * blend_weights.x + sample_y * blend_weights.y + sample_z * blend_weights.z;
     
     // use texture if valid
     if (sampled_albedo.a > 0.01f)
@@ -105,9 +143,8 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     }
     
     // simple directional lighting
-    float3 light_dir     = normalize(float3(0.5f, 1.0f, 0.3f));
-    float3 pseudo_normal = V;
-    float n_dot_l        = saturate(dot(pseudo_normal, light_dir) * 0.5f + 0.5f); // half-lambert
+    float3 light_dir = normalize(float3(0.5f, 1.0f, 0.3f));
+    float n_dot_l    = saturate(dot(V, light_dir) * 0.5f + 0.5f); // half-lambert with view as pseudo-normal
     
     // ambient + diffuse
     float3 ambient   = float3(0.15f, 0.17f, 0.2f);

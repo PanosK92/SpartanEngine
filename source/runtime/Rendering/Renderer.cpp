@@ -1284,8 +1284,14 @@ namespace spartan
                         instance.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
                         instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
                         instance.device_address                              = device_address;
-                        Matrix world_matrix                                  = renderable->GetEntity()->GetMatrix().Transposed();
-                        copy(world_matrix.Data(), world_matrix.Data() + 12, instance.transform.begin()); // convert column-major 4x4 to row-major 3x4
+
+                        // build row-major 3x4 transform for vulkan
+                        // engine matrix: column-major storage, translation in row 3 (m30, m31, m32)
+                        // vktransformmatrixkhr: row-major 3x4, translation in last column
+                        const Matrix& m = renderable->GetEntity()->GetMatrix();
+                        instance.transform[0]  = m.m00; instance.transform[1]  = m.m01; instance.transform[2]  = m.m02; instance.transform[3]  = m.m30;
+                        instance.transform[4]  = m.m10; instance.transform[5]  = m.m11; instance.transform[6]  = m.m12; instance.transform[7]  = m.m31;
+                        instance.transform[8]  = m.m20; instance.transform[9]  = m.m21; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
 
                         instances.push_back(instance);
                     }
