@@ -724,36 +724,8 @@ namespace spartan
         cmd_list->BeginTimeblock("transparency_reflection_refraction");
         {
             bool use_ray_traced = cvar_ray_traced_reflections.GetValueAs<bool>();
-            bool use_ssr        = cvar_ssr.GetValueAs<bool>() && !use_ray_traced; // ray traced takes priority over ssr
 
-            if (use_ssr)
-            { 
-                cmd_list->BeginMarker("ssr");
-                {
-                    // do any pending barriers as we don't have control over vendor tech
-                    tex_frame->SetLayout(RHI_Image_Layout::General, cmd_list);
-                    cmd_list->RenderPassEnd();
-                    cmd_list->InsertPendingBarrierGroup();
-
-                    RHI_VendorTechnology::SSSR_Dispatch(
-                        cmd_list,
-                        tex_frame, // source of reflection
-                        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
-                        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
-                        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
-                        GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
-                        GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular),
-                        tex_ssr
-                    );
-
-                    // wait for vendor tech to finish writing to the texture
-                    cmd_list->InsertBarrierReadWrite(tex_ssr, RHI_BarrierType::EnsureWriteThenRead);
-                
-                    cleared = false;
-                }
-                cmd_list->EndMarker();
-            }
-            else if (!cleared && !use_ray_traced)
+             if (!cleared && !use_ray_traced)
             {
                 // only clear if neither ssr nor ray traced reflections wrote to this texture
                 cmd_list->ClearTexture(tex_ssr, Color::standard_transparent);

@@ -289,13 +289,12 @@ void RenderOptions::OnTickVisible()
                 if (option_header("Ray-traced Effects"))
                 {
                     ImGui::BeginDisabled(!RHI_Device::IsSupportedRayTracing());
-                    option_check_box("Reflections (WIP)", "r.ray_traced_reflections");
+                    option_check_box("Reflections", "r.ray_traced_reflections");
                     ImGui::EndDisabled();
                 }
 
                 if (option_header("Screen-space Effects"))
                 {
-                    option_check_box("Reflections (SSR)", "r.ssr");
                     option_check_box("Ambient Occlusion (SSAO)", "r.ssao");
                 }
 

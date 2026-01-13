@@ -1400,15 +1400,15 @@ namespace car
     }
     
     // aliases for get_gear() and get_engine_rpm()
-    inline int         get_current_gear()        { return current_gear; }
-    inline const char* get_current_gear_string() { return get_gear_string(); }
-    inline float       get_current_engine_rpm()  { return engine_rpm; }
-    inline bool         get_is_shifting()           { return is_shifting; }
-    inline float        get_clutch()                { return clutch; }
-    inline float        get_engine_torque_current() { return get_engine_torque(engine_rpm) * (1.0f + boost_pressure * tuning::boost_torque_mult); }
-    inline float        get_redline_rpm()           { return tuning::engine_redline_rpm; }
-    inline float        get_max_rpm()               { return tuning::engine_max_rpm; }
-    inline float        get_idle_rpm()              { return tuning::engine_idle_rpm; }
+    inline int         get_current_gear()          { return current_gear; }
+    inline const char* get_current_gear_string()   { return get_gear_string(); }
+    inline float       get_current_engine_rpm()    { return engine_rpm; }
+    inline bool        get_is_shifting()           { return is_shifting; }
+    inline float       get_clutch()                { return clutch; }
+    inline float       get_engine_torque_current() { return get_engine_torque(engine_rpm) * (1.0f + boost_pressure * tuning::boost_torque_mult); }
+    inline float       get_redline_rpm()           { return tuning::engine_redline_rpm; }
+    inline float       get_max_rpm()               { return tuning::engine_max_rpm; }
+    inline float       get_idle_rpm()              { return tuning::engine_idle_rpm; }
     
     // turbo/boost
     inline void  set_turbo_enabled(bool enabled) { tuning::turbo_enabled = enabled; }

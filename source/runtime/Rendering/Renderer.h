@@ -62,7 +62,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_bloom;
     extern TConsoleVar<float> cvar_fog;
     extern TConsoleVar<float> cvar_ssao;
-    extern TConsoleVar<float> cvar_ssr;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;

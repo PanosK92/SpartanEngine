@@ -178,7 +178,7 @@ namespace spartan
                 // exposure settings based on lighting conditions
                 if (is_night)
                 {
-                    camera_comp->SetAperture(2.0f);
+                    camera_comp->SetAperture(4.0f);
                     camera_comp->SetShutterSpeed(1.0f / 30.0f);
                     camera_comp->SetIso(800.0f);
                 }

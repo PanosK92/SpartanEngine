@@ -1453,11 +1453,7 @@ namespace spartan
             
             // update the physics wheel offset x and z to match the mesh position
             car::set_wheel_offset(i, local_pos.x, local_pos.z);
-            
-            SP_LOG_INFO("SyncWheelOffsetsFromEntities: wheel %d offset set to (%.3f, %.3f)", i, local_pos.x, local_pos.z);
         }
-        
-        SP_LOG_INFO("SyncWheelOffsetsFromEntities: wheel offsets synced from entity positions");
     }
 
     void Physics::UpdateWheelTransforms()

@@ -130,44 +130,43 @@ namespace spartan
 
     // renderer cvars (externally accessible for direct access in hot paths)
     // debug visualization
-    TConsoleVar<float> cvar_aabb                          ("r.aabb",                           0.0f,  "draw axis-aligned bounding boxes");
-    TConsoleVar<float> cvar_picking_ray                   ("r.picking_ray",                    0.0f,  "draw picking ray");
-    TConsoleVar<float> cvar_grid                          ("r.grid",                           1.0f,  "draw editor grid");
-    TConsoleVar<float> cvar_transform_handle              ("r.transform_handle",               1.0f,  "draw transform handles");
-    TConsoleVar<float> cvar_selection_outline             ("r.selection_outline",              1.0f,  "draw selection outline");
-    TConsoleVar<float> cvar_lights                        ("r.lights",                         1.0f,  "draw light icons");
-    TConsoleVar<float> cvar_audio_sources                 ("r.audio_sources",                  1.0f,  "draw audio source icons");
-    TConsoleVar<float> cvar_performance_metrics           ("r.performance_metrics",            1.0f,  "show performance metrics", on_performance_metrics_change);
-    TConsoleVar<float> cvar_physics                       ("r.physics",                        0.0f,  "draw physics debug");
-    TConsoleVar<float> cvar_wireframe                     ("r.wireframe",                      0.0f,  "render in wireframe mode");
-    // post-processing
-    TConsoleVar<float> cvar_bloom                         ("r.bloom",                          1.0f,  "bloom intensity, 0 to disable");
-    TConsoleVar<float> cvar_fog                           ("r.fog",                            1.0f,  "fog intensity/particle density");
-    TConsoleVar<float> cvar_ssao                          ("r.ssao",                           1.0f,  "screen space ambient occlusion");
-    TConsoleVar<float> cvar_ssr                           ("r.ssr",                            1.0f,  "screen space reflections");
-    TConsoleVar<float> cvar_ray_traced_reflections        ("r.ray_traced_reflections",         0.0f,  "ray traced reflections (wip)");
-    TConsoleVar<float> cvar_motion_blur                   ("r.motion_blur",                    1.0f,  "motion blur");
-    TConsoleVar<float> cvar_depth_of_field                ("r.depth_of_field",                 1.0f,  "depth of field");
-    TConsoleVar<float> cvar_film_grain                    ("r.film_grain",                     0.0f,  "film grain effect");
-    TConsoleVar<float> cvar_vhs                           ("r.vhs",                            0.0f,  "vhs retro effect");
-    TConsoleVar<float> cvar_chromatic_aberration          ("r.chromatic_aberration",           0.0f,  "chromatic aberration");
-    TConsoleVar<float> cvar_dithering                     ("r.dithering",                      0.0f,  "dithering to reduce banding");
-    TConsoleVar<float> cvar_sharpness                     ("r.sharpness",                      0.0f,  "sharpening intensity");
-    // quality settings
-    TConsoleVar<float> cvar_anisotropy                    ("r.anisotropy",                     16.0f, "anisotropic filtering level (0-16)");
-    TConsoleVar<float> cvar_tonemapping                   ("r.tonemapping",                    4.0f,  "tonemapping algorithm index");
-    TConsoleVar<float> cvar_antialiasing_upsampling       ("r.antialiasing_upsampling",        2.0f,  "aa/upsampling method index", on_antialiasing_change);
-    // display
-    TConsoleVar<float> cvar_hdr                           ("r.hdr",                            0.0f,  "enable hdr output", on_hdr_change);
-    TConsoleVar<float> cvar_gamma                         ("r.gamma",                          2.2f,  "display gamma");
-    TConsoleVar<float> cvar_vsync                         ("r.vsync",                          0.0f,  "vertical sync", on_vsync_change);
-    // resolution
-    TConsoleVar<float> cvar_variable_rate_shading         ("r.variable_rate_shading",          0.0f,  "variable rate shading");
-    TConsoleVar<float> cvar_resolution_scale              ("r.resolution_scale",               1.0f,  "render resolution scale (0.5-1.0)");
-    TConsoleVar<float> cvar_dynamic_resolution            ("r.dynamic_resolution",             0.0f,  "automatic resolution scaling");
-    // misc
-    TConsoleVar<float> cvar_occlusion_culling             ("r.occlusion_culling",              0.0f,  "occlusion culling (dev)");
-    TConsoleVar<float> cvar_auto_exposure_adaptation_speed("r.auto_exposure_adaptation_speed", 0.5f,  "auto exposure adaptation speed, negative disables");
+    TConsoleVar<float> cvar_aabb                           ("r.aabb",                           0.0f,  "draw axis-aligned bounding boxes");
+    TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,  "draw picking ray");
+    TConsoleVar<float> cvar_grid                           ("r.grid",                           1.0f,  "draw editor grid");
+    TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,  "draw transform handles");
+    TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,  "draw selection outline");
+    TConsoleVar<float> cvar_lights                         ("r.lights",                         1.0f,  "draw light icons");
+    TConsoleVar<float> cvar_audio_sources                  ("r.audio_sources",                  1.0f,  "draw audio source icons");
+    TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,  "show performance metrics", on_performance_metrics_change);
+    TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,  "draw physics debug");
+    TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,  "render in wireframe mode");
+    // post-processing                                     
+    TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,  "bloom intensity, 0 to disable");
+    TConsoleVar<float> cvar_fog                            ("r.fog",                            1.0f,  "fog intensity/particle density");
+    TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,  "screen space ambient occlusion");
+    TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         0.0f,  "ray traced reflections");
+    TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,  "motion blur");
+    TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,  "depth of field");
+    TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,  "film grain effect");
+    TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,  "vhs retro effect");
+    TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,  "chromatic aberration");
+    TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,  "dithering to reduce banding");
+    TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,  "sharpening intensity");
+    // quality settings                                    
+    TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f, "anisotropic filtering level (0-16)");
+    TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,  "tonemapping algorithm index");
+    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        2.0f,  "aa/upsampling method index", on_antialiasing_change);
+    // display                                             
+    TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,  "enable hdr output", on_hdr_change);
+    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,  "display gamma");
+    TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,  "vertical sync", on_vsync_change);
+    // resolution                                          
+    TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,  "variable rate shading");
+    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,  "render resolution scale (0.5-1.0)");
+    TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,  "automatic resolution scaling");
+    // misc                                                
+    TConsoleVar<float> cvar_occlusion_culling              ("r.occlusion_culling",              0.0f,  "occlusion culling (dev)");
+    TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,  "auto exposure adaptation speed, negative disables");
 
     namespace
     {
@@ -230,6 +229,9 @@ namespace spartan
                 const float intensity = 3.0f; // meters per second
                 SetWind(Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity);
             }
+
+            // set ray traced reflections
+            set_render_option("r.ray_traced_reflections", static_cast<float>(RHI_Device::IsSupportedRayTracing()));
         }
 
         // resolution
@@ -635,10 +637,9 @@ namespace spartan
         m_cb_frame_cpu.gamma               = cvar_gamma.GetValue();
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
-        // these must match what common_buffer.hlsl is reading
-        m_cb_frame_cpu.set_bit(cvar_ssr.GetValueAs<bool>(),  1 << 0);
-        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(), 1 << 1);
-        m_cb_frame_cpu.set_bit(cvar_fog.GetValueAs<bool>(),  1 << 2);
+        // these must match what common_resources.hlsl is reading
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(), 1 << 0);
+        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
 
         // set
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
@@ -1224,7 +1225,7 @@ namespace spartan
 
         // bottom-level acceleration structures
         {
-            uint32_t blas_built = 0;
+            uint32_t blas_built   = 0;
             uint32_t blas_skipped = 0;
             for (Entity* entity : World::GetEntities())
             {
@@ -1237,9 +1238,13 @@ namespace spartan
                     {
                         renderable->BuildAccelerationStructure(cmd_list);
                         if (renderable->HasAccelerationStructure())
+                        {
                             blas_built++;
+                        }
                         else
+                        { 
                             blas_skipped++;
+                        }
                     }
                 }
             }
@@ -1304,13 +1309,13 @@ namespace spartan
                         instances.push_back(instance);
 
                         // build geometry info for vertex/index buffer access in hit shader
-                        Sb_GeometryInfo geo_info     = {};
+                        Sb_GeometryInfo geo_info       = {};
                         geo_info.vertex_buffer_address = vertex_buffer->GetDeviceAddress();
                         geo_info.index_buffer_address  = index_buffer->GetDeviceAddress();
-                        geo_info.vertex_offset       = renderable->GetVertexOffset(0); // lod 0
-                        geo_info.index_offset        = renderable->GetIndexOffset(0);
-                        geo_info.vertex_count        = renderable->GetVertexCount(0);
-                        geo_info.index_count         = renderable->GetIndexCount(0);
+                        geo_info.vertex_offset         = renderable->GetVertexOffset(0);
+                        geo_info.index_offset          = renderable->GetIndexOffset(0);
+                        geo_info.vertex_count          = renderable->GetVertexCount(0);
+                        geo_info.index_count           = renderable->GetIndexCount(0);
                         geometry_infos.push_back(geo_info);
                     }
                 }

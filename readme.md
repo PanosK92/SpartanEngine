@@ -64,7 +64,7 @@ The Forest is the most advanced and demanding world. It features **256 million**
   - Atmospheric scattering, real-time filtering, IBL with bent normals
   - Screen-space shadows (from *Days Gone*)
   - Screen-space ambient occlusion (XeGTAO + visibility bitfield)
-  - Screen-space reflections (FidelityFX SSSR)
+  - Ray-traced reflections
   - Fast shadow mapping with penumbra, supporting dozens of lights via a shadow map atlas
   - Volumetric fog
 - Performance & Upscaling

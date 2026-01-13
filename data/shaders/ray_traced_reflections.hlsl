@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 6 = visualize primitive index
 // 7 = visualize index values (diagnose index buffer reading)
 // 8 = visualize vertex offset (diagnose vertex buffer reading)
+// 9 = visualize raw geometry info (check if offsets are correct per instance)
 #define DEBUG_RAY_TRACING 0
 
 struct [raypayload] Payload
@@ -183,7 +184,8 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     float2 texcoord      = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
     float3 normal_object = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
     
-    // transform normal to world space
+    // transform normal to world space using the same convention as rasterization
+    // this uses ObjectToWorld like the vertex shader does for consistency
     float3 normal_world = normalize(mul(normal_object, (float3x3)ObjectToWorld4x3()));
 
 #if DEBUG_RAY_TRACING == 2
@@ -227,6 +229,18 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
         frac(float(v0_offset) * 0.00001f),
         frac(float(geo.vertex_offset) * 0.001f),
         frac(float(geo.index_offset) * 0.001f)
+    );
+    return;
+#elif DEBUG_RAY_TRACING == 9
+    // visualize raw geometry info - helps check if per-instance data is correct
+    // r = instance index (should show distinct colors per object)
+    // g = vertex_offset (should be different for different submeshes)
+    // b = index_offset (should be different for different submeshes)
+    // if all objects show same color = geometry_infos not being indexed correctly
+    payload.color = float3(
+        frac(float(instance_index) * 0.1f),
+        frac(float(geo.vertex_offset) * 0.0001f),
+        frac(float(geo.index_offset) * 0.0001f)
     );
     return;
 #endif
