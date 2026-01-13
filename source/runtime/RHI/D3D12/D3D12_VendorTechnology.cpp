@@ -90,20 +90,6 @@ namespace spartan
 
     }
 
-    void RHI_VendorTechnology::SSSR_Dispatch(
-        RHI_CommandList* cmd_list,
-        RHI_Texture* tex_color,
-        RHI_Texture* tex_depth,
-        RHI_Texture* tex_velocity,
-        RHI_Texture* tex_normal,
-        RHI_Texture* tex_material,
-        RHI_Texture* tex_brdf,
-        RHI_Texture* tex_output
-    )
-    {
-
-    }
-
     void RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
     {
 
