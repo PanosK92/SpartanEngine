@@ -82,9 +82,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_occlusion_culling;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
 
-    // helper to set render option with validation (clamping, feature checks)
-    void set_render_option(const char* name, float value);
-
     struct ShadowSlice
     {
         Light* light;

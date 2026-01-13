@@ -354,10 +354,10 @@ namespace spartan
         // reset renderer options to defaults
         void set_base_renderer_options()
         {
-            set_render_option("r.dithering",           0.0f);
-            set_render_option("r.chromatic_aberration", 0.0f);
-            set_render_option("r.grid",                0.0f);
-            set_render_option("r.vhs",                 0.0f);
+            ConsoleRegistry::Get().SetValueFromString("r.dithering",            "0");
+            ConsoleRegistry::Get().SetValueFromString("r.chromatic_aberration", "0");
+            ConsoleRegistry::Get().SetValueFromString("r.grid",                 "0");
+            ConsoleRegistry::Get().SetValueFromString("r.vhs",                  "0");
         }
     }
 
@@ -1226,7 +1226,7 @@ namespace spartan
                 sun->SetFlag(LightFlags::Volumetric, true);
 
                 entities::camera(false, Vector3(-1476.0f, 17.9f, 1490.0f), Vector3(-3.6f, 90.0f, 0.0f));
-                set_render_option("r.grid", 0.0f);
+                ConsoleRegistry::Get().SetValueFromString("r.grid", "0");
 
                 // drivable car near the player
                 {
@@ -1794,9 +1794,9 @@ namespace spartan
                 }
 
                 // renderer options
-                set_render_option("r.performance_metrics", 0.0f);
-                set_render_option("r.lights",              0.0f);
-                set_render_option("r.dithering",           0.0f);
+                ConsoleRegistry::Get().SetValueFromString("r.performance_metrics", "0");
+                ConsoleRegistry::Get().SetValueFromString("r.lights",              "0");
+                ConsoleRegistry::Get().SetValueFromString("r.dithering",           "0");
             }
 
             void tick()
@@ -1898,8 +1898,8 @@ namespace spartan
                 }
 
                 // renderer
-                set_render_option("r.chromatic_aberration", 1.0f);
-                set_render_option("r.vhs", 1.0f);
+                ConsoleRegistry::Get().SetValueFromString("r.chromatic_aberration", "1");
+                ConsoleRegistry::Get().SetValueFromString("r.vhs", "1");
 
                 // camera with flashlight
                 entities::camera(true, Vector3(5.4084f, 1.8f, 4.7593f));
@@ -2212,7 +2212,7 @@ namespace spartan
                 }
 
                 // make room for the telemetry display
-                set_render_option("r.performance_metrics", 0.0f);
+                ConsoleRegistry::Get().SetValueFromString("r.performance_metrics", "0");
             }
         }
         //====================================================================================

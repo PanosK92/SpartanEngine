@@ -117,7 +117,7 @@ namespace spartan
                         pugi::xml_node child = root.child(cvar_name_to_xml(string(name).c_str()).c_str());
                         if (child)
                         {
-                            set_render_option(string(name).c_str(), child.text().as_float());
+                            ConsoleRegistry::Get().SetValueFromString(string(name).c_str(), child.text().as_string());
                         }
                     }
                 }

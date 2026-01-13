@@ -80,7 +80,7 @@ namespace
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
         bool value = ConsoleRegistry::Get().GetAs<float>(render_option) != 0.0f;
         ImGui::Checkbox("", &value);
-        set_render_option(render_option, value ? 1.0f : 0.0f);
+        ConsoleRegistry::Get().SetValueFromString(render_option, value ? "1" : "0");
         ImGui::PopID();
     }
 
@@ -141,7 +141,7 @@ namespace
             // only update if changed
             if (ConsoleRegistry::Get().GetAs<float>(render_option) != value)
             {
-                set_render_option(render_option, value);
+                ConsoleRegistry::Get().SetValueFromString(render_option, to_string(value));
             }
         }
 
@@ -277,7 +277,7 @@ void RenderOptions::OnTickVisible()
                     uint32_t mode      = cvar_antialiasing_upsampling.GetValueAs<uint32_t>();
                     if (option_combo_box("Upsampling method", upsamplers, mode))
                     {
-                        set_render_option("r.antialiasing_upsampling", static_cast<float>(mode));
+                        ConsoleRegistry::Get().SetValueFromString("r.antialiasing_upsampling", to_string(static_cast<float>(mode)));
                     }
 
                     bool use_rcas = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>() == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
@@ -329,7 +329,7 @@ void RenderOptions::OnTickVisible()
                     uint32_t index = cvar_tonemapping.GetValueAs<uint32_t>();
                     if (option_combo_box("Algorithm", tonemapping, index))
                     {
-                        set_render_option("r.tonemapping", static_cast<float>(index));
+                        ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(index)));
                     }
                 }
 

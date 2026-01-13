@@ -89,9 +89,29 @@ namespace spartan
         shared_ptr<RHI_SwapChain> swapchain;
         const uint8_t swap_chain_buffer_count = 2;
 
-        // cvar callbacks for cascading changes
+        // cvar callbacks for cascading changes and validation
+        void on_anisotropy_change(const CVarVariant& value)
+        {
+            float v = clamp(get<float>(value), 0.0f, 16.0f);
+            *ConsoleRegistry::Get().Find("r.anisotropy")->m_value_ptr = v;
+        }
+
+        void on_resolution_scale_change(const CVarVariant& value)
+        {
+            float v = clamp(get<float>(value), 0.5f, 1.0f);
+            *ConsoleRegistry::Get().Find("r.resolution_scale")->m_value_ptr = v;
+        }
+
         void on_hdr_change(const CVarVariant& value)
         {
+            // reject if display doesn't support hdr
+            if (get<float>(value) == 1.0f && !Display::GetHdr())
+            {
+                SP_LOG_WARNING("This display doesn't support HDR");
+                *ConsoleRegistry::Get().Find("r.hdr")->m_value_ptr = 0.0f;
+                return;
+            }
+
             if (swapchain)
             {
                 swapchain->SetHdr(get<float>(value) != 0.0f);
@@ -106,9 +126,27 @@ namespace spartan
             }
         }
 
+        void on_vrs_change(const CVarVariant& value)
+        {
+            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedVrs())
+            {
+                SP_LOG_WARNING("This GPU doesn't support variable rate shading");
+                *ConsoleRegistry::Get().Find("r.variable_rate_shading")->m_value_ptr = 0.0f;
+            }
+        }
+
         void on_antialiasing_change(const CVarVariant& value)
         {
             float v = get<float>(value);
+
+            // reject xess if not supported
+            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::IsSupportedXess())
+            {
+                SP_LOG_WARNING("This GPU doesn't support XeSS");
+                *ConsoleRegistry::Get().Find("r.antialiasing_upsampling")->m_value_ptr = 0.0f;
+                return;
+            }
+
             if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) ||
                 v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
             {
@@ -153,7 +191,7 @@ namespace spartan
     TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,  "dithering to reduce banding");
     TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,  "sharpening intensity");
     // quality settings                                    
-    TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f, "anisotropic filtering level (0-16)");
+    TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f, "anisotropic filtering level (0-16)", on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,  "tonemapping algorithm index");
     TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        2.0f,  "aa/upsampling method index", on_antialiasing_change);
     // display                                             
@@ -161,8 +199,8 @@ namespace spartan
     TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,  "display gamma");
     TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,  "vertical sync", on_vsync_change);
     // resolution                                          
-    TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,  "variable rate shading");
-    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,  "render resolution scale (0.5-1.0)");
+    TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,  "variable rate shading", on_vrs_change);
+    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,  "render resolution scale (0.5-1.0)", on_resolution_scale_change);
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,  "automatic resolution scaling");
     // misc                                                
     TConsoleVar<float> cvar_occlusion_culling              ("r.occlusion_culling",              0.0f,  "occlusion culling (dev)");
@@ -198,7 +236,7 @@ namespace spartan
                 // clamp screen_percentage to a reasonable range
                 screen_percentage = clamp(screen_percentage, 0.5f, 1.0f);
 
-                set_render_option("r.resolution_scale", screen_percentage);
+                ConsoleRegistry::Get().SetValueFromString("r.resolution_scale", to_string(screen_percentage));
             }
         }
     }
@@ -218,10 +256,10 @@ namespace spartan
         // options - cvars are initialized with defaults, but some need runtime values
         {
             // set gamma from display
-            set_render_option("r.gamma", Display::GetGamma());
+            ConsoleRegistry::Get().SetValueFromString("r.gamma", to_string(Display::GetGamma()));
             
             // set tonemapping to gran turismo 7 (works for both hdr and sdr)
-            set_render_option("r.tonemapping", static_cast<float>(Renderer_Tonemapping::GranTurismo7));
+            ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
 
             // set wind direction and strength
             {
@@ -231,7 +269,7 @@ namespace spartan
             }
 
             // set ray traced reflections
-            set_render_option("r.ray_traced_reflections", static_cast<float>(RHI_Device::IsSupportedRayTracing()));
+            ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections", to_string(static_cast<float>(RHI_Device::IsSupportedRayTracing())));
         }
 
         // resolution
@@ -272,7 +310,7 @@ namespace spartan
                 "renderer"
             );
 
-            set_render_option("r.hdr", swapchain->IsHdr() ? 1.0f : 0.0f);
+            ConsoleRegistry::Get().SetValueFromString("r.hdr", swapchain->IsHdr() ? "1" : "0");
         }
 
         // load/create resources
@@ -700,40 +738,6 @@ namespace spartan
         {
             m_icons.emplace_back(make_tuple(icon, world_position));
         }
-    }
-    
-    // helper to set render option with validation (clamping, feature checks)
-    void set_render_option(const char* name, float value)
-    {
-        // clamp value
-        if (strcmp(name, "r.anisotropy") == 0)
-        {
-            value = clamp(value, 0.0f, 16.0f);
-        }
-        else if (strcmp(name, "r.resolution_scale") == 0)
-        {
-            value = clamp(value, 0.5f, 1.0f);
-        }
-
-        // reject changes for unsupported features
-        if (strcmp(name, "r.hdr") == 0 && value == 1.0f && !Display::GetHdr())
-        {
-            SP_LOG_WARNING("This display doesn't support HDR");
-            return;
-        }
-        if (strcmp(name, "r.variable_rate_shading") == 0 && value == 1.0f && !RHI_Device::IsSupportedVrs())
-        {
-            SP_LOG_WARNING("This GPU doesn't support variable rate shading");
-            return;
-        }
-        if (strcmp(name, "r.antialiasing_upsampling") == 0 && value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::IsSupportedXess())
-        {
-            SP_LOG_WARNING("This GPU doesn't support XeSS");
-            return;
-        }
-
-        // set via registry (callbacks handle cascading changes)
-        ConsoleRegistry::Get().SetValueFromString(name, to_string(value));
     }
 
     RHI_SwapChain* Renderer::GetSwapChain()
