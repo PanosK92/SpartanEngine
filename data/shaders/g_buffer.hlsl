@@ -127,12 +127,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // velocity
     float2 position_ndc           = uv_to_ndc(vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale));
     float2 position_ndc_previous  = (vertex.position_previous.xy / vertex.position_previous.w);
+    float2 position_ndc_jittered  = position_ndc; // save jittered ndc for world position reconstruction
     position_ndc                 -= buffer_frame.taa_jitter_current;
     position_ndc_previous        -= buffer_frame.taa_jitter_previous;
     velocity                      = position_ndc - position_ndc_previous;
     
-    // world position
-    float3 position_world = get_position(vertex.position.z, ndc_to_uv(position_ndc));
+    // world position - use jittered ndc since view_projection_inverted includes the jitter
+    float3 position_world = get_position(vertex.position.z, ndc_to_uv(position_ndc_jittered));
     
     // cache distance to camera (used multiple times)
     float3 camera_to_pixel = position_world - buffer_frame.camera_position;
