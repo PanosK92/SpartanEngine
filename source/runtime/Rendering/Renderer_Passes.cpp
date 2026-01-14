@@ -756,12 +756,22 @@ namespace spartan
 
     void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list)
     {
-        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
-            return;
-
-        // get resources
         RHI_Texture* tex_reflections = GetRenderTarget(Renderer_RenderTarget::reflections);
-        
+
+        // clear once if disabled
+        static bool cleared = false;
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
+        {
+            if (!cleared)
+            {
+                cmd_list->ClearTexture(tex_reflections, Color::standard_black);
+                cleared = true;
+            }
+            return;
+        }
+        cleared = false;
+
+        // render
         cmd_list->BeginTimeblock("ray_traced_reflections");
         {
             // check if we have a valid tlas before doing anything
