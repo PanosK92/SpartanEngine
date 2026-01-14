@@ -476,8 +476,39 @@ void MenuBar::Tick()
             spartan::Window::SetTitleBarHeight(menubar_height);
             spartan::Window::SetTitleBarButtonWidth(buttons_titlebar::get_total_width());
 
+            // engine logo on the left side of the title bar
+            float dpi       = spartan::Window::GetDpiScale();
+            float icon_size = 16.0f * dpi;
+            float padding_x = 6.0f * dpi;
+            {
+                float vertical_padding = (menubar_height - icon_size) * 0.5f;
+                
+                ImGui::SetCursorPosX(padding_x);
+                ImGui::SetCursorPosY(vertical_padding);
+                
+                spartan::RHI_Texture* logo = spartan::ResourceCache::GetIcon(spartan::IconType::Logo);
+                if (logo)
+                {
+                    ImGui::Image(
+                        reinterpret_cast<ImTextureID>(logo),
+                        ImVec2(icon_size, icon_size)
+                    );
+                }
+                
+                ImGui::SameLine(0, padding_x);
+            }
+
+            // vertically center menu items - account for frame padding in menu item height
+            float frame_padding_y  = ImGui::GetStyle().FramePadding.y;
+            float text_height      = ImGui::GetTextLineHeight();
+            float menu_item_height = text_height + frame_padding_y * 2.0f;
+            float menu_y           = (menubar_height - menu_item_height) * 0.5f;
+            
+            ImGui::SetCursorPosY(menu_y);
             buttons_menu::world();
+            ImGui::SetCursorPosY(menu_y);
             buttons_menu::view();
+            ImGui::SetCursorPosY(menu_y);
             buttons_menu::help();
             buttons_toolbar::tick();
             
