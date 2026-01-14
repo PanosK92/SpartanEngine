@@ -297,13 +297,37 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
         }
     }
     
-    // simple directional lighting using actual surface normal
-    float3 light_dir = normalize(float3(0.5f, 1.0f, 0.3f));
-    float n_dot_l    = saturate(dot(normal_world, light_dir) * 0.5f + 0.5f); // half-lambert
+    // use actual scene light (light 0 is always directional)
+    LightParameters light = light_parameters[0];
+    float3 light_dir      = normalize(-light.direction);
+    float3 light_color    = light.color.rgb * light.intensity;
     
-    // ambient + diffuse
-    float3 ambient   = float3(0.15f, 0.17f, 0.2f);
-    float3 lit_color = albedo * (ambient + n_dot_l * 0.85f);
+    // sample ibl from skysphere based on surface roughness
+    // roughness -> mip level (rougher surfaces = blurrier reflections)
+    float mip_count   = 8.0f; // typical skysphere mip count
+    float mip_level   = mat.roughness * mat.roughness * (mip_count - 1.0f);
+    float2 sky_uv     = direction_sphere_uv(normal_world);
+    float3 ibl_sample = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, mip_level).rgb;
+    
+    // basic pbr-like shading at hit point
+    float n_dot_l     = saturate(dot(normal_world, light_dir));
+    float3 view_dir   = -WorldRayDirection();
+    float n_dot_v     = saturate(dot(normal_world, view_dir));
+    
+    // fresnel approximation (schlick)
+    float f0          = lerp(0.04f, 1.0f, mat.metallness);
+    float fresnel     = f0 + (1.0f - f0) * pow(1.0f - n_dot_v, 5.0f);
+    
+    // diffuse (non-metals only)
+    float3 diffuse    = albedo * (1.0f - mat.metallness) * n_dot_l;
+    
+    // ambient/ibl contribution (higher for rough surfaces)
+    float ibl_strength = 0.3f + mat.roughness * 0.4f;
+    float3 ambient     = albedo * ibl_sample * ibl_strength;
+    
+    // combine: ambient + direct lighting
+    // note: no shadows - would need shadow ray tracing for accurate results
+    float3 lit_color = ambient + diffuse * light_color;
     
     payload.color = lit_color;
 }
