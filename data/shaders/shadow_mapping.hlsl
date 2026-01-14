@@ -33,8 +33,8 @@ static const float g_shadow_sample_reciprocal       = 1.0f / (float)g_shadow_sam
 static const float g_minimum_penumbra_size          = 0.5f;
 static const float g_maximum_penumbra_size          = 64.0f;
 static const float g_contact_hardening_factor       = 0.5f;
-static const float g_base_bias_texels               = 0.2f;
-static const float g_slope_bias_texels              = 1.5f;
+static const float g_base_bias_texels               = 0.6f;
+static const float g_slope_bias_texels              = 2.2f;
 
 // pre-computed vogel disk samples
 static const float2 g_vogel_samples_shadow[g_shadow_sample_count] =
