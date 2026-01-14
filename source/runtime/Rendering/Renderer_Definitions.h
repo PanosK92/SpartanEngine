@@ -159,6 +159,7 @@ namespace spartan
         reflections_ray_generation_r,
         reflections_ray_miss_r,
         reflections_ray_hit_r,
+        light_reflections_c,
         max
     };
     
@@ -185,6 +186,9 @@ namespace spartan
         frame_output_2,
         ssao,
         reflections,
+        gbuffer_reflections_position,
+        gbuffer_reflections_normal,
+        gbuffer_reflections_albedo,
         sss,
         skysphere,
         bloom,

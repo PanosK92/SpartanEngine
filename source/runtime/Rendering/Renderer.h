@@ -195,6 +195,7 @@ namespace spartan
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
         static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list);
         static void Pass_RayTracedReflections(RHI_CommandList* cmd_list);
+        static void Pass_Light_Reflections(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting

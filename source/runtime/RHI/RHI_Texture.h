@@ -52,8 +52,7 @@ namespace spartan
         RHI_Texture_Srgb              = 1U << 8,
         RHI_Texture_Mappable          = 1U << 9,
         RHI_Texture_Compress          = 1U << 10,
-        RHI_Texture_DontPrepareForGpu = 1U << 11,
-        RHI_Texture_Thumbnail         = 1U << 12
+        RHI_Texture_DontPrepareForGpu = 1U << 11
     };
 
     struct RHI_Texture_Mip

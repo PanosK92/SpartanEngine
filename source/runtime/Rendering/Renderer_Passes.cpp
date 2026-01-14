@@ -113,6 +113,7 @@ namespace spartan
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
                 Pass_RayTracedReflections(cmd_list_graphics_present);
+                Pass_Light_Reflections(cmd_list_graphics_present);                 // shade rt reflection hits using same lighting as main scene
                 Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent); // compose all light (diffuse, specular, etc).
                 cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
@@ -756,7 +757,10 @@ namespace spartan
 
     void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_reflections = GetRenderTarget(Renderer_RenderTarget::reflections);
+        RHI_Texture* tex_reflections          = GetRenderTarget(Renderer_RenderTarget::reflections);
+        RHI_Texture* tex_reflections_position = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_position);
+        RHI_Texture* tex_reflections_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_normal);
+        RHI_Texture* tex_reflections_albedo   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_albedo);
 
         // clear once if disabled
         static bool cleared = false;
@@ -783,9 +787,13 @@ namespace spartan
                 return;
             }
 
-            // transition output texture to general layout for uav writes
-            tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
-            cmd_list->InsertBarrierReadWrite(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
+            // transition output textures to general layout for uav writes
+            tex_reflections_position->SetLayout(RHI_Image_Layout::General, cmd_list);
+            tex_reflections_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
+            tex_reflections_albedo->SetLayout(RHI_Image_Layout::General, cmd_list);
+            cmd_list->InsertBarrierReadWrite(tex_reflections_position, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrierReadWrite(tex_reflections_normal, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrierReadWrite(tex_reflections_albedo, RHI_BarrierType::EnsureReadThenWrite);
 
             // set pipeline state
             RHI_PipelineState pso;
@@ -818,14 +826,75 @@ namespace spartan
             GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
             cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
 
-            // set output texture (as UAV for ray tracing write)
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_reflections, rhi_all_mips, 0, true);
+            // set output textures (as UAVs for ray tracing write) - deferred g-buffer outputs
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex),  tex_reflections_position, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_reflections_normal,   rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), tex_reflections_albedo,   rhi_all_mips, 0, true);
 
             // trace full screen (match tex resolution)
-            uint32_t width  = tex_reflections->GetWidth();
-            uint32_t height = tex_reflections->GetHeight();
+            uint32_t width  = tex_reflections_position->GetWidth();
+            uint32_t height = tex_reflections_position->GetHeight();
             cmd_list->TraceRays(width, height, m_std_reflections.get());
 
+            // ensure writes complete before the textures are read
+            cmd_list->InsertBarrierReadWrite(tex_reflections_position, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrierReadWrite(tex_reflections_normal, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrierReadWrite(tex_reflections_albedo, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+    }
+    
+    void Renderer::Pass_Light_Reflections(RHI_CommandList* cmd_list)
+    {
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
+            return;
+            
+        RHI_Texture* tex_reflections          = GetRenderTarget(Renderer_RenderTarget::reflections);
+        RHI_Texture* tex_reflections_position = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_position);
+        RHI_Texture* tex_reflections_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_normal);
+        RHI_Texture* tex_reflections_albedo   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_albedo);
+        RHI_Texture* tex_skysphere            = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_shadow_atlas         = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
+        
+        cmd_list->BeginTimeblock("light_reflections");
+        {
+            // transition output texture for writing
+            tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
+            cmd_list->InsertBarrierReadWrite(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
+            
+            // transition input textures for reading
+            tex_reflections_position->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_reflections_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_reflections_albedo->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_shadow_atlas->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            
+            // set pipeline state
+            RHI_PipelineState pso;
+            pso.name             = "light_reflections";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::light_reflections_c);
+            cmd_list->SetPipelineState(pso);
+            
+            // set common textures (includes bindless materials)
+            SetCommonTextures(cmd_list);
+            
+            // set input textures (reflection g-buffer)
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_reflections_position);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_reflections_normal);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_reflections_albedo);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_skysphere);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_shadow_atlas);
+            
+            // set output texture
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_reflections, rhi_all_mips, 0, true);
+            
+            // push constants: light count, skysphere mip count
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_count_active_lights), static_cast<float>(tex_skysphere->GetMipCount()));
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            
+            // dispatch
+            cmd_list->Dispatch(tex_reflections);
+            
             // ensure writes complete before the texture is read
             cmd_list->InsertBarrierReadWrite(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
         }

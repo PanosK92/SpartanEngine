@@ -24,23 +24,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // debug visualization toggle
-// 0 = normal rendering
+// 0 = normal rendering (deferred g-buffer output)
 // 1 = green = hit, red = miss, blue = no geometry
-// 2 = visualize UVs (R=U, G=V)
-// 3 = visualize normals  
-// 4 = visualize instance index
-// 5 = material color only (no texture)
-// 6 = visualize primitive index
-// 7 = visualize index values (diagnose index buffer reading)
-// 8 = visualize vertex offset (diagnose vertex buffer reading)
-// 9 = visualize raw geometry info (check if offsets are correct per instance)
 #define DEBUG_RAY_TRACING 0
 
+// deferred ray tracing payload - carries g-buffer data back to ray_gen
 struct [raypayload] Payload
 {
-    float3 color : read(caller, closesthit, miss) : write(caller, closesthit, miss);
+    float3 position       : read(caller, closesthit, miss) : write(caller, closesthit, miss); // world position of hit
+    float  hit_distance   : read(caller, closesthit, miss) : write(caller, closesthit, miss); // ray t value (0 = miss/sky)
+    float3 normal         : read(caller, closesthit, miss) : write(caller, closesthit, miss); // world normal at hit
+    float  material_index : read(caller, closesthit, miss) : write(caller, closesthit, miss); // material index for shading
+    float3 albedo         : read(caller, closesthit, miss) : write(caller, closesthit, miss); // albedo color
+    float  roughness      : read(caller, closesthit, miss) : write(caller, closesthit, miss); // surface roughness
 #if DEBUG_RAY_TRACING == 1
-    bool hit     : read(caller) : write(closesthit, miss);
+    bool hit              : read(caller) : write(closesthit, miss);
 #endif
 };
 
@@ -58,13 +56,10 @@ void ray_gen()
 #if DEBUG_RAY_TRACING == 1
         tex_uav[launch_id] = float4(0, 0, 1, 1); // blue = no geometry
 #else
-        // sample skysphere (tex3) for pixels with no geometry
-        // use far plane position to compute view direction (avoids issues with depth=0)
-        float3 far_pos     = get_position(1.0f, uv);
-        float3 ray_dir     = normalize(far_pos - buffer_frame.camera_position);
-        float2 sky_uv      = direction_sphere_uv(ray_dir);
-        float3 sky_col     = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, 0).rgb;
-        tex_uav[launch_id] = float4(sky_col, 0.0f);
+        // no geometry - output zero position to indicate sky sample needed
+        tex_uav[launch_id]  = float4(0, 0, 0, 0);  // position.xyz + hit_distance (0 = sky)
+        tex_uav2[launch_id] = float4(0, 0, 0, 0);  // normal.xyz + material_index
+        tex_uav3[launch_id] = float4(0, 0, 0, 0);  // albedo.rgb + roughness
 #endif
         return;
     }
@@ -74,7 +69,9 @@ void ray_gen()
     float roughness        = material_sample.r;
     if (roughness >= 0.9f) // near-fully rough surfaces don't reflect
     {
-        tex_uav[launch_id] = float4(0, 0, 0, 0);
+        tex_uav[launch_id]  = float4(0, 0, 0, -1); // hit_distance = -1 means "skip"
+        tex_uav2[launch_id] = float4(0, 0, 0, 0);
+        tex_uav3[launch_id] = float4(0, 0, 0, 0);
         return;
     }
     
@@ -102,9 +99,14 @@ void ray_gen()
     
     // trace
     Payload payload;
-    payload.color = float3(0, 0, 0);
+    payload.position       = float3(0, 0, 0);
+    payload.hit_distance   = 0.0f;
+    payload.normal         = float3(0, 0, 0);
+    payload.material_index = 0.0f;
+    payload.albedo         = float3(0, 0, 0);
+    payload.roughness      = 0.0f;
 #if DEBUG_RAY_TRACING == 1
-    payload.hit   = false;
+    payload.hit = false;
 #endif
     
     // touch geometry_infos to ensure it's included in the pipeline layout (used in closest_hit)
@@ -115,11 +117,13 @@ void ray_gen()
     // don't cull back faces - corners and crevices often need to show back-facing geometry
     TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
     
-    // output - debug mode 1 shows green for hits, red for misses
+    // output g-buffer data from payload
 #if DEBUG_RAY_TRACING == 1
     tex_uav[launch_id] = payload.hit ? float4(0, 1, 0, 1) : float4(1, 0, 0, 1);
 #else
-    tex_uav[launch_id] = float4(payload.color, 1.0f);
+    tex_uav[launch_id]  = float4(payload.position, payload.hit_distance);       // position.xyz + hit_distance
+    tex_uav2[launch_id] = float4(payload.normal, payload.material_index);       // normal.xyz + material_index
+    tex_uav3[launch_id] = float4(payload.albedo, payload.roughness);            // albedo.rgb + roughness
 #endif
 }
 
@@ -130,10 +134,13 @@ void miss(inout Payload payload : SV_RayPayload)
     payload.hit = false;
 #endif
     
-    // sample skysphere for missed rays
-    float3 ray_dir = WorldRayDirection();
-    float2 uv      = direction_sphere_uv(ray_dir);
-    payload.color  = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uv, 0).rgb;
+    // miss = sky sample needed
+    // store ray direction in position so shading pass can sample skysphere
+    payload.position     = WorldRayDirection();
+    payload.hit_distance = 0.0f; // 0 = miss (sky)
+    payload.normal       = float3(0, 0, 0);
+    payload.albedo       = float3(0, 0, 0);
+    payload.roughness    = 0.0f;
 }
 
 // helper to reconstruct uint64 address from two uint32 values
@@ -201,63 +208,6 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     float3x3 obj_to_world = (float3x3)ObjectToWorld4x3();
     float3 normal_world   = normalize(mul(normal_object, obj_to_world));
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
-
-#if DEBUG_RAY_TRACING == 2
-    // visualize raw uvs (before tiling) as colors
-    payload.color = float3(frac(texcoord.x), frac(texcoord.y), 0);
-    return;
-#elif DEBUG_RAY_TRACING == 3
-    // visualize world normals
-    payload.color = normal_world * 0.5f + 0.5f;
-    return;
-#elif DEBUG_RAY_TRACING == 4
-    // visualize instance index (different color per instance)
-    float hue = frac(instance_index * 0.1f);
-    payload.color = float3(hue, 1.0f - hue, frac(hue * 2.0f));
-    return;
-#elif DEBUG_RAY_TRACING == 5
-    // material color only (no texture) with simple lighting
-    float3 light_dir = normalize(float3(0.5f, 1.0f, 0.3f));
-    float n_dot_l    = saturate(dot(normal_world, light_dir) * 0.5f + 0.5f);
-    payload.color    = mat.color.rgb * n_dot_l;
-    return;
-#elif DEBUG_RAY_TRACING == 6
-    // visualize primitive index - helps identify triangle access patterns
-    float prim_hue = frac(primitive_index * 0.001f);
-    payload.color = float3(prim_hue, frac(prim_hue * 3.0f), frac(prim_hue * 7.0f));
-    return;
-#elif DEBUG_RAY_TRACING == 7
-    // visualize index values - if mangled, indices are being read wrong
-    // valid indices should give smooth color variation
-    // random/noisy = index buffer reading is broken
-    payload.color = float3(
-        frac(float(i0) * 0.001f),
-        frac(float(i1) * 0.001f),
-        frac(float(i2) * 0.001f)
-    );
-    return;
-#elif DEBUG_RAY_TRACING == 8
-    // visualize computed vertex byte offset - should be smooth
-    // if noisy, the vertex offset calculation is wrong
-    payload.color = float3(
-        frac(float(v0_offset) * 0.00001f),
-        frac(float(geo.vertex_offset) * 0.001f),
-        frac(float(geo.index_offset) * 0.001f)
-    );
-    return;
-#elif DEBUG_RAY_TRACING == 9
-    // visualize raw geometry info - helps check if per-instance data is correct
-    // r = instance index (should show distinct colors per object)
-    // g = vertex_offset (should be different for different submeshes)
-    // b = index_offset (should be different for different submeshes)
-    // if all objects show same color = geometry_infos not being indexed correctly
-    payload.color = float3(
-        frac(float(instance_index) * 0.1f),
-        frac(float(geo.vertex_offset) * 0.0001f),
-        frac(float(geo.index_offset) * 0.0001f)
-    );
-    return;
-#endif
     
     // apply material tiling to uvs
     texcoord = texcoord * mat.tiling + mat.offset;
@@ -297,37 +247,14 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
         }
     }
     
-    // use actual scene light (light 0 is always directional)
-    LightParameters light = light_parameters[0];
-    float3 light_dir      = normalize(-light.direction);
-    float3 light_color    = light.color.rgb * light.intensity;
+    // compute world position from ray
+    float3 hit_position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     
-    // sample ibl from skysphere based on surface roughness
-    // roughness -> mip level (rougher surfaces = blurrier reflections)
-    float mip_count   = 8.0f; // typical skysphere mip count
-    float mip_level   = mat.roughness * mat.roughness * (mip_count - 1.0f);
-    float2 sky_uv     = direction_sphere_uv(normal_world);
-    float3 ibl_sample = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, mip_level).rgb;
-    
-    // basic pbr-like shading at hit point
-    float n_dot_l     = saturate(dot(normal_world, light_dir));
-    float3 view_dir   = -WorldRayDirection();
-    float n_dot_v     = saturate(dot(normal_world, view_dir));
-    
-    // fresnel approximation (schlick)
-    float f0          = lerp(0.04f, 1.0f, mat.metallness);
-    float fresnel     = f0 + (1.0f - f0) * pow(1.0f - n_dot_v, 5.0f);
-    
-    // diffuse (non-metals only)
-    float3 diffuse    = albedo * (1.0f - mat.metallness) * n_dot_l;
-    
-    // ambient/ibl contribution (higher for rough surfaces)
-    float ibl_strength = 0.3f + mat.roughness * 0.4f;
-    float3 ambient     = albedo * ibl_sample * ibl_strength;
-    
-    // combine: ambient + direct lighting
-    // note: no shadows - would need shadow ray tracing for accurate results
-    float3 lit_color = ambient + diffuse * light_color;
-    
-    payload.color = lit_color;
+    // output g-buffer data via payload
+    payload.position       = hit_position;
+    payload.hit_distance   = RayTCurrent();
+    payload.normal         = normal_world;
+    payload.material_index = float(material_index);
+    payload.albedo         = albedo;
+    payload.roughness      = mat.roughness;
 }

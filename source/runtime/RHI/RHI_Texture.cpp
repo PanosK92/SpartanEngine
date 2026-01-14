@@ -552,16 +552,13 @@ namespace spartan
         }
 
         bool is_not_compressed   = !IsCompressedFormat();                      // the bistro world loads pre-compressed textures
-        bool is_material_texture = IsMaterialTexture();                        // render targets or textures which are written to in compute passes, don't need mip and compression
+        bool is_material_texture = IsMaterialTexture() && !m_slices.empty();   // render targets or textures which are written to in compute passes, don't need mip and compression
         bool can_be_prepared     = !(m_flags & RHI_Texture_DontPrepareForGpu); // some textures delay preperation because the material packs their data in a custom way before preparing them
 
         if (can_be_prepared)
         { 
             if (is_not_compressed && is_material_texture)
             {
-                SP_ASSERT(!m_slices.empty());
-                SP_ASSERT(!m_slices.front().mips.empty());
-
                 // generate mip chain for all slices
                 uint32_t mip_count = mips::compute_count(m_width, m_height);
                 for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(m_slices.size()); slice_index++)
@@ -577,40 +574,6 @@ namespace spartan
                             max(1u, m_height >> (mip_index - 1))             // larger height
                         );
                     }
-                }
-
-                // for thumbnails, find the appropriate mip level close to 128x128 and make it the only mip
-                if (m_flags & RHI_Texture_Thumbnail)
-                {
-                    uint32_t target_mip = 0;
-                    for (uint32_t i = 0; i < m_slices[0].mips.size(); i++)
-                    {
-                        uint32_t mip_width  = max(1u, m_width >> i);
-                        uint32_t mip_height = max(1u, m_height >> i);
-                        
-                        if (mip_width <= 128 && mip_height <= 128)
-                        {
-                            target_mip = i;
-                            break;
-                        }
-                    }
-
-                    // move the target mip to the top for all slices
-                    for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(m_slices.size()); slice_index++)
-                    {
-                        if (target_mip > 0)
-                        {
-                            m_slices[slice_index].mips[0] = move(m_slices[slice_index].mips[target_mip]);
-                        }
-                        m_slices[slice_index].mips.resize(1);
-                    }
-
-                    if (target_mip > 0)
-                    {
-                        m_width  = max(1u, m_width >> target_mip);
-                        m_height = max(1u, m_height >> target_mip);
-                    }
-                    m_mip_count = 1;
                 }
 
                 // compress
