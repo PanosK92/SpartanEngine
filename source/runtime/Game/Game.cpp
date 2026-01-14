@@ -178,7 +178,7 @@ namespace spartan
                 // exposure settings based on lighting conditions
                 if (is_night)
                 {
-                    camera_comp->SetAperture(4.0f);
+                    camera_comp->SetAperture(5.0f);
                     camera_comp->SetShutterSpeed(1.0f / 30.0f);
                     camera_comp->SetIso(800.0f);
                 }
@@ -1701,7 +1701,7 @@ namespace spartan
 
                 // camera looking at car
                 {
-                    Vector3 camera_position = Vector3(5.0f, 1.5f, -5.0f);
+                    Vector3 camera_position = Vector3(1.8f, 0.9f, -4.0f);
                     entities::camera(true, camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
@@ -1741,7 +1741,7 @@ namespace spartan
                                     light->SetLightType(LightType::Point);
                                     light->SetColor(color);
                                     light->SetRange(40.0f);
-                                    light->SetIntensity(3500.0f);
+                                    light->SetIntensity(2000.0f);
                                     light->SetFlag(LightFlags::Shadows,            true);
                                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                     light->SetFlag(LightFlags::Volumetric,         false);

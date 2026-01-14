@@ -774,11 +774,9 @@ namespace spartan
         // render
         cmd_list->BeginTimeblock("ray_traced_reflections");
         {
-            // check if we have a valid tlas before doing anything
             RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
             if (!tlas || !tlas->GetRhiResource())
             {
-                // debug: clear to yellow when tlas is missing - helps identify if blas/tlas building is failing
                 tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
                 cmd_list->ClearTexture(tex_reflections, Color(1.0f, 1.0f, 0.0f, 1.0f));
                 cmd_list->EndTimeblock();

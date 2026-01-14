@@ -84,14 +84,20 @@ void ray_gen()
     float3 V         = normalize(buffer_frame.camera_position - pos_ws);
     float3 R         = reflect(-V, normal_ws);
     
-    // offset along normal and reflection direction to escape source surface
-    float3 ray_origin = pos_ws + normal_ws * 0.05f + R * 0.05f;
+    // scale offset based on distance from camera - closer surfaces need smaller offsets
+    float camera_distance = length(buffer_frame.camera_position - pos_ws);
+    float base_offset     = 0.0001f + camera_distance * 0.00005f; // scales from 0.0001 to ~0.005 at 100m
     
-    // setup ray - use TMin to skip very close hits (self-intersection)
+    // offset along normal and slightly along reflection direction for grazing angles
+    float n_dot_v         = saturate(dot(normal_ws, V));
+    float grazing_factor  = 1.0f - n_dot_v; // higher at grazing angles
+    float3 ray_origin     = pos_ws + normal_ws * base_offset + R * base_offset * grazing_factor * 0.5f;
+    
+    // setup ray with minimal TMin to catch small nearby geometry
     RayDesc ray;
     ray.Origin    = ray_origin;
     ray.Direction = normalize(R);
-    ray.TMin      = 0.01f;
+    ray.TMin      = 0.0001f;
     ray.TMax      = 1000.0f;
     
     // trace
@@ -106,7 +112,8 @@ void ray_gen()
     if (geometry_infos[0].vertex_count == 0xFFFFFFFF)
         return;
     
-    TraceRay(tlas, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, 0xFF, 0, 1, 0, ray, payload);
+    // don't cull back faces - corners and crevices often need to show back-facing geometry
+    TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
     
     // output - debug mode 1 shows green for hits, red for misses
 #if DEBUG_RAY_TRACING == 1
@@ -178,15 +185,22 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     float3 n1 = vk::RawBufferLoad<float3>(vertex_addr + v1_offset + 20);
     float3 n2 = vk::RawBufferLoad<float3>(vertex_addr + v2_offset + 20);
     
+    // load tangents for normal mapping (offset 32 in vertex)
+    float3 t0 = vk::RawBufferLoad<float3>(vertex_addr + v0_offset + 32);
+    float3 t1 = vk::RawBufferLoad<float3>(vertex_addr + v1_offset + 32);
+    float3 t2 = vk::RawBufferLoad<float3>(vertex_addr + v2_offset + 32);
+    
     // barycentric interpolation
     float3 bary = float3(1.0f - attribs.barycentrics.x - attribs.barycentrics.y, attribs.barycentrics.x, attribs.barycentrics.y);
     
-    float2 texcoord      = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
-    float3 normal_object = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
+    float2 texcoord       = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
+    float3 normal_object  = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
+    float3 tangent_object = normalize(t0 * bary.x + t1 * bary.y + t2 * bary.z);
     
-    // transform normal to world space using the same convention as rasterization
-    // this uses ObjectToWorld like the vertex shader does for consistency
-    float3 normal_world = normalize(mul(normal_object, (float3x3)ObjectToWorld4x3()));
+    // transform normal and tangent to world space
+    float3x3 obj_to_world = (float3x3)ObjectToWorld4x3();
+    float3 normal_world   = normalize(mul(normal_object, obj_to_world));
+    float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
 
 #if DEBUG_RAY_TRACING == 2
     // visualize raw uvs (before tiling) as colors
@@ -248,6 +262,19 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     // apply material tiling to uvs
     texcoord = texcoord * mat.tiling + mat.offset;
     
+    // sample normal map if material has one for finer surface detail
+    if (mat.has_texture_normal())
+    {
+        uint normal_texture_index = material_index + material_texture_index_normal;
+        float3 normal_sample      = material_textures[normal_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, 0).xyz;
+        normal_sample             = normal_sample * 2.0f - 1.0f; // unpack from [0,1] to [-1,1]
+        
+        // build tbn matrix and transform normal to world space
+        float3 bitangent_world = normalize(cross(normal_world, tangent_world));
+        float3x3 tbn           = float3x3(tangent_world, bitangent_world, normal_world);
+        normal_world           = normalize(mul(normal_sample, tbn));
+    }
+    
     // base albedo from material
     float3 albedo = mat.color.rgb;
     
@@ -255,7 +282,13 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     if (mat.has_texture_albedo())
     {
         uint albedo_texture_index = material_index + material_texture_index_albedo;
-        float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, 2);
+        
+        // compute mip level based on hit distance for sharper close reflections
+        float hit_distance = RayTCurrent();
+        float mip_level    = log2(max(hit_distance * 0.5f, 1.0f)); // closer = sharper
+        mip_level          = clamp(mip_level, 0.0f, 4.0f);
+        
+        float4 sampled_albedo = material_textures[albedo_texture_index].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
         
         // use texture if valid
         if (sampled_albedo.a > 0.01f)
