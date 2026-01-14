@@ -1740,8 +1740,8 @@ namespace spartan
                                     Light* light = entity->AddComponent<Light>();
                                     light->SetLightType(LightType::Point);
                                     light->SetColor(color);
-                                    light->SetRange(40.0f);
-                                    light->SetIntensity(6000.0f);
+                                    light->SetRange(80.0f);
+                                    light->SetIntensity(10000.0f);
                                     light->SetFlag(LightFlags::Shadows,            true);
                                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                     light->SetFlag(LightFlags::Volumetric,         false);

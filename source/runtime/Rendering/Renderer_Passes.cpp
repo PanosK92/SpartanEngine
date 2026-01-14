@@ -112,8 +112,6 @@ namespace spartan
                 Pass_ShadowMaps(cmd_list_graphics_present);
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
-                Pass_RayTracedReflections(cmd_list_graphics_present);
-                Pass_Light_Reflections(cmd_list_graphics_present);                 // shade rt reflection hits using same lighting as main scene
                 Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent); // compose all light (diffuse, specular, etc).
                 cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
@@ -129,6 +127,12 @@ namespace spartan
             }
 
             Pass_Light_ImageBased(cmd_list_graphics_present);
+            
+            // ray traced reflections run after transparent g-buffer so depth includes transparents
+            // this way opaques behind glass don't trace rays (only visible surfaces get reflections)
+            Pass_RayTracedReflections(cmd_list_graphics_present);
+            Pass_Light_Reflections(cmd_list_graphics_present);
+            
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
