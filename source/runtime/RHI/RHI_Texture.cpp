@@ -254,7 +254,14 @@ namespace spartan
         m_channel_count    = rhi_to_format_channel_count(format);
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
-        PrepareForGpu();
+        // render targets need gpu resource immediately even without cpu data
+        // other textures with empty slices will have data filled later
+        bool is_render_target = m_flags & (RHI_Texture_Rtv | RHI_Texture_Uav);
+        bool will_fill_data_later = m_slices.empty() && !is_render_target;
+        if (!will_fill_data_later)
+        {
+            PrepareForGpu();
+        }
 
         bool expected = false;
         if (compressonator::registered.compare_exchange_strong(expected, true))
@@ -436,11 +443,6 @@ namespace spartan
         ComputeMemoryUsage();
         m_resource_state = ResourceState::Max;
 
-        if (!(m_flags & RHI_Texture_DontPrepareForGpu))
-        { 
-            PrepareForGpu();
-        }
-
         ProgressTracker::SetGlobalLoadingState(false);
     }
 
@@ -551,43 +553,39 @@ namespace spartan
             return;
         }
 
-        bool is_not_compressed   = !IsCompressedFormat();                      // the bistro world loads pre-compressed textures
-        bool is_material_texture = IsMaterialTexture() && !m_slices.empty();   // render targets or textures which are written to in compute passes, don't need mip and compression
-        bool can_be_prepared     = !(m_flags & RHI_Texture_DontPrepareForGpu); // some textures delay preperation because the material packs their data in a custom way before preparing them
+        bool is_not_compressed   = !IsCompressedFormat();                    // the bistro world loads pre-compressed textures
+        bool is_material_texture = IsMaterialTexture() && !m_slices.empty(); // render targets or textures which are written to in compute passes, don't need mip and compression
 
-        if (can_be_prepared)
-        { 
-            if (is_not_compressed && is_material_texture)
+        if (is_not_compressed && is_material_texture)
+        {
+            // generate mip chain for all slices
+            uint32_t mip_count = mips::compute_count(m_width, m_height);
+            for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(m_slices.size()); slice_index++)
             {
-                // generate mip chain for all slices
-                uint32_t mip_count = mips::compute_count(m_width, m_height);
-                for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(m_slices.size()); slice_index++)
+                for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
                 {
-                    for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
-                    {
-                        AllocateMip(slice_index);
+                    AllocateMip(slice_index);
 
-                        mips::downsample_bilinear(
-                            m_slices[slice_index].mips[mip_index - 1].bytes, // larger
-                            m_slices[slice_index].mips[mip_index].bytes,     // smaller
-                            max(1u, m_width  >> (mip_index - 1)),            // larger width
-                            max(1u, m_height >> (mip_index - 1))             // larger height
-                        );
-                    }
-                }
-
-                // compress
-                bool compress       = m_flags & RHI_Texture_Compress;
-                bool not_compressed = !IsCompressedFormat();
-                if (compress && not_compressed)
-                {
-                    compressonator::compress(this);
+                    mips::downsample_bilinear(
+                        m_slices[slice_index].mips[mip_index - 1].bytes, // larger
+                        m_slices[slice_index].mips[mip_index].bytes,     // smaller
+                        max(1u, m_width  >> (mip_index - 1)),            // larger width
+                        max(1u, m_height >> (mip_index - 1))             // larger height
+                    );
                 }
             }
-            
-            // upload to gpu
-            SP_ASSERT(RHI_CreateResource());
+
+            // compress
+            bool compress       = m_flags & RHI_Texture_Compress;
+            bool not_compressed = !IsCompressedFormat();
+            if (compress && not_compressed)
+            {
+                compressonator::compress(this);
+            }
         }
+        
+        // upload to gpu
+        SP_ASSERT(RHI_CreateResource());
 
         ComputeMemoryUsage();
 

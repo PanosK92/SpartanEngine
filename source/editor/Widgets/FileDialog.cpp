@@ -706,6 +706,10 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
                 ThreadPool::AddTask([this, file_path]()
                     {
                         auto texture = spartan::ResourceCache::Load<RHI_Texture>(file_path);
+                        if (texture)
+                        {
+                            texture->PrepareForGpu();
+                        }
                         lock_guard<mutex> lock(m_mutex_items);
                         m_items.emplace_back(file_path, texture.get());
                     });

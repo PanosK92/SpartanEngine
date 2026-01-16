@@ -208,7 +208,7 @@ namespace spartan
     // volumetric clouds
     TConsoleVar<float> cvar_clouds_enabled                 ("r.clouds_enabled",                 1.0f,  "enable volumetric clouds");
     TConsoleVar<float> cvar_cloud_animation                ("r.cloud_animation",                0.0f,  "whether clouds animate with wind");
-    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.5f,  "sky coverage (0=no clouds, 1=overcast)");
+    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.4f,  "sky coverage (0=no clouds, 1=overcast)");
     TConsoleVar<float> cvar_cloud_type                     ("r.cloud_type",                     0.5f,  "0=stratus, 0.5=stratocumulus, 1=cumulus");
     TConsoleVar<float> cvar_cloud_shadows                  ("r.cloud_shadows",                  1.0f,  "cloud shadow intensity on ground");
     TConsoleVar<float> cvar_cloud_color_r                  ("r.cloud_color_r",                  0.7f,  "cloud base color red");

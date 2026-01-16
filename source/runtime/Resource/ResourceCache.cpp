@@ -109,6 +109,15 @@ namespace spartan
         m_default_icons[IconType::Physics]       = Load<RHI_Texture>(data_dir + "Icons\\physics.png");
         m_default_icons[IconType::Compressed]    = Load<RHI_Texture>(data_dir + "Icons\\compressed.png");
         m_default_icons[IconType::Logo]          = Load<RHI_Texture>(data_dir + "logo.ico");
+
+        // prepare icons for gpu (standalone textures, not processed by material)
+        for (auto& [type, icon] : m_default_icons)
+        {
+            if (icon)
+            {
+                icon->PrepareForGpu();
+            }
+        }
     }
 
     void ResourceCache::UnloadDefaultResources()

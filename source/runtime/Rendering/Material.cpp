@@ -354,7 +354,7 @@ namespace spartan
                 shared_ptr<RHI_Texture> texture_normal_new = ResourceCache::GetByName<RHI_Texture>(normal_name);
                 if (!texture_normal_new)
                 {
-                    // create new normal texture
+                    // create new normal texture - don't compress to keep raw bytes for repacking
                     texture_normal_new = make_shared<RHI_Texture>(
                         RHI_Texture_Type::Type2D,
                         width,
@@ -362,7 +362,7 @@ namespace spartan
                         depth,
                         mip_count,
                         RHI_Format::R8G8B8A8_Unorm,
-                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                        RHI_Texture_Srv,
                         normal_name.c_str()
                     );
         
@@ -379,6 +379,9 @@ namespace spartan
                     );
                     texture_normal_new->GetMip(0, 0)->bytes = move(normal_data);
         
+                    // prepare for gpu now that data is filled
+                    texture_normal_new->PrepareForGpu();
+
                     // cache the new texture
                     texture_normal_new->SetResourceFilePath(texture_color->GetObjectName() + "_normal_from_albedo.png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
                     texture_normal_new = ResourceCache::Cache<RHI_Texture>(texture_normal_new);
@@ -494,7 +497,7 @@ namespace spartan
                             1, // assuming depth=1
                             1, // mip_count=1 for now
                             RHI_Format::R8G8B8A8_Unorm,
-                            RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                            RHI_Texture_Srv | RHI_Texture_Compress,
                             tex_name.c_str()
                         );
                         texture_packed->SetResourceName(tex_name + ".tex_packed");
@@ -542,6 +545,10 @@ namespace spartan
                             material->GetProperty(MaterialProperty::Gltf) == 1.0f,
                             texture_packed->GetMip(0, 0)->bytes
                         );
+
+                        // prepare for gpu now that data is filled
+                        texture_packed->PrepareForGpu();
+
                         texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
                     }
         
@@ -716,7 +723,9 @@ namespace spartan
 
     void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu), slot);
+        // don't compress source textures - keep raw bytes available for packing/repacking
+        // only packed textures get compressed
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv), slot);
     }
  
     bool Material::HasTextureOfType(const string& path) const
@@ -800,12 +809,11 @@ namespace spartan
             {
                 lock_guard<mutex> lock(m_mutex);
 
-                // prepare all textures for gpu
+                // prepare any textures that haven't been prepared yet
                 for (RHI_Texture* texture : m_textures)
                 {
                     if (texture && texture->GetResourceState() == ResourceState::Max)
                     {
-                        texture->SetFlag(RHI_Texture_DontPrepareForGpu, false);
                         texture->PrepareForGpu();
                     }
                 }

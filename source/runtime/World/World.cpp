@@ -501,7 +501,10 @@ namespace spartan
             {
                 if (FileSystem::IsEngineTextureFile(path))
                 {
-                    ResourceCache::Load<RHI_Texture>(path);
+                    if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                    {
+                        texture->PrepareForGpu();
+                    }
                 }
                 else if (FileSystem::IsEngineMaterialFile(path))
                 {

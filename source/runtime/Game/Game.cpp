@@ -1321,6 +1321,10 @@ namespace spartan
 
                     // height map generation
                     shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
+                    if (height_map)
+                    {
+                        height_map->PrepareForGpu();
+                    }
                     terrain->SetHeightMapSeed(height_map.get());
                     terrain->Generate();
 
