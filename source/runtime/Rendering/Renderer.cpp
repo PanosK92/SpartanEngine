@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
 #include "../Core/Window.h"
+#include "../Core/Timer.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
 #include "../RHI/RHI_Device.h"
@@ -40,9 +41,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
+#include <World/Components/Volume.h>
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
+#include "../Commands/Console/ConsoleCommands.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -59,6 +62,7 @@ namespace spartan
     // line and icon rendering
     shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
+    vector<PersistentLine> Renderer::m_persistent_lines;
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
@@ -72,6 +76,7 @@ namespace spartan
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
     unique_ptr<RHI_AccelerationStructure> tlas;
+    uint32_t Renderer::m_count_active_lights = 0;
 
     namespace
     {
@@ -84,23 +89,139 @@ namespace spartan
         shared_ptr<RHI_SwapChain> swapchain;
         const uint8_t swap_chain_buffer_count = 2;
 
-        // misc
-        unordered_map<Renderer_Option, float> m_options;
+        // cvar callbacks for cascading changes and validation
+        void on_anisotropy_change(const CVarVariant& value)
+        {
+            float v = clamp(get<float>(value), 0.0f, 16.0f);
+            *ConsoleRegistry::Get().Find("r.anisotropy")->m_value_ptr = v;
+        }
+
+        void on_resolution_scale_change(const CVarVariant& value)
+        {
+            float v = clamp(get<float>(value), 0.5f, 1.0f);
+            *ConsoleRegistry::Get().Find("r.resolution_scale")->m_value_ptr = v;
+        }
+
+        void on_hdr_change(const CVarVariant& value)
+        {
+            // reject if display doesn't support hdr
+            if (get<float>(value) == 1.0f && !Display::GetHdr())
+            {
+                SP_LOG_WARNING("This display doesn't support HDR");
+                *ConsoleRegistry::Get().Find("r.hdr")->m_value_ptr = 0.0f;
+                return;
+            }
+
+            if (swapchain)
+            {
+                swapchain->SetHdr(get<float>(value) != 0.0f);
+            }
+        }
+
+        void on_vsync_change(const CVarVariant& value)
+        {
+            if (swapchain)
+            {
+                swapchain->SetVsync(get<float>(value) != 0.0f);
+            }
+        }
+
+        void on_vrs_change(const CVarVariant& value)
+        {
+            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedVrs())
+            {
+                SP_LOG_WARNING("This GPU doesn't support variable rate shading");
+                *ConsoleRegistry::Get().Find("r.variable_rate_shading")->m_value_ptr = 0.0f;
+            }
+        }
+
+        void on_antialiasing_change(const CVarVariant& value)
+        {
+            float v = get<float>(value);
+
+            // reject xess if not supported
+            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::IsSupportedXess())
+            {
+                SP_LOG_WARNING("This GPU doesn't support XeSS");
+                *ConsoleRegistry::Get().Find("r.antialiasing_upsampling")->m_value_ptr = 0.0f;
+                return;
+            }
+
+            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) ||
+                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
+            {
+                RHI_VendorTechnology::ResetHistory();
+            }
+        }
+
+        void on_performance_metrics_change(const CVarVariant& value)
+        {
+            static bool was_enabled = false;
+            bool is_enabled = get<float>(value) != 0.0f;
+            if (!was_enabled && is_enabled)
+            {
+                Profiler::ClearMetrics();
+            }
+            was_enabled = is_enabled;
+        }
+    }
+
+    // renderer cvars (externally accessible for direct access in hot paths)
+    // debug visualization
+    TConsoleVar<float> cvar_aabb                           ("r.aabb",                           0.0f,  "draw axis-aligned bounding boxes");
+    TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,  "draw picking ray");
+    TConsoleVar<float> cvar_grid                           ("r.grid",                           1.0f,  "draw editor grid");
+    TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,  "draw transform handles");
+    TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,  "draw selection outline");
+    TConsoleVar<float> cvar_lights                         ("r.lights",                         1.0f,  "draw light icons");
+    TConsoleVar<float> cvar_audio_sources                  ("r.audio_sources",                  1.0f,  "draw audio source icons");
+    TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,  "show performance metrics", on_performance_metrics_change);
+    TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,  "draw physics debug");
+    TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,  "render in wireframe mode");
+    // post-processing                                     
+    TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,  "bloom intensity, 0 to disable");
+    TConsoleVar<float> cvar_fog                            ("r.fog",                            1.0f,  "fog intensity/particle density");
+    TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,  "screen space ambient occlusion");
+    TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         0.0f,  "ray traced reflections");
+    TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,  "motion blur");
+    TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,  "depth of field");
+    TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,  "film grain effect");
+    TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,  "vhs retro effect");
+    TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,  "chromatic aberration");
+    TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,  "dithering to reduce banding");
+    TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,  "sharpening intensity");
+    // quality settings                                    
+    TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f, "anisotropic filtering level (0-16)", on_anisotropy_change);
+    TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,  "tonemapping algorithm index");
+    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        2.0f,  "aa/upsampling method index", on_antialiasing_change);
+    // display                                             
+    TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,  "enable hdr output", on_hdr_change);
+    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,  "display gamma");
+    TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,  "vertical sync", on_vsync_change);
+    // resolution                                          
+    TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,  "variable rate shading", on_vrs_change);
+    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,  "render resolution scale (0.5-1.0)", on_resolution_scale_change);
+    TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,  "automatic resolution scaling");
+    // misc                                                
+    TConsoleVar<float> cvar_occlusion_culling              ("r.occlusion_culling",              0.0f,  "occlusion culling (dev)");
+    TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,  "auto exposure adaptation speed, negative disables");
+
+    namespace
+    {
         uint64_t frame_num                   = 0;
         math::Vector2 jitter_offset          = math::Vector2::Zero;
         const uint32_t resolution_shadow_min = 128;
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
         bool dirty_orthographic_projection   = true;
- 
 
         void dynamic_resolution()
         {
-            if (Renderer::GetOption<float>(Renderer_Option::DynamicResolution) != 0.0f)
+            if (cvar_dynamic_resolution.GetValue() != 0.0f)
             {
                 float gpu_time_target   = 16.67f;                                               // target for 60 FPS
                 float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
-                float screen_percentage = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
+                float screen_percentage = cvar_resolution_scale.GetValue();
                 float gpu_time          = Profiler::GetTimeGpuLast();
 
                 if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
@@ -115,7 +236,7 @@ namespace spartan
                 // clamp screen_percentage to a reasonable range
                 screen_percentage = clamp(screen_percentage, 0.5f, 1.0f);
 
-                Renderer::SetOption(Renderer_Option::ResolutionScale, screen_percentage);
+                ConsoleRegistry::Get().SetValueFromString("r.resolution_scale", to_string(screen_percentage));
             }
         }
     }
@@ -132,36 +253,13 @@ namespace spartan
             RHI_Device::Initialize();
         }
 
-        // options
+        // options - cvars are initialized with defaults, but some need runtime values
         {
-            bool low_quality = RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements();
-
-            m_options.clear();
-            SetOption(Renderer_Option::WhitePoint,                  350.0f);
-            SetOption(Renderer_Option::Tonemapping,                 static_cast<float>(Renderer_Tonemapping::Max));
-            SetOption(Renderer_Option::Bloom,                       1.0f);  // non-zero values activate it and control the intensity
-            SetOption(Renderer_Option::MotionBlur,                  1.0f);
-            SetOption(Renderer_Option::DepthOfField,                1.0f);
-            SetOption(Renderer_Option::ScreenSpaceAmbientOcclusion, 1.0f);
-            SetOption(Renderer_Option::ScreenSpaceReflections,      1.0f);
-            SetOption(Renderer_Option::RayTracedReflections,        RHI_Device::IsSupportedRayTracing() ? 0.0f : 0.0f);
-            SetOption(Renderer_Option::Anisotropy,                  16.0f);
-            SetOption(Renderer_Option::Sharpness,                   0.0f);  // becomes the upscaler's sharpness as well
-            SetOption(Renderer_Option::Fog,                         1.0);   // controls the intensity of the distance/height and volumetric fog, it's the particle density
-            SetOption(Renderer_Option::AntiAliasing_Upsampling,     static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr));
-            SetOption(Renderer_Option::ResolutionScale,             1.0f);
-            SetOption(Renderer_Option::VariableRateShading,         0.0f);
-            SetOption(Renderer_Option::Vsync,                       0.0f);
-            SetOption(Renderer_Option::TransformHandle,             1.0f);
-            SetOption(Renderer_Option::SelectionOutline,            1.0f);
-            SetOption(Renderer_Option::Grid,                        1.0f);
-            SetOption(Renderer_Option::Lights,                      1.0f);
-            SetOption(Renderer_Option::AudioSources,                1.0f);
-            SetOption(Renderer_Option::Physics,                     0.0f);
-            SetOption(Renderer_Option::PerformanceMetrics,          1.0f);
-            SetOption(Renderer_Option::Dithering,                   0.0f);
-            SetOption(Renderer_Option::Gamma,                       Display::GetGamma());
-            SetOption(Renderer_Option::AutoExposureAdaptationSpeed, 0.5f);
+            // set gamma from display
+            ConsoleRegistry::Get().SetValueFromString("r.gamma", to_string(Display::GetGamma()));
+            
+            // set tonemapping to gran turismo 7 (works for both hdr and sdr)
+            ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
 
             // volumetric clouds
             SetOption(Renderer_Option::CloudAnimation, 0.0f);  // animation off by default (static clouds)
@@ -180,6 +278,9 @@ namespace spartan
                 const float intensity = 3.0f; // meters per second
                 SetWind(Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity);
             }
+
+            // set ray traced reflections
+            ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections", to_string(static_cast<float>(RHI_Device::IsSupportedRayTracing())));
         }
 
         // resolution
@@ -214,19 +315,13 @@ namespace spartan
                 Window::GetHeight(),
                 // present mode: for v-sync, we could mailbox for lower latency, but fifo is always supported, so we'll assume that
                 // note: fifo is not supported on linux, it will be ignored
-                GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
+                cvar_vsync.GetValueAs<bool>() ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
                 swap_chain_buffer_count,
                 Display::GetHdr(),
                 "renderer"
             );
 
-            SetOption(Renderer_Option::Hdr, swapchain->IsHdr() ? 1.0f : 0.0f);
-        }
-
-        // tonemapping
-        if (!swapchain->IsHdr())
-        {
-            SetOption(Renderer_Option::Tonemapping, static_cast<float>(Renderer_Tonemapping::AcesNautilus));
+            ConsoleRegistry::Get().SetValueFromString("r.hdr", swapchain->IsHdr() ? "1" : "0");
         }
 
         // load/create resources
@@ -300,7 +395,7 @@ namespace spartan
         {
             swapchain->AcquireNextImage();
             RHI_Device::Tick(frame_num);
-            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetOption<float>(Renderer_Option::ResolutionScale));
+            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), cvar_resolution_scale.GetValue());
             dynamic_resolution();
         }
     
@@ -373,6 +468,7 @@ namespace spartan
     
             // update frame constant buffer and add lines to render
             UpdateFrameConstantBuffer(m_cmd_list_present);
+            UpdatePersistentLines();
             AddLinesToBeRendered();
         }
     
@@ -540,7 +636,7 @@ namespace spartan
         }
 
         // generate jitter samples in case of fsr or xess
-        Renderer_AntiAliasing_Upsampling upsampling_mode = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+        Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
         {
             if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
             {
@@ -584,11 +680,10 @@ namespace spartan
         m_cb_frame_cpu.time                = Timer::GetTimeSec();
         m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
         m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
-        m_cb_frame_cpu.resolution_scale    = GetOption<float>(Renderer_Option::ResolutionScale);
-        m_cb_frame_cpu.hdr_enabled         = GetOption<bool>(Renderer_Option::Hdr) ? 1.0f : 0.0f;
+        m_cb_frame_cpu.resolution_scale    = cvar_resolution_scale.GetValue();
+        m_cb_frame_cpu.hdr_enabled         = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
         m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
-        m_cb_frame_cpu.hdr_white_point     = GetOption<float>(Renderer_Option::WhitePoint);
-        m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
+        m_cb_frame_cpu.gamma               = cvar_gamma.GetValue();
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
         // cloud/weather parameters
@@ -605,6 +700,9 @@ namespace spartan
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion), 1 << 1);
         m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                         1 << 2);
+        // these must match what common_resources.hlsl is reading
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(), 1 << 0);
+        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
 
         // set
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
@@ -665,113 +763,6 @@ namespace spartan
         {
             m_icons.emplace_back(make_tuple(icon, world_position));
         }
-    }
-    
-    void Renderer::SetOption(Renderer_Option option, float value)
-    {
-        // clamp value
-        {
-            // anisotropy
-            if (option == Renderer_Option::Anisotropy)
-            {
-                value = clamp(value, 0.0f, 16.0f);
-            }
-            else if (option == Renderer_Option::ResolutionScale)
-            {
-                value = clamp(value, 0.5f, 1.0f);
-            }
-        }
-
-        // early exit if the value is already set
-        if ((m_options.find(option) != m_options.end()) && m_options[option] == value)
-            return;
-
-        // reject changes (if needed)
-        {
-            if (option == Renderer_Option::Hdr)
-            {
-                if (value == 1.0f)
-                {
-                    if (!Display::GetHdr())
-                    { 
-                        SP_LOG_WARNING("This display doesn't support HDR");
-                        return;
-                    }
-                }
-            }
-            else if (option == Renderer_Option::VariableRateShading)
-            {
-                if (value == 1.0f)
-                {
-                    if (!RHI_Device::IsSupportedVrs())
-                    { 
-                        SP_LOG_WARNING("This GPU doesn't support variable rate shading");
-                        return;
-                    }
-                }
-            }
-            else if (option == Renderer_Option::AntiAliasing_Upsampling)
-            {
-                if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
-                {
-                    if (!RHI_Device::IsSupportedXess())
-                    { 
-                        SP_LOG_WARNING("This GPU doesn't support XeSS");
-                        return;
-                    }
-                }
-            }
-        }
-
-        // set new value
-        m_options[option] = value;
-
-        // handle cascading changes
-        {
-            // upsampling and anti-aliasing
-            if (option == Renderer_Option::AntiAliasing_Upsampling)
-            {
-                // reset history for temporal filters
-                if (value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) || value == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
-                {
-                    RHI_VendorTechnology::ResetHistory();
-                }
-            }
-            else if (option == Renderer_Option::Hdr)
-            {
-                if (swapchain)
-                { 
-                    swapchain->SetHdr(value == 1.0f);
-                }
-            }
-            else if (option == Renderer_Option::Vsync)
-            {
-                if (swapchain)
-                {
-                    swapchain->SetVsync(value == 1.0f);
-                }
-            }
-            else if (option == Renderer_Option::PerformanceMetrics)
-            {
-                static bool enabled = false;
-                if (!enabled && value == 1.0f)
-                {
-                    Profiler::ClearMetrics();
-                }
-
-                enabled = value != 0.0f;
-            }
-        }
-    }
-
-    unordered_map<Renderer_Option, float>& Renderer::GetOptions()
-    {
-        return m_options;
-    }
-
-    void Renderer::SetOptions(const unordered_map<Renderer_Option, float>& options)
-    {
-        m_options = options;
     }
 
     RHI_SwapChain* Renderer::GetSwapChain()
@@ -949,23 +940,23 @@ namespace spartan
         const Vector3 camera_pos    = camera_entity ? camera_entity->GetPosition() : Vector3::Zero;
     
         m_bindless_lights.fill(Sb_Light());
-        static uint32_t count;
-        count = 0;
+        
+        // reset the active count so we can track exactly how many lights are uploaded
+        m_count_active_lights    = 0; 
         Light* first_directional = nullptr;
     
         auto fill_light = [&](Light* light_component)
         {
-            //SP_LOG_INFO("Processing light %s", light_component->GetEntity()->GetObjectName().c_str());
-
-            const uint32_t index = count++;
+            const uint32_t index = m_count_active_lights++;
+            
             light_component->SetIndex(index);
             Sb_Light& light_buffer_entry = m_bindless_lights[index];
-
+    
             for (uint32_t i = 0; i < light_component->GetSliceCount(); i++)
             {
                 light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
             }
-
+    
             light_buffer_entry.screen_space_shadows_slice_index  = light_component->GetScreenSpaceShadowsSliceIndex();
             light_buffer_entry.intensity                         = light_component->GetIntensityWatt();
             light_buffer_entry.range                             = light_component->GetRange();
@@ -985,15 +976,15 @@ namespace spartan
             {
                 if (i < light_component->GetSliceCount())
                 {
-                    light_buffer_entry.atlas_offsets[i]     = light_component->GetAtlasOffset(i);
-                    light_buffer_entry.atlas_scales[i]      = light_component->GetAtlasScale(i);
-                    const math::Rectangle& rect             = light_component->GetAtlasRectangle(i);
+                    light_buffer_entry.atlas_offsets[i]      = light_component->GetAtlasOffset(i);
+                    light_buffer_entry.atlas_scales[i]       = light_component->GetAtlasScale(i);
+                    const math::Rectangle& rect              = light_component->GetAtlasRectangle(i);
                     light_buffer_entry.atlas_texel_sizes[i] = Vector2(1.0f / rect.width, 1.0f / rect.height);
                 }
                 else
                 {
-                    light_buffer_entry.atlas_offsets[i]     = Vector2::Zero;
-                    light_buffer_entry.atlas_scales[i]      = Vector2::Zero;
+                    light_buffer_entry.atlas_offsets[i]      = Vector2::Zero;
+                    light_buffer_entry.atlas_scales[i]       = Vector2::Zero;
                     light_buffer_entry.atlas_texel_sizes[i] = Vector2::Zero;
                 }
             }
@@ -1007,7 +998,18 @@ namespace spartan
                 if (light_component->GetLightType() == LightType::Directional)
                 {
                     first_directional = light_component;
+    
+                    // even if disabled (intensity 0 or !active), we must upload it to slot 0
+                    // because the shader hard-assumes slot 0 is the sun.
                     fill_light(light_component);
+                    
+                    // if it was effectively disabled, ensure the uploaded intensity is 0
+                    // so it doesn't affect lighting calculation
+                    if (!light_component->GetEntity()->GetActive())
+                    {
+                        // index is guaranteed to be 0 here since it's the first one we processed
+                        m_bindless_lights[0].intensity = 0.0f;
+                    }
                     break;
                 }
             }
@@ -1018,23 +1020,24 @@ namespace spartan
         {
             if (Light* light_component = entity->GetComponent<Light>())
             {
+                // skip the directional light we already handled
                 if (light_component == first_directional)
                     continue;
-
+    
                 light_component->SetIndex(numeric_limits<uint32_t>::max());
     
                 if (!light_component->GetEntity()->GetActive())
                     continue;
-
+    
                 if (light_component->GetIntensityWatt() <= 0.0f)
                     continue;
-
+    
                 if (Camera* camera = World::GetCamera())
                 {
                     if (!camera->IsInViewFrustum(light_component->GetBoundingBox()))
                         continue;
                 }
-
+    
                 if (light_component->GetLightType() != LightType::Directional)
                 {
                     const float distance_squared      = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
@@ -1042,7 +1045,7 @@ namespace spartan
                     if (distance_squared > draw_distance_squared)
                         continue;
                 }
-
+    
                 fill_light(light_component);
             }
         }
@@ -1050,7 +1053,12 @@ namespace spartan
         // upload to gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * World::GetLightCount());
+        
+        // update only the active lights count so we don't upload garbage data
+        if (m_count_active_lights > 0)
+        {
+            buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * m_count_active_lights);
+        }
     }
 
     void Renderer::UpdatedBoundingBoxes(RHI_CommandList* cmd_list)
@@ -1234,7 +1242,8 @@ namespace spartan
 
     void Renderer::UpdateAccelerationStructures(RHI_CommandList* cmd_list)
     {
-        return;
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
+            return;
 
         // validate ray tracing and command list
         if (!RHI_Device::IsSupportedRayTracing() || !cmd_list)
@@ -1245,6 +1254,8 @@ namespace spartan
 
         // bottom-level acceleration structures
         {
+            uint32_t blas_built   = 0;
+            uint32_t blas_skipped = 0;
             for (Entity* entity : World::GetEntities())
             {
                 if (!entity->GetActive())
@@ -1255,8 +1266,21 @@ namespace spartan
                     if (!renderable->HasAccelerationStructure())
                     {
                         renderable->BuildAccelerationStructure(cmd_list);
+                        if (renderable->HasAccelerationStructure())
+                        {
+                            blas_built++;
+                        }
+                        else
+                        { 
+                            blas_skipped++;
+                        }
                     }
                 }
+            }
+            
+            if (blas_built > 0 || blas_skipped > 0)
+            {
+                SP_LOG_INFO("Ray tracing: built %u BLAS, skipped %u (no sub-meshes)", blas_built, blas_skipped);
             }
         }
 
@@ -1272,6 +1296,7 @@ namespace spartan
             constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // matches VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
 
             vector<RHI_AccelerationStructureInstance> instances;
+            vector<Sb_GeometryInfo> geometry_infos;
             for (Entity* entity : World::GetEntities())
             {
                 if (!entity->GetActive())
@@ -1281,6 +1306,17 @@ namespace spartan
                 {
                     if (Material* material = renderable->GetMaterial())
                     {
+                        // skip if blas doesn't exist (mesh might not have sub_meshes yet)
+                        uint64_t device_address = renderable->GetAccelerationStructureDeviceAddress();
+                        if (device_address == 0)
+                            continue;
+
+                        // skip if buffers aren't ready
+                        RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
+                        RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
+                        if (!vertex_buffer || !index_buffer)
+                            continue;
+
                         RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
 
                         RHI_AccelerationStructureInstance instance           = {};
@@ -1288,18 +1324,49 @@ namespace spartan
                         instance.mask                                        = 0xFF;                 // visible to all rays
                         instance.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
                         instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
-                        instance.device_address                              = renderable->GetAccelerationStructureDeviceAddress();
-                        Matrix world_matrix                                  = renderable->GetEntity()->GetMatrix().Transposed();
-                        copy(world_matrix.Data(), world_matrix.Data() + 12, instance.transform.begin()); // convert column-major 4x4 to row-major 3x4
+                        instance.device_address                              = device_address;
+
+                        // build row-major 3x4 transform for vulkan
+                        // engine uses row vectors (point * matrix), vulkan uses column vectors (matrix * point)
+                        // so we need to transpose the 3x3 rotation part
+                        // translation stays in the last column
+                        const Matrix& m = renderable->GetEntity()->GetMatrix();
+                        instance.transform[0]  = m.m00; instance.transform[1]  = m.m10; instance.transform[2]  = m.m20; instance.transform[3]  = m.m30;
+                        instance.transform[4]  = m.m01; instance.transform[5]  = m.m11; instance.transform[6]  = m.m21; instance.transform[7]  = m.m31;
+                        instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
 
                         instances.push_back(instance);
+
+                        // build geometry info for vertex/index buffer access in hit shader
+                        Sb_GeometryInfo geo_info       = {};
+                        geo_info.vertex_buffer_address = vertex_buffer->GetDeviceAddress();
+                        geo_info.index_buffer_address  = index_buffer->GetDeviceAddress();
+                        geo_info.vertex_offset         = renderable->GetVertexOffset(0);
+                        geo_info.index_offset          = renderable->GetIndexOffset(0);
+                        geo_info.vertex_count          = renderable->GetVertexCount(0);
+                        geo_info.index_count           = renderable->GetIndexCount(0);
+                        geometry_infos.push_back(geo_info);
                     }
                 }
             }
     
+            static uint32_t last_instance_count = 0;
             if (!instances.empty())
             {
+                if (instances.size() != last_instance_count)
+                {
+                    SP_LOG_INFO("Ray tracing: building TLAS with %zu instances", instances.size());
+                    last_instance_count = static_cast<uint32_t>(instances.size());
+                }
                 tlas->BuildTopLevel(cmd_list, instances);
+
+                // update geometry info buffer for hit shader vertex access
+                GetBuffer(Renderer_Buffer::GeometryInfo)->Update(cmd_list, geometry_infos.data(), static_cast<uint32_t>(geometry_infos.size() * sizeof(Sb_GeometryInfo)));
+            }
+            else if (last_instance_count != 0)
+            {
+                SP_LOG_WARNING("Ray tracing: no valid instances for TLAS (check that renderables have BLAS and materials)");
+                last_instance_count = 0;
             }
         }
     }

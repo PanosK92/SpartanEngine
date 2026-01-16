@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -44,9 +44,11 @@ namespace spartan
         vector<third_party_lib> m_third_party_libs;
         mutex mutex_register;
 
-        const char* renderer_option_to_string(const Renderer_Option option)
+        // helper to convert cvar name to xml-safe name (e.g., "r.bloom" -> "r_bloom")
+        string cvar_name_to_xml(const char* name)
         {
-            switch (option)
+            string result(name);
+            for (char& c : result)
             {
                 case Renderer_Option::Aabb:                        return "Aabb";
                 case Renderer_Option::PickingRay:                  return "PickingRay";
@@ -96,7 +98,10 @@ namespace spartan
                     SP_ASSERT_MSG(false, "Renderer_Option not handled");
                     return "";
                 }
+                if (c == '.')
+                    c = '_';
             }
+            return result;
         }
 
         void save()
@@ -113,9 +118,12 @@ namespace spartan
                 root.append_child("ResolutionRenderWidth").text().set(Renderer::GetResolutionRender().x);
                 root.append_child("ResolutionRenderHeight").text().set(Renderer::GetResolutionRender().y);
                 root.append_child("FPSLimit").text().set(Timer::GetFpsLimit());
-                for (auto& [option, value] : Renderer::GetOptions())
+                for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
-                    root.append_child(renderer_option_to_string(option)).text().set(value);
+                    if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
+                    {
+                        root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text().set(get<float>(*cvar.m_value_ptr));
+                    }
                 }
 
                 root.append_child("UseRootShaderDirectory").text().set(ResourceCache::GetUseRootShaderDirectory());
@@ -159,6 +167,16 @@ namespace spartan
                     if (!node.empty())
                     {
                         Renderer::SetOption(option, node.text().as_float());
+                // load render options from xml
+                for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
+                {
+                    if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
+                    {
+                        pugi::xml_node child = root.child(cvar_name_to_xml(string(name).c_str()).c_str());
+                        if (child)
+                        {
+                            ConsoleRegistry::Get().SetValueFromString(string(name).c_str(), child.text().as_string());
+                        }
                     }
                 }
 

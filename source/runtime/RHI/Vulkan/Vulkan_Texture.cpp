@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -206,9 +206,10 @@ namespace spartan
                     uint32_t mip_depth  = texture->GetType() == RHI_Texture_Type::Type3D ? (depth >> mip_index) : 1;
                     size_t size         = RHI_Texture::CalculateMipSize(mip_width, mip_height, mip_depth, texture->GetFormat(), texture->GetBitsPerChannel(), texture->GetChannelCount());
         
-                    if (!texture->GetMip(array_index, mip_index).bytes.empty())
+                    RHI_Texture_Mip* mip = texture->GetMip(array_index, mip_index);
+                    if (mip && !mip->bytes.empty())
                     {
-                        memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), size);
+                        memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, mip->bytes.data(), size);
                     }
         
                     buffer_offset += size;

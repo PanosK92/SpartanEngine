@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Geometry/Mesh.h"
 #include "Renderer_Buffers.h"
 #include "../Font/Font.h"
+#include "../Commands/Console/ConsoleCommands.h"
 #include <unordered_map>
 #include <atomic>
 #include "../Math/Rectangle.h"
@@ -47,12 +48,56 @@ namespace spartan
         class Frustum;
     }
 
+    // renderer cvars (defined in Renderer.cpp, use .GetValue() or .GetValueAs<T>() for direct access in hot paths)
+    extern TConsoleVar<float> cvar_aabb;
+    extern TConsoleVar<float> cvar_picking_ray;
+    extern TConsoleVar<float> cvar_grid;
+    extern TConsoleVar<float> cvar_transform_handle;
+    extern TConsoleVar<float> cvar_selection_outline;
+    extern TConsoleVar<float> cvar_lights;
+    extern TConsoleVar<float> cvar_audio_sources;
+    extern TConsoleVar<float> cvar_performance_metrics;
+    extern TConsoleVar<float> cvar_physics;
+    extern TConsoleVar<float> cvar_wireframe;
+    extern TConsoleVar<float> cvar_bloom;
+    extern TConsoleVar<float> cvar_fog;
+    extern TConsoleVar<float> cvar_ssao;
+    extern TConsoleVar<float> cvar_ray_traced_reflections;
+    extern TConsoleVar<float> cvar_motion_blur;
+    extern TConsoleVar<float> cvar_depth_of_field;
+    extern TConsoleVar<float> cvar_film_grain;
+    extern TConsoleVar<float> cvar_vhs;
+    extern TConsoleVar<float> cvar_chromatic_aberration;
+    extern TConsoleVar<float> cvar_dithering;
+    extern TConsoleVar<float> cvar_sharpness;
+    extern TConsoleVar<float> cvar_anisotropy;
+    extern TConsoleVar<float> cvar_tonemapping;
+    extern TConsoleVar<float> cvar_antialiasing_upsampling;
+    extern TConsoleVar<float> cvar_hdr;
+    extern TConsoleVar<float> cvar_gamma;
+    extern TConsoleVar<float> cvar_vsync;
+    extern TConsoleVar<float> cvar_variable_rate_shading;
+    extern TConsoleVar<float> cvar_resolution_scale;
+    extern TConsoleVar<float> cvar_dynamic_resolution;
+    extern TConsoleVar<float> cvar_occlusion_culling;
+    extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
+
     struct ShadowSlice
     {
         Light* light;
         uint32_t slice_index;
         uint32_t res;
         math::Rectangle rect;
+    };
+
+    // persistent debug line that expires after a certain duration
+    struct PersistentLine
+    {
+        math::Vector3 from;
+        math::Vector3 to;
+        Color color_from;
+        Color color_to;
+        double expire_time; // time in seconds when this line should expire
     };
 
     class Renderer
@@ -64,22 +109,17 @@ namespace spartan
         static void Tick();
 
         // primitive rendering (development & debugging)
-        static void DrawLine(const math::Vector3& from, const math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines);
-        static void DrawTriangle(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color = Color::standard_renderer_lines);
-        static void DrawBox(const math::BoundingBox& box, const Color& color = Color::standard_renderer_lines);
-        static void DrawCircle(const math::Vector3& center, const math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines);
-        static void DrawSphere(const math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines);
-        static void DrawDirectionalArrow(const math::Vector3& start, const math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines);
-        static void DrawPlane(const math::Plane& plane, const Color& color = Color::standard_renderer_lines);
+        // duration_sec: 0.0f = single frame, > 0.0 = seconds to display, FLT_MAX = infinite
+        static void DrawLine(const math::Vector3& from, const math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        static void DrawTriangle(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        static void DrawBox(const math::BoundingBox& box, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        static void DrawCircle(const math::Vector3& center, const math::Vector3& axis, const float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        static void DrawSphere(const math::Vector3& center, float radius, uint32_t segment_count, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        static void DrawDirectionalArrow(const math::Vector3& start, const math::Vector3& end, float arrow_size, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
+        static void DrawPlane(const math::Plane& plane, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
         static void DrawString(const char* text, const math::Vector2& position_screen_percentage);
         static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
-        // options
-        template<typename T>
-        static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[option]); }
-        static void SetOption(Renderer_Option option, float value);
-        static std::unordered_map<Renderer_Option, float>& GetOptions();
-        static void SetOptions(const std::unordered_map<Renderer_Option, float>& options);
 
         // swapchain
         static RHI_SwapChain* GetSwapChain();
@@ -155,6 +195,7 @@ namespace spartan
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
         static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list);
         static void Pass_RayTracedReflections(RHI_CommandList* cmd_list);
+        static void Pass_Light_Reflections(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting
@@ -201,6 +242,7 @@ namespace spartan
 
         // misc
         static void AddLinesToBeRendered();
+        static void UpdatePersistentLines();
         static void SetCommonTextures(RHI_CommandList* cmd_list);
         static void DestroyResources();
         static void UpdateShadowAtlas();
@@ -224,6 +266,7 @@ namespace spartan
         static Pcb_Pass m_pcb_pass_cpu;
         static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;
         static std::vector<RHI_Vertex_PosCol> m_lines_vertices;
+        static std::vector<PersistentLine> m_persistent_lines;
         static std::vector<std::tuple<RHI_Texture*, math::Vector3>> m_icons;
         static uint32_t m_resource_index;
         static std::atomic<bool> m_initialized_resources;
@@ -232,5 +275,6 @@ namespace spartan
         static RHI_CommandList* m_cmd_list_present;
         static std::vector<ShadowSlice> m_shadow_slices;
         static std::unique_ptr<RHI_Buffer> m_std_reflections; // it temporarily lives here
+        static uint32_t m_count_active_lights;
     };
 }

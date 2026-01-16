@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -127,12 +127,18 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     // velocity
     float2 position_ndc           = uv_to_ndc(vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale));
     float2 position_ndc_previous  = (vertex.position_previous.xy / vertex.position_previous.w);
+    float2 position_ndc_jittered  = position_ndc; // save jittered ndc for world position reconstruction
     position_ndc                 -= buffer_frame.taa_jitter_current;
     position_ndc_previous        -= buffer_frame.taa_jitter_previous;
     velocity                      = position_ndc - position_ndc_previous;
     
-    // world position
-    float3 position_world = get_position(vertex.position.z, ndc_to_uv(position_ndc));
+    // world position - use jittered ndc since view_projection_inverted includes the jitter
+    float3 position_world = get_position(vertex.position.z, ndc_to_uv(position_ndc_jittered));
+    
+    // cache distance to camera (used multiple times)
+    float3 camera_to_pixel = position_world - buffer_frame.camera_position;
+    float distance_sq      = dot(camera_to_pixel, camera_to_pixel);
+    float distance         = fast_sqrt(distance_sq);
 
     // world space uv
     if (any(material.world_space_uv))
@@ -150,9 +156,9 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         // apply tiling and offset
         uv_world = uv_world * material.tiling + material.offset;
         
-        // apply inversion (mirror along axis)
-        uv_world.x = material.invert_uv.x > 0.5f ? (1.0f - frac(uv_world.x)) + floor(uv_world.x) : uv_world.x;
-        uv_world.y = material.invert_uv.y > 0.5f ? (1.0f - frac(uv_world.y)) + floor(uv_world.y) : uv_world.y;
+        // apply inversion (mirror along axis) - branchless
+        float2 invert_mask = step(0.5f, material.invert_uv);
+        uv_world           = lerp(uv_world, (1.0f - frac(uv_world)) + floor(uv_world), invert_mask);
 
         vertex.uv_misc.xy = uv_world;
     }
@@ -169,73 +175,65 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 
         // dynamic vegetation coloring (grass blades, trees, etc.)
         {
+            // cache frequently accessed values
+            uint instance_id     = vertex.uv_misc.w;
+            float height_percent = vertex.uv_misc.z;
+            float variation      = hash(instance_id);
+            
             // color variation based on instance id
             static const float3 vegetation_greener    = float3(0.05f, 0.4f, 0.03f);
             static const float3 vegetation_yellower   = float3(0.45f, 0.4f, 0.15f);
             static const float3 vegetation_browner    = float3(0.3f,  0.15f, 0.08f);
             const float vegetation_variation_strength = 0.15f;
-            uint instance_id                          = vertex.uv_misc.w;
-            float variation                           = hash(instance_id);
 
             if (surface.is_grass_blade())
             {
                 // natural, darkish grass base and tip
-                const float3 grass_base = float3(0.05f, 0.07f, 0.03f); // muted earthy green
-                const float3 grass_tip  = float3(0.08f, 0.12f, 0.04f); // slightly brighter at tip
+                static const float3 grass_base = float3(0.05f, 0.07f, 0.03f);
+                static const float3 grass_tip  = float3(0.08f, 0.12f, 0.04f);
+                static const float3 grass_var1 = float3(0.07f, 0.08f, 0.03f);
+                static const float3 grass_var2 = float3(0.06f, 0.05f, 0.02f);
 
-                float height_percent = vertex.uv_misc.z;
-                float t              = smoothstep(0.2f, 1.0f, height_percent);
-                float3 grass_tint    = lerp(grass_base, grass_tip, t);
+                float t = smoothstep(0.2f, 1.0f, height_percent);
+                float3 grass_tint = lerp(grass_base, grass_tip, t);
 
-                // subtle variation along blades
-                float3 variation_color = grass_tint;
-                variation_color        = lerp(variation_color, float3(0.07f, 0.08f, 0.03f), step(0.33f, variation));
-                variation_color        = lerp(variation_color, float3(0.06f, 0.05f, 0.02f), step(0.66f, variation));
-
-                // blend with low weight to prevent whitening
+                // subtle variation along blades (branchless)
+                float3 variation_color = lerp(grass_tint, grass_var1, step(0.33f, variation));
+                variation_color = lerp(variation_color, grass_var2, step(0.66f, variation));
                 grass_tint = lerp(grass_tint, variation_color, 0.3f * vegetation_variation_strength);
 
-                // final blend onto albedo with moderate weight
-                albedo.rgb = lerp(albedo.rgb, grass_tint, 1.0f);
+                albedo.rgb = grass_tint;
             }
             else if (surface.is_flower())
             {
                 // base and default tip colors
-                const float3 flower_base = float3(0.05f, 0.07f, 0.03f);
-
-                uint instance_id = vertex.uv_misc.w;
+                static const float3 flower_base  = float3(0.05f, 0.07f, 0.03f);
+                static const float3 color_blue   = float3(0.529f, 0.808f, 0.922f);
+                static const float3 color_red    = float3(0.8f, 0.2f, 0.2f);
+                static const float3 color_yellow = float3(0.9f, 0.8f, 0.1f);
                 const uint instances_per_cluster = 5000;
-                uint cluster_id = instance_id / instances_per_cluster;
+                uint cluster_id                  = instance_id / instances_per_cluster;
 
                 // stable cluster variation
                 float cluster_variation = hash(cluster_id);
 
-                 // define the three main cluster colors
-                const float3 color_blue = float3(0.529f, 0.808f, 0.922f);
-                const float3 color_red = float3(0.8f, 0.2f, 0.2f);
-                const float3 color_yellow = float3(0.9f, 0.8f, 0.1f);
-
                 // branchless hue selection
-                float3 flower_tip = color_blue;
-                flower_tip = lerp(flower_tip, color_red, step(0.33f, cluster_variation));
-                flower_tip = lerp(flower_tip, color_yellow, step(0.66f, cluster_variation));
+                float3 flower_tip = lerp(color_blue, color_red, step(0.33f, cluster_variation));
+                flower_tip        = lerp(flower_tip, color_yellow, step(0.66f, cluster_variation));
 
                 // local subtle variation
-                float local_variation = hash(instance_id * 13u);
-                flower_tip *= (0.9f + 0.1f * local_variation); // slight brightness variance
+                float local_variation  = hash(instance_id * 13u);
+                flower_tip            *= (0.9f + 0.1f * local_variation);
 
                 // vertical gradient
-                float height_percent = vertex.uv_misc.z;
-                float t = smoothstep(0.2f, 1.0f, height_percent);
+                float t            = smoothstep(0.2f, 1.0f, height_percent);
                 float3 flower_tint = lerp(flower_base, flower_tip, t);
 
-                // blend with original albedo
-                albedo.rgb = lerp(albedo.rgb, flower_tint, 1.0f);
+                albedo.rgb = flower_tint;
             }
             else // trees and other vegetation variation
             {
-                float3 variation_color = vegetation_greener;
-                variation_color        = lerp(variation_color, vegetation_yellower, step(0.25f, variation));
+                float3 variation_color = lerp(vegetation_greener, vegetation_yellower, step(0.25f, variation));
                 variation_color        = lerp(variation_color, vegetation_browner, step(0.5f, variation));
         
                 albedo.rgb = lerp(albedo.rgb, variation_color, vegetation_variation_strength * (float)surface.color_variation_from_instance());
@@ -243,7 +241,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
        
             // snow blending based on world-space height and normal
             float snow_blend_factor = get_snow_blend_factor(position_world, vertex.normal);
-            albedo.rgb = lerp(albedo.rgb, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
+            albedo.rgb              = lerp(albedo.rgb, float3(0.95f, 0.95f, 0.95f), snow_blend_factor);
         }
         
         // alpha testing happens in the depth pre-pass, so here any opaque pixel has an alpha of 1
@@ -251,16 +249,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
 
     // emission
-    if (material.emissive_from_albedo())
-    {
-        emission += luminance(albedo.rgb) * (float)material.emissive_from_albedo();
-    }
-    else if (surface.has_texture_emissive())
+    if (surface.has_texture_emissive())
     {
         float3 emissive_color  = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy).rgb;
-        albedo.rgb            += emissive_color;            // overwrite the albedo color
-        emission               = luminance(emissive_color); // use the luminance later to boost it (no need to carry a float3 around)
+        albedo.rgb            += emissive_color;
+        emission               = luminance(emissive_color);
     }
+    emission += luminance(albedo.rgb) * (float)material.emissive_from_albedo();
     
     // normal mapping
     if (surface.has_texture_normal())
@@ -270,43 +265,45 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         float3 tangent_normal = normalize(unpack(normal_sample));
     
         // reconstruct z-component as this can be a bc5 two channel normal map
-        tangent_normal.z = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
+        float2 tangent_xy_sq = tangent_normal.xy * tangent_normal.xy;
+        tangent_normal.z     = fast_sqrt(max(0.0, 1.0 - tangent_xy_sq.x - tangent_xy_sq.y));
     
         // rotate normals to fake water waves/ripples
         float distance_fade = 1.0f;
         if (surface.is_water())
         {
-            float2 direction = float2(1.0, 0.5);
-            float speed      = 0.5f;
-            float time       = (float)buffer_frame.time;
-            float2 uv_offset = direction * time * speed;
-            float2 noise_uv  = (vertex.uv_misc.xy + uv_offset); 
-            float noise      = noise_perlin(noise_uv);
-            float angle      = noise * PI2; 
+            static const float2 direction = float2(1.0, 0.5);
+            static const float speed      = 0.5f;
+            float time                    = (float)buffer_frame.time;
+            float2 uv_offset              = direction * time * speed;
+            float2 noise_uv               = (vertex.uv_misc.xy + uv_offset); 
+            float noise                   = noise_perlin(noise_uv);
+            float angle                   = noise * PI2; 
     
             // rotate tangent normal.xy around Z-axis (tangent space)
-            float cos_a       = cos(angle);
-            float sin_a       = sin(angle);
+            float cos_a = cos(angle);
+            float sin_a = sin(angle);
             float2 rotated_xy = float2(
                 tangent_normal.x * cos_a - tangent_normal.y * sin_a,
                 tangent_normal.x * sin_a + tangent_normal.y * cos_a
             );
     
             // blend between original and rotated normals based on is_water (0 = original, 1 = rotated)
-            tangent_normal.xy = rotated_xy;
-            tangent_normal.z  = fast_sqrt(max(0.0, 1.0 - tangent_normal.x * tangent_normal.x - tangent_normal.y * tangent_normal.y));
+            tangent_normal.xy    = rotated_xy;
+            float2 tangent_xy_sq = tangent_normal.xy * tangent_normal.xy;
+            tangent_normal.z     = fast_sqrt(max(0.0, 1.0 - tangent_xy_sq.x - tangent_xy_sq.y));
     
             // flip if normal points down
             tangent_normal *= sign(tangent_normal.z);
 
-            // fade normal texture beyond a certain distnace to avoid high frequency noise from lower mips
-            float fade_start = 150.0f;
-            float fade_end   = 300.0f;
-            float distance   = fast_length(position_world - buffer_frame.camera_position);
-            distance_fade    = saturate((fade_end - distance) / (fade_end - fade_start));
+            // fade normal texture beyond a certain distance to avoid high frequency noise from lower mips
+            static const float fade_start = 150.0f;
+            static const float fade_end   = 300.0f;
+            static const float fade_range = fade_end - fade_start;
+            distance_fade                 = saturate((fade_end - distance) / fade_range);
         }
 
-        float normal_intensity     = saturate(max(0.01f, GetMaterial().normal)) * distance_fade;
+        float normal_intensity = saturate(max(0.01f, material.normal)) * distance_fade;
         tangent_normal.xy         *= normal_intensity;
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
@@ -347,18 +344,18 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     {
         static const float strength           = 1.0f;
         static const float max_roughness_gain = 0.02f;
+        static const float inv_distance_scale = 0.1f; // 1.0 / 10.0f
         float roughness2                      = roughness * roughness;
         float3 dndu                           = ddx(normal);
         float3 dndv                           = ddy(normal);
         
-        // compute variance and normalize by normal length
-        float variance       = length(dndu) * length(dndu) + length(dndv) * length(dndv);
-        float normal_length  = length(normal);
-        variance            /= max(0.001f, normal_length * normal_length);
+        // compute variance using dot product (faster than length^2)
+        float variance          = dot(dndu, dndu) + dot(dndv, dndv);
+        float normal_length_sq  = dot(normal, normal);
+        variance               /= max(0.001f, normal_length_sq);
         
-        // adapt strength based on camera distance
-        float distance            = length(position_world - buffer_frame.camera_position);
-        float adaptive_strength   = lerp(1.0f, 0.3f, saturate(distance / 10.0f));
+        // adapt strength based on camera distance (use cached distance)
+        float adaptive_strength   = lerp(1.0f, 0.3f, saturate(distance * inv_distance_scale));
         float kernel_roughness2   = min(variance * strength * adaptive_strength, max_roughness_gain);
         float filtered_roughness2 = saturate(roughness2 + kernel_roughness2);
         roughness                 = fast_sqrt(filtered_roughness2);

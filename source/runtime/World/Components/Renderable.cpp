@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -115,7 +115,11 @@ namespace spartan
         const string material_name = node.attribute("material_name").as_string();
         if (!material_name.empty() && !m_material_default)
         {
-            m_material = ResourceCache::GetByName<Material>(material_name).get();
+            shared_ptr<Material> material = ResourceCache::GetByName<Material>(material_name);
+            if (material)
+            {
+                SetMaterial(material);
+            }
         }
         else if (m_material_default)
         {
@@ -325,7 +329,7 @@ namespace spartan
         if (!m_mesh)
             return false;
 
-        return m_mesh->GetBlas() != nullptr;
+        return m_mesh->HasBlas(m_sub_mesh_index);
     }
 
     uint64_t Renderable::GetAccelerationStructureDeviceAddress() const
@@ -333,7 +337,11 @@ namespace spartan
         if (!m_mesh)
             return 0;
 
-        return m_mesh->GetBlas()->GetDeviceAddress();
+        RHI_AccelerationStructure* blas = m_mesh->GetBlas(m_sub_mesh_index);
+        if (!blas)
+            return 0;
+
+        return blas->GetDeviceAddress();
     }
 
     Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)
@@ -501,8 +509,8 @@ namespace spartan
         {
             static const array<float, 3> grass_distance_thresholds =
             {
-                20.0f, // lod0: (high detail, 5 segments)
-                40.0f, // lod1: (medium, 3 segments)
+                20.0f, // lod0: (high detail, 3 segments)
+                40.0f, // lod1: (medium, 2 segments)
                 80.0f  // lod2: (low, 1 segment)
             };
             for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(grass_distance_thresholds.size())); i++)

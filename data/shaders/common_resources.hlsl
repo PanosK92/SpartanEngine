@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -58,14 +58,14 @@ struct FrameBufferData
     float camera_last_movement_time;
     float hdr_enabled;
     float hdr_max_nits;
-    float hdr_white_point;
+    float padding;
 
     float3 camera_position_previous;
     float resolution_scale;
     
     double time;
     float camera_fov;
-    float padding;
+    float padding2;
     
     float3 wind;
     float gamma;
@@ -119,10 +119,12 @@ struct MaterialParameters
     float clearcoat;
     float clearcoat_roughness;
     
+    bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }
+    bool has_texture_normal()    { return (flags & (1 << 1))  != 0; }
     bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }
     bool has_texture_roughness() { return (flags & (1 << 3))  != 0; }
     bool has_texture_metalness() { return (flags & (1 << 4))  != 0; }
-    bool emissive_from_albedo()  { return (flags & (1 << 14)) != 0; }
+    bool emissive_from_albedo()  { return (flags & (1 << 15)) != 0; }
 };
 
 // struct which forms the bindless light parameters array
@@ -178,6 +180,29 @@ Texture2D tex_perlin : register(t14);
 // volumetric cloud 3D noise textures
 Texture3D tex3d_cloud_shape  : register(t19); // 128^3 Perlin-Worley + Worley FBM
 Texture3D tex3d_cloud_detail : register(t20); // 32^3 high-frequency detail
+// ray tracing geometry info for vertex buffer access (indexed by InstanceIndex())
+// matches c++ Sb_GeometryInfo struct
+struct GeometryInfo
+{
+    uint2 vertex_buffer_address; // uint64_t split into two uint32_t (low, high)
+    uint2 index_buffer_address;  // uint64_t split into two uint32_t (low, high)
+    uint vertex_offset;
+    uint index_offset;
+    uint vertex_count;
+    uint index_count;
+};
+
+// vertex structure matching c++ RHI_Vertex_PosTexNorTan (44 bytes)
+struct RtVertex
+{
+    float3 position;  // 12 bytes
+    float2 texcoord;  // 8 bytes  
+    float3 normal;    // 12 bytes
+    float3 tangent;   // 12 bytes
+};
+
+// ray tracing geometry info buffer
+RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
 
 // bindless arrays
 Texture2D material_textures[]                            : register(t15, space1);

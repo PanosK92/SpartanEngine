@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -288,11 +288,14 @@ namespace spartan
 
         Create();
     
-        SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
+        m_window_resize_event_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
     }
 
     RHI_SwapChain::~RHI_SwapChain()
     {
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WindowResized, m_window_resize_event_handle);
+        m_window_resize_event_handle = 0;
+
         for (void*& image_view : m_rhi_rtv)
         {
             if (image_view)
@@ -344,7 +347,7 @@ namespace spartan
                            "On NVIDIA Optimus laptops, switch to 'High-performance NVIDIA processor' in NVIDIA Control Panel or Windows Graphics Settings,"
                            "or update to NVIDIA driver 551.xx+ for Vulkan HDR support.", rhi_format_to_string(m_format), color_space);
 
-            Renderer::SetOption(Renderer_Option::Hdr, 0.0f);
+            ConsoleRegistry::Get().SetValueFromString("r.hdr", "0");
             m_format    = format_sdr; 
             color_space = get_color_space(m_format); 
         }

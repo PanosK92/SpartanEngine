@@ -45,6 +45,7 @@ function solution_configuration()
         location ".."
         language "C++"
         configurations { "debug", "release" }
+        flags { "FatalWarnings" }
 
         filter { "configurations:debug" }
             defines { "DEBUG" }
@@ -166,7 +167,7 @@ function spartan_project_configuration()
                     links {
                         "spirv-cross-c", "spirv-cross-core", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl",
                         "ffx_backend_vk_x64", "ffx_frameinterpolation_x64", "ffx_fsr3_x64", "ffx_fsr3upscaler_x64",
-                        "ffx_opticalflow_x64", "ffx_denoiser_x64", "ffx_sssr_x64", "ffx_breadcrumbs_x64", "libxess"
+                        "ffx_opticalflow_x64", "ffx_denoiser_x64", "ffx_breadcrumbs_x64", "libxess"
                     }
                 end
 
@@ -187,7 +188,7 @@ function spartan_project_configuration()
                 links {
                     "spirv-cross-c_debug", "spirv-cross-core_debug", "spirv-cross-cpp_debug", "spirv-cross-glsl_debug", "spirv-cross-hlsl_debug",
                     "ffx_backend_vk_x64d", "ffx_frameinterpolation_x64d", "ffx_fsr3_x64d", "ffx_fsr3upscaler_x64d",
-                    "ffx_opticalflow_x64d", "ffx_denoiser_x64d", "ffx_sssr_x64d", "ffx_breadcrumbs_x64d", "libxess"
+                    "ffx_opticalflow_x64d", "ffx_denoiser_x64d", "ffx_breadcrumbs_x64d", "libxess"
                 }
             end
 

@@ -64,7 +64,7 @@ The Forest is the most advanced and demanding world. It features **256 million**
   - Atmospheric scattering, real-time filtering, IBL with bent normals
   - Screen-space shadows (from *Days Gone*)
   - Screen-space ambient occlusion (XeGTAO + visibility bitfield)
-  - Screen-space reflections (FidelityFX SSSR)
+  - Ray-traced reflections
   - Fast shadow mapping with penumbra, supporting dozens of lights via a shadow map atlas
   - Volumetric fog
 - Performance & Upscaling
@@ -78,12 +78,22 @@ The Forest is the most advanced and demanding world. It features **256 million**
   - Auto-exposure
   - Physical light units (lumens & kelvin)
   - Frustum & occlusion (Hi-Z) culling
+  - Gran Turismo 7 tonemapper as a default for photometric color accuracy.
 - Post-processing
   - Tonemappers: ACES, AgX, others
   - HDR10 output
   - Post-processing effects: FXAA, bloom, motion blur, depth of field, chromatic aberration
 
-###### General
+#### Car Simulation
+- Pacejka based tire model with combined slip, load sensitivity, and low speed stability
+- Tire thermodynamics with slip heating, rolling heat, airflow cooling, and grip windows
+- Multi ray suspension with spring damper dynamics and anti roll bars
+- Full drivetrain simulation with engine torque curve, clutch, engine braking, and automatic gearbox
+- Limited slip differential with preload and asymmetric accel decel locking
+- Traction control, ABS, and handbrake induced rear slip
+- Aerodynamics including drag, rolling resistance, and front rear downforce
+
+#### General
 
 - Project & Input
   - One-click project generation

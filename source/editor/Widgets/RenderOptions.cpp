@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RenderOptions.h"
 #include "Core/Timer.h"
 #include "RHI/RHI_Device.h"
+#include "Rendering/Renderer.h"
 #include "../ImGui/ImGui_Extension.h"
 //===================================
 
@@ -48,7 +49,7 @@ namespace
     vector<string> display_modes_string;
 
     // helper functions
-    bool option(const char* title, bool default_open = true)
+    bool option_header(const char* title, bool default_open = true)
     {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
@@ -66,7 +67,7 @@ namespace
         ImGui::TableSetColumnIndex(1);
     }
 
-    void option_check_box(const char* label, const Renderer_Option render_option, const char* tooltip = nullptr)
+    void option_check_box(const char* label, const char* render_option, const char* tooltip = nullptr)
     {
         option_first_column();
         ImGui::Text(label);
@@ -77,9 +78,9 @@ namespace
 
         option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        bool value = Renderer::GetOption<bool>(render_option);
+        bool value = ConsoleRegistry::Get().GetAs<float>(render_option) != 0.0f;
         ImGui::Checkbox("", &value);
-        Renderer::SetOption(render_option, value);
+        ConsoleRegistry::Get().SetValueFromString(render_option, value ? "1" : "0");
         ImGui::PopID();
     }
 
@@ -116,7 +117,7 @@ namespace
         return result;
     }
 
-    bool option_value(const char* label, Renderer_Option render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
+    bool option_value(const char* label, const char* render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
     {
         option_first_column();
         ImGui::Text(label);
@@ -128,7 +129,7 @@ namespace
         bool changed = false;
         option_second_column();
         {
-            float value = Renderer::GetOption<float>(render_option);
+            float value = ConsoleRegistry::Get().GetAs<float>(render_option);
 
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
             ImGui::PushItemWidth(width_input_numeric);
@@ -137,10 +138,10 @@ namespace
             ImGui::PopID();
             value = clamp(value, min, max);
 
-            // Only update if changed
-            if (Renderer::GetOption<float>(render_option) != value)
+            // only update if changed
+            if (ConsoleRegistry::Get().GetAs<float>(render_option) != value)
             {
-                Renderer::SetOption(render_option, value);
+                ConsoleRegistry::Get().SetValueFromString(render_option, to_string(value));
             }
         }
 
@@ -207,10 +208,11 @@ void RenderOptions::OnVisible()
     {
         display_modes.clear();
         display_modes_string.clear();
-
         for (const DisplayMode& display_mode : Display::GetDisplayModes())
         {
-            if (display_mode.hz == Display::GetRefreshRate())
+            // only include resolutions that match the monitor's current refresh rate (with tolerance for floating-point quirks like 240 vs 239.8 Hz)
+            // quirks like that can exist for NVIDIA for example, but not for AMD, so it's important to be safe like that
+            if (fabs(display_mode.hz - Display::GetRefreshRate()) < 0.1f)
             {
                 display_modes.emplace_back(display_mode);
                 display_modes_string.emplace_back(to_string(display_mode.width) + "x" + to_string(display_mode.height));
@@ -234,7 +236,7 @@ void RenderOptions::OnTickVisible()
                 ImGui::TableSetupColumn("Value");
                 ImGui::TableHeadersRow();
 
-                if (option("Resolution"))
+                if (option_header("Resolution"))
                 {
                     // render resolution
                     Vector2 res_render = Renderer::GetResolutionRender();
@@ -252,15 +254,15 @@ void RenderOptions::OnTickVisible()
                         Renderer::SetResolutionOutput(display_modes[res_output_index].width, display_modes[res_output_index].height);
                     }
 
-                    option_check_box("Variable rate shading", Renderer_Option::VariableRateShading, "Improves performance by varying shading detail per pixel");
-                    option_check_box("Dynamic resolution", Renderer_Option::DynamicResolution, "Scales render resolution automatically based on GPU load");
+                    option_check_box("Variable rate shading", "r.variable_rate_shading", "Improves performance by varying shading detail per pixel");
+                    option_check_box("Dynamic resolution", "r.dynamic_resolution", "Scales render resolution automatically based on GPU load");
 
-                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::DynamicResolution));
-                    option_value("Resolution scale", Renderer_Option::ResolutionScale, "Adjusts the percentage of the render resolution", 0.01f);
+                    ImGui::BeginDisabled(cvar_dynamic_resolution.GetValueAs<bool>());
+                    option_value("Resolution scale", "r.resolution_scale", "Adjusts the percentage of the render resolution", 0.01f);
                     ImGui::EndDisabled();
                 }
 
-                if (option("Anti-Aliasing & Upscaling"))
+                if (option_header("Anti-Aliasing & Upscaling"))
                 {
                     static vector<string> upsamplers =
                     {
@@ -272,29 +274,28 @@ void RenderOptions::OnTickVisible()
 
                     Vector2 res_render = Renderer::GetResolutionRender();
                     Vector2 res_output = Renderer::GetResolutionOutput();
-                    uint32_t mode      = Renderer::GetOption<uint32_t>(Renderer_Option::AntiAliasing_Upsampling);
+                    uint32_t mode      = cvar_antialiasing_upsampling.GetValueAs<uint32_t>();
                     if (option_combo_box("Upsampling method", upsamplers, mode))
                     {
-                        Renderer::SetOption(Renderer_Option::AntiAliasing_Upsampling, static_cast<float>(mode));
+                        ConsoleRegistry::Get().SetValueFromString("r.antialiasing_upsampling", to_string(static_cast<float>(mode)));
                     }
 
-                    bool use_rcas = Renderer::GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling) == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
+                    bool use_rcas = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>() == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
                     string label = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
                     string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening" : "AMD FidelityFX Contrast Adaptive Sharpening";
-                    option_value(label.c_str(), Renderer_Option::Sharpness, tooltip.c_str(), 0.1f, 0.0f, 1.0f);
+                    option_value(label.c_str(), "r.sharpness", tooltip.c_str(), 0.1f, 0.0f, 1.0f);
                 }
 
-                if (option("Ray-traced Effects"))
+                if (option_header("Ray-traced Effects"))
                 {
                     ImGui::BeginDisabled(!RHI_Device::IsSupportedRayTracing());
-                    option_check_box("Reflections (WIP)", Renderer_Option::RayTracedReflections);
+                    option_check_box("Reflections", "r.ray_traced_reflections");
                     ImGui::EndDisabled();
                 }
 
-                if (option("Screen-space Effects"))
+                if (option_header("Screen-space Effects"))
                 {
-                    option_check_box("Reflections (SSR)", Renderer_Option::ScreenSpaceReflections);
-                    option_check_box("Ambient Occlusion (SSAO)", Renderer_Option::ScreenSpaceAmbientOcclusion);
+                    option_check_box("Ambient Occlusion (SSAO)", "r.ssao");
                 }
 
                 ImGui::EndTable();
@@ -313,27 +314,22 @@ void RenderOptions::OnTickVisible()
                 ImGui::TableSetupColumn("Value");
                 ImGui::TableHeadersRow();
 
-                if (option("Display"))
+                if (option_header("Display"))
                 {
-                    option_check_box("HDR", Renderer_Option::Hdr, "Enable high dynamic range output");
-                    ImGui::BeginDisabled(Renderer::GetOption<bool>(Renderer_Option::Hdr));
-                    option_value("Gamma", Renderer_Option::Gamma);
+                    option_check_box("HDR", "r.hdr", "Enable high dynamic range output");
+                    ImGui::BeginDisabled(cvar_hdr.GetValueAs<bool>());
+                    option_value("Gamma", "r.gamma");
                     ImGui::EndDisabled();
-                    option_value("Exposure adaptation speed", Renderer_Option::AutoExposureAdaptationSpeed, "Negative value disables adaptation");
-
-                    bool hdr_enabled = Renderer::GetOption<bool>(Renderer_Option::Hdr);
-                    ImGui::BeginDisabled(!hdr_enabled);
-                    option_value("White point (nits)", Renderer_Option::WhitePoint, "Target luminance of peak white", 1.0f);
-                    ImGui::EndDisabled();
+                    option_value("Exposure adaptation speed", "r.auto_exposure_adaptation_speed", "Negative value disables adaptation", 0.1f, -1.0f);
                 }
 
-                if (option("Tone Mapping"))
+                if (option_header("Tone Mapping"))
                 {
-                    static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Off" };
-                    uint32_t index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
+                    static vector<string> tonemapping = { "ACES", "AgX", "Reinhard", "ACES Nautilus", "Gran Turismo 7", "Off" };
+                    uint32_t index = cvar_tonemapping.GetValueAs<uint32_t>();
                     if (option_combo_box("Algorithm", tonemapping, index))
                     {
-                        Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(index));
+                        ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(index)));
                     }
                 }
 
@@ -353,13 +349,13 @@ void RenderOptions::OnTickVisible()
                 ImGui::TableSetupColumn("Value");
                 ImGui::TableHeadersRow();
 
-                option_value("Bloom intensity", Renderer_Option::Bloom, "Blend factor, set to 0 to disable", 0.01f);
-                option_check_box("Motion blur", Renderer_Option::MotionBlur, "Controlled by camera shutter speed");
-                option_check_box("Depth of field", Renderer_Option::DepthOfField, "Controlled by camera aperture");
-                option_check_box("Film grain", Renderer_Option::FilmGrain, "Simulates old film camera noise");
-                option_check_box("Chromatic aberration", Renderer_Option::ChromaticAberration, "Lens color fringing effect");
-                option_check_box("VHS effect", Renderer_Option::Vhs, "Retro VHS look");
-                option_check_box("Dithering", Renderer_Option::Dithering, "Reduces color banding in gradients");
+                option_value("Bloom intensity", "r.bloom", "Blend factor, set to 0 to disable", 0.01f);
+                option_check_box("Motion blur", "r.motion_blur", "Controlled by camera shutter speed");
+                option_check_box("Depth of field", "r.depth_of_field", "Controlled by camera aperture");
+                option_check_box("Film grain", "r.film_grain", "Simulates old film camera noise");
+                option_check_box("Chromatic aberration", "r.chromatic_aberration", "Lens color fringing effect");
+                option_check_box("VHS effect", "r.vhs", "Retro VHS look");
+                option_check_box("Dithering", "r.dithering", "Reduces color banding in gradients");
 
                 ImGui::EndTable();
             }
@@ -377,7 +373,7 @@ void RenderOptions::OnTickVisible()
                 ImGui::TableSetupColumn("Value");
                 ImGui::TableHeadersRow();
 
-                option_value("Fog density", Renderer_Option::Fog, "Controls atmospheric fog strength", 0.1f);
+                option_value("Fog density", "r.fog", "Controls atmospheric fog strength", 0.1f);
 
                 if (option("Volumetric Clouds"))
                 {
@@ -396,6 +392,7 @@ void RenderOptions::OnTickVisible()
                 }
 
                 if (option("Wind"))
+                if (option_header("Wind"))
                 {
                     Vector3 wind = Renderer::GetWind();
                     float strength = wind.Length();
@@ -432,9 +429,9 @@ void RenderOptions::OnTickVisible()
                 ImGui::TableSetupColumn("Value");
                 ImGui::TableHeadersRow();
 
-                if (option("Performance"))
+                if (option_header("Performance"))
                 {
-                    option_check_box("VSync", Renderer_Option::Vsync, "Synchronize frame updates with monitor refresh");
+                    option_check_box("VSync", "r.vsync", "Synchronize frame updates with monitor refresh");
                     option_first_column();
                     string fps_label = "FPS Limit (" + string(
                         Timer::GetFpsLimitType() == FpsLimitType::FixedToMonitor ? "Fixed to monitor" :
@@ -448,21 +445,21 @@ void RenderOptions::OnTickVisible()
                         ImGui::PopItemWidth();
                         Timer::SetFpsLimit(fps_target);
                     }
-                    option_check_box("Show performance metrics", Renderer_Option::PerformanceMetrics);
+                    option_check_box("Show performance metrics", "r.performance_metrics");
                 }
 
-                if (option("Debug Visuals"))
+                if (option_header("Debug Visuals"))
                 {
-                    option_check_box("Transform handles", Renderer_Option::TransformHandle);
-                    option_check_box("Selection outline", Renderer_Option::SelectionOutline);
-                    option_check_box("Lights", Renderer_Option::Lights);
-                    option_check_box("Audio sources", Renderer_Option::AudioSources);
-                    option_check_box("Grid", Renderer_Option::Grid);
-                    option_check_box("Picking ray", Renderer_Option::PickingRay);
-                    option_check_box("Physics", Renderer_Option::Physics);
-                    option_check_box("AABBs", Renderer_Option::Aabb);
-                    option_check_box("Wireframe", Renderer_Option::Wireframe);
-                    option_check_box("Occlusion culling", Renderer_Option::OcclusionCulling, "For development purposes");
+                    option_check_box("Transform handles", "r.transform_handle");
+                    option_check_box("Selection outline", "r.selection_outline");
+                    option_check_box("Lights", "r.lights");
+                    option_check_box("Audio sources", "r.audio_sources");
+                    option_check_box("Grid", "r.grid");
+                    option_check_box("Picking ray", "r.picking_ray");
+                    option_check_box("Physics", "r.physics");
+                    option_check_box("AABBs", "r.aabb");
+                    option_check_box("Wireframe", "r.wireframe");
+                    option_check_box("Occlusion culling", "r.occlusion_culling", "For development purposes");
                 }
 
                 ImGui::EndTable();

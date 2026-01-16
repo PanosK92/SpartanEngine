@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -126,30 +126,30 @@ namespace spartan::math
         
             Matrix normalized;
         #if defined(__AVX2__)
-            // Create scale reciprocal vector for faster division
-            __m128 scaleRecip = _mm_set_ps(1.0f, 1.0f / scale.z, 1.0f / scale.y, 1.0f / scale.x);
+            // create scale reciprocal vector for faster division (per-row scaling)
+            __m128 scale_recip = _mm_set_ps(1.0f, 1.0f / scale.z, 1.0f / scale.y, 1.0f / scale.x);
         
-            // Load and normalize first three columns using loadu for unaligned safety
+            // load and normalize first three columns
             __m128 col0 = _mm_loadu_ps(Data() + 0);
             __m128 col1 = _mm_loadu_ps(Data() + 4);
             __m128 col2 = _mm_loadu_ps(Data() + 8);
         
-            // Normalize by scale
-            col0 = _mm_mul_ps(col0, scaleRecip);
-            col1 = _mm_mul_ps(col1, scaleRecip);
-            col2 = _mm_mul_ps(col2, scaleRecip);
+            // normalize by scale (each row element divided by its row's scale)
+            col0 = _mm_mul_ps(col0, scale_recip);
+            col1 = _mm_mul_ps(col1, scale_recip);
+            col2 = _mm_mul_ps(col2, scale_recip);
         
-            // Store in normalized matrix
+            // store in normalized matrix
             _mm_storeu_ps(&normalized.m00, col0);
             _mm_storeu_ps(&normalized.m01, col1);
             _mm_storeu_ps(&normalized.m02, col2);
         
-            // Set translation components to zero (last row except m33)
+            // set translation components to zero (last row except m33)
             normalized.m30 = 0.0f;
             normalized.m31 = 0.0f;
             normalized.m32 = 0.0f;
         
-            // Set last column
+            // set last column
             normalized.m03 = 0.0f;
             normalized.m13 = 0.0f;
             normalized.m23 = 0.0f;
@@ -225,48 +225,31 @@ namespace spartan::math
         #if defined(__AVX2__)
             const float* data = Data();
         
-            // Calculate signs (scalar)
+            // calculate signs (scalar)
             float xs = (sign(m00 * m01 * m02 * m03) < 0) ? -1.0f : 1.0f;
             float ys = (sign(m10 * m11 * m12 * m13) < 0) ? -1.0f : 1.0f;
             float zs = (sign(m20 * m21 * m22 * m23) < 0) ? -1.0f : 1.0f;
         
-            // Define gather indices for rows (in float offsets)
-            __m128i idx0 = _mm_set_epi32(12, 8, 4, 0);  // m03, m02, m01, m00 (m03 typically 0)
-            __m128i idx1 = _mm_set_epi32(13, 9, 5, 1);  // m13, m12, m11, m10 (m13 typically 0)
-            __m128i idx2 = _mm_set_epi32(14, 10, 6, 2); // m23, m22, m21, m20 (m23 typically 0)
+            // define gather indices for rows (in float offsets) - only first 3 elements matter
+            __m128i idx0 = _mm_set_epi32(0, 8, 4, 0);   // m00, m01, m02 (last ignored)
+            __m128i idx1 = _mm_set_epi32(1, 9, 5, 1);   // m10, m11, m12 (last ignored)
+            __m128i idx2 = _mm_set_epi32(2, 10, 6, 2);  // m20, m21, m22 (last ignored)
         
-            // Gather rows using AVX2 gather
+            // gather rows using avx2 gather
             __m128 row0 = _mm_i32gather_ps(data, idx0, 4);
             __m128 row1 = _mm_i32gather_ps(data, idx1, 4);
             __m128 row2 = _mm_i32gather_ps(data, idx2, 4);
         
-            // Square each component
-            __m128 square0 = _mm_mul_ps(row0, row0);
-            __m128 square1 = _mm_mul_ps(row1, row1);
-            __m128 square2 = _mm_mul_ps(row2, row2);
+            // use dot product to sum squares of first 3 elements (mask 0x71 = sum xyz, result in lowest)
+            __m128 len_sq0 = _mm_dp_ps(row0, row0, 0x71);
+            __m128 len_sq1 = _mm_dp_ps(row1, row1, 0x71);
+            __m128 len_sq2 = _mm_dp_ps(row2, row2, 0x71);
         
-            // Sum using permute and add (avoid hadd for better performance)
-            // For square0: sum all four elements (though fourth is 0^2)
-            __m128 shuf0 = _mm_permute_ps(square0, _MM_SHUFFLE(2, 3, 0, 1));
-            __m128 sums0 = _mm_add_ps(square0, shuf0);
-            shuf0 = _mm_permute_ps(sums0, _MM_SHUFFLE(1, 0, 3, 2));
-            sums0 = _mm_add_ps(sums0, shuf0);
-        
-            __m128 shuf1 = _mm_permute_ps(square1, _MM_SHUFFLE(2, 3, 0, 1));
-            __m128 sums1 = _mm_add_ps(square1, shuf1);
-            shuf1 = _mm_permute_ps(sums1, _MM_SHUFFLE(1, 0, 3, 2));
-            sums1 = _mm_add_ps(sums1, shuf1);
-        
-            __m128 shuf2 = _mm_permute_ps(square2, _MM_SHUFFLE(2, 3, 0, 1));
-            __m128 sums2 = _mm_add_ps(square2, shuf2);
-            shuf2 = _mm_permute_ps(sums2, _MM_SHUFFLE(1, 0, 3, 2));
-            sums2 = _mm_add_ps(sums2, shuf2);
-        
-            // Extract sums and compute sqrt with signs
+            // extract sums and compute sqrt with signs
             return Vector3(
-                xs * sqrt(_mm_cvtss_f32(sums0)),
-                ys * sqrt(_mm_cvtss_f32(sums1)),
-                zs * sqrt(_mm_cvtss_f32(sums2))
+                xs * sqrt(_mm_cvtss_f32(len_sq0)),
+                ys * sqrt(_mm_cvtss_f32(len_sq1)),
+                zs * sqrt(_mm_cvtss_f32(len_sq2))
             );
         #else
             const int xs = (sign(m00 * m01 * m02 * m03) < 0) ? -1 : 1;
@@ -344,12 +327,39 @@ namespace spartan::math
         void Transpose() { *this = Transpose(*this); }
         static Matrix Transpose(const Matrix& matrix)
         {
+        #if defined(__AVX2__)
+            // load all 4 columns
+            __m128 col0 = _mm_loadu_ps(&matrix.m00);
+            __m128 col1 = _mm_loadu_ps(&matrix.m01);
+            __m128 col2 = _mm_loadu_ps(&matrix.m02);
+            __m128 col3 = _mm_loadu_ps(&matrix.m03);
+            
+            // transpose using unpack operations
+            __m128 tmp0 = _mm_unpacklo_ps(col0, col1); // m00, m01, m10, m11
+            __m128 tmp1 = _mm_unpackhi_ps(col0, col1); // m20, m21, m30, m31
+            __m128 tmp2 = _mm_unpacklo_ps(col2, col3); // m02, m03, m12, m13
+            __m128 tmp3 = _mm_unpackhi_ps(col2, col3); // m22, m23, m32, m33
+            
+            // final shuffle to get transposed rows
+            __m128 row0 = _mm_movelh_ps(tmp0, tmp2); // m00, m01, m02, m03
+            __m128 row1 = _mm_movehl_ps(tmp2, tmp0); // m10, m11, m12, m13
+            __m128 row2 = _mm_movelh_ps(tmp1, tmp3); // m20, m21, m22, m23
+            __m128 row3 = _mm_movehl_ps(tmp3, tmp1); // m30, m31, m32, m33
+            
+            Matrix result;
+            _mm_storeu_ps(&result.m00, row0);
+            _mm_storeu_ps(&result.m01, row1);
+            _mm_storeu_ps(&result.m02, row2);
+            _mm_storeu_ps(&result.m03, row3);
+            return result;
+        #else
             return Matrix(
                 matrix.m00, matrix.m10, matrix.m20, matrix.m30,
                 matrix.m01, matrix.m11, matrix.m21, matrix.m31,
                 matrix.m02, matrix.m12, matrix.m22, matrix.m32,
                 matrix.m03, matrix.m13, matrix.m23, matrix.m33
             );
+        #endif
         }
 
         [[nodiscard]] Matrix Inverted() const { return Invert(*this); }
@@ -436,7 +446,7 @@ namespace spartan::math
             const float* left_data = Data();
             const float* right_data = rhs.Data();
         
-            // Load left columns
+            // load left columns
             __m128 left_col0 = _mm_loadu_ps(left_data + 0);
             __m128 left_col1 = _mm_loadu_ps(left_data + 4);
             __m128 left_col2 = _mm_loadu_ps(left_data + 8);
@@ -444,19 +454,19 @@ namespace spartan::math
         
             for (int j = 0; j < 4; ++j)
             {
-                // Broadcast elements of right column j using AVX broadcast
+                // broadcast elements of right column j
                 __m128 v0 = _mm_broadcast_ss(right_data + 4 * j + 0);
                 __m128 v1 = _mm_broadcast_ss(right_data + 4 * j + 1);
                 __m128 v2 = _mm_broadcast_ss(right_data + 4 * j + 2);
                 __m128 v3 = _mm_broadcast_ss(right_data + 4 * j + 3);
         
-                // Compute using FMA for AVX2
+                // compute using fma
                 __m128 res = _mm_mul_ps(left_col0, v0);
                 res = _mm_fmadd_ps(left_col1, v1, res);
                 res = _mm_fmadd_ps(left_col2, v2, res);
                 res = _mm_fmadd_ps(left_col3, v3, res);
         
-                // Store result column
+                // store result column
                 _mm_storeu_ps(const_cast<float*>(result.Data()) + 4 * j, res);
             }
         
@@ -487,6 +497,49 @@ namespace spartan::math
 
         Vector3 operator*(const Vector3& rhs) const
         {
+        #if defined(__AVX2__)
+            // load matrix columns
+            __m128 col0 = _mm_loadu_ps(&m00);
+            __m128 col1 = _mm_loadu_ps(&m01);
+            __m128 col2 = _mm_loadu_ps(&m02);
+            __m128 col3 = _mm_loadu_ps(&m03);
+            
+            // transpose columns to rows for correct row-vector multiplication
+            __m128 tmp0 = _mm_unpacklo_ps(col0, col1);
+            __m128 tmp1 = _mm_unpackhi_ps(col0, col1);
+            __m128 tmp2 = _mm_unpacklo_ps(col2, col3);
+            __m128 tmp3 = _mm_unpackhi_ps(col2, col3);
+            
+            __m128 row0 = _mm_movelh_ps(tmp0, tmp2);
+            __m128 row1 = _mm_movehl_ps(tmp2, tmp0);
+            __m128 row2 = _mm_movelh_ps(tmp1, tmp3);
+            __m128 row3 = _mm_movehl_ps(tmp3, tmp1);
+            
+            // broadcast vector components
+            __m128 vx = _mm_set1_ps(rhs.x);
+            __m128 vy = _mm_set1_ps(rhs.y);
+            __m128 vz = _mm_set1_ps(rhs.z);
+            
+            // multiply and accumulate: result = row0*x + row1*y + row2*z + row3*1
+            __m128 result = _mm_mul_ps(row0, vx);
+            result = _mm_fmadd_ps(row1, vy, result);
+            result = _mm_fmadd_ps(row2, vz, result);
+            result = _mm_add_ps(result, row3);
+            
+            // extract w for perspective divide
+            float w = _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(3, 3, 3, 3)));
+            
+            // perspective divide if needed
+            if (w != 1.0f)
+            {
+                __m128 inv_w = _mm_set1_ps(1.0f / w);
+                result = _mm_mul_ps(result, inv_w);
+            }
+            
+            return Vector3(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))));
+        #else
             float x = (rhs.x * m00) + (rhs.y * m10) + (rhs.z * m20) + m30;
             float y = (rhs.x * m01) + (rhs.y * m11) + (rhs.z * m21) + m31;
             float z = (rhs.x * m02) + (rhs.y * m12) + (rhs.z * m22) + m32;
@@ -501,10 +554,46 @@ namespace spartan::math
             }
 
             return Vector3(x, y, z);
+        #endif
         }
 
         Vector4 operator*(const Vector4& rhs) const
         {
+        #if defined(__AVX2__)
+            // load matrix columns
+            __m128 col0 = _mm_loadu_ps(&m00);
+            __m128 col1 = _mm_loadu_ps(&m01);
+            __m128 col2 = _mm_loadu_ps(&m02);
+            __m128 col3 = _mm_loadu_ps(&m03);
+            
+            // transpose columns to rows for correct row-vector multiplication
+            __m128 tmp0 = _mm_unpacklo_ps(col0, col1);
+            __m128 tmp1 = _mm_unpackhi_ps(col0, col1);
+            __m128 tmp2 = _mm_unpacklo_ps(col2, col3);
+            __m128 tmp3 = _mm_unpackhi_ps(col2, col3);
+            
+            __m128 row0 = _mm_movelh_ps(tmp0, tmp2);
+            __m128 row1 = _mm_movehl_ps(tmp2, tmp0);
+            __m128 row2 = _mm_movelh_ps(tmp1, tmp3);
+            __m128 row3 = _mm_movehl_ps(tmp3, tmp1);
+            
+            // broadcast vector components
+            __m128 vx = _mm_set1_ps(rhs.x);
+            __m128 vy = _mm_set1_ps(rhs.y);
+            __m128 vz = _mm_set1_ps(rhs.z);
+            __m128 vw = _mm_set1_ps(rhs.w);
+            
+            // multiply and accumulate: result = row0*x + row1*y + row2*z + row3*w
+            __m128 result = _mm_mul_ps(row0, vx);
+            result = _mm_fmadd_ps(row1, vy, result);
+            result = _mm_fmadd_ps(row2, vz, result);
+            result = _mm_fmadd_ps(row3, vw, result);
+            
+            return Vector4(_mm_cvtss_f32(result),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(1, 1, 1, 1))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(2, 2, 2, 2))),
+                           _mm_cvtss_f32(_mm_shuffle_ps(result, result, _MM_SHUFFLE(3, 3, 3, 3))));
+        #else
             return Vector4
             (
                 (rhs.x * m00) + (rhs.y * m10) + (rhs.z * m20) + (rhs.w * m30),
@@ -512,12 +601,28 @@ namespace spartan::math
                 (rhs.x * m02) + (rhs.y * m12) + (rhs.z * m22) + (rhs.w * m32),
                 (rhs.x * m03) + (rhs.y * m13) + (rhs.z * m23) + (rhs.w * m33)
             );
+        #endif
         }
 
         bool operator==(const Matrix& rhs) const
         {
-            const float* data_left    = Data();
-            const float* data_right    = rhs.Data();
+        #if defined(__AVX2__)
+            // load and compare all 4 columns using 256-bit registers for efficiency
+            __m256 left01  = _mm256_loadu_ps(&m00);       // columns 0 and 1
+            __m256 left23  = _mm256_loadu_ps(&m02);       // columns 2 and 3
+            __m256 right01 = _mm256_loadu_ps(&rhs.m00);
+            __m256 right23 = _mm256_loadu_ps(&rhs.m02);
+            
+            // compare for equality
+            __m256 cmp01 = _mm256_cmp_ps(left01, right01, _CMP_EQ_OQ);
+            __m256 cmp23 = _mm256_cmp_ps(left23, right23, _CMP_EQ_OQ);
+            
+            // combine results and check all bits are set
+            __m256 cmp_all = _mm256_and_ps(cmp01, cmp23);
+            return _mm256_movemask_ps(cmp_all) == 0xFF;
+        #else
+            const float* data_left  = Data();
+            const float* data_right = rhs.Data();
 
             for (unsigned i = 0; i < 16; ++i)
             {
@@ -526,12 +631,40 @@ namespace spartan::math
             }
 
             return true;
+        #endif
         }
 
         bool operator!=(const Matrix& rhs) const { return !(*this == rhs); }
 
-        bool Equals(const Matrix& rhs)
+        bool Equals(const Matrix& rhs) const
         {
+        #if defined(__AVX2__)
+            const float eps = std::numeric_limits<float>::epsilon();
+            __m256 epsilon = _mm256_set1_ps(eps);
+            
+            // load columns
+            __m256 left01  = _mm256_loadu_ps(&m00);
+            __m256 left23  = _mm256_loadu_ps(&m02);
+            __m256 right01 = _mm256_loadu_ps(&rhs.m00);
+            __m256 right23 = _mm256_loadu_ps(&rhs.m02);
+            
+            // compute absolute difference
+            __m256 diff01 = _mm256_sub_ps(left01, right01);
+            __m256 diff23 = _mm256_sub_ps(left23, right23);
+            
+            // absolute value (clear sign bit)
+            __m256 sign_mask = _mm256_set1_ps(-0.0f);
+            diff01 = _mm256_andnot_ps(sign_mask, diff01);
+            diff23 = _mm256_andnot_ps(sign_mask, diff23);
+            
+            // compare against epsilon
+            __m256 cmp01 = _mm256_cmp_ps(diff01, epsilon, _CMP_LE_OQ);
+            __m256 cmp23 = _mm256_cmp_ps(diff23, epsilon, _CMP_LE_OQ);
+            
+            // combine and check all pass
+            __m256 cmp_all = _mm256_and_ps(cmp01, cmp23);
+            return _mm256_movemask_ps(cmp_all) == 0xFF;
+        #else
             const float* data_left  = Data();
             const float* data_right = rhs.Data();
 
@@ -542,6 +675,7 @@ namespace spartan::math
             }
 
             return true;
+        #endif
         }
 
         [[nodiscard]] const float* Data() const { return &m00; }
@@ -556,6 +690,6 @@ namespace spartan::math
     };
 
     // reverse order operators
-    inline  Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
-    inline  Vector4 operator*(const Vector4& lhs, const Matrix& rhs) { return rhs * lhs; }
+    inline Vector3 operator*(const Vector3& lhs, const Matrix& rhs) { return rhs * lhs; }
+    inline Vector4 operator*(const Vector4& lhs, const Matrix& rhs) { return rhs * lhs; }
 }

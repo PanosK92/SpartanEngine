@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "AudioSource.h"
 #include "Terrain.h"
+#include "Volume.h"
 //======================
 
 //= NAMESPACES =====
@@ -56,4 +57,5 @@ namespace spartan
     REGISTER_COMPONENT(Renderable,  ComponentType::Renderable)
     REGISTER_COMPONENT(Physics,     ComponentType::Physics)
     REGISTER_COMPONENT(Terrain,     ComponentType::Terrain)
+    REGISTER_COMPONENT(Volume,      ComponentType::Volume)
 }

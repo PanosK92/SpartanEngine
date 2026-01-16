@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -86,6 +86,7 @@ namespace spartan
         AgX,
         Reinhard,
         AcesNautilus,
+        GranTurismo7,
         Max,
     };
 
@@ -142,15 +143,16 @@ namespace spartan
 
     enum class Renderer_BindingsUav
     {
-        tex         = 0,
-        tex2        = 1,
-        tex3        = 2,
-        tex4        = 3,
-        tex3d       = 4,
-        tex_sss     = 5,
-        visibility  = 6,
-        sb_spd      = 7,
-        tex_spd     = 8,
+        tex           = 0,
+        tex2          = 1,
+        tex3          = 2,
+        tex4          = 3,
+        tex3d         = 4,
+        tex_sss       = 5,
+        visibility    = 6,
+        sb_spd        = 7,
+        tex_spd       = 8,
+        geometry_info = 20, // ray tracing geometry info buffer
     };
 
     enum class Renderer_Shader : uint8_t
@@ -172,6 +174,7 @@ namespace spartan
         bloom_luminance_c,
         bloom_blend_frame_c,
         bloom_upsample_blend_mip_c,
+        bloom_downsample_c,
         output_c,
         light_integration_brdf_specular_lut_c,
         light_integration_environment_filter_c,
@@ -191,6 +194,8 @@ namespace spartan
         sss_c_bend,
         skysphere_c,
         skysphere_lut_c,
+        skysphere_transmittance_lut_c,
+        skysphere_multiscatter_lut_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
         variable_rate_shading_c,
@@ -198,7 +203,6 @@ namespace spartan
         ffx_spd_average_c,
         ffx_spd_min_c,
         ffx_spd_max_c,
-        ffx_spd_luminance_c,
         blit_c,
         occlusion_c,
         icon_c,
@@ -212,6 +216,7 @@ namespace spartan
         cloud_noise_shape_c,
         cloud_noise_detail_c,
         cloud_shadow_c,
+        light_reflections_c,
         max
     };
     
@@ -227,16 +232,20 @@ namespace spartan
         gbuffer_depth_opaque_output,
         lut_brdf_specular,
         lut_atmosphere_scatter,
+        lut_atmosphere_transmittance,
+        lut_atmosphere_multiscatter,
         light_diffuse,
         light_specular,
-        light_shadow,
         light_volumetric,
         frame_render,
         frame_render_opaque,
         frame_output,
         frame_output_2,
         ssao,
-        ssr,
+        reflections,
+        gbuffer_reflections_position,
+        gbuffer_reflections_normal,
+        gbuffer_reflections_albedo,
         sss,
         skysphere,
         bloom,
@@ -277,6 +286,7 @@ namespace spartan
         AABBs,
         Visibility,
         VisibilityPrevious,
+        GeometryInfo,
         Max
     };
 
@@ -330,8 +340,7 @@ namespace spartan
     {
         Min,
         Max,
-        Average,
-        Luminance
+        Average
     };
 
     class Renderable;

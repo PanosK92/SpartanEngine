@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/AudioSource.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
+#include "World/Components/Volume.h"
+#include "Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -47,9 +49,11 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace
 {
+    std::unique_ptr<ButtonColorPicker> m_material_color_picker;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
     #define column_pos_x 180.0f * spartan::Window::GetDpiScale()
     #define item_width   120.0f * spartan::Window::GetDpiScale()
-
     string context_menu_id;
     Component* copied_component = nullptr;
 
@@ -212,6 +216,7 @@ void Properties::OnTickVisible()
                 ShowRenderable(renderable);
                 ShowMaterial(material);
                 ShowPhysics(entity->GetComponent<Physics>());
+                ShowVolume(entity->GetComponent<Volume>());
 
                 ShowAddComponentButton();
             }
@@ -787,18 +792,9 @@ void Properties::ShowMaterial(Material* material) const
         ImGui::SameLine(column_pos_x);
         ImGui::Text(material->GetObjectName().c_str());
 
-        // optimized
-        bool optimized = material->GetProperty(MaterialProperty::Optimized) != 0.0f;
-        {
-            ImGui::Text("Optimized");
-            ImGui::SameLine(column_pos_x);
-            ImGui::Text(optimized ? "Yes" : "No");
-            ImGuiSp::tooltip("Optimized materials can't be modified");
-        }
-
         // texture slots
         {
-            const auto show_property = [this, &material, &optimized](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
+            const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
             {
                 bool show_texture  = mat_tex      != MaterialTextureType::Max;
                 bool show_modifier = mat_property != MaterialProperty::Max;
@@ -820,7 +816,6 @@ void Properties::ShowMaterial(Material* material) const
                 }
         
                 // texture
-                ImGui::BeginDisabled(optimized);
                 if (show_texture)
                 {
                     // for the current texture type (mat_tex), show all its slots
@@ -850,7 +845,6 @@ void Properties::ShowMaterial(Material* material) const
                         ImGui::SameLine();
                     }
                 }
-                ImGui::EndDisabled();
         
                 // modifier/multiplier
                 if (show_modifier)
@@ -1181,6 +1175,89 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
     component_end();
 }
 
+void Properties::ShowVolume(spartan::Volume* volume) const
+{
+    if (!volume)
+        return;
+
+    if (component_begin("Volume", volume))
+    {
+        // reflect
+        const math::BoundingBox& bounding_box = volume->GetBoundingBox();
+        Vector3 min = bounding_box.GetMin();
+        Vector3 max = bounding_box.GetMax();
+
+        // min/max
+        ImGuiSp::vector3("Min", min, false);
+        ImGuiSp::vector3("Max", max, false);
+
+        // map
+        if (min != bounding_box.GetMin() || max != bounding_box.GetMax())
+        {
+            volume->SetBoundingBox(math::BoundingBox(min, max));
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Overrides");
+
+        // scrollable area of render options
+        if (ImGui::BeginChild("##vol_overrides", ImVec2(0, 250.0f), true))
+        {
+            // iterate over all renderer options (those starting with "r.")
+            int id_counter = 0;
+            for (const auto& [cvar_name, cvar] : ConsoleRegistry::Get().GetAll())
+            {
+                // only include renderer options
+                if (cvar_name.size() < 2 || cvar_name[0] != 'r' || cvar_name[1] != '.')
+                    continue;
+
+                string name(cvar_name);
+                float global_value = get<float>(*cvar.m_value_ptr);
+
+                ImGui::PushID(id_counter++);
+
+                // determine if option is overridden
+                bool is_active = volume->GetOptions().find(name) != volume->GetOptions().end();
+
+                // checkbox (enable/disable override)
+                if (ImGui::Checkbox(name.c_str(), &is_active))
+                {
+                    if (is_active)
+                    {
+                        volume->SetOption(name.c_str(), global_value);
+                    }
+                    else
+                    {
+                        volume->RemoveOption(name.c_str());
+                    }
+                }
+
+                // float value (if active)
+                if (is_active)
+                {
+                    ImGui::SameLine();
+                    
+                    // ux: set a fixed width for the slider so they align nicely
+                    ImGui::PushItemWidth(100.0f);
+                    
+                    float value = volume->GetOption(name.c_str());
+                    // use ## to hide the label since the checkbox already shows it
+                    if (ImGuiSp::draw_float_wrap("##v", &value, 0.1f)) 
+                    {
+                        volume->SetOption(name.c_str(), value);
+                    }
+                    
+                    ImGui::PopItemWidth();
+                }
+
+                ImGui::PopID();
+            }
+        }
+        ImGui::EndChild();
+    }
+    component_end();
+}
+
 void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
@@ -1244,6 +1321,11 @@ void Properties::ComponentContextMenu_Add() const
                 }
 
                 ImGui::EndMenu();
+            }
+
+            if (ImGui::MenuItem("Volume"))
+            {
+                entity->AddComponent<Volume>();
             }
         }
 

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -52,8 +52,7 @@ namespace spartan
         RHI_Texture_Srgb              = 1U << 8,
         RHI_Texture_Mappable          = 1U << 9,
         RHI_Texture_Compress          = 1U << 10,
-        RHI_Texture_DontPrepareForGpu = 1U << 11,
-        RHI_Texture_Thumbnail         = 1U << 12
+        RHI_Texture_DontPrepareForGpu = 1U << 11
     };
 
     struct RHI_Texture_Mip
@@ -118,9 +117,9 @@ namespace spartan
         uint32_t GetDepth() const       { return m_depth; }
         uint32_t GetArrayLength() const { return (m_type == RHI_Texture_Type::Type3D) ? 1 : m_depth; }
         bool HasData() const            { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
-        RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
-        RHI_Texture_Slice& GetSlice(const uint32_t array_index);
-        void AllocateMip();
+        RHI_Texture_Mip* GetMip(const uint32_t array_index, const uint32_t mip_index);
+        RHI_Texture_Slice* GetSlice(const uint32_t array_index);
+        void AllocateMip(uint32_t slice_index = 0);
 
         // flags
         bool IsSrv() const             { return m_flags & RHI_Texture_Srv; }

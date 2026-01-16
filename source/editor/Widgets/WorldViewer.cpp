@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +51,7 @@ namespace
     spartan::Entity* entity_copied = nullptr;
     ImRect selected_entity_rect;
     uint64_t last_selected_entity_id = 0;
+    bool selection_from_click        = false; // track if selection came from user click (no scroll needed)
 
     spartan::RHI_Texture* component_to_image(spartan::Entity* entity)
     {
@@ -121,6 +122,9 @@ void WorldViewer::OnTickVisible()
             {
                 if (entity_hovered_raw->GetObjectId() == entity_clicked_raw->GetObjectId())
                 {
+                    // mark that selection came from user click (no scroll needed)
+                    selection_from_click = true;
+
                     // support Ctrl+Click for multi-select
                     bool ctrl_held = spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) || spartan::Input::GetKey(spartan::KeyCode::Ctrl_Right);
                     if (ctrl_held)
@@ -209,30 +213,60 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         ImGui::SetNextItemOpen(true);
     }
 
+    // use draw list channels to draw hover highlight behind tree node content
+    // channel 0 = background (hover highlight), channel 1 = foreground (tree node, icon, text)
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    dl->ChannelsSplit(2);
+    dl->ChannelsSetCurrent(1); // draw tree node on foreground
+
     // start tree node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "");
 
-    // scroll to selected entity
+    // get the full tree node rect (including arrow) for hover detection
+    ImVec2 tree_node_min = ImGui::GetItemRectMin();
+    ImVec2 tree_node_max = ImGui::GetItemRectMax();
+
+    // scroll to selected entity, but only if selection was programmatic (not from user click)
     if (first_time_selected && primary_selected)
     {
-        ImGui::SetScrollHereY(0.25f);
+        if (!selection_from_click)
+        {
+            ImGui::SetScrollHereY(0.25f);
+        }
         last_selected_entity_id = primary_selected->GetObjectId();
+        selection_from_click    = false; // reset after handling
     }
 
-    // set up row for interaction
+    // set up row for interaction - extend to cover full row from tree node start
     ImGui::SameLine();
     const ImVec2 row_pos  = ImGui::GetCursorScreenPos();
-    const ImVec2 row_size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetTextLineHeightWithSpacing());
+    const float row_height = ImGui::GetTextLineHeightWithSpacing();
+    
+    // calculate full row rect from tree node start to end of available space
+    ImVec2 full_row_min = ImVec2(tree_node_min.x, tree_node_min.y);
+    ImVec2 full_row_max = ImVec2(tree_node_min.x + ImGui::GetContentRegionAvail().x + (row_pos.x - tree_node_min.x), tree_node_min.y + row_height);
+    
+    // check hover on full row (including arrow area), clipped to window bounds
+    bool is_row_hovered = ImGui::IsMouseHoveringRect(full_row_min, full_row_max, true);
+    if (is_row_hovered)
+    {
+        entity_hovered = entity;
+        
+        // draw hover highlight on background channel (behind arrow)
+        if (!is_selected)
+        {
+            dl->ChannelsSetCurrent(0); // background channel
+            ImU32 hover_color = ImGui::GetColorU32(ImGuiCol_HeaderHovered);
+            dl->AddRectFilled(full_row_min, full_row_max, hover_color);
+            dl->ChannelsSetCurrent(1); // back to foreground
+        }
+    }
 
     // handle clicking and drag-and-drop
     ImGui::PushID(node_id);
+    const ImVec2 row_size = ImVec2(ImGui::GetContentRegionAvail().x, row_height);
     ImGui::InvisibleButton("row_btn", row_size);
-    const bool clicked         = ImGui::IsItemClicked();
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
-    {
-        entity_hovered = entity;
-    }
 
     // drag source
     if (!spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
@@ -298,11 +332,10 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
     }
     ImGui::PopID();
 
-    // draw icon
+    // draw icon (still on foreground channel)
     ImVec2 icon_pos  = row_pos;
     ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity));
     float next_x     = icon_pos.x;
-    ImDrawList* dl   = ImGui::GetWindowDrawList();
     if (icon)
     {
         const float padding   = ImGui::GetStyle().FramePadding.y * 2.0f;
@@ -314,9 +347,12 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         next_x                = icon_max.x + ImGui::GetStyle().ItemSpacing.x;
     }
 
-    // draw text
+    // draw text (still on foreground channel)
     const ImVec2 text_pos = ImVec2(next_x, row_pos.y - (ImGui::GetTextLineHeightWithSpacing() - ImGui::GetTextLineHeight()) * 0.25f);
     dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), text_pos, ImGui::GetColorU32(ImGuiCol_Text), entity->GetObjectName().c_str());
+
+    // merge channels before processing children (they will have their own channel splits)
+    dl->ChannelsMerge();
 
     // note: selection is handled in OnTickVisible on mouse release to avoid double-selection
 
@@ -348,6 +384,7 @@ void WorldViewer::HandleClicking()
     // double-click on item - Focus camera on entity
     if (double_click && entity_hovered)
     {
+        selection_from_click = true;
         SetSelectedEntity(entity_hovered);
         if (spartan::Camera* camera = spartan::World::GetCamera())
         {
@@ -373,6 +410,7 @@ void WorldViewer::HandleClicking()
             {
                 if (!camera->IsSelected(entity_hovered))
                 {
+                    selection_from_click = true;
                     SetSelectedEntity(entity_hovered);
                 }
             }

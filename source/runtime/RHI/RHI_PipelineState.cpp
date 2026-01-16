@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -167,7 +167,7 @@ namespace spartan
 
             if (pso.resolution_scale)
             { 
-                float resolution_scale = Renderer::GetOption<float>(Renderer_Option::ResolutionScale);
+                float resolution_scale = cvar_resolution_scale.GetValue();
                 *width                 = static_cast<uint32_t>(*width * resolution_scale);
                 *height                = static_cast<uint32_t>(*height * resolution_scale);
             }

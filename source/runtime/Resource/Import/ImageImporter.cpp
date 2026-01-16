@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -478,10 +478,10 @@ namespace spartan
             for (uint32_t mip_index = 0; mip_index < dds_file.GetMipCount(); mip_index++)
             {
                 texture->AllocateMip();
-                RHI_Texture_Mip& mip = texture->GetMip(0, mip_index);
+                RHI_Texture_Mip* mip = texture->GetMip(0, mip_index);
 
                 const auto& data = dds_file.GetImageData(mip_index, 0);
-                memcpy(&mip.bytes[0], data->m_mem, mip.bytes.size());
+                memcpy(&mip->bytes[0], data->m_mem, mip->bytes.size());
             }
 
             return;
@@ -525,11 +525,11 @@ namespace spartan
 
         // copy data over
         texture->AllocateMip();
-        RHI_Texture_Mip& mip = texture->GetMip(0, 0);
+        RHI_Texture_Mip* mip = texture->GetMip(0, 0);
         BYTE* bytes          = FreeImage_GetBits(bitmap);
         size_t bytes_size    = FreeImage_GetPitch(bitmap) * FreeImage_GetHeight(bitmap);
-        mip.bytes.resize(bytes_size);
-        memcpy(&mip.bytes[0], bytes, bytes_size);
+        mip->bytes.resize(bytes_size);
+        memcpy(&mip->bytes[0], bytes, bytes_size);
 
         FreeImage_Unload(bitmap);
     }

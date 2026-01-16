@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -335,7 +335,7 @@ namespace spartan::geometry_generation
         using namespace math;
 
         // constants
-        const float grass_width    = 0.2f; // base width
+        const float grass_width    = 0.3f; // base width
         const float grass_height   = 1.2f; // blade height
         const float thinning_start = 0.4f; // thinning start (0=base, 1=top)
         const float thinning_power = 1.0f; // thinning sharpness
@@ -499,13 +499,13 @@ namespace spartan::geometry_generation
         using namespace math;
 
         // constants
-        const float stem_radius                  = 0.05f; // was width/2
-        const float stem_height                  = 1.0f;
+        const float stem_radius                  = 0.032f; // was width/2
+        const float stem_height                  = 0.64f;
         const float stem_thinning_start          = 0.7f;
         const float stem_thinning_power          = 1.0f;
         const uint32_t stem_side_count           = 6; // new: for cylinder
-        const float petal_width                  = 0.2f;
-        const float petal_length                 = 0.4f;
+        const float petal_width                  = 0.13f;
+        const float petal_length                 = 0.26f;
         const float petal_thinning_power         = 1.5f; // for oval sharpness
         const float min_petal_tilt               = 20.0f * deg_to_rad; // outer open
         const float max_petal_tilt               = 70.0f * deg_to_rad; // inner upright
@@ -516,7 +516,7 @@ namespace spartan::geometry_generation
         const float min_petal_curvature          = 0.1f; // new: outer less cupped
         const float max_petal_curvature          = 0.4f; // inner more cupped
         const uint32_t petal_width_segment_count = 2; // new: >=1, allows cupping
-        const float spiral_height                = 0.2f;
+        const float spiral_height                = 0.13f;
         const float spiral_radius                = 0.0f; // new: 0 to attach at center
         const float golden_angle                 = 137.5f * deg_to_rad;
 
