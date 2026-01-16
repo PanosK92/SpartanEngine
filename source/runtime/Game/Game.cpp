@@ -1741,7 +1741,7 @@ namespace spartan
                                     light->SetLightType(LightType::Point);
                                     light->SetColor(color);
                                     light->SetRange(80.0f);
-                                    light->SetIntensity(10000.0f);
+                                    light->SetIntensity(15000.0f);
                                     light->SetFlag(LightFlags::Shadows,            true);
                                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                     light->SetFlag(LightFlags::Volumetric,         false);
