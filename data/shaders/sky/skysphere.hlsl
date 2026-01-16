@@ -423,7 +423,7 @@ static const float cloud_base_bottom = 1500.0;
 static const float cloud_base_top    = 4500.0;
 static const float cloud_scale       = 0.00003;
 static const float detail_scale      = 0.0003;
-static const float cloud_absorption  = 0.5;
+static const float cloud_absorption  = 0.3;
 static const float cloud_wind_speed  = 10.0;
 static const int cloud_steps         = 200;
 static const int light_steps         = 30;
@@ -577,13 +577,14 @@ struct clouds
         }
         
         // beer-powder multi-scatter approximation
-        float beer = exp(-optical * cloud_absorption * 2.0);
+        float beer = exp(-optical * cloud_absorption * 1.5);
         float backlit = saturate(dot(light_dir, -view_dir) * 0.5 + 0.5);
-        float powder = (1.0 - exp(-optical * cloud_absorption * 4.0)) * backlit;
-        float multi = exp(-optical * cloud_absorption * 0.5) * 0.6;
+        float powder = (1.0 - exp(-optical * cloud_absorption * 2.5)) * backlit;
+        float multi = exp(-optical * cloud_absorption * 0.3) * 0.8;
         
-        r.attenuation = min(1.0, beer + multi * powder);
-        r.ao = exp(-up_optical * cloud_absorption * 1.5);
+        // energy conserving blend
+        r.attenuation = min(1.0, beer + multi * powder * 0.5 + multi * 0.18);
+        r.ao = exp(-up_optical * cloud_absorption * 0.6);
         return r;
     }
     
@@ -599,6 +600,19 @@ struct clouds
         float3 ms = ms_lut.SampleLevel(samp, uv, 0).rgb;
         float3 sky = ms * sun_illuminance * 4.0;
         return sky + float3(0.4, 0.35, 0.3) * sky * 0.15;
+    }
+    
+    static float3 get_ground_bounce(float3 sun_dir, float height_fraction, Texture2D trans_lut, SamplerState samp)
+    {
+        // ground bounce illumination - light reflecting from earth surface into cloud bottoms
+        float sun_vis = saturate(sun_dir.y * 2.0 + 0.5);
+        float2 ground_uv = transmittance_lut_params_to_uv(earth_radius, max(sun_dir.y, 0.0));
+        float3 ground_trans = trans_lut.SampleLevel(samp, ground_uv, 0).rgb;
+        
+        // ground bounce is strongest at cloud bottom, fades toward top
+        float bottom_weight = 1.0 - smoothstep(0.0, 0.5, height_fraction);
+        
+        return ground_albedo * sun_illuminance * ground_trans * sun_vis * bottom_weight * 0.25;
     }
     
     static void aerial_perspective(float3 view_dir, float dist, float3 sun_dir,
@@ -710,8 +724,12 @@ struct clouds
                 float edge = saturate(abs(d - prev_d) * 10.0) * (1.0 - saturate(d * 2.0));
                 rad += light_col * edge * backlit * silver_phase * lm.attenuation * 0.8;
                 
-                // ambient with ao
-                rad += ambient * lerp(0.3, 1.0, h) * lm.ao * 0.15;
+                // ambient sky light - significant contribution for cloud body illumination
+                rad += ambient * lerp(0.5, 1.0, h) * lm.ao * 0.35;
+                
+                // ground bounce illumination for cloud undersides
+                float3 ground_bounce = get_ground_bounce(sun_dir, h, trans_lut, samp);
+                rad += ground_bounce * (0.5 + lm.ao * 0.5) * 2.0;
                 
                 float ext = d * step_size * cloud_absorption;
                 float absorbed = 1.0 - exp(-ext);
