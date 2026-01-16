@@ -375,9 +375,9 @@ void RenderOptions::OnTickVisible()
 
                 option_value("Fog density", "r.fog", "Controls atmospheric fog strength", 0.1f);
 
-                if (option_header("Volumetric Clouds (WIP)"))
+                if (option_header("Volumetric Clouds"))
                 {
-                    option_check_box("Enable", "r.clouds_enabled", "Enable volumetric clouds (work in progress)");
+                    option_check_box("Enable", "r.clouds_enabled", "Enable volumetric clouds");
                     
                     ImGui::BeginDisabled(!cvar_clouds_enabled.GetValueAs<bool>());
                     option_value("Coverage", "r.cloud_coverage", "Sky coverage (0=no clouds, 1=overcast)", 0.05f, 0.0f, 1.0f, "%.2f");
