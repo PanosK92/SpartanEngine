@@ -454,21 +454,21 @@ namespace spartan
         // sky
         {
             shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
+            shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\skysphere.hlsl", async);
 
             shader(Renderer_Shader::skysphere_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::skysphere_lut_c)->AddDefine("LUT");
-            shader(Renderer_Shader::skysphere_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", async);
+            shader(Renderer_Shader::skysphere_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\skysphere.hlsl", async);
 
             // transmittance lut - precomputes optical depth to atmosphere top
             shader(Renderer_Shader::skysphere_transmittance_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::skysphere_transmittance_lut_c)->AddDefine("TRANSMITTANCE_LUT");
-            shader(Renderer_Shader::skysphere_transmittance_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", false); // sync - needed by multiscatter
+            shader(Renderer_Shader::skysphere_transmittance_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\skysphere.hlsl", false); // sync - needed by multiscatter
 
             // multi-scatter lut - approximates infinite bounce scattering
             shader(Renderer_Shader::skysphere_multiscatter_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::skysphere_multiscatter_lut_c)->AddDefine("MULTISCATTER_LUT");
-            shader(Renderer_Shader::skysphere_multiscatter_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "skysphere.hlsl", false); // sync - needed by main pass
+            shader(Renderer_Shader::skysphere_multiscatter_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\skysphere.hlsl", false); // sync - needed by main pass
         }
 
         // fxaa
@@ -565,14 +565,14 @@ namespace spartan
         {
             shader(Renderer_Shader::cloud_noise_shape_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::cloud_noise_shape_c)->AddDefine("SHAPE_NOISE");
-            shader(Renderer_Shader::cloud_noise_shape_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "cloud_noise.hlsl", async);
+            shader(Renderer_Shader::cloud_noise_shape_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\cloud_noise.hlsl", async);
 
             shader(Renderer_Shader::cloud_noise_detail_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::cloud_noise_detail_c)->AddDefine("DETAIL_NOISE");
-            shader(Renderer_Shader::cloud_noise_detail_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "cloud_noise.hlsl", async);
+            shader(Renderer_Shader::cloud_noise_detail_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\cloud_noise.hlsl", async);
 
             shader(Renderer_Shader::cloud_shadow_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::cloud_shadow_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "cloud_shadow.hlsl", async);
+            shader(Renderer_Shader::cloud_shadow_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\cloud_shadow.hlsl", async);
 
         }
     }

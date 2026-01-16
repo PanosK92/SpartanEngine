@@ -81,6 +81,17 @@ namespace spartan
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_occlusion_culling;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
+    // volumetric clouds
+    extern TConsoleVar<float> cvar_clouds_enabled;
+    extern TConsoleVar<float> cvar_cloud_animation;
+    extern TConsoleVar<float> cvar_cloud_coverage;
+    extern TConsoleVar<float> cvar_cloud_type;
+    extern TConsoleVar<float> cvar_cloud_shadows;
+    extern TConsoleVar<float> cvar_cloud_color_r;
+    extern TConsoleVar<float> cvar_cloud_color_g;
+    extern TConsoleVar<float> cvar_cloud_color_b;
+    extern TConsoleVar<float> cvar_cloud_darkness;
+    extern TConsoleVar<float> cvar_cloud_seed;
 
     struct ShadowSlice
     {

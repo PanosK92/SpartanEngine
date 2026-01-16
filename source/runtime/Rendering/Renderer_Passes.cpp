@@ -89,8 +89,9 @@ namespace spartan
         // - Always render once on startup (for initial clouds)
         // - Re-render when light changes
         // - Re-render every frame if cloud animation is enabled
-        bool clouds_visible = GetOption<float>(Renderer_Option::CloudCoverage) > 0.0f;
-        bool cloud_animation = GetOption<float>(Renderer_Option::CloudAnimation) > 0.0f;
+        bool clouds_enabled = cvar_clouds_enabled.GetValueAs<bool>();
+        bool clouds_visible = clouds_enabled && cvar_cloud_coverage.GetValue() > 0.0f;
+        bool cloud_animation = clouds_enabled && cvar_cloud_animation.GetValue() > 0.0f;
         
         {
             bool update_skysphere = false;
@@ -99,24 +100,26 @@ namespace spartan
             {
                 static bool first_frame = true;
                 static bool had_directional_light = false;
+                static bool last_clouds_enabled = false;
                 static float last_coverage = -1.0f;
                 static float last_seed = -1.0f;
                 static float last_cloud_type = -1.0f;
                 static float last_darkness = -1.0f;
                 bool has_directional_light = directional_light != nullptr;
-                float current_coverage = GetOption<float>(Renderer_Option::CloudCoverage);
-                float current_seed = GetOption<float>(Renderer_Option::CloudSeed);
-                float current_type = GetOption<float>(Renderer_Option::CloudType);
-                float current_darkness = GetOption<float>(Renderer_Option::CloudDarkness);
+                float current_coverage = cvar_cloud_coverage.GetValue();
+                float current_seed = cvar_cloud_seed.GetValue();
+                float current_type = cvar_cloud_type.GetValue();
+                float current_darkness = cvar_cloud_darkness.GetValue();
                 
                 // Update skysphere when:
                 // 1. First frame (initial render)
                 // 2. Light changes
-                // 3. Cloud parameters changed (coverage, seed, type, darkness)
+                // 3. Cloud parameters changed (enabled, coverage, seed, type, darkness)
                 // 4. Cloud animation is enabled (for wind movement)
                 bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) || 
                                      (has_directional_light != had_directional_light);
-                bool cloud_params_changed = (current_coverage != last_coverage) ||
+                bool cloud_params_changed = (clouds_enabled != last_clouds_enabled) ||
+                                            (current_coverage != last_coverage) ||
                                             (current_seed != last_seed) ||
                                             (current_type != last_cloud_type) ||
                                             (current_darkness != last_darkness);
@@ -125,6 +128,7 @@ namespace spartan
                 
                 first_frame = false;
                 had_directional_light = has_directional_light;
+                last_clouds_enabled = clouds_enabled;
                 last_coverage = current_coverage;
                 last_seed = current_seed;
                 last_cloud_type = current_type;
@@ -1042,14 +1046,12 @@ namespace spartan
 
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_skysphere              = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
-        RHI_Texture* tex_cloud_shape            = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-        RHI_Texture* tex_cloud_detail           = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
         RHI_Texture* tex_skysphere                    = GetRenderTarget(Renderer_RenderTarget::skysphere);
         RHI_Texture* tex_lut_atmosphere_scatter       = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
         RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
         RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
+        RHI_Texture* tex_cloud_shape                  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
+        RHI_Texture* tex_cloud_detail                 = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
 
         cmd_list->BeginTimeblock("skysphere");
         {
@@ -1345,9 +1347,8 @@ namespace spartan
 
     void Renderer::Pass_CloudShadow(RHI_CommandList* cmd_list)
     {
-        // Skip if clouds or cloud shadows are disabled
-        if (GetOption<float>(Renderer_Option::CloudCoverage) <= 0.0f || 
-            GetOption<float>(Renderer_Option::CloudShadows) <= 0.0f)
+        // skip if clouds are disabled or cloud shadows are off
+        if (!cvar_clouds_enabled.GetValueAs<bool>() || cvar_cloud_coverage.GetValue() <= 0.0f || cvar_cloud_shadows.GetValue() <= 0.0f)
             return;
 
         // Skip if no directional light

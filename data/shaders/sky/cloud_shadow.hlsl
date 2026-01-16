@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ============================================================================
 
 //= INCLUDES =========
-#include "common.hlsl"
+#include "../common.hlsl"
 //====================
 
 // Cloud layer base constants - must match skysphere.hlsl
@@ -263,4 +263,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     tex_uav[thread_id.xy] = float4(shadow, shadow, shadow, 1.0);
 }
-

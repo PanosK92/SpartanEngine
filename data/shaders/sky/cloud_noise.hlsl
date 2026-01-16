@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // ============================================================================
 
 //= INCLUDES =========
-#include "common.hlsl"
+#include "../common.hlsl"
 //====================
 
 // Output texture: tex3d_uav (register u4) is defined in common_resources.hlsl
@@ -247,4 +247,3 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     tex3d_uav[thread_id] = float4(worley_0, worley_1, worley_2, 1.0);
 }
 #endif
-

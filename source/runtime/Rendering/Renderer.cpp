@@ -205,6 +205,17 @@ namespace spartan
     // misc                                                
     TConsoleVar<float> cvar_occlusion_culling              ("r.occlusion_culling",              0.0f,  "occlusion culling (dev)");
     TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,  "auto exposure adaptation speed, negative disables");
+    // volumetric clouds
+    TConsoleVar<float> cvar_clouds_enabled                 ("r.clouds_enabled",                 0.0f,  "enable volumetric clouds (WIP)");
+    TConsoleVar<float> cvar_cloud_animation                ("r.cloud_animation",                0.0f,  "whether clouds animate with wind");
+    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.5f,  "sky coverage (0=no clouds, 1=overcast)");
+    TConsoleVar<float> cvar_cloud_type                     ("r.cloud_type",                     0.5f,  "0=stratus, 0.5=stratocumulus, 1=cumulus");
+    TConsoleVar<float> cvar_cloud_shadows                  ("r.cloud_shadows",                  1.0f,  "cloud shadow intensity on ground");
+    TConsoleVar<float> cvar_cloud_color_r                  ("r.cloud_color_r",                  0.7f,  "cloud base color red");
+    TConsoleVar<float> cvar_cloud_color_g                  ("r.cloud_color_g",                  0.7f,  "cloud base color green");
+    TConsoleVar<float> cvar_cloud_color_b                  ("r.cloud_color_b",                  0.7f,  "cloud base color blue");
+    TConsoleVar<float> cvar_cloud_darkness                 ("r.cloud_darkness",                 0.5f,  "self-shadowing darkness blend");
+    TConsoleVar<float> cvar_cloud_seed                     ("r.cloud_seed",                     1.0f,  "seed for cloud generation");
 
     namespace
     {
@@ -261,16 +272,7 @@ namespace spartan
             // set tonemapping to gran turismo 7 (works for both hdr and sdr)
             ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
 
-            // volumetric clouds
-            SetOption(Renderer_Option::CloudAnimation, 0.0f);  // animation off by default (static clouds)
-            SetOption(Renderer_Option::CloudCoverage,  0.5f);  // 0-1: sky coverage amount (>0 = visible)
-            SetOption(Renderer_Option::CloudType,      0.5f);  // 0=stratus, 0.5=stratocumulus, 1=cumulus
-            SetOption(Renderer_Option::CloudShadows,   1.0f);  // cloud shadow intensity
-            SetOption(Renderer_Option::CloudColorR,    0.7f);  // cloud color R
-            SetOption(Renderer_Option::CloudColorG,    0.7f);  // cloud color G
-            SetOption(Renderer_Option::CloudColorB,    0.7f);  // cloud color B
-            SetOption(Renderer_Option::CloudDarkness,  0.5f);  // self-shadowing blend
-            SetOption(Renderer_Option::CloudSeed,      1.0f);  // seed for cloud generation
+            // volumetric clouds defaults are set in the cvar declarations
 
             // set wind direction and strength
             {
@@ -686,20 +688,16 @@ namespace spartan
         m_cb_frame_cpu.gamma               = cvar_gamma.GetValue();
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
-        // cloud/weather parameters
-        m_cb_frame_cpu.cloud_coverage = GetOption<float>(Renderer_Option::CloudCoverage);
-        m_cb_frame_cpu.cloud_type     = GetOption<float>(Renderer_Option::CloudType);
-        m_cb_frame_cpu.cloud_shadows  = GetOption<float>(Renderer_Option::CloudShadows);
-        m_cb_frame_cpu.cloud_darkness = GetOption<float>(Renderer_Option::CloudDarkness);
-        m_cb_frame_cpu.cloud_color    = Vector3(GetOption<float>(Renderer_Option::CloudColorR),
-                                                GetOption<float>(Renderer_Option::CloudColorG),
-                                                GetOption<float>(Renderer_Option::CloudColorB));
-        m_cb_frame_cpu.cloud_seed     = GetOption<float>(Renderer_Option::CloudSeed);
-
-        // these must match what common_buffer.hlsl is reading
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections),      1 << 0);
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion), 1 << 1);
-        m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Fog),                         1 << 2);
+        // cloud/weather parameters (set coverage to 0 when clouds disabled)
+        bool clouds_enabled           = cvar_clouds_enabled.GetValueAs<bool>();
+        m_cb_frame_cpu.cloud_coverage = clouds_enabled ? cvar_cloud_coverage.GetValue() : 0.0f;
+        m_cb_frame_cpu.cloud_type     = cvar_cloud_type.GetValue();
+        m_cb_frame_cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
+        m_cb_frame_cpu.cloud_darkness = cvar_cloud_darkness.GetValue();
+        m_cb_frame_cpu.cloud_color    = Vector3(cvar_cloud_color_r.GetValue(),
+                                                cvar_cloud_color_g.GetValue(),
+                                                cvar_cloud_color_b.GetValue());
+        m_cb_frame_cpu.cloud_seed     = cvar_cloud_seed.GetValue();
         // these must match what common_resources.hlsl is reading
         m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(), 1 << 0);
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
