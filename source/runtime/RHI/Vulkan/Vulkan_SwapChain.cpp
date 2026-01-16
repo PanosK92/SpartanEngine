@@ -539,6 +539,12 @@ namespace spartan
     
         RHI_Format new_format = enabled ? format_hdr : format_sdr;
     
+        // nvidia supports B8R8G8A8_Unorm instead of R8G8B8A8_Unorm
+        if (new_format == RHI_Format::R8G8B8A8_Unorm && RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
+        {
+            new_format = RHI_Format::B8R8G8A8_Unorm;
+        }
+    
         if (new_format != m_format)
         {
             m_format   = new_format;
