@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= includes =========
-#include "common.hlsl"
+#include "../common.hlsl"
 //====================
 
 // ============================================================================
@@ -627,6 +627,308 @@ float3 compute_moon(float3 view_dir, float3 sun_dir)
 }
 
 // ============================================================================
+// VOLUMETRIC CLOUDS - 3D Raymarching with Noise Textures
+// only compiled for non-lut variant (the main skysphere shader)
+// ============================================================================
+#if !defined(LUT) && !defined(TRANSMITTANCE_LUT) && !defined(MULTISCATTER_LUT)
+
+// cloud layer base constants
+static const float cloud_base_bottom = 1500.0;  // minimum cloud altitude
+static const float cloud_base_top    = 4500.0;  // maximum cloud altitude
+static const float cloud_scale       = 0.00003; // noise sampling scale
+static const float detail_scale      = 0.0003;  // detail noise scale
+static const float cloud_absorption  = 0.5;     // light absorption
+
+// performance constants
+static const float cloud_wind_speed = 10.0;
+static const int cloud_steps = 200;
+static const int light_steps = 30;
+
+struct clouds
+{
+    // fast hash functions for seed-based generation
+    static float hash11(float p, float seed)
+    {
+        p = frac(p * 0.1031 + seed * 0.1);
+        p *= p + 33.33;
+        p *= p + p;
+        return frac(p);
+    }
+    
+    static float hash21(float2 p, float seed)
+    {
+        float3 p3 = frac(float3(p.xyx) * 0.1031 + seed * 0.1);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return frac((p3.x + p3.y) * p3.z);
+    }
+    
+    static float hash31(float3 p, float seed)
+    {
+        p = frac(p * 0.1031 + seed * 0.1);
+        p += dot(p, p.yzx + 33.33);
+        return frac((p.x + p.y) * p.z);
+    }
+    
+    static float remap(float v, float l1, float h1, float l2, float h2)
+    {
+        return l2 + (v - l1) * (h2 - l2) / max(h1 - l1, 0.0001);
+    }
+    
+    static float get_height_gradient(float h, float ctype)
+    {
+        return smoothstep(0.0, 0.1, h) * smoothstep(0.4 + ctype * 0.6, 0.2 + ctype * 0.3, h);
+    }
+    
+    // smooth noise function for height variation (no hard cell boundaries)
+    static float smooth_noise(float2 p, float seed)
+    {
+        float2 i = floor(p);
+        float2 f = frac(p);
+        
+        // smooth interpolation curve
+        float2 u = f * f * (3.0 - 2.0 * f);
+        
+        // four corners
+        float a = hash21(i + float2(0, 0), seed);
+        float b = hash21(i + float2(1, 0), seed);
+        float c = hash21(i + float2(0, 1), seed);
+        float d = hash21(i + float2(1, 1), seed);
+        
+        // bilinear interpolation
+        return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+    }
+    
+    // get local cloud height bounds - uses smooth noise for seamless transitions
+    static void get_local_cloud_bounds(float3 pos, float seed, out float local_bottom, out float local_top)
+    {
+        // use smooth noise instead of cell-based hashing (no visible seams)
+        float2 coord = pos.xz * 0.00005; // ~20km wavelength
+        
+        float height_noise1 = smooth_noise(coord, seed);
+        float height_noise2 = smooth_noise(coord * 1.7 + 100.0, seed * 2.3);
+        
+        // vary bottom between 1200-2200m, top between 3500-4500m
+        local_bottom = lerp(1200.0, 2200.0, height_noise1);
+        local_top = lerp(3500.0, 4500.0, height_noise2);
+        
+        // ensure minimum thickness
+        local_top = max(local_top, local_bottom + 1500.0);
+    }
+    
+    // seed-based coordinate transformation - pure offset and rotation
+    static float3 seed_transform(float3 p, float seed)
+    {
+        // large offset based on seed to sample completely different noise region
+        float3 offset = float3(seed * 50000.0, seed * 30000.0, seed * 70000.0);
+        return p + offset;
+    }
+    
+    // domain warping - smooth sinusoidal distortion (no discontinuities)
+    static float3 domain_warp(float3 p, float seed)
+    {
+        // use irrational frequency ratios for non-repeating patterns
+        const float phi = 1.61803398875;    // golden ratio
+        const float sqrt2 = 1.41421356237;
+        const float sqrt3 = 1.73205080757;
+        const float e = 2.71828182846;
+        
+        float seed_phase = seed * 0.31415926; // seed * π/10
+        
+        // multi-octave smooth warping - all continuous functions
+        float3 warp;
+        warp.x = sin(p.z * 0.00005 * phi + p.y * 0.00007 + seed_phase) * 1500.0
+               + sin(p.z * 0.00013 * sqrt2 + p.y * 0.00011 + seed_phase * 2.0) * 750.0
+               + sin(p.x * 0.00017 * sqrt3 + p.z * 0.00019 + seed_phase * 3.0) * 375.0;
+               
+        warp.y = sin(p.x * 0.00006 * e + p.z * 0.00008 + seed_phase) * 400.0
+               + sin(p.x * 0.00014 + p.z * 0.00012 * phi + seed_phase * 2.0) * 200.0;
+               
+        warp.z = sin(p.y * 0.00005 + p.x * 0.00009 * sqrt2 + seed_phase) * 1500.0
+               + sin(p.y * 0.00011 * phi + p.x * 0.00015 + seed_phase * 2.0) * 750.0
+               + sin(p.z * 0.00019 * sqrt3 + p.y * 0.00021 + seed_phase * 3.0) * 375.0;
+        
+        return p + warp;
+    }
+    
+    static float sample_density(float3 pos, float coverage, float ctype, float time, float seed)
+    {
+        // get local cloud height bounds (varying per location)
+        float local_bottom, local_top;
+        get_local_cloud_bounds(pos, seed, local_bottom, local_top);
+        float local_thickness = local_top - local_bottom;
+        
+        // check bounds with local heights
+        if (pos.y < local_bottom || pos.y > local_top)
+            return 0.0;
+        
+        float h = (pos.y - local_bottom) / local_thickness;
+        
+        // wind animation
+        float3 wind = buffer_frame.wind;
+        float wind_speed = length(wind) * cloud_wind_speed;
+        float3 wind_dir = wind_speed > 0.001 ? normalize(wind) : float3(1, 0, 0);
+        float3 anim_pos = pos + wind_dir * time * wind_speed;
+        
+        // apply seed-based transformation first
+        float3 seed_pos = seed_transform(anim_pos, seed);
+        
+        // domain warp with seed
+        float3 warped_pos = domain_warp(seed_pos, seed);
+        
+        // distance fade
+        float dist_from_cam = length(pos.xz);
+        float distance_fade = 1.0 - smoothstep(25000.0, 40000.0, dist_from_cam);
+        
+        // sample shape noise
+        float3 shape_uvw = warped_pos * cloud_scale;
+        float4 shape = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), shape_uvw, 0);
+        
+        float noise = shape.r * 0.625 + shape.g * 0.25 + shape.b * 0.125;
+        noise *= get_height_gradient(h, ctype);
+        
+        // coverage threshold
+        float density = saturate(remap(noise, 1.0 - coverage, 1.0, 0.0, 1.0)) * distance_fade;
+        if (density < 0.01)
+            return 0.0;
+        
+        // detail erosion
+        float3 detail_uvw = domain_warp(seed_pos * 1.1, seed) * detail_scale;
+        detail_uvw.y += time * 0.01;
+        
+        float4 detail = tex3d_cloud_detail.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), detail_uvw, 0);
+        float detail_noise = detail.r * 0.625 + detail.g * 0.25 + detail.b * 0.125;
+        
+        density = saturate(density - detail_noise * (1.0 - density) * 0.35);
+        return density;
+    }
+    
+    static float hg_phase(float cos_theta, float g)
+    {
+        float g2 = g * g;
+        return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_theta, 0.0001), 1.5));
+    }
+    
+    static float light_march(float3 pos, float3 light_dir, float coverage, float ctype, float time, float seed)
+    {
+        float dist = min((cloud_base_top - pos.y) / max(light_dir.y, 0.01), cloud_base_top - cloud_base_bottom);
+        float step_size = dist / float(light_steps);
+        float optical_depth = 0.0;
+        
+        [unroll]
+        for (int i = 0; i < light_steps; i++)
+        {
+            float3 p = pos + light_dir * step_size * (float(i) + 0.5);
+            if (p.y > cloud_base_top) break;
+            optical_depth += sample_density(p, coverage, ctype, time, seed) * step_size;
+        }
+        
+        // multi-scattering approximation (based on horizon zero dawn technique)
+        // beer-lambert for primary attenuation
+        float beer = exp(-optical_depth * cloud_absorption * 2.0);
+        
+        // powder effect - darkening at cloud edges when backlit
+        float powder = 1.0 - exp(-optical_depth * cloud_absorption * 4.0);
+        
+        // multi-scatter contribution - light that bounces multiple times
+        // appears as soft diffuse glow, especially in thick clouds
+        float multi_scatter = exp(-optical_depth * cloud_absorption * 0.5) * 0.6;
+        
+        // combine: primary transmission + multi-scatter contribution
+        // the powder effect modulates multi-scatter for realistic edge darkening
+        return beer + multi_scatter * powder;
+    }
+    
+    static float4 compute(float3 view_dir, float3 sun_dir, float3 sun_color, float sun_intensity, float time, float2 pixel_uv)
+    {
+        float coverage = buffer_frame.cloud_coverage;
+        float cloud_type = buffer_frame.cloud_type;
+        float seed = buffer_frame.cloud_seed;
+        
+        if (coverage <= 0.0)
+            return float4(0, 0, 0, 0);
+        
+        // smooth horizon falloff
+        float horizon_fade = smoothstep(-0.05, 0.15, view_dir.y);
+        if (horizon_fade <= 0.0)
+            return float4(0, 0, 0, 0);
+        
+        // camera at origin
+        float3 cam_pos = float3(0, 100, 0);
+        
+        // ray-layer intersection using base bounds (covers all possible cloud heights)
+        float dir_y = max(view_dir.y, 0.001);
+        float t_enter = (cloud_base_bottom - cam_pos.y) / dir_y;
+        float t_exit = (cloud_base_top - cam_pos.y) / dir_y;
+        
+        if (t_exit <= t_enter || t_enter < 0.0)
+            return float4(0, 0, 0, 0);
+        
+        float ray_length = t_exit - t_enter;
+        
+        // adaptive step count
+        float base_steps = float(cloud_steps);
+        float ray_length_factor = ray_length / 3000.0;
+        float distance_factor = 1.0 + smoothstep(5000.0, 30000.0, t_enter) * 1.5;
+        int num_steps = int(clamp(base_steps * ray_length_factor * distance_factor, 64.0, 600.0));
+        float step_size = ray_length / float(num_steps);
+        
+        // temporal jitter for taa
+        float jitter = noise_interleaved_gradient(pixel_uv * buffer_frame.resolution_render, true);
+        float t = t_enter + step_size * jitter;
+        
+        // phase function
+        float cos_angle = dot(view_dir, sun_dir);
+        float phase = lerp(hg_phase(cos_angle, -0.3), hg_phase(cos_angle, 0.8), 0.5);
+        
+        // integration
+        float transmittance = 1.0;
+        float3 light_energy = 0.0;
+        
+        // ambient lighting
+        float3 sky_ambient = sun_color * 0.35;
+        float3 ground_bounce = sun_color * float3(0.4, 0.35, 0.3) * 0.25;
+        
+        [loop]
+        for (int i = 0; i < num_steps && transmittance > 0.01; i++)
+        {
+            float3 pos = cam_pos + view_dir * t;
+            float density = sample_density(pos, coverage, cloud_type, time, seed);
+            
+            if (density > 0.01)
+            {
+                float light_atten = light_march(pos, sun_dir, coverage, cloud_type, time, seed);
+                
+                // get local height for ambient calculation
+                float local_bottom, local_top;
+                get_local_cloud_bounds(pos, seed, local_bottom, local_top);
+                float h = saturate((pos.y - local_bottom) / (local_top - local_bottom));
+                
+                // direct sunlight contribution
+                float3 radiance = lerp(sun_color * sun_intensity, buffer_frame.cloud_color, buffer_frame.cloud_darkness) * light_atten * phase;
+                
+                // ambient contribution
+                float3 ambient = lerp(ground_bounce, sky_ambient, h);
+                radiance += lerp(ambient * 0.5, ambient, h) * sun_intensity * 0.6;
+                
+                float extinction = density * step_size * cloud_absorption;
+                float absorbed = 1.0 - exp(-extinction);
+                
+                light_energy += transmittance * absorbed * radiance;
+                transmittance *= exp(-extinction);
+            }
+            
+            t += step_size;
+            if (t > t_exit) break;
+        }
+        
+        float alpha = (1.0 - transmittance) * horizon_fade;
+        return float4(light_energy * horizon_fade, alpha);
+    }
+};
+
+#endif // !LUT && !TRANSMITTANCE_LUT && !MULTISCATTER_LUT
+
+// ============================================================================
 // compute shaders
 // ============================================================================
 
@@ -820,7 +1122,87 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float night_factor = 1.0 - day_factor;
     float3 night_ambient = float3(0.001, 0.002, 0.004) * night_factor; // very subtle deep blue
     
-    float3 final_color = (luminance + night_ambient + sun_color + star_color + moon_color) * intensity_scale;
+    // volumetric clouds (only above horizon, only in main pass)
+    float4 cloud_result = float4(0.0, 0.0, 0.0, 0.0);
+    if (!is_below_horizon && buffer_frame.cloud_coverage > 0.0)
+    {
+        float3 moon_dir = -sun_dir;
+        float moon_elev = dot(moon_dir, up_direction);
+        
+        // determine if we should render clouds (either sun or moon provides light)
+        bool sun_provides_light = sun_elevation > -0.33;
+        bool moon_provides_light = moon_elev > 0.0 && sun_elevation < 0.1;
+        
+        if (sun_provides_light || moon_provides_light)
+        {
+            float time_val = (float)buffer_frame.time * 0.001;
+            
+            // sunlight contribution
+            float4 sun_cloud_result = float4(0, 0, 0, 0);
+            if (sun_provides_light)
+            {
+                float sun_int = light.intensity;
+                float twilight_factor = saturate(sun_elevation * 5.0 + 1.0);
+                sun_int *= max(twilight_factor, 0.05);
+                
+                float3 cloud_light_color = light.color.rgb;
+                
+                sun_cloud_result = clouds::compute(original_view_dir, sun_dir, cloud_light_color, sun_int, time_val, uv);
+                
+                // fade sun contribution as it goes below horizon
+                float sun_fade = saturate(sun_elevation * 3.0 + 1.0);
+                sun_cloud_result.rgb *= sun_fade;
+                sun_cloud_result.a *= sun_fade;
+            }
+            
+            // moonlight contribution
+            float4 moon_cloud_result = float4(0, 0, 0, 0);
+            if (moon_provides_light)
+            {
+                float moon_int = light.intensity * 0.03;
+                float3 moon_light_color = float3(0.6, 0.7, 1.0);
+                
+                moon_cloud_result = clouds::compute(original_view_dir, moon_dir, moon_light_color, moon_int, time_val, uv);
+                
+                // fade moon clouds as sun rises
+                float moon_fade = saturate((0.1 - sun_elevation) * 5.0) * saturate(moon_elev * 3.0);
+                moon_cloud_result.rgb *= moon_fade;
+                moon_cloud_result.a *= moon_fade;
+            }
+            
+            // combine sun and moon cloud lighting
+            cloud_result.rgb = sun_cloud_result.rgb + moon_cloud_result.rgb;
+            cloud_result.a = max(sun_cloud_result.a, moon_cloud_result.a);
+        }
+    }
+    
+    // final color composition
+    float3 final_color;
+    if (cloud_result.a > 0.0)
+    {
+        // blend clouds with sky
+        float cloud_alpha = cloud_result.a;
+        
+        // celestial body occlusion based on cloud density
+        float coverage = buffer_frame.cloud_coverage;
+        float occlusion_start = lerp(0.5, 0.15, coverage);
+        float occlusion_end = lerp(0.9, 0.5, coverage);
+        float celestial_occlusion = smoothstep(occlusion_start, occlusion_end, cloud_alpha);
+        
+        // atmosphere blends with clouds
+        final_color = lerp(luminance + night_ambient, cloud_result.rgb, cloud_alpha);
+        final_color *= intensity_scale;
+        
+        // celestial bodies shine through thin clouds only
+        final_color += sun_color * (1.0 - celestial_occlusion);
+        final_color += star_color * (1.0 - celestial_occlusion);
+        final_color += moon_color * (1.0 - celestial_occlusion);
+    }
+    else
+    {
+        // no clouds - original composition
+        final_color = (luminance + night_ambient + sun_color + star_color + moon_color) * intensity_scale;
+    }
     
     // safety: prevent any unexpected brightness spikes
     final_color = min(final_color, 100.0);

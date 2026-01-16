@@ -31,6 +31,55 @@ namespace spartan
     const uint32_t renderer_max_draw_calls          = 20000;
     const uint32_t renderer_max_instance_count      = 1024;
 
+    enum class Renderer_Option : uint32_t
+    {
+        Aabb,
+        PickingRay,
+        Grid,
+        TransformHandle,
+        SelectionOutline,
+        Lights,
+        AudioSources,
+        PerformanceMetrics,
+        Physics,
+        Wireframe,
+        Bloom,
+        Fog,
+        ScreenSpaceAmbientOcclusion,
+        ScreenSpaceReflections,
+        RayTracedReflections,
+        MotionBlur,
+        DepthOfField,
+        FilmGrain,
+        Vhs,
+        ChromaticAberration,
+        Anisotropy,
+        Tonemapping,
+        AntiAliasing_Upsampling,
+        Sharpness,
+        Dithering,
+        Hdr,
+        WhitePoint,
+        Gamma,
+        Vsync,
+        VariableRateShading,
+        ResolutionScale,
+        DynamicResolution,
+        OcclusionCulling,
+        AutoExposureAdaptationSpeed,
+        // volumetric clouds
+        CloudAnimation, // whether clouds animate (wind movement)
+        CloudCoverage,  // 0=no clouds, >0=clouds visible
+        CloudType,
+        CloudShadows,
+        CloudColorR,
+        CloudColorG,
+        CloudColorB,
+        CloudDarkness,
+        CloudSeed,      // seed for cloud generation
+        Max
+    };
+
     enum class Renderer_Tonemapping : uint32_t
     {
         Aces,
@@ -86,6 +135,10 @@ namespace spartan
         bindless_material_parameters = 16,
         bindless_light_parameters    = 17,
         bindless_aabbs               = 18,
+        
+        // volumetric clouds 3D noise
+        tex3d_cloud_shape  = 19,
+        tex3d_cloud_detail = 20,
     };
 
     enum class Renderer_BindingsUav
@@ -159,6 +212,10 @@ namespace spartan
         reflections_ray_generation_r,
         reflections_ray_miss_r,
         reflections_ray_hit_r,
+        // volumetric clouds
+        cloud_noise_shape_c,
+        cloud_noise_detail_c,
+        cloud_shadow_c,
         light_reflections_c,
         max
     };
@@ -198,6 +255,10 @@ namespace spartan
         shadow_atlas,
         auto_exposure,
         auto_exposure_previous,
+        // volumetric clouds
+        cloud_noise_shape,
+        cloud_noise_detail,
+        cloud_shadow,
         max
     };
 

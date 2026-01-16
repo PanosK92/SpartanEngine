@@ -81,6 +81,17 @@ namespace spartan
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_occlusion_culling;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
+    // volumetric clouds
+    extern TConsoleVar<float> cvar_clouds_enabled;
+    extern TConsoleVar<float> cvar_cloud_animation;
+    extern TConsoleVar<float> cvar_cloud_coverage;
+    extern TConsoleVar<float> cvar_cloud_type;
+    extern TConsoleVar<float> cvar_cloud_shadows;
+    extern TConsoleVar<float> cvar_cloud_color_r;
+    extern TConsoleVar<float> cvar_cloud_color_g;
+    extern TConsoleVar<float> cvar_cloud_color_b;
+    extern TConsoleVar<float> cvar_cloud_darkness;
+    extern TConsoleVar<float> cvar_cloud_seed;
 
     struct ShadowSlice
     {
@@ -204,6 +215,9 @@ namespace spartan
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list);
         static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
         static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
+        // passes - volumetric clouds
+        static void Pass_CloudNoise(RHI_CommandList* cmd_list);
+        static void Pass_CloudShadow(RHI_CommandList* cmd_list);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
