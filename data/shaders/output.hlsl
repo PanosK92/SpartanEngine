@@ -28,11 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // port of the c++ siggraph 2025 presentation code
 // ==============================================================================================
 
-// the input to this tonemapper is scene-linear where ~1.0 = white (like aces/agx)
-// we define a "reference luminance" that maps 1.0 input to a specific nit level for pq math
-// using 80 nits (sdr reference white per bt.1886) keeps the pq math in a sensible range
-static const float gt7_sdr_paper_white = 80.0f;
-static const float gt7_ref_luminance   = 80.0f;
+// the input to this tonemapper is scene-linear where ~1.0 = white
+// in gran turismo, 1.0 in linear frame-buffer space = REFERENCE_LUMINANCE cd/m^2 (100 nits)
+// sdr paper white defines the target luminance for sdr tone mapping (250 nits)
+static const float gt7_sdr_paper_white = 250.0f; // cd/m^2
+static const float gt7_ref_luminance   = 100.0f; // cd/m^2 <-> 1.0f
 
 // helper: scene-linear (1.0 = white) -> nits for pq math
 float gt7_fb_to_nits(float fb_value)
@@ -138,7 +138,7 @@ void gt7_ictcp_to_rgb(float3 ictcp, out float3 rgb)
 float gt7_evaluate_curve(float x, float peak_intensity, float mid_point, float toe_strength)
 {
     const float alpha = 0.25f;
-    const float linear_section = 0.538f;
+    const float linear_section = 0.444f;
 
     // pre-compute constants for exponential shoulder
     float k  = (linear_section - 1.0f) / (alpha - 1.0f);
@@ -175,7 +175,7 @@ float3 gran_turismo_7(float3 rgb, float max_display_nits, bool is_hdr)
     float fb_target   = gt7_nits_to_fb(target_nits);
 
     // curve tunings
-    float mid_point    = 0.444f;
+    float mid_point    = 0.538f;
     float toe_strength = 1.280f;
 
     // step b: analyze brightness using ictcp
@@ -400,9 +400,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         
         if (tone_mapping == 4) // gran turismo 7
         {
-            // gt7 outputs in fb units where 1.0 = 80 nits (gt7_ref_luminance)
-            // so we convert directly: output_nits = fb_value * 80
-            color.rgb = (color.rgb * gt7_ref_luminance) / pq_max_nits;
+            // gt7 outputs in fb units where 1.0 = 100 nits (gt7_ref_luminance)
+            // so we convert directly: output_nits = fb_value * 100
+            // boost to compensate for gt7 being darker in hdr compared to other tonemappers
+            float hdr_boost = 1.8f;
+            color.rgb = (color.rgb * gt7_ref_luminance * hdr_boost) / pq_max_nits;
         }
         else
         {
