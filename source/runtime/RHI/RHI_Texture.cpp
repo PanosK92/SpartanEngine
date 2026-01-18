@@ -443,6 +443,9 @@ namespace spartan
         ComputeMemoryUsage();
         m_resource_state = ResourceState::Max;
 
+        // automatically prepare the texture for gpu use
+        PrepareForGpu();
+
         ProgressTracker::SetGlobalLoadingState(false);
     }
 
@@ -542,7 +545,10 @@ namespace spartan
 
     void RHI_Texture::PrepareForGpu()
     {
-        SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared textures can be prepared");
+        // skip if already prepared or currently preparing
+        if (m_resource_state != ResourceState::Max)
+            return;
+
         m_resource_state = ResourceState::PreparingForGpu;
 
         // skip textures with invalid dimensions (failed to load)
