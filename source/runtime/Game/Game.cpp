@@ -1705,7 +1705,7 @@ namespace spartan
 
                 // camera looking at car
                 {
-                    Vector3 camera_position = Vector3(1.8f, 0.9f, -4.0f);
+                    Vector3 camera_position = Vector3(0.2745f, 0.91f, 4.9059f);
                     entities::camera(true, camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
@@ -1730,25 +1730,40 @@ namespace spartan
                         {
                             if (Entity* entity_tube_light = floor_tube_lights->GetDescendantByName(descendant_name))
                             {
-                                entity_tube_light->GetComponent<Renderable>()->SetFlag(RenderableFlags::CastsShadows, false);
-                                if (Material* material = entity_tube_light->GetComponent<Renderable>()->GetMaterial())
+                                Renderable* renderable = entity_tube_light->GetComponent<Renderable>();
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                if (Material* material = renderable->GetMaterial())
                                 {
                                     material->SetColor(color);
                                     material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
 
-                                    // point light
+                                    // get tube mesh dimensions from bounding box
+                                    const math::BoundingBox& bbox = renderable->GetBoundingBox();
+                                    Vector3 size = bbox.GetSize();
+
+                                    // area light matching the tube mesh
                                     Entity* entity = World::CreateEntity();
-                                    entity->SetObjectName("light_point");
+                                    entity->SetObjectName("light_area");
                                     entity->SetParent(entity_tube_light);
 
+                                    // orient the area light to face downward (tubes are ceiling lights)
+                                    entity->SetRotationLocal(Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f));
+
                                     Light* light = entity->AddComponent<Light>();
-                                    light->SetLightType(LightType::Point);
+                                    light->SetLightType(LightType::Area);
                                     light->SetColor(color);
                                     light->SetRange(80.0f);
                                     light->SetIntensity(15000.0f);
                                     light->SetFlag(LightFlags::Shadows,            true);
                                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                     light->SetFlag(LightFlags::Volumetric,         false);
+
+                                    // set area light dimensions from the tube's bounding box
+                                    // tube is oriented horizontally, so use x/z for width and y for height
+                                    float area_width  = max(size.x, size.z); // length of the tube
+                                    float area_height = min(size.x, size.z); // diameter of the tube
+                                    light->SetAreaWidth(area_width);
+                                    light->SetAreaHeight(area_height);
                                 }
                             }
                         };
@@ -1788,6 +1803,7 @@ namespace spartan
                             default_car->SetParent(turn_table);
                             default_car->SetScaleLocal(1.0f);
                             turn_table->SetPositionLocal(0.0f);
+                            turn_table->SetRotation(Quaternion::FromEulerAngles(0.0f, 142.9024f, 0.0f));
                             if (Material* material = turn_table->GetComponent<Renderable>()->GetMaterial())
                             {
                                 material->SetColor(Color::standard_black);

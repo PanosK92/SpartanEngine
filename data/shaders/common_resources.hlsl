@@ -138,6 +138,8 @@ struct LightParameters
     float angle;
     uint flags;
     uint screen_space_shadow_slice_index;
+    float area_width;  // area light width in meters
+    float area_height; // area light height in meters
     matrix transform[6];
     float2 atlas_offsets[6];
     float2 atlas_scales[6];
