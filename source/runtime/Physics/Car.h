@@ -118,14 +118,40 @@ namespace car
         constexpr float max_susp_force       = 35000.0f;
         constexpr float max_damper_velocity  = 5.0f;
         
-        // aerodynamics
-        constexpr float drag_coeff           = 0.35f;
-        constexpr float frontal_area         = 2.2f;
-        constexpr float air_density          = 1.225f;
+        // aerodynamics - base values (can be computed from shape)
+        constexpr float air_density          = 1.225f;  // kg/m³ at sea level
         constexpr float rolling_resistance   = 0.015f;
-        constexpr float lift_coeff_front     = -0.3f;
-        constexpr float lift_coeff_rear      = -0.4f;
-        constexpr float downforce_center_height = 0.3f;
+        
+        // these can be overridden by shape analysis
+        inline float drag_coeff              = 0.35f;   // cd - computed from shape or manual
+        inline float frontal_area            = 2.2f;    // m² - computed from convex hull projection
+        inline float lift_coeff_front        = -0.3f;   // negative = downforce
+        inline float lift_coeff_rear         = -0.4f;   // rear has more downforce (diffuser/wing)
+        inline float side_area               = 4.0f;    // m² - for crosswind/yaw drag
+        
+        // ground effect - downforce increases as ride height decreases
+        inline bool  ground_effect_enabled   = true;
+        inline float ground_effect_multiplier = 1.5f;   // max downforce multiplier at min height
+        inline float ground_effect_height_ref = 0.15f;  // reference height (m) for full ground effect
+        inline float ground_effect_height_max = 0.30f;  // height above which no ground effect
+        
+        // yaw-dependent aero - drag increases when car is sideways
+        inline bool  yaw_aero_enabled        = true;
+        inline float yaw_drag_multiplier     = 2.5f;    // drag multiplier at 90° yaw
+        inline float yaw_side_force_coeff    = 1.2f;    // side force coefficient when yawed
+        
+        // pitch-dependent aero - affects front/rear downforce balance
+        inline bool  pitch_aero_enabled      = true;
+        inline float pitch_sensitivity       = 0.5f;    // how much pitch affects f/r balance
+        
+        // center of mass offset from body center (tweakable for handling characteristics)
+        // laferrari: mid-engine layout with 41% front / 59% rear weight distribution
+        // x: positive = right, negative = left (should be 0 for symmetric car)
+        // y: positive = up, negative = down (lower is more stable)
+        // z: positive = front, negative = rear (rear-biased for mid-engine)
+        inline float center_of_mass_x = 0.0f;    // centered laterally
+        inline float center_of_mass_y = -0.15f;  // low center of gravity
+        inline float center_of_mass_z = -0.3f;   // slightly rearward for mid-engine
         
         // steering
         constexpr float max_steer_angle            = 0.65f;
@@ -194,9 +220,28 @@ namespace car
         constexpr float surface_friction_ice         = 0.1f;
         
         // debug visualization
-        inline bool draw_raycasts   = true; // draw wheel raycast lines
-        inline bool draw_suspension = true; // draw suspension travel
+        inline bool draw_raycasts   = true;  // draw wheel raycast lines
+        inline bool draw_suspension = true;  // draw suspension travel
+        inline bool draw_aero       = true;  // draw aerodynamic forces
     }
+    
+    // aerodynamic debug visualization data
+    struct aero_debug_data
+    {
+        PxVec3 position         = PxVec3(0);  // car position
+        PxVec3 velocity         = PxVec3(0);  // velocity vector
+        PxVec3 drag_force       = PxVec3(0);  // drag force vector
+        PxVec3 front_downforce  = PxVec3(0);  // front downforce vector
+        PxVec3 rear_downforce   = PxVec3(0);  // rear downforce vector
+        PxVec3 side_force       = PxVec3(0);  // side force (yaw)
+        PxVec3 front_aero_pos   = PxVec3(0);  // front aero center position
+        PxVec3 rear_aero_pos    = PxVec3(0);  // rear aero center position
+        float  ride_height      = 0.0f;       // current ride height
+        float  yaw_angle        = 0.0f;       // yaw angle in radians
+        float  ground_effect_factor = 1.0f;   // current ground effect multiplier
+        bool   valid            = false;      // data is valid for this frame
+    };
+    inline static aero_debug_data aero_debug;
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
     enum surface_type { surface_asphalt = 0, surface_concrete, surface_wet_asphalt, surface_gravel, surface_grass, surface_ice, surface_count };
@@ -707,13 +752,124 @@ namespace car
     }
     
     // updates mass and inertia after changing chassis shapes
+    // applies center of mass offset from tuning parameters
     inline void update_mass_properties()
     {
         if (!body)
             return;
-            
-        PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass);
+        
+        // apply center of mass offset for realistic weight distribution
+        PxVec3 com(tuning::center_of_mass_x, tuning::center_of_mass_y, tuning::center_of_mass_z);
+        PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
+        
+        SP_LOG_INFO("car center of mass set to (%.2f, %.2f, %.2f)", com.x, com.y, com.z);
     }
+    
+    // setters for center of mass (for runtime tweaking)
+    inline void set_center_of_mass(float x, float y, float z)
+    {
+        tuning::center_of_mass_x = x;
+        tuning::center_of_mass_y = y;
+        tuning::center_of_mass_z = z;
+        update_mass_properties();
+    }
+    
+    inline void set_center_of_mass_x(float x) { tuning::center_of_mass_x = x; update_mass_properties(); }
+    inline void set_center_of_mass_y(float y) { tuning::center_of_mass_y = y; update_mass_properties(); }
+    inline void set_center_of_mass_z(float z) { tuning::center_of_mass_z = z; update_mass_properties(); }
+    
+    inline float get_center_of_mass_x() { return tuning::center_of_mass_x; }
+    inline float get_center_of_mass_y() { return tuning::center_of_mass_y; }
+    inline float get_center_of_mass_z() { return tuning::center_of_mass_z; }
+    
+    // computes aerodynamic properties from a set of vertices (convex hull points)
+    // this should be called after building the chassis shape
+    inline void compute_aero_from_shape(const std::vector<PxVec3>& vertices)
+    {
+        if (vertices.size() < 4)
+            return;
+        
+        // find bounding box to get basic dimensions
+        PxVec3 min_pt(FLT_MAX, FLT_MAX, FLT_MAX);
+        PxVec3 max_pt(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+        
+        for (const PxVec3& v : vertices)
+        {
+            min_pt.x = PxMin(min_pt.x, v.x);
+            min_pt.y = PxMin(min_pt.y, v.y);
+            min_pt.z = PxMin(min_pt.z, v.z);
+            max_pt.x = PxMax(max_pt.x, v.x);
+            max_pt.y = PxMax(max_pt.y, v.y);
+            max_pt.z = PxMax(max_pt.z, v.z);
+        }
+        
+        float width  = max_pt.x - min_pt.x;  // x dimension
+        float height = max_pt.y - min_pt.y;  // y dimension  
+        float length = max_pt.z - min_pt.z;  // z dimension
+        
+        // frontal area approximation (looking from front, YZ plane)
+        // for a car shape, frontal area is roughly width * height * fill_factor
+        // typical car fill factor is 0.8-0.85 (not a perfect rectangle)
+        float frontal_fill_factor = 0.82f;
+        float computed_frontal_area = width * height * frontal_fill_factor;
+        
+        // side area approximation (looking from side, XY plane projected to length*height)
+        // for a car, side area is roughly length * height * fill_factor
+        float side_fill_factor = 0.75f; // cars have curved roofs, wheel wells, etc.
+        float computed_side_area = length * height * side_fill_factor;
+        
+        // estimate drag coefficient from shape proportions
+        // longer, lower cars are more aerodynamic
+        float length_height_ratio = length / PxMax(height, 0.1f);
+        float width_height_ratio  = width / PxMax(height, 0.1f);
+        
+        // base cd for a typical sports car is 0.30-0.35
+        // formula: lower and longer = better, taller and boxier = worse
+        float base_cd = 0.32f;
+        float ratio_factor = PxClamp(2.5f / length_height_ratio, 0.8f, 1.3f); // ideal ratio ~2.5
+        float computed_drag_coeff = base_cd * ratio_factor;
+        
+        // apply computed values (only if they're reasonable)
+        if (computed_frontal_area > 0.5f && computed_frontal_area < 10.0f)
+        {
+            tuning::frontal_area = computed_frontal_area;
+            SP_LOG_INFO("aero: computed frontal area = %.2f m²", computed_frontal_area);
+        }
+        
+        if (computed_side_area > 1.0f && computed_side_area < 20.0f)
+        {
+            tuning::side_area = computed_side_area;
+            SP_LOG_INFO("aero: computed side area = %.2f m²", computed_side_area);
+        }
+        
+        if (computed_drag_coeff > 0.2f && computed_drag_coeff < 0.6f)
+        {
+            tuning::drag_coeff = computed_drag_coeff;
+            SP_LOG_INFO("aero: computed drag coefficient = %.3f", computed_drag_coeff);
+        }
+        
+        SP_LOG_INFO("aero: shape dimensions: %.2f x %.2f x %.2f m (L x W x H)", length, width, height);
+    }
+    
+    // aero property getters
+    inline float get_frontal_area()   { return tuning::frontal_area; }
+    inline float get_side_area()      { return tuning::side_area; }
+    inline float get_drag_coeff()     { return tuning::drag_coeff; }
+    inline float get_lift_coeff_front() { return tuning::lift_coeff_front; }
+    inline float get_lift_coeff_rear()  { return tuning::lift_coeff_rear; }
+    
+    // aero property setters (for manual tuning)
+    inline void set_frontal_area(float area) { tuning::frontal_area = area; }
+    inline void set_side_area(float area)    { tuning::side_area = area; }
+    inline void set_drag_coeff(float cd)     { tuning::drag_coeff = cd; }
+    inline void set_lift_coeff_front(float cl) { tuning::lift_coeff_front = cl; }
+    inline void set_lift_coeff_rear(float cl)  { tuning::lift_coeff_rear = cl; }
+    
+    // ground effect settings
+    inline void set_ground_effect_enabled(bool enabled) { tuning::ground_effect_enabled = enabled; }
+    inline bool get_ground_effect_enabled() { return tuning::ground_effect_enabled; }
+    inline void set_ground_effect_multiplier(float mult) { tuning::ground_effect_multiplier = mult; }
+    inline float get_ground_effect_multiplier() { return tuning::ground_effect_multiplier; }
 
     inline void set_throttle(float v)  { input_target.throttle  = PxClamp(v, 0.0f, 1.0f); }
     inline void set_brake(float v)     { input_target.brake     = PxClamp(v, 0.0f, 1.0f); }
@@ -1245,29 +1401,164 @@ namespace car
         PxVec3 vel = body->getLinearVelocity();
         float speed = vel.magnitude();
         
-        // drag
-        if (speed > 1.0f)
-            body->addForce(-vel.getNormalized() * 0.5f * tuning::air_density * tuning::drag_coeff * tuning::frontal_area * speed * speed, PxForceMode::eFORCE);
+        // compute aero application points (front and rear of car, elevated for visibility)
+        // front: at front bumper, above hood level
+        // rear: at rear bumper, above trunk/wing level
+        float aero_height = cfg.suspension_height + 0.3f; // above the body
+        PxVec3 front_pos = pose.p + pose.q.rotate(PxVec3(0, aero_height, cfg.length * 0.5f));
+        PxVec3 rear_pos  = pose.p + pose.q.rotate(PxVec3(0, aero_height, -cfg.length * 0.5f));
         
-        // downforce
-        if (speed > 10.0f)
+        // reset debug data - always set positions so we can visualize even when stationary
+        aero_debug.valid = false;
+        aero_debug.position = pose.p;
+        aero_debug.velocity = vel;
+        aero_debug.front_aero_pos = front_pos;
+        aero_debug.rear_aero_pos = rear_pos;
+        aero_debug.ride_height = cfg.suspension_height + cfg.wheel_radius; // default ride height
+        aero_debug.ground_effect_factor = 1.0f;
+        aero_debug.yaw_angle = 0.0f;
+        aero_debug.drag_force = PxVec3(0);
+        aero_debug.front_downforce = PxVec3(0);
+        aero_debug.rear_downforce = PxVec3(0);
+        aero_debug.side_force = PxVec3(0);
+        
+        if (speed < 0.5f)
         {
-            float dyn_pressure = 0.5f * tuning::air_density * speed * speed * tuning::frontal_area;
-            PxVec3 local_up = pose.q.rotate(PxVec3(0, 1, 0));
-            PxVec3 front_pos = pose.p + pose.q.rotate(PxVec3(0, tuning::downforce_center_height, cfg.length * 0.35f));
-            PxVec3 rear_pos  = pose.p + pose.q.rotate(PxVec3(0, tuning::downforce_center_height, -cfg.length * 0.35f));
-            
-            PxRigidBodyExt::addForceAtPos(*body, local_up * tuning::lift_coeff_front * dyn_pressure, front_pos, PxForceMode::eFORCE);
-            PxRigidBodyExt::addForceAtPos(*body, local_up * tuning::lift_coeff_rear * dyn_pressure, rear_pos, PxForceMode::eFORCE);
+            // only rolling resistance at very low speed
+            float tire_load = 0.0f;
+            for (int i = 0; i < wheel_count; i++)
+                if (wheels[i].grounded) tire_load += wheels[i].tire_load;
+            if (speed > 0.1f && tire_load > 0.0f)
+                body->addForce(-vel.getNormalized() * tuning::rolling_resistance * tire_load, PxForceMode::eFORCE);
+            aero_debug.valid = true; // mark valid so we see the aero points at least
+            return;
         }
         
-        // rolling resistance
+        // local coordinate system
+        PxVec3 local_fwd   = pose.q.rotate(PxVec3(0, 0, 1));
+        PxVec3 local_up    = pose.q.rotate(PxVec3(0, 1, 0));
+        PxVec3 local_right = pose.q.rotate(PxVec3(1, 0, 0));
+        
+        // decompose velocity into forward and lateral components
+        float forward_speed = vel.dot(local_fwd);
+        float lateral_speed = vel.dot(local_right);
+        
+        // yaw angle - angle between velocity and car forward direction
+        float yaw_angle = 0.0f;
+        if (speed > 1.0f)
+        {
+            PxVec3 vel_norm = vel.getNormalized();
+            float cos_yaw = PxClamp(vel_norm.dot(local_fwd), -1.0f, 1.0f);
+            yaw_angle = acosf(fabsf(cos_yaw)); // 0 = straight, pi/2 = sideways
+        }
+        
+        // pitch angle from suspension compression (positive = nose up)
+        float front_compression = (wheels[front_left].compression + wheels[front_right].compression) * 0.5f;
+        float rear_compression  = (wheels[rear_left].compression + wheels[rear_right].compression) * 0.5f;
+        float pitch_angle = (rear_compression - front_compression) * cfg.suspension_travel / (cfg.length * 0.7f);
+        
+        // ride height from average suspension compression (lower = more ground effect)
+        float avg_compression = (front_compression + rear_compression) * 0.5f;
+        float ride_height = cfg.suspension_height - avg_compression * cfg.suspension_travel + cfg.wheel_radius;
+        
+        // === DRAG ===
+        float base_drag = 0.5f * tuning::air_density * tuning::drag_coeff * tuning::frontal_area * speed * speed;
+        
+        // yaw increases drag significantly (car is less aerodynamic when sideways)
+        float yaw_drag_factor = 1.0f;
+        if (tuning::yaw_aero_enabled && yaw_angle > 0.01f)
+        {
+            // interpolate between frontal drag and side drag based on yaw
+            float yaw_factor = sinf(yaw_angle); // 0 at straight, 1 at 90°
+            float side_drag = 0.5f * tuning::air_density * tuning::drag_coeff * tuning::yaw_drag_multiplier * tuning::side_area * speed * speed;
+            yaw_drag_factor = 1.0f + yaw_factor * (tuning::yaw_drag_multiplier - 1.0f);
+        }
+        
+        // apply drag opposite to velocity direction
+        PxVec3 drag_force_vec = -vel.getNormalized() * base_drag * yaw_drag_factor;
+        body->addForce(drag_force_vec, PxForceMode::eFORCE);
+        
+        // === SIDE FORCE (crosswind/yaw) ===
+        PxVec3 side_force_vec(0);
+        if (tuning::yaw_aero_enabled && fabsf(lateral_speed) > 1.0f)
+        {
+            // side force pushes car laterally when yawed
+            float side_force = 0.5f * tuning::air_density * tuning::yaw_side_force_coeff * tuning::side_area * lateral_speed * fabsf(lateral_speed);
+            side_force_vec = -local_right * side_force;
+            body->addForce(side_force_vec, PxForceMode::eFORCE);
+        }
+        
+        // === DOWNFORCE ===
+        PxVec3 front_downforce_vec(0);
+        PxVec3 rear_downforce_vec(0);
+        float ground_effect_factor = 1.0f;
+        
+        if (speed > 10.0f)
+        {
+            float dyn_pressure = 0.5f * tuning::air_density * speed * speed;
+            
+            // base front/rear downforce coefficients
+            float front_cl = tuning::lift_coeff_front;
+            float rear_cl  = tuning::lift_coeff_rear;
+            
+            // ground effect - increases downforce at lower ride heights
+            if (tuning::ground_effect_enabled)
+            {
+                if (ride_height < tuning::ground_effect_height_max)
+                {
+                    // exponential increase in downforce as height decreases
+                    float height_ratio = PxClamp((tuning::ground_effect_height_max - ride_height) / 
+                                                 (tuning::ground_effect_height_max - tuning::ground_effect_height_ref), 0.0f, 1.0f);
+                    ground_effect_factor = 1.0f + height_ratio * (tuning::ground_effect_multiplier - 1.0f);
+                }
+            }
+            
+            // pitch affects front/rear balance
+            if (tuning::pitch_aero_enabled)
+            {
+                // nose up = more rear downforce, nose down = more front downforce
+                float pitch_shift = pitch_angle * tuning::pitch_sensitivity;
+                front_cl *= (1.0f - pitch_shift);
+                rear_cl  *= (1.0f + pitch_shift);
+            }
+            
+            // yaw reduces overall downforce efficiency
+            float yaw_downforce_factor = 1.0f;
+            if (tuning::yaw_aero_enabled && yaw_angle > 0.1f)
+            {
+                yaw_downforce_factor = PxMax(0.3f, 1.0f - sinf(yaw_angle) * 0.7f);
+            }
+            
+            // apply downforce at front and rear aero centers
+            float front_downforce = front_cl * dyn_pressure * tuning::frontal_area * ground_effect_factor * yaw_downforce_factor;
+            float rear_downforce  = rear_cl  * dyn_pressure * tuning::frontal_area * ground_effect_factor * yaw_downforce_factor;
+            
+            front_downforce_vec = local_up * front_downforce;
+            rear_downforce_vec  = local_up * rear_downforce;
+            
+            PxRigidBodyExt::addForceAtPos(*body, front_downforce_vec, front_pos, PxForceMode::eFORCE);
+            PxRigidBodyExt::addForceAtPos(*body, rear_downforce_vec, rear_pos, PxForceMode::eFORCE);
+        }
+        
+        // === ROLLING RESISTANCE ===
         float tire_load = 0.0f;
         for (int i = 0; i < wheel_count; i++)
             if (wheels[i].grounded) tire_load += wheels[i].tire_load;
         
-        if (speed > 0.1f && tire_load > 0.0f)
+        if (tire_load > 0.0f)
             body->addForce(-vel.getNormalized() * tuning::rolling_resistance * tire_load, PxForceMode::eFORCE);
+        
+        // store debug data for visualization
+        aero_debug.drag_force = drag_force_vec;
+        aero_debug.front_downforce = front_downforce_vec;
+        aero_debug.rear_downforce = rear_downforce_vec;
+        aero_debug.side_force = side_force_vec;
+        aero_debug.front_aero_pos = front_pos;
+        aero_debug.rear_aero_pos = rear_pos;
+        aero_debug.ride_height = ride_height;
+        aero_debug.yaw_angle = yaw_angle;
+        aero_debug.ground_effect_factor = ground_effect_factor;
+        aero_debug.valid = true;
     }
     
     inline void calculate_steering(float forward_speed, float speed_kmh, float out_angles[wheel_count])
@@ -1515,6 +1806,11 @@ namespace car
     inline bool get_draw_raycasts()               { return tuning::draw_raycasts; }
     inline void set_draw_suspension(bool enabled) { tuning::draw_suspension = enabled; }
     inline bool get_draw_suspension()             { return tuning::draw_suspension; }
+    inline void set_draw_aero(bool enabled)       { tuning::draw_aero = enabled; }
+    inline bool get_draw_aero()                   { return tuning::draw_aero; }
+    
+    // get aerodynamic debug data for visualization
+    inline const aero_debug_data& get_aero_debug() { return aero_debug; }
     
     inline void get_debug_ray(int wheel, int ray, PxVec3& origin, PxVec3& hit_point, bool& hit)
     {

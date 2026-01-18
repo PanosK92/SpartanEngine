@@ -218,10 +218,17 @@ namespace spartan
         bool GetDrawRaycasts() const;
         void SetDrawSuspension(bool enabled);
         bool GetDrawSuspension() const;
+        void SetDrawAero(bool enabled);
+        bool GetDrawAero() const;
         void DrawDebugVisualization();                          // call each frame to draw debug lines
         
         // sync physics wheel positions from wheel entity positions
         void SyncWheelOffsetsFromEntities();
+        
+        // center of mass (for tuning handling characteristics)
+        void SetCenterOfMassOffset(const math::Vector3& offset);
+        void SetCenterOfMassOffset(float x, float y, float z);
+        math::Vector3 GetCenterOfMassOffset() const;
         
         // mesh convex compound shape - set the source entity whose hierarchy will be walked
         // to build convex hull shapes from each mesh in the hierarchy
