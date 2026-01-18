@@ -780,9 +780,22 @@ namespace spartan
         Profiler::TimeBlockStart("submit_and_present", TimeBlockType::Cpu, nullptr);
         {
             SP_ASSERT(m_cmd_list_present->GetState() == RHI_CommandListState::Recording);
-            m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
-            m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore(), false);
-            swapchain->Present(m_cmd_list_present);
+
+            // only submit and present if we successfully acquired a swapchain image
+            if (swapchain->IsImageAcquired())
+            {
+                m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
+                
+                // use per-swapchain-image semaphore to signal rendering complete
+                // this ensures the semaphore isn't reused until the image is re-acquired
+                m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
+                swapchain->Present(m_cmd_list_present);
+            }
+            else
+            {
+                // no image acquired (window minimized/transitioning), submit without presentation semaphores
+                m_cmd_list_present->Submit(nullptr, true);
+            }
         }
         Profiler::TimeBlockEnd();
     }
