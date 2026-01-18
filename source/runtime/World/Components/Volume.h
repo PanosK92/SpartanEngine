@@ -38,9 +38,11 @@ namespace spartan
         Volume(Entity* entity);
         ~Volume() = default;
 
-        //= COMPONENT =======
+        //= COMPONENT =====================
         void Tick() override;
-        //===================
+        void Save(pugi::xml_node& node) override;
+        void Load(pugi::xml_node& node) override;
+        //=================================
 
         // box
         const math::BoundingBox& GetBoundingBox() const   { return m_bounding_box; }

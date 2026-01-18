@@ -80,10 +80,12 @@ namespace spartan
         uint32_t submesh_count = static_cast<uint32_t>(m_sub_meshes.size());
         outfile.write(reinterpret_cast<const char*>(&submesh_count), sizeof(uint32_t));
 
-        for (const auto& sub : m_sub_meshes)
+        for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
         {
+            const SubMesh& sub = m_sub_meshes[sub_idx];
             uint32_t lod_count = static_cast<uint32_t>(sub.lods.size());
             outfile.write(reinterpret_cast<const char*>(&lod_count), sizeof(uint32_t));
+            SP_LOG_INFO("Mesh '%s' sub-mesh %u: saving %u LODs", m_object_name.c_str(), sub_idx, lod_count);
 
             for (const auto& lod : sub.lods)
             {
@@ -156,11 +158,13 @@ namespace spartan
             infile.read(reinterpret_cast<char*>(&submesh_count), sizeof(uint32_t));
             m_sub_meshes.resize(submesh_count);
 
-            for (auto& sub : m_sub_meshes)
+            for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
             {
+                SubMesh& sub = m_sub_meshes[sub_idx];
                 uint32_t lod_count;
                 infile.read(reinterpret_cast<char*>(&lod_count), sizeof(uint32_t));
                 sub.lods.resize(lod_count);
+                SP_LOG_INFO("Mesh '%s' sub-mesh %u: loaded %u LODs", m_object_name.c_str(), sub_idx, lod_count);
 
                 for (auto& lod : sub.lods)
                 {
@@ -224,7 +228,21 @@ namespace spartan
     {
         SP_ASSERT_MSG(indices != nullptr || vertices != nullptr, "Indices and vertices vectors can't both be null");
     
-        const MeshLod& lod = GetSubMesh(sub_mesh_index).lods[0];
+        // validate sub-mesh index
+        if (sub_mesh_index >= m_sub_meshes.size())
+        {
+            SP_LOG_ERROR("GetGeometry: sub_mesh_index %u out of bounds (mesh has %zu sub-meshes)", sub_mesh_index, m_sub_meshes.size());
+            return;
+        }
+
+        const SubMesh& sub_mesh = m_sub_meshes[sub_mesh_index];
+        if (sub_mesh.lods.empty())
+        {
+            SP_LOG_ERROR("GetGeometry: sub-mesh %u has no LODs", sub_mesh_index);
+            return;
+        }
+
+        const MeshLod& lod = sub_mesh.lods[0];
     
         if (indices)
         {

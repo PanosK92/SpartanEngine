@@ -272,5 +272,8 @@ namespace spartan
         
         // mesh convex source entity - the entity hierarchy to walk for building compound convex shapes
         Entity* m_mesh_convex_source = nullptr;
+        
+        // deferred creation flag for loading (wait until renderable is available)
+        bool m_needs_creation = false;
     };
 }
