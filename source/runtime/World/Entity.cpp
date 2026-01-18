@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Physics.h"
 #include "Components/AudioSource.h"
 #include "Components/Terrain.h"
+#include "Components/Volume.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -285,13 +286,11 @@ namespace spartan
 
         switch (type)
         {
-            case ComponentType::AudioSource: component = static_cast<Component*>(AddComponent<AudioSource>()); break;
-            case ComponentType::Camera:      component = static_cast<Component*>(AddComponent<Camera>());      break;
-            case ComponentType::Light:       component = static_cast<Component*>(AddComponent<Light>());       break;
-            case ComponentType::Renderable:  component = static_cast<Component*>(AddComponent<Renderable>());  break;
-            case ComponentType::Physics:     component = static_cast<Component*>(AddComponent<Physics>());     break;
-            case ComponentType::Terrain:     component = static_cast<Component*>(AddComponent<Terrain>());     break;
-            default:                         component = nullptr;                                              break;
+            // auto-generated from SP_COMPONENT_LIST
+            #define X(type, str) case ComponentType::type: component = static_cast<Component*>(AddComponent<type>()); break;
+            SP_COMPONENT_LIST
+            #undef X
+            default: component = nullptr; break;
         }
 
         SP_ASSERT(component != nullptr);

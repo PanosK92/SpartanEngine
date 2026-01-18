@@ -132,6 +132,9 @@ namespace spartan
         math::Matrix m_transform_previous = math::Matrix::Identity;
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
 
+        // deferred default material assignment (renderer may not be ready during load)
+        bool m_needs_default_material = false;
+
         // visibility & lods
         float m_max_distance_render = FLT_MAX;
         float m_max_distance_shadow = FLT_MAX;

@@ -107,7 +107,40 @@ namespace spartan
         m_sub_mesh_index       = node.attribute("sub_mesh_index").as_uint();
         if (!mesh_name.empty())
         {
-            m_mesh = ResourceCache::GetByName<Mesh>(mesh_name).get();
+            // check for standard meshes first (owned by Renderer, not ResourceCache)
+            if (mesh_name == "standard_cube")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cube).get();
+            }
+            else if (mesh_name == "standard_quad")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Quad).get();
+            }
+            else if (mesh_name == "standard_sphere")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Sphere).get();
+            }
+            else if (mesh_name == "standard_cylinder")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cylinder).get();
+            }
+            else if (mesh_name == "standard_cone")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cone).get();
+            }
+            else
+            {
+                // look up in ResourceCache for custom meshes
+                shared_ptr<Mesh> mesh = ResourceCache::GetByName<Mesh>(mesh_name);
+                if (mesh)
+                {
+                    m_mesh = mesh.get();
+                }
+                else
+                {
+                    SP_LOG_WARNING("Renderable::Load - mesh '%s' not found in cache", mesh_name.c_str());
+                }
+            }
         }
     
         // material
@@ -123,7 +156,8 @@ namespace spartan
         }
         else if (m_material_default)
         {
-            //SetDefaultMaterial(); /// cause crash, disable for now
+            // defer default material assignment - renderer may not be ready during load
+            m_needs_default_material = true;
         }
     
         // flags
@@ -160,6 +194,17 @@ namespace spartan
             }
         }
     
+        // compute mesh bounding box (needed for culling and LOD)
+        if (m_mesh)
+        {
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            m_mesh->GetGeometry(m_sub_mesh_index, nullptr, &vertices);
+            if (!vertices.empty())
+            {
+                m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            }
+        }
+
         // update instance buffer and bounding boxes
         if (!m_instances.empty())
         {
@@ -173,6 +218,16 @@ namespace spartan
 
     void Renderable::Tick()
     {
+        // deferred default material assignment (renderer may not be ready during load)
+        if (m_needs_default_material)
+        {
+            if (Renderer::GetStandardMaterial())
+            {
+                SetDefaultMaterial();
+                m_needs_default_material = false;
+            }
+        }
+
         UpdateAabb();
         UpdateFrustumAndDistanceCulling();
         UpdateLodIndices();
@@ -180,19 +235,21 @@ namespace spartan
 
     void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
     {
-        // set mesh
+        if (!mesh)
         {
-            m_mesh             = mesh;
-            m_sub_mesh_index   = sub_mesh_index;
-            const MeshLod& lod = mesh->GetSubMesh(sub_mesh_index).lods[0];
-            SP_ASSERT(lod.index_count  != 0);
-            SP_ASSERT(lod.vertex_count != 0);
+            SP_LOG_WARNING("Renderable::SetMesh called with null mesh");
+            return;
         }
 
-        // compute and set bounding box
+        // set mesh
+        m_mesh           = mesh;
+        m_sub_mesh_index = sub_mesh_index;
+
+        // compute and set bounding box (GetGeometry validates bounds internally)
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
+        if (!vertices.empty())
         {
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
             m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
         }
 
@@ -206,6 +263,11 @@ namespace spartan
 
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
+        if (!m_mesh)
+        {
+            SP_LOG_WARNING("Renderable::GetGeometry called with null mesh");
+            return;
+        }
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
     

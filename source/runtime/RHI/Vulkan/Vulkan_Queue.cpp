@@ -211,7 +211,7 @@ namespace spartan
         }
     }
 
-    void RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
+    bool RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
     {
         lock_guard<mutex> lock(get_mutex(this));
 
@@ -227,6 +227,15 @@ namespace spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = &image_index;
 
-        SP_ASSERT_VK(vkQueuePresentKHR(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), &present_info));
+        VkResult result = vkQueuePresentKHR(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), &present_info);
+
+        // vk_error_out_of_date_khr and vk_suboptimal_khr are not errors, they indicate the swapchain needs recreation
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        {
+            return false; // signal swapchain needs recreation
+        }
+
+        SP_ASSERT_VK(result);
+        return true;
     }
 }

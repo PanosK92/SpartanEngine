@@ -136,21 +136,33 @@ namespace spartan
     
     void RHI_SwapChain::AcquireNextImage()
     {
-        m_image_index = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
+        m_image_acquired = false;
+        if (m_rhi_swapchain)
+        {
+            m_image_index = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
+            m_image_acquired = true;
+        }
     }
     
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
+        // only present if we successfully acquired an image
+        if (!m_image_acquired)
+            return;
+
         SP_ASSERT(m_rhi_swapchain != nullptr && "Can't present, the swapchain has not been initialized");
 
-        // Present parameters
+        // present parameters
         const bool tearing_allowed = m_present_mode == RHI_Present_Mode::Immediate;
         const UINT sync_interval   = tearing_allowed ? 0 : 1; // sync interval can go up to 4, so this could be improved
         const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
-        // Present
+        // present
         SP_ASSERT(d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Present(sync_interval, flags))
             && "Failed to present");
+
+        // clear acquisition state after presentation
+        m_image_acquired = false;
 
         AcquireNextImage();
     }
@@ -171,6 +183,11 @@ namespace spartan
     }
 
     RHI_SyncPrimitive* RHI_SwapChain::GetImageAcquiredSemaphore() const
+    {
+        return nullptr;
+    }
+
+    RHI_SyncPrimitive* RHI_SwapChain::GetRenderingCompleteSemaphore() const
     {
         return nullptr;
     }

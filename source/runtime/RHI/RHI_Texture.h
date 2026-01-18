@@ -86,6 +86,7 @@ namespace spartan
         // iresource
         void SaveToFile(const std::string& file_path) override;
         void LoadFromFile(const std::string& file_path) override;
+        bool CanSaveToFile() const;
 
         uint32_t GetWidth() const           { return m_width; }
         void SetWidth(const uint32_t width) { m_width = width; }

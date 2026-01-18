@@ -159,6 +159,13 @@ namespace spartan
 
     void Physics::Tick()
     {
+        // deferred creation after loading (renderable component needs to be available first)
+        if (m_needs_creation)
+        {
+            m_needs_creation = false;
+            Create();
+        }
+
         // map transform from physx to engine and vice versa
         if (m_body_type == BodyType::Controller)
         {
@@ -422,7 +429,9 @@ namespace spartan
         m_center_of_mass.z = node.attribute("center_of_mass_z").as_float(0.0f);
         m_body_type        = static_cast<BodyType>(node.attribute("body_type").as_int(static_cast<int>(BodyType::Max)));
     
-        Create();
+        // defer creation until tick so that renderable component is available
+        // (components load in enum order, and renderable comes after physics)
+        m_needs_creation = true;
     }
 
     void Physics::SetMass(float mass)

@@ -62,7 +62,7 @@ namespace spartan
         ~RHI_CommandList();
 
         void Begin();
-        void Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate);
+        void Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal = nullptr);
         void WaitForExecution(const bool log_wait_time = false);
         void SetPipelineState(RHI_PipelineState& pso);
 

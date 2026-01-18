@@ -561,7 +561,7 @@ namespace spartan
         }
     }
 
-    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate)
+    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal /*= nullptr*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -569,8 +569,11 @@ namespace spartan
         RenderPassEnd();
         SP_ASSERT_VK(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)));
 
-        // immediate command lists wait on the CPU using the timeline semaphore
-        RHI_SyncPrimitive* semaphore_binary = is_immediate ? nullptr : m_rendering_complete_semaphore.get();
+        // determine which binary semaphore to signal:
+        // - if external semaphore provided (e.g. per-swapchain-image), use that
+        // - if immediate mode, no binary semaphore (timeline only)
+        // - otherwise use the command list's binary semaphore
+        RHI_SyncPrimitive* semaphore_binary = semaphore_signal ? semaphore_signal : (is_immediate ? nullptr : m_rendering_complete_semaphore.get());
 
         m_queue->Submit(
             static_cast<VkCommandBuffer>(m_rhi_resource), // cmd buffer

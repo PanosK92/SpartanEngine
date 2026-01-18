@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
 #include "../Resource/ResourceCache.h"
+#include "../RHI/RHI_Texture.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -427,16 +428,25 @@ namespace spartan
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
 
-            // Combined loop for resource saving, filtered by type
+            // save resources filtered by type
             for (shared_ptr<IResource>& resource : resources)
             {
                 string ext;
                 switch (resource->GetResourceType())
                 {
-                    case ResourceType::Texture:  ext = EXTENSION_TEXTURE;  break;
+                    case ResourceType::Texture:
+                    {
+                        // only save textures that can be saved (compressed with data)
+                        // others will be re-imported from source path when material loads
+                        RHI_Texture* texture = static_cast<RHI_Texture*>(resource.get());
+                        if (!texture->CanSaveToFile())
+                            continue;
+                        ext = EXTENSION_TEXTURE;
+                        break;
+                    }
                     case ResourceType::Material: ext = EXTENSION_MATERIAL; break;
                     case ResourceType::Mesh:     ext = EXTENSION_MESH;     break;
-                default: continue;
+                    default: continue;
                 }
                 resource->SaveToFile(directory + resource->GetObjectName() + ext);
             }
