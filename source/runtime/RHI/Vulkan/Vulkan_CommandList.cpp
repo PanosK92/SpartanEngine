@@ -591,6 +591,29 @@ namespace spartan
         m_state = RHI_CommandListState::Submitted;
     }
 
+    void RHI_CommandList::WaitForExecution(const bool log_wait_time /*= false*/)
+    {
+        SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "the command list hasn't been submitted, can't wait for it.");
+
+        static std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+        if (log_wait_time)
+        { 
+            start_time = std::chrono::high_resolution_clock::now();
+        }
+
+        // wait
+        uint64_t timeout_nanoseconds = 10'000'000'000; // 10 seconds
+        m_rendering_complete_semaphore_timeline->Wait(timeout_nanoseconds);
+        m_state = RHI_CommandListState::Idle;
+
+        if (log_wait_time)
+        {
+            auto end_time = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+            SP_LOG_INFO("wait time: %lld microseconds\n", duration);
+        }
+    }
+
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

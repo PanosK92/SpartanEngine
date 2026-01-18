@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "RHI_PipelineState.h"
-#include "SpartanObject.h"
+#include "../Core/SpartanObject.h"
 //============================
 
 namespace spartan
@@ -35,9 +35,11 @@ namespace spartan
         RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
         ~RHI_Pipeline();
 
-        RHI_PipelineState* GetState()      { return &m_state; }
-        void* GetRhiResource() const       { return m_rhi_resource; }
-        void* GetRhiResourceLayout() const { return m_rhi_resource_layout; }
+        RHI_PipelineState* GetState()            { return &m_state; }
+        void* GetRhiResource() const             { return m_rhi_resource; }
+        void* GetRhiResourceLayout() const       { return m_rhi_resource_layout; }
+        void SetRhiResource(void* resource)      { m_rhi_resource = resource; }
+        void SetRhiResourceLayout(void* layout)  { m_rhi_resource_layout = layout; }
 
     private:
         RHI_PipelineState m_state;
