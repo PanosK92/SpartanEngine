@@ -8,7 +8,7 @@
 
 # Overview
 
-Spartan Engine is a research-focused game engine developed over 10+ years, designed for experimentation and pushing the boundaries of rendering and simulation. While it started as a personal learning project, it has evolved into an active community of 600+ members on Discord, including industry professionals sharing knowledge and exploring advanced workflows.
+Spartan Engine is a research-focused game engine developed over 10+ years, designed for experimentation and pushing the boundaries of rendering and simulation. While it started as a personal learning project, it has evolved into an active community of 600+ members on Discord, including industry professionals sharing knowledge and exploring advanced technology.
 
 <p align="center">
   <a href="https://discord.gg/TG5r2BS">Discord</a> •

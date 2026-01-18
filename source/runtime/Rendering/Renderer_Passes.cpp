@@ -89,6 +89,8 @@ namespace spartan
         // - Always render once on startup (for initial clouds)
         // - Re-render when light changes
         // - Re-render every frame if cloud animation is enabled
+        // - Run for multiple frames after change for temporal accumulation to converge
+        //   (checkerboard needs 2 frames, temporal blend ~0.2 needs ~5-8 frames = 8 total)
         bool clouds_enabled = cvar_clouds_enabled.GetValueAs<bool>();
         bool clouds_visible = clouds_enabled && cvar_cloud_coverage.GetValue() > 0.0f;
         bool cloud_animation = clouds_enabled && cvar_cloud_animation.GetValue() > 0.0f;
@@ -105,6 +107,9 @@ namespace spartan
                 static float last_seed = -1.0f;
                 static float last_cloud_type = -1.0f;
                 static float last_darkness = -1.0f;
+                static uint32_t frames_remaining = 0; // temporal convergence counter
+                const uint32_t temporal_convergence_frames = 8; // frames needed for checkerboard + temporal blend
+                
                 bool has_directional_light = directional_light != nullptr;
                 float current_coverage = cvar_cloud_coverage.GetValue();
                 float current_seed = cvar_cloud_seed.GetValue();
@@ -116,6 +121,7 @@ namespace spartan
                 // 2. Light changes
                 // 3. Cloud parameters changed (enabled, coverage, seed, type, darkness)
                 // 4. Cloud animation is enabled (for wind movement)
+                // 5. Temporal convergence still in progress
                 bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) || 
                                      (has_directional_light != had_directional_light);
                 bool cloud_params_changed = (clouds_enabled != last_clouds_enabled) ||
@@ -124,7 +130,20 @@ namespace spartan
                                             (current_type != last_cloud_type) ||
                                             (current_darkness != last_darkness);
                 
-                update_skysphere = first_frame || light_changed || cloud_params_changed || cloud_animation;
+                // reset convergence counter when something changes
+                if (first_frame || light_changed || cloud_params_changed)
+                {
+                    frames_remaining = temporal_convergence_frames;
+                }
+                
+                // update if animating, converging, or something changed
+                update_skysphere = cloud_animation || (frames_remaining > 0);
+                
+                // decrement convergence counter
+                if (frames_remaining > 0)
+                {
+                    frames_remaining--;
+                }
                 
                 first_frame = false;
                 had_directional_light = has_directional_light;
