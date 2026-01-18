@@ -377,31 +377,34 @@ namespace spartan
 
     }
 
-    void RHI_CommandList::InsertBarrier(
-        void* image,
-        const RHI_Format format,
-        const uint32_t mip_index,
-        const uint32_t mip_range,
-        const uint32_t array_length,
-        const RHI_Image_Layout layout_new
-    )
+    void RHI_CommandList::InsertBarrier(const RHI_Barrier& barrier)
     {
-
+        // d3d12 barrier implementation stub
     }
 
-    void RHI_CommandList::InsertBarrierReadWrite(RHI_Texture* texture, const RHI_BarrierType type)
+    void RHI_CommandList::FlushBarriers()
     {
-
+        // d3d12 flush barriers stub
     }
 
-    void RHI_CommandList::InsertBarrierReadWrite(RHI_Buffer* buffer)
+    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip, uint32_t mip_range)
     {
-
+        InsertBarrier(RHI_Barrier::image_layout(texture, layout, mip, mip_range));
     }
 
-    void RHI_CommandList::InsertPendingBarrierGroup()
+    void RHI_CommandList::InsertBarrier(RHI_Texture* texture, RHI_BarrierType sync_type)
     {
+        InsertBarrier(RHI_Barrier::image_sync(texture, sync_type));
+    }
 
+    void RHI_CommandList::InsertBarrier(RHI_Buffer* buffer)
+    {
+        InsertBarrier(RHI_Barrier::buffer_sync(buffer));
+    }
+
+    void RHI_CommandList::InsertBarrier(void* image, RHI_Format format, uint32_t mip_index, uint32_t mip_range, uint32_t array_length, RHI_Image_Layout layout)
+    {
+        InsertBarrier(RHI_Barrier::image_layout(image, format, mip_index, mip_range, array_length, layout));
     }
 
     RHI_Image_Layout RHI_CommandList::GetImageLayout(void* image, const uint32_t mip_index)

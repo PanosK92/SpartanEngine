@@ -42,8 +42,9 @@ namespace spartan
         Submitted
     };
 
-    struct ImageBarrierInfo
+    struct PendingBarrierInfo
     {
+        RHI_Barrier barrier;
         void* image                 = nullptr;
         uint32_t aspect_mask        = 0;
         uint32_t mip_index          = 0;
@@ -152,18 +153,15 @@ namespace spartan
         // buffer
         void UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data);
 
-        // memory barriers
-        void InsertBarrier(
-            void* image,
-            const RHI_Format format,
-            const uint32_t mip_index,
-            const uint32_t mip_range,
-            const uint32_t array_length,
-            const RHI_Image_Layout layout_new
-        );
-        void InsertBarrierReadWrite(RHI_Texture* texture, const RHI_BarrierType type);
-        void InsertBarrierReadWrite(RHI_Buffer* buffer);
-        void InsertPendingBarrierGroup();
+        // barriers - unified interface
+        void InsertBarrier(const RHI_Barrier& barrier);
+        void FlushBarriers();
+
+        // barriers - convenience overloads
+        void InsertBarrier(RHI_Texture* texture, RHI_Image_Layout layout, uint32_t mip = rhi_all_mips, uint32_t mip_range = 0);
+        void InsertBarrier(RHI_Texture* texture, RHI_BarrierType sync_type);
+        void InsertBarrier(RHI_Buffer* buffer);
+        void InsertBarrier(void* image, RHI_Format format, uint32_t mip_index, uint32_t mip_range, uint32_t array_length, RHI_Image_Layout layout);
 
         // layouts
         static void RemoveLayout(void* image);
@@ -202,7 +200,7 @@ namespace spartan
         std::stack<const char*> m_debug_label_stack;
         std::mutex m_mutex_reset;
         RHI_PipelineState m_pso;
-        std::vector<ImageBarrierInfo> m_image_barriers;
+        std::vector<PendingBarrierInfo> m_pending_barriers;
         RHI_Queue* m_queue = nullptr;
         bool m_load_depth_render_target = false;
         std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };

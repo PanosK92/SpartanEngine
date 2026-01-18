@@ -352,8 +352,20 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.tangent = normalize(mul(input.tangent, (float3x3)transform));
 
     // apply wind animation and other world-space effects
+    // note: we need to save and restore vertex.normal/tangent because process_world_space modifies them
+    // the second call is only for computing position_previous, we don't want to double-transform normals
     vertex_processing::process_world_space(surface, position, vertex, input.position.xyz, transform, instance_id, 0.0f);
+    
+    // save the correctly transformed normals before computing previous position
+    float3 saved_normal  = vertex.normal;
+    float3 saved_tangent = vertex.tangent;
+    
+    // compute previous position (this will incorrectly modify vertex.normal/tangent, but we'll restore them)
     vertex_processing::process_world_space(surface, position_previous, vertex, input.position.xyz, transform_previous, instance_id, -buffer_frame.delta_time);
+    
+    // restore the correct normals from the current frame
+    vertex.normal  = saved_normal;
+    vertex.tangent = saved_tangent;
 
     position_world          = position;
     position_world_previous = position_previous;

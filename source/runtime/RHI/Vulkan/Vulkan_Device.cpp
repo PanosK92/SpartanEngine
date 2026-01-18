@@ -969,7 +969,7 @@ namespace spartan
 
             if (cached)
             {
-                descriptor_set_layout->ClearDescriptorData();
+                descriptor_set_layout->ClearBindings();
             }
 
             return descriptor_set_layout;
@@ -1850,7 +1850,7 @@ namespace spartan
 
     // descriptors
 
-    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_Descriptor>& descriptors_)
+    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors)
     {
         // describe
         array<void*, 1> descriptor_set_layouts    = { descriptor_set_layout->GetRhiResource() };

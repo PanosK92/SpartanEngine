@@ -82,7 +82,7 @@ namespace spartan
         // synchronize writes to the texture
         if (GetImageLayout(texture->GetRhiResource(), 0) == RHI_Image_Layout::General)
         {
-            InsertBarrierReadWrite(texture, RHI_BarrierType::EnsureWriteThenRead);
+            InsertBarrier(texture, RHI_BarrierType::EnsureWriteThenRead);
         }
     }
 }

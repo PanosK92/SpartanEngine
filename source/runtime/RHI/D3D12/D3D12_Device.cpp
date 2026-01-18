@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
+#include "../RHI_DescriptorSet.h"
 #include <wrl/client.h>
 #include "../RHI_Queue.h"
 #include "../Core/Debugging.h"
@@ -297,12 +298,11 @@ namespace spartan
 
     }
 
-    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_Descriptor>& descriptors_)
+    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors)
     {
 
     }
 
-    class RHI_DescriptorSet{};
     unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
     {
         static unordered_map<uint64_t, RHI_DescriptorSet> descriptors;

@@ -643,7 +643,7 @@ namespace spartan
             {
                 tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
                 tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-                cmd_list->InsertPendingBarrierGroup();
+                cmd_list->FlushBarriers();
             }
         }
         cmd_list->EndTimeblock();
@@ -739,7 +739,7 @@ namespace spartan
             tex_material->SetLayout(RHI_Image_Layout::General, cmd_list);
             tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
             tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // Pass_Sss() reads it as a srv
-            cmd_list->InsertPendingBarrierGroup();
+            cmd_list->FlushBarriers();
         }
         cmd_list->EndTimeblock();
     }
@@ -792,7 +792,7 @@ namespace spartan
                 cleared = true;
             }
 
-            cmd_list->InsertBarrierReadWrite(tex_frame, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_frame, RHI_BarrierType::EnsureReadThenWrite);
 
             cmd_list->BeginMarker("apply");
             {
@@ -850,9 +850,9 @@ namespace spartan
             tex_reflections_position->SetLayout(RHI_Image_Layout::General, cmd_list);
             tex_reflections_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
             tex_reflections_albedo->SetLayout(RHI_Image_Layout::General, cmd_list);
-            cmd_list->InsertBarrierReadWrite(tex_reflections_position, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrierReadWrite(tex_reflections_normal, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertBarrierReadWrite(tex_reflections_albedo, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_reflections_position, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_reflections_normal, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_reflections_albedo, RHI_BarrierType::EnsureReadThenWrite);
 
             // set pipeline state
             RHI_PipelineState pso;
@@ -896,9 +896,9 @@ namespace spartan
             cmd_list->TraceRays(width, height, m_std_reflections.get());
 
             // ensure writes complete before the textures are read
-            cmd_list->InsertBarrierReadWrite(tex_reflections_position, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrierReadWrite(tex_reflections_normal, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrierReadWrite(tex_reflections_albedo, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_reflections_position, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_reflections_normal, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_reflections_albedo, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
@@ -919,7 +919,7 @@ namespace spartan
         {
             // transition output texture for writing
             tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
-            cmd_list->InsertBarrierReadWrite(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
             
             // transition input textures for reading
             tex_reflections_position->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
@@ -955,7 +955,7 @@ namespace spartan
             cmd_list->Dispatch(tex_reflections);
             
             // ensure writes complete before the texture is read
-            cmd_list->InsertBarrierReadWrite(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
@@ -967,7 +967,7 @@ namespace spartan
 
         cmd_list->BeginTimeblock("screen_space_shadows");
         {
-            cmd_list->InsertBarrierReadWrite(tex_sss, RHI_BarrierType::EnsureReadThenWrite); // ensure any previous reads are complete
+            cmd_list->InsertBarrier(tex_sss, RHI_BarrierType::EnsureReadThenWrite); // ensure any previous reads are complete
 
             // set pipeline state
             RHI_PipelineState pso;
@@ -1035,7 +1035,7 @@ namespace spartan
                         cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
                     }
 
-                    cmd_list->InsertBarrierReadWrite(tex_sss, RHI_BarrierType::EnsureWriteThenRead); // ensure the texture is ready for the next light
+                    cmd_list->InsertBarrier(tex_sss, RHI_BarrierType::EnsureWriteThenRead); // ensure the texture is ready for the next light
                 }
             }
 
@@ -1104,7 +1104,7 @@ namespace spartan
                     const uint32_t resolution_x = tex_skysphere->GetWidth() >> mip_level;
                     const uint32_t resolution_y = tex_skysphere->GetHeight() >> mip_level;
                     cmd_list->Dispatch(tex_skysphere);
-                    cmd_list->InsertBarrierReadWrite(tex_skysphere, RHI_BarrierType::EnsureWriteThenRead);
+                    cmd_list->InsertBarrier(tex_skysphere, RHI_BarrierType::EnsureWriteThenRead);
                 }
             }
         }
@@ -1145,8 +1145,8 @@ namespace spartan
     
             // dispatch
             cmd_list->Dispatch(light_diffuse, cvar_resolution_scale.GetValue()); // adds read write barrier for light_diffuse internally
-            cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
@@ -1161,7 +1161,7 @@ namespace spartan
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
 
-        cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
+        cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
         {
@@ -1580,7 +1580,7 @@ namespace spartan
                 cmd_list->Dispatch(dispatch_x, dispatch_y);
                 
                 // barrier to ensure mip i is written before mip i+1 reads it
-                cmd_list->InsertBarrierReadWrite(tex_bloom, RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrier(tex_bloom, RHI_BarrierType::EnsureWriteThenRead);
             }
         }
         cmd_list->EndMarker();
@@ -1619,7 +1619,7 @@ namespace spartan
                 cmd_list->Dispatch(dispatch_x, dispatch_y);
                 
                 // barrier to ensure the blend is finished before the next upsample step reads this mip
-                 cmd_list->InsertBarrierReadWrite(tex_bloom, RHI_BarrierType::EnsureWriteThenRead);
+                 cmd_list->InsertBarrier(tex_bloom, RHI_BarrierType::EnsureWriteThenRead);
             }
         }
         cmd_list->EndMarker();
@@ -1832,8 +1832,8 @@ namespace spartan
         cmd_list->BeginTimeblock("aa_upscale");
         {
             // output is displayed in the viewport, so add a barrier to ensure it's not being read by the gpu
-            cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertPendingBarrierGroup();
+            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->FlushBarriers();
 
             Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
             if (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) // highest quality, most expensive
@@ -1871,7 +1871,7 @@ namespace spartan
             }
 
             // wait for vendor tech to finish writing to the texture
-            cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
 
             // used for refraction by the transparent passes, so generate mips to emulate roughness
             Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
@@ -1967,7 +1967,7 @@ namespace spartan
 
         cmd_list->BeginMarker("downscale");
         {
-            cmd_list->InsertBarrierReadWrite(GetBuffer(Renderer_Buffer::SpdCounter));
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::SpdCounter));
 
             // set pipeline state
             RHI_PipelineState pso;
@@ -1987,7 +1987,7 @@ namespace spartan
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
-            cmd_list->InsertBarrierReadWrite(tex, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndMarker();
     }
@@ -2171,7 +2171,7 @@ namespace spartan
 
                     // this is to avoid out of order UAV access and flickering overlapping icons
                     // ideally, we batch all the icons in one buffer and do a single dispatch, but for now this works
-                    cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureWriteThenRead);
+                    cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
                 };
 
                 // dispatch all icons in m_icons

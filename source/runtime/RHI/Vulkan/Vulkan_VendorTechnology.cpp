@@ -870,7 +870,7 @@ namespace spartan
         tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
-        cmd_list->InsertPendingBarrierGroup();
+        cmd_list->FlushBarriers();
 
         intel::params_execute.colorTexture               = intel::to_xess_image_view(tex_color);
         intel::params_execute.depthTexture               = intel::to_xess_image_view(tex_depth);
