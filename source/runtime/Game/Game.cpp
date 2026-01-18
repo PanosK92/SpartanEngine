@@ -379,7 +379,8 @@ namespace spartan
         bool    show_telemetry = false;
 
         // helper: loads car body mesh with material tweaks
-        Entity* create_body(bool remove_wheels)
+        // out_excluded_entities: if remove_wheels is true, returns entities that were disabled (for collision exclusion)
+        Entity* create_body(bool remove_wheels, vector<Entity*>* out_excluded_entities = nullptr)
         {
             uint32_t mesh_flags  = Mesh::GetDefaultFlags();
             mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
@@ -415,6 +416,12 @@ namespace spartan
                          entity_name.find("brakerear") != string::npos) // all four have this prefix
                      {
                          descendant->SetActive(false);
+                         
+                         // collect excluded entities for collision shape building
+                         if (out_excluded_entities)
+                         {
+                             out_excluded_entities->push_back(descendant);
+                         }
                      }
                 }
             }
@@ -655,7 +662,9 @@ namespace spartan
                 physics->SetBodyType(BodyType::Vehicle);
 
                 // create car body (without its original wheels)
-                default_car = create_body(true);
+                // collect excluded wheel entities for collision shape building
+                vector<Entity*> excluded_wheel_entities;
+                default_car = create_body(true, &excluded_wheel_entities);
                 if (default_car)
                 {
                     // the wheel distances are based on laferrari dimensions
@@ -667,7 +676,8 @@ namespace spartan
                     default_car->SetScaleLocal(1.1f);
 
                     // hook up chassis entity (the ferrari body that bounces on the suspension)
-                    physics->SetChassisEntity(default_car);
+                    // pass excluded wheel entities so they're not included in the collision shape
+                    physics->SetChassisEntity(default_car, excluded_wheel_entities);
                 }
 
                 add_audio_sources(default_car);

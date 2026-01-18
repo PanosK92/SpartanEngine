@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
+#include <vector>
 #include "../Logging/Log.h"
 //======================================
 
@@ -660,6 +661,58 @@ namespace car
     {
         if (body)    { body->release();     body = nullptr; }
         if (material){ material->release(); material = nullptr; }
+    }
+    
+    // removes all existing shapes from the chassis body
+    // call this before adding custom convex shapes
+    inline void clear_chassis_shapes()
+    {
+        if (!body)
+            return;
+            
+        PxU32 shape_count = body->getNbShapes();
+        if (shape_count == 0)
+            return;
+            
+        std::vector<PxShape*> shapes(shape_count);
+        body->getShapes(shapes.data(), shape_count);
+        
+        for (PxShape* shape : shapes)
+        {
+            body->detachShape(*shape);
+        }
+        
+        SP_LOG_INFO("cleared %u chassis shapes", shape_count);
+    }
+    
+    // attaches a convex shape to the chassis body with the given local transform
+    // returns true if successful
+    inline bool attach_chassis_convex_shape(PxConvexMesh* convex_mesh, const PxTransform& local_pose, PxPhysics* physics)
+    {
+        if (!body || !convex_mesh || !material || !physics)
+            return false;
+            
+        PxConvexMeshGeometry geometry(convex_mesh);
+        PxShape* shape = physics->createShape(geometry, *material);
+        if (!shape)
+            return false;
+            
+        shape->setLocalPose(local_pose);
+        shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
+        shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+        body->attachShape(*shape);
+        shape->release(); // body owns the shape now
+        
+        return true;
+    }
+    
+    // updates mass and inertia after changing chassis shapes
+    inline void update_mass_properties()
+    {
+        if (!body)
+            return;
+            
+        PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass);
     }
 
     inline void set_throttle(float v)  { input_target.throttle  = PxClamp(v, 0.0f, 1.0f); }

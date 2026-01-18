@@ -46,6 +46,7 @@ namespace spartan
         Plane,
         Capsule,
         Mesh,
+        MeshConvex, // compound shape built from convex hulls of entity hierarchy meshes
         Controller,
         Vehicle,
         Max
@@ -150,7 +151,8 @@ namespace spartan
         Entity* GetWheelEntity(WheelIndex wheel) const;
         
         // vehicle chassis entity (visual body that bounces on suspension)
-        void SetChassisEntity(Entity* entity);
+        // entities_to_exclude: optional list of entities to skip when building convex shapes (e.g. wheels)
+        void SetChassisEntity(Entity* entity, const std::vector<Entity*>& entities_to_exclude = {});
         Entity* GetChassisEntity() const { return m_chassis_entity; }
         
         // vehicle wheel radius (used for spin calculation and physics)
@@ -220,11 +222,17 @@ namespace spartan
         
         // sync physics wheel positions from wheel entity positions
         void SyncWheelOffsetsFromEntities();
+        
+        // mesh convex compound shape - set the source entity whose hierarchy will be walked
+        // to build convex hull shapes from each mesh in the hierarchy
+        void SetMeshConvexSourceEntity(Entity* entity);
+        Entity* GetMeshConvexSourceEntity() const { return m_mesh_convex_source; }
 
     private:
         void UpdateWheelTransforms();
         void Create();
         void CreateBodies();
+        void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude); // builds convex shapes from chassis mesh hierarchy
 
         float m_mass                   = 1.0f;
         float m_friction               = 0.4f;
@@ -254,5 +262,8 @@ namespace spartan
         Entity* m_chassis_entity          = nullptr;
         math::Vector3 m_chassis_base_pos  = math::Vector3::Zero; // base local position of chassis
         float m_chassis_suspension_offset = 0.0f;                // current suspension offset (smoothed)
+        
+        // mesh convex source entity - the entity hierarchy to walk for building compound convex shapes
+        Entity* m_mesh_convex_source = nullptr;
     };
 }

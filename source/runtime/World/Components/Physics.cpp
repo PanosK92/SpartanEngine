@@ -958,7 +958,7 @@ namespace spartan
         return nullptr;
     }
 
-    void Physics::SetChassisEntity(Entity* entity)
+    void Physics::SetChassisEntity(Entity* entity, const vector<Entity*>& entities_to_exclude)
     {
         if (m_body_type != BodyType::Vehicle)
         {
@@ -971,13 +971,205 @@ namespace spartan
         {
             // store base position so we can offset from it
             m_chassis_base_pos = entity->GetPositionLocal();
-            SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f)", 
-                entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z);
+            SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f), excluding %zu entities", 
+                entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z, entities_to_exclude.size());
+            
+            // build convex hull shapes from the chassis mesh hierarchy
+            BuildChassisConvexShapes(entity, entities_to_exclude);
         }
         else
         {
             SP_LOG_WARNING("SetChassisEntity: entity is null!");
         }
+    }
+    
+    void Physics::BuildChassisConvexShapes(Entity* chassis_entity, const vector<Entity*>& entities_to_exclude)
+    {
+        if (!car::body || !chassis_entity)
+            return;
+            
+        PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
+        if (!physics)
+            return;
+            
+        // collect all entities with renderables in the hierarchy
+        vector<Entity*> mesh_entities;
+        mesh_entities.push_back(chassis_entity);
+        chassis_entity->GetDescendants(&mesh_entities);
+        
+        // helper to check if an entity should be excluded
+        auto should_exclude = [&entities_to_exclude](Entity* ent) -> bool
+        {
+            for (Entity* excluded : entities_to_exclude)
+            {
+                if (ent == excluded)
+                    return true;
+                    
+                // also check if this entity is a descendant of an excluded entity
+                Entity* parent = ent->GetParent();
+                while (parent)
+                {
+                    if (parent == excluded)
+                        return true;
+                    parent = parent->GetParent();
+                }
+            }
+            return false;
+        };
+        
+        // filter to only entities with renderable components, excluding specified entities
+        vector<pair<Entity*, Renderable*>> renderable_entities;
+        for (Entity* ent : mesh_entities)
+        {
+            // skip inactive entities and excluded entities
+            if (!ent->GetActive())
+                continue;
+            if (should_exclude(ent))
+                continue;
+                
+            if (Renderable* renderable = ent->GetComponent<Renderable>())
+            {
+                renderable_entities.push_back({ent, renderable});
+            }
+        }
+        
+        if (renderable_entities.empty())
+        {
+            SP_LOG_WARNING("No renderable entities found in chassis hierarchy (after exclusions)");
+            return;
+        }
+        
+        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)", 
+            renderable_entities.size(), entities_to_exclude.size());
+        
+        // clear existing chassis shapes
+        car::clear_chassis_shapes();
+        
+        // the chassis entity's local transform relative to the vehicle (physics body)
+        Vector3 chassis_local_pos = chassis_entity->GetPositionLocal();
+        Quaternion chassis_local_rot = chassis_entity->GetRotationLocal();
+        Vector3 chassis_local_scale = chassis_entity->GetScaleLocal();
+        Vector3 chassis_world_pos = chassis_entity->GetPosition();
+        Quaternion chassis_world_rot = chassis_entity->GetRotation();
+        Quaternion chassis_world_rot_inv = chassis_world_rot.Conjugate();
+        
+        // collect ALL vertices from all meshes into a single list, transformed to vehicle body space
+        vector<PxVec3> all_vertices;
+        all_vertices.reserve(10000); // pre-allocate for performance
+        
+        for (const auto& [ent, renderable] : renderable_entities)
+        {
+            // get geometry
+            vector<uint32_t> indices;
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            renderable->GetGeometry(&indices, &vertices);
+            if (vertices.empty())
+                continue;
+            
+            // compute transform from entity space to vehicle body space
+            Vector3 ent_world_pos = ent->GetPosition();
+            Quaternion ent_world_rot = ent->GetRotation();
+            Vector3 ent_scale = ent->GetScale();
+            
+            // transform: entity local -> world -> chassis local -> vehicle body local
+            for (const auto& vertex : vertices)
+            {
+                // vertex in entity local space (scaled)
+                Vector3 v(vertex.pos[0] * ent_scale.x, vertex.pos[1] * ent_scale.y, vertex.pos[2] * ent_scale.z);
+                
+                // transform to world space
+                Vector3 world_v = ent_world_rot * v + ent_world_pos;
+                
+                // transform to chassis local space
+                Vector3 chassis_local_v = chassis_world_rot_inv * (world_v - chassis_world_pos);
+                
+                // apply chassis scale and transform to vehicle body space
+                chassis_local_v.x *= chassis_local_scale.x;
+                chassis_local_v.y *= chassis_local_scale.y;
+                chassis_local_v.z *= chassis_local_scale.z;
+                
+                Vector3 body_local_v = chassis_local_rot * chassis_local_v + chassis_local_pos;
+                
+                all_vertices.emplace_back(body_local_v.x, body_local_v.y, body_local_v.z);
+            }
+        }
+        
+        if (all_vertices.empty())
+        {
+            SP_LOG_WARNING("No vertices collected for chassis convex shape");
+            return;
+        }
+        
+        // subsample vertices if there are too many - physx convex hull works best with fewer points
+        const size_t max_input_vertices = 512;
+        if (all_vertices.size() > max_input_vertices)
+        {
+            // use a simple stride-based subsampling
+            size_t stride = all_vertices.size() / max_input_vertices;
+            vector<PxVec3> subsampled;
+            subsampled.reserve(max_input_vertices);
+            
+            for (size_t i = 0; i < all_vertices.size() && subsampled.size() < max_input_vertices; i += stride)
+            {
+                subsampled.push_back(all_vertices[i]);
+            }
+            
+            SP_LOG_INFO("BuildChassisConvexShapes: subsampled %zu vertices to %zu", all_vertices.size(), subsampled.size());
+            all_vertices = std::move(subsampled);
+        }
+        
+        SP_LOG_INFO("BuildChassisConvexShapes: creating convex hull from %zu vertices", all_vertices.size());
+        
+        // cooking parameters for convex hull generation
+        PxTolerancesScale px_scale;
+        px_scale.length = 1.0f;
+        Vector3 gravity = PhysicsWorld::GetGravity();
+        px_scale.speed = sqrtf(gravity.x * gravity.x + gravity.y * gravity.y + gravity.z * gravity.z);
+        PxCookingParams params(px_scale);
+        params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
+        params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+        params.meshWeldTolerance = 0.05f; // aggressive welding for cleaner hull
+        params.gaussMapLimit = 32;
+        
+        PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
+        
+        // create a SINGLE convex hull from all collected vertices
+        // physx will compute the convex hull automatically
+        PxConvexMeshDesc mesh_desc;
+        mesh_desc.points.count = static_cast<PxU32>(all_vertices.size());
+        mesh_desc.points.stride = sizeof(PxVec3);
+        mesh_desc.points.data = all_vertices.data();
+        mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX | PxConvexFlag::eSHIFT_VERTICES;
+        mesh_desc.vertexLimit = 64; // limit output hull complexity
+        
+        PxConvexMeshCookingResult::Enum condition;
+        PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+        if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+        {
+            SP_LOG_ERROR("Failed to create chassis convex hull: %d", static_cast<int>(condition));
+            if (convex_mesh)
+                convex_mesh->release();
+            return;
+        }
+        
+        // attach the single convex shape at identity pose (vertices are already in body space)
+        PxTransform local_pose(PxIdentity);
+        PxU32 hull_vert_count = convex_mesh->getNbVertices();
+        
+        if (!car::attach_chassis_convex_shape(convex_mesh, local_pose, physics))
+        {
+            SP_LOG_ERROR("Failed to attach chassis convex shape");
+            convex_mesh->release();
+            return;
+        }
+        
+        convex_mesh->release();
+        
+        // update mass properties after adding the shape
+        car::update_mass_properties();
+        
+        SP_LOG_INFO("BuildChassisConvexShapes: created single convex hull with %u vertices from %zu source vertices", 
+            hull_vert_count, all_vertices.size());
     }
 
     void Physics::SetWheelRadius(float radius)
@@ -1455,6 +1647,17 @@ namespace spartan
             car::set_wheel_offset(i, local_pos.x, local_pos.z);
         }
     }
+    
+    void Physics::SetMeshConvexSourceEntity(Entity* entity)
+    {
+        m_mesh_convex_source = entity;
+        
+        // if body type is already MeshConvex, recreate the physics shapes
+        if (m_body_type == BodyType::MeshConvex)
+        {
+            Create();
+        }
+    }
 
     void Physics::UpdateWheelTransforms()
     {
@@ -1602,6 +1805,194 @@ namespace spartan
             {
                 SP_LOG_ERROR("failed to create vehicle physics body");
             }
+        }
+        else if (m_body_type == BodyType::MeshConvex)
+        {
+            // compound shape built from convex hulls of entity hierarchy meshes
+            // this walks all descendants of a source entity and creates a convex hull for each mesh
+            
+            Entity* source_entity = m_mesh_convex_source ? m_mesh_convex_source : GetEntity();
+            if (!source_entity)
+            {
+                SP_LOG_ERROR("No source entity for MeshConvex body type");
+                return;
+            }
+            
+            // collect all entities with renderables in the hierarchy
+            vector<Entity*> mesh_entities;
+            mesh_entities.push_back(source_entity);
+            source_entity->GetDescendants(&mesh_entities);
+            
+            // filter to only entities with renderable components
+            vector<pair<Entity*, Renderable*>> renderable_entities;
+            for (Entity* entity : mesh_entities)
+            {
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                {
+                    renderable_entities.push_back({entity, renderable});
+                }
+            }
+            
+            if (renderable_entities.empty())
+            {
+                SP_LOG_ERROR("No renderable entities found in hierarchy for MeshConvex");
+                return;
+            }
+            
+            // create the rigid body at the physics entity's transform
+            Vector3 body_pos = GetEntity()->GetPosition();
+            Quaternion body_rot = GetEntity()->GetRotation();
+            PxTransform body_pose(
+                PxVec3(body_pos.x, body_pos.y, body_pos.z),
+                PxQuat(body_rot.x, body_rot.y, body_rot.z, body_rot.w)
+            );
+            
+            PxRigidActor* actor = nullptr;
+            if (IsStatic())
+            {
+                actor = physics->createRigidStatic(body_pose);
+            }
+            else
+            {
+                actor = physics->createRigidDynamic(body_pose);
+                PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
+                if (dynamic)
+                {
+                    dynamic->setMass(m_mass);
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, !m_is_kinematic);
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
+                    dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
+                }
+            }
+            
+            if (!actor)
+            {
+                SP_LOG_ERROR("Failed to create rigid actor for MeshConvex");
+                return;
+            }
+            
+            // cooking parameters for convex hull generation
+            PxTolerancesScale px_scale;
+            px_scale.length = 1.0f;
+            Vector3 gravity = PhysicsWorld::GetGravity();
+            px_scale.speed = sqrtf(gravity.x * gravity.x + gravity.y * gravity.y + gravity.z * gravity.z);
+            PxCookingParams params(px_scale);
+            params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
+            params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+            params.meshWeldTolerance = 0.01f;
+            params.gaussMapLimit = 32;
+            
+            PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
+            PxMaterial* material = static_cast<PxMaterial*>(m_material);
+            
+            // inverse transform to convert world positions to body-local space
+            Quaternion body_rot_inv = body_rot.Conjugate();
+            
+            int shapes_created = 0;
+            for (const auto& [entity, renderable] : renderable_entities)
+            {
+                // get geometry
+                vector<uint32_t> indices;
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                renderable->GetGeometry(&indices, &vertices);
+                if (vertices.empty())
+                    continue;
+                
+                // simplify geometry for physics (use moderate detail for convex hulls)
+                const size_t max_convex_verts = 256; // physx limit
+                if (vertices.size() > max_convex_verts)
+                {
+                    const size_t target_index_count = min<size_t>(indices.size(), max_convex_verts * 3);
+                    geometry_processing::simplify(indices, vertices, target_index_count, false, false);
+                }
+                
+                // compute the local transform of this entity relative to the physics body
+                Vector3 entity_world_pos = entity->GetPosition();
+                Quaternion entity_world_rot = entity->GetRotation();
+                Vector3 entity_scale = entity->GetScale();
+                
+                // transform entity position to body-local space
+                Vector3 local_pos = body_rot_inv * (entity_world_pos - body_pos);
+                Quaternion local_rot = body_rot_inv * entity_world_rot;
+                
+                // convert vertices to physx format in entity-local space (with scale)
+                vector<PxVec3> px_vertices;
+                px_vertices.reserve(vertices.size());
+                for (const auto& vertex : vertices)
+                {
+                    px_vertices.emplace_back(
+                        vertex.pos[0] * entity_scale.x,
+                        vertex.pos[1] * entity_scale.y,
+                        vertex.pos[2] * entity_scale.z
+                    );
+                }
+                
+                // create convex mesh
+                PxConvexMeshDesc mesh_desc;
+                mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
+                mesh_desc.points.stride = sizeof(PxVec3);
+                mesh_desc.points.data = px_vertices.data();
+                mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+                
+                PxConvexMeshCookingResult::Enum condition;
+                PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+                if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+                {
+                    SP_LOG_WARNING("Failed to create convex hull for entity '%s'", entity->GetObjectName().c_str());
+                    if (convex_mesh)
+                        convex_mesh->release();
+                    continue;
+                }
+                
+                // create shape with local pose relative to body
+                PxConvexMeshGeometry geometry(convex_mesh);
+                PxShape* shape = physics->createShape(geometry, *material);
+                if (shape)
+                {
+                    // set local pose to position this shape relative to body center
+                    PxTransform local_pose(
+                        PxVec3(local_pos.x, local_pos.y, local_pos.z),
+                        PxQuat(local_rot.x, local_rot.y, local_rot.z, local_rot.w)
+                    );
+                    shape->setLocalPose(local_pose);
+                    shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+                    actor->attachShape(*shape);
+                    shape->release(); // actor owns the shape now
+                    shapes_created++;
+                }
+                
+                convex_mesh->release(); // shape holds its own reference
+            }
+            
+            if (shapes_created == 0)
+            {
+                SP_LOG_ERROR("No convex shapes were created for MeshConvex");
+                actor->release();
+                return;
+            }
+            
+            // update mass and inertia based on compound shape
+            if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+            {
+                if (m_center_of_mass != Vector3::Zero)
+                {
+                    PxVec3 com(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                    PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &com);
+                }
+                else
+                {
+                    PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass);
+                }
+            }
+            
+            actor->userData = reinterpret_cast<void*>(GetEntity());
+            PhysicsWorld::AddActor(actor);
+            
+            m_actors.resize(1, nullptr);
+            m_actors[0] = actor;
+            m_actors_active.resize(1, true);
+            
+            SP_LOG_INFO("MeshConvex created: %d convex shapes from %zu entities", shapes_created, renderable_entities.size());
         }
         else
         {
