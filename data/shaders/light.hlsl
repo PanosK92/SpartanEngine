@@ -155,8 +155,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         if (!surface.is_sky())
         {
             // compute shadow term
-            if (light.has_shadows())
+            // for directional lights: ray traced shadows are mutually exclusive with rasterized/screen-space shadows
+            bool use_ray_traced_shadow = light.is_directional() && is_ray_traced_shadows_enabled();
+            
+            if (use_ray_traced_shadow)
             {
+                // ray traced shadows for directional light
+                L_shadow = sample_ray_traced_shadow(surface.uv);
+                light.radiance *= L_shadow;
+            }
+            else if (light.has_shadows())
+            {
+                // rasterized shadow mapping
                 L_shadow = compute_shadow(surface, light);
 
                 // combine with screen-space shadows if available
@@ -169,17 +179,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 light.radiance *= L_shadow;
             }
             
-            // apply cloud shadows for directional lights (even if regular shadows are off)
+            // apply cloud shadows for directional lights (always, regardless of shadow method)
             if (light.is_directional())
             {
                 float cloud_shadow = sample_cloud_shadow(surface.position);
                 L_shadow = min(L_shadow, cloud_shadow);
                 light.radiance *= cloud_shadow;
-                
-                // apply ray traced shadows for directional lights
-                float rt_shadow = sample_ray_traced_shadow(surface.uv);
-                L_shadow = min(L_shadow, rt_shadow);
-                light.radiance *= rt_shadow;
             }
 
             // build angular information for brdf calculations
