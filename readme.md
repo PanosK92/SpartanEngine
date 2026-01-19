@@ -61,6 +61,8 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 - Atmospheric scattering, real-time filtering, IBL with bent normals
 - Screen-space shadows (from Days Gone) and ambient occlusion (XeGTAO + visibility bitfield)
 - Ray-traced reflections
+- Ray-traced shadows
+- Ray-traced global illumination (one bounce diffuse) - WIP
 - Fast shadow mapping with penumbra via shadow map atlas
 - Volumetric fog
 

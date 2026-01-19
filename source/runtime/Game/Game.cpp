@@ -941,11 +941,66 @@ namespace spartan
             enum class CarView { Dashboard, Hood, Chase };
             static CarView current_view = CarView::Dashboard;
 
-            static const Vector3 car_view_positions[] =
+            // compute car aabb from all renderables in the hierarchy
+            auto get_car_aabb = []() -> BoundingBox
             {
-                Vector3(0.5f, 1.8f, -0.6f), // dashboard
-                Vector3(0.0f, 2.0f, 1.0f),  // hood
-                Vector3(0.0f, 3.0f, -10.0f) // chase
+                if (!default_car)
+                    return BoundingBox::Unit;
+
+                BoundingBox combined(Vector3::Infinity, Vector3::InfinityNeg);
+                vector<Entity*> descendants;
+                default_car->GetDescendants(&descendants);
+                descendants.push_back(default_car);
+
+                for (Entity* entity : descendants)
+                {
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    {
+                        combined.Merge(renderable->GetBoundingBox());
+                    }
+                }
+
+                return combined;
+            };
+
+            // compute view positions and rotations based on car aabb
+            struct CarViewData
+            {
+                Vector3    position;
+                Quaternion rotation;
+            };
+
+            auto get_car_view_data = [&]() -> array<CarViewData, 3>
+            {
+                // the car body is rotated 90 degrees around X for physics alignment
+                // we need to counter-rotate the camera to look forward
+                Quaternion car_local_rot     = default_car->GetRotationLocal();
+                Quaternion camera_correction = car_local_rot.Inverse();
+
+                // use fixed positions that work well for typical car models
+                // note: car's 90-degree X rotation swaps Y and Z axes
+                // x = right/left, y = forward/back, z = down/up (negative = up)
+                return
+                {
+                    CarViewData
+                    {
+                        // dashboard: driver seat position
+                        Vector3(-0.3f, 0.05f, -0.85f),
+                        camera_correction
+                    },
+                    CarViewData
+                    {
+                        // hood: above the hood, looking forward
+                        Vector3(0.0f, 0.8f, -1.0f),
+                        camera_correction
+                    },
+                    CarViewData
+                    {
+                        // chase: behind and above the car
+                        Vector3(0.0f, -5.0, -1.5f),
+                        camera_correction
+                    }
+                };
             };
 
             // need camera for inside/outside detection
@@ -1001,8 +1056,9 @@ namespace spartan
                 {
                     camera = default_camera->GetChildByName("component_camera");
                     camera->SetParent(default_car);
-                    camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
-                    camera->SetRotationLocal(Quaternion::Identity);
+                    array<CarViewData, 3> view_data = get_car_view_data();
+                    camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                    camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
                     audio_source_start->PlayClip();
                     // audio_source_idle->PlayClip(); // disabled for now
                     inside_the_car = true;
@@ -1013,7 +1069,9 @@ namespace spartan
                     camera->SetParent(default_camera);
                     camera->SetPositionLocal(default_camera->GetComponent<Physics>()->GetControllerTopLocal());
                     camera->SetRotationLocal(Quaternion::Identity);
-                    default_camera->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
+                    BoundingBox car_aabb = get_car_aabb();
+                    Vector3 exit_offset  = default_car->GetLeft() * car_aabb.GetSize().x + Vector3::Up * car_aabb.GetSize().y * 0.5f;
+                    default_camera->SetPosition(default_car->GetPosition() + exit_offset);
                     audio_source_idle->StopClip();
                     inside_the_car = false;
                 }
@@ -1035,7 +1093,9 @@ namespace spartan
                     if (Entity* camera = default_car->GetChildByName("component_camera"))
                     {
                         current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
-                        camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
+                        array<CarViewData, 3> view_data = get_car_view_data();
+                        camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                        camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
                     }
                 }
             }
@@ -1763,7 +1823,7 @@ namespace spartan
                                     light->SetLightType(LightType::Area);
                                     light->SetColor(color);
                                     light->SetRange(80.0f);
-                                    light->SetIntensity(15000.0f);
+                                    light->SetIntensity(10000.0f);
                                     light->SetFlag(LightFlags::Shadows,            true);
                                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                     light->SetFlag(LightFlags::Volumetric,         false);

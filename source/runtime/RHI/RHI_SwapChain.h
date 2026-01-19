@@ -63,12 +63,15 @@ namespace spartan
         bool IsImageAcquired() const { return m_image_acquired; }
 
         // properties
-        uint32_t GetWidth() const       { return m_width; }
-        uint32_t GetHeight() const      { return m_height; }
-        uint32_t GetBufferCount() const { return m_buffer_count; }
-        RHI_Format GetFormat() const    { return m_format; }
-        void* GetRhiRt() const          { return m_rhi_rt[m_image_index]; }
-        void* GetRhiRtv() const         { return m_rhi_rtv[m_image_index]; }
+        uint32_t GetWidth() const            { return m_width; }
+        uint32_t GetHeight() const           { return m_height; }
+        uint32_t GetBufferCount() const      { return m_buffer_count; }
+        RHI_Format GetFormat() const         { return m_format; }
+        uint32_t GetImageIndex() const       { return m_image_index; }
+        void* GetRhiRt() const               { return m_rhi_rt[m_image_index]; }
+        void* GetRhiRtv() const              { return m_rhi_rtv[m_image_index]; }
+        void* GetRhiRtRaw(uint32_t i) const  { return m_rhi_rt[i]; }
+        void SetRhiRt(uint32_t i, void* ptr) { m_rhi_rt[i] = ptr; }
 
         // misc
         RHI_SyncPrimitive* GetImageAcquiredSemaphore() const;

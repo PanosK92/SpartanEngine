@@ -82,6 +82,35 @@ namespace spartan
             if (rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
             return flags;
         }
+
+        // transform conversion helpers
+        PxTransform to_px_transform(const Vector3& pos, const Quaternion& rot)
+        {
+            return PxTransform(PxVec3(pos.x, pos.y, pos.z), PxQuat(rot.x, rot.y, rot.z, rot.w));
+        }
+
+        PxTransform to_px_transform(const math::Matrix& matrix)
+        {
+            Vector3 pos = matrix.GetTranslation();
+            Quaternion rot = matrix.GetRotation();
+            return PxTransform(PxVec3(pos.x, pos.y, pos.z), PxQuat(rot.x, rot.y, rot.z, rot.w));
+        }
+
+        void from_px_transform(const PxTransform& pose, Vector3& pos, Quaternion& rot)
+        {
+            pos = Vector3(pose.p.x, pose.p.y, pose.p.z);
+            rot = Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
+        }
+
+        Vector3 from_px_vec3(const PxVec3& v)
+        {
+            return Vector3(v.x, v.y, v.z);
+        }
+
+        PxVec3 to_px_vec3(const Vector3& v)
+        {
+            return PxVec3(v.x, v.y, v.z);
+        }
     }
 
     Physics::Physics(Entity* entity) : Component(entity)
@@ -125,19 +154,14 @@ namespace spartan
 
     void Physics::Remove()
     {
+        // release controller if it exists
         if (m_controller)
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
-            
-            // release the material that was created for this controller
-            if (m_material)
-            {
-                static_cast<PxMaterial*>(m_material)->release();
-                m_material = nullptr;
-            }
         }
 
+        // release all actors
         for (auto* body : m_actors)
         {
             if (body)
@@ -150,9 +174,10 @@ namespace spartan
         m_actors.clear();
         m_actors_active.clear();
 
-        if (PxMaterial* material = static_cast<PxMaterial*>(m_material))
+        // release material (shared by both controller and regular bodies)
+        if (m_material)
         {
-            material->release();
+            static_cast<PxMaterial*>(m_material)->release();
             m_material = nullptr;
         }
     }
@@ -166,226 +191,227 @@ namespace spartan
             Create();
         }
 
-        // map transform from physx to engine and vice versa
-        if (m_body_type == BodyType::Controller)
+        const bool is_playing  = Engine::IsFlagSet(EngineMode::Playing);
+        const float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+
+        // tick body based on type
+        switch (m_body_type)
         {
-            if (Engine::IsFlagSet(EngineMode::Playing))
-            {
-                // compute gravitational acceleration
-                float delta_time  = static_cast<float>(Timer::GetDeltaTimeSec());
-                m_velocity.y     += PhysicsWorld::GetGravity().y * delta_time;
-                PxVec3 displacement(0.0f, m_velocity.y * delta_time, 0.0f);
+            case BodyType::Controller:
+                TickController(is_playing, delta_time);
+                break;
 
-                // if there is a collision below, zero out the vertical velocity
-                PxControllerFilters filters;
-                filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-                PxControllerCollisionFlags collision_flags = static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, delta_time, filters);
-                if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
-                {
-                    m_velocity.y = 0.0f;
-                }
+            case BodyType::Vehicle:
+                TickVehicle(is_playing, delta_time);
+                break;
 
-                // set new position to entity
-                PxExtendedVec3 pos_ext = static_cast<PxCapsuleController*>(m_controller)->getPosition();
-                Vector3 pos_previous   = GetEntity()->GetPosition();
-                Vector3 pos            = Vector3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
-                GetEntity()->SetPosition(pos);
-
-                // compute velocity for xz
-                if (delta_time > 0.0f)
+            default:
+                if (!m_is_static)
                 {
-                    m_velocity.x = (pos.x - pos_previous.x) / delta_time;
-                    m_velocity.z = (pos.z - pos_previous.z) / delta_time;
+                    TickDynamicBodies(is_playing);
                 }
-            }
-            else
-            {
-                Vector3 entity_pos = GetEntity()->GetPosition();
-                static_cast<PxCapsuleController*>(m_controller)->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
-                m_velocity = Vector3::Zero;
-            }
-        }
-        else if (m_body_type == BodyType::Vehicle)
-        {
-            if (Engine::IsFlagSet(EngineMode::Playing))
-            {
-                // sync wheel offsets from entity positions once at start of play
-                if (!m_wheel_offsets_synced)
-                {
-                    SyncWheelOffsetsFromEntities();
-                    m_wheel_offsets_synced = true;
-                }
-                
-                // update vehicle physics (input is set externally via vehicle::set_throttle/brake/steering)
-                float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-                car::tick(delta_time);
-                
-                // sync physx -> entity
-                if (!m_actors.empty() && m_actors[0])
-                {
-                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
-                    PxTransform pose = actor->getGlobalPose();
-                    GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-                    GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                }
-
-                // update wheel entity transforms (spin and steering)
-                UpdateWheelTransforms();
-            }
-            else
-            {
-                // editor mode: sync entity -> physx, reset velocities
-                m_wheel_offsets_synced = false; // reset so offsets re-sync on next play
-                
-                if (!m_actors.empty() && m_actors[0])
-                {
-                    Vector3 pos = GetEntity()->GetPosition();
-                    Quaternion rot = GetEntity()->GetRotation();
-                    PxTransform pose(
-                        PxVec3(pos.x, pos.y, pos.z),
-                        PxQuat(rot.x, rot.y, rot.z, rot.w)
-                    );
-                    
-                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
-                    actor->setGlobalPose(pose);
-                    
-                    if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
-                    {
-                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
-                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
-                    }
-                }
-            }
-        }
-        else if (!m_is_static)
-        {
-            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
-            if (!renderable)
-                return;
-
-            for (uint32_t i = 0; i < m_actors.size(); i++)
-            {
-                if (!m_actors[i])
-                    continue;
-                    
-                PxRigidActor* actor     = static_cast<PxRigidActor*>(m_actors[i]);
-                PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
-                if (Engine::IsFlagSet(EngineMode::Playing))
-                {
-                    if (m_is_kinematic && dynamic)
-                    {
-                        // sync entity -> physX (kinematic target)
-                        math::Matrix transform;
-                        if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
-                        {
-                            transform = renderable->GetInstance(i, true);
-                        }
-                        else if (i == 0)
-                        {
-                            transform = GetEntity()->GetMatrix();
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                        PxTransform target(
-                            PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
-                            PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
-                        );
-                        dynamic->setKinematicTarget(target);
-                    }
-                    else
-                    {
-                        // sync physx -> entity (simulated dynamic)
-                        PxTransform pose = actor->getGlobalPose();
-                        math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                        if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
-                        {
-                            //renderable->SetInstance(static_cast<uint32_t>(i), transform); // implement if needed
-                        }
-                        else if (i == 0)
-                        {
-                            GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-                            GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                        }
-                    }
-                }
-                else
-                {
-                    // editor mode: sync entity -> physx, reset velocities only for non-kinematics
-                    math::Matrix transform;
-                    if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
-                    {
-                        transform = renderable->GetInstance(i, true);
-                    }
-                    else if (i == 0)
-                    {
-                        transform = GetEntity()->GetMatrix();
-                    }
-                    else
-                    {
-                        continue;
-                    }
-
-                    PxTransform pose(
-                        PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
-                        PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
-                    );
-                    actor->setGlobalPose(pose);
-
-                    if (dynamic && !m_is_kinematic)
-                    {
-                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
-                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
-                    }
-                }
-            }
+                break;
         }
 
         // distance-based activation/deactivation for static actors
-        // this optimization prevents the physics scene from being overwhelmed with distant static colliders
         if (m_body_type != BodyType::Controller && m_is_static)
         {
-            Camera* camera = World::GetCamera();
-            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
-            if (camera && renderable)
+            TickDistanceActivation();
+        }
+    }
+
+    void Physics::TickController(bool is_playing, float delta_time)
+    {
+        if (!m_controller)
+            return;
+
+        PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
+
+        if (is_playing)
+        {
+            // apply gravity
+            m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
+            
+            // move controller
+            PxControllerFilters filters;
+            filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+            PxControllerCollisionFlags collision_flags = controller->move(PxVec3(0.0f, m_velocity.y * delta_time, 0.0f), 0.001f, delta_time, filters);
+            
+            // reset vertical velocity on ground collision
+            if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
             {
-                const Vector3 camera_pos = camera->GetEntity()->GetPosition();
+                m_velocity.y = 0.0f;
+            }
+
+            // sync physx -> entity position and compute xz velocity
+            PxExtendedVec3 pos_ext   = controller->getPosition();
+            Vector3 pos_previous     = GetEntity()->GetPosition();
+            Vector3 pos              = Vector3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
+            GetEntity()->SetPosition(pos);
+
+            if (delta_time > 0.0f)
+            {
+                m_velocity.x = (pos.x - pos_previous.x) / delta_time;
+                m_velocity.z = (pos.z - pos_previous.z) / delta_time;
+            }
+        }
+        else
+        {
+            // editor mode: sync entity -> physx
+            Vector3 entity_pos = GetEntity()->GetPosition();
+            controller->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
+            m_velocity = Vector3::Zero;
+        }
+    }
+
+    void Physics::TickVehicle(bool is_playing, float delta_time)
+    {
+        if (m_actors.empty() || !m_actors[0])
+            return;
+
+        PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+
+        if (is_playing)
+        {
+            // sync wheel offsets once at start of play
+            if (!m_wheel_offsets_synced)
+            {
+                SyncWheelOffsetsFromEntities();
+                m_wheel_offsets_synced = true;
+            }
+            
+            // update vehicle physics
+            car::tick(delta_time);
+            
+            // sync physx -> entity
+            Vector3 pos;
+            Quaternion rot;
+            from_px_transform(actor->getGlobalPose(), pos, rot);
+            GetEntity()->SetPosition(pos);
+            GetEntity()->SetRotation(rot);
+
+            // update wheel visuals
+            UpdateWheelTransforms();
+        }
+        else
+        {
+            // editor mode: sync entity -> physx, reset velocities
+            m_wheel_offsets_synced = false;
+            
+            actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
+            
+            if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+            {
+                dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+            }
+        }
+    }
+
+    void Physics::TickDynamicBodies(bool is_playing)
+    {
+        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        if (!renderable)
+            return;
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+        {
+            if (!m_actors[i])
+                continue;
                 
-                // ensure tracking vector matches actor count
-                if (m_actors_active.size() != m_actors.size())
-                {
-                    m_actors_active.resize(m_actors.size(), true); // assume initially active
-                }
+            PxRigidActor* actor     = static_cast<PxRigidActor*>(m_actors[i]);
+            PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
 
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+            // get transform (from instance or entity)
+            auto get_transform = [&]() -> math::Matrix
+            {
+                if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
+                    return renderable->GetInstance(i, true);
+                if (i == 0)
+                    return GetEntity()->GetMatrix();
+                return math::Matrix(); // invalid - caller should skip
+            };
+
+            if (is_playing)
+            {
+                if (m_is_kinematic && dynamic)
                 {
-                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
-                    if (!actor)
+                    // sync entity -> physx (kinematic target)
+                    math::Matrix transform = get_transform();
+                    if (transform == math::Matrix())
                         continue;
-
-                    // compute distance to actor
-                    Vector3 closest_point = renderable->HasInstancing()
-                        ? renderable->GetInstance(i, true).GetTranslation()
-                        : renderable->GetBoundingBox().GetClosestPoint(camera_pos);
-                    const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
-
-                    // use hysteresis to prevent flickering at boundary
-                    const bool is_active     = m_actors_active[i];
-                    const bool should_remove = is_active && (distance_squared > distance_deactivate_squared);
-                    const bool should_add    = !is_active && (distance_squared <= distance_activate_squared);
-
-                    if (should_remove)
+                    dynamic->setKinematicTarget(to_px_transform(transform));
+                }
+                else
+                {
+                    // sync physx -> entity (simulated dynamic)
+                    if (i == 0)
                     {
-                        PhysicsWorld::RemoveActor(actor);
-                        m_actors_active[i] = false;
-                    }
-                    else if (should_add)
-                    {
-                        PhysicsWorld::AddActor(actor);
-                        m_actors_active[i] = true;
+                        Vector3 pos;
+                        Quaternion rot;
+                        from_px_transform(actor->getGlobalPose(), pos, rot);
+                        GetEntity()->SetPosition(pos);
+                        GetEntity()->SetRotation(rot);
                     }
                 }
+            }
+            else
+            {
+                // editor mode: sync entity -> physx
+                math::Matrix transform = get_transform();
+                if (transform == math::Matrix())
+                    continue;
+
+                actor->setGlobalPose(to_px_transform(transform));
+
+                // reset velocities for non-kinematics
+                if (dynamic && !m_is_kinematic)
+                {
+                    dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                    dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+                }
+            }
+        }
+    }
+
+    void Physics::TickDistanceActivation()
+    {
+        Camera* camera = World::GetCamera();
+        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        if (!camera || !renderable)
+            return;
+
+        const Vector3 camera_pos = camera->GetEntity()->GetPosition();
+        
+        // ensure tracking vector matches actor count
+        if (m_actors_active.size() != m_actors.size())
+        {
+            m_actors_active.resize(m_actors.size(), true);
+        }
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+        {
+            PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
+            if (!actor)
+                continue;
+
+            // compute distance to actor
+            Vector3 closest_point = renderable->HasInstancing()
+                ? renderable->GetInstance(i, true).GetTranslation()
+                : renderable->GetBoundingBox().GetClosestPoint(camera_pos);
+            const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
+
+            // use hysteresis to prevent flickering at boundary
+            const bool is_active = m_actors_active[i];
+            if (is_active && distance_squared > distance_deactivate_squared)
+            {
+                PhysicsWorld::RemoveActor(actor);
+                m_actors_active[i] = false;
+            }
+            else if (!is_active && distance_squared <= distance_activate_squared)
+            {
+                PhysicsWorld::AddActor(actor);
+                m_actors_active[i] = true;
             }
         }
     }
@@ -578,6 +604,9 @@ namespace spartan
 
         for (auto* body : m_actors)
         {
+            if (!body)
+                continue;
+
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 dynamic->setLinearVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
@@ -617,6 +646,9 @@ namespace spartan
 
         for (auto* body : m_actors)
         {
+            if (!body)
+                continue;
+
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 dynamic->setAngularVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
@@ -635,6 +667,9 @@ namespace spartan
 
         for (auto* body : m_actors)
         {
+            if (!body)
+                continue;
+
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 PxForceMode::Enum px_mode = (mode == PhysicsForce::Constant) ? PxForceMode::eFORCE : PxForceMode::eIMPULSE;

@@ -30,21 +30,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // tex3 is bound as the cloud shadow map in Pass_Light
 float sample_cloud_shadow(float3 world_pos)
 {
-    // Skip if cloud shadows are disabled
+    // skip if cloud shadows are disabled
     if (buffer_frame.cloud_shadows <= 0.0 || buffer_frame.cloud_coverage <= 0.0)
         return 1.0;
     
-    // Cloud shadow map covers 10km x 10km area centered on camera
+    // cloud shadow map covers 10km x 10km area centered on camera
     float shadow_map_size = 10000.0;
     float2 relative_pos = world_pos.xz - buffer_frame.camera_position.xz;
     float2 uv = relative_pos / shadow_map_size + 0.5;
     
-    // Out of bounds check
+    // out of bounds check
     if (any(uv < 0.0) || any(uv > 1.0))
         return 1.0;
     
-    // Sample cloud shadow (tex3 is the cloud shadow map)
+    // sample cloud shadow (tex3 is the cloud shadow map)
     float shadow = tex3.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
+    
+    return shadow;
+}
+
+// ray traced shadow sampling
+// tex4 is bound as the ray traced shadow texture in Pass_Light
+float sample_ray_traced_shadow(float2 uv)
+{
+    if (!is_ray_traced_shadows_enabled())
+        return 1.0;
+    
+    // sample ray traced shadow (tex4 is the ray traced shadow texture)
+    float shadow = tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
     
     return shadow;
 }
@@ -142,8 +155,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         if (!surface.is_sky())
         {
             // compute shadow term
-            if (light.has_shadows())
+            // for directional lights: ray traced shadows are mutually exclusive with rasterized/screen-space shadows
+            bool use_ray_traced_shadow = light.is_directional() && is_ray_traced_shadows_enabled();
+            
+            if (use_ray_traced_shadow)
             {
+                // ray traced shadows for directional light
+                L_shadow = sample_ray_traced_shadow(surface.uv);
+                light.radiance *= L_shadow;
+            }
+            else if (light.has_shadows())
+            {
+                // rasterized shadow mapping
                 L_shadow = compute_shadow(surface, light);
 
                 // combine with screen-space shadows if available
@@ -156,7 +179,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 light.radiance *= L_shadow;
             }
             
-            // apply cloud shadows for directional lights (even if regular shadows are off)
+            // apply cloud shadows for directional lights (always, regardless of shadow method)
             if (light.is_directional())
             {
                 float cloud_shadow = sample_cloud_shadow(surface.position);

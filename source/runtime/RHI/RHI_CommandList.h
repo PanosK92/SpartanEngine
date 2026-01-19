@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
 #include "../Rendering/Renderer_Definitions.h"
-#include <SpartanObject.h>
+#include "../Core/SpartanObject.h"
 #include <stack>
 //============================================
 
@@ -211,5 +211,8 @@ namespace spartan
         void* m_rhi_query_pool_timestamps          = nullptr;
         void* m_rhi_query_pool_pipeline_statistics = nullptr;
         void* m_rhi_query_pool_occlusion           = nullptr;
+        void* m_rhi_fence                          = nullptr;
+        void* m_rhi_fence_event                    = nullptr;
+        uint64_t m_rhi_fence_value                 = 0;
     };
 }
