@@ -35,7 +35,6 @@ SP_WARNINGS_OFF
 #ifdef _WIN32
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
-#include <FidelityFX/host/ffx_sssr.h>
 #include <FidelityFX/host/ffx_breadcrumbs.h>
 #include <xess/xess_vk.h>
 #endif
@@ -586,39 +585,6 @@ namespace spartan
             }
         }
 
-        namespace ssr
-        {
-            bool                       context_created      = false;
-            FfxSssrContext             context              = {};
-            FfxSssrContextDescription  description_context  = {};
-            FfxSssrDispatchDescription description_dispatch = {};
-
-            void context_destroy()
-            {
-                if (context_created)
-                {
-                    RHI_Device::QueueWaitAll();
-
-                    SP_ASSERT(ffxSssrContextDestroy(&context) == FFX_OK);
-                    context_created = false;
-                }
-            }
-
-            void context_create()
-            {
-                context_destroy();
-
-                description_context.renderSize.width           = common::resolution_render_width;
-                description_context.renderSize.height          = common::resolution_render_height;
-                description_context.normalsHistoryBufferFormat = to_format(RHI_Format::R16G16B16A16_Float);
-                description_context.flags                      = FFX_SSSR_ENABLE_DEPTH_INVERTED;
-                description_context.backendInterface           = ffx_interface;
-                
-                SP_ASSERT(ffxSssrContextCreate(&context, &description_context) == FFX_OK);
-                context_created = true;
-            }
-        }
-
         namespace breadcrumbs
         {
             bool                  context_created = false;
@@ -696,7 +662,6 @@ namespace spartan
             // all used contexts need to be accounted for here
             const size_t max_contexts =
                 FFX_FSR3_CONTEXT_COUNT +
-                FFX_SSSR_CONTEXT_COUNT +
                 FFX_BREADCRUMBS_CONTEXT_COUNT;
             
             VkDeviceContext device_context  = {};
@@ -761,7 +726,6 @@ namespace spartan
     {
     #ifdef _WIN32
         amd::upscaler::context_destroy();
-        amd::ssr::context_destroy();
         amd::breadcrumbs::context_destroy();
 
         // ffx interface
@@ -814,11 +778,6 @@ namespace spartan
 
             // re-create resolution dependent contexts
             {
-                if (resolution_render_changed)
-                {
-                    amd::ssr::context_create();
-                }
-
                 // todo: make these mutually exlusive
                 if ((resolution_render_changed || resolution_output_changed))
                 {
@@ -911,7 +870,7 @@ namespace spartan
         tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
-        cmd_list->InsertPendingBarrierGroup();
+        cmd_list->FlushBarriers();
 
         intel::params_execute.colorTexture               = intel::to_xess_image_view(tex_color);
         intel::params_execute.depthTexture               = intel::to_xess_image_view(tex_depth);
@@ -1005,75 +964,6 @@ namespace spartan
         // dispatch
         SP_ASSERT(ffxFsr3UpscalerContextDispatch(&amd::upscaler::context, &amd::upscaler::description_dispatch) == FFX_OK);
         amd::upscaler::description_dispatch.reset = false;
-    #endif
-    }
-
-    void RHI_VendorTechnology::SSSR_Dispatch(
-        RHI_CommandList* cmd_list,
-        RHI_Texture* tex_reflection_source,
-        RHI_Texture* tex_depth,
-        RHI_Texture* tex_velocity,
-        RHI_Texture* tex_normal,
-        RHI_Texture* tex_material,
-        RHI_Texture* tex_brdf,
-        RHI_Texture* tex_output
-    )
-    {
-    #ifdef _WIN32
-        // comply with sssr expectations
-        SP_ASSERT(tex_reflection_source->GetBitsPerChannel() > 8);  // hdr color, expect float16+
-        SP_ASSERT(tex_depth->GetFormat() == RHI_Format::D32_Float); // single float depth
-        SP_ASSERT(tex_velocity->GetBitsPerChannel() >= 16);         // 2x float
-        SP_ASSERT(tex_normal->GetBitsPerChannel() >= 16);           // 3x float
-        SP_ASSERT(tex_material->GetBitsPerChannel() >= 8);          // 1x float roughness
-        SP_ASSERT(tex_brdf->GetBitsPerChannel() >= 16);             // 2x float
-        SP_ASSERT(tex_output->GetBitsPerChannel() >= 16);           // 3x float output
-        cmd_list->ClearTexture(tex_output, Color::standard_black);
-
-        // set resources
-        amd::ssr::description_dispatch.commandList        = amd::to_cmd_list(cmd_list);
-        amd::ssr::description_dispatch.color              = amd::to_resource(tex_reflection_source,     L"sssr_reflection_source");
-        amd::ssr::description_dispatch.depth              = amd::to_resource(tex_depth,                 L"sssr_depth");
-        amd::ssr::description_dispatch.motionVectors      = amd::to_resource(tex_velocity,              L"sssr_velocity");
-        amd::ssr::description_dispatch.normal             = amd::to_resource(tex_normal,                L"sssr_normal");
-        amd::ssr::description_dispatch.materialParameters = amd::to_resource(tex_material,              L"sssr_roughness");
-        amd::ssr::description_dispatch.environmentMap     = amd::to_resource(amd::texture_skybox.get(), L"sssr_environment");
-        amd::ssr::description_dispatch.brdfTexture        = amd::to_resource(tex_brdf,                  L"sssr_brdf");
-        amd::ssr::description_dispatch.output             = amd::to_resource(tex_output,                L"sssr_output");
- 
-        // set render size
-        amd::ssr::description_dispatch.renderSize.width  = common::resolution_render_width;
-        amd::ssr::description_dispatch.renderSize.height = common::resolution_render_height;
-
-        // set sssr specific parameters
-        amd::ssr::description_dispatch.motionVectorScale.x                  = 0.5f;    // maps [-1,1] NDC delta to [-0.5, 0.5]
-        amd::ssr::description_dispatch.motionVectorScale.y                  = -0.5f;   // same as above, but also flips Y
-        amd::ssr::description_dispatch.normalUnPackMul                      = 1.0f;
-        amd::ssr::description_dispatch.normalUnPackAdd                      = 0.0f;
-        amd::ssr::description_dispatch.depthBufferThickness                 = 1.5f;    // hit acceptance bias, larger values can cause streaks, lower values can cause holes
-        amd::ssr::description_dispatch.varianceThreshold                    = 0.0001f; // luminance differences between history results will trigger an additional ray if they are greater than this threshold value
-        amd::ssr::description_dispatch.maxTraversalIntersections            = 100;     // caps the maximum number of lookups that are performed from the depth buffer hierarchy, most rays should end after about 20 lookups
-        amd::ssr::description_dispatch.minTraversalOccupancy                = 1;       // exit the core loop early if less than this number of threads are running
-        amd::ssr::description_dispatch.mostDetailedMip                      = 0;
-        amd::ssr::description_dispatch.temporalStabilityFactor              = 1.0f;    // the accumulation of history values, higher values reduce noise, but are more likely to exhibit ghosting artifacts
-        amd::ssr::description_dispatch.temporalVarianceGuidedTracingEnabled = true;    // whether a ray should be spawned on pixels where a temporal variance is detected or not
-        amd::ssr::description_dispatch.samplesPerQuad                       = 4;       // the minimum number of rays per quad, variance guided tracing can increase this up to a maximum of 4
-        amd::ssr::description_dispatch.iblFactor                            = 0.0f;
-        amd::ssr::description_dispatch.roughnessChannel                     = 0;
-        amd::ssr::description_dispatch.isRoughnessPerceptual                = true;
-        amd::ssr::description_dispatch.roughnessThreshold                   = 0.5f;    // regions with a roughness value greater than this threshold won't spawn rays
-
-        // set camera matrices
-        amd::set_float16(amd::ssr::description_dispatch.view,               amd::view);
-        amd::set_float16(amd::ssr::description_dispatch.invView,            amd::view_inverted);
-        amd::set_float16(amd::ssr::description_dispatch.projection,         amd::projection);
-        amd::set_float16(amd::ssr::description_dispatch.invProjection,      amd::projection_inverted);
-        amd::set_float16(amd::ssr::description_dispatch.invViewProjection,  amd::view_projection_inverted);
-        amd::set_float16(amd::ssr::description_dispatch.prevViewProjection, amd::view_projection_previous);
-
-        // dispatch
-        FfxErrorCode error_code = ffxSssrContextDispatch(&amd::ssr::context, &amd::ssr::description_dispatch);
-        SP_ASSERT(error_code == FFX_OK);
     #endif
     }
    

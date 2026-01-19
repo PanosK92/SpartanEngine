@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../Core/Engine.h"
 #include "../../Rendering/Renderer.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //===================================
 
 //= NAMESPACES ===============
@@ -54,20 +57,71 @@ namespace spartan
         Renderer::DrawBox(transformed_box);
     }
 
-    void Volume::SetOption(Renderer_Option option, float value)
+    void Volume::Save(pugi::xml_node& node)
     {
-        m_options[option] = value;
+        // bounding box
+        const Vector3& bb_min = m_bounding_box.GetMin();
+        const Vector3& bb_max = m_bounding_box.GetMax();
+        node.append_attribute("bb_min_x") = bb_min.x;
+        node.append_attribute("bb_min_y") = bb_min.y;
+        node.append_attribute("bb_min_z") = bb_min.z;
+        node.append_attribute("bb_max_x") = bb_max.x;
+        node.append_attribute("bb_max_y") = bb_max.y;
+        node.append_attribute("bb_max_z") = bb_max.z;
+
+        // options
+        pugi::xml_node options_node = node.append_child("Options");
+        for (const auto& [name, value] : m_options)
+        {
+            pugi::xml_node option_node = options_node.append_child("Option");
+            option_node.append_attribute("name")  = name.c_str();
+            option_node.append_attribute("value") = value;
+        }
     }
 
-    void Volume::RemoveOption(Renderer_Option option)
+    void Volume::Load(pugi::xml_node& node)
     {
-        m_options.erase(option);
+        // bounding box
+        Vector3 bb_min, bb_max;
+        bb_min.x = node.attribute("bb_min_x").as_float(-0.5f);
+        bb_min.y = node.attribute("bb_min_y").as_float(-0.5f);
+        bb_min.z = node.attribute("bb_min_z").as_float(-0.5f);
+        bb_max.x = node.attribute("bb_max_x").as_float(0.5f);
+        bb_max.y = node.attribute("bb_max_y").as_float(0.5f);
+        bb_max.z = node.attribute("bb_max_z").as_float(0.5f);
+        m_bounding_box = BoundingBox(bb_min, bb_max);
+
+        // options
+        m_options.clear();
+        pugi::xml_node options_node = node.child("Options");
+        if (options_node)
+        {
+            for (pugi::xml_node option_node : options_node.children("Option"))
+            {
+                string name  = option_node.attribute("name").as_string();
+                float value  = option_node.attribute("value").as_float(0.0f);
+                if (!name.empty())
+                {
+                    m_options[name] = value;
+                }
+            }
+        }
     }
 
-    float Volume::GetOption(Renderer_Option option) const
+    void Volume::SetOption(const char* name, float value)
+    {
+        m_options[name] = value;
+    }
+
+    void Volume::RemoveOption(const char* name)
+    {
+        m_options.erase(name);
+    }
+
+    float Volume::GetOption(const char* name) const
     {
         // try to find the specific override
-        auto it = m_options.find(option);
+        auto it = m_options.find(name);
         if (it != m_options.end())
         {
             return it->second;

@@ -49,7 +49,6 @@ namespace spartan
     enum class MaterialProperty
     {
         // system / meta
-        Optimized,                  // material has been optimized (packed/compressed textures)
         Gltf,                       // imported from gltf file
     
         // world / geometry context
@@ -154,9 +153,12 @@ namespace spartan
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
 
     private:
+        bool IsPackableTextureType(MaterialTextureType type) const;
+
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
-        uint32_t m_index = 0;
+        uint32_t m_index        = 0;
+        bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
         std::mutex m_mutex;
     };
 }

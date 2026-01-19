@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Geometry/Mesh.h"
 #include "Renderer_Buffers.h"
 #include "../Font/Font.h"
+#include "../Commands/Console/ConsoleCommands.h"
 #include <unordered_map>
 #include <atomic>
 #include "../Math/Rectangle.h"
@@ -46,6 +47,53 @@ namespace spartan
         class BoundingBox;
         class Frustum;
     }
+
+    // renderer cvars (defined in Renderer.cpp, use .GetValue() or .GetValueAs<T>() for direct access in hot paths)
+    extern TConsoleVar<float> cvar_aabb;
+    extern TConsoleVar<float> cvar_picking_ray;
+    extern TConsoleVar<float> cvar_grid;
+    extern TConsoleVar<float> cvar_transform_handle;
+    extern TConsoleVar<float> cvar_selection_outline;
+    extern TConsoleVar<float> cvar_lights;
+    extern TConsoleVar<float> cvar_audio_sources;
+    extern TConsoleVar<float> cvar_performance_metrics;
+    extern TConsoleVar<float> cvar_physics;
+    extern TConsoleVar<float> cvar_wireframe;
+    extern TConsoleVar<float> cvar_bloom;
+    extern TConsoleVar<float> cvar_fog;
+    extern TConsoleVar<float> cvar_ssao;
+    extern TConsoleVar<float> cvar_ray_traced_reflections;
+    extern TConsoleVar<float> cvar_ray_traced_shadows;
+    extern TConsoleVar<float> cvar_restir_pt;
+    extern TConsoleVar<float> cvar_motion_blur;
+    extern TConsoleVar<float> cvar_depth_of_field;
+    extern TConsoleVar<float> cvar_film_grain;
+    extern TConsoleVar<float> cvar_vhs;
+    extern TConsoleVar<float> cvar_chromatic_aberration;
+    extern TConsoleVar<float> cvar_dithering;
+    extern TConsoleVar<float> cvar_sharpness;
+    extern TConsoleVar<float> cvar_anisotropy;
+    extern TConsoleVar<float> cvar_tonemapping;
+    extern TConsoleVar<float> cvar_antialiasing_upsampling;
+    extern TConsoleVar<float> cvar_hdr;
+    extern TConsoleVar<float> cvar_gamma;
+    extern TConsoleVar<float> cvar_vsync;
+    extern TConsoleVar<float> cvar_variable_rate_shading;
+    extern TConsoleVar<float> cvar_resolution_scale;
+    extern TConsoleVar<float> cvar_dynamic_resolution;
+    extern TConsoleVar<float> cvar_occlusion_culling;
+    extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
+    // volumetric clouds
+    extern TConsoleVar<float> cvar_clouds_enabled;
+    extern TConsoleVar<float> cvar_cloud_animation;
+    extern TConsoleVar<float> cvar_cloud_coverage;
+    extern TConsoleVar<float> cvar_cloud_type;
+    extern TConsoleVar<float> cvar_cloud_shadows;
+    extern TConsoleVar<float> cvar_cloud_color_r;
+    extern TConsoleVar<float> cvar_cloud_color_g;
+    extern TConsoleVar<float> cvar_cloud_color_b;
+    extern TConsoleVar<float> cvar_cloud_darkness;
+    extern TConsoleVar<float> cvar_cloud_seed;
 
     struct ShadowSlice
     {
@@ -85,12 +133,6 @@ namespace spartan
         static void DrawString(const char* text, const math::Vector2& position_screen_percentage);
         static void DrawIcon(RHI_Texture* icon, const math::Vector2& position_screen_percentage);
 
-        // options
-        template<typename T>
-        static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[option]); }
-        static void SetOption(Renderer_Option option, float value);
-        static std::unordered_map<Renderer_Option, float>& GetOptions();
-        static void SetOptions(const std::unordered_map<Renderer_Option, float>& options);
 
         // swapchain
         static RHI_SwapChain* GetSwapChain();
@@ -166,6 +208,10 @@ namespace spartan
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
         static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list);
         static void Pass_RayTracedReflections(RHI_CommandList* cmd_list);
+        static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
+        static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
+        static void SwapReSTIRReservoirs();
+        static void Pass_Light_Reflections(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting
@@ -174,6 +220,9 @@ namespace spartan
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list);
         static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
         static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
+        // passes - volumetric clouds
+        static void Pass_CloudNoise(RHI_CommandList* cmd_list);
+        static void Pass_CloudShadow(RHI_CommandList* cmd_list);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -242,6 +291,8 @@ namespace spartan
         static RHI_CommandList* m_cmd_list_present;
         static std::vector<ShadowSlice> m_shadow_slices;
         static std::unique_ptr<RHI_Buffer> m_std_reflections; // it temporarily lives here
+        static std::unique_ptr<RHI_Buffer> m_std_shadows;     // shader binding table for ray traced shadows
+        static std::unique_ptr<RHI_Buffer> m_std_restir;      // shader binding table for restir path tracing
         static uint32_t m_count_active_lights;
     };
 }

@@ -96,6 +96,20 @@ private:
     std::recursive_mutex               m_mutex;
     ImGuiTextFilter                    m_log_filter;
 
+    // text selection state
+    struct TextSelection
+    {
+        int start_line   = -1;
+        int start_char   = -1;
+        int end_line     = -1;
+        int end_char     = -1;
+        bool is_dragging = false;
+
+        bool HasSelection() const { return start_line >= 0 && end_line >= 0; }
+        void Clear() { start_line = start_char = end_line = end_char = -1; is_dragging = false; }
+    };
+    TextSelection m_selection;
+
     char                               m_input_buffer[INPUT_BUFFER_SIZE] = {};
 
     const std::vector<ImVec4>          m_log_type_color =

@@ -81,6 +81,15 @@ namespace spartan
         math::Vector3 camera_right;
         float camera_exposure;
 
+        // weather/clouds
+        float cloud_coverage;
+        float cloud_type;
+        float cloud_shadows;
+        float cloud_darkness;
+
+        math::Vector3 cloud_color;
+        float cloud_seed;
+
         void set_bit(const bool set, const uint32_t bit)
         {
             options = set ? (options |= bit) : (options & ~bit);
@@ -194,6 +203,8 @@ namespace spartan
         float angle;
         uint32_t flags;
         uint32_t screen_space_shadows_slice_index;
+        float area_width;  // area light width in meters
+        float area_height; // area light height in meters
         math::Matrix view_projection[6];
         math::Vector2 atlas_offsets[6];
         math::Vector2 atlas_scales[6];
@@ -206,5 +217,16 @@ namespace spartan
         float is_occluder;
         math::Vector3 max;
         float padding2;
+    };
+
+    // ray tracing geometry info for vertex/index buffer access
+    struct Sb_GeometryInfo
+    {
+        uint64_t vertex_buffer_address;
+        uint64_t index_buffer_address;
+        uint32_t vertex_offset;
+        uint32_t index_offset;
+        uint32_t vertex_count;
+        uint32_t index_count;
     };
 }

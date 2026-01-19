@@ -59,6 +59,7 @@ namespace spartan
         Sharpness,
         Dithering,
         Hdr,
+        WhitePoint,
         Gamma,
         Vsync,
         VariableRateShading,
@@ -66,53 +67,18 @@ namespace spartan
         DynamicResolution,
         OcclusionCulling,
         AutoExposureAdaptationSpeed,
+        // volumetric clouds
+        CloudAnimation, // whether clouds animate (wind movement)
+        CloudCoverage,  // 0=no clouds, >0=clouds visible
+        CloudType,
+        CloudShadows,
+        CloudColorR,
+        CloudColorG,
+        CloudColorB,
+        CloudDarkness,
+        CloudSeed,      // seed for cloud generation
         Max
     };
-
-    inline const char* renderer_option_to_string(const Renderer_Option option)
-    {
-        switch (option)
-        {
-            case Renderer_Option::Aabb:                        return "Aabb";
-            case Renderer_Option::PickingRay:                  return "PickingRay";
-            case Renderer_Option::Grid:                        return "Grid";
-            case Renderer_Option::TransformHandle:             return "TransformHandle";
-            case Renderer_Option::SelectionOutline:            return "SelectionOutline";
-            case Renderer_Option::Lights:                      return "Lights";
-            case Renderer_Option::AudioSources:                return "AudioSpurces";
-            case Renderer_Option::PerformanceMetrics:          return "PerformanceMetrics";
-            case Renderer_Option::Physics:                     return "Physics";
-            case Renderer_Option::Wireframe:                   return "Wireframe";
-            case Renderer_Option::Bloom:                       return "Bloom";
-            case Renderer_Option::Fog:                         return "Fog";
-            case Renderer_Option::ScreenSpaceAmbientOcclusion: return "ScreenSpaceAmbientOcclusion";
-            case Renderer_Option::ScreenSpaceReflections:      return "ScreenSpaceReflections";
-            case Renderer_Option::MotionBlur:                  return "MotionBlur";
-            case Renderer_Option::DepthOfField:                return "DepthOfField";
-            case Renderer_Option::FilmGrain:                   return "FilmGrain";
-            case Renderer_Option::ChromaticAberration:         return "ChromaticAberration";
-            case Renderer_Option::Anisotropy:                  return "Anisotropy";
-            case Renderer_Option::Tonemapping:                 return "Tonemapping";
-            case Renderer_Option::AntiAliasing_Upsampling:     return "AntiAliasing_Upsampling";
-            case Renderer_Option::Sharpness:                   return "Sharpness";
-            case Renderer_Option::Hdr:                         return "Hdr";
-            case Renderer_Option::Gamma:                       return "Gamma";
-            case Renderer_Option::Vsync:                       return "Vsync";
-            case Renderer_Option::VariableRateShading:         return "VariableRateShading";
-            case Renderer_Option::ResolutionScale:             return "ResolutionScale";
-            case Renderer_Option::DynamicResolution:           return "DynamicResolution";
-            case Renderer_Option::Dithering:                   return "Dithering";
-            case Renderer_Option::Vhs:                         return "VHS";
-            case Renderer_Option::OcclusionCulling:            return "OcclusionCulling";
-            case Renderer_Option::AutoExposureAdaptationSpeed: return "AutoExposureAdaptationSpeed";
-            case Renderer_Option::RayTracedReflections:        return "RayTracedReflections";
-            default:
-            {
-                SP_ASSERT_MSG(false, "Renderer_Option not handled");
-                return "";
-            }
-        }
-    }
 
     enum class Renderer_Tonemapping : uint32_t
     {
@@ -169,19 +135,36 @@ namespace spartan
         bindless_material_parameters = 16,
         bindless_light_parameters    = 17,
         bindless_aabbs               = 18,
+        
+        // volumetric clouds 3D noise
+        tex3d_cloud_shape  = 19,
+        tex3d_cloud_detail = 20,
+        // restir reservoir srv bindings (for temporal/spatial read)
+        reservoir_prev0    = 21,
+        reservoir_prev1    = 22,
+        reservoir_prev2    = 23,
+        reservoir_prev3    = 24,
+        reservoir_prev4    = 25,
     };
 
     enum class Renderer_BindingsUav
     {
-        tex         = 0,
-        tex2        = 1,
-        tex3        = 2,
-        tex4        = 3,
-        tex3d       = 4,
-        tex_sss     = 5,
-        visibility  = 6,
-        sb_spd      = 7,
-        tex_spd     = 8,
+        tex           = 0,
+        tex2          = 1,
+        tex3          = 2,
+        tex4          = 3,
+        tex3d         = 4,
+        tex_sss       = 5,
+        visibility    = 6,
+        sb_spd        = 7,
+        tex_spd       = 8,
+        geometry_info = 20, // ray tracing geometry info buffer
+        // restir reservoir uav bindings
+        reservoir0    = 21,
+        reservoir1    = 22,
+        reservoir2    = 23,
+        reservoir3    = 24,
+        reservoir4    = 25,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -241,6 +224,21 @@ namespace spartan
         reflections_ray_generation_r,
         reflections_ray_miss_r,
         reflections_ray_hit_r,
+        // ray traced shadows
+        shadows_ray_generation_r,
+        shadows_ray_miss_r,
+        shadows_ray_hit_r,
+        // restir path tracing gi
+        restir_pt_ray_generation_r,
+        restir_pt_ray_miss_r,
+        restir_pt_ray_hit_r,
+        restir_pt_temporal_c,
+        restir_pt_spatial_c,
+        // volumetric clouds
+        cloud_noise_shape_c,
+        cloud_noise_detail_c,
+        cloud_shadow_c,
+        light_reflections_c,
         max
     };
     
@@ -266,7 +264,10 @@ namespace spartan
         frame_output,
         frame_output_2,
         ssao,
-        ssr,
+        reflections,
+        gbuffer_reflections_position,
+        gbuffer_reflections_normal,
+        gbuffer_reflections_albedo,
         sss,
         skysphere,
         bloom,
@@ -276,6 +277,26 @@ namespace spartan
         shadow_atlas,
         auto_exposure,
         auto_exposure_previous,
+        // ray traced shadows
+        ray_traced_shadows,
+        // restir path tracing output
+        restir_output,
+        // restir reservoir buffers (current frame)
+        restir_reservoir0,
+        restir_reservoir1,
+        restir_reservoir2,
+        restir_reservoir3,
+        restir_reservoir4,
+        // restir reservoir buffers (previous frame for temporal)
+        restir_reservoir_prev0,
+        restir_reservoir_prev1,
+        restir_reservoir_prev2,
+        restir_reservoir_prev3,
+        restir_reservoir_prev4,
+        // volumetric clouds
+        cloud_noise_shape,
+        cloud_noise_detail,
+        cloud_shadow,
         max
     };
 
@@ -303,6 +324,7 @@ namespace spartan
         AABBs,
         Visibility,
         VisibilityPrevious,
+        GeometryInfo,
         Max
     };
 

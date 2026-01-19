@@ -89,6 +89,12 @@ namespace spartan
                 RHI_CommandList::ImmediateExecutionEnd(cmd_list);
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
             }
+            
+            // save device address for ray tracing vertex/index buffer access
+            if (RHI_Device::IsSupportedRayTracing() && (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index))
+            {
+                m_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource);
+            }
         }
         else if (m_type == RHI_Buffer_Type::Storage)
         {
@@ -125,15 +131,15 @@ namespace spartan
         }
         else if (m_type == RHI_Buffer_Type::ShaderBindingTable)
         {
-            SP_ASSERT(m_element_count == 3); // raygen, miss, hit
+            SP_ASSERT(m_element_count >= 3); // at minimum: raygen, miss, hit
         
             uint32_t handle_size   = RHI_Device::PropertyGetShaderGroupHandleSize();
             m_aligned_handle_size  = static_cast<uint32_t>(((handle_size + RHI_Device::PropertyGetShaderGroupHandleAlignment() - 1) / RHI_Device::PropertyGetShaderGroupHandleAlignment()) * RHI_Device::PropertyGetShaderGroupHandleAlignment());
             uint64_t base_align    = RHI_Device::PropertyGetShaderGroupBaseAlignment();
         
-            // compute worst-case size
+            // compute worst-case size for all shader groups
             uint64_t max_padding = base_align - 1;
-            m_object_size        = 3 * m_aligned_handle_size + 2 * max_padding;
+            m_object_size        = m_element_count * m_aligned_handle_size + 2 * max_padding;
         
             VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -142,6 +148,7 @@ namespace spartan
             m_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource);
         
             // now align offsets based on device_address
+            // sbt layout: [raygen] [miss shaders...] [hit shaders...]
             uint64_t current_address  = m_device_address;
             m_raygen_offset           = (base_align - (current_address % base_align)) % base_align;
             current_address          += m_raygen_offset + m_aligned_handle_size;
@@ -151,8 +158,9 @@ namespace spartan
             uint64_t padding_hit      = (base_align - (current_address % base_align)) % base_align;
             m_hit_offset              = m_miss_offset + m_aligned_handle_size + padding_hit;
         
-            // actual size
-            m_object_size = m_hit_offset + m_aligned_handle_size;
+            // actual size (account for extra shader groups if > 3)
+            uint32_t extra_groups = (m_element_count > 3) ? (m_element_count - 3) : 0;
+            m_object_size = m_hit_offset + m_aligned_handle_size + extra_groups * m_aligned_handle_size;
         }
 
         SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
@@ -224,9 +232,19 @@ namespace spartan
         SP_ASSERT(m_data_gpu != nullptr);
         uint8_t* dst = static_cast<uint8_t*>(m_data_gpu);
         memset(dst, 0, m_object_size);
+        
+        // copy shader handles to their respective offsets
+        // standard layout: [raygen][miss][hit] + optional extra groups
         memcpy(dst + m_raygen_offset, handles.data() + 0 * handle_size, handle_size);
         memcpy(dst + m_miss_offset, handles.data() + 1 * handle_size, handle_size);
         memcpy(dst + m_hit_offset, handles.data() + 2 * handle_size, handle_size);
+        
+        // copy any additional shader groups (for passes needing more than 3)
+        for (uint32_t i = 3; i < m_element_count; i++)
+        {
+            uint64_t extra_offset = m_hit_offset + (i - 2) * m_aligned_handle_size;
+            memcpy(dst + extra_offset, handles.data() + i * handle_size, handle_size);
+        }
     
         // Use buffer memory barrier for more specific synchronization
         // Since memory is HOST_COHERENT, writes are immediately visible, but we need ordering

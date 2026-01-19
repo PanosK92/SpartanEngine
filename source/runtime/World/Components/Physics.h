@@ -46,6 +46,7 @@ namespace spartan
         Plane,
         Capsule,
         Mesh,
+        MeshConvex, // compound shape built from convex hulls of entity hierarchy meshes
         Controller,
         Vehicle,
         Max
@@ -150,7 +151,8 @@ namespace spartan
         Entity* GetWheelEntity(WheelIndex wheel) const;
         
         // vehicle chassis entity (visual body that bounces on suspension)
-        void SetChassisEntity(Entity* entity);
+        // entities_to_exclude: optional list of entities to skip when building convex shapes (e.g. wheels)
+        void SetChassisEntity(Entity* entity, const std::vector<Entity*>& entities_to_exclude = {});
         Entity* GetChassisEntity() const { return m_chassis_entity; }
         
         // vehicle wheel radius (used for spin calculation and physics)
@@ -175,14 +177,75 @@ namespace spartan
         float GetWheelAngularVelocity(WheelIndex wheel) const;  // rad/s
         float GetWheelRPM(WheelIndex wheel) const;              // revolutions per minute
         float GetWheelTemperature(WheelIndex wheel) const;      // celsius
-        float GetWheelLoadTransfer(WheelIndex wheel) const;     // newtons
-        float GetWheelEffectiveLoad(WheelIndex wheel) const;    // tire_load + load_transfer
         float GetWheelTempGripFactor(WheelIndex wheel) const;   // 0.85-1.0 multiplier
+        float GetWheelBrakeTemp(WheelIndex wheel) const;        // brake temperature in celsius
+        float GetWheelBrakeEfficiency(WheelIndex wheel) const;  // 0.6-1.0 multiplier based on brake temp
+        
+        // driver assists
+        void SetAbsEnabled(bool enabled);
+        bool GetAbsEnabled() const;
+        bool IsAbsActive(WheelIndex wheel) const;               // is abs intervening on this wheel
+        bool IsAbsActiveAny() const;                            // is abs intervening on any wheel
+        
+        void SetTcEnabled(bool enabled);
+        bool GetTcEnabled() const;
+        bool IsTcActive() const;                                // is traction control intervening
+        float GetTcReduction() const;                           // current power reduction (0-1)
+        
+        // turbo
+        void SetTurboEnabled(bool enabled);
+        bool GetTurboEnabled() const;
+        float GetBoostPressure() const;                         // current boost pressure (bar)
+        float GetBoostMaxPressure() const;                      // max boost pressure (bar)
+        
+        // transmission mode
+        void SetManualTransmission(bool enabled);
+        bool GetManualTransmission() const;
+        void ShiftUp();
+        void ShiftDown();
+        void ShiftToNeutral();
+        
+        // engine and gearbox
+        int GetCurrentGear() const;                             // gear index (0=R, 1=N, 2-8=1st-7th)
+        const char* GetCurrentGearString() const;               // gear display string ("R", "N", "1"-"7")
+        float GetEngineRPM() const;                             // current engine rpm
+        float GetEngineTorque() const;                          // current engine torque output (Nm)
+        float GetRedlineRPM() const;                            // engine redline rpm
+        bool IsShifting() const;                                // is gearbox currently shifting
+        
+        // debug visualization
+        void SetDrawRaycasts(bool enabled);
+        bool GetDrawRaycasts() const;
+        void SetDrawSuspension(bool enabled);
+        bool GetDrawSuspension() const;
+        void SetDrawAero(bool enabled);
+        bool GetDrawAero() const;
+        void DrawDebugVisualization();                          // call each frame to draw debug lines
+        
+        // sync physics wheel positions from wheel entity positions
+        void SyncWheelOffsetsFromEntities();
+        
+        // center of mass (for tuning handling characteristics)
+        void SetCenterOfMassOffset(const math::Vector3& offset);
+        void SetCenterOfMassOffset(float x, float y, float z);
+        math::Vector3 GetCenterOfMassOffset() const;
+        
+        // mesh convex compound shape - set the source entity whose hierarchy will be walked
+        // to build convex hull shapes from each mesh in the hierarchy
+        void SetMeshConvexSourceEntity(Entity* entity);
+        Entity* GetMeshConvexSourceEntity() const { return m_mesh_convex_source; }
 
     private:
+        // tick helpers (broken out for readability)
+        void TickController(bool is_playing, float delta_time);
+        void TickVehicle(bool is_playing, float delta_time);
+        void TickDynamicBodies(bool is_playing);
+        void TickDistanceActivation();
+        
         void UpdateWheelTransforms();
         void Create();
         void CreateBodies();
+        void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude); // builds convex shapes from chassis mesh hierarchy
 
         float m_mass                   = 1.0f;
         float m_friction               = 0.4f;
@@ -203,13 +266,19 @@ namespace spartan
 
         // vehicle wheel entities and state
         Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
-        float m_wheel_rotation = 0.0f; // cumulative wheel spin rotation (radians)
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
         float m_wheel_mesh_center_offset_y = 0.0f; // offset from entity origin to mesh center (for non-centered meshes)
+        bool m_wheel_offsets_synced = false; // flag to ensure wheel offsets are synced from entities once
         
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;
         math::Vector3 m_chassis_base_pos  = math::Vector3::Zero; // base local position of chassis
         float m_chassis_suspension_offset = 0.0f;                // current suspension offset (smoothed)
+        
+        // mesh convex source entity - the entity hierarchy to walk for building compound convex shapes
+        Entity* m_mesh_convex_source = nullptr;
+        
+        // deferred creation flag for loading (wait until renderable is available)
+        bool m_needs_creation = false;
     };
 }

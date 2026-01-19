@@ -44,6 +44,18 @@ namespace spartan
         vector<third_party_lib> m_third_party_libs;
         mutex mutex_register;
 
+        // helper to convert cvar name to xml-safe name (e.g., "r.bloom" -> "r_bloom")
+        string cvar_name_to_xml(const char* name)
+        {
+            string result(name);
+            for (char& c : result)
+            {
+                if (c == '.')
+                    c = '_';
+            }
+            return result;
+        }
+
         void save()
         {
             pugi::xml_document doc;
@@ -58,9 +70,12 @@ namespace spartan
                 root.append_child("ResolutionRenderWidth").text().set(Renderer::GetResolutionRender().x);
                 root.append_child("ResolutionRenderHeight").text().set(Renderer::GetResolutionRender().y);
                 root.append_child("FPSLimit").text().set(Timer::GetFpsLimit());
-                for (auto& [option, value] : Renderer::GetOptions())
+                for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
-                    root.append_child(renderer_option_to_string(option)).text().set(value);
+                    if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
+                    {
+                        root.append_child(cvar_name_to_xml(string(name).c_str()).c_str()).text().set(get<float>(*cvar.m_value_ptr));
+                    }
                 }
 
                 root.append_child("UseRootShaderDirectory").text().set(ResourceCache::GetUseRootShaderDirectory());
@@ -94,13 +109,18 @@ namespace spartan
                 Renderer::SetResolutionRender(root.child("ResolutionRenderWidth").text().as_int(), root.child("ResolutionRenderHeight").text().as_int());
                 Renderer::SetResolutionOutput(root.child("ResolutionOutputWidth").text().as_int(), root.child("ResolutionOutputHeight").text().as_int());
 
-                unordered_map<Renderer_Option, float> m_render_options;
-                for (uint32_t i = 0; i < static_cast<uint32_t>(Renderer_Option::Max); i++)
+                // load render options from xml
+                for (const auto& [name, cvar] : ConsoleRegistry::Get().GetAll())
                 {
-                    Renderer_Option option = static_cast<Renderer_Option>(i);
-                    m_render_options[option] = root.child(renderer_option_to_string(option)).text().as_float();
+                    if (name.size() >= 2 && name[0] == 'r' && name[1] == '.')
+                    {
+                        pugi::xml_node child = root.child(cvar_name_to_xml(string(name).c_str()).c_str());
+                        if (child)
+                        {
+                            ConsoleRegistry::Get().SetValueFromString(string(name).c_str(), child.text().as_string());
+                        }
+                    }
                 }
-                Renderer::SetOptions(m_render_options);
 
                 // this setting can be mapped directly to the resource cache (no need to wait for it to initialize)
                 ResourceCache::SetUseRootShaderDirectory(root.child("UseRootShaderDirectory").text().as_bool());

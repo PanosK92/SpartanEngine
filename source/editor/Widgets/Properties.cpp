@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
+#include "Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -261,51 +262,63 @@ void Properties::ShowEntity(Entity* entity) const
         Quaternion rotation = entity->GetRotationLocal();
         Vector3 scale       = entity->GetScaleLocal();
 
-        // per-entity tracking for euler angles
-        static std::unordered_map<uintptr_t, Vector3> last_euler_map;
+        // per-entity tracking for continuous euler angles
+        static std::unordered_map<uintptr_t, Vector3> display_euler_map;
+        static std::unordered_map<uintptr_t, Quaternion> last_quat_map;
         uintptr_t entity_id = reinterpret_cast<uintptr_t>(entity);
-        rotation.Normalize(); // safety
+        rotation.Normalize();
 
-        // sync euler if externally changed or uninitialized
-        auto it = last_euler_map.find(entity_id);
-        if (it != last_euler_map.end())
+        // get or initialize display euler
+        auto euler_it = display_euler_map.find(entity_id);
+        auto quat_it = last_quat_map.find(entity_id);
+        
+        if (euler_it == display_euler_map.end())
         {
-            Quaternion expected = Quaternion::FromEulerAngles(it->second);
-            expected.Normalize();
-            float dot_abs = std::abs(rotation.Dot(expected));
-            if (dot_abs < 0.999f) // detect external changes
-            {
-                it->second = rotation.ToEulerAngles();
-            }
+            display_euler_map[entity_id] = rotation.ToEulerAngles();
+            last_quat_map[entity_id] = rotation;
         }
         else
         {
-            last_euler_map[entity_id] = rotation.ToEulerAngles();
+            // compute delta rotation from last frame
+            Quaternion last_quat = quat_it->second;
+            Quaternion delta_quat = rotation * last_quat.Inverse();
+            delta_quat.Normalize();
+            
+            // convert delta to euler (will be small values for continuous rotation)
+            Vector3 delta_euler = delta_quat.ToEulerAngles();
+            
+            // only apply delta if rotation actually changed
+            float dot_val = std::abs(rotation.Dot(last_quat));
+            if (dot_val < 0.9999f)
+            {
+                // accumulate the delta to allow going beyond ±180
+                display_euler_map[entity_id] += delta_euler;
+                last_quat_map[entity_id] = rotation;
+            }
         }
 
-        // use the (possibly updated) per-entity euler
-        Vector3& last_frame_euler = last_euler_map[entity_id];
-        Vector3 current_euler     = last_frame_euler;
+        Vector3& display_euler = display_euler_map[entity_id];
+        Vector3 edit_euler = display_euler;
 
         // display and edit transforms
         ImGui::AlignTextToFramePadding();
         ImGuiSp::vector3("Position (m)", position);
         ImGui::SameLine();
-        ImGuiSp::vector3("Rotation (degrees)", current_euler);
+        ImGuiSp::vector3("Rotation (degrees)", edit_euler);
         ImGui::SameLine();
         ImGuiSp::vector3("Scale", scale);
 
-        // handle rotation delta
-        Vector3 delta_euler         = current_euler - last_frame_euler;
-        last_frame_euler            = current_euler;
-        Quaternion delta_quaternion = Quaternion::FromEulerAngles(delta_euler);
-        Quaternion new_rotation;
-        new_rotation = rotation * delta_quaternion;
-        new_rotation.Normalize();
-
-        // apply transforms based on mode
+        // handle user editing euler angles directly
+        if (edit_euler != display_euler)
+        {
+            display_euler = edit_euler;
+            Quaternion new_rotation = Quaternion::FromEulerAngles(display_euler);
+            new_rotation.Normalize();
+            entity->SetRotationLocal(new_rotation);
+            last_quat_map[entity_id] = new_rotation;
+        }
+        
         entity->SetPositionLocal(position);
-        entity->SetRotationLocal(new_rotation);
         entity->SetScaleLocal(scale);
     }
     component_end();
@@ -319,7 +332,7 @@ void Properties::ShowLight(spartan::Light* light) const
     if (component_begin("Light", light))
     {
         //= REFLECT ==========================================================================
-        static vector<string> types = { "Directional", "Point", "Spot" };
+        static vector<string> types = { "Directional", "Point", "Spot", "Area" };
         float intensity             = light->GetIntensityLumens();
         float temperature_kelvin    = light->GetTemperature();
         float angle                 = light->GetAngle() * math::rad_to_deg * 2.0f;
@@ -327,6 +340,8 @@ void Properties::ShowLight(spartan::Light* light) const
         bool shadows_screen_space   = light->GetFlag(spartan::LightFlags::ShadowsScreenSpace);
         bool volumetric             = light->GetFlag(spartan::LightFlags::Volumetric);
         float range                 = light->GetRange();
+        float area_width            = light->GetAreaWidth();
+        float area_height           = light->GetAreaHeight();
         m_colorPicker_light->SetColor(light->GetColor());
         //====================================================================================
 
@@ -441,10 +456,24 @@ void Properties::ShowLight(spartan::Light* light) const
             ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f);
         }
 
+        // area light dimensions
+        if (light->GetLightType() == LightType::Area)
+        {
+            ImGui::Text("Width");
+            ImGui::SameLine(column_pos_x);
+            ImGuiSp::draw_float_wrap("##lightAreaWidth", &area_width, 0.01f, 0.01f, 100.0f);
+
+            ImGui::Text("Height");
+            ImGui::SameLine(column_pos_x);
+            ImGuiSp::draw_float_wrap("##lightAreaHeight", &area_height, 0.01f, 0.01f, 100.0f);
+        }
+
         //= MAP ===================================================================================================
         if (intensity != light->GetIntensityLumens())             light->SetIntensity(intensity);
         if (angle != light->GetAngle() * math::rad_to_deg * 0.5f) light->SetAngle(angle * math::deg_to_rad * 0.5f);
         if (range != light->GetRange())                           light->SetRange(range);
+        if (area_width != light->GetAreaWidth())                  light->SetAreaWidth(area_width);
+        if (area_height != light->GetAreaHeight())                light->SetAreaHeight(area_height);
         if (m_colorPicker_light->GetColor() != light->GetColor()) light->SetColor(m_colorPicker_light->GetColor());
         if (temperature_kelvin != light->GetTemperature())        light->SetTemperature(temperature_kelvin);
         light->SetFlag(spartan::LightFlags::ShadowsScreenSpace, shadows_screen_space);
@@ -779,18 +808,9 @@ void Properties::ShowMaterial(Material* material) const
         ImGui::SameLine(column_pos_x);
         ImGui::Text(material->GetObjectName().c_str());
 
-        // optimized
-        bool optimized = material->GetProperty(MaterialProperty::Optimized) != 0.0f;
-        {
-            ImGui::Text("Optimized");
-            ImGui::SameLine(column_pos_x);
-            ImGui::Text(optimized ? "Yes" : "No");
-            ImGuiSp::tooltip("Optimized materials can't be modified");
-        }
-
         // texture slots
         {
-            const auto show_property = [this, &material, &optimized](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
+            const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTextureType mat_tex, const MaterialProperty mat_property)
             {
                 bool show_texture  = mat_tex      != MaterialTextureType::Max;
                 bool show_modifier = mat_property != MaterialProperty::Max;
@@ -812,7 +832,6 @@ void Properties::ShowMaterial(Material* material) const
                 }
         
                 // texture
-                ImGui::BeginDisabled(optimized);
                 if (show_texture)
                 {
                     // for the current texture type (mat_tex), show all its slots
@@ -842,7 +861,6 @@ void Properties::ShowMaterial(Material* material) const
                         ImGui::SameLine();
                     }
                 }
-                ImGui::EndDisabled();
         
                 // modifier/multiplier
                 if (show_modifier)
@@ -1201,25 +1219,32 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         // scrollable area of render options
         if (ImGui::BeginChild("##vol_overrides", ImVec2(0, 250.0f), true))
         {
-            // iterate over all possible renderer options
-            for (const auto& [option, global_value] : Renderer::GetOptions())
+            // iterate over all renderer options (those starting with "r.")
+            int id_counter = 0;
+            for (const auto& [cvar_name, cvar] : ConsoleRegistry::Get().GetAll())
             {
-                ImGui::PushID(static_cast<int>(option));
+                // only include renderer options
+                if (cvar_name.size() < 2 || cvar_name[0] != 'r' || cvar_name[1] != '.')
+                    continue;
+
+                string name(cvar_name);
+                float global_value = get<float>(*cvar.m_value_ptr);
+
+                ImGui::PushID(id_counter++);
 
                 // determine if option is overridden
-                bool is_active   = volume->GetOptions().find(option) != volume->GetOptions().end();
-                const char* name = renderer_option_to_string(option);
+                bool is_active = volume->GetOptions().find(name) != volume->GetOptions().end();
 
                 // checkbox (enable/disable override)
-                if (ImGui::Checkbox(name, &is_active))
+                if (ImGui::Checkbox(name.c_str(), &is_active))
                 {
                     if (is_active)
                     {
-                        volume->SetOption(option, global_value);
+                        volume->SetOption(name.c_str(), global_value);
                     }
                     else
                     {
-                        volume->RemoveOption(option);
+                        volume->RemoveOption(name.c_str());
                     }
                 }
 
@@ -1231,11 +1256,11 @@ void Properties::ShowVolume(spartan::Volume* volume) const
                     // ux: set a fixed width for the slider so they align nicely
                     ImGui::PushItemWidth(100.0f);
                     
-                    float value = volume->GetOption(option);
+                    float value = volume->GetOption(name.c_str());
                     // use ## to hide the label since the checkbox already shows it
                     if (ImGuiSp::draw_float_wrap("##v", &value, 0.1f)) 
                     {
-                        volume->SetOption(option, value);
+                        volume->SetOption(name.c_str(), value);
                     }
                     
                     ImGui::PopItemWidth();
@@ -1294,6 +1319,10 @@ void Properties::ComponentContextMenu_Add() const
                 else if (ImGui::MenuItem("Spot"))
                 {
                     entity->AddComponent<Light>()->SetLightType(LightType::Spot);
+                }
+                else if (ImGui::MenuItem("Area"))
+                {
+                    entity->AddComponent<Light>()->SetLightType(LightType::Area);
                 }
 
                 ImGui::EndMenu();

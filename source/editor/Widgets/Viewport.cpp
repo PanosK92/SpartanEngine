@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AssetBrowser.h"
 #include "WorldViewer.h"
 #include "RHI/RHI_Device.h"
+#include "Rendering/Renderer.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/ImGui_TransformGizmo.h"
 #include "Settings.h"
@@ -122,7 +123,7 @@ void Viewport::OnTickVisible()
     }
 
     // entity transform gizmo (will only show if entities have been picked)
-    if (Renderer::GetOption<bool>(spartan::Renderer_Option::TransformHandle))
+    if (cvar_transform_handle.GetValueAs<bool>())
     {
         if (camera) // skip if no camera
         {

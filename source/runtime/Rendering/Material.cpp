@@ -46,7 +46,6 @@ namespace spartan
             switch (material_property)
             {
                 // System / meta
-                case MaterialProperty::Optimized:                  return "optimized";
                 case MaterialProperty::Gltf:                       return "gltf";
         
                 // World / geometry context
@@ -318,9 +317,10 @@ namespace spartan
 
         vector<byte> get_texture_data_or_default(RHI_Texture* texture, const size_t expected_size, const byte default_value)
         {
-            if (texture && !texture->GetMip(0, 0).bytes.empty())
+            RHI_Texture_Mip* mip = texture ? texture->GetMip(0, 0) : nullptr;
+            if (mip && !mip->bytes.empty())
             {
-                return texture->GetMip(0, 0).bytes;
+                return mip->bytes;
             }
 
             return vector<byte>(expected_size, default_value);
@@ -354,7 +354,7 @@ namespace spartan
                 shared_ptr<RHI_Texture> texture_normal_new = ResourceCache::GetByName<RHI_Texture>(normal_name);
                 if (!texture_normal_new)
                 {
-                    // create new normal texture
+                    // create new normal texture - don't compress to keep raw bytes for repacking
                     texture_normal_new = make_shared<RHI_Texture>(
                         RHI_Texture_Type::Type2D,
                         width,
@@ -362,7 +362,7 @@ namespace spartan
                         depth,
                         mip_count,
                         RHI_Format::R8G8B8A8_Unorm,
-                        RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                        RHI_Texture_Srv,
                         normal_name.c_str()
                     );
         
@@ -372,13 +372,16 @@ namespace spartan
                     // generate normal map data
                     vector<byte> normal_data;
                     texture_processing::generate_normal_from_albedo(
-                        texture_color->GetMip(0, 0).bytes,
+                        texture_color->GetMip(0, 0)->bytes,
                         normal_data,
                         width,
                         height
                     );
-                    texture_normal_new->GetMip(0, 0).bytes = move(normal_data);
+                    texture_normal_new->GetMip(0, 0)->bytes = move(normal_data);
         
+                    // prepare for gpu now that data is filled
+                    texture_normal_new->PrepareForGpu();
+
                     // cache the new texture
                     texture_normal_new->SetResourceFilePath(texture_color->GetObjectName() + "_normal_from_albedo.png"); // that's a hack, need to fix the ResourceCache to rely on a hash, not names and paths
                     texture_normal_new = ResourceCache::Cache<RHI_Texture>(texture_normal_new);
@@ -389,16 +392,22 @@ namespace spartan
                 texture_normal = texture_normal_new.get();
             }
         
+            // helper to check if texture is valid for packing
+            auto is_valid_for_packing = [](RHI_Texture* tex) -> bool
+            {
+                return tex && !tex->IsCompressedFormat() && tex->GetWidth() > 0 && tex->GetHeight() > 0;
+            };
+
             // find max resolution among relevant textures
             uint32_t max_width = 1, max_height = 1;
             auto check_texture_res = [&](RHI_Texture* tex)
-             {
-                 if (tex && !tex->IsCompressedFormat())
-                 {
-                     max_width  = max(max_width, tex->GetWidth());
-                     max_height = max(max_height, tex->GetHeight());
-                 }
-             };
+            {
+                if (is_valid_for_packing(tex))
+                {
+                    max_width  = max(max_width, tex->GetWidth());
+                    max_height = max(max_height, tex->GetHeight());
+                }
+            };
             check_texture_res(texture_color);
             check_texture_res(texture_occlusion);
             check_texture_res(texture_roughness);
@@ -409,7 +418,7 @@ namespace spartan
             uint32_t max_mip_count = 1;
             auto check_mip = [&](RHI_Texture* tex)
             {
-                if (tex && !tex->IsCompressedFormat())
+                if (is_valid_for_packing(tex))
                 {
                     max_mip_count = max(max_mip_count, tex->GetMipCount());
                 }
@@ -437,7 +446,7 @@ namespace spartan
                             {
                                 vector<byte> resized_mask;
                                 texture_processing::resize_texture(
-                                    texture_alpha_mask->GetMip(0, 0).bytes,
+                                    texture_alpha_mask->GetMip(0, 0)->bytes,
                                     texture_alpha_mask->GetWidth(),
                                     texture_alpha_mask->GetHeight(),
                                     texture_alpha_mask->GetChannelCount(),
@@ -445,11 +454,11 @@ namespace spartan
                                     texture_color->GetWidth(),
                                     texture_color->GetHeight()
                                 );
-                                texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, resized_mask);
+                                texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0)->bytes, resized_mask);
                             }
                             else
                             {
-                                texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0).bytes, texture_alpha_mask->GetMip(0, 0).bytes);
+                                texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0)->bytes, texture_alpha_mask->GetMip(0, 0)->bytes);
                             }
                         }
                     }
@@ -457,15 +466,27 @@ namespace spartan
         
                 // step 2: pack occlusion, roughness, metalness, and height into a single texture
                 {
-                    bool textures_are_compressed = (texture_occlusion && texture_occlusion->IsCompressedFormat()) ||
-                        (texture_roughness && texture_roughness->IsCompressedFormat()) ||
-                        (texture_metalness && texture_metalness->IsCompressedFormat()) ||
-                        (texture_height && texture_height->IsCompressedFormat());
+                    // helper to check if texture data is available for packing
+                    auto has_packable_data = [](RHI_Texture* tex) -> bool
+                    {
+                        if (!tex || tex->IsCompressedFormat())
+                            return false;
+                        RHI_Texture_Mip* mip = tex->GetMip(0, 0);
+                        return mip && !mip->bytes.empty();
+                    };
         
-                    // generate unique name by hashing texture IDs
-                    string tex_name = material->GetObjectName() + "_packed";
+                    // generate unique name including slot to handle multi-slot materials (e.g. terrain)
+                    string tex_name = material->GetObjectName() + "_packed_slot" + to_string(slot);
+                    
+                    // for repacking, remove the old packed texture from cache so we create a fresh one
                     shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
-                    if (!texture_packed && !textures_are_compressed)
+                    if (texture_packed)
+                    {
+                        ResourceCache::Remove(texture_packed);
+                        texture_packed = nullptr;
+                    }
+
+                    // always create packed texture - use material properties as fallback when texture data is unavailable
                     {
                         // create packed texture
                         texture_packed = make_shared<RHI_Texture>
@@ -476,38 +497,44 @@ namespace spartan
                             1, // assuming depth=1
                             1, // mip_count=1 for now
                             RHI_Format::R8G8B8A8_Unorm,
-                            RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu,
+                            RHI_Texture_Srv | RHI_Texture_Compress,
                             tex_name.c_str()
                         );
                         texture_packed->SetResourceName(tex_name + ".tex_packed");
                         texture_packed->AllocateMip();
         
                         const size_t packed_size = max_width * max_height * 4;
-                        vector<byte> occlusion_data = texture_processing::get_texture_data_or_default(texture_occlusion, packed_size, static_cast<byte>(255));
-                        vector<byte> roughness_data = texture_processing::get_texture_data_or_default(texture_roughness, packed_size, static_cast<byte>(255));
-                        vector<byte> metalness_data = texture_processing::get_texture_data_or_default(texture_metalness, packed_size, static_cast<byte>(0));
-                        if (!texture_metalness && material->GetProperty(MaterialProperty::Metalness) != 0.0f)
-                        {
-                            fill(metalness_data.begin(), metalness_data.end(), static_cast<byte>(255)); // all ones
-                        }
-                        vector<byte> height_data = texture_processing::get_texture_data_or_default(texture_height, packed_size, static_cast<byte>(127));
+
+                        // get texture data or use material property-based defaults
+                        // when textures are compressed or have empty bytes, fall back to material properties
+                        byte roughness_default = static_cast<byte>(material->GetProperty(MaterialProperty::Roughness) * 255.0f);
+                        byte metalness_default = static_cast<byte>(material->GetProperty(MaterialProperty::Metalness) * 255.0f);
+
+                        vector<byte> occlusion_data = texture_processing::get_texture_data_or_default(
+                            has_packable_data(texture_occlusion) ? texture_occlusion : nullptr, packed_size, static_cast<byte>(255));
+                        vector<byte> roughness_data = texture_processing::get_texture_data_or_default(
+                            has_packable_data(texture_roughness) ? texture_roughness : nullptr, packed_size, roughness_default);
+                        vector<byte> metalness_data = texture_processing::get_texture_data_or_default(
+                            has_packable_data(texture_metalness) ? texture_metalness : nullptr, packed_size, metalness_default);
+                        vector<byte> height_data = texture_processing::get_texture_data_or_default(
+                            has_packable_data(texture_height) ? texture_height : nullptr, packed_size, static_cast<byte>(127));
         
-                        // resize if necessary
-                        if (texture_occlusion && (texture_occlusion->GetWidth() != max_width || texture_occlusion->GetHeight() != max_height))
+                        // resize if necessary (only when texture data is available)
+                        if (has_packable_data(texture_occlusion) && (texture_occlusion->GetWidth() != max_width || texture_occlusion->GetHeight() != max_height))
                         {
-                            texture_processing::resize_texture(texture_occlusion->GetMip(0, 0).bytes, texture_occlusion->GetWidth(), texture_occlusion->GetHeight(), texture_occlusion->GetChannelCount(), occlusion_data, max_width, max_height);
+                            texture_processing::resize_texture(texture_occlusion->GetMip(0, 0)->bytes, texture_occlusion->GetWidth(), texture_occlusion->GetHeight(), texture_occlusion->GetChannelCount(), occlusion_data, max_width, max_height);
                         }
-                        if (texture_roughness && (texture_roughness->GetWidth() != max_width || texture_roughness->GetHeight() != max_height))
+                        if (has_packable_data(texture_roughness) && (texture_roughness->GetWidth() != max_width || texture_roughness->GetHeight() != max_height))
                         {
-                            texture_processing::resize_texture(texture_roughness->GetMip(0, 0).bytes, texture_roughness->GetWidth(), texture_roughness->GetHeight(), texture_roughness->GetChannelCount(), roughness_data, max_width, max_height);
+                            texture_processing::resize_texture(texture_roughness->GetMip(0, 0)->bytes, texture_roughness->GetWidth(), texture_roughness->GetHeight(), texture_roughness->GetChannelCount(), roughness_data, max_width, max_height);
                         }
-                        if (texture_metalness && (texture_metalness->GetWidth() != max_width || texture_metalness->GetHeight() != max_height))
+                        if (has_packable_data(texture_metalness) && (texture_metalness->GetWidth() != max_width || texture_metalness->GetHeight() != max_height))
                         {
-                            texture_processing::resize_texture(texture_metalness->GetMip(0, 0).bytes, texture_metalness->GetWidth(), texture_metalness->GetHeight(), texture_metalness->GetChannelCount(), metalness_data, max_width, max_height);
+                            texture_processing::resize_texture(texture_metalness->GetMip(0, 0)->bytes, texture_metalness->GetWidth(), texture_metalness->GetHeight(), texture_metalness->GetChannelCount(), metalness_data, max_width, max_height);
                         }
-                        if (texture_height && (texture_height->GetWidth() != max_width || texture_height->GetHeight() != max_height))
+                        if (has_packable_data(texture_height) && (texture_height->GetWidth() != max_width || texture_height->GetHeight() != max_height))
                         {
-                            texture_processing::resize_texture(texture_height->GetMip(0, 0).bytes, texture_height->GetWidth(), texture_height->GetHeight(), texture_height->GetChannelCount(), height_data, max_width, max_height);
+                            texture_processing::resize_texture(texture_height->GetMip(0, 0)->bytes, texture_height->GetWidth(), texture_height->GetHeight(), texture_height->GetChannelCount(), height_data, max_width, max_height);
                         }
         
                         texture_processing::pack_occlusion_roughness_metalness_height(
@@ -516,21 +543,16 @@ namespace spartan
                             move(metalness_data),
                             move(height_data),
                             material->GetProperty(MaterialProperty::Gltf) == 1.0f,
-                            texture_packed->GetMip(0, 0).bytes
+                            texture_packed->GetMip(0, 0)->bytes
                         );
+
+                        // prepare for gpu now that data is filled
+                        texture_packed->PrepareForGpu();
+
                         texture_packed = ResourceCache::Cache<RHI_Texture>(texture_packed);
                     }
         
                     material->SetTexture(MaterialTextureType::Packed, texture_packed, slot);
-        
-                    // step 3: textures that have been packed into others can now be downsampled to circa 128x128 so they can be displayed in the editor and take little memory
-                    {
-                        if (texture_alpha_mask) texture_alpha_mask->SetFlag(RHI_Texture_Thumbnail);
-                        if (texture_occlusion)  texture_occlusion->SetFlag(RHI_Texture_Thumbnail);
-                        if (texture_roughness)  texture_roughness->SetFlag(RHI_Texture_Thumbnail);
-                        if (texture_metalness)  texture_metalness->SetFlag(RHI_Texture_Thumbnail);
-                        if (texture_height)     texture_height->SetFlag(RHI_Texture_Thumbnail);
-                    }
                 }
             }
         }
@@ -652,13 +674,22 @@ namespace spartan
         // calculate the actual array index based on texture type and slot
         uint32_t array_index = (static_cast<uint32_t>(texture_type) * slots_per_texture) + slot;
 
-        if (texture)
+        // check if the texture is actually changing
+        RHI_Texture* previous_texture = m_textures[array_index];
+        bool texture_changed = (previous_texture != texture);
+        
+        m_textures[array_index] = texture;
+
+        // mark for repacking if this texture type contributes to the packed texture and actually changed
+        if (texture_changed && IsPackableTextureType(texture_type))
         {
-            m_textures[array_index] = texture;
-        }
-        else
-        {
-            m_textures[array_index] = nullptr;
+            m_needs_repack = true;
+
+            // if already prepared for gpu, schedule async repack
+            if (m_resource_state == ResourceState::PreparedForGpu)
+            {
+                PrepareForGpu();
+            }
         }
 
         if (auto_adjust_multipler)
@@ -692,7 +723,9 @@ namespace spartan
 
     void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)
     {
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_Compress | RHI_Texture_DontPrepareForGpu), slot);
+        // don't compress source textures - keep raw bytes available for packing/repacking
+        // only packed textures get compressed
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv), slot);
     }
  
     bool Material::HasTextureOfType(const string& path) const
@@ -752,42 +785,48 @@ namespace spartan
         {
             lock_guard<mutex> lock(m_mutex);
 
-            SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared materials can be prepared");
+            // skip if already preparing or if no repack is needed for already-prepared materials
+            if (m_resource_state == ResourceState::PreparingForGpu)
+                return;
+
+            bool is_repack = m_resource_state == ResourceState::PreparedForGpu;
+            if (is_repack && !m_needs_repack)
+                return;
+
             m_resource_state = ResourceState::PreparingForGpu;
 
+            // pack textures (this happens synchronously to ensure data is ready)
             for (uint8_t slot = 0; slot < GetUsedSlotCount(); slot++)
             {
                 texture_processing::pack_textures(this, slot);
             }
+
+            m_needs_repack = false;
         }
 
         ThreadPool::AddTask([this]()
         {
-            lock_guard<mutex> lock(m_mutex);
-
-            // prepare all textures
-            for (RHI_Texture* texture : m_textures)
             {
-                if (texture && texture->GetResourceState() == ResourceState::Max)
+                lock_guard<mutex> lock(m_mutex);
+
+                // prepare any textures that haven't been prepared yet
+                for (RHI_Texture* texture : m_textures)
                 {
-                    texture->SetFlag(RHI_Texture_DontPrepareForGpu, false);
-                    texture->PrepareForGpu();
+                    if (texture && texture->GetResourceState() == ResourceState::Max)
+                    {
+                        texture->PrepareForGpu();
+                    }
                 }
+
+                m_resource_state = ResourceState::PreparedForGpu;
             }
 
-            // determine if the material is optimized
-            bool is_optimized = GetTexture(MaterialTextureType::Packed) != nullptr;
-            for (RHI_Texture* texture : m_textures)
+            // check if textures were set during preparation (async texture loading race condition)
+            // if so, trigger another preparation cycle to repack with the new textures
+            if (m_needs_repack)
             {
-                if (texture && texture->IsCompressedFormat())
-                {
-                    is_optimized = true;
-                    break;
-                }
+                PrepareForGpu();
             }
-
-            SetProperty(MaterialProperty::Optimized, is_optimized ? 1.0f : 0.0f);
-            m_resource_state = ResourceState::PreparedForGpu;
         });
     }
 
@@ -888,5 +927,23 @@ namespace spartan
         if (abs(ior - 2.42f) < epsilon) return MaterialIor::Diamond;
 
         return MaterialIor::Air;
+    }
+
+    bool Material::IsPackableTextureType(MaterialTextureType type) const
+    {
+        // these texture types contribute to the packed texture (occlusion, roughness, metalness, height)
+        // or affect color packing (alpha mask into color alpha)
+        switch (type)
+        {
+            case MaterialTextureType::Color:
+            case MaterialTextureType::Roughness:
+            case MaterialTextureType::Metalness:
+            case MaterialTextureType::Occlusion:
+            case MaterialTextureType::Height:
+            case MaterialTextureType::AlphaMask:
+                return true;
+            default:
+                return false;
+        }
     }
 }

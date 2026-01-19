@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
 #include "../Resource/ResourceCache.h"
+#include "../RHI/RHI_Texture.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -82,9 +83,19 @@ namespace spartan
         size_t compute_material_hash(Material* material)
         {
             size_t hash = 17; // FNV-1a seed
+
+            // include resource state so async preparation completion triggers an update
+            hash = (hash * 31) ^ static_cast<size_t>(material->GetResourceState());
+
             for (const auto* texture : material->GetTextures())
             {
                 hash = (hash * 31) ^ reinterpret_cast<size_t>(texture);
+
+                // include texture's resource state so async texture preparation triggers an update
+                if (texture)
+                {
+                    hash = (hash * 31) ^ static_cast<size_t>(texture->GetResourceState());
+                }
             }
             for (const float prop : material->GetProperties())
             {
@@ -417,16 +428,25 @@ namespace spartan
 
             vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
 
-            // Combined loop for resource saving, filtered by type
+            // save resources filtered by type
             for (shared_ptr<IResource>& resource : resources)
             {
                 string ext;
                 switch (resource->GetResourceType())
                 {
-                    case ResourceType::Texture:  ext = EXTENSION_TEXTURE;  break;
+                    case ResourceType::Texture:
+                    {
+                        // only save textures that can be saved (compressed with data)
+                        // others will be re-imported from source path when material loads
+                        RHI_Texture* texture = static_cast<RHI_Texture*>(resource.get());
+                        if (!texture->CanSaveToFile())
+                            continue;
+                        ext = EXTENSION_TEXTURE;
+                        break;
+                    }
                     case ResourceType::Material: ext = EXTENSION_MATERIAL; break;
                     case ResourceType::Mesh:     ext = EXTENSION_MESH;     break;
-                default: continue;
+                    default: continue;
                 }
                 resource->SaveToFile(directory + resource->GetObjectName() + ext);
             }
@@ -491,7 +511,10 @@ namespace spartan
             {
                 if (FileSystem::IsEngineTextureFile(path))
                 {
-                    ResourceCache::Load<RHI_Texture>(path);
+                    if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                    {
+                        texture->PrepareForGpu();
+                    }
                 }
                 else if (FileSystem::IsEngineMaterialFile(path))
                 {
