@@ -247,8 +247,9 @@ namespace spartan
 
             // misc
             render_target(Renderer_RenderTarget::sss)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "sss");
-            render_target(Renderer_RenderTarget::reflections) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "reflections");
-            render_target(Renderer_RenderTarget::ssao)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "ssao");
+            render_target(Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "reflections");
+            render_target(Renderer_RenderTarget::ray_traced_shadows) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "ray_traced_shadows");
+            render_target(Renderer_RenderTarget::ssao)               = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "ssao");
             if (RHI_Device::IsSupportedVrs())
             { 
                 render_target(Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render / 4, height_render / 4, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs, "shading_rate");
@@ -559,6 +560,16 @@ namespace spartan
             // deferred shading for reflection hits
             shader(Renderer_Shader::light_reflections_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_reflections_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_reflections.hlsl", async);
+            
+            // ray traced shadows
+            shader(Renderer_Shader::shadows_ray_generation_r) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::shadows_ray_generation_r)->Compile(RHI_Shader_Type::RayGeneration, shader_dir + "ray_traced_shadows.hlsl", async);
+            
+            shader(Renderer_Shader::shadows_ray_miss_r) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::shadows_ray_miss_r)->Compile(RHI_Shader_Type::RayMiss, shader_dir + "ray_traced_shadows.hlsl", async);
+            
+            shader(Renderer_Shader::shadows_ray_hit_r) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::shadows_ray_hit_r)->Compile(RHI_Shader_Type::RayHit, shader_dir + "ray_traced_shadows.hlsl", async);
         }
 
         // volumetric clouds

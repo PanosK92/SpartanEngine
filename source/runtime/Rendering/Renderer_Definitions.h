@@ -212,6 +212,10 @@ namespace spartan
         reflections_ray_generation_r,
         reflections_ray_miss_r,
         reflections_ray_hit_r,
+        // ray traced shadows
+        shadows_ray_generation_r,
+        shadows_ray_miss_r,
+        shadows_ray_hit_r,
         // volumetric clouds
         cloud_noise_shape_c,
         cloud_noise_detail_c,
@@ -255,6 +259,8 @@ namespace spartan
         shadow_atlas,
         auto_exposure,
         auto_exposure_previous,
+        // ray traced shadows
+        ray_traced_shadows,
         // volumetric clouds
         cloud_noise_shape,
         cloud_noise_detail,
