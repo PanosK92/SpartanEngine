@@ -26,7 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // gi payload - carries bounced light back
 struct [raypayload] GIPayload
 {
-    float3 radiance : read(caller) : write(closesthit, miss); // bounced light color
+    float3 radiance     : read(caller) : write(caller, closesthit, miss); // bounced light color
+    uint   bounce_count : read(closesthit) : write(caller);               // current bounce depth (set by caller before trace)
 };
 
 // helper to reconstruct uint64 address from two uint32 values
@@ -105,11 +106,12 @@ void ray_gen()
     ray.Origin    = ray_origin;
     ray.Direction = ray_dir;
     ray.TMin      = 0.001f;
-    ray.TMax      = 100.0f; // limit gi range for performance
+    ray.TMax      = 100.0f; // 100m range for gi
     
     // trace
     GIPayload payload;
-    payload.radiance = float3(0, 0, 0);
+    payload.radiance     = float3(0, 0, 0);
+    payload.bounce_count = 0; // start at first bounce
     
     // touch geometry_infos to ensure it's included in the pipeline layout
     if (geometry_infos[0].vertex_count == 0xFFFFFFFF)
@@ -124,14 +126,22 @@ void ray_gen()
 [shader("miss")]
 void miss(inout GIPayload payload : SV_RayPayload)
 {
-    // ray escaped to sky - sample sky color for ambient contribution
+    // ray escaped to sky - use sky color as indirect illumination
     float3 ray_dir = WorldRayDirection();
     
-    // simple sky gradient for ambient
-    float sky_factor = saturate(ray_dir.y * 0.5f + 0.5f);
-    float3 sky_color = lerp(float3(0.1f, 0.15f, 0.2f), float3(0.4f, 0.6f, 0.9f), sky_factor);
+    // sky gradient based on ray direction (brighter at horizon, blue at zenith)
+    float sky_gradient = saturate(ray_dir.y);
+    float3 sky_zenith  = float3(0.3f, 0.5f, 0.9f);  // blue sky
+    float3 sky_horizon = float3(0.8f, 0.85f, 0.9f); // bright horizon
+    float3 sky_color   = lerp(sky_horizon, sky_zenith, sky_gradient);
     
-    payload.radiance = sky_color * 0.3f; // dim sky contribution
+    // get sun contribution for sky brightness
+    float3 light_dir   = -light_parameters[0].direction;
+    float3 light_color = light_parameters[0].color.rgb;
+    float sun_factor   = saturate(light_dir.y); // sun elevation
+    
+    // sky illumination scales with sun
+    payload.radiance = sky_color * sun_factor * 0.5f;
 }
 
 [shader("closesthit")]
@@ -201,20 +211,73 @@ void closest_hit(inout GIPayload payload : SV_RayPayload, in BuiltInTriangleInte
         }
     }
     
-    // compute hit position
-    float3 hit_position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    // compute hit position and distance
+    float hit_distance  = RayTCurrent();
+    float3 hit_position = WorldRayOrigin() + WorldRayDirection() * hit_distance;
     
     // get directional light for direct lighting at hit point
     float3 light_dir   = -light_parameters[0].direction;
-    float3 light_color = light_parameters[0].color.rgb * light_parameters[0].intensity;
+    float3 light_color = light_parameters[0].color.rgb;
+    float light_intensity = light_parameters[0].intensity;
     
-    // simple lambertian direct lighting
+    // simple lambertian direct lighting at hit point
     float n_dot_l = saturate(dot(normal_world, light_dir));
-    float3 direct_light = albedo * light_color * n_dot_l;
     
-    // add some ambient
-    float3 ambient = albedo * 0.1f;
+    // scale light intensity reasonably (intensity is in physical units)
+    float scaled_intensity = light_intensity * 0.0001f; // scale down from lux/lumens
+    float3 direct_light = albedo * light_color * n_dot_l * scaled_intensity;
     
-    // output bounced radiance (albedo * direct lighting at hit point)
-    payload.radiance = direct_light + ambient;
+    // sky ambient contribution (hemisphere above the hit point)
+    float sky_visibility = saturate(normal_world.y * 0.5f + 0.5f);
+    float3 sky_ambient   = float3(0.4f, 0.5f, 0.7f) * sky_visibility * 0.2f;
+    float3 ambient       = albedo * sky_ambient;
+    
+    // second bounce - trace another ray if we haven't exceeded max bounces
+    float3 second_bounce = float3(0, 0, 0);
+    if (payload.bounce_count < 1) // allow one more bounce (total 2 bounces)
+    {
+        // generate random direction for second bounce using hit position as seed
+        float2 noise2;
+        noise2.x = frac(sin(dot(hit_position.xy, float2(12.9898f, 78.233f))) * 43758.5453f);
+        noise2.y = frac(sin(dot(hit_position.yz, float2(39.346f, 11.135f))) * 43758.5453f);
+        
+        // cosine-weighted direction
+        float phi2       = 2.0f * PI * noise2.x;
+        float cos_theta2 = sqrt(noise2.y);
+        float sin_theta2 = sqrt(1.0f - noise2.y);
+        float3 local_dir2 = float3(cos(phi2) * sin_theta2, sin(phi2) * sin_theta2, cos_theta2);
+        
+        // build tbn from hit normal
+        float3 up2 = abs(normal_world.y) < 0.999f ? float3(0, 1, 0) : float3(1, 0, 0);
+        float3 t2  = normalize(cross(up2, normal_world));
+        float3 b2  = cross(normal_world, t2);
+        float3 ray_dir2 = normalize(t2 * local_dir2.x + b2 * local_dir2.y + normal_world * local_dir2.z);
+        
+        // setup second bounce ray
+        RayDesc ray2;
+        ray2.Origin    = hit_position + normal_world * 0.01f;
+        ray2.Direction = ray_dir2;
+        ray2.TMin      = 0.001f;
+        ray2.TMax      = 50.0f; // shorter range for second bounce
+        
+        // trace second bounce
+        GIPayload payload2;
+        payload2.radiance     = float3(0, 0, 0);
+        payload2.bounce_count = payload.bounce_count + 1;
+        
+        TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray2, payload2);
+        
+        // attenuate second bounce by albedo (energy transfer)
+        second_bounce = payload2.radiance * albedo * 0.5f;
+    }
+    
+    // distance-based falloff for indirect light
+    // gi contribution decreases with distance (but not as aggressively as 1/r^2)
+    float distance_falloff = 1.0f / (1.0f + hit_distance * 0.01f);
+    
+    // combine and output bounced radiance
+    float3 bounced = (direct_light + ambient + second_bounce) * distance_falloff;
+    
+    // boost the gi contribution for visibility
+    payload.radiance = bounced * 2.0f;
 }
