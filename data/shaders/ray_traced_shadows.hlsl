@@ -96,6 +96,17 @@ void miss(inout ShadowPayload payload : SV_RayPayload)
 [shader("closesthit")]
 void closest_hit(inout ShadowPayload payload : SV_RayPayload, in BuiltInTriangleIntersectionAttributes attribs : SV_IntersectionAttributes)
 {
-    // ray hit geometry - surface is in shadow
+    // get material from instance custom index (set to material index during tlas build)
+    uint material_index     = InstanceID();
+    MaterialParameters mat  = material_parameters[material_index];
+    
+    // transparent surfaces (glass, etc.) don't cast shadows - light passes through
+    if (mat.color.a < 1.0f)
+    {
+        payload.shadow = 1.0f; // lit - ignore this hit
+        return;
+    }
+    
+    // opaque geometry - surface is in shadow
     payload.shadow = 0.0f;
 }

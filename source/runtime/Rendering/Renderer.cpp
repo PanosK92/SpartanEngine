@@ -1384,7 +1384,10 @@ namespace spartan
             }
             else if (last_instance_count != 0)
             {
-                SP_LOG_WARNING("Ray tracing: no valid instances for TLAS (check that renderables have BLAS and materials)");
+                // no instances (world cleared/loading) - destroy tlas to prevent stale blas references
+                // it will be recreated when new instances are available
+                SP_LOG_INFO("Ray tracing: destroying TLAS (world changed)");
+                tlas = nullptr;
                 last_instance_count = 0;
             }
         }
