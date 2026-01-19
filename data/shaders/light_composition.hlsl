@@ -58,7 +58,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         distance_from_camera = surface.camera_to_pixel_length;
         
         // add ray traced global illumination (indirect diffuse)
-        if (is_ray_traced_gi_enabled())
+        if (is_restir_pt_enabled())
         {
             float3 gi = tex6.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
             light_diffuse += gi * surface.albedo;

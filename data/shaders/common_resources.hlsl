@@ -235,7 +235,7 @@ bool is_taa_enabled()                    { return any(buffer_frame.taa_jitter_cu
 bool is_ray_traced_reflections_enabled() { return buffer_frame.options & uint(1U << 0); }
 bool is_ssao_enabled()                   { return buffer_frame.options & uint(1U << 1); }
 bool is_ray_traced_shadows_enabled()     { return buffer_frame.options & uint(1U << 2); }
-bool is_ray_traced_gi_enabled()          { return buffer_frame.options & uint(1U << 3); }
+bool is_restir_pt_enabled()              { return buffer_frame.options & uint(1U << 3); }
 matrix pass_get_transform_previous() { return buffer_pass.values; }
 float2 pass_get_f2_value()           { return float2(buffer_pass.values._m23, buffer_pass.values._m30); }
 float3 pass_get_f3_value()           { return float3(buffer_pass.values._m00, buffer_pass.values._m01, buffer_pass.values._m02); }

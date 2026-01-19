@@ -184,7 +184,7 @@ namespace spartan
     TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,  "screen space ambient occlusion");
     TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         0.0f,  "ray traced reflections");
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             0.0f,  "ray traced directional shadows");
-    TConsoleVar<float> cvar_ray_traced_gi                  ("r.ray_traced_gi",                  0.0f,  "ray traced global illumination (one bounce)");
+    TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,  "restir path tracing global illumination");
     TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,  "motion blur");
     TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,  "depth of field");
     TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,  "film grain effect");
@@ -387,7 +387,7 @@ namespace spartan
             tlas                  = nullptr;
             m_std_reflections     = nullptr;
             m_std_shadows         = nullptr;
-            m_std_gi              = nullptr;
+            m_std_restir          = nullptr;
         }
 
         RHI_VendorTechnology::Shutdown();
@@ -706,7 +706,7 @@ namespace spartan
         m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(), 1 << 0);
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
         m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>(),     1 << 2);
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_gi.GetValueAs<bool>(),          1 << 3);
+        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>(),              1 << 3);
 
         // set
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
@@ -1263,7 +1263,7 @@ namespace spartan
     void Renderer::UpdateAccelerationStructures(RHI_CommandList* cmd_list)
     {
         // check if any ray tracing feature is enabled
-        bool ray_tracing_enabled = cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_ray_traced_shadows.GetValueAs<bool>() || cvar_ray_traced_gi.GetValueAs<bool>();
+        bool ray_tracing_enabled = cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_ray_traced_shadows.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>();
         if (!ray_tracing_enabled)
             return;
 

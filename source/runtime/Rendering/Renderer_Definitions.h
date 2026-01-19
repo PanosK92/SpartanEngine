@@ -139,6 +139,12 @@ namespace spartan
         // volumetric clouds 3D noise
         tex3d_cloud_shape  = 19,
         tex3d_cloud_detail = 20,
+        // restir reservoir srv bindings (for temporal/spatial read)
+        reservoir_prev0    = 21,
+        reservoir_prev1    = 22,
+        reservoir_prev2    = 23,
+        reservoir_prev3    = 24,
+        reservoir_prev4    = 25,
     };
 
     enum class Renderer_BindingsUav
@@ -153,6 +159,12 @@ namespace spartan
         sb_spd        = 7,
         tex_spd       = 8,
         geometry_info = 20, // ray tracing geometry info buffer
+        // restir reservoir uav bindings
+        reservoir0    = 21,
+        reservoir1    = 22,
+        reservoir2    = 23,
+        reservoir3    = 24,
+        reservoir4    = 25,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -216,10 +228,12 @@ namespace spartan
         shadows_ray_generation_r,
         shadows_ray_miss_r,
         shadows_ray_hit_r,
-        // ray traced gi
-        gi_ray_generation_r,
-        gi_ray_miss_r,
-        gi_ray_hit_r,
+        // restir path tracing gi
+        restir_pt_ray_generation_r,
+        restir_pt_ray_miss_r,
+        restir_pt_ray_hit_r,
+        restir_pt_temporal_c,
+        restir_pt_spatial_c,
         // volumetric clouds
         cloud_noise_shape_c,
         cloud_noise_detail_c,
@@ -265,8 +279,20 @@ namespace spartan
         auto_exposure_previous,
         // ray traced shadows
         ray_traced_shadows,
-        // ray traced gi
-        ray_traced_gi,
+        // restir path tracing output
+        restir_output,
+        // restir reservoir buffers (current frame)
+        restir_reservoir0,
+        restir_reservoir1,
+        restir_reservoir2,
+        restir_reservoir3,
+        restir_reservoir4,
+        // restir reservoir buffers (previous frame for temporal)
+        restir_reservoir_prev0,
+        restir_reservoir_prev1,
+        restir_reservoir_prev2,
+        restir_reservoir_prev3,
+        restir_reservoir_prev4,
         // volumetric clouds
         cloud_noise_shape,
         cloud_noise_detail,
