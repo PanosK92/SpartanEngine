@@ -64,6 +64,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_ssao;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
     extern TConsoleVar<float> cvar_ray_traced_shadows;
+    extern TConsoleVar<float> cvar_ray_traced_gi;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;
     extern TConsoleVar<float> cvar_film_grain;
@@ -208,6 +209,7 @@ namespace spartan
         static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list);
         static void Pass_RayTracedReflections(RHI_CommandList* cmd_list);
         static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
+        static void Pass_RayTracedGlobalIllumination(RHI_CommandList* cmd_list);
         static void Pass_Light_Reflections(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
@@ -289,6 +291,7 @@ namespace spartan
         static std::vector<ShadowSlice> m_shadow_slices;
         static std::unique_ptr<RHI_Buffer> m_std_reflections; // it temporarily lives here
         static std::unique_ptr<RHI_Buffer> m_std_shadows;     // shader binding table for ray traced shadows
+        static std::unique_ptr<RHI_Buffer> m_std_gi;          // shader binding table for ray traced gi
         static uint32_t m_count_active_lights;
     };
 }

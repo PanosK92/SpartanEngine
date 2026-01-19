@@ -53,6 +53,7 @@ namespace spartan
     uint32_t Renderer::m_draw_calls_prepass_count;
     unique_ptr<RHI_Buffer> Renderer::m_std_reflections;
     unique_ptr<RHI_Buffer> Renderer::m_std_shadows;
+    unique_ptr<RHI_Buffer> Renderer::m_std_gi;
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
@@ -187,6 +188,7 @@ namespace spartan
                 Pass_ShadowMaps(cmd_list_graphics_present);
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
                 Pass_RayTracedShadows(cmd_list_graphics_present);
+                Pass_RayTracedGlobalIllumination(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
                 Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent); // compose all light (diffuse, specular, etc).
@@ -1054,6 +1056,83 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_RayTracedGlobalIllumination(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* tex_gi = GetRenderTarget(Renderer_RenderTarget::ray_traced_gi);
+        
+        // clear once if disabled
+        static bool cleared = false;
+        if (!cvar_ray_traced_gi.GetValueAs<bool>())
+        {
+            if (!cleared)
+            {
+                cmd_list->ClearTexture(tex_gi, Color::standard_black);
+                cleared = true;
+            }
+            return;
+        }
+        cleared = false;
+        
+        // validate ray tracing support
+        if (!RHI_Device::IsSupportedRayTracing())
+            return;
+            
+        RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
+        if (!tlas)
+            return;
+        
+        // render
+        cmd_list->BeginTimeblock("ray_traced_gi");
+        {
+            // get shaders
+            RHI_Shader* shader_rgen = GetShader(Renderer_Shader::gi_ray_generation_r);
+            RHI_Shader* shader_miss = GetShader(Renderer_Shader::gi_ray_miss_r);
+            RHI_Shader* shader_hit  = GetShader(Renderer_Shader::gi_ray_hit_r);
+            
+            if (!shader_rgen || !shader_miss || !shader_hit)
+                return;
+            if (!shader_rgen->IsCompiled() || !shader_miss->IsCompiled() || !shader_hit->IsCompiled())
+                return;
+            
+            // set pipeline state for ray tracing
+            RHI_PipelineState pso;
+            pso.name                   = "ray_traced_gi";
+            pso.shaders[RayGeneration] = shader_rgen;
+            pso.shaders[RayMiss]       = shader_miss;
+            pso.shaders[RayHit]        = shader_hit;
+            cmd_list->SetPipelineState(pso);
+            
+            // create sbt if needed (once)
+            if (!m_std_gi)
+            {
+                uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+                m_std_gi = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "gi_sbt");
+            }
+            // update handles every frame in case pipeline changed
+            m_std_gi->UpdateHandles(cmd_list);
+            
+            // set textures and acceleration structure
+            SetCommonTextures(cmd_list);
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            
+            // geometry info buffer for vertex/index access in hit shader
+            GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
+            cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            
+            // set output texture (as UAV for ray tracing write)
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
+            
+            // trace full screen
+            uint32_t width  = tex_gi->GetWidth();
+            uint32_t height = tex_gi->GetHeight();
+            cmd_list->TraceRays(width, height, m_std_gi.get());
+            
+            // ensure writes complete before the texture is read
+            cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)
     {
         // get resources
@@ -1255,6 +1334,7 @@ namespace spartan
         RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        RHI_Texture* tex_gi               = GetRenderTarget(Renderer_RenderTarget::ray_traced_gi);
 
         cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
 
@@ -1278,6 +1358,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex6, tex_gi);
 
             // render
             cmd_list->Dispatch(tex_out, cvar_resolution_scale.GetValue());

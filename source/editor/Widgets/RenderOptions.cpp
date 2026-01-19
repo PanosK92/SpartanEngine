@@ -291,6 +291,7 @@ void RenderOptions::OnTickVisible()
                     ImGui::BeginDisabled(!RHI_Device::IsSupportedRayTracing());
                     option_check_box("Reflections", "r.ray_traced_reflections");
                     option_check_box("Shadows", "r.ray_traced_shadows");
+                    option_check_box("Global Illumination", "r.ray_traced_gi");
                     ImGui::EndDisabled();
                 }
 
