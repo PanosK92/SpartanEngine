@@ -19,12 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-
 //= INCLUDES ==================
 #include "Task_Manager.h"
-
 #include "FileSystem/FileSystem.h"
-
+#include "Logging/Log.h"
 //=============================
 
 //= NAMESPACES =====
@@ -34,11 +32,11 @@ using namespace tf;
 
 namespace spartan
 {
-/**
- * @brief Converts a Task_Priority enum to an integer value
- * @param priority The priority level of the task
- * @return An integer representing the priority level
- */
+    /**
+     * @brief Converts a Task_Priority enum to an integer value
+     * @param priority The priority level of the task
+     * @return An integer representing the priority level
+     */
     static int PriorityLevelToInt(Task_Priority priority)
     {
         switch (priority)
@@ -67,9 +65,42 @@ namespace spartan
     }
 
     void Task_Manager::DumpGraph(const Taskflow& taskflow, const char* filename)
-    { 
-        taskflow.dump(std::cout);
-        //FileSystem::WriteTextFile(filename);
+    {
+        // Capture the DOT graph output into a string
+        std::ostringstream oss;
+        taskflow.dump(oss);
+        const std::string dotContents = oss.str();
+
+        // Prepare output directory inside Spartan working directory
+        const std::string graphsDir = FileSystem::GetWorkingDirectory() + "/TaskGraphs/";
+        if (!FileSystem::Exists(graphsDir))
+        {
+            if (!FileSystem::CreateDirectory_(graphsDir))
+            {
+                SP_LOG_ERROR("Task_Manager::DumpGraph - failed to create directory: %s", graphsDir.c_str())
+                return;
+            }
+        }
+
+        // Build file path and ensure .dot extension
+        std::string filePath = graphsDir + filename;
+        if (FileSystem::GetExtensionFromFilePath(filePath) != ".dot")
+        {
+            filePath = FileSystem::ReplaceExtension(filePath, ".dot");
+        }
+
+        // Write the DOT content to disk
+        std::ofstream out(filePath, std::ios::out | std::ios::binary);
+        if (!out)
+        {
+            SP_LOG_ERROR("Task_Manager::DumpGraph - failed to open file for writing: %s", filePath.c_str())
+            return;
+        }
+
+        out << dotContents;
+        out.close();
+
+        SP_LOG_INFO("Task_Manager::DumpGraph - dumped task graph to: %s", filePath.c_str())
     }
 
 }  // namespace spartan

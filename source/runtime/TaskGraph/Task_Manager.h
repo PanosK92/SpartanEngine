@@ -53,13 +53,30 @@ namespace spartan
         Task_Manager();
         ~Task_Manager();
 
+        /**
+         * @brief Executes the Taskflow using the Executor.
+         */
         void Execute();
 
+        /**
+         * @brief Adds a task to the given Taskflow with an optional name.
+         *
+         * @tparam T The type of the callable to be added as a task.
+         * @param taskflow The Taskflow instance to which the task will be added.
+         * @param callable The callable object to be added as a task.
+         * @param name An optional name for the task.
+         * @return The created Task object.
+         */
         template <typename T>
-        Task AddTask(Taskflow& taskflow, T&& callable, const char* name)
+        Task AddTask(Taskflow& taskflow, T&& callable, std::string_view name = {})
         {
             Task task = taskflow.emplace(std::forward<T>(callable));
-            task.name(name);
+            if (!name.empty())
+            {
+                // Task::name accepts a std::string (or const std::string&).
+                // Create a temporary std::string so Task stores its own copy.
+                task.name(std::string(name));
+            }
             return task;
         }
         
@@ -73,8 +90,9 @@ namespace spartan
         static void DumpGraph(const Taskflow& taskflow, const char* filename);
 
     private:
-        Executor m_executor;
-        Taskflow m_taskflow;
+        Executor m_Executor;  // The Executor to run the Taskflow
+        Taskflow m_Taskflow;  // The Taskflow instance
 
     };
+
 }
