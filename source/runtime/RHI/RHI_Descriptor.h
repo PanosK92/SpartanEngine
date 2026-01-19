@@ -27,9 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    class RHI_Descriptor
+    // layout descriptor - immutable, from shader reflection
+    struct RHI_Descriptor
     {
-    public:
         RHI_Descriptor() = default;
 
         RHI_Descriptor(
@@ -42,41 +42,68 @@ namespace spartan
             const bool as_array,
             const uint32_t array_length
         )
-        {
-            this->type         = type;
-            this->layout       = layout;
-            this->slot         = slot;
-            this->stage        = stage;
-            this->name         = name;
-            this->struct_size  = struct_size;
-            this->as_array     = as_array;
-            this->array_length = array_length;
-        }
+            : type(type)
+            , layout(layout)
+            , slot(slot)
+            , stage(stage)
+            , name(name)
+            , struct_size(struct_size)
+            , as_array(as_array)
+            , array_length(array_length)
+        {}
 
         bool IsStorage() const { return type == RHI_Descriptor_Type::TextureStorage; }
 
-        // properties that affect the descriptor hash (static - reflected)
-        uint32_t slot  = 0;
-        uint32_t stage = 0;
-
-        // properties that affect the descriptor set hash (dynamic - renderer)
-        uint32_t mip       = 0;
-        uint32_t mip_range = 0;
-        void* data         = nullptr;
-
-        // properties that don't affect any hash
+        // layout properties (from reflection)
         RHI_Descriptor_Type type = RHI_Descriptor_Type::Max;
         RHI_Image_Layout layout  = RHI_Image_Layout::Max;
-        uint64_t range           = 0;
-        uint32_t dynamic_offset  = 0;
+        uint32_t slot            = 0;
+        uint32_t stage           = 0;
         uint32_t struct_size     = 0;
         uint32_t array_length    = 0;
         bool as_array            = false;
-
-        // debugging
         std::string name;
+    };
 
-    private:
-        uint64_t m_hash = 0;
+    // binding state - mutable, set at runtime
+    struct RHI_DescriptorBinding
+    {
+        void* resource           = nullptr;
+        uint64_t range           = 0;
+        uint32_t dynamic_offset  = 0;
+        uint32_t mip             = 0;
+        uint32_t mip_range       = 0;
+        RHI_Image_Layout layout  = RHI_Image_Layout::Max;
+
+        bool IsBound() const { return resource != nullptr; }
+
+        void Reset()
+        {
+            resource       = nullptr;
+            range          = 0;
+            dynamic_offset = 0;
+            mip            = 0;
+            mip_range      = 0;
+            layout         = RHI_Image_Layout::Max;
+        }
+
+        uint64_t GetHash() const
+        {
+            uint64_t hash = reinterpret_cast<uint64_t>(resource);
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(mip));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(mip_range));
+            return hash;
+        }
+    };
+
+    // combined descriptor with binding for descriptor set creation
+    struct RHI_DescriptorWithBinding
+    {
+        RHI_Descriptor descriptor;
+        RHI_DescriptorBinding binding;
+
+        uint32_t GetSlot() const { return descriptor.slot; }
+        RHI_Descriptor_Type GetType() const { return descriptor.type; }
+        bool IsBound() const { return binding.IsBound(); }
     };
 }

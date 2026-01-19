@@ -64,15 +64,27 @@ namespace spartan
 
         void compress(RHI_Texture* texture, const uint32_t mip_index, const RHI_Format dest_format)
         {
+            // validate mip data exists
+            RHI_Texture_Mip* mip = texture->GetMip(0, mip_index);
+            if (!mip || mip->bytes.empty())
+            {
+                SP_LOG_ERROR("Texture '%s' mip %u has no data, skipping compression", texture->GetObjectName().c_str(), mip_index);
+                return;
+            }
+
+            // calculate dimensions for this mip level (clamp to minimum of 1, same as mip generation)
+            uint32_t mip_width  = max(1u, texture->GetWidth() >> mip_index);
+            uint32_t mip_height = max(1u, texture->GetHeight() >> mip_index);
+
             // source texture
             CMP_Texture source_texture = {};
             source_texture.format      = to_cmp_format(texture->GetFormat());
             source_texture.dwSize      = sizeof(CMP_Texture);
-            source_texture.dwWidth     = texture->GetWidth() >> mip_index;
-            source_texture.dwHeight    = texture->GetHeight() >> mip_index;
+            source_texture.dwWidth     = mip_width;
+            source_texture.dwHeight    = mip_height;
             source_texture.dwPitch     = source_texture.dwWidth * texture->GetBytesPerPixel();
-            source_texture.dwDataSize  = static_cast<uint32_t>(texture->GetMip(0, mip_index).bytes.size());
-            source_texture.pData       = reinterpret_cast<uint8_t*>(texture->GetMip(0, mip_index).bytes.data());
+            source_texture.dwDataSize  = static_cast<uint32_t>(mip->bytes.size());
+            source_texture.pData       = reinterpret_cast<uint8_t*>(mip->bytes.data());
 
             // destination texture
             CMP_Texture destination_texture = {};
@@ -96,7 +108,7 @@ namespace spartan
             }
 
             // update texture with compressed data
-            texture->GetMip(0, mip_index).bytes = destination_data;
+            texture->GetMip(0, mip_index)->bytes = destination_data;
         }
 
         void compress(RHI_Texture* texture)
@@ -174,15 +186,12 @@ namespace spartan
 
         uint32_t compute_count(uint32_t width, uint32_t height)
         {
-            uint32_t mip_count = 0;
+            uint32_t mip_count = 1; // base level counts
             while (width > 1 || height > 1)
             {
-                width  >>= 1;
-                height >>= 1;
-                if (width > 0 && height > 0)
-                {
-                    mip_count++;
-                }
+                width  = max(1u, width >> 1);
+                height = max(1u, height >> 1);
+                mip_count++;
             }
             return mip_count;
         }
@@ -245,13 +254,20 @@ namespace spartan
         m_channel_count    = rhi_to_format_channel_count(format);
         m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
-        PrepareForGpu();
+        // render targets need gpu resource immediately even without cpu data
+        // other textures with empty slices will have data filled later
+        bool is_render_target = m_flags & (RHI_Texture_Rtv | RHI_Texture_Uav);
+        bool will_fill_data_later = m_slices.empty() && !is_render_target;
+        if (!will_fill_data_later)
+        {
+            PrepareForGpu();
+        }
 
-        if (!compressonator::registered)
+        bool expected = false;
+        if (compressonator::registered.compare_exchange_strong(expected, true))
         {
             string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
             Settings::RegisterThirdPartyLib("AMD Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
-            compressonator::registered = true;
         }
     }
 
@@ -265,19 +281,27 @@ namespace spartan
         RHI_DestroyResource();
     }
 
+    bool RHI_Texture::CanSaveToFile() const
+    {
+        // requires cpu bytes and compressed format
+        bool has_data   = !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty();
+        bool compressed = IsCompressedFormat(m_format);
+        return has_data && compressed;
+    }
+
     void spartan::RHI_Texture::SaveToFile(const string& file_path)
     {
-        // require cpu nytes
+        // require cpu bytes
         if (m_slices.empty() || m_slices[0].mips.empty())
         {
-            SP_LOG_ERROR("SaveToFile failed for %s because no CPU-side bits are present. Use RHI_Texture_KeepData when preparing or add a readback path.", file_path.c_str());
+            SP_LOG_WARNING("SaveToFile skipped for %s - no CPU-side data (will re-import from source)", file_path.c_str());
             return;
         }
     
         // require compressed native format
         if (!IsCompressedFormat(m_format))
         {
-            SP_LOG_ERROR("SaveToFile expects a compressed native format. Current format is not compressed.");
+            SP_LOG_WARNING("SaveToFile skipped for %s - not compressed (will re-import from source)", file_path.c_str());
             return;
         }
     
@@ -304,7 +328,7 @@ namespace spartan
             return;
         }
     
-        if (!write_all(ofs, &hdr, sizeof(hdr)))
+        if (!binary_format::write_all(ofs, &hdr, sizeof(hdr)))
         {
             SP_LOG_ERROR("SaveToFile failed to write header for %s", file_path.c_str());
             return;
@@ -371,7 +395,7 @@ namespace spartan
             }
 
             binary_format::header hdr{};
-            if (!read_all(ifs, &hdr, sizeof(hdr)))
+            if (!binary_format::read_all(ifs, &hdr, sizeof(hdr)))
             {
                 SP_LOG_ERROR("Failed to read header for %s", file_path.c_str());
                 return;
@@ -427,48 +451,43 @@ namespace spartan
         ComputeMemoryUsage();
         m_resource_state = ResourceState::Max;
 
-        if (!(m_flags & RHI_Texture_DontPrepareForGpu))
-        { 
+        // automatically prepare the texture for gpu use
         PrepareForGpu();
-        }
 
         ProgressTracker::SetGlobalLoadingState(false);
     }
 
-    RHI_Texture_Mip& RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)
+    RHI_Texture_Mip* RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)
     {
-        static RHI_Texture_Mip empty;
-
         if (array_index >= m_slices.size())
-            return empty;
+            return nullptr;
 
         if (mip_index >= m_slices[array_index].mips.size())
-            return empty;
+            return nullptr;
 
-        return m_slices[array_index].mips[mip_index];
+        return &m_slices[array_index].mips[mip_index];
     }
 
-    RHI_Texture_Slice& RHI_Texture::GetSlice(const uint32_t array_index)
+    RHI_Texture_Slice* RHI_Texture::GetSlice(const uint32_t array_index)
     {
-        static RHI_Texture_Slice empty;
-
         if (array_index >= m_slices.size())
-            return empty;
+            return nullptr;
 
-        return m_slices[array_index];
+        return &m_slices[array_index];
     }
 
-    void RHI_Texture::AllocateMip()
+    void RHI_Texture::AllocateMip(uint32_t slice_index /*= 0*/)
     {
-        if (m_slices.empty())
+        // ensure slices exist up to the requested index
+        while (m_slices.size() <= slice_index)
         { 
             m_slices.emplace_back();
         }
 
-        RHI_Texture_Mip& mip = m_slices[0].mips.emplace_back();
+        RHI_Texture_Mip& mip = m_slices[slice_index].mips.emplace_back();
         m_depth              = static_cast<uint32_t>(m_slices.size());
-        m_mip_count          = static_cast<uint32_t>(m_slices[0].mips.size());
-        int32_t mip_index    = static_cast<uint32_t>(m_slices[0].mips.size()) - 1;
+        m_mip_count          = static_cast<uint32_t>(m_slices[slice_index].mips.size());
+        uint32_t mip_index   = static_cast<uint32_t>(m_slices[slice_index].mips.size()) - 1;
         uint32_t width       = max(1u, m_width >> mip_index);
         uint32_t height      = max(1u, m_height >> mip_index);
         uint32_t depth       = (GetType() == RHI_Texture_Type::Type3D) ? (m_depth >> mip_index) : 1;
@@ -480,14 +499,16 @@ namespace spartan
     {
         m_object_size = 0;
 
-        for (uint32_t array_index = 0; array_index < m_depth; array_index++)
+        uint32_t array_length = (m_type == RHI_Texture_Type::Type3D) ? 1 : m_depth;
+        for (uint32_t array_index = 0; array_index < array_length; array_index++)
         {
             for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
             {
                 const uint32_t mip_width  = max(1u, m_width >> mip_index);
                 const uint32_t mip_height = max(1u, m_height >> mip_index);
+                const uint32_t mip_depth  = (m_type == RHI_Texture_Type::Type3D) ? max(1u, m_depth >> mip_index) : 1;
 
-                m_object_size += CalculateMipSize(mip_width, mip_height, m_depth, m_format, m_bits_per_channel, m_channel_count);
+                m_object_size += CalculateMipSize(mip_width, mip_height, mip_depth, m_format, m_bits_per_channel, m_channel_count);
             }
         }
     }
@@ -532,75 +553,53 @@ namespace spartan
 
     void RHI_Texture::PrepareForGpu()
     {
-        SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared textures can be prepared");
+        // skip if already prepared or currently preparing
+        if (m_resource_state != ResourceState::Max)
+            return;
+
         m_resource_state = ResourceState::PreparingForGpu;
 
-        bool is_not_compressed   = !IsCompressedFormat();                      // the bistro world loads pre-compressed textures
-        bool is_material_texture = IsMaterialTexture();                        // render targets or textures which are written to in compute passes, don't need mip and compression
-        bool can_be_prepared     = !(m_flags & RHI_Texture_DontPrepareForGpu); // some textures delay preperation because the material packs their data in a custom way before preparing them
+        // skip textures with invalid dimensions (failed to load)
+        if (m_width == 0 || m_height == 0)
+        {
+            SP_LOG_ERROR("Texture '%s' has invalid dimensions (%dx%d), skipping preparation", m_object_name.c_str(), m_width, m_height);
+            m_resource_state = ResourceState::Max;
+            return;
+        }
 
-        if (can_be_prepared)
-        { 
-            if (is_not_compressed && is_material_texture)
+        bool is_not_compressed   = !IsCompressedFormat();                    // the bistro world loads pre-compressed textures
+        bool is_material_texture = IsMaterialTexture() && !m_slices.empty(); // render targets or textures which are written to in compute passes, don't need mip and compression
+
+        if (is_not_compressed && is_material_texture)
+        {
+            // generate mip chain for all slices
+            uint32_t mip_count = mips::compute_count(m_width, m_height);
+            for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(m_slices.size()); slice_index++)
             {
-                SP_ASSERT(!m_slices.empty());
-                SP_ASSERT(!m_slices.front().mips.empty());
-
-                // generate mip chain
-                uint32_t mip_count = mips::compute_count(m_width, m_height);
                 for (uint32_t mip_index = 1; mip_index < mip_count; mip_index++)
                 {
-                    AllocateMip();
+                    AllocateMip(slice_index);
 
                     mips::downsample_bilinear(
-                        m_slices[0].mips[mip_index - 1].bytes, // larger
-                        m_slices[0].mips[mip_index].bytes,     // smaller
-                        max(1u, m_width  >> (mip_index - 1)),  // larger width
-                        max(1u, m_height >> (mip_index - 1))   // larger height
+                        m_slices[slice_index].mips[mip_index - 1].bytes, // larger
+                        m_slices[slice_index].mips[mip_index].bytes,     // smaller
+                        max(1u, m_width  >> (mip_index - 1)),            // larger width
+                        max(1u, m_height >> (mip_index - 1))             // larger height
                     );
                 }
-
-                // for thumbnails, find the appropriate mip level close to 128x128 and make it the only mip
-                if (m_flags & RHI_Texture_Thumbnail)
-                {
-                    uint32_t target_mip = 0;
-                    for (uint32_t i = 0; i < m_slices[0].mips.size(); i++)
-                    {
-                        uint32_t mip_width  = max(1u, m_width >> i);
-                        uint32_t mip_height = max(1u, m_height >> i);
-                        
-                        if (mip_width <= 128 && mip_height <= 128)
-                        {
-                            target_mip = i;
-                            break;
-                        }
-                    }
-
-                    // move the target mip to the top
-                    if (target_mip > 0)
-                    {
-                        m_slices[0].mips[0] = move(m_slices[0].mips[target_mip]);
-                        m_width             = max(1u, m_width >> target_mip);
-                        m_height            = max(1u, m_height >> target_mip);
-                    }
-                    
-                    // clear all other mips
-                    m_slices[0].mips.resize(1);
-                    m_mip_count = static_cast<uint32_t>(m_slices[0].mips.size());
-                }
-
-                // compress
-                bool compress       = m_flags & RHI_Texture_Compress;
-                bool not_compressed = !IsCompressedFormat();
-                if (compress && not_compressed)
-                {
-                    compressonator::compress(this);
-                }
             }
-            
-            // upload to gpu
-            SP_ASSERT(RHI_CreateResource());
+
+            // compress
+            bool compress       = m_flags & RHI_Texture_Compress;
+            bool not_compressed = !IsCompressedFormat();
+            if (compress && not_compressed)
+            {
+                compressonator::compress(this);
+            }
         }
+        
+        // upload to gpu
+        SP_ASSERT(RHI_CreateResource());
 
         ComputeMemoryUsage();
 
@@ -641,8 +640,8 @@ namespace spartan
                 block_size = 8;
                 break;
             case RHI_Format::BC3_Unorm:
-            case RHI_Format::BC7_Unorm:
             case RHI_Format::BC5_Unorm:
+            case RHI_Format::BC7_Unorm:
                 block_size = 16;
                 break;
             case RHI_Format::ASTC: // VK_FORMAT_ASTC_4x4_UNORM_BLOCK

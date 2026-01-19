@@ -56,8 +56,15 @@ namespace spartan
         static void* GetHandleRaw();
         static void Close();
         static bool IsMinimized();
+        static bool IsMaximized();
         static bool IsFullScreen();
         static bool WantsToClose();
+        static void Restore();
+
+        // custom title bar
+        static void SetTitleBarHeight(float height);
+        static void SetTitleBarButtonWidth(float width);
+        static void SetTitleBarHovered(bool hovered);
 
     private:
         static void CreateAndShowSplashScreen();

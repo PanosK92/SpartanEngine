@@ -72,9 +72,9 @@ namespace ImGuiSp
     static bool button(const char* label, const ImVec2& size = ImVec2(0, 0))
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+        // use label as the id - cursor position was causing id changes between
+        // frames due to floating point precision
         bool result = ImGui::Button(label, size);
-        ImGui::PopID();
         ImGui::PopStyleVar();
         return result;
     }
@@ -102,7 +102,10 @@ namespace ImGuiSp
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         }
 
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+        // use the texture pointer as a stable id - cursor position was causing
+        // id changes between frames due to floating point precision, which caused
+        // clicks to not register properly (requiring multiple clicks)
+        ImGui::PushID(texture);
         bool result = ImGui::ImageButton
         (
             "",                                     // str_id

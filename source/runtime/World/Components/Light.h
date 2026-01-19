@@ -41,6 +41,7 @@ namespace spartan
         Directional,
         Point,
         Spot,
+        Area,
         Max
     };
 
@@ -121,6 +122,12 @@ namespace spartan
         void SetAngle(float angle_rad);
         auto GetAngle() const { return m_angle_rad; }
 
+        // area light dimensions
+        void SetAreaWidth(float width);
+        float GetAreaWidth() const { return m_area_width; }
+        void SetAreaHeight(float height);
+        float GetAreaHeight() const { return m_area_height; }
+
         // matrices
         const math::Matrix GetViewProjectionMatrix(uint32_t index) const { return m_matrix_view[index] * m_matrix_projection[index]; }
 
@@ -168,6 +175,8 @@ namespace spartan
         LightPreset m_preset             = LightPreset::custom;
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
+        float m_area_width               = 1.0f;  // area light width in meters
+        float m_area_height              = 1.0f;  // area light height in meters
         uint32_t m_index                 = 0;
         math::BoundingBox m_bounding_box = math::BoundingBox::Zero;
         math::Vector3 m_far_cascade_min  = math::Vector3::Zero;

@@ -131,7 +131,11 @@ namespace spartan
             std::vector<math::Matrix>& transforms_out
         );
 
-        // io
+        // component io
+        void Save(pugi::xml_node& node) override;
+        void Load(pugi::xml_node& node) override;
+
+        // cache io
         void SaveToFile(const char* file_path);
         void LoadFromFile(const char* file_path);
 

@@ -233,13 +233,13 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
-        if (GetOption<bool>(Renderer_Option::PickingRay))
+        if (cvar_picking_ray.GetValueAs<bool>())
         {
             Ray ray = World::GetCamera()->ComputePickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * World::GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         
-        if (GetOption<bool>(Renderer_Option::Lights))
+        if (cvar_lights.GetValueAs<bool>())
         {
             if (Camera* camera = World::GetCamera())
             {
@@ -285,12 +285,38 @@ namespace spartan
                             DrawLine(pos_start, pos_start + pos_end_down);
                             DrawLine(pos_start, pos_start + pos_end_left);
                         }
+                        else if (light->GetLightType() == LightType::Area)
+                        {
+                            // area light is a rectangular emitter
+                            Vector3 center     = light->GetEntity()->GetPosition();
+                            Vector3 right      = light->GetEntity()->GetRight();
+                            Vector3 up         = light->GetEntity()->GetUp();
+                            Vector3 forward    = light->GetEntity()->GetForward();
+                            float half_width   = light->GetAreaWidth() * 0.5f;
+                            float half_height  = light->GetAreaHeight() * 0.5f;
+
+                            // compute the four corners of the rectangle
+                            Vector3 corner_tl = center - right * half_width + up * half_height; // top-left
+                            Vector3 corner_tr = center + right * half_width + up * half_height; // top-right
+                            Vector3 corner_br = center + right * half_width - up * half_height; // bottom-right
+                            Vector3 corner_bl = center - right * half_width - up * half_height; // bottom-left
+
+                            // draw the rectangle outline
+                            DrawLine(corner_tl, corner_tr);
+                            DrawLine(corner_tr, corner_br);
+                            DrawLine(corner_br, corner_bl);
+                            DrawLine(corner_bl, corner_tl);
+
+                            // draw direction indicator (arrow from center pointing forward)
+                            float arrow_length = min(half_width, half_height) * 0.5f;
+                            DrawDirectionalArrow(center, center + forward * arrow_length, arrow_length * 0.3f);
+                        }
                     }
                 }
             }
         }
         
-        if (GetOption<bool>(Renderer_Option::Aabb))
+        if (cvar_aabb.GetValueAs<bool>())
         {
             auto get_color = [](Renderable* renderable)
             {

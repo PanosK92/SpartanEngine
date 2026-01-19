@@ -32,6 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Core/ThreadPool.h"
 #include "../../Core/ProgressTracker.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //============================================
 
 //= NAMESPACES ===============
@@ -457,7 +460,7 @@ namespace spartan
             bool create_border
         )
         {
-            vector<byte> height_data = height_texture->GetMip(0, 0).bytes;
+            vector<byte> height_data = height_texture->GetMip(0, 0)->bytes;
             SP_ASSERT(height_data.size() > 0);
         
             // map texture bytes to height values
@@ -1028,6 +1031,54 @@ namespace spartan
         m_height_map_seed = nullptr;
     }
 
+    void Terrain::Save(pugi::xml_node& node)
+    {
+        // height map seed texture path
+        if (m_height_map_seed)
+        {
+            node.append_attribute("height_map_path") = m_height_map_seed->GetResourceFilePath().c_str();
+        }
+
+        // configurable parameters
+        node.append_attribute("min_y")         = m_min_y;
+        node.append_attribute("max_y")         = m_max_y;
+        node.append_attribute("level_sea")     = m_level_sea;
+        node.append_attribute("level_snow")    = m_level_snow;
+        node.append_attribute("smoothing")     = m_smoothing;
+        node.append_attribute("density")       = m_density;
+        node.append_attribute("scale")         = m_scale;
+        node.append_attribute("create_border") = m_create_border;
+    }
+
+    void Terrain::Load(pugi::xml_node& node)
+    {
+        // height map seed texture
+        string height_map_path = node.attribute("height_map_path").as_string("");
+        if (!height_map_path.empty())
+        {
+            if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(height_map_path))
+            {
+                m_height_map_seed = texture.get();
+            }
+        }
+
+        // configurable parameters
+        m_min_y         = node.attribute("min_y").as_float(-64.0f);
+        m_max_y         = node.attribute("max_y").as_float(256.0f);
+        m_level_sea     = node.attribute("level_sea").as_float(0.0f);
+        m_level_snow    = node.attribute("level_snow").as_float(400.0f);
+        m_smoothing     = node.attribute("smoothing").as_uint(0);
+        m_density       = node.attribute("density").as_uint(3);
+        m_scale         = node.attribute("scale").as_uint(6);
+        m_create_border = node.attribute("create_border").as_bool(true);
+
+        // regenerate terrain if we have a height map
+        if (m_height_map_seed)
+        {
+            Generate();
+        }
+    }
+
     uint64_t Terrain::ComputeCacheHash() const
     {
         // hash inputs to detect when cache is stale
@@ -1050,7 +1101,13 @@ namespace spartan
         {
             hash_combine(m_height_map_seed->GetWidth());
             hash_combine(m_height_map_seed->GetHeight());
-            hash_combine(m_height_map_seed->GetObjectId());
+
+            // hash the file path (stable across runs) instead of object id (random per run)
+            const string& file_path = m_height_map_seed->GetResourceFilePath();
+            for (char c : file_path)
+            {
+                hash_combine(static_cast<uint64_t>(c));
+            }
         }
 
         return hash;

@@ -36,142 +36,163 @@ namespace spartan
 {
     RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_Descriptor* descriptors, size_t count, const char* name)
     {
+        m_object_name = name;
         m_descriptors.reserve(count);
+        m_bindings.reserve(count);
+
+        // build slot -> index map for O(1) lookups
         for (size_t i = 0; i < count; ++i)
         {
             m_descriptors.push_back(descriptors[i]);
+            m_bindings.emplace_back(); // default binding
+            m_slot_to_index[descriptors[i].slot] = i;
         }
-    
-        m_object_name = name;
-    
-        CreateRhiResource(m_descriptors);
-    
+
+        // compute layout hash (immutable - based on slots and stages)
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(descriptor.slot));
-            m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(descriptor.stage));
+            m_layout_hash = rhi_hash_combine(m_layout_hash, static_cast<uint64_t>(descriptor.slot));
+            m_layout_hash = rhi_hash_combine(m_layout_hash, static_cast<uint64_t>(descriptor.stage));
         }
+
+        CreateRhiResource();
     }
 
-    void RHI_DescriptorSetLayout::SetConstantBuffer(const uint32_t slot, RHI_Buffer* constant_buffer)
+    RHI_DescriptorBinding* RHI_DescriptorSetLayout::FindBinding(uint32_t slot)
     {
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        auto it = m_slot_to_index.find(slot);
+        if (it != m_slot_to_index.end())
         {
-            if (descriptor.slot == slot + rhi_shader_register_shift_b)
-            {
-                descriptor.data           = static_cast<void*>(constant_buffer); // needed for vkUpdateDescriptorSets()
-                descriptor.range          = constant_buffer->GetStride();        // needed for vkUpdateDescriptorSets()
-                descriptor.dynamic_offset = constant_buffer->GetOffset();        // needed for vkCmdBindDescriptorSets
-
-                SP_ASSERT_MSG(constant_buffer->GetStrideUnaligned() == descriptor.struct_size, "Size mismatch between CPU and GPU side constant buffer");
-                SP_ASSERT_MSG(descriptor.dynamic_offset % descriptor.range == 0,               "Incorrect dynamic offset");
-
-                return;
-            }
+            return &m_bindings[it->second];
         }
+        return nullptr;
     }
 
-    void RHI_DescriptorSetLayout::SetBuffer(const uint32_t slot, RHI_Buffer* buffer)
+    void RHI_DescriptorSetLayout::SetConstantBuffer(uint32_t slot, RHI_Buffer* constant_buffer)
     {
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        uint32_t actual_slot = slot + rhi_shader_register_shift_b;
+        if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
         {
-            if (descriptor.slot == slot + rhi_shader_register_shift_u)
-            {
-                descriptor.data           = static_cast<void*>(buffer);
-                descriptor.range          = buffer->GetObjectSize();
-                descriptor.dynamic_offset = buffer->GetOffset();
+            // get descriptor for validation
+            const RHI_Descriptor& descriptor = m_descriptors[m_slot_to_index[actual_slot]];
 
-                return;
-            }
+            binding->resource       = static_cast<void*>(constant_buffer);
+            binding->range          = constant_buffer->GetStride();
+            binding->dynamic_offset = constant_buffer->GetOffset();
+
+            SP_ASSERT_MSG(constant_buffer->GetStrideUnaligned() == descriptor.struct_size, "Size mismatch between CPU and GPU side constant buffer");
+            SP_ASSERT_MSG(binding->dynamic_offset % binding->range == 0, "Incorrect dynamic offset");
+
+            m_dirty = true;
         }
     }
 
-    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range)
+    void RHI_DescriptorSetLayout::SetBuffer(uint32_t slot, RHI_Buffer* buffer)
+    {
+        uint32_t actual_slot = slot + rhi_shader_register_shift_u;
+        if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
+        {
+            binding->resource       = static_cast<void*>(buffer);
+            binding->range          = buffer->GetObjectSize();
+            binding->dynamic_offset = buffer->GetOffset();
+            m_dirty = true;
+        }
+    }
+
+    void RHI_DescriptorSetLayout::SetTexture(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range)
     {
         bool mip_specified      = mip_index != rhi_all_mips;
         RHI_Image_Layout layout = texture->GetLayout(mip_specified ? mip_index : 0);
 
         SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read);
 
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        bool is_storage    = layout == RHI_Image_Layout::General;
+        uint32_t shift     = is_storage ? rhi_shader_register_shift_u : rhi_shader_register_shift_t;
+        uint32_t actual_slot = slot + shift;
+
+        if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
         {
-            bool is_storage = layout == RHI_Image_Layout::General;
-            uint32_t shift  = is_storage ? rhi_shader_register_shift_u : rhi_shader_register_shift_t;
-
-            if (descriptor.slot == (slot + shift))
-            {
-                descriptor.data      = static_cast<void*>(texture);
-                descriptor.layout    = layout;
-                descriptor.mip       = mip_index;
-                descriptor.mip_range = mip_range;
-
-                return;
-            }
+            binding->resource  = static_cast<void*>(texture);
+            binding->layout    = layout;
+            binding->mip       = mip_index;
+            binding->mip_range = mip_range;
+            m_dirty = true;
         }
     }
 
-    void RHI_DescriptorSetLayout::SetAccelerationStructure(const uint32_t slot, RHI_AccelerationStructure* tlas)
+    void RHI_DescriptorSetLayout::SetAccelerationStructure(uint32_t slot, RHI_AccelerationStructure* tlas)
     {
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        uint32_t actual_slot = slot + rhi_shader_register_shift_t;
+        if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
         {
-            if (descriptor.slot == slot + rhi_shader_register_shift_t)
-            {
-                descriptor.data = static_cast<void*>(tlas);
-                return;
-            }
+            binding->resource = static_cast<void*>(tlas);
+            m_dirty = true;
         }
     }
 
-    void RHI_DescriptorSetLayout::ClearDescriptorData()
+    void RHI_DescriptorSetLayout::ClearBindings()
     {
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        for (RHI_DescriptorBinding& binding : m_bindings)
         {
-            descriptor.data           = nullptr;
-            descriptor.mip            = 0;
-            descriptor.mip_range      = 0;
-            descriptor.dynamic_offset = 0;
+            binding.Reset();
         }
+        m_dirty = true;
     }
 
-    RHI_DescriptorSet* RHI_DescriptorSetLayout::GetDescriptorSet()
+    uint64_t RHI_DescriptorSetLayout::ComputeBindingHash() const
     {
-        RHI_DescriptorSet* descriptor_set = nullptr;
-
-        // integrate descriptor data into the hash (anything that can change)
-        uint64_t hash = m_hash;
-        for (const RHI_Descriptor& descriptor : m_descriptors)
+        uint64_t hash = m_layout_hash;
+        for (const RHI_DescriptorBinding& binding : m_bindings)
         {
-            hash = rhi_hash_combine(hash, reinterpret_cast<uint64_t>(descriptor.data));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.mip));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.mip_range));
+            hash = rhi_hash_combine(hash, binding.GetHash());
+        }
+        return hash;
+    }
+
+    void* RHI_DescriptorSetLayout::GetOrCreateDescriptorSet()
+    {
+        // compute hash only if dirty
+        if (m_dirty)
+        {
+            m_binding_hash = ComputeBindingHash();
+            m_dirty = false;
         }
 
-        // if we don't have a descriptor set to match that state, create one
+        // look up or create descriptor set
         unordered_map<uint64_t, RHI_DescriptorSet>& descriptor_sets = RHI_Device::GetDescriptorSets();
-        const auto it = descriptor_sets.find(hash);
-        if (it == descriptor_sets.end()) // create descriptor set
+        auto it = descriptor_sets.find(m_binding_hash);
+
+        if (it == descriptor_sets.end())
         {
-            descriptor_sets[hash] = RHI_DescriptorSet(m_descriptors, this, m_object_name.c_str());
-            descriptor_set        = &descriptor_sets[hash];
+            // build combined descriptors with bindings for descriptor set creation
+            vector<RHI_DescriptorWithBinding> combined;
+            combined.reserve(m_descriptors.size());
+
+            for (size_t i = 0; i < m_descriptors.size(); ++i)
+            {
+                RHI_DescriptorWithBinding dwb;
+                dwb.descriptor = m_descriptors[i];
+                dwb.binding    = m_bindings[i];
+                combined.push_back(dwb);
+            }
+
+            descriptor_sets[m_binding_hash] = RHI_DescriptorSet(combined, this, m_object_name.c_str());
+            it = descriptor_sets.find(m_binding_hash);
         }
-        else // retrieve the existing one
-        {
-            descriptor_set = &it->second;
-        }
-    
-        return descriptor_set;
+
+        return it->second.GetResource();
     }
 
-    void RHI_DescriptorSetLayout::GetDynamicOffsets(std::array<uint32_t, 10>* offsets, uint32_t* count)
+    void RHI_DescriptorSetLayout::GetDynamicOffsets(array<uint32_t, 10>* offsets, uint32_t* count)
     {
-        // offsets should be ordered by the binding slots in the descriptor
-        // set layouts, so m_descriptors should already be sorted by slot
-
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        *count = 0;
+        for (size_t i = 0; i < m_descriptors.size(); ++i)
         {
-            if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer || descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            const RHI_Descriptor& descriptor = m_descriptors[i];
+            if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer || 
+                descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
-                (*offsets)[(*count)++] = descriptor.dynamic_offset;
+                (*offsets)[(*count)++] = m_bindings[i].dynamic_offset;
             }
         }
     }

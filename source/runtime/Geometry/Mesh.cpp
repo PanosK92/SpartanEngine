@@ -80,10 +80,12 @@ namespace spartan
         uint32_t submesh_count = static_cast<uint32_t>(m_sub_meshes.size());
         outfile.write(reinterpret_cast<const char*>(&submesh_count), sizeof(uint32_t));
 
-        for (const auto& sub : m_sub_meshes)
+        for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
         {
+            const SubMesh& sub = m_sub_meshes[sub_idx];
             uint32_t lod_count = static_cast<uint32_t>(sub.lods.size());
             outfile.write(reinterpret_cast<const char*>(&lod_count), sizeof(uint32_t));
+            SP_LOG_INFO("Mesh '%s' sub-mesh %u: saving %u LODs", m_object_name.c_str(), sub_idx, lod_count);
 
             for (const auto& lod : sub.lods)
             {
@@ -156,11 +158,13 @@ namespace spartan
             infile.read(reinterpret_cast<char*>(&submesh_count), sizeof(uint32_t));
             m_sub_meshes.resize(submesh_count);
 
-            for (auto& sub : m_sub_meshes)
+            for (uint32_t sub_idx = 0; sub_idx < submesh_count; sub_idx++)
             {
+                SubMesh& sub = m_sub_meshes[sub_idx];
                 uint32_t lod_count;
                 infile.read(reinterpret_cast<char*>(&lod_count), sizeof(uint32_t));
                 sub.lods.resize(lod_count);
+                SP_LOG_INFO("Mesh '%s' sub-mesh %u: loaded %u LODs", m_object_name.c_str(), sub_idx, lod_count);
 
                 for (auto& lod : sub.lods)
                 {
@@ -224,7 +228,21 @@ namespace spartan
     {
         SP_ASSERT_MSG(indices != nullptr || vertices != nullptr, "Indices and vertices vectors can't both be null");
     
-        const MeshLod& lod = GetSubMesh(sub_mesh_index).lods[0];
+        // validate sub-mesh index
+        if (sub_mesh_index >= m_sub_meshes.size())
+        {
+            SP_LOG_ERROR("GetGeometry: sub_mesh_index %u out of bounds (mesh has %zu sub-meshes)", sub_mesh_index, m_sub_meshes.size());
+            return;
+        }
+
+        const SubMesh& sub_mesh = m_sub_meshes[sub_mesh_index];
+        if (sub_mesh.lods.empty())
+        {
+            SP_LOG_ERROR("GetGeometry: sub-mesh %u has no LODs", sub_mesh_index);
+            return;
+        }
+
+        const MeshLod& lod = sub_mesh.lods[0];
     
         if (indices)
         {
@@ -410,29 +428,59 @@ namespace spartan
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
 
-        if (m_blas && !m_sub_meshes.empty())
+        // nothing to build
+        if (m_sub_meshes.empty())
             return;
 
-        vector<RHI_AccelerationStructureGeometry> geometries;
-        vector<uint32_t> primitive_counts;
-        for (const auto& sub : m_sub_meshes)
+        // resize blas vector to match sub-mesh count if needed
+        if (m_blas.size() != m_sub_meshes.size())
         {
-            const auto& lod = sub.lods[0]; // use lod 0 for blas
-            RHI_AccelerationStructureGeometry geo;
-
-            geo.transparent              = false;
-            geo.vertex_format            = RHI_Format::R32G32B32_Float; // positions
-            geo.vertex_buffer_address    = RHI_Device::GetBufferDeviceAddress(m_vertex_buffer->GetRhiResource()) + lod.vertex_offset * m_vertex_buffer->GetStride();
-            geo.vertex_stride            = m_vertex_buffer->GetStride();
-            geo.max_vertex               = lod.vertex_count - 1;
-            geo.index_format             = RHI_Format::R32_Uint;
-            geo.index_buffer_address     = RHI_Device::GetBufferDeviceAddress(m_index_buffer->GetRhiResource()) + lod.index_offset * sizeof(uint32_t);
-        
-            geometries.push_back(geo);
-            primitive_counts.push_back(lod.index_count / 3);
+            m_blas.resize(m_sub_meshes.size());
         }
-        
-        m_blas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, (m_object_name + "_blas").c_str());
-        m_blas->BuildBottomLevel(cmd_list, geometries, primitive_counts);
+
+        // build one blas per sub-mesh - this ensures each tlas instance only contains
+        // its own geometry, fixing issues where shared blas caused wrong geometry hits
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_sub_meshes.size()); i++)
+        {
+            // skip if already built
+            if (m_blas[i])
+                continue;
+
+            const auto& lod = m_sub_meshes[i].lods[0]; // use lod 0 for blas
+
+            // create geometry for this sub-mesh
+            RHI_AccelerationStructureGeometry geo;
+            geo.transparent           = false;
+            geo.vertex_format         = RHI_Format::R32G32B32_Float; // positions
+            geo.vertex_buffer_address = RHI_Device::GetBufferDeviceAddress(m_vertex_buffer->GetRhiResource()) + lod.vertex_offset * m_vertex_buffer->GetStride();
+            geo.vertex_stride         = m_vertex_buffer->GetStride();
+            geo.max_vertex            = lod.vertex_count - 1;
+            geo.index_format          = RHI_Format::R32_Uint;
+            geo.index_buffer_address  = RHI_Device::GetBufferDeviceAddress(m_index_buffer->GetRhiResource()) + lod.index_offset * sizeof(uint32_t);
+
+            vector<RHI_AccelerationStructureGeometry> geometries = { geo };
+            vector<uint32_t> primitive_counts                    = { lod.index_count / 3 };
+
+            // create and build blas for this sub-mesh
+            string blas_name = m_object_name + "_blas_" + to_string(i);
+            m_blas[i] = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, blas_name.c_str());
+            m_blas[i]->BuildBottomLevel(cmd_list, geometries, primitive_counts);
+        }
+    }
+
+    RHI_AccelerationStructure* Mesh::GetBlas(uint32_t sub_mesh_index) const
+    {
+        if (sub_mesh_index >= m_blas.size())
+            return nullptr;
+
+        return m_blas[sub_mesh_index].get();
+    }
+
+    bool Mesh::HasBlas(uint32_t sub_mesh_index) const
+    {
+        if (sub_mesh_index >= m_blas.size())
+            return false;
+
+        return m_blas[sub_mesh_index] != nullptr;
     }
 }

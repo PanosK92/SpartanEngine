@@ -27,30 +27,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    spartan::RHI_DescriptorSet::RHI_DescriptorSet(const std::vector<RHI_Descriptor>& descriptors, RHI_DescriptorSetLayout* descriptor_set_layout, const char* name)
+    RHI_DescriptorSet::RHI_DescriptorSet(const std::vector<RHI_DescriptorWithBinding>& descriptors, RHI_DescriptorSetLayout* layout, const char* name)
     {
         if (name)
         {
             m_object_name = name;
         }
 
-        // allocate
-        {
-            RHI_Device::AllocateDescriptorSet(m_resource, descriptor_set_layout, descriptors);
-            RHI_Device::SetResourceName(m_resource, RHI_Resource_Type::DescriptorSet, name);
-        }
+        // allocate vulkan descriptor set
+        RHI_Device::AllocateDescriptorSet(m_resource, layout, descriptors);
+        RHI_Device::SetResourceName(m_resource, RHI_Resource_Type::DescriptorSet, name);
 
         Update(descriptors);
     }
 
-    bool RHI_DescriptorSet::IsReferingToResource(void* resource)
+    bool RHI_DescriptorSet::IsReferingToResource(void* resource) const
     {
-        for (RHI_Descriptor& descriptor : m_descriptors)
+        for (const RHI_DescriptorWithBinding& desc : m_descriptors)
         {
-            if (descriptor.data == resource)
+            if (desc.binding.resource == resource)
                 return true;
         }
-
         return false;
     }
 }

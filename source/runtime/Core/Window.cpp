@@ -56,6 +56,57 @@ namespace spartan
         SDL_Renderer* m_splash_screen_renderer = nullptr;
         SDL_Texture* m_splash_screen_texture   = nullptr;
 
+        // custom title bar
+        float titlebar_height       = 40.0f;  // default height, updated by editor
+        float titlebar_button_width = 150.0f; // default width, updated by editor  
+        const float resize_border   = 8.0f;   // thickness of resize borders
+        int titlebar_hovered_frames = 0;      // persistence counter for hover state
+
+        SDL_HitTestResult hit_test_callback(SDL_Window* win, const SDL_Point* area, void* data)
+        {
+            int w, h;
+            SDL_GetWindowSize(win, &w, &h);
+
+            const int x = area->x;
+            const int y = area->y;
+            const int resize_margin = static_cast<int>(resize_border * dpi_scale);
+
+            // check corners first (for diagonal resize)
+            bool top    = y < resize_margin;
+            bool bottom = y >= h - resize_margin;
+            bool left   = x < resize_margin;
+            bool right  = x >= w - resize_margin;
+
+            // corner hit tests
+            if (top && left)     return SDL_HITTEST_RESIZE_TOPLEFT;
+            if (top && right)    return SDL_HITTEST_RESIZE_TOPRIGHT;
+            if (bottom && left)  return SDL_HITTEST_RESIZE_BOTTOMLEFT;
+            if (bottom && right) return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
+
+            // edge hit tests
+            if (top)    return SDL_HITTEST_RESIZE_TOP;
+            if (bottom) return SDL_HITTEST_RESIZE_BOTTOM;
+            if (left)   return SDL_HITTEST_RESIZE_LEFT;
+            if (right)  return SDL_HITTEST_RESIZE_RIGHT;
+
+            // title bar area - make draggable only when no imgui items are hovered
+            if (y < static_cast<int>(titlebar_height))
+            {
+                // exclude window buttons area on the right
+                if (x < w - static_cast<int>(titlebar_button_width))
+                {
+                    // only allow dragging when no imgui items were hovered recently
+                    // use persistence to avoid timing issues between hit test and imgui frame
+                    if (titlebar_hovered_frames == 0)
+                    {
+                        return SDL_HITTEST_DRAGGABLE;
+                    }
+                }
+            }
+
+            return SDL_HITTEST_NORMAL;
+        }
+
 
         void sdl_initialize_subystems()
         {
@@ -109,8 +160,8 @@ namespace spartan
             CreateAndShowSplashScreen();
         }
 
-        // set window flags
-        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
+        // set window flags - borderless for custom title bar
+        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_BORDERLESS;
         if (RHI_Context::api_type == RHI_Api_Type::Vulkan)
         {
             flags |= SDL_WINDOW_VULKAN;
@@ -128,6 +179,12 @@ namespace spartan
         {
             SP_LOG_ERROR("Could not create window: %s.", SDL_GetError());
             return;
+        }
+
+        // set up hit test callback for custom title bar dragging and resizing
+        if (!SDL_SetWindowHitTest(window, hit_test_callback, nullptr))
+        {
+            SP_LOG_WARNING("Failed to set window hit test callback: %s", SDL_GetError());
         }
 
         if (m_show_splash_screen)
@@ -485,5 +542,41 @@ namespace spartan
         SDL_DestroyTexture(m_splash_screen_texture);
         SDL_DestroyRenderer(m_splash_screen_renderer);
         SDL_DestroyWindow(m_splash_screen_window);
+    }
+
+    void Window::SetTitleBarHeight(float height)
+    {
+        titlebar_height = height;
+    }
+
+    void Window::SetTitleBarButtonWidth(float width)
+    {
+        titlebar_button_width = width;
+    }
+
+    bool Window::IsMaximized()
+    {
+        return SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED;
+    }
+
+    void Window::Restore()
+    {
+        SP_ASSERT(window);
+        SDL_RestoreWindow(window);
+    }
+
+    void Window::SetTitleBarHovered(bool hovered)
+    {
+        // use persistence to avoid timing issues between sdl hit test and imgui frame
+        // when hovered, set counter high; when not hovered, decrement until zero
+        const int persistence_frames = 3;
+        if (hovered)
+        {
+            titlebar_hovered_frames = persistence_frames;
+        }
+        else if (titlebar_hovered_frames > 0)
+        {
+            titlebar_hovered_frames--;
+        }
     }
 }

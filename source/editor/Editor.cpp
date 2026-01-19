@@ -200,6 +200,15 @@ void Editor::BeginWindow()
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y));
     ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y));
+    
+    // draw window border for borderless window
+    {
+        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
+        ImVec2 min = viewport->Pos;
+        ImVec2 max = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
+        ImU32 border_color = IM_COL32(60, 60, 60, 255);
+        draw_list->AddRect(min, max, border_color, 0.0f, 0, 1.0f);
+    }
 
     // set window style
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);

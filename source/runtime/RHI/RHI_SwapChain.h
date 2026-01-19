@@ -60,17 +60,22 @@ namespace spartan
         // loop
         void AcquireNextImage();
         void Present(RHI_CommandList* cmd_list_frame);
+        bool IsImageAcquired() const { return m_image_acquired; }
 
         // properties
-        uint32_t GetWidth() const       { return m_width; }
-        uint32_t GetHeight() const      { return m_height; }
-        uint32_t GetBufferCount() const { return m_buffer_count; }
-        RHI_Format GetFormat() const    { return m_format; }
-        void* GetRhiRt() const          { return m_rhi_rt[m_image_index]; }
-        void* GetRhiRtv() const         { return m_rhi_rtv[m_image_index]; }
+        uint32_t GetWidth() const            { return m_width; }
+        uint32_t GetHeight() const           { return m_height; }
+        uint32_t GetBufferCount() const      { return m_buffer_count; }
+        RHI_Format GetFormat() const         { return m_format; }
+        uint32_t GetImageIndex() const       { return m_image_index; }
+        void* GetRhiRt() const               { return m_rhi_rt[m_image_index]; }
+        void* GetRhiRtv() const              { return m_rhi_rtv[m_image_index]; }
+        void* GetRhiRtRaw(uint32_t i) const  { return m_rhi_rt[i]; }
+        void SetRhiRt(uint32_t i, void* ptr) { m_rhi_rt[i] = ptr; }
 
         // misc
         RHI_SyncPrimitive* GetImageAcquiredSemaphore() const;
+        RHI_SyncPrimitive* GetRenderingCompleteSemaphore() const;
 
         static const uint8_t buffer_count  = 2;
         static const RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;
@@ -89,11 +94,13 @@ namespace spartan
 
         // misc
         bool m_is_dirty          = false;
+        bool m_image_acquired    = false;
         uint32_t m_image_index   = 0;
         uint32_t semaphore_index = 0;
         void* m_sdl_window       = nullptr;
         subscription_handle m_window_resize_event_handle;
         std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_image_acquired_semaphore;
+        std::array<std::shared_ptr<RHI_SyncPrimitive>, buffer_count> m_rendering_complete_semaphore;
 
         // rhi
         void* m_rhi_swapchain                     = nullptr;

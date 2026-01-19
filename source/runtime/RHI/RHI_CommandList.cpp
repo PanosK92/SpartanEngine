@@ -23,43 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "RHI_CommandList.h"
 #include "RHI_Texture.h"
-#include "RHI_SyncPrimitive.h"
 //============================
 
 //= NAMESPACES ========
 using namespace std;
-using namespace chrono;
 //=====================
 
 namespace spartan
 {
-    namespace
-    {
-        time_point<high_resolution_clock> start_time;
-    }
-
-    void RHI_CommandList::WaitForExecution(const bool log_wait_time)
-    {
-        SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "the command list hasn't been submitted, can't wait for it.");
-
-        if (log_wait_time)
-        { 
-            start_time = high_resolution_clock::now();
-        }
-
-        // wait
-        uint64_t timeout_nanoseconds = 10'000'000'000; // 10 seconds
-        m_rendering_complete_semaphore_timeline->Wait(timeout_nanoseconds);
-        m_state = RHI_CommandListState::Idle;
-
-        if (log_wait_time)
-        {
-            auto end_time = high_resolution_clock::now();
-            auto duration = duration_cast<microseconds>(end_time - start_time).count();
-            SP_LOG_INFO("wait time: %lld microseconds\n", duration);
-        }
-    }
-
     void RHI_CommandList::Dispatch(RHI_Texture* texture, float resolution_scale /*= 1.0f*/)
     {
         // clamp scale
@@ -82,7 +53,7 @@ namespace spartan
         // synchronize writes to the texture
         if (GetImageLayout(texture->GetRhiResource(), 0) == RHI_Image_Layout::General)
         {
-            InsertBarrierReadWrite(texture, RHI_BarrierType::EnsureWriteThenRead);
+            InsertBarrier(texture, RHI_BarrierType::EnsureWriteThenRead);
         }
     }
 }

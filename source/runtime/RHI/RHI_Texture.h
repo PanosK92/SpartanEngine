@@ -41,19 +41,17 @@ namespace spartan
 
     enum RHI_Texture_Flags : uint32_t
     {
-        RHI_Texture_Srv               = 1U << 0,
-        RHI_Texture_Uav               = 1U << 1,
-        RHI_Texture_Rtv               = 1U << 2,
-        RHI_Texture_Vrs               = 1U << 3,
-        RHI_Texture_ClearBlit         = 1U << 4,
-        RHI_Texture_PerMipViews       = 1U << 5,
-        RHI_Texture_Greyscale         = 1U << 6,
-        RHI_Texture_Transparent       = 1U << 7,
-        RHI_Texture_Srgb              = 1U << 8,
-        RHI_Texture_Mappable          = 1U << 9,
-        RHI_Texture_Compress          = 1U << 10,
-        RHI_Texture_DontPrepareForGpu = 1U << 11,
-        RHI_Texture_Thumbnail         = 1U << 12
+        RHI_Texture_Srv         = 1U << 0,
+        RHI_Texture_Uav         = 1U << 1,
+        RHI_Texture_Rtv         = 1U << 2,
+        RHI_Texture_Vrs         = 1U << 3,
+        RHI_Texture_ClearBlit   = 1U << 4,
+        RHI_Texture_PerMipViews = 1U << 5,
+        RHI_Texture_Greyscale   = 1U << 6,
+        RHI_Texture_Transparent = 1U << 7,
+        RHI_Texture_Srgb        = 1U << 8,
+        RHI_Texture_Mappable    = 1U << 9,
+        RHI_Texture_Compress    = 1U << 10
     };
 
     struct RHI_Texture_Mip
@@ -88,6 +86,7 @@ namespace spartan
         // iresource
         void SaveToFile(const std::string& file_path) override;
         void LoadFromFile(const std::string& file_path) override;
+        bool CanSaveToFile() const;
 
         uint32_t GetWidth() const           { return m_width; }
         void SetWidth(const uint32_t width) { m_width = width; }
@@ -118,9 +117,9 @@ namespace spartan
         uint32_t GetDepth() const       { return m_depth; }
         uint32_t GetArrayLength() const { return (m_type == RHI_Texture_Type::Type3D) ? 1 : m_depth; }
         bool HasData() const            { return !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty(); };
-        RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
-        RHI_Texture_Slice& GetSlice(const uint32_t array_index);
-        void AllocateMip();
+        RHI_Texture_Mip* GetMip(const uint32_t array_index, const uint32_t mip_index);
+        RHI_Texture_Slice* GetSlice(const uint32_t array_index);
+        void AllocateMip(uint32_t slice_index = 0);
 
         // flags
         bool IsSrv() const             { return m_flags & RHI_Texture_Srv; }

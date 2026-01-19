@@ -108,10 +108,16 @@ namespace spartan
         m_default_icons[IconType::Camera]        = Load<RHI_Texture>(data_dir + "Icons\\camera.png");
         m_default_icons[IconType::Physics]       = Load<RHI_Texture>(data_dir + "Icons\\physics.png");
         m_default_icons[IconType::Compressed]    = Load<RHI_Texture>(data_dir + "Icons\\compressed.png");
-        m_default_icons[IconType::Flow]          = Load<RHI_Texture>(data_dir + "Icons\\flow.png");
-        m_default_icons[IconType::Circle]        = Load<RHI_Texture>(data_dir + "Icons\\circle.png");
-        m_default_icons[IconType::Square]        = Load<RHI_Texture>(data_dir + "Icons\\square.png");
-        m_default_icons[IconType::Node]          = Load<RHI_Texture>(data_dir + "Icons\\node.png");
+        m_default_icons[IconType::Logo]          = Load<RHI_Texture>(data_dir + "logo.ico");
+
+        // prepare icons for gpu (standalone textures, not processed by material)
+        for (auto& [type, icon] : m_default_icons)
+        {
+            if (icon)
+            {
+                icon->PrepareForGpu();
+            }
+        }
     }
 
     void ResourceCache::UnloadDefaultResources()

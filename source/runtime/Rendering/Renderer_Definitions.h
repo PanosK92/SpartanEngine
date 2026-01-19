@@ -66,6 +66,16 @@ namespace spartan
         DynamicResolution,
         OcclusionCulling,
         AutoExposureAdaptationSpeed,
+        // volumetric clouds
+        CloudAnimation, // whether clouds animate (wind movement)
+        CloudCoverage,  // 0=no clouds, >0=clouds visible
+        CloudType,
+        CloudShadows,
+        CloudColorR,
+        CloudColorG,
+        CloudColorB,
+        CloudDarkness,
+        CloudSeed,      // seed for cloud generation
         Max
     };
 
@@ -169,19 +179,36 @@ namespace spartan
         bindless_material_parameters = 16,
         bindless_light_parameters    = 17,
         bindless_aabbs               = 18,
+        
+        // volumetric clouds 3D noise
+        tex3d_cloud_shape  = 19,
+        tex3d_cloud_detail = 20,
+        // restir reservoir srv bindings (for temporal/spatial read)
+        reservoir_prev0    = 21,
+        reservoir_prev1    = 22,
+        reservoir_prev2    = 23,
+        reservoir_prev3    = 24,
+        reservoir_prev4    = 25,
     };
 
     enum class Renderer_BindingsUav
     {
-        tex         = 0,
-        tex2        = 1,
-        tex3        = 2,
-        tex4        = 3,
-        tex3d       = 4,
-        tex_sss     = 5,
-        visibility  = 6,
-        sb_spd      = 7,
-        tex_spd     = 8,
+        tex           = 0,
+        tex2          = 1,
+        tex3          = 2,
+        tex4          = 3,
+        tex3d         = 4,
+        tex_sss       = 5,
+        visibility    = 6,
+        sb_spd        = 7,
+        tex_spd       = 8,
+        geometry_info = 20, // ray tracing geometry info buffer
+        // restir reservoir uav bindings
+        reservoir0    = 21,
+        reservoir1    = 22,
+        reservoir2    = 23,
+        reservoir3    = 24,
+        reservoir4    = 25,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -241,6 +268,21 @@ namespace spartan
         reflections_ray_generation_r,
         reflections_ray_miss_r,
         reflections_ray_hit_r,
+        // ray traced shadows
+        shadows_ray_generation_r,
+        shadows_ray_miss_r,
+        shadows_ray_hit_r,
+        // restir path tracing gi
+        restir_pt_ray_generation_r,
+        restir_pt_ray_miss_r,
+        restir_pt_ray_hit_r,
+        restir_pt_temporal_c,
+        restir_pt_spatial_c,
+        // volumetric clouds
+        cloud_noise_shape_c,
+        cloud_noise_detail_c,
+        cloud_shadow_c,
+        light_reflections_c,
         max
     };
     
@@ -266,7 +308,10 @@ namespace spartan
         frame_output,
         frame_output_2,
         ssao,
-        ssr,
+        reflections,
+        gbuffer_reflections_position,
+        gbuffer_reflections_normal,
+        gbuffer_reflections_albedo,
         sss,
         skysphere,
         bloom,
@@ -276,6 +321,26 @@ namespace spartan
         shadow_atlas,
         auto_exposure,
         auto_exposure_previous,
+        // ray traced shadows
+        ray_traced_shadows,
+        // restir path tracing output
+        restir_output,
+        // restir reservoir buffers (current frame)
+        restir_reservoir0,
+        restir_reservoir1,
+        restir_reservoir2,
+        restir_reservoir3,
+        restir_reservoir4,
+        // restir reservoir buffers (previous frame for temporal)
+        restir_reservoir_prev0,
+        restir_reservoir_prev1,
+        restir_reservoir_prev2,
+        restir_reservoir_prev3,
+        restir_reservoir_prev4,
+        // volumetric clouds
+        cloud_noise_shape,
+        cloud_noise_detail,
+        cloud_shadow,
         max
     };
 
@@ -303,6 +368,7 @@ namespace spartan
         AABBs,
         Visibility,
         VisibilityPrevious,
+        GeometryInfo,
         Max
     };
 
