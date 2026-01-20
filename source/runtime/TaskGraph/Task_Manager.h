@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <taskflow/taskflow.hpp>
-
 //=============================
 
 //= NAMESPACES =====
@@ -90,9 +89,8 @@ namespace spartan
         static void DumpGraph(const Taskflow& taskflow, const char* filename);
 
     private:
-        Executor m_Executor;  // The Executor to run the Taskflow
-        Taskflow m_Taskflow;  // The Taskflow instance
-
+        Executor m_executor;  // The Executor to run the Taskflow
+        Taskflow m_taskflow;  // The Taskflow instance
     };
 
 }
