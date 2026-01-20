@@ -2270,9 +2270,27 @@ namespace spartan
         //== CAR SIMULATION ==================================================================
         namespace car_simulation
         {
+            // helper to create a static cube obstacle with physics
+            void create_cube(const string& name, const Vector3& position, const Vector3& euler_angles, const Vector3& scale, bool is_static = true)
+            {
+                Entity* entity = World::CreateEntity();
+                entity->SetObjectName(name);
+                entity->SetPosition(position);
+                entity->SetRotation(Quaternion::FromEulerAngles(euler_angles.x, euler_angles.y, euler_angles.z));
+                entity->SetScale(scale);
+
+                Renderable* renderable = entity->AddComponent<Renderable>();
+                renderable->SetMesh(MeshType::Cube);
+                renderable->SetDefaultMaterial();
+
+                Physics* physics_body = entity->AddComponent<Physics>();
+                physics_body->SetMass(is_static ? 0.0f : Physics::mass_from_volume);
+                physics_body->SetBodyType(BodyType::Box);
+            }
+
             void create()
             {
-                entities::camera(false, Vector3(0.0f, 2.5f, -10.0f), Vector3(5.0f, 0.0f, 0.0f));
+                entities::camera(false, Vector3(0.0f, 8.0f, -25.0f), Vector3(15.0f, 0.0f, 0.0f));
                 entities::sun(LightPreset::dusk, true);
                 entities::floor();
 
@@ -2284,22 +2302,208 @@ namespace spartan
                 car_config.camera_follows = true;
                 car::create(car_config);
 
-                // ramp
+                //==================================================================================
+                // zone 1: main jump ramp area (in front of spawn)
+                //==================================================================================
+                
+                // gentle starter ramp
+                create_cube("ramp_starter", Vector3(12.0f, 0.3f, 0.0f), Vector3(0.0f, 0.0f, 8.0f), Vector3(8.0f, 0.6f, 6.0f));
+                
+                // main jump ramp - steep for big air
+                create_cube("ramp_jump_main", Vector3(28.0f, 1.2f, 0.0f), Vector3(0.0f, 0.0f, 18.0f), Vector3(10.0f, 0.8f, 7.0f));
+                
+                // landing ramp - downward slope for smooth landings
+                create_cube("ramp_landing", Vector3(50.0f, 0.5f, 0.0f), Vector3(0.0f, 0.0f, -12.0f), Vector3(12.0f, 0.6f, 7.0f));
+
+                //==================================================================================
+                // zone 2: suspension test track (to the right of spawn)
+                //==================================================================================
+                
+                // speed bumps - series of small bumps to test suspension
+                for (int i = 0; i < 8; i++)
                 {
-                    Entity* entity = World::CreateEntity();
-                    entity->SetObjectName("ramp");
-                    entity->SetPosition(Vector3(6.6f, 0.0f, 3.2f));
-                    entity->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 5.3f));
-                    entity->SetScale(Vector3(5.8f, 1.0f, 5.4f));
-
-                    Renderable* renderable = entity->AddComponent<Renderable>();
-                    renderable->SetMesh(MeshType::Cube);
-                    renderable->SetDefaultMaterial();
-
-                    Physics* physics_body = entity->AddComponent<Physics>();
-                    physics_body->SetMass(Physics::mass_from_volume);
-                    physics_body->SetBodyType(BodyType::Box);
+                    float x_offset = i * 4.0f;
+                    create_cube("speed_bump_" + to_string(i), Vector3(15.0f + x_offset, 0.15f, 20.0f), Vector3::Zero, Vector3(1.5f, 0.3f, 5.0f));
                 }
+                
+                // rumble strips - alternating small ridges
+                for (int i = 0; i < 12; i++)
+                {
+                    float x_offset = i * 2.5f;
+                    float height   = (i % 2 == 0) ? 0.1f : 0.18f;
+                    create_cube("rumble_" + to_string(i), Vector3(15.0f + x_offset, height * 0.5f, 30.0f), Vector3::Zero, Vector3(1.0f, height, 4.0f));
+                }
+                
+                // pothole simulation - dips created by raised edges
+                create_cube("pothole_edge_1", Vector3(60.0f, 0.08f, 20.0f), Vector3::Zero, Vector3(0.8f, 0.16f, 6.0f));
+                create_cube("pothole_edge_2", Vector3(66.0f, 0.08f, 20.0f), Vector3::Zero, Vector3(0.8f, 0.16f, 6.0f));
+
+                //==================================================================================
+                // zone 3: stunt ramps and half-pipe (to the left of spawn)
+                //==================================================================================
+                
+                // half-pipe left wall
+                create_cube("halfpipe_left", Vector3(-25.0f, 2.0f, 0.0f), Vector3(0.0f, 0.0f, 35.0f), Vector3(8.0f, 0.5f, 20.0f));
+                
+                // half-pipe right wall
+                create_cube("halfpipe_right", Vector3(-25.0f, 2.0f, 15.0f), Vector3(0.0f, 0.0f, -35.0f), Vector3(8.0f, 0.5f, 20.0f));
+                
+                // half-pipe back wall (for u-turns)
+                create_cube("halfpipe_back", Vector3(-38.0f, 1.5f, 7.5f), Vector3(25.0f, 0.0f, 0.0f), Vector3(6.0f, 0.5f, 18.0f));
+                
+                // kicker ramp - small but steep for tricks
+                create_cube("kicker_ramp", Vector3(-10.0f, 0.6f, -15.0f), Vector3(0.0f, 0.0f, 25.0f), Vector3(4.0f, 0.5f, 4.0f));
+                
+                // side ramp for barrel rolls
+                create_cube("barrel_roll_ramp", Vector3(-15.0f, 0.8f, -25.0f), Vector3(30.0f, 45.0f, 15.0f), Vector3(5.0f, 0.4f, 3.0f));
+
+                //==================================================================================
+                // zone 4: slalom course (behind spawn)
+                //==================================================================================
+                
+                // slalom pylons - alternating obstacles
+                for (int i = 0; i < 6; i++)
+                {
+                    float z_offset  = -20.0f - (i * 12.0f);
+                    float x_offset  = (i % 2 == 0) ? 5.0f : -5.0f;
+                    create_cube("slalom_pylon_" + to_string(i), Vector3(x_offset, 1.0f, z_offset), Vector3::Zero, Vector3(1.5f, 2.0f, 1.5f));
+                }
+                
+                // slalom finish gate pillars
+                create_cube("gate_left", Vector3(-6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f));
+                create_cube("gate_right", Vector3(6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f));
+                create_cube("gate_top", Vector3(0.0f, 4.5f, -95.0f), Vector3::Zero, Vector3(14.0f, 0.5f, 1.0f));
+
+                //==================================================================================
+                // zone 5: banked turn circuit (far right area)
+                //==================================================================================
+                
+                // banked turn - outside wall
+                create_cube("bank_outer", Vector3(80.0f, 1.5f, 0.0f), Vector3(0.0f, 30.0f, -25.0f), Vector3(20.0f, 0.6f, 8.0f));
+                
+                // banked turn - inside wall
+                create_cube("bank_inner", Vector3(75.0f, 0.8f, 8.0f), Vector3(0.0f, 30.0f, -15.0f), Vector3(15.0f, 0.4f, 6.0f));
+                
+                // exit ramp from banked turn
+                create_cube("bank_exit_ramp", Vector3(95.0f, 0.4f, -10.0f), Vector3(0.0f, 60.0f, 10.0f), Vector3(8.0f, 0.5f, 5.0f));
+
+                //==================================================================================
+                // zone 6: obstacle course (scattered dynamic objects)
+                //==================================================================================
+                
+                // stack of crates to crash through
+                for (int row = 0; row < 3; row++)
+                {
+                    for (int col = 0; col < 3; col++)
+                    {
+                        float y_pos = 0.75f + (row * 1.5f);
+                        float x_pos = 35.0f + (col * 1.6f);
+                        create_cube("crate_stack_" + to_string(row) + "_" + to_string(col), Vector3(x_pos, y_pos, -30.0f), Vector3::Zero, Vector3(1.5f, 1.5f, 1.5f), false);
+                    }
+                }
+                
+                // barrel wall
+                for (int i = 0; i < 5; i++)
+                {
+                    float x_pos = 50.0f + (i * 2.0f);
+                    create_cube("barrel_" + to_string(i), Vector3(x_pos, 0.8f, -45.0f), Vector3(90.0f, 0.0f, 0.0f), Vector3(1.2f, 1.6f, 1.2f), false);
+                }
+                
+                // pyramid of boxes
+                int pyramid_base = 4;
+                for (int level = 0; level < pyramid_base; level++)
+                {
+                    int boxes_in_level = pyramid_base - level;
+                    float y_pos        = 0.6f + (level * 1.2f);
+                    float start_x      = 70.0f - (boxes_in_level * 0.6f);
+                    for (int b = 0; b < boxes_in_level; b++)
+                    {
+                        create_cube("pyramid_" + to_string(level) + "_" + to_string(b), Vector3(start_x + (b * 1.3f), y_pos, -60.0f), Vector3::Zero, Vector3(1.2f, 1.2f, 1.2f), false);
+                    }
+                }
+
+                //==================================================================================
+                // zone 7: wavy terrain (far left)
+                //==================================================================================
+                
+                // series of sine-wave like bumps
+                for (int i = 0; i < 10; i++)
+                {
+                    float z_pos  = -40.0f + (i * 6.0f);
+                    float height = 0.3f + 0.3f * sin(i * 0.8f);
+                    float angle  = 8.0f * sin(i * 0.5f);
+                    create_cube("wave_" + to_string(i), Vector3(-50.0f, height, z_pos), Vector3(angle, 0.0f, 0.0f), Vector3(8.0f, 0.4f, 4.0f));
+                }
+
+                //==================================================================================
+                // zone 8: stunt park center piece - mega ramp
+                //==================================================================================
+                
+                // approach ramp
+                create_cube("mega_approach", Vector3(-70.0f, 1.0f, -30.0f), Vector3(0.0f, 0.0f, 12.0f), Vector3(15.0f, 0.6f, 10.0f));
+                
+                // main mega ramp
+                create_cube("mega_ramp", Vector3(-90.0f, 4.0f, -30.0f), Vector3(0.0f, 0.0f, 30.0f), Vector3(12.0f, 0.8f, 10.0f));
+                
+                // mega ramp platform top
+                create_cube("mega_platform", Vector3(-105.0f, 7.5f, -30.0f), Vector3::Zero, Vector3(8.0f, 0.5f, 10.0f));
+                
+                // drop ramp on other side
+                create_cube("mega_drop", Vector3(-118.0f, 4.0f, -30.0f), Vector3(0.0f, 0.0f, -35.0f), Vector3(10.0f, 0.8f, 10.0f));
+
+                //==================================================================================
+                // zone 9: figure-8 crossover
+                //==================================================================================
+                
+                // elevated crossing ramp 1
+                create_cube("cross_ramp_up_1", Vector3(0.0f, 1.0f, 50.0f), Vector3(0.0f, 45.0f, 15.0f), Vector3(12.0f, 0.5f, 6.0f));
+                
+                // elevated bridge section
+                create_cube("cross_bridge", Vector3(8.0f, 2.5f, 58.0f), Vector3(0.0f, 45.0f, 0.0f), Vector3(10.0f, 0.4f, 6.0f));
+                
+                // elevated crossing ramp 2
+                create_cube("cross_ramp_down_1", Vector3(16.0f, 1.0f, 66.0f), Vector3(0.0f, 45.0f, -15.0f), Vector3(12.0f, 0.5f, 6.0f));
+                
+                // lower path goes underneath
+                create_cube("under_path_guide_left", Vector3(-2.0f, 0.4f, 62.0f), Vector3(0.0f, -45.0f, 0.0f), Vector3(0.5f, 0.8f, 15.0f));
+                create_cube("under_path_guide_right", Vector3(10.0f, 0.4f, 50.0f), Vector3(0.0f, -45.0f, 0.0f), Vector3(0.5f, 0.8f, 15.0f));
+
+                //==================================================================================
+                // zone 10: parking challenge (precision driving)
+                //==================================================================================
+                
+                // tight parking spots with pillars
+                for (int i = 0; i < 4; i++)
+                {
+                    float z_pos = 80.0f + (i * 8.0f);
+                    create_cube("parking_left_" + to_string(i), Vector3(-8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f));
+                    create_cube("parking_right_" + to_string(i), Vector3(8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f));
+                }
+                
+                // parking lot boundary walls
+                create_cube("parking_wall_back", Vector3(0.0f, 0.5f, 115.0f), Vector3::Zero, Vector3(20.0f, 1.0f, 0.5f));
+                create_cube("parking_wall_left", Vector3(-10.0f, 0.5f, 97.0f), Vector3::Zero, Vector3(0.5f, 1.0f, 38.0f));
+                create_cube("parking_wall_right", Vector3(10.0f, 0.5f, 97.0f), Vector3::Zero, Vector3(0.5f, 1.0f, 38.0f));
+
+                //==================================================================================
+                // zone 11: see-saw platforms
+                //==================================================================================
+                
+                // see-saw pivot base
+                create_cube("seesaw_base", Vector3(30.0f, 0.3f, 50.0f), Vector3::Zero, Vector3(1.5f, 0.6f, 1.5f));
+                
+                // see-saw plank (dynamic so it tips)
+                create_cube("seesaw_plank", Vector3(30.0f, 0.8f, 50.0f), Vector3::Zero, Vector3(12.0f, 0.3f, 4.0f), false);
+
+                //==================================================================================
+                // decorative boundary markers
+                //==================================================================================
+                
+                // corner markers for the playground area
+                create_cube("marker_ne", Vector3(120.0f, 1.5f, 120.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
+                create_cube("marker_nw", Vector3(-130.0f, 1.5f, 120.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
+                create_cube("marker_se", Vector3(120.0f, 1.5f, -100.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
+                create_cube("marker_sw", Vector3(-130.0f, 1.5f, -100.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
 
                 // make room for the telemetry display
                 ConsoleRegistry::Get().SetValueFromString("r.performance_metrics", "0");
