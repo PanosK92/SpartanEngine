@@ -919,6 +919,39 @@ namespace spartan
         GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
     }
 
+    void Physics::SetBodyTransform(const Vector3& position, const Quaternion& rotation)
+    {
+        // for vehicles, use the car body directly
+        if (m_body_type == BodyType::Vehicle && car::body)
+        {
+            PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
+            car::body->setGlobalPose(pose);
+            car::body->setLinearVelocity(PxVec3(0, 0, 0));
+            car::body->setAngularVelocity(PxVec3(0, 0, 0));
+            
+            // reset wheel angular velocities
+            for (int i = 0; i < 4; i++)
+            {
+                car::wheels[i].angular_velocity = 0.0f;
+            }
+            return;
+        }
+
+        // for regular rigid bodies
+        if (!m_actors.empty() && m_actors[0])
+        {
+            PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+            PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
+            actor->setGlobalPose(pose);
+            
+            if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+            {
+                dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+            }
+        }
+    }
+
     void Physics::SetVehicleThrottle(float value)
     {
         if (m_body_type != BodyType::Vehicle)

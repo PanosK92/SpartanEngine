@@ -416,6 +416,9 @@ namespace spartan
         // track whether player is currently operating the car (independent of camera parenting)
         bool is_in_vehicle = false;
 
+        // spawn position for reset functionality
+        Vector3 spawn_position = Vector3::Zero;
+
         // helper: loads car body mesh with material tweaks
         // out_excluded_entities: if remove_wheels is true, returns entities that were disabled (for collision exclusion)
         Entity* create_body(bool remove_wheels, vector<Entity*>* out_excluded_entities = nullptr)
@@ -686,6 +689,7 @@ namespace spartan
         Entity* create(const Config& config)
         {
             show_telemetry = config.show_telemetry;
+            spawn_position = config.position;
 
             if (config.drivable)
             {
@@ -966,6 +970,13 @@ namespace spartan
                     if (Input::GetKey(KeyCode::Arrow_Left))  steering = -1.0f;
                     if (Input::GetKey(KeyCode::Arrow_Right)) steering =  1.0f;
                     physics->SetVehicleSteering(steering);
+
+                    // reset car to spawn position
+                    if (Input::GetKeyDown(KeyCode::R))
+                    {
+                        physics->SetBodyTransform(spawn_position, Quaternion::Identity);
+                        chase_camera::initialized = false; // reset camera to avoid jump
+                    }
                 }
 
                 // draw telemetry if enabled
@@ -1244,7 +1255,7 @@ namespace spartan
             }
 
             // osd
-            Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, 0.98f));
+            Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View | 'R': Reset Car", Vector2(0.005f, 0.98f));
         }
 
         // reset state on shutdown
@@ -2446,7 +2457,7 @@ namespace spartan
 
                 // create drivable car with telemetry
                 car::Config car_config;
-                car_config.position       = Vector3(0.0f, 2.0f, 0.0f);
+                car_config.position       = Vector3(0.0f, 0.5f, 0.0f);
                 car_config.drivable       = true;
                 car_config.show_telemetry = true;
                 car_config.camera_follows = true;

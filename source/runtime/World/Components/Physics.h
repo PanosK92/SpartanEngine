@@ -139,6 +139,7 @@ namespace spartan
         // misc
         void Move(const math::Vector3& offset);
         void Crouch(const bool crouch);
+        void SetBodyTransform(const math::Vector3& position, const math::Quaternion& rotation); // teleport physics body
 
         // vehicle controls (only works when body type is Vehicle)
         void SetVehicleThrottle(float value);   // 0 to 1
