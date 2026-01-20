@@ -43,10 +43,15 @@ namespace spartan
 
         vector<thread> threads;
         deque<Task> tasks;
+
+        // track if current thread is a worker thread to detect nested ParallelLoop calls
+        thread_local bool is_worker_thread = false;
     }
 
     static void thread_loop()
     {
+        is_worker_thread = true;
+
         while (true)
         {
             Task task;
@@ -152,8 +157,24 @@ namespace spartan
             return;
         }
 
-        // less work than threads - limit workers to work count
-        uint32_t workers   = min(thread_count, work_total);
+        // when called from a worker thread, check if we have idle workers available
+        // this allows nested parallelism when possible while preventing deadlock
+        uint32_t available_workers = thread_count;
+        if (is_worker_thread)
+        {
+            uint32_t currently_working = working_count.load(memory_order_relaxed);
+            if (currently_working >= thread_count)
+            {
+                // all workers busy - run sequentially to prevent deadlock
+                function(0, work_total);
+                return;
+            }
+            // use only idle workers to avoid deadlock
+            available_workers = thread_count - currently_working;
+        }
+
+        // limit workers to available count and work count
+        uint32_t workers   = min(available_workers, work_total);
         uint32_t base_work = work_total / workers;
         uint32_t remainder = work_total % workers;
 

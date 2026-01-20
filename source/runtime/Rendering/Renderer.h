@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ===================================
 #include "Renderer_Definitions.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Math/Vector3.h"
@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <atomic>
 #include "../Math/Rectangle.h"
-//===============================
+//==============================================
 
 namespace spartan
 {
@@ -48,7 +48,7 @@ namespace spartan
         class Frustum;
     }
 
-    // renderer cvars (defined in Renderer.cpp, use .GetValue() or .GetValueAs<T>() for direct access in hot paths)
+    // console varibales
     extern TConsoleVar<float> cvar_aabb;
     extern TConsoleVar<float> cvar_picking_ray;
     extern TConsoleVar<float> cvar_grid;
@@ -83,7 +83,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_occlusion_culling;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
-    // volumetric clouds
     extern TConsoleVar<float> cvar_clouds_enabled;
     extern TConsoleVar<float> cvar_cloud_animation;
     extern TConsoleVar<float> cvar_cloud_coverage;
@@ -103,14 +102,13 @@ namespace spartan
         math::Rectangle rect;
     };
 
-    // persistent debug line that expires after a certain duration
     struct PersistentLine
     {
         math::Vector3 from;
         math::Vector3 to;
         Color color_from;
         Color color_to;
-        double expire_time; // time in seconds when this line should expire
+        double expire_time;
     };
 
     class Renderer
