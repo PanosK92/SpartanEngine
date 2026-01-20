@@ -746,6 +746,10 @@ namespace spartan
                     {
                         camera->SetFlag(CameraFlags::CanBeControlled, false);
                     }
+
+                    // start already inside the car (default chase view)
+                    is_in_vehicle             = true;
+                    chase_camera::initialized = false;
                 }
 
                 return vehicle_entity;
@@ -1031,46 +1035,34 @@ namespace spartan
                     {
                         Vector2 right_stick = Input::GetGamepadThumbStickRight();
 
-                        // horizontal (yaw) - clamped to 180 degrees so you can look behind but not spin endlessly
-                        if (fabsf(right_stick.x) > 0.1f)
+                        // horizontal (yaw) - three zones:
+                        // - active (> 0.3): orbit the camera
+                        // - hold (0.1 - 0.3): camera stays in place (small stick offset to lock view)
+                        // - release (< 0.1): camera reverts back behind the car
+                        float stick_x = fabsf(right_stick.x);
+                        if (stick_x > 0.3f)
                         {
                             chase_camera::yaw_bias += right_stick.x * chase_camera::orbit_bias_speed * dt;
                             chase_camera::yaw_bias  = std::clamp(chase_camera::yaw_bias, -chase_camera::yaw_bias_max, chase_camera::yaw_bias_max);
                         }
-                        else if (fabsf(chase_camera::yaw_bias) > 0.01f)
+                        else if (stick_x < 0.1f && fabsf(chase_camera::yaw_bias) > 0.01f)
                         {
-                            // smart decay: if manual adjustment brought camera closer to target, adopt it
-                            // this lets players help the camera catch up by manually rotating it
-                            float effective_yaw = chase_camera::yaw + chase_camera::yaw_bias;
-                            
-                            // calculate angular distances (handling wrap-around)
-                            float target_yaw      = atan2f(vehicle_entity->GetForward().x, vehicle_entity->GetForward().z);
-                            float dist_without    = fabsf(fmodf(chase_camera::yaw - target_yaw + math::pi * 3.0f, math::pi * 2.0f) - math::pi);
-                            float dist_with_bias  = fabsf(fmodf(effective_yaw - target_yaw + math::pi * 3.0f, math::pi * 2.0f) - math::pi);
-                            
-                            if (dist_with_bias < dist_without)
-                            {
-                                // bias is helping - adopt the new position
-                                chase_camera::yaw = effective_yaw;
-                                chase_camera::yaw_bias = 0.0f;
-                            }
-                            else
-                            {
-                                // bias is for intentional look-around, decay normally
-                                chase_camera::yaw_bias *= expf(-chase_camera::orbit_bias_decay * dt);
-                            }
+                            chase_camera::yaw_bias *= expf(-chase_camera::orbit_bias_decay * dt);
                         }
+                        // hold zone (0.1 - 0.3): do nothing, camera stays where it is
 
-                        // vertical (pitch) - stick up looks down at car, stick down looks up
-                        if (fabsf(right_stick.y) > 0.1f)
+                        // vertical (pitch) - same three zones as horizontal
+                        float stick_y = fabsf(right_stick.y);
+                        if (stick_y > 0.3f)
                         {
                             chase_camera::pitch_bias += right_stick.y * chase_camera::orbit_bias_speed * dt;
                             chase_camera::pitch_bias  = std::clamp(chase_camera::pitch_bias, -chase_camera::pitch_bias_max, chase_camera::pitch_bias_max);
                         }
-                        else
+                        else if (stick_y < 0.1f && fabsf(chase_camera::pitch_bias) > 0.01f)
                         {
                             chase_camera::pitch_bias *= expf(-chase_camera::orbit_bias_decay * dt);
                         }
+                        // hold zone (0.1 - 0.3): do nothing, camera stays where it is
                     }
 
                     // reset car to spawn position: R key or button east (B on Xbox, O on PlayStation)
