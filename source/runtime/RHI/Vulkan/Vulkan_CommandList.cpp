@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
+#include "../Core/Breadcrumbs.h"
 //=====================================
 
 //= NAMESPACES ===============
@@ -519,12 +520,6 @@ namespace spartan
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
     
-        // enable breadcrumbs for this command list
-        if (Debugging::IsBreadcrumbsEnabled())
-        {
-            RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(this, m_queue, m_object_name.c_str());
-        }
-    
         // set states
         m_state     = RHI_CommandListState::Recording;
         m_pso       = RHI_PipelineState();
@@ -684,10 +679,6 @@ namespace spartan
                 m_buffer_id_instance = 0;
             }
 
-            if (Debugging::IsBreadcrumbsEnabled())
-            { 
-                RHI_VendorTechnology::Breadcrumbs_SetPipelineState(this, m_pipeline);
-            }
         }
 
         // bind descriptors
@@ -1610,7 +1601,7 @@ namespace spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_VendorTechnology::Breadcrumbs_MarkerBegin(this, AMD_FFX_Marker::Pass, name);
+            Breadcrumbs::BeginMarker(name);
         }
     }
 
@@ -1623,7 +1614,7 @@ namespace spartan
 
         if (Debugging::IsBreadcrumbsEnabled())
         {
-            RHI_VendorTechnology::Breadcrumbs_MarkerEnd(this);
+            Breadcrumbs::EndMarker();
         }
     }
     

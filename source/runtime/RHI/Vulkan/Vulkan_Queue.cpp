@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_VendorTechnology.h"
 #include "../Core/Debugging.h"
+#include "../Core/Breadcrumbs.h"
 //==================================
 
 //= NAMESPACES =====
@@ -200,11 +201,9 @@ namespace spartan
             {
                 if (Debugging::IsBreadcrumbsEnabled())
                 {
-                    bool flush = false; // we don't need to flush and we do, this will call Submit() again, causing stack overflow
-                    RHI_Device::QueueWaitAll(flush);
-                    RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved();
+                    Breadcrumbs::OnDeviceLost();
                 }
-                SP_ERROR_WINDOW("GPU crashed");
+                SP_ERROR_WINDOW("GPU crashed. Check 'gpu_crash.txt' for breadcrumbs report.");
             }
     
             SP_ASSERT_VK(result);

@@ -46,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Commands/Console/ConsoleCommands.h"
+#include "../Core/Breadcrumbs.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -266,6 +267,12 @@ namespace spartan
             RHI_Device::Initialize();
         }
 
+        // breadcrumbs
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            Breadcrumbs::Initialize();
+        }
+
         // options - cvars are initialized with defaults, but some need runtime values
         {
             // set gamma from display
@@ -352,11 +359,6 @@ namespace spartan
 
         // handle edge cases
         {
-            if (Debugging::IsBreadcrumbsEnabled())
-            { 
-                SP_ASSERT_MSG(RHI_Device::GetPrimaryPhysicalDevice()->IsAmd(), "Breadcrumbs are only supported on AMD GPUs");
-            }
-
             if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements())
             {
                 SP_WARNING_WINDOW("The GPU does not meet the minimum requirements for running the engine. The engine might be missing features and it won't perform as expected.");
@@ -392,6 +394,13 @@ namespace spartan
 
         RHI_VendorTechnology::Shutdown();
         RenderDoc::Shutdown();
+
+        // breadcrumbs
+        if (Debugging::IsBreadcrumbsEnabled())
+        {
+            Breadcrumbs::Shutdown();
+        }
+
         RHI_Device::Destroy();
     }
 
@@ -403,6 +412,12 @@ namespace spartan
             RHI_Device::Tick(frame_num);
             RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), cvar_resolution_scale.GetValue());
             dynamic_resolution();
+
+            // breadcrumbs
+            if (Debugging::IsBreadcrumbsEnabled())
+            {
+                Breadcrumbs::StartFrame();
+            }
         }
     
         // begin the primary graphics command list

@@ -531,11 +531,6 @@ namespace spartan
         }
 
         SP_ASSERT(m_rhi_resource != nullptr);
-
-        if (Debugging::IsBreadcrumbsEnabled())
-        { 
-            RHI_VendorTechnology::Breadcrumbs_RegisterPipeline(this);
-        }
     }
     
     RHI_Pipeline::~RHI_Pipeline()

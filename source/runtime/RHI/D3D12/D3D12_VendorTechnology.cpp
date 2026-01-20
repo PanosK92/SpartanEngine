@@ -89,29 +89,4 @@ namespace spartan
     {
 
     }
-
-    void RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
-    {
-
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
-    {
-
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name)
-    {
-
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
-    {
-
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved()
-    {
-
-    }
 }

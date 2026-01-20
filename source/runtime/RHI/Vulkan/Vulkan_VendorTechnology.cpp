@@ -30,12 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../Rendering/Renderer.h"
 #include "../World/Components/Camera.h"
-#include "../Core/Debugging.h"
 SP_WARNINGS_OFF
 #ifdef _WIN32
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
-#include <FidelityFX/host/ffx_breadcrumbs.h>
 #include <xess/xess_vk.h>
 #endif
 SP_WARNINGS_ON
@@ -586,55 +584,6 @@ namespace spartan
             }
         }
 
-        namespace breadcrumbs
-        {
-            bool                  context_created = false;
-            FfxBreadcrumbsContext context         = {};
-            array<uint32_t, 3> gpu_queue_indices  = {};
-            unordered_map<uint64_t, bool> registered_cmd_lists;
-
-            void context_destroy()
-            {
-                if (context_created)
-                {
-                    RHI_Device::QueueWaitAll();
-
-                    SP_ASSERT(ffxBreadcrumbsContextDestroy(&context) == FFX_OK);
-                    context_created = false;
-                }
-            }
-
-            void context_create()
-            {
-                context_destroy();
-
-                if (!context_created && Debugging::IsBreadcrumbsEnabled())
-                {
-                     gpu_queue_indices[0] = RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics);
-                     gpu_queue_indices[1] = RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute);
-                     gpu_queue_indices[2] = RHI_Device::GetQueueIndex(RHI_Queue_Type::Copy);
-
-                     FfxBreadcrumbsContextDescription context_description = {};
-                     context_description.backendInterface                 = ffx_interface;
-                     context_description.maxMarkersPerMemoryBlock         = 100;
-                     context_description.usedGpuQueuesCount               = static_cast<uint32_t>(gpu_queue_indices.size());
-                     context_description.pUsedGpuQueues                   = gpu_queue_indices.data();
-                     context_description.allocCallbacks.fpAlloc           = malloc;
-                     context_description.allocCallbacks.fpRealloc         = realloc;
-                     context_description.allocCallbacks.fpFree            = free;
-                     context_description.frameHistoryLength               = 2;
-                     context_description.flags                            = FFX_BREADCRUMBS_PRINT_FINISHED_LISTS    |
-                                                                            FFX_BREADCRUMBS_PRINT_NOT_STARTED_LISTS |
-                                                                            FFX_BREADCRUMBS_PRINT_FINISHED_NODES    |
-                                                                            FFX_BREADCRUMBS_PRINT_NOT_STARTED_NODES |
-                                                                            FFX_BREADCRUMBS_PRINT_EXTENDED_DEVICE_INFO |
-                                                                            FFX_BREADCRUMBS_ENABLE_THREAD_SYNCHRONIZATION;
-
-                     SP_ASSERT(ffxBreadcrumbsContextCreate(&context, &context_description) == FFX_OK);
-                     context_created = true;
-                }
-            }
-        }
     }
     #endif // _WIN32
 
@@ -661,9 +610,7 @@ namespace spartan
         // ffx interface
         {
             // all used contexts need to be accounted for here
-            const size_t max_contexts =
-                FFX_FSR3_CONTEXT_COUNT +
-                FFX_BREADCRUMBS_CONTEXT_COUNT;
+            const size_t max_contexts = FFX_FSR3_CONTEXT_COUNT;
             
             VkDeviceContext device_context  = {};
             device_context.vkDevice         = RHI_Context::device;
@@ -674,11 +621,6 @@ namespace spartan
             void* scratch_buffer             = calloc(1, scratch_buffer_size);
             
             SP_ASSERT(ffxGetInterfaceVK(&amd::ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, max_contexts)== FFX_OK);
-        }
-
-        // breadcrumbs
-        {
-            amd::breadcrumbs::context_create();
         }
 
         // assets
@@ -727,7 +669,6 @@ namespace spartan
     {
     #ifdef _WIN32
         amd::upscaler::context_destroy();
-        amd::breadcrumbs::context_destroy();
 
         // ffx interface
         if (amd::ffx_interface.scratchBuffer != nullptr)
@@ -788,12 +729,6 @@ namespace spartan
             }
         }
 
-        // breadcrumbs
-        if (amd::breadcrumbs::context_created)
-        {
-            amd::breadcrumbs::registered_cmd_lists.clear();
-            SP_ASSERT(ffxBreadcrumbsStartFrame(&amd::breadcrumbs::context) == FFX_OK);
-        }
     #endif
     }
 
@@ -966,141 +901,5 @@ namespace spartan
         SP_ASSERT(ffxFsr3UpscalerContextDispatch(&amd::upscaler::context, &amd::upscaler::description_dispatch) == FFX_OK);
         amd::upscaler::description_dispatch.reset = false;
     #endif
-    }
-   
-    void RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
-    {
-        #ifdef _MSC_VER
-
-        SP_ASSERT(amd::breadcrumbs::context_created);
-        SP_ASSERT(name != nullptr);
-
-        // note #1: command lists need to register per frame
-        // note #2: the map check is here in case because the same command lists can be re-used before frames start to be produced (e.g. during initialization)
-        if (amd::breadcrumbs::registered_cmd_lists.find(cmd_list->GetObjectId()) != amd::breadcrumbs::registered_cmd_lists.end())
-            return;
-
-        FfxBreadcrumbsCommandListDescription description = {};
-        description.commandList                          = amd::to_cmd_list(cmd_list);
-        description.queueType                            = RHI_Device::GetQueueIndex(queue->GetType());
-        description.name                                 = { name, true };
-        description.pipeline                             = nullptr;
-        description.submissionIndex                      = 0;
-    
-        SP_ASSERT(ffxBreadcrumbsRegisterCommandList(&amd::breadcrumbs::context, &description) == FFX_OK);
-        amd::breadcrumbs::registered_cmd_lists[cmd_list->GetObjectId()] = true;
-
-        #endif
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline)
-    {
-        #ifdef _MSC_VER
-        // note: pipelines need to register only once
-        SP_ASSERT(amd::breadcrumbs::context_created);
-
-        FfxBreadcrumbsPipelineStateDescription description = {};
-        description.pipeline                               = amd::to_pipeline(pipeline);
-
-        RHI_PipelineState* pso = pipeline->GetState();
-        description.name       = { pso->name, true};
-
-        if (pso->shaders[RHI_Shader_Type::Vertex])
-        { 
-            description.vertexShader = { pso->shaders[RHI_Shader_Type::Vertex]->GetObjectName().c_str(), true};
-        }
-
-        if (pso->shaders[RHI_Shader_Type::Pixel])
-        { 
-            description.pixelShader = { pso->shaders[RHI_Shader_Type::Pixel]->GetObjectName().c_str(), true};
-        }
-
-        if (pso->shaders[RHI_Shader_Type::Compute])
-        { 
-            description.computeShader = { pso->shaders[RHI_Shader_Type::Compute]->GetObjectName().c_str(), true};
-        }
-
-        if (pso->shaders[RHI_Shader_Type::Hull])
-        { 
-            description.hullShader = { pso->shaders[RHI_Shader_Type::Hull]->GetObjectName().c_str(), true};
-        }
-
-        if (pso->shaders[RHI_Shader_Type::Domain])
-        { 
-            description.domainShader = { pso->shaders[RHI_Shader_Type::Domain]->GetObjectName().c_str(), true};
-        }
-
-        SP_ASSERT(ffxBreadcrumbsRegisterPipeline(&amd::breadcrumbs::context, &description) == FFX_OK);
-
-        #endif
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
-    {
-        #ifdef _MSC_VER
-        SP_ASSERT(amd::breadcrumbs::context_created);
-
-        SP_ASSERT(ffxBreadcrumbsSetPipeline(&amd::breadcrumbs::context, amd::to_cmd_list(cmd_list), amd::to_pipeline(pipeline)) == FFX_OK);
-
-        #endif
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name)
-    {
-        #ifdef _MSC_VER
-
-        SP_ASSERT(amd::breadcrumbs::context_created);
-        SP_ASSERT(name != nullptr);
-
-         FfxBreadcrumbsMarkerType marker_type = FFX_BREADCRUMBS_MARKER_PASS;
-         if (marker == AMD_FFX_Marker::Dispatch)
-         {
-             marker_type = FFX_BREADCRUMBS_MARKER_DISPATCH;
-         }
-         else if (marker == AMD_FFX_Marker::DrawIndexed)
-         {
-             marker_type = FFX_BREADCRUMBS_MARKER_DRAW_INDEXED;
-         }
-
-        const FfxBreadcrumbsNameTag name_tag = { name, true };
-        SP_ASSERT(ffxBreadcrumbsBeginMarker(&amd::breadcrumbs::context, amd::to_cmd_list(cmd_list), marker_type, &name_tag) == FFX_OK);
-
-        #endif
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
-    {
-        #ifdef _MSC_VER
-
-        SP_ASSERT(amd::breadcrumbs::context_created);
-
-        SP_ASSERT(ffxBreadcrumbsEndMarker(&amd::breadcrumbs::context, amd::to_cmd_list(cmd_list)) == FFX_OK);
-
-        #endif
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved()
-    {
-        #ifdef _MSC_VER
-
-        SP_ASSERT(amd::breadcrumbs::context_created);
-
-        FfxBreadcrumbsMarkersStatus marker_status = {};
-        SP_ASSERT(ffxBreadcrumbsPrintStatus(&amd::breadcrumbs::context, &marker_status) == FFX_OK);
-
-        ofstream fout("gpu_crash.txt", ios::binary);
-        SP_ASSERT_MSG(fout.good(), "Failed to create gpu_crash.txt");
-
-        if (fout.good())
-        {
-            fout.write(marker_status.pBuffer, marker_status.bufferSize);
-            fout.close();
-        }
-
-        FFX_SAFE_FREE(marker_status.pBuffer, free);
-
-        SP_INFO_WINDOW("A gpu crash report has been saved to 'gpu_crash.txt'");
-
-        #endif
     }
 }

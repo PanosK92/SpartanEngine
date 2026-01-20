@@ -70,7 +70,7 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 - Variable rate shading and dynamic resolution scaling
 - Upscaling: XeSS 2 & FSR 3
 - Temporal anti-aliasing
-- Breadcrumbs for GPU crash tracing (FidelityFX Breadcrumbs)
+- Custom breadcrumbs for GPU crash tracing
 
 **Camera & Post-Processing**
 - Physically based camera with auto-exposure
