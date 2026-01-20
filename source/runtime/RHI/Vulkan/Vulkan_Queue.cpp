@@ -202,8 +202,12 @@ namespace spartan
                 if (Debugging::IsBreadcrumbsEnabled())
                 {
                     Breadcrumbs::OnDeviceLost();
+                    SP_ERROR_WINDOW("GPU crashed. Check 'gpu_crash.txt' for breadcrumbs report.");
                 }
-                SP_ERROR_WINDOW("GPU crashed. Check 'gpu_crash.txt' for breadcrumbs report.");
+                else
+                {
+                    SP_ERROR_WINDOW("GPU crashed. To capture breadcrumbs, enable them in debugging.h and re-run.");
+                }
             }
     
             SP_ASSERT_VK(result);
