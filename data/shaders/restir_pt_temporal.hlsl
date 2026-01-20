@@ -38,28 +38,20 @@ Texture2D<float4> tex_reservoir_prev2 : register(t23);
 Texture2D<float4> tex_reservoir_prev3 : register(t24);
 Texture2D<float4> tex_reservoir_prev4 : register(t25);
 
-// reproject pixel to previous frame
 float2 reproject_to_previous_frame(float2 current_uv, float depth)
 {
-    // get world position
     float3 world_pos = get_position(depth, current_uv);
-    
-    // reproject using previous view-projection matrix
     float4 prev_clip = mul(float4(world_pos, 1.0f), buffer_frame.view_projection_previous);
     float2 prev_ndc  = prev_clip.xy / prev_clip.w;
     float2 prev_uv   = prev_ndc * float2(0.5f, -0.5f) + 0.5f;
-    
     return prev_uv;
 }
 
-// check if previous sample is valid for temporal reuse
 bool is_temporal_sample_valid(float2 prev_uv, float3 current_pos, float3 current_normal)
 {
-    // check uv bounds
     if (!is_valid_uv(prev_uv))
         return false;
     
-    // get previous frame data
     float prev_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
     if (prev_depth <= 0.0f)
         return false;
@@ -67,24 +59,21 @@ bool is_temporal_sample_valid(float2 prev_uv, float3 current_pos, float3 current
     float3 prev_pos    = get_position(prev_depth, prev_uv);
     float3 prev_normal = get_normal(prev_uv);
     
-    // check surface similarity
+    // position check
     float pos_dist = length(current_pos - prev_pos);
     float max_dist = length(current_pos - buffer_frame.camera_position) * 0.05f;
     if (pos_dist > max_dist)
         return false;
     
-    // normal similarity
+    // normal check
     if (dot(current_normal, prev_normal) < RESTIR_NORMAL_THRESHOLD)
         return false;
     
     return true;
 }
 
-// evaluate target pdf for sample at new shading point (for mis)
 float evaluate_target_pdf_at_point(PathSample sample, float3 shading_pos, float3 shading_normal)
 {
-    // simple luminance-based target pdf
-    // in a more complete implementation, we'd retrace or use cached visibility
     return calculate_target_pdf(sample.radiance);
 }
 
@@ -93,23 +82,20 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 {
     uint2 pixel = dispatch_id.xy;
     
-    // get resolution
     float2 resolution = buffer_frame.resolution_render;
     if (pixel.x >= (uint)resolution.x || pixel.y >= (uint)resolution.y)
         return;
     
     float2 uv = (pixel + 0.5f) / resolution;
     
-    // check if there's geometry
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
         return;
     
-    // get current surface data
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
     
-    // load current frame reservoir
+    // load current reservoir
     Reservoir current = unpack_reservoir(
         tex_reservoir0[pixel],
         tex_reservoir1[pixel],
@@ -118,13 +104,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir4[pixel]
     );
     
-    // initialize rng
     uint seed = create_seed(pixel, buffer_frame.frame);
     
-    // create new reservoir starting with current
+    // init combined reservoir
     Reservoir combined = create_empty_reservoir();
     
-    // first, add current reservoir's sample
     float target_pdf_current = calculate_target_pdf(current.sample.radiance);
     float weight_current = target_pdf_current * current.W * current.M;
     combined.weight_sum = weight_current;
@@ -132,12 +116,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample = current.sample;
     combined.target_pdf = target_pdf_current;
     
-    // try to find and merge temporal sample
+    // temporal reuse
     float2 prev_uv = reproject_to_previous_frame(uv, depth);
     
     if (is_temporal_sample_valid(prev_uv, pos_ws, normal_ws))
     {
-        // load previous frame reservoir
         int2 prev_pixel = int2(prev_uv * resolution);
         prev_pixel = clamp(prev_pixel, int2(0, 0), int2(resolution) - int2(1, 1));
         
@@ -149,34 +132,24 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_prev4[prev_pixel]
         );
         
-        // clamp temporal M to prevent weight explosion
         clamp_reservoir_M(temporal, RESTIR_M_CAP);
         
-        // evaluate target pdf for temporal sample at current shading point
         float target_pdf_temporal = evaluate_target_pdf_at_point(temporal.sample, pos_ws, normal_ws);
         
-        // merge temporal reservoir
         float rand = random_float(seed);
         if (merge_reservoir(combined, temporal, target_pdf_temporal, rand))
-        {
             combined.target_pdf = target_pdf_temporal;
-        }
     }
     
-    // clamp combined M
     clamp_reservoir_M(combined, RESTIR_M_CAP);
     
-    // finalize weights
+    // finalize weight
     if (combined.target_pdf > 0 && combined.M > 0)
-    {
         combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
-    }
     else
-    {
         combined.W = 0;
-    }
     
-    // write updated reservoir
+    // write reservoir
     float4 t0, t1, t2, t3, t4;
     pack_reservoir(combined, t0, t1, t2, t3, t4);
     tex_reservoir0[pixel] = t0;
@@ -185,10 +158,10 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
     
-    // output temporally resampled gi
+    // output
     float3 gi = combined.sample.radiance * combined.W;
     
-    // clamp to prevent fireflies
+    // firefly clamp
     float lum = luminance(gi);
     if (lum > 10.0f)
         gi *= 10.0f / lum;
