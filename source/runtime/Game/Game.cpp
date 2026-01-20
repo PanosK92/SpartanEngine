@@ -378,6 +378,44 @@ namespace spartan
         Entity* vehicle_entity = nullptr;
         bool    show_telemetry = false;
 
+        // chase camera state - smooth following like gran turismo
+        namespace chase_camera
+        {
+            Vector3 position          = Vector3::Zero;  // smoothed world position
+            Vector3 velocity          = Vector3::Zero;  // velocity for smooth damping
+            float   yaw               = 0.0f;           // smoothed yaw angle (radians)
+            bool    initialized       = false;          // first frame initialization flag
+            
+            // tuning parameters
+            constexpr float distance_behind    = 4.25f;  // how far behind the car
+            constexpr float height_above       = 1.7f;   // height above the car
+            constexpr float position_smoothing = 0.8f;   // position smooth time (lower = faster)
+            constexpr float rotation_smoothing = 0.6f;   // rotation smooth time (lower = faster)
+            constexpr float look_offset_up     = 0.8f;   // look slightly above car center
+
+            // smooth damp helper - spring-damper system for natural camera movement
+            Vector3 smooth_damp(const Vector3& current, const Vector3& target, Vector3& velocity, float smoothing, float dt)
+            {
+                float omega  = 2.0f / std::max(smoothing * 0.1f, 0.001f);
+                float x      = omega * dt;
+                float exp_x  = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
+                Vector3 diff = current - target;
+                Vector3 temp = (velocity + omega * diff) * dt;
+                velocity     = (velocity - omega * temp) * exp_x;
+                return target + (diff + temp) * exp_x;
+            }
+
+            float lerp_angle(float a, float b, float t)
+            {
+                // handle wrap-around for angles
+                float diff = fmodf(b - a + math::pi * 3.0f, math::pi * 2.0f) - math::pi;
+                return a + diff * t;
+            }
+        }
+
+        // track whether player is currently operating the car (independent of camera parenting)
+        bool is_in_vehicle = false;
+
         // helper: loads car body mesh with material tweaks
         // out_excluded_entities: if remove_wheels is true, returns entities that were disabled (for collision exclusion)
         Entity* create_body(bool remove_wheels, vector<Entity*>* out_excluded_entities = nullptr)
@@ -1008,7 +1046,7 @@ namespace spartan
                 return;
 
             // cached references
-            bool inside_the_car             = default_camera->GetChildrenCount() == 0;
+            bool inside_the_car             = is_in_vehicle;
             Entity* sound_door_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_door")  : nullptr;
             Entity* sound_start_entity      = vehicle_entity ? vehicle_entity->GetChildByName("sound_start") : nullptr;
             Entity* sound_idle_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_idle")  : nullptr;
@@ -1051,40 +1089,116 @@ namespace spartan
                 audio_source_idle->StopClip();
             }
 
+            // smooth chase camera update - follows the car with lag to show body movement
+            if (inside_the_car && current_view == CarView::Chase && vehicle_entity)
+            {
+                Entity* camera = default_camera->GetChildByName("component_camera");
+                if (!camera)
+                    camera = default_car->GetChildByName("component_camera");
+
+                if (camera)
+                {
+                    float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+                    
+                    // get car's world position and forward direction (yaw only, ignore pitch/roll)
+                    Vector3 car_position = vehicle_entity->GetPosition();
+                    Vector3 car_forward  = vehicle_entity->GetForward();
+                    
+                    // extract yaw from forward vector (project onto xz plane)
+                    float target_yaw = atan2f(car_forward.x, car_forward.z);
+                    
+                    // initialize chase camera state on first use
+                    if (!chase_camera::initialized)
+                    {
+                        chase_camera::yaw         = target_yaw;
+                        chase_camera::position    = car_position - Vector3(sinf(target_yaw), 0.0f, cosf(target_yaw)) * chase_camera::distance_behind
+                                                  + Vector3::Up * chase_camera::height_above;
+                        chase_camera::velocity    = Vector3::Zero;
+                        chase_camera::initialized = true;
+                    }
+                    
+                    // smoothly interpolate yaw (handles wrap-around)
+                    chase_camera::yaw = chase_camera::lerp_angle(chase_camera::yaw, target_yaw, 
+                        1.0f - expf(-chase_camera::rotation_smoothing * dt));
+                    
+                    // compute target camera position based on smoothed yaw (not the car's actual rotation)
+                    Vector3 offset_direction = Vector3(sinf(chase_camera::yaw), 0.0f, cosf(chase_camera::yaw));
+                    Vector3 target_position  = car_position 
+                                             - offset_direction * chase_camera::distance_behind 
+                                             + Vector3::Up * chase_camera::height_above;
+                    
+                    // smooth damp the position for natural spring-like following
+                    chase_camera::position = chase_camera::smooth_damp(
+                        chase_camera::position, target_position, chase_camera::velocity, 
+                        chase_camera::position_smoothing, dt);
+                    
+                    // compute look target (slightly above the car center)
+                    Vector3 look_at = car_position + Vector3::Up * chase_camera::look_offset_up;
+                    
+                    // update camera transform
+                    camera->SetPosition(chase_camera::position);
+                    
+                    // make camera look at the car
+                    Vector3 look_direction = (look_at - chase_camera::position).Normalized();
+                    Quaternion look_rotation = Quaternion::FromLookRotation(look_direction, Vector3::Up);
+                    camera->SetRotation(look_rotation);
+                }
+            }
+
             // enter/exit car
             if (Input::GetKeyDown(KeyCode::E))
             {
                 Entity* camera = nullptr;
                 if (!inside_the_car)
                 {
+                    // entering the car
                     camera = default_camera->GetChildByName("component_camera");
-                    camera->SetParent(default_car);
-                    array<CarViewData, 3> view_data = get_car_view_data();
-                    camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
-                    camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                    
+                    if (current_view == CarView::Chase)
+                    {
+                        // chase view: keep camera independent, smooth follow will update it
+                        // don't change parent - camera stays under default_camera
+                        chase_camera::initialized = false; // will init on first update
+                    }
+                    else
+                    {
+                        // dashboard/hood: parent camera to car for rigid attachment
+                        camera->SetParent(default_car);
+                        array<CarViewData, 3> view_data = get_car_view_data();
+                        camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                        camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                    }
+                    
                     audio_source_start->PlayClip();
-                    // audio_source_idle->PlayClip(); // disabled for now
-                    inside_the_car = true;
+                    is_in_vehicle = true;
                 }
                 else
                 {
+                    // exiting the car
+                    // camera could be parented to default_car (dashboard/hood) or default_camera (chase)
                     camera = default_car->GetChildByName("component_camera");
+                    if (!camera)
+                        camera = default_camera->GetChildByName("component_camera");
+                    
                     camera->SetParent(default_camera);
                     camera->SetPositionLocal(default_camera->GetComponent<Physics>()->GetControllerTopLocal());
                     camera->SetRotationLocal(Quaternion::Identity);
+                    
                     BoundingBox car_aabb = get_car_aabb();
                     Vector3 exit_offset  = default_car->GetLeft() * car_aabb.GetSize().x + Vector3::Up * car_aabb.GetSize().y * 0.5f;
                     default_camera->SetPosition(default_car->GetPosition() + exit_offset);
+                    
                     audio_source_idle->StopClip();
-                    inside_the_car = false;
+                    chase_camera::initialized = false;
+                    is_in_vehicle = false;
                 }
 
-                camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
+                camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !is_in_vehicle);
                 audio_source_door->PlayClip();
 
                 if (default_car_window)
                 {
-                    default_car_window->SetActive(!inside_the_car);
+                    default_car_window->SetActive(!is_in_vehicle);
                 }
             }
 
@@ -1093,12 +1207,38 @@ namespace spartan
             {
                 if (inside_the_car)
                 {
-                    if (Entity* camera = default_car->GetChildByName("component_camera"))
+                    // find camera (could be parented to default_car or default_camera depending on current view)
+                    Entity* camera = default_car->GetChildByName("component_camera");
+                    if (!camera)
+                        camera = default_camera->GetChildByName("component_camera");
+
+                    if (camera)
                     {
+                        CarView previous_view = current_view;
                         current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
-                        array<CarViewData, 3> view_data = get_car_view_data();
-                        camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
-                        camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                        
+                        // handle transitions to/from chase view (changes parenting)
+                        if (current_view == CarView::Chase)
+                        {
+                            // switching to chase: unparent camera, smooth follow will take over
+                            camera->SetParent(default_camera);
+                            chase_camera::initialized = false;
+                        }
+                        else if (previous_view == CarView::Chase)
+                        {
+                            // switching from chase: parent camera to car for rigid attachment
+                            camera->SetParent(default_car);
+                            array<CarViewData, 3> view_data = get_car_view_data();
+                            camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                            camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                        }
+                        else
+                        {
+                            // switching between dashboard/hood (both parented)
+                            array<CarViewData, 3> view_data = get_car_view_data();
+                            camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                            camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                        }
                     }
                 }
             }
@@ -1110,8 +1250,13 @@ namespace spartan
         // reset state on shutdown
         void shutdown()
         {
-            vehicle_entity = nullptr;
-            show_telemetry = false;
+            vehicle_entity            = nullptr;
+            show_telemetry            = false;
+            is_in_vehicle             = false;
+            chase_camera::initialized = false;
+            chase_camera::position    = Vector3::Zero;
+            chase_camera::velocity    = Vector3::Zero;
+            chase_camera::yaw         = 0.0f;
         }
     }
     //========================================================================================
