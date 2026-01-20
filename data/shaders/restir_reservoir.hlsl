@@ -24,11 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // configuration
 static const uint RESTIR_MAX_PATH_LENGTH     = 4;
-static const uint RESTIR_M_CAP               = 20;
-static const uint RESTIR_SPATIAL_SAMPLES     = 5;
-static const float RESTIR_SPATIAL_RADIUS     = 30.0f;
-static const float RESTIR_DEPTH_THRESHOLD    = 0.1f;
-static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
+static const uint RESTIR_M_CAP               = 30;
+static const uint RESTIR_SPATIAL_SAMPLES     = 3;
+static const float RESTIR_SPATIAL_RADIUS     = 8.0f;
+static const float RESTIR_DEPTH_THRESHOLD    = 0.02f;
+static const float RESTIR_NORMAL_THRESHOLD   = 0.98f;
 
 struct PathSample
 {
@@ -108,7 +108,10 @@ Reservoir create_empty_reservoir()
 
 float calculate_target_pdf(float3 radiance)
 {
-    return max(dot(radiance, float3(0.299, 0.587, 0.114)), 1e-6f);
+    // use log-based target pdf for much softer bias
+    // this strongly preserves natural occlusion - dark samples nearly equal to bright
+    float lum = dot(radiance, float3(0.299, 0.587, 0.114));
+    return max(log(1.0f + lum * 10.0f), 1e-6f);
 }
 
 bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float weight, float random_value)

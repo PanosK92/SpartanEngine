@@ -77,8 +77,8 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
 
 float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 center_normal)
 {
-    float alignment = saturate(dot(center_normal, sample.hit_normal) * 0.5f + 0.5f);
-    return calculate_target_pdf(sample.radiance) * alignment;
+    // use radiance-based target pdf only - alignment factor was causing dark flat surfaces
+    return calculate_target_pdf(sample.radiance);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -171,24 +171,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             combined.target_pdf = target_pdf_neighbor;
     }
     
-    // mis weight
-    float Z = 0;
-    for (uint j = 0; j <= RESTIR_SPATIAL_SAMPLES; j++)
-        Z += z_values[j];
+    // clamp M to prevent unbounded growth
+    clamp_reservoir_M(combined, RESTIR_M_CAP);
     
-    combined.M = min(combined.M, Z);
-    clamp_reservoir_M(combined, RESTIR_M_CAP * 2);
-    
-    // finalize weight with bias correction
+    // finalize weight - standard restir weight calculation
     if (combined.target_pdf > 0 && combined.M > 0)
-    {
-        float bias_correction = 1.0f / max(float(valid_neighbor_count + 1), 1.0f);
-        combined.W = (combined.weight_sum / (combined.target_pdf * combined.M)) * bias_correction;
-    }
+        combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
     else
-    {
         combined.W = 0;
-    }
     
     // write reservoir
     float4 t0, t1, t2, t3, t4;
@@ -204,10 +194,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     // firefly clamp
     float lum = luminance(gi);
-    if (lum > 8.0f)
-        gi *= 8.0f / lum;
-    
-    gi *= 2.0f; // intensity boost
+    if (lum > 100.0f)
+        gi *= 100.0f / lum;
     
     tex_uav[pixel] = float4(gi, 1.0f);
 }

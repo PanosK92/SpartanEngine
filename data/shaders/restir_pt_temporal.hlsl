@@ -163,8 +163,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     // firefly clamp
     float lum = luminance(gi);
-    if (lum > 10.0f)
-        gi *= 10.0f / lum;
+    if (lum > 100.0f)
+        gi *= 100.0f / lum;
     
     tex_uav[pixel] = float4(gi, 1.0f);
 }

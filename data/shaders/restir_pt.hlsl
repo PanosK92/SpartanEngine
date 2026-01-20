@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-static const uint INITIAL_CANDIDATE_SAMPLES = 4;
+static const uint INITIAL_CANDIDATE_SAMPLES = 12;
 static const float RUSSIAN_ROULETTE_PROB    = 0.8f;
 
 struct [raypayload] PathPayload
@@ -164,16 +164,11 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         
         if (!payload.hit)
         {
-            // sky contribution
-            float3 sky_dir = ray_dir;
-            float sky_gradient = saturate(sky_dir.y);
-            float3 sky_color = lerp(float3(0.8f, 0.85f, 0.9f), float3(0.3f, 0.5f, 0.9f), sky_gradient);
+            // sample environment map for sky contribution
+            float2 sky_uv       = direction_sphere_uv(ray_dir);
+            float3 sky_radiance = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, 2).rgb;
             
-            float3 light_dir   = -light_parameters[0].direction;
-            float sun_factor   = saturate(light_dir.y);
-            float3 sky_radiance = sky_color * sun_factor * 0.5f;
-            
-            sample.radiance += throughput * sky_radiance;
+            sample.radiance += throughput * sky_radiance * 0.5f;
             break;
         }
         
@@ -186,10 +181,11 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         
         sample.path_length = bounce + 1;
         
-        // direct lighting
-        float3 light_dir      = -light_parameters[0].direction;
-        float3 light_color    = light_parameters[0].color.rgb;
-        float  light_intensity = light_parameters[0].intensity * 0.0001f;
+        // direct lighting from sun/directional light
+        // normalize intensity from physical units (lux) to path tracing friendly range
+        float3 light_dir       = -light_parameters[0].direction;
+        float3 light_color     = light_parameters[0].color.rgb;
+        float  light_intensity = light_parameters[0].intensity * 0.00005f;
         
         float n_dot_l = saturate(dot(payload.hit_normal, light_dir));
         if (n_dot_l > 0)
@@ -231,10 +227,10 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         throughput *= brdf / max(pdf, 1e-6f);
         sample.pdf *= pdf;
         
-        // firefly clamp
+        // firefly clamp - be generous to allow proper hdr range
         float max_throughput = max(max(throughput.r, throughput.g), throughput.b);
-        if (max_throughput > 10.0f)
-            throughput *= 10.0f / max_throughput;
+        if (max_throughput > 100.0f)
+            throughput *= 100.0f / max_throughput;
         
         ray_origin = payload.hit_position + payload.hit_normal * 0.01f;
         ray_dir    = new_dir;
