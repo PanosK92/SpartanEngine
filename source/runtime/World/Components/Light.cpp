@@ -350,7 +350,8 @@ namespace spartan
 
         float time_of_day = 0.0f;
         float temperature = 0.0f;
-        float intensity = 0.0f;
+        float intensity   = 0.0f;
+        float yaw_degrees = 0.0f; // horizontal rotation around Y axis
 
         switch (preset)
         {
@@ -382,6 +383,15 @@ namespace spartan
             intensity = 0.3f; // lux - full moon
             break;
 
+        case LightPreset::david_lynch:
+            // dreamy sunset - that david lynch/twin peaks vibe
+            // warm orange/pink colors, sun near horizon, dreamlike beauty
+            time_of_day = 0.74f; // sun near horizon for actual sunset colors
+            temperature = 2200.0f; // deep warm orange/pink
+            intensity   = 5000.0f; // lux - soft sunset light
+            yaw_degrees = 125.0f; // rotate to avoid mountain
+            break;
+
         case LightPreset::custom:
             // do nothing, keep current settings
             return;
@@ -397,9 +407,15 @@ namespace spartan
         // set rotation based on time of day (only for directional lights)
         if (m_light_type == LightType::Directional)
         {
-            float angle_rad = (time_of_day * 360.0f - 90.0f) * math::deg_to_rad;
-            Quaternion rotation = Quaternion::FromAxisAngle(Vector3::Right, angle_rad);
-            GetEntity()->SetRotation(rotation);
+            // elevation from time of day
+            float elevation_rad = (time_of_day * 360.0f - 90.0f) * math::deg_to_rad;
+            Quaternion elevation = Quaternion::FromAxisAngle(Vector3::Right, elevation_rad);
+            
+            // horizontal rotation (yaw)
+            Quaternion yaw = Quaternion::FromAxisAngle(Vector3::Up, yaw_degrees * math::deg_to_rad);
+            
+            // combine: yaw first, then elevation
+            GetEntity()->SetRotation(yaw * elevation);
             UpdateMatrices();
         }
 

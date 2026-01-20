@@ -34,10 +34,10 @@ struct gbuffer
 static const float3 vegetation_greener  = float3(0.05f, 0.4f, 0.03f);
 static const float3 vegetation_yellower = float3(0.45f, 0.4f, 0.15f);
 static const float3 vegetation_browner  = float3(0.3f, 0.15f, 0.08f);
-static const float3 grass_base          = float3(0.05f, 0.07f, 0.03f);
-static const float3 grass_tip           = float3(0.08f, 0.12f, 0.04f);
-static const float3 grass_var1          = float3(0.07f, 0.08f, 0.03f);
-static const float3 grass_var2          = float3(0.06f, 0.05f, 0.02f);
+static const float3 grass_base          = float3(0.03f, 0.055f, 0.02f);
+static const float3 grass_tip           = float3(0.05f, 0.09f, 0.03f);
+static const float3 grass_var1          = float3(0.04f, 0.065f, 0.02f);
+static const float3 grass_var2          = float3(0.035f, 0.04f, 0.015f);
 static const float3 flower_base         = float3(0.05f, 0.07f, 0.03f);
 static const float3 flower_blue         = float3(0.529f, 0.808f, 0.922f);
 static const float3 flower_red          = float3(0.8f, 0.2f, 0.2f);

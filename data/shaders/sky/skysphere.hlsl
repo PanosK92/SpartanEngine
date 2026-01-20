@@ -665,7 +665,7 @@ struct clouds
         inscatter = scatter * (1.0 - trans) / max(ext, 1e-6) * sun_illuminance;
     }
     
-    static cloud_result compute(float3 view_dir, float3 sun_dir, float sun_int, float time, float2 uv,
+    static cloud_result compute(float3 view_dir, float3 sun_dir, float sun_int, float day_night_factor, float time, float2 uv,
                                  Texture2D trans_lut, Texture2D ms_lut, SamplerState samp)
     {
         cloud_result r = (cloud_result)0;
@@ -674,6 +674,10 @@ struct clouds
         float coverage = buffer_frame.cloud_coverage;
         float ctype = buffer_frame.cloud_type;
         float seed = buffer_frame.cloud_seed;
+        
+        // day_night_factor: 1.0 = full daylight, 0.03 = moonlight
+        // this is independent of the preset's intensity setting
+        float ambient_scale = day_night_factor;
         
         if (coverage <= 0.0) return r;
         
@@ -691,8 +695,9 @@ struct clouds
         float avg_dist = (t_enter + t_exit) * 0.5;
         float avg_alt = (cloud_base_bottom + cloud_base_top) * 0.5;
         
-        // atmospheric effects
+        // atmospheric effects - scale inscatter by ambient_scale for proper night darkening
         aerial_perspective(view_dir, avg_dist, sun_dir, trans_lut, samp, r.inscatter, r.transmittance);
+        r.inscatter *= ambient_scale;
         float3 sun_color = get_sun_color(sun_dir, avg_alt, trans_lut, samp);
         float3 ambient = get_ambient(sun_dir, ms_lut, samp);
         
@@ -739,16 +744,16 @@ struct clouds
                 float3 light_col = lerp(direct, buffer_frame.cloud_color * sun_int, buffer_frame.cloud_darkness);
                 float3 rad = light_col * lm.attenuation * phase;
                 
-                // silver lining - reduced intensity
+                // silver lining - scaled by ambient_scale so cloud edges don't glow at night
                 float edge = saturate(abs(d - prev_d) * 10.0) * (1.0 - saturate(d * 2.0));
-                rad += light_col * edge * backlit * silver_phase * lm.attenuation * 0.4;
+                rad += light_col * edge * backlit * silver_phase * lm.attenuation * 0.4 * ambient_scale;
                 
-                // ambient sky light - reduced for better balance with sky
-                rad += ambient * lerp(0.4, 0.8, h) * lm.ao * 0.2;
+                // ambient sky light - scaled by light intensity so moonlit clouds stay dark
+                rad += ambient * lerp(0.4, 0.8, h) * lm.ao * 0.2 * ambient_scale;
                 
-                // ground bounce illumination for cloud undersides - significantly reduced
+                // ground bounce illumination for cloud undersides - scaled by light intensity
                 float3 ground_bounce = get_ground_bounce(sun_dir, h, trans_lut, samp);
-                rad += ground_bounce * (0.3 + lm.ao * 0.3) * 0.5;
+                rad += ground_bounce * (0.3 + lm.ao * 0.3) * 0.5 * ambient_scale;
                 
                 float ext = d * step_size * cloud_absorption;
                 float absorbed = 1.0 - exp(-ext);
@@ -913,19 +918,23 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         float moon_elev = dot(moon_dir, up_direction);
         float time_val = (float)buffer_frame.time * 0.001f;
         
-        if (sun_elev > -0.33)
+        if (sun_elev > -0.15)
         {
-            float sun_int = light.intensity * max(saturate(sun_elev * 5.0 + 1.0), 0.05);
-            clouds_sun = clouds::compute(orig_view, sun_dir, sun_int, time_val, uv,
+            // sun intensity drops to zero when sun is below horizon
+            // day_night_factor is based on sun elevation, independent of preset intensity
+            float day_night_factor = saturate(sun_elev * 5.0 + 1.0);
+            float sun_int = light.intensity * day_night_factor;
+            clouds_sun = clouds::compute(orig_view, sun_dir, sun_int, day_night_factor, time_val, uv,
                                           tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
-            float fade = saturate(sun_elev * 3.0 + 1.0);
-            clouds_sun.color *= fade;
-            clouds_sun.alpha *= fade;
+            clouds_sun.color *= day_night_factor;
+            clouds_sun.alpha *= day_night_factor;
         }
         
         if (moon_elev > 0.0 && sun_elev < 0.1)
         {
-            clouds_moon = clouds::compute(orig_view, moon_dir, light.intensity * 0.03, time_val, uv,
+            // moonlight: 3% of sun intensity, day_night_factor = 0.03
+            float day_night_factor = 0.03;
+            clouds_moon = clouds::compute(orig_view, moon_dir, light.intensity * day_night_factor, day_night_factor, time_val, uv,
                                            tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
             float fade = saturate((0.1 - sun_elev) * 5.0) * saturate(moon_elev * 3.0);
             clouds_moon.color *= fade;

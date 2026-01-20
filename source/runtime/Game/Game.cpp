@@ -1291,7 +1291,7 @@ namespace spartan
                 const float per_triangle_density_rock        = 0.001f;
 
                 // lighting
-                entities::sun(LightPreset::dusk, true);
+                entities::sun(LightPreset::david_lynch, true);
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetFlag(LightFlags::Volumetric, true);
 
@@ -1823,7 +1823,7 @@ namespace spartan
                                     light->SetLightType(LightType::Area);
                                     light->SetColor(color);
                                     light->SetRange(80.0f);
-                                    light->SetIntensity(8000.0f);
+                                    light->SetIntensity(4000.0f);
                                     light->SetFlag(LightFlags::Shadows,            true);
                                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                     light->SetFlag(LightFlags::Volumetric,         false);
