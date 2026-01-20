@@ -66,7 +66,7 @@ namespace spartan
         xess_vk_execute_params_t params_execute = {};
         Vector2 jitter                          = Vector2::Zero;
         const float responsive_mask_value_max   = 0.05f;
-        const float exposure_scale              = 0.05f;
+        const float exposure_scale              = 1.0f; // neutral, let internal auto-exposure handle it
         xess_quality_settings_t quality         = XESS_QUALITY_SETTING_BALANCED;
 
         xess_quality_settings_t get_quality(const float scale_factor)
@@ -132,7 +132,7 @@ namespace spartan
             intel::params_init.outputResolution.x = common::resolution_output_width;
             intel::params_init.outputResolution.y = common::resolution_output_height;
             intel::params_init.qualitySetting     = intel::get_quality(scale_factor);
-            intel::params_init.initFlags          = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH;
+            intel::params_init.initFlags          = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
             intel::params_init.creationNodeMask   = 0;
             intel::params_init.visibleNodeMask    = 0;
             intel::params_init.tempBufferHeap     = VK_NULL_HANDLE;
@@ -519,13 +519,14 @@ namespace spartan
             {
                 context_destroy();
 
-                // description
-                description_context.maxRenderSize.width    = common::resolution_render_width;
-                description_context.maxRenderSize.height   = common::resolution_render_height;
-                description_context.maxUpscaleSize.width   = common::resolution_output_width;
-                description_context.maxUpscaleSize.height  = common::resolution_output_height;
-                description_context.flags                  = FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
-                description_context.flags                 |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
+            // description
+            description_context.maxRenderSize.width    = common::resolution_render_width;
+            description_context.maxRenderSize.height   = common::resolution_render_height;
+            description_context.maxUpscaleSize.width   = common::resolution_output_width;
+            description_context.maxUpscaleSize.height  = common::resolution_output_height;
+            description_context.flags                  = FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
+            description_context.flags                 |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
+            description_context.flags                 |= FFX_FSR3_ENABLE_AUTO_EXPOSURE;      // let fsr compute exposure internally for temporal stability
                 #ifdef DEBUG
                 description_context.flags                 |= FFX_FSR3_ENABLE_DEBUG_CHECKING;
                 description_context.fpMessage              = &message_callback;
