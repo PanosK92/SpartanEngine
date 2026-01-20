@@ -991,19 +991,28 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     if (!compute_clouds && has_clouds_coverage && prev.a > 0.5)
     {
         // checkerboard reconstruction: blend neighboring computed pixels with temporal history
-        // read 4 diagonal neighbors (these were computed this frame due to checkerboard pattern)
-        float3 n0 = tex_uav[tid.xy + int2(-1, -1)].rgb;
-        float3 n1 = tex_uav[tid.xy + int2( 1, -1)].rgb;
-        float3 n2 = tex_uav[tid.xy + int2(-1,  1)].rgb;
-        float3 n3 = tex_uav[tid.xy + int2( 1,  1)].rgb;
+        // avoid edges where neighbor sampling would wrap incorrectly
+        bool at_edge = tid.x < 2 || tid.x >= uint(res.x) - 2 || tid.y < 2 || tid.y >= uint(res.y) - 2;
         
-        // use box filter of neighbors for spatial reconstruction
-        float3 spatial = (n0 + n1 + n2 + n3) * 0.25;
-        
-        // blend spatial reconstruction with temporal history for stability
-        // higher spatial weight = sharper but potentially more flickery
-        // higher temporal weight = smoother but potentially more ghosting
-        blended = lerp(prev.rgb, spatial, 0.4);
+        if (!at_edge)
+        {
+            // read 4 diagonal neighbors (these were computed this frame due to checkerboard pattern)
+            float3 n0 = tex_uav[tid.xy + int2(-1, -1)].rgb;
+            float3 n1 = tex_uav[tid.xy + int2( 1, -1)].rgb;
+            float3 n2 = tex_uav[tid.xy + int2(-1,  1)].rgb;
+            float3 n3 = tex_uav[tid.xy + int2( 1,  1)].rgb;
+            
+            // use box filter of neighbors for spatial reconstruction
+            float3 spatial = (n0 + n1 + n2 + n3) * 0.25;
+            
+            // blend spatial reconstruction with temporal history for stability
+            blended = lerp(prev.rgb, spatial, 0.4);
+        }
+        else
+        {
+            // at edges, fall back to temporal-only with faster blend
+            blended = lerp(prev.rgb, final_color, 0.25);
+        }
     }
     else if (cloud_alpha > 0.0 && prev.a > 0.5)
     {

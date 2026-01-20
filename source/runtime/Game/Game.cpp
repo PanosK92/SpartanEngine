@@ -2270,8 +2270,9 @@ namespace spartan
         //== CAR SIMULATION ==================================================================
         namespace car_simulation
         {
-            // helper to create a static cube obstacle with physics
-            void create_cube(const string& name, const Vector3& position, const Vector3& euler_angles, const Vector3& scale, bool is_static = true)
+            // helper to create a cube obstacle with physics
+            // mass = 0 means static, mass > 0 means dynamic with that mass in kg
+            void create_cube(const string& name, const Vector3& position, const Vector3& euler_angles, const Vector3& scale, float mass = 0.0f)
             {
                 Entity* entity = World::CreateEntity();
                 entity->SetObjectName(name);
@@ -2284,8 +2285,9 @@ namespace spartan
                 renderable->SetDefaultMaterial();
 
                 Physics* physics_body = entity->AddComponent<Physics>();
-                physics_body->SetMass(is_static ? 0.0f : Physics::mass_from_volume);
                 physics_body->SetBodyType(BodyType::Box);
+                physics_body->SetStatic(mass == 0.0f);
+                physics_body->SetMass(mass);
             }
 
             void create()
@@ -2361,18 +2363,18 @@ namespace spartan
                 // zone 4: slalom course (behind spawn)
                 //==================================================================================
                 
-                // slalom pylons - alternating obstacles
+                // slalom pylons - alternating obstacles (25 kg like plastic barriers)
                 for (int i = 0; i < 6; i++)
                 {
                     float z_offset  = -20.0f - (i * 12.0f);
                     float x_offset  = (i % 2 == 0) ? 5.0f : -5.0f;
-                    create_cube("slalom_pylon_" + to_string(i), Vector3(x_offset, 1.0f, z_offset), Vector3::Zero, Vector3(1.5f, 2.0f, 1.5f));
+                    create_cube("slalom_pylon_" + to_string(i), Vector3(x_offset, 1.0f, z_offset), Vector3::Zero, Vector3(1.5f, 2.0f, 1.5f), 25.0f);
                 }
                 
-                // slalom finish gate pillars
-                create_cube("gate_left", Vector3(-6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f));
-                create_cube("gate_right", Vector3(6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f));
-                create_cube("gate_top", Vector3(0.0f, 4.5f, -95.0f), Vector3::Zero, Vector3(14.0f, 0.5f, 1.0f));
+                // slalom finish gate pillars - dynamic so they can be knocked over
+                create_cube("gate_left", Vector3(-6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f), 30.0f);
+                create_cube("gate_right", Vector3(6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f), 30.0f);
+                create_cube("gate_top", Vector3(0.0f, 4.5f, -95.0f), Vector3::Zero, Vector3(14.0f, 0.5f, 1.0f), 15.0f);
 
                 //==================================================================================
                 // zone 5: banked turn circuit (far right area)
@@ -2391,34 +2393,37 @@ namespace spartan
                 // zone 6: obstacle course (scattered dynamic objects)
                 //==================================================================================
                 
-                // stack of crates to crash through
+                // stack of crates to crash through (20 kg wooden crates)
+                // add small gaps (1.55 spacing for 1.5 size) to prevent interpenetration explosions
                 for (int row = 0; row < 3; row++)
                 {
                     for (int col = 0; col < 3; col++)
                     {
-                        float y_pos = 0.75f + (row * 1.5f);
-                        float x_pos = 35.0f + (col * 1.6f);
-                        create_cube("crate_stack_" + to_string(row) + "_" + to_string(col), Vector3(x_pos, y_pos, -30.0f), Vector3::Zero, Vector3(1.5f, 1.5f, 1.5f), false);
+                        float y_pos = 0.76f + (row * 1.55f);
+                        float x_pos = 35.0f + (col * 1.65f);
+                        create_cube("crate_stack_" + to_string(row) + "_" + to_string(col), Vector3(x_pos, y_pos, -30.0f), Vector3::Zero, Vector3(1.5f, 1.5f, 1.5f), 20.0f);
                     }
                 }
                 
-                // barrel wall
+                // barrel wall (15 kg empty barrels)
+                // add gaps to prevent interpenetration
                 for (int i = 0; i < 5; i++)
                 {
-                    float x_pos = 50.0f + (i * 2.0f);
-                    create_cube("barrel_" + to_string(i), Vector3(x_pos, 0.8f, -45.0f), Vector3(90.0f, 0.0f, 0.0f), Vector3(1.2f, 1.6f, 1.2f), false);
+                    float x_pos = 50.0f + (i * 2.2f);
+                    create_cube("barrel_" + to_string(i), Vector3(x_pos, 0.85f, -45.0f), Vector3(90.0f, 0.0f, 0.0f), Vector3(1.2f, 1.6f, 1.2f), 15.0f);
                 }
                 
-                // pyramid of boxes
+                // pyramid of boxes (15 kg cardboard boxes)
+                // add small gaps to prevent interpenetration explosions
                 int pyramid_base = 4;
                 for (int level = 0; level < pyramid_base; level++)
                 {
                     int boxes_in_level = pyramid_base - level;
-                    float y_pos        = 0.6f + (level * 1.2f);
-                    float start_x      = 70.0f - (boxes_in_level * 0.6f);
+                    float y_pos        = 0.62f + (level * 1.25f);
+                    float start_x      = 70.0f - (boxes_in_level * 0.65f);
                     for (int b = 0; b < boxes_in_level; b++)
                     {
-                        create_cube("pyramid_" + to_string(level) + "_" + to_string(b), Vector3(start_x + (b * 1.3f), y_pos, -60.0f), Vector3::Zero, Vector3(1.2f, 1.2f, 1.2f), false);
+                        create_cube("pyramid_" + to_string(level) + "_" + to_string(b), Vector3(start_x + (b * 1.35f), y_pos, -60.0f), Vector3::Zero, Vector3(1.2f, 1.2f, 1.2f), 15.0f);
                     }
                 }
 
@@ -2476,8 +2481,8 @@ namespace spartan
                 for (int i = 0; i < 4; i++)
                 {
                     float z_pos = 80.0f + (i * 8.0f);
-                    create_cube("parking_left_" + to_string(i), Vector3(-8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f));
-                    create_cube("parking_right_" + to_string(i), Vector3(8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f));
+                    create_cube("parking_left_" + to_string(i), Vector3(-8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f), 5.0f);
+                    create_cube("parking_right_" + to_string(i), Vector3(8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f), 5.0f);
                 }
                 
                 // parking lot boundary walls
@@ -2492,8 +2497,8 @@ namespace spartan
                 // see-saw pivot base
                 create_cube("seesaw_base", Vector3(30.0f, 0.3f, 50.0f), Vector3::Zero, Vector3(1.5f, 0.6f, 1.5f));
                 
-                // see-saw plank (dynamic so it tips)
-                create_cube("seesaw_plank", Vector3(30.0f, 0.8f, 50.0f), Vector3::Zero, Vector3(12.0f, 0.3f, 4.0f), false);
+                // see-saw plank (50 kg so it tips when car drives on it)
+                create_cube("seesaw_plank", Vector3(30.0f, 0.8f, 50.0f), Vector3::Zero, Vector3(12.0f, 0.3f, 4.0f), 50.0f);
 
                 //==================================================================================
                 // decorative boundary markers
