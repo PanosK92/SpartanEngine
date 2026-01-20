@@ -92,9 +92,9 @@ namespace car
         constexpr float min_slip_speed       = 0.5f;
         constexpr float load_sensitivity     = 0.92f;
         constexpr float load_reference       = 4000.0f;
-        constexpr float rear_grip_ratio      = 1.05f;   // slight rear bias for stability
+        constexpr float rear_grip_ratio      = 1.12f;   // rear bias for stability (reduces oversteer)
         constexpr float slip_angle_deadband  = 0.01f;   // radians (~0.6 deg) - ignore tiny slip angles
-        constexpr float min_lateral_grip     = 0.3f;    // preserve 30% lateral grip during wheelspin
+        constexpr float min_lateral_grip     = 0.5f;    // preserve 50% lateral grip during wheelspin
         
         // tire temperature
         constexpr float tire_ambient_temp    = 50.0f;
@@ -175,9 +175,9 @@ namespace car
         constexpr float handbrake_sliding_factor = 0.75f;
         
         // lsd
-        constexpr float lsd_preload         = 200.0f;   // higher preload for more consistent lock
-        constexpr float lsd_lock_ratio_accel = 0.8f;    // stronger locking under acceleration
-        constexpr float lsd_lock_ratio_decel = 0.4f;    // moderate locking on decel
+        constexpr float lsd_preload         = 150.0f;   // moderate preload
+        constexpr float lsd_lock_ratio_accel = 0.5f;    // reduced locking to prevent snap oversteer
+        constexpr float lsd_lock_ratio_decel = 0.3f;    // gentle locking on decel (reduces lift-off oversteer)
         
         // thresholds
         constexpr float input_deadzone          = 0.01f;
@@ -191,7 +191,7 @@ namespace car
         
         // damping
         constexpr float linear_damping  = 0.001f;  // minimal - air drag handles velocity damping
-        constexpr float angular_damping = 0.3f;
+        constexpr float angular_damping = 0.5f;    // yaw stability (higher = less snappy rotation)
         
         // abs
         inline bool     abs_enabled        = false;

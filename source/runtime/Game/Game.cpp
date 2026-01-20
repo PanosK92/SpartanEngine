@@ -378,20 +378,34 @@ namespace spartan
         Entity* vehicle_entity = nullptr;
         bool    show_telemetry = false;
 
-        // chase camera state - smooth following like gran turismo
+        // chase camera state - gran turismo 7 style
         namespace chase_camera
         {
             Vector3 position          = Vector3::Zero;  // smoothed world position
             Vector3 velocity          = Vector3::Zero;  // velocity for smooth damping
             float   yaw               = 0.0f;           // smoothed yaw angle (radians)
+            float   yaw_bias          = 0.0f;           // manual horizontal camera rotation from right stick (radians)
+            float   pitch_bias        = 0.0f;           // manual vertical camera rotation from right stick (radians)
+            float   speed_factor      = 0.0f;           // smoothed speed factor for dynamic adjustments
             bool    initialized       = false;          // first frame initialization flag
             
-            // tuning parameters
-            constexpr float distance_behind    = 4.25f;  // how far behind the car
-            constexpr float height_above       = 1.7f;   // height above the car
-            constexpr float position_smoothing = 0.8f;   // position smooth time (lower = faster)
-            constexpr float rotation_smoothing = 0.6f;   // rotation smooth time (lower = faster)
-            constexpr float look_offset_up     = 0.8f;   // look slightly above car center
+            // base tuning parameters
+            constexpr float distance_base      = 5.0f;   // base distance behind the car
+            constexpr float distance_min       = 4.0f;   // minimum distance at high speed (camera pulls in)
+            constexpr float height_base        = 1.5f;   // base height above the car
+            constexpr float height_min         = 1.2f;   // minimum height at high speed (camera drops)
+            constexpr float position_smoothing = 0.15f;  // position smooth time (lower = faster, snappier)
+            constexpr float rotation_smoothing = 4.0f;   // rotation catch-up speed (higher = faster)
+            constexpr float speed_smoothing    = 2.0f;   // how fast speed factor changes
+            constexpr float look_offset_up     = 0.6f;   // look slightly above car center
+            constexpr float look_ahead_amount  = 2.5f;   // how far ahead to look based on velocity
+            constexpr float speed_reference    = 50.0f;  // speed (m/s) at which effects are maxed (~180 km/h)
+            
+            // right stick orbit parameters  
+            constexpr float orbit_bias_speed   = 1.5f;   // how fast the right stick rotates the camera (radians/sec)
+            constexpr float orbit_bias_decay   = 4.0f;   // how fast the camera returns to center when stick released
+            constexpr float yaw_bias_max       = math::pi; // maximum yaw angle (180 degrees, can look behind)
+            constexpr float pitch_bias_max     = 1.2f;   // maximum pitch angle (~70 degrees)
 
             // smooth damp helper - spring-damper system for natural camera movement
             Vector3 smooth_damp(const Vector3& current, const Vector3& target, Vector3& velocity, float smoothing, float dt)
@@ -948,7 +962,7 @@ namespace spartan
             }
             
             y_pos += line_spacing * 0.5f;
-            Renderer::DrawString("Controls: Arrows (Up=Throttle, Down=Brake/Reverse, L/R=Steer), Space=Handbrake", Vector2(0.005f, y_pos));
+            Renderer::DrawString("Controls: Arrows/Gamepad (RT=Throttle, LT=Brake, LS=Steer), Space/A=Handbrake, R/B=Reset", Vector2(0.005f, y_pos));
         }
 
         void tick()
@@ -962,20 +976,161 @@ namespace spartan
                 Physics* physics = vehicle_entity->GetComponent<Physics>();
                 if (physics && Engine::IsFlagSet(EngineMode::Playing))
                 {
-                    physics->SetVehicleThrottle(Input::GetKey(KeyCode::Arrow_Up) ? 1.0f : 0.0f);
-                    physics->SetVehicleBrake(Input::GetKey(KeyCode::Arrow_Down) ? 1.0f : 0.0f);
-                    physics->SetVehicleHandbrake(Input::GetKey(KeyCode::Space) ? 1.0f : 0.0f);
+                    // input mapping - keyboard and gamepad combined into analog values
+                    bool is_gamepad_connected = Input::IsGamepadConnected();
 
+                    // throttle: right trigger (analog) or arrow up (binary)
+                    float throttle = 0.0f;
+                    if (is_gamepad_connected)
+                    {
+                        throttle = Input::GetGamepadTriggerRight();
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Up))
+                    {
+                        throttle = 1.0f;
+                    }
+
+                    // brake: left trigger (analog) or arrow down (binary)
+                    float brake = 0.0f;
+                    if (is_gamepad_connected)
+                    {
+                        brake = Input::GetGamepadTriggerLeft();
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Down))
+                    {
+                        brake = 1.0f;
+                    }
+
+                    // steering: left stick x-axis (analog) or arrow keys (binary)
                     float steering = 0.0f;
-                    if (Input::GetKey(KeyCode::Arrow_Left))  steering = -1.0f;
-                    if (Input::GetKey(KeyCode::Arrow_Right)) steering =  1.0f;
-                    physics->SetVehicleSteering(steering);
+                    if (is_gamepad_connected)
+                    {
+                        steering = Input::GetGamepadThumbStickLeft().x;
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Left))
+                    {
+                        steering = -1.0f;
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Right))
+                    {
+                        steering = 1.0f;
+                    }
 
-                    // reset car to spawn position
-                    if (Input::GetKeyDown(KeyCode::R))
+                    // handbrake: space or button south (A on Xbox, X on PlayStation)
+                    float handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_South)) ? 1.0f : 0.0f;
+
+                    // apply vehicle controls
+                    physics->SetVehicleThrottle(throttle);
+                    physics->SetVehicleBrake(brake);
+                    physics->SetVehicleSteering(steering);
+                    physics->SetVehicleHandbrake(handbrake);
+
+                    // camera orbit: right stick rotates camera around the car (horizontal and vertical)
+                    float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+                    if (is_gamepad_connected)
+                    {
+                        Vector2 right_stick = Input::GetGamepadThumbStickRight();
+
+                        // horizontal (yaw) - clamped to 180 degrees so you can look behind but not spin endlessly
+                        if (fabsf(right_stick.x) > 0.1f)
+                        {
+                            chase_camera::yaw_bias += right_stick.x * chase_camera::orbit_bias_speed * dt;
+                            chase_camera::yaw_bias  = std::clamp(chase_camera::yaw_bias, -chase_camera::yaw_bias_max, chase_camera::yaw_bias_max);
+                        }
+                        else if (fabsf(chase_camera::yaw_bias) > 0.01f)
+                        {
+                            // smart decay: if manual adjustment brought camera closer to target, adopt it
+                            // this lets players help the camera catch up by manually rotating it
+                            float effective_yaw = chase_camera::yaw + chase_camera::yaw_bias;
+                            
+                            // calculate angular distances (handling wrap-around)
+                            float target_yaw      = atan2f(vehicle_entity->GetForward().x, vehicle_entity->GetForward().z);
+                            float dist_without    = fabsf(fmodf(chase_camera::yaw - target_yaw + math::pi * 3.0f, math::pi * 2.0f) - math::pi);
+                            float dist_with_bias  = fabsf(fmodf(effective_yaw - target_yaw + math::pi * 3.0f, math::pi * 2.0f) - math::pi);
+                            
+                            if (dist_with_bias < dist_without)
+                            {
+                                // bias is helping - adopt the new position
+                                chase_camera::yaw = effective_yaw;
+                                chase_camera::yaw_bias = 0.0f;
+                            }
+                            else
+                            {
+                                // bias is for intentional look-around, decay normally
+                                chase_camera::yaw_bias *= expf(-chase_camera::orbit_bias_decay * dt);
+                            }
+                        }
+
+                        // vertical (pitch) - stick up looks down at car, stick down looks up
+                        if (fabsf(right_stick.y) > 0.1f)
+                        {
+                            chase_camera::pitch_bias += right_stick.y * chase_camera::orbit_bias_speed * dt;
+                            chase_camera::pitch_bias  = std::clamp(chase_camera::pitch_bias, -chase_camera::pitch_bias_max, chase_camera::pitch_bias_max);
+                        }
+                        else
+                        {
+                            chase_camera::pitch_bias *= expf(-chase_camera::orbit_bias_decay * dt);
+                        }
+                    }
+
+                    // reset car to spawn position: R key or button east (B on Xbox, O on PlayStation)
+                    if (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_East))
                     {
                         physics->SetBodyTransform(spawn_position, Quaternion::Identity);
                         chase_camera::initialized = false; // reset camera to avoid jump
+                    }
+
+                    // haptic feedback - focused on meaningful events
+                    if (is_gamepad_connected)
+                    {
+                        float left_motor  = 0.0f;  // low-frequency rumble (heavy, tire slip)
+                        float right_motor = 0.0f;  // high-frequency rumble (light, abs/braking)
+
+                        // collect wheel slip data
+                        float max_slip_ratio = 0.0f;
+                        float max_slip_angle = 0.0f;
+                        for (int i = 0; i < 4; i++)
+                        {
+                            WheelIndex wheel = static_cast<WheelIndex>(i);
+                            max_slip_ratio   = std::max(max_slip_ratio, fabsf(physics->GetWheelSlipRatio(wheel)));
+                            max_slip_angle   = std::max(max_slip_angle, fabsf(physics->GetWheelSlipAngle(wheel)));
+                        }
+
+                        // wheelspin (acceleration) or lockup (braking) - strong feedback
+                        if (max_slip_ratio > 0.15f)
+                        {
+                            float slip_intensity = std::clamp((max_slip_ratio - 0.15f) * 1.5f, 0.0f, 1.0f);
+                            left_motor += slip_intensity * 0.5f;
+                        }
+
+                        // drifting/sliding - moderate feedback
+                        if (max_slip_angle > 0.15f)
+                        {
+                            float drift_intensity = std::clamp((max_slip_angle - 0.15f) * 2.0f, 0.0f, 1.0f);
+                            left_motor  += drift_intensity * 0.3f;
+                            right_motor += drift_intensity * 0.2f;
+                        }
+
+                        // abs activation - distinctive pulsing feedback
+                        if (physics->IsAbsActiveAny())
+                        {
+                            static float abs_pulse = 0.0f;
+                            abs_pulse += dt * 25.0f;  // 25hz pulse
+                            float pulse_value = (sinf(abs_pulse * math::pi * 2.0f) + 1.0f) * 0.5f;
+                            right_motor += pulse_value * 0.6f;
+                            left_motor  += pulse_value * 0.3f;
+                        }
+
+                        // heavy braking feedback (without abs)
+                        if (brake > 0.8f && !physics->IsAbsActiveAny())
+                        {
+                            right_motor += (brake - 0.8f) * 0.4f;
+                        }
+
+                        // clamp and apply
+                        left_motor  = std::clamp(left_motor, 0.0f, 1.0f);
+                        right_motor = std::clamp(right_motor, 0.0f, 1.0f);
+                        Input::GamepadVibrate(left_motor, right_motor);
                     }
                 }
 
@@ -986,9 +1141,9 @@ namespace spartan
                 }
             }
 
-            // view presets
-            enum class CarView { Dashboard, Hood, Chase };
-            static CarView current_view = CarView::Dashboard;
+            // view presets (chase is default like GT7)
+            enum class CarView { Chase, Hood, Dashboard };
+            static CarView current_view = CarView::Chase;
 
             // compute car aabb from all renderables in the hierarchy
             auto get_car_aabb = []() -> BoundingBox
@@ -1029,12 +1184,13 @@ namespace spartan
                 // use fixed positions that work well for typical car models
                 // note: car's 90-degree X rotation swaps Y and Z axes
                 // x = right/left, y = forward/back, z = down/up (negative = up)
+                // order matches enum: Chase, Hood, Dashboard
                 return
                 {
                     CarViewData
                     {
-                        // dashboard: driver seat position
-                        Vector3(-0.3f, 0.05f, -0.85f),
+                        // chase: behind and above the car (handled dynamically, this is just fallback)
+                        Vector3(0.0f, -5.0, -1.5f),
                         camera_correction
                     },
                     CarViewData
@@ -1045,8 +1201,8 @@ namespace spartan
                     },
                     CarViewData
                     {
-                        // chase: behind and above the car
-                        Vector3(0.0f, -5.0, -1.5f),
+                        // dashboard: driver seat position
+                        Vector3(-0.3f, 0.05f, -0.85f),
                         camera_correction
                     }
                 };
@@ -1108,48 +1264,75 @@ namespace spartan
                 Entity* camera = default_camera->GetChildByName("component_camera");
                 if (camera)
                 {
-                    Camera* camera_component = camera->GetComponent<Camera>();
+                    Physics* car_physics = vehicle_entity->GetComponent<Physics>();
                     float dt = static_cast<float>(Timer::GetDeltaTimeSec());
                     
-                    // get car's world position and forward direction (yaw only, ignore pitch/roll)
+                    // get car state
                     Vector3 car_position = vehicle_entity->GetPosition();
                     Vector3 car_forward  = vehicle_entity->GetForward();
+                    Vector3 car_velocity = car_physics ? car_physics->GetLinearVelocity() : Vector3::Zero;
+                    float car_speed      = car_velocity.Length();
                     
                     // extract yaw from forward vector (project onto xz plane)
                     float target_yaw = atan2f(car_forward.x, car_forward.z);
                     
+                    // gt7-style: smooth speed factor for gradual transitions
+                    float target_speed_factor = std::clamp(car_speed / chase_camera::speed_reference, 0.0f, 1.0f);
+                    chase_camera::speed_factor += (target_speed_factor - chase_camera::speed_factor) * 
+                        std::min(1.0f, chase_camera::speed_smoothing * dt);
+                    
+                    // gt7-style: dynamic distance and height based on speed
+                    float dynamic_distance = chase_camera::distance_base - 
+                        (chase_camera::distance_base - chase_camera::distance_min) * chase_camera::speed_factor;
+                    float dynamic_height = chase_camera::height_base - 
+                        (chase_camera::height_base - chase_camera::height_min) * chase_camera::speed_factor;
+                    
                     // initialize chase camera state on first use
                     if (!chase_camera::initialized)
                     {
-                        chase_camera::yaw         = target_yaw;
-                        chase_camera::position    = car_position - Vector3(sinf(target_yaw), 0.0f, cosf(target_yaw)) * chase_camera::distance_behind
-                                                  + Vector3::Up * chase_camera::height_above;
-                        chase_camera::velocity    = Vector3::Zero;
-                        chase_camera::initialized = true;
+                        chase_camera::yaw          = target_yaw;
+                        chase_camera::yaw_bias     = 0.0f;
+                        chase_camera::pitch_bias   = 0.0f;
+                        chase_camera::speed_factor = target_speed_factor;
+                        chase_camera::position     = car_position - Vector3(sinf(target_yaw), 0.0f, cosf(target_yaw)) * dynamic_distance
+                                                   + Vector3::Up * dynamic_height;
+                        chase_camera::velocity     = Vector3::Zero;
+                        chase_camera::initialized  = true;
                     }
                     
-                    // smoothly interpolate yaw (handles wrap-around)
+                    // gt7-style: rotation follows car with slight lag (more lag = more dramatic swinging)
+                    float rotation_speed = chase_camera::rotation_smoothing * (1.0f + chase_camera::speed_factor * 0.5f);
                     chase_camera::yaw = chase_camera::lerp_angle(chase_camera::yaw, target_yaw, 
-                        1.0f - expf(-chase_camera::rotation_smoothing * dt));
+                        1.0f - expf(-rotation_speed * dt));
                     
-                    // compute target camera position based on smoothed yaw (not the car's actual rotation)
-                    Vector3 offset_direction = Vector3(sinf(chase_camera::yaw), 0.0f, cosf(chase_camera::yaw));
+                    // compute target camera position based on smoothed yaw/pitch + manual bias from right stick
+                    float effective_yaw   = chase_camera::yaw + chase_camera::yaw_bias;
+                    float effective_pitch = chase_camera::pitch_bias;
+
+                    // pitch affects the orbit: positive pitch = higher camera, negative = lower
+                    float horizontal_scale = cosf(effective_pitch);
+                    float vertical_offset  = sinf(effective_pitch) * dynamic_distance;
+
+                    Vector3 offset_direction = Vector3(sinf(effective_yaw), 0.0f, cosf(effective_yaw));
                     Vector3 target_position  = car_position 
-                                             - offset_direction * chase_camera::distance_behind 
-                                             + Vector3::Up * chase_camera::height_above;
+                                             - offset_direction * dynamic_distance * horizontal_scale
+                                             + Vector3::Up * (dynamic_height + vertical_offset);
                     
-                    // smooth damp the position for natural spring-like following
+                    // gt7-style: position smoothing gets snappier at higher speeds
+                    float position_smooth = chase_camera::position_smoothing * (1.0f - chase_camera::speed_factor * 0.3f);
                     chase_camera::position = chase_camera::smooth_damp(
                         chase_camera::position, target_position, chase_camera::velocity, 
-                        chase_camera::position_smoothing, dt);
+                        position_smooth, dt);
                     
-                    // compute look target (slightly above the car center)
-                    Vector3 look_at = car_position + Vector3::Up * chase_camera::look_offset_up;
+                    // gt7-style: look-ahead based on velocity (camera looks where the car is going)
+                    Vector3 velocity_xz = Vector3(car_velocity.x, 0.0f, car_velocity.z);
+                    Vector3 look_ahead  = velocity_xz.Normalized() * chase_camera::look_ahead_amount * chase_camera::speed_factor;
+                    Vector3 look_at     = car_position + Vector3::Up * chase_camera::look_offset_up + look_ahead;
                     
                     // update camera transform
                     camera->SetPosition(chase_camera::position);
                     
-                    // make camera look at the car
+                    // make camera look at the car (with look-ahead)
                     Vector3 look_direction = (look_at - chase_camera::position).Normalized();
                     Quaternion look_rotation = Quaternion::FromLookRotation(look_direction, Vector3::Up);
                     camera->SetRotation(look_rotation);
@@ -1202,6 +1385,9 @@ namespace spartan
                     audio_source_idle->StopClip();
                     chase_camera::initialized = false;
                     is_in_vehicle = false;
+
+                    // stop vibration when exiting car
+                    Input::GamepadVibrate(0.0f, 0.0f);
                 }
 
                 camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !is_in_vehicle);
@@ -1213,8 +1399,8 @@ namespace spartan
                 }
             }
 
-            // cycle camera view
-            if (Input::GetKeyDown(KeyCode::V))
+            // cycle camera view: V key or Right Shoulder button (like GT7)
+            if (Input::GetKeyDown(KeyCode::V) || Input::GetKeyDown(KeyCode::Right_Shoulder))
             {
                 if (inside_the_car)
                 {
@@ -1255,19 +1441,25 @@ namespace spartan
             }
 
             // osd
-            Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View | 'R': Reset Car", Vector2(0.005f, 0.98f));
+            Renderer::DrawString("WASD/Gamepad: Move | E: Enter/Exit | V/RB: Change View | R/B: Reset | RS: Look Around", Vector2(0.005f, 0.98f));
         }
 
         // reset state on shutdown
         void shutdown()
         {
-            vehicle_entity            = nullptr;
-            show_telemetry            = false;
-            is_in_vehicle             = false;
-            chase_camera::initialized = false;
-            chase_camera::position    = Vector3::Zero;
-            chase_camera::velocity    = Vector3::Zero;
-            chase_camera::yaw         = 0.0f;
+            vehicle_entity             = nullptr;
+            show_telemetry             = false;
+            is_in_vehicle              = false;
+            chase_camera::initialized  = false;
+            chase_camera::position     = Vector3::Zero;
+            chase_camera::velocity     = Vector3::Zero;
+            chase_camera::yaw          = 0.0f;
+            chase_camera::yaw_bias     = 0.0f;
+            chase_camera::pitch_bias   = 0.0f;
+            chase_camera::speed_factor = 0.0f;
+
+            // stop any vibration
+            Input::GamepadVibrate(0.0f, 0.0f);
         }
     }
     //========================================================================================
