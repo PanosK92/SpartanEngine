@@ -224,6 +224,7 @@ RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
 RWStructuredBuffer<uint> visibility                        : register(u6);
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
 globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
+RWTexture2D<uint> tex_uav_uint                             : register(u26); // for integer format textures (vrs, etc)
 
 // buffers
 [[vk::push_constant]]

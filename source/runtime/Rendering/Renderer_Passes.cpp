@@ -240,6 +240,17 @@ namespace spartan
         RHI_Shader* shader_c = GetShader(Renderer_Shader::variable_rate_shading_c);
         RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate);
+        if (!shader_c || !shader_c->IsCompiled() || !tex_in || !tex_out)
+            return;
+
+        // clear to full rate (0 = 1x1) to ensure safe initial values when vrs is first enabled
+        // we track this per-texture since render targets can be recreated on resolution changes
+        static RHI_Texture* last_cleared_texture = nullptr;
+        if (tex_out != last_cleared_texture)
+        {
+            cmd_list->ClearTexture(tex_out, Color(0.0f, 0.0f, 0.0f, 0.0f));
+            last_cleared_texture = tex_out;
+        }
 
         cmd_list->BeginTimeblock("variable_rate_shading");
         {
@@ -249,9 +260,9 @@ namespace spartan
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
-            // set textures
+            // set textures (uses previous frame's output for temporal feedback)
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
 
             // render
             cmd_list->Dispatch(tex_out);
