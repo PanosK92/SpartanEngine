@@ -45,7 +45,7 @@ namespace car
         constexpr float engine_idle_rpm        = 1000.0f;
         constexpr float engine_redline_rpm     = 9250.0f;
         constexpr float engine_max_rpm         = 9500.0f;
-        constexpr float engine_peak_torque     = 700.0f;
+        constexpr float engine_peak_torque     = 900.0f;   // laferrari: ~950 HP requires ~900 Nm peak
         constexpr float engine_peak_torque_rpm = 6750.0f;
         constexpr float engine_inertia         = 0.25f;
         constexpr float engine_friction        = 0.02f;
@@ -190,8 +190,8 @@ namespace car
         constexpr float max_power_reduction = 0.85f;
         
         // damping
-        constexpr float linear_damping  = 0.05f;
-        constexpr float angular_damping = 0.5f;
+        constexpr float linear_damping  = 0.001f;  // minimal - air drag handles velocity damping
+        constexpr float angular_damping = 0.3f;
         
         // abs
         inline bool     abs_enabled        = false;
@@ -221,14 +221,15 @@ namespace car
         constexpr float surface_friction_grass       = 0.4f;
         constexpr float surface_friction_ice         = 0.1f;
         
-        // debug visualization
+        // debug
         inline bool draw_raycasts   = true;   // draw wheel raycast lines
         inline bool draw_suspension = true;   // draw suspension travel
         inline bool draw_aero       = true;   // draw aerodynamic forces
         inline bool log_pacejka     = false;  // log pacejka tire model calculations
+        inline bool log_telemetry   = false;  // log simple telemetry (slip, grip, g-force)
     }
     
-    // aerodynamic debug visualization data
+    // aerodynamic debug data
     struct aero_debug_data
     {
         PxVec3 position         = PxVec3(0);  // car position
@@ -516,11 +517,14 @@ namespace car
         {
             bool can_shift = shift_cooldown <= 0.0f;
             
-            // upshift
+            // upshift - either by speed threshold OR by hitting redline (protects engine, helps with wheelspin)
             float upshift_threshold = get_upshift_speed(current_gear, throttle);
             if (last_shift_direction == -1) upshift_threshold += 10.0f;
             
-            if (can_shift && speed_kmh > upshift_threshold && current_gear < 8 && throttle > 0.1f)
+            bool speed_trigger = speed_kmh > upshift_threshold;
+            bool rpm_trigger = engine_rpm > tuning::shift_up_rpm; // upshift if hitting redline regardless of speed
+            
+            if (can_shift && (speed_trigger || rpm_trigger) && current_gear < 8 && throttle > 0.1f)
             {
                 current_gear++;
                 is_shifting = true;
@@ -1064,8 +1068,17 @@ namespace car
                 if (tuning::log_pacejka)
                     SP_LOG_INFO("[%s] airborne: grounded=%d, tire_load=%.1f", wheel_name, w.grounded, w.tire_load);
                 w.slip_angle = w.slip_ratio = w.lateral_force = w.longitudinal_force = 0.0f;
-                w.angular_velocity = (is_rear(i) && input.handbrake > tuning::input_deadzone)
-                    ? 0.0f : w.angular_velocity * tuning::airborne_wheel_decay;
+                
+                // even when airborne, keep wheels roughly matching car velocity to prevent disconnect
+                // this prevents wheel speed from diverging wildly when car briefly leaves ground
+                PxVec3 vel = body->getLinearVelocity();
+                float car_fwd_speed = vel.dot(chassis_fwd);
+                float target_w = car_fwd_speed / cfg.wheel_radius;
+                
+                if (input.handbrake > tuning::input_deadzone && is_rear(i))
+                    w.angular_velocity = 0.0f;
+                else
+                    w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(5.0f, dt));
                 
                 float temp_above = w.temperature - tuning::tire_ambient_temp;
                 if (temp_above > 0.0f)
@@ -1105,6 +1118,30 @@ namespace car
             
             // tire forces
             float lat_f = 0.0f, long_f = 0.0f;
+            
+            // rest state: when both ground and wheel are nearly stopped, apply static friction
+            // this prevents oscillation while still stopping any residual slide
+            bool at_rest = ground_speed < 0.1f && fabsf(wheel_speed) < 0.2f;
+            if (at_rest)
+            {
+                w.slip_ratio = w.slip_angle = 0.0f;
+                w.angular_velocity = lerp(w.angular_velocity, 0.0f, exp_decay(20.0f, dt));
+                w.rotation += w.angular_velocity * dt;
+                
+                // apply static friction to stop residual sliding
+                // high gain needed: 1500kg car at 0.04m/s needs ~600N to stop in 0.1s
+                float friction_force = peak_force * 0.8f;
+                float friction_gain = cfg.mass * 10.0f; // aggressive braking
+                lat_f  = PxClamp(-vy * friction_gain, -friction_force, friction_force);
+                long_f = PxClamp(-vx * friction_gain, -friction_force, friction_force);
+                w.lateral_force = lat_f;
+                w.longitudinal_force = long_f;
+                PxRigidBodyExt::addForceAtPos(*body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos, PxForceMode::eFORCE);
+                
+                if (tuning::log_pacejka)
+                    SP_LOG_INFO("[%s] at rest: vx=%.3f, vy=%.3f, friction long_f=%.1f, lat_f=%.1f", wheel_name, vx, vy, long_f, lat_f);
+                continue;
+            }
             
             if (max_v > tuning::min_slip_speed)
             {
@@ -1162,13 +1199,16 @@ namespace car
             }
             else
             {
-                // low speed: use linear model instead of pacejka
+                // low speed: use damped linear model instead of pacejka
+                // scale forces down as speed approaches zero to prevent oscillation
                 w.slip_ratio = w.slip_angle = 0.0f;
-                long_f = PxClamp((wheel_speed - vx) / tuning::min_slip_speed, -1.0f, 1.0f) * peak_force;
-                lat_f  = PxClamp(-vy / tuning::min_slip_speed, -1.0f, 1.0f) * peak_force;
+                float speed_factor = PxClamp(max_v / tuning::min_slip_speed, 0.0f, 1.0f);
+                float low_speed_force = peak_force * speed_factor * 0.3f; // reduce max force at low speed
+                long_f = PxClamp((wheel_speed - vx) / tuning::min_slip_speed, -1.0f, 1.0f) * low_speed_force;
+                lat_f  = PxClamp(-vy / tuning::min_slip_speed, -1.0f, 1.0f) * low_speed_force;
                 
                 if (tuning::log_pacejka)
-                    SP_LOG_INFO("[%s] low-speed linear: max_v=%.4f, long_f=%.1f, lat_f=%.1f", wheel_name, max_v, long_f, lat_f);
+                    SP_LOG_INFO("[%s] low-speed: max_v=%.3f, speed_factor=%.2f, long_f=%.1f, lat_f=%.1f", wheel_name, max_v, speed_factor, long_f, lat_f);
             }
             
             // tire temperature
@@ -1214,7 +1254,9 @@ namespace car
                 if (coasting || is_front(i) || ground_speed < tuning::min_slip_speed)
                 {
                     float target_w = vx / cfg.wheel_radius;
-                    float match_rate = (ground_speed < tuning::min_slip_speed) ? tuning::ground_match_rate * 2.0f : tuning::ground_match_rate;
+                    // when coasting, match ground speed very quickly to prevent drivetrain disconnect
+                    // use near-instant matching for coasting rear wheels to maintain engine braking feel
+                    float match_rate = coasting ? 50.0f : ((ground_speed < tuning::min_slip_speed) ? tuning::ground_match_rate * 2.0f : tuning::ground_match_rate);
                     w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(match_rate, dt));
                 }
                 
@@ -1272,6 +1314,15 @@ namespace car
         // engine rpm from wheel speed
         float avg_wheel_rpm = (wheels[rear_left].angular_velocity + wheels[rear_right].angular_velocity) * 0.5f * 60.0f / (2.0f * PxPi);
         float wheel_driven_rpm = wheel_rpm_to_engine_rpm(fabsf(avg_wheel_rpm), current_gear);
+        
+        // when coasting, use ground speed to drive engine rpm (prevents feedback loop when wheel speed diverges)
+        bool coasting = input.throttle < tuning::input_deadzone && input.brake < tuning::input_deadzone;
+        if (coasting && current_gear >= 2)
+        {
+            float ground_wheel_rpm = fabsf(forward_speed_ms) / cfg.wheel_radius * 60.0f / (2.0f * PxPi);
+            float ground_driven_rpm = wheel_rpm_to_engine_rpm(ground_wheel_rpm, current_gear);
+            wheel_driven_rpm = PxMax(wheel_driven_rpm, ground_driven_rpm);
+        }
         
         // clutch logic
         if (is_shifting)                                          clutch = 0.2f;
@@ -1422,11 +1473,28 @@ namespace car
                 abs_active[i] = false;
         }
         
-        // handbrake
+        // handbrake - only lock wheels if explicitly requested
         if (input.handbrake > tuning::input_deadzone)
         {
             wheels[rear_left].angular_velocity = 0.0f;
             wheels[rear_right].angular_velocity = 0.0f;
+        }
+        
+        // safety: ensure wheels don't diverge too far from ground speed when coasting
+        // this prevents drivetrain disconnect bugs
+        if (input.throttle < tuning::input_deadzone && input.brake < tuning::input_deadzone && input.handbrake < tuning::input_deadzone)
+        {
+            float ground_angular_v = fabsf(forward_speed_ms) / cfg.wheel_radius;
+            for (int i = rear_left; i <= rear_right; i++)
+            {
+                float wheel_v = fabsf(wheels[i].angular_velocity);
+                // if wheel is more than 50% off from ground speed, force correction
+                if (ground_angular_v > 1.0f && (wheel_v < ground_angular_v * 0.5f || wheel_v > ground_angular_v * 1.5f))
+                {
+                    float sign = (forward_speed_ms >= 0.0f) ? 1.0f : -1.0f;
+                    wheels[i].angular_velocity = sign * ground_angular_v;
+                }
+            }
         }
     }
     
@@ -1683,6 +1751,47 @@ namespace car
         apply_aero_and_resistance();
         
         body->addForce(PxVec3(0, -9.81f * cfg.mass, 0), PxForceMode::eFORCE);
+        
+        // final safety: ensure rear wheels match ground speed when coasting
+        // this runs AFTER all other wheel modifications to guarantee correct behavior
+        // unconditional check - if wheel speed is drastically wrong, fix it
+        float ground_angular_v = fabsf(forward_speed) / cfg.wheel_radius;
+        if (ground_angular_v > 5.0f && input.handbrake < tuning::input_deadzone)
+        {
+            float sign = (forward_speed >= 0.0f) ? 1.0f : -1.0f;
+            for (int i = rear_left; i <= rear_right; i++)
+            {
+                float wheel_v = fabsf(wheels[i].angular_velocity);
+                // if wheel is more than 30% off from ground speed, force correction
+                if (wheel_v < ground_angular_v * 0.3f || wheel_v > ground_angular_v * 1.5f)
+                    wheels[i].angular_velocity = sign * ground_angular_v;
+            }
+        }
+        
+        // telemetry logging
+        if (tuning::log_telemetry)
+        {
+            float g_long = vel.dot(fwd) / 9.81f;          // longitudinal g (accel/brake)
+            float g_lat = vel.dot(pose.q.rotate(PxVec3(1,0,0))) / 9.81f; // lateral g
+            
+            // calculate actual g from acceleration (change in velocity)
+            static PxVec3 prev_vel = PxVec3(0);
+            PxVec3 accel = (vel - prev_vel) / dt;
+            prev_vel = vel;
+            float accel_g = accel.dot(fwd) / 9.81f;
+            
+            // gearing telemetry: rpm, speed, gear, wheel angular velocity
+            float avg_wheel_w = (wheels[rear_left].angular_velocity + wheels[rear_right].angular_velocity) * 0.5f;
+            float wheel_surface_speed = avg_wheel_w * cfg.wheel_radius * 3.6f; // km/h
+            
+            SP_LOG_INFO("gearing: rpm=%.0f, speed=%.0f km/h, gear=%s%s, wheel_speed=%.0f km/h, throttle=%.0f%%",
+                engine_rpm,
+                speed_kmh,
+                get_gear_string(),
+                is_shifting ? "(shifting)" : "",
+                wheel_surface_speed,
+                input.throttle * 100.0f);
+        }
     }
 
     // accessors

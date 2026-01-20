@@ -210,6 +210,7 @@ namespace spartan
         const char* GetCurrentGearString() const;               // gear display string ("R", "N", "1"-"7")
         float GetEngineRPM() const;                             // current engine rpm
         float GetEngineTorque() const;                          // current engine torque output (Nm)
+        float GetIdleRPM() const;                               // engine idle rpm
         float GetRedlineRPM() const;                            // engine redline rpm
         bool IsShifting() const;                                // is gearbox currently shifting
         

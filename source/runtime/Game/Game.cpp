@@ -680,7 +680,7 @@ namespace spartan
                     physics->SetChassisEntity(default_car, excluded_wheel_entities);
                 }
 
-                add_audio_sources(default_car);
+                add_audio_sources(vehicle_entity);
                 create_wheels(vehicle_entity, physics);
 
                 // setup camera to follow if requested
@@ -1009,19 +1009,17 @@ namespace spartan
 
             // cached references
             bool inside_the_car             = default_camera->GetChildrenCount() == 0;
-            Entity* sound_door_entity       = default_car->GetChildByName("sound_door");
-            Entity* sound_start_entity      = default_car->GetChildByName("sound_start");
-            Entity* sound_idle_entity       = default_car->GetChildByName("sound_idle");
+            Entity* sound_door_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_door")  : nullptr;
+            Entity* sound_start_entity      = vehicle_entity ? vehicle_entity->GetChildByName("sound_start") : nullptr;
+            Entity* sound_idle_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_idle")  : nullptr;
             AudioSource* audio_source_door  = sound_door_entity  ? sound_door_entity->GetComponent<AudioSource>()  : nullptr;
             AudioSource* audio_source_start = sound_start_entity ? sound_start_entity->GetComponent<AudioSource>() : nullptr;
             AudioSource* audio_source_idle  = sound_idle_entity  ? sound_idle_entity->GetComponent<AudioSource>()  : nullptr;
-            if (!audio_source_door || !audio_source_start || !audio_source_idle)
+            if (!vehicle_entity || !audio_source_door || !audio_source_start || !audio_source_idle)
                 return;
 
-            // engine sound: disabled for now (RPM simulation needs work)
-            // TODO: re-enable once RPM is properly tied to car speed
-            /*
-            if (vehicle_entity)
+            // engine sound: pitch and volume based on rpm
+            if (vehicle_entity && inside_the_car)
             {
                 Physics* physics = vehicle_entity->GetComponent<Physics>();
                 if (physics)
@@ -1031,22 +1029,27 @@ namespace spartan
                         audio_source_idle->PlayClip();
                     }
                     
-                    float engine_rpm = physics->GetEngineRPM();
-                    float idle_rpm = 1000.0f;
-                    float redline_rpm = physics->GetRedlineRPM();
+                    float engine_rpm   = physics->GetEngineRPM();
+                    float idle_rpm     = physics->GetIdleRPM();
+                    float redline_rpm  = physics->GetRedlineRPM();
                     
                     float rpm_normalized = (engine_rpm - idle_rpm) / (redline_rpm - idle_rpm);
                     rpm_normalized = std::max(0.0f, std::min(1.0f, rpm_normalized));
                     
+                    // pitch curve: slight quadratic gives more response at higher rpm
                     float pitch_curve = rpm_normalized * rpm_normalized * 0.3f + rpm_normalized * 0.7f;
-                    float pitch = 0.7f + pitch_curve * 2.8f;
+                    float pitch = 0.8f + pitch_curve * 1.5f;  // 0.8 at idle, up to 2.3 at redline
                     audio_source_idle->SetPitch(pitch);
                     
-                    float volume = 0.5f + rpm_normalized * 0.5f;
+                    // volume increases with rpm
+                    float volume = 0.6f + rpm_normalized * 0.4f;
                     audio_source_idle->SetVolume(volume);
                 }
             }
-            */
+            else if (!inside_the_car && audio_source_idle->IsPlaying())
+            {
+                audio_source_idle->StopClip();
+            }
 
             // enter/exit car
             if (Input::GetKeyDown(KeyCode::E))

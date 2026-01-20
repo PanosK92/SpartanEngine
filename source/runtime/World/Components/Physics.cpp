@@ -1571,6 +1571,13 @@ namespace spartan
         return car::get_engine_torque_current();
     }
     
+    float Physics::GetIdleRPM() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_idle_rpm();
+    }
+    
     float Physics::GetRedlineRPM() const
     {
         if (m_body_type != BodyType::Vehicle)
