@@ -1100,15 +1100,15 @@ namespace spartan
                 audio_source_idle->StopClip();
             }
 
-            // smooth chase camera update - follows the car with lag to show body movement
+            // smooth chase camera update - only active for chase view (behind the car)
+            // this runs after Camera::Tick, so we need to force a matrix recompute
             if (inside_the_car && current_view == CarView::Chase && vehicle_entity)
             {
+                // chase camera must be parented to default_camera, not the car
                 Entity* camera = default_camera->GetChildByName("component_camera");
-                if (!camera)
-                    camera = default_car->GetChildByName("component_camera");
-
                 if (camera)
                 {
+                    Camera* camera_component = camera->GetComponent<Camera>();
                     float dt = static_cast<float>(Timer::GetDeltaTimeSec());
                     
                     // get car's world position and forward direction (yaw only, ignore pitch/roll)

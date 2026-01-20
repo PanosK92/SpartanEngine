@@ -343,17 +343,18 @@ namespace spartan
             m_matrix = m_matrix_local;
         }
 
-        // update directions
+        // update directions directly from matrix (avoids unstable quaternion decomposition)
+        // row-major layout: row 0 = right (X), row 1 = up (Y), row 2 = forward (Z)
         {
-            // z
-            m_forward  = Vector3::Normalize(GetRotation() * Vector3::Forward);
-            m_backward = -m_forward;
-            // y
-            m_up       = Vector3::Normalize(GetRotation() * Vector3::Up);
-            m_down     = -m_up;
             // x
-            m_right    = Vector3::Normalize(GetRotation() * Vector3::Right);
+            m_right    = Vector3::Normalize(Vector3(m_matrix.m00, m_matrix.m01, m_matrix.m02));
             m_left     = -m_right;
+            // y
+            m_up       = Vector3::Normalize(Vector3(m_matrix.m10, m_matrix.m11, m_matrix.m12));
+            m_down     = -m_up;
+            // z
+            m_forward  = Vector3::Normalize(Vector3(m_matrix.m20, m_matrix.m21, m_matrix.m22));
+            m_backward = -m_forward;
         }
 
         // mark update
@@ -385,10 +386,35 @@ namespace spartan
 
     void Entity::SetRotation(const Quaternion& rotation)
     {
-        if (GetRotation() == rotation)
-            return;
+        // compute local rotation without using unstable GetRotation() decomposition
+        Quaternion local_rotation;
+        if (!GetParent())
+        {
+            local_rotation = rotation;
+        }
+        else
+        {
+            // compute parent's world rotation by composing local rotations up the hierarchy
+            // world_rot = root_local * ... * parent_local (compose from root down)
+            vector<Quaternion> rotations;
+            Entity* ancestor = GetParent();
+            while (ancestor)
+            {
+                rotations.push_back(ancestor->GetRotationLocal());
+                ancestor = ancestor->GetParent();
+            }
+            
+            // compose from root (back of vector) to parent (front of vector)
+            Quaternion parent_world_rotation = Quaternion::Identity;
+            for (auto it = rotations.rbegin(); it != rotations.rend(); ++it)
+            {
+                parent_world_rotation = parent_world_rotation * (*it);
+            }
+            
+            local_rotation = parent_world_rotation.Inverse() * rotation;
+        }
 
-        SetRotationLocal(!GetParent() ? rotation : GetParent()->GetRotation().Inverse() * rotation);
+        SetRotationLocal(local_rotation);
     }
 
     void Entity::SetRotationLocal(const Quaternion& rotation)

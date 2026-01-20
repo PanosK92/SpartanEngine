@@ -182,7 +182,7 @@ namespace spartan
         }
     }
 
-    void Physics::Tick()
+    void Physics::PreTick()
     {
         // deferred creation after loading (renderable component needs to be available first)
         if (m_needs_creation)
@@ -191,10 +191,11 @@ namespace spartan
             Create();
         }
 
+        // sync physics transforms to entities before other components (like camera) tick
+        // this ensures child entities have up-to-date parent transforms when they compute matrices
         const bool is_playing  = Engine::IsFlagSet(EngineMode::Playing);
         const float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
 
-        // tick body based on type
         switch (m_body_type)
         {
             case BodyType::Controller:
@@ -212,7 +213,10 @@ namespace spartan
                 }
                 break;
         }
+    }
 
+    void Physics::Tick()
+    {
         // distance-based activation/deactivation for static actors
         if (m_body_type != BodyType::Controller && m_is_static)
         {
