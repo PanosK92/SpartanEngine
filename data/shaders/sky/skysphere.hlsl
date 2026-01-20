@@ -430,8 +430,8 @@ static const float cloud_scale       = 0.00003;
 static const float detail_scale      = 0.0003;
 static const float cloud_absorption  = 0.3;
 static const float cloud_wind_speed  = 10.0;
-static const int cloud_steps         = 64;  // increased for less streaky clouds
-static const int light_steps         = 6;
+static const int cloud_steps         = 64;
+static const int light_steps         = 8;   // slightly more samples for better self-shadowing
 
 struct cloud_result
 {
@@ -518,7 +518,7 @@ struct clouds
         // distance fade and lod factor
         float dist = length(pos.xz);
         float dist_fade = 1.0 - smoothstep(25000.0, 40000.0, dist);
-        float detail_lod = 1.0 - smoothstep(8000.0, 20000.0, dist); // skip detail for distant clouds
+        float detail_lod = 1.0 - smoothstep(12000.0, 25000.0, dist); // preserve detail at medium distance
         
         // shape noise
         float4 shape = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), warped * cloud_scale, 0);
@@ -704,7 +704,7 @@ struct clouds
         // adaptive stepping with distance-based lod
         // closer clouds get more samples, distant clouds get fewer
         float dist_lod = 1.0 - smoothstep(5000.0, 25000.0, t_enter);
-        int num_steps = int(clamp(float(cloud_steps) * ray_len / 3000.0 * (0.6 + dist_lod * 0.4), 32.0, 96.0));
+        int num_steps = int(clamp(float(cloud_steps) * ray_len / 3000.0 * (0.7 + dist_lod * 0.3), 48.0, 96.0));
         float step_size = ray_len / float(num_steps);
         
         // temporal jitter - blue noise style with golden ratio temporal offset
@@ -726,9 +726,7 @@ struct clouds
         [loop]
         for (int i = 0; i < num_steps && trans > 0.01; i++)
         {
-            // per-step jitter to break up banding - varies position slightly each step
-            float step_jitter = frac(base_jitter + float(i) * 0.618033988749) * 0.5;
-            float3 pos = cam + view_dir * (t + step_size * step_jitter * 0.3);
+            float3 pos = cam + view_dir * t;
             float d = sample_density(pos, coverage, ctype, time, seed);
             
             if (d > 0.01)
@@ -988,23 +986,42 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     
     // temporal accumulation with checkerboard reconstruction
     float4 prev = tex_uav[tid.xy];
-    float blend = 1.0;
+    float3 blended = final_color;
     
-    if (!compute_clouds && prev.a > 0.5)
+    if (!compute_clouds && has_clouds_coverage && prev.a > 0.5)
     {
-        // this pixel wasn't computed this frame - use previous frame with slight blend from neighbors
-        // this effectively doubles our cloud rendering performance
-        blend = 0.05; // very slow blend for non-computed pixels
+        // checkerboard reconstruction: blend neighboring computed pixels with temporal history
+        // read 4 diagonal neighbors (these were computed this frame due to checkerboard pattern)
+        float3 n0 = tex_uav[tid.xy + int2(-1, -1)].rgb;
+        float3 n1 = tex_uav[tid.xy + int2( 1, -1)].rgb;
+        float3 n2 = tex_uav[tid.xy + int2(-1,  1)].rgb;
+        float3 n3 = tex_uav[tid.xy + int2( 1,  1)].rgb;
+        
+        // use box filter of neighbors for spatial reconstruction
+        float3 spatial = (n0 + n1 + n2 + n3) * 0.25;
+        
+        // blend spatial reconstruction with temporal history for stability
+        // higher spatial weight = sharper but potentially more flickery
+        // higher temporal weight = smoother but potentially more ghosting
+        blended = lerp(prev.rgb, spatial, 0.4);
     }
     else if (cloud_alpha > 0.0 && prev.a > 0.5)
     {
-        // computed pixel with clouds - normal temporal blend
-        blend = 0.2;
-        blend = lerp(blend, 0.35, saturate(cloud_alpha * (1.0 - cloud_alpha) * 4.0));
-        blend = lerp(blend, 0.5, saturate(dot(abs(final_color - prev.rgb), float3(0.3, 0.5, 0.2)) * 2.0));
+        // computed pixel with clouds - temporal blend with variance-aware weight
+        float blend = 0.25;
+        
+        // increase blend when colors differ significantly (reduces ghosting during movement)
+        float color_diff = dot(abs(final_color - prev.rgb), float3(0.299, 0.587, 0.114));
+        blend = lerp(blend, 0.5, saturate(color_diff * 3.0));
+        
+        blended = lerp(prev.rgb, final_color, blend);
+    }
+    else if (prev.a > 0.5)
+    {
+        // no clouds this frame but have history - blend slowly for smooth transitions
+        blended = lerp(prev.rgb, final_color, 0.3);
     }
     
-    float3 blended = prev.a > 0.5 ? lerp(prev.rgb, final_color, blend) : final_color;
     tex_uav[tid.xy] = float4(blended, 1.0);
 }
 #endif

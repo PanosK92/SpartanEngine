@@ -303,7 +303,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                    material->SetProperty(MaterialProperty::Normal,              0.1f);
+                    material->SetProperty(MaterialProperty::Normal,              0.01f);
                     material->SetProperty(MaterialProperty::TextureTilingX,      0.1f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      0.1f);
                 }
