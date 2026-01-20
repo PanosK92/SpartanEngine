@@ -182,7 +182,7 @@ namespace spartan
         }
     }
 
-    void Physics::Tick()
+    void Physics::PreTick()
     {
         // deferred creation after loading (renderable component needs to be available first)
         if (m_needs_creation)
@@ -191,10 +191,11 @@ namespace spartan
             Create();
         }
 
+        // sync physics transforms to entities before other components (like camera) tick
+        // this ensures child entities have up-to-date parent transforms when they compute matrices
         const bool is_playing  = Engine::IsFlagSet(EngineMode::Playing);
         const float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
 
-        // tick body based on type
         switch (m_body_type)
         {
             case BodyType::Controller:
@@ -212,7 +213,10 @@ namespace spartan
                 }
                 break;
         }
+    }
 
+    void Physics::Tick()
+    {
         // distance-based activation/deactivation for static actors
         if (m_body_type != BodyType::Controller && m_is_static)
         {
@@ -919,6 +923,39 @@ namespace spartan
         GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
     }
 
+    void Physics::SetBodyTransform(const Vector3& position, const Quaternion& rotation)
+    {
+        // for vehicles, use the car body directly
+        if (m_body_type == BodyType::Vehicle && car::body)
+        {
+            PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
+            car::body->setGlobalPose(pose);
+            car::body->setLinearVelocity(PxVec3(0, 0, 0));
+            car::body->setAngularVelocity(PxVec3(0, 0, 0));
+            
+            // reset wheel angular velocities
+            for (int i = 0; i < 4; i++)
+            {
+                car::wheels[i].angular_velocity = 0.0f;
+            }
+            return;
+        }
+
+        // for regular rigid bodies
+        if (!m_actors.empty() && m_actors[0])
+        {
+            PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+            PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
+            actor->setGlobalPose(pose);
+            
+            if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+            {
+                dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+            }
+        }
+    }
+
     void Physics::SetVehicleThrottle(float value)
     {
         if (m_body_type != BodyType::Vehicle)
@@ -1569,6 +1606,13 @@ namespace spartan
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_engine_torque_current();
+    }
+    
+    float Physics::GetIdleRPM() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_idle_rpm();
     }
     
     float Physics::GetRedlineRPM() const

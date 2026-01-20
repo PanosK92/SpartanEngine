@@ -60,11 +60,12 @@ namespace spartan
 
     enum class LightPreset
     {
-        dawn,   // sunrise - early morning with warm orange glow
-        day,    // bright midday sun - direct sunlight at peak intensity
-        dusk,   // sunset - evening with warm golden tones
-        night,  // nighttime with soft moonlight
-        custom  // custom settings
+        dawn,        // sunrise - early morning with warm orange glow
+        day,         // bright midday sun - direct sunlight at peak intensity
+        dusk,        // sunset - evening with warm golden tones
+        night,       // nighttime with soft moonlight
+        david_lynch, // dreamy late afternoon - low sun, soft eerie light
+        custom       // custom settings
     };
 
     enum LightFlags : uint32_t

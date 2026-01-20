@@ -240,6 +240,17 @@ namespace spartan
         RHI_Shader* shader_c = GetShader(Renderer_Shader::variable_rate_shading_c);
         RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate);
+        if (!shader_c || !shader_c->IsCompiled() || !tex_in || !tex_out)
+            return;
+
+        // clear to full rate (0 = 1x1) to ensure safe initial values when vrs is first enabled
+        // we track this per-texture since render targets can be recreated on resolution changes
+        static RHI_Texture* last_cleared_texture = nullptr;
+        if (tex_out != last_cleared_texture)
+        {
+            cmd_list->ClearTexture(tex_out, Color(0.0f, 0.0f, 0.0f, 0.0f));
+            last_cleared_texture = tex_out;
+        }
 
         cmd_list->BeginTimeblock("variable_rate_shading");
         {
@@ -249,9 +260,9 @@ namespace spartan
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
-            // set textures
+            // set textures (uses previous frame's output for temporal feedback)
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
 
             // render
             cmd_list->Dispatch(tex_out);
@@ -1109,6 +1120,9 @@ namespace spartan
         RHI_Texture* reservoir_prev3 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev3);
         RHI_Texture* reservoir_prev4 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev4);
 
+        // get skysphere for environment sampling
+        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+
         // pass 1: initial path sampling with ris
         cmd_list->BeginTimeblock("restir_pt_initial");
         {
@@ -1142,6 +1156,10 @@ namespace spartan
             // set textures and acceleration structure
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            
+            // bind skysphere for environment sampling in path tracer
+            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             
             // geometry info buffer
             GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();

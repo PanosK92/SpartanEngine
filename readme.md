@@ -70,7 +70,7 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 - Variable rate shading and dynamic resolution scaling
 - Upscaling: XeSS 2 & FSR 3
 - Temporal anti-aliasing
-- Breadcrumbs for GPU crash tracing (FidelityFX Breadcrumbs)
+- Custom breadcrumbs for GPU crash tracing
 
 **Camera & Post-Processing**
 - Physically based camera with auto-exposure
@@ -89,6 +89,9 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 - Limited slip differential with preload and asymmetric accel/decel locking
 - Traction control, ABS, and handbrake-induced rear slip
 - Aerodynamics: drag, rolling resistance, front/rear downforce
+- Gamepad support with analog triggers for throttle/brake and analog steering
+- Haptic feedback for tire slip, ABS activation, drifting, and heavy braking
+- Gran Turismo 7 inspired chase camera with speed-based dynamics and orbit controls
 
 ### General
 

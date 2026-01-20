@@ -224,6 +224,48 @@ struct Light
         return position + light_right * right_proj + light_up * up_proj;
     }
 
+    // finds the representative point on the area light for specular calculations
+    // this is the point that contributes most to the specular highlight based on the reflected view ray
+    float3 compute_representative_point_on_area(const float3 surface_position, const float3 surface_normal, const float3 view_direction)
+    {
+        float3 light_right, light_up;
+        compute_area_light_basis(light_right, light_up);
+        
+        // compute reflection vector
+        float3 reflection = reflect(-view_direction, surface_normal);
+        
+        // find where the reflection ray intersects the light plane
+        // plane equation: dot(p - position, forward) = 0
+        float3 to_light  = position - surface_position;
+        float denom      = dot(reflection, -forward);
+        
+        float3 representative_point;
+        
+        if (abs(denom) > 0.0001f)
+        {
+            // ray intersects the plane
+            float t            = dot(to_light, -forward) / denom;
+            float3 plane_point = surface_position + reflection * max(t, 0.0f);
+            
+            // project intersection point onto light rectangle and clamp
+            float3 point_on_plane = plane_point - position;
+            float half_width      = area_width  * 0.5f;
+            float half_height     = area_height * 0.5f;
+            
+            float right_proj = clamp(dot(point_on_plane, light_right), -half_width, half_width);
+            float up_proj    = clamp(dot(point_on_plane, light_up), -half_height, half_height);
+            
+            representative_point = position + light_right * right_proj + light_up * up_proj;
+        }
+        else
+        {
+            // reflection is parallel to light plane, fall back to closest point
+            representative_point = compute_closest_point_on_area(surface_position);
+        }
+        
+        return representative_point;
+    }
+
     float compute_attenuation_area(const float3 surface_position)
     {
         // find closest point on the area light rectangle to the surface
@@ -364,8 +406,21 @@ struct Light
         area_height                      = light.area_height;
         forward                          = (is_point() && !is_area()) ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
         distance_to_pixel                = length(surface.position - position);
-        to_pixel                         = compute_direction(position, surface.position);
-        n_dot_l                          = saturate(dot(surface.normal, -to_pixel));
+        
+        // for area lights, use representative point for accurate specular reflections
+        // this makes rectangular area lights produce elongated reflections instead of circular ones
+        if (is_area())
+        {
+            float3 view_direction       = normalize(-surface.camera_to_pixel);
+            float3 representative_point = compute_representative_point_on_area(surface.position, surface.normal, view_direction);
+            to_pixel                    = normalize(surface.position - representative_point);
+        }
+        else
+        {
+            to_pixel = compute_direction(position, surface.position);
+        }
+        
+        n_dot_l = saturate(dot(surface.normal, -to_pixel));
         
         // compute attenuation
         attenuation = compute_attenuation(surface.position);

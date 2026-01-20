@@ -173,6 +173,11 @@ float3 gran_turismo_7(float3 rgb, float max_display_nits, bool is_hdr)
     // step a: determine target nits (hdr display or sdr standard)
     float target_nits = is_hdr ? max_display_nits : gt7_sdr_paper_white;
     float fb_target   = gt7_nits_to_fb(target_nits);
+    
+    // scale input to match gt7's luminance paradigm where paper white (250 nits) = 2.5 fb units
+    // this aligns with other tonemappers where input ~1.0 represents peak scene white
+    float input_scale = gt7_sdr_paper_white / gt7_ref_luminance; // 2.5
+    rgb *= input_scale;
 
     // curve tunings
     float mid_point    = 0.538f;

@@ -165,6 +165,7 @@ namespace spartan
         reservoir2    = 23,
         reservoir3    = 24,
         reservoir4    = 25,
+        tex_uint      = 26, // for integer format textures (vrs, etc)
     };
 
     enum class Renderer_Shader : uint8_t

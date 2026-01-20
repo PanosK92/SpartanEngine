@@ -182,10 +182,8 @@ namespace spartan::math
                 quaternion.x = (mRot.m12 - mRot.m21) * sqrt_;
                 quaternion.y = (mRot.m20 - mRot.m02) * sqrt_;
                 quaternion.z = (mRot.m01 - mRot.m10) * sqrt_;
-
-                return quaternion;
             }
-            if ((mRot.m00 >= mRot.m11) && (mRot.m00 >= mRot.m22))
+            else if ((mRot.m00 >= mRot.m11) && (mRot.m00 >= mRot.m22))
             {
                 sqrt_ = sqrt(1.0f + mRot.m00 - mRot.m11 - mRot.m22);
                 half = 0.5f / sqrt_;
@@ -194,10 +192,8 @@ namespace spartan::math
                 quaternion.y = (mRot.m01 + mRot.m10) * half;
                 quaternion.z = (mRot.m02 + mRot.m20) * half;
                 quaternion.w = (mRot.m12 - mRot.m21) * half;
-
-                return quaternion;
             }
-            if (mRot.m11 > mRot.m22)
+            else if (mRot.m11 > mRot.m22)
             {
                 sqrt_ = sqrt(1.0f + mRot.m11 - mRot.m00 - mRot.m22);
                 half = 0.5f / sqrt_;
@@ -206,16 +202,26 @@ namespace spartan::math
                 quaternion.y = 0.5f * sqrt_;
                 quaternion.z = (mRot.m21 + mRot.m12) * half;
                 quaternion.w = (mRot.m20 - mRot.m02) * half;
-
-                return quaternion;
             }
-            sqrt_ = sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
-            half  = 0.5f / sqrt_;
+            else
+            {
+                sqrt_ = sqrt(1.0f + mRot.m22 - mRot.m00 - mRot.m11);
+                half  = 0.5f / sqrt_;
 
-            quaternion.x = (mRot.m20 + mRot.m02) * half;
-            quaternion.y = (mRot.m21 + mRot.m12) * half;
-            quaternion.z = 0.5f * sqrt_;
-            quaternion.w = (mRot.m01 - mRot.m10) * half;
+                quaternion.x = (mRot.m20 + mRot.m02) * half;
+                quaternion.y = (mRot.m21 + mRot.m12) * half;
+                quaternion.z = 0.5f * sqrt_;
+                quaternion.w = (mRot.m01 - mRot.m10) * half;
+            }
+
+            // ensure canonical form (w >= 0) to prevent sign flipping between equivalent quaternions
+            if (quaternion.w < 0.0f)
+            {
+                quaternion.x = -quaternion.x;
+                quaternion.y = -quaternion.y;
+                quaternion.z = -quaternion.z;
+                quaternion.w = -quaternion.w;
+            }
 
             return quaternion;
         }
