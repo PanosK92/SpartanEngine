@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include "Component.h"
 #include <vector>
 #include "../../Math/Vector3.h"
-//=============================
+#include "../../Math/Quaternion.h"
+//=================================
 
 namespace spartan
 {
@@ -283,5 +284,12 @@ namespace spartan
         
         // deferred creation flag for loading (wait until renderable is available)
         bool m_needs_creation = false;
+        
+        // interpolation state for smooth rendering between fixed physics timesteps
+        math::Vector3 m_prev_position     = math::Vector3::Zero; // position at previous physics step
+        math::Quaternion m_prev_rotation;                        // rotation at previous physics step
+        math::Vector3 m_current_position  = math::Vector3::Zero; // position at current physics step
+        math::Quaternion m_current_rotation;                     // rotation at current physics step
+        bool m_interpolation_initialized  = false;               // flag to track first-frame initialization
     };
 }

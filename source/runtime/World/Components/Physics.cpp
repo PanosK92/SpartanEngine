@@ -287,12 +287,61 @@ namespace spartan
             // update vehicle physics
             car::tick(delta_time);
             
-            // sync physx -> entity
-            Vector3 pos;
-            Quaternion rot;
-            from_px_transform(actor->getGlobalPose(), pos, rot);
-            GetEntity()->SetPosition(pos);
-            GetEntity()->SetRotation(rot);
+            // get current physics state
+            Vector3 physics_pos;
+            Quaternion physics_rot;
+            from_px_transform(actor->getGlobalPose(), physics_pos, physics_rot);
+            
+            // get physics velocity for smooth extrapolation
+            PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
+            Vector3 physics_vel = dynamic ? from_px_vec3(dynamic->getLinearVelocity()) : Vector3::Zero;
+            Vector3 physics_ang_vel = dynamic ? from_px_vec3(dynamic->getAngularVelocity()) : Vector3::Zero;
+            
+            // initialize smoothed state on first frame
+            if (!m_interpolation_initialized)
+            {
+                m_current_position          = physics_pos;
+                m_current_rotation          = physics_rot;
+                m_interpolation_initialized = true;
+            }
+            
+            // velocity-based extrapolation for smooth rendering
+            // physics position jumps discretely due to fixed timestep, but velocity is smooth
+            // we extrapolate using velocity and blend toward the real position to prevent drift
+            {
+                // extrapolate: move smoothed position forward by physics velocity
+                m_current_position = m_current_position + physics_vel * delta_time;
+                
+                // blend toward real physics position to prevent drift
+                // higher correction_rate = faster correction but more jitter
+                // lower correction_rate = smoother but more drift
+                constexpr float correction_rate = 8.0f;
+                float blend = 1.0f - expf(-correction_rate * delta_time);
+                m_current_position = m_current_position + (physics_pos - m_current_position) * blend;
+            }
+            
+            // rotation: use angular velocity for extrapolation
+            {
+                // extrapolate rotation using angular velocity
+                float ang_speed = physics_ang_vel.Length();
+                if (ang_speed > 0.001f)
+                {
+                    Vector3 axis = physics_ang_vel / ang_speed;
+                    float angle = ang_speed * delta_time;
+                    Quaternion delta_rot = Quaternion::FromAxisAngle(axis, angle);
+                    m_current_rotation = delta_rot * m_current_rotation;
+                    m_current_rotation.Normalize();
+                }
+                
+                // blend toward real physics rotation
+                constexpr float rot_correction_rate = 10.0f;
+                float rot_blend = 1.0f - expf(-rot_correction_rate * delta_time);
+                m_current_rotation = Quaternion::Lerp(m_current_rotation, physics_rot, rot_blend);
+            }
+            
+            // sync smoothed transform to entity
+            GetEntity()->SetPosition(m_current_position);
+            GetEntity()->SetRotation(m_current_rotation);
 
             // update wheel visuals
             UpdateWheelTransforms();
@@ -300,7 +349,8 @@ namespace spartan
         else
         {
             // editor mode: sync entity -> physx, reset velocities
-            m_wheel_offsets_synced = false;
+            m_wheel_offsets_synced          = false;
+            m_interpolation_initialized     = false;
             
             actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
             
@@ -925,6 +975,13 @@ namespace spartan
 
     void Physics::SetBodyTransform(const Vector3& position, const Quaternion& rotation)
     {
+        // reset interpolation state to avoid lerping from old position to new teleport position
+        m_interpolation_initialized = false;
+        m_prev_position             = position;
+        m_prev_rotation             = rotation;
+        m_current_position          = position;
+        m_current_rotation          = rotation;
+        
         // for vehicles, use the car body directly
         if (m_body_type == BodyType::Vehicle && car::body)
         {

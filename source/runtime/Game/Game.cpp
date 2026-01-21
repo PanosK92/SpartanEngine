@@ -382,14 +382,13 @@ namespace spartan
         // chase camera state - gran turismo 7 style
         namespace chase_camera
         {
-            Vector3 position         = Vector3::Zero;  // smoothed camera world position
-            Vector3 velocity         = Vector3::Zero;  // velocity for smooth damping
-            Vector3 car_pos_smoothed = Vector3::Zero;  // smoothed car position (absorbs frame timing jitter)
-            float   yaw              = 0.0f;           // smoothed yaw angle (radians)
-            float   yaw_bias         = 0.0f;           // manual horizontal camera rotation from right stick (radians)
-            float   pitch_bias       = 0.0f;           // manual vertical camera rotation from right stick (radians)
-            float   speed_factor     = 0.0f;           // smoothed speed factor for dynamic adjustments
-            bool    initialized      = false;          // first frame initialization flag
+            Vector3 position     = Vector3::Zero;  // smoothed camera world position
+            Vector3 velocity     = Vector3::Zero;  // velocity for smooth damping
+            float   yaw          = 0.0f;           // smoothed yaw angle (radians)
+            float   yaw_bias     = 0.0f;           // manual horizontal camera rotation from right stick (radians)
+            float   pitch_bias   = 0.0f;           // manual vertical camera rotation from right stick (radians)
+            float   speed_factor = 0.0f;           // smoothed speed factor for dynamic adjustments
+            bool    initialized  = false;          // first frame initialization flag
             
             // base tuning parameters
             constexpr float distance_base      = 5.0f;   // base distance behind the car
@@ -1272,7 +1271,7 @@ namespace spartan
                     Physics* car_physics = vehicle_entity->GetComponent<Physics>();
                     float dt = static_cast<float>(Timer::GetDeltaTimeSec());
                     
-                    // get car state
+                    // get car state (position is already smoothly interpolated by physics component)
                     Vector3 car_position = vehicle_entity->GetPosition();
                     Vector3 car_forward  = vehicle_entity->GetForward();
                     Vector3 car_velocity = car_physics ? car_physics->GetLinearVelocity() : Vector3::Zero;
@@ -1325,6 +1324,7 @@ namespace spartan
                     
                     // gt7-style: position smoothing gets snappier at higher speeds
                     float position_smooth = chase_camera::position_smoothing * (1.0f - chase_camera::speed_factor * 0.3f);
+                    Vector3 prev_position = chase_camera::position;
                     chase_camera::position = chase_camera::smooth_damp(
                         chase_camera::position, target_position, chase_camera::velocity, 
                         position_smooth, dt);
@@ -1447,14 +1447,13 @@ namespace spartan
             vehicle_entity                 = nullptr;
             show_telemetry                 = false;
             is_in_vehicle                  = false;
-            chase_camera::initialized      = false;
-            chase_camera::position         = Vector3::Zero;
-            chase_camera::velocity         = Vector3::Zero;
-            chase_camera::car_pos_smoothed = Vector3::Zero;
-            chase_camera::yaw              = 0.0f;
-            chase_camera::yaw_bias         = 0.0f;
-            chase_camera::pitch_bias       = 0.0f;
-            chase_camera::speed_factor     = 0.0f;
+            chase_camera::initialized  = false;
+            chase_camera::position     = Vector3::Zero;
+            chase_camera::velocity     = Vector3::Zero;
+            chase_camera::yaw          = 0.0f;
+            chase_camera::yaw_bias     = 0.0f;
+            chase_camera::pitch_bias   = 0.0f;
+            chase_camera::speed_factor = 0.0f;
 
             // stop any vibration
             Input::GamepadVibrate(0.0f, 0.0f);
