@@ -554,6 +554,45 @@ namespace spartan
         return static_cast<uint32_t>(format);
     }
 
+    // returns the size of a single pixel in bytes for the given format
+    static uint32_t rhi_format_to_bytes(const RHI_Format format)
+    {
+        switch (format)
+        {
+            case RHI_Format::R8_Unorm:              return 1;
+            case RHI_Format::R8_Uint:               return 1;
+            case RHI_Format::R16_Unorm:             return 2;
+            case RHI_Format::R16_Uint:              return 2;
+            case RHI_Format::R16_Float:             return 2;
+            case RHI_Format::R32_Uint:              return 4;
+            case RHI_Format::R32_Float:             return 4;
+            case RHI_Format::R8G8_Unorm:            return 2;
+            case RHI_Format::R16G16_Float:          return 4;
+            case RHI_Format::R32G32_Float:          return 8;
+            case RHI_Format::R11G11B10_Float:       return 4;  // packed 32-bit
+            case RHI_Format::R32G32B32_Float:       return 12;
+            case RHI_Format::R8G8B8A8_Unorm:        return 4;
+            case RHI_Format::R10G10B10A2_Unorm:     return 4;  // packed 32-bit
+            case RHI_Format::R16G16B16A16_Unorm:    return 8;
+            case RHI_Format::R16G16B16A16_Snorm:    return 8;
+            case RHI_Format::R16G16B16A16_Float:    return 8;
+            case RHI_Format::R32G32B32A32_Float:    return 16;
+            case RHI_Format::D16_Unorm:             return 2;
+            case RHI_Format::D32_Float:             return 4;
+            case RHI_Format::D32_Float_S8X24_Uint:  return 8;
+            case RHI_Format::BC1_Unorm:             return 1;  // ~0.5 bytes/pixel (8 bytes per 4x4 block)
+            case RHI_Format::BC3_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
+            case RHI_Format::BC5_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
+            case RHI_Format::BC7_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
+            case RHI_Format::ASTC:                  return 1;  // varies, approximate
+            case RHI_Format::B8R8G8A8_Unorm:        return 4;
+            case RHI_Format::Max:                   break;
+        }
+    
+        assert(false && "unhandled rhi_format_to_bytes() case");
+        return 4; // default fallback
+    }
+
     // shader register slot shifts (required to produce spirv from hlsl)
     // 000-099 is push constant buffer range
     const uint32_t rhi_shader_register_shift_u   = 100;

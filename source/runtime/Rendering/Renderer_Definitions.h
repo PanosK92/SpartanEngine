@@ -332,14 +332,7 @@ namespace spartan
     enum class Renderer_StandardTexture
     {
         Noise_perlin,
-        Noise_blue_0,
-        Noise_blue_1,
-        Noise_blue_2,
-        Noise_blue_3,
-        Noise_blue_4,
-        Noise_blue_5,
-        Noise_blue_6,
-        Noise_blue_7,
+        Noise_blue, // single blue noise texture (was 8, only 1 used)
         Checkerboard,
         Gizmo_light_directional,
         Gizmo_light_point,

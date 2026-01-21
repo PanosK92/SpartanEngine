@@ -780,31 +780,25 @@ namespace spartan
 
     void Renderer::Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list)
     {
-        static bool cleared = false;
+        if (!cvar_ssao.GetValueAs<bool>())
+            return;
+            
         RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
+        if (!tex_ssao)
+            return;
 
-        if (cvar_ssao.GetValueAs<bool>())
+        RHI_PipelineState pso;
+        pso.name             = "screen_space_ambient_occlusion";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::ssao_c);
+
+        cmd_list->BeginTimeblock(pso.name);
         {
-            RHI_PipelineState pso;
-            pso.name             = "screen_space_ambient_occlusion";
-            pso.shaders[Compute] = GetShader(Renderer_Shader::ssao_c);
-
-            cmd_list->BeginTimeblock(pso.name);
-            {
-                cmd_list->SetPipelineState(pso);
-                SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
-                cmd_list->Dispatch(tex_ssao, cvar_resolution_scale.GetValue());
-
-                cleared = false;
-            }
-            cmd_list->EndTimeblock();
+            cmd_list->SetPipelineState(pso);
+            SetCommonTextures(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
+            cmd_list->Dispatch(tex_ssao, cvar_resolution_scale.GetValue());
         }
-        else if (!cleared)
-        {
-            cmd_list->ClearTexture(tex_ssao, Color::standard_white);
-            cleared = true;
-        }
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list)
@@ -855,9 +849,9 @@ namespace spartan
         RHI_Texture* tex_reflections_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_normal);
         RHI_Texture* tex_reflections_albedo   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_albedo);
 
-        // clear once if disabled
+        // clear reflections once when disabled, then skip
         static bool cleared = false;
-        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>() || !tex_reflections_position)
         {
             if (!cleared)
             {
@@ -868,7 +862,6 @@ namespace spartan
         }
         cleared = false;
 
-        // render
         cmd_list->BeginTimeblock("ray_traced_reflections");
         {
             RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
@@ -947,6 +940,10 @@ namespace spartan
         RHI_Texture* tex_reflections_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_normal);
         RHI_Texture* tex_reflections_albedo   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_albedo);
         RHI_Texture* tex_skysphere            = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        
+        // gbuffer reflections are lazy allocated
+        if (!tex_reflections_position)
+            return;
         RHI_Texture* tex_shadow_atlas         = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
         
         cmd_list->BeginTimeblock("light_reflections");
@@ -1085,11 +1082,12 @@ namespace spartan
 
     void Renderer::Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_gi = GetRenderTarget(Renderer_RenderTarget::restir_output);
-        
-        // clear once if disabled
+        RHI_Texture* tex_gi      = GetRenderTarget(Renderer_RenderTarget::restir_output);
+        RHI_Texture* reservoir0  = GetRenderTarget(Renderer_RenderTarget::restir_reservoir0);
+
+        // clear output once when disabled, then skip
         static bool cleared = false;
-        if (!cvar_restir_pt.GetValueAs<bool>())
+        if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing() || !reservoir0)
         {
             if (!cleared)
             {
@@ -1099,17 +1097,11 @@ namespace spartan
             return;
         }
         cleared = false;
-        
-        // validate ray tracing support
-        if (!RHI_Device::IsSupportedRayTracing())
-            return;
             
         RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
         if (!tlas)
             return;
 
-        // get reservoir textures
-        RHI_Texture* reservoir0      = GetRenderTarget(Renderer_RenderTarget::restir_reservoir0);
         RHI_Texture* reservoir1      = GetRenderTarget(Renderer_RenderTarget::restir_reservoir1);
         RHI_Texture* reservoir2      = GetRenderTarget(Renderer_RenderTarget::restir_reservoir2);
         RHI_Texture* reservoir3      = GetRenderTarget(Renderer_RenderTarget::restir_reservoir3);
@@ -1119,9 +1111,7 @@ namespace spartan
         RHI_Texture* reservoir_prev2 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev2);
         RHI_Texture* reservoir_prev3 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev3);
         RHI_Texture* reservoir_prev4 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev4);
-
-        // get skysphere for environment sampling
-        RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_skysphere   = GetRenderTarget(Renderer_RenderTarget::skysphere);
 
         // pass 1: initial path sampling with ris
         cmd_list->BeginTimeblock("restir_pt_initial");
@@ -2363,7 +2353,7 @@ namespace spartan
             
             // set textures
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue_0));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue));
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
 
             // render

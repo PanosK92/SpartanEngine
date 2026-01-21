@@ -419,6 +419,21 @@ namespace spartan
                 Breadcrumbs::StartFrame();
             }
         }
+        
+        // update optional render targets when their cvars change
+        {
+            static uint32_t options_hash = 0;
+            uint32_t options_hash_new    = (cvar_ssao.GetValueAs<bool>() << 0) | (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) | (cvar_restir_pt.GetValueAs<bool>() << 2);
+            
+            if (options_hash_new != options_hash)
+            {
+                RHI_Device::QueueWaitAll(true);
+                RHI_Device::DeletionQueueParse();
+                UpdateOptionalRenderTargets();
+                RHI_Device::DeletionQueueParse();
+                options_hash = options_hash_new;
+            }
+        }
     
         // begin the primary graphics command list
         {
@@ -840,8 +855,9 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
 
-        // other
-        cmd_list->SetTexture(Renderer_BindingsSrv::ssao, GetRenderTarget(Renderer_RenderTarget::ssao));
+        // ssao - bind white texture if ssao is disabled/null (white = no occlusion)
+        RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
+        cmd_list->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
     }
 
     void Renderer::UpdateMaterials(RHI_CommandList* cmd_list)

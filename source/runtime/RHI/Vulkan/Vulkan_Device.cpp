@@ -1993,6 +1993,13 @@ namespace spartan
         allocation_create_info.usage                   = VMA_MEMORY_USAGE_AUTO;
         allocation_create_info.flags                   = 0;            // flags vma
         allocation_create_info.requiredFlags           = flags_memory; // flags vulkan
+        
+        // for large buffers (>16mb), use dedicated allocations to avoid vma pooling
+        const uint64_t size_16_mb = 16 * 1024 * 1024;
+        if (size >= size_16_mb)
+        {
+            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+        }
 
         bool is_mappable = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
         if (is_mappable)
@@ -2099,6 +2106,16 @@ namespace spartan
             VmaAllocationCreateInfo create_info_allocation  = {};
             create_info_allocation.usage                    = VMA_MEMORY_USAGE_AUTO;
             create_info_allocation.flags                    = (texture->GetFlags() & RHI_Texture_Mappable) ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
+            
+            // for large textures (>16mb), use dedicated allocations to avoid vma pooling
+            // this ensures memory is returned to the driver when freed rather than held in pools
+            uint32_t bytes_per_pixel  = rhi_format_to_bytes(texture->GetFormat());
+            uint64_t texture_size     = static_cast<uint64_t>(texture->GetWidth()) * texture->GetHeight() * texture->GetDepth() * texture->GetMipCount() * bytes_per_pixel;
+            const uint64_t size_16_mb = 16 * 1024 * 1024;
+            if (texture_size >= size_16_mb)
+            {
+                create_info_allocation.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+            }
 
             void*& resource = texture->GetRhiResource();
             VkResult result = vmaCreateImage
