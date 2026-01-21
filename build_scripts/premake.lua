@@ -106,7 +106,7 @@ function spartan_project_configuration()
                 RUNTIME_DIR, RUNTIME_DIR .. "/Core",
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
-                "../third_party/meshoptimizer", "../third_party/dxc"
+                "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/taskflow"
             }
              -- Ensure linker prioritizes project libraries over system paths
             linkoptions {
@@ -136,7 +136,7 @@ function spartan_project_configuration()
             includedirs {
                 RUNTIME_DIR, RUNTIME_DIR .. "/Core",
                 "/usr/include/SDL3", "/usr/include/assimp", "/usr/include/physx",
-                "/usr/include/freetype2", "/usr/include/renderdoc"
+                "/usr/include/freetype2", "/usr/include/renderdoc", "/usr/include/taskflow"
             }
 
         -- Vulkan-specific includes (Windows only)
