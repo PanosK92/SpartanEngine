@@ -82,16 +82,15 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 
 ### Car Simulation
 
-- Pacejka tire model with combined slip, load sensitivity, and low speed stability
-- Tire thermodynamics with slip heating, rolling heat, airflow cooling, and grip windows
-- Multi-ray suspension with spring damper dynamics and anti-roll bars
-- Full drivetrain: engine torque curve, clutch, engine braking, automatic gearbox
-- Limited slip differential with preload and asymmetric accel/decel locking
-- Traction control, ABS, and handbrake-induced rear slip
-- Aerodynamics: drag, rolling resistance, front/rear downforce
-- Gamepad support with analog triggers for throttle/brake and analog steering
-- Haptic feedback for tire slip, ABS activation, drifting, and heavy braking
-- Gran Turismo 7 inspired chase camera with speed-based dynamics and orbit controls
+- **Tires**: Pacejka model with combined slip, load sensitivity, thermodynamics, and surface types
+- **Suspension**: Multi-ray contact patch, spring-damper dynamics, anti-roll bars, camber/toe alignment
+- **Drivetrain**: Engine torque curve, automatic/manual gearbox, LSD with preload, turbo/boost
+- **Assists**: ABS, traction control, handbrake-induced rear slip
+- **Aerodynamics**: Drag, downforce (front/rear), ground effect, yaw/pitch-dependent forces
+- **Brakes**: Thermal model with fade and cold efficiency
+- **Input**: Controllers with analog throttle/brake/steering, haptic feedback (tire slip, ABS, drifting)
+- **Camera**: GT7-inspired chase camera with speed-based dynamics and orbit controls
+- **Physics**: Runs at 200Hz for precise tire/suspension response
 
 ### General
 
