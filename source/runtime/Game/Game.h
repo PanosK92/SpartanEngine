@@ -26,13 +26,13 @@ namespace spartan
     enum class DefaultWorld
     {
         Showroom,
+        CarPlayground,
         Forest,
         LiminalSpace,
         Sponza,
         Subway,
         Minecraft,
         Basic,
-        CarSimulation,
         Max
     };
 

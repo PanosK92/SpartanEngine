@@ -53,13 +53,13 @@ namespace spartan
     namespace worlds
     {
         namespace showroom        { void create(); void tick(); }
+        namespace car_playground  { void create(); }
         namespace forest          { void create(); void tick(); }
         namespace liminal_space   { void create(); void tick(); }
         namespace sponza          { void create(); }
         namespace subway          { void create(); }
         namespace minecraft       { void create(); }
         namespace basic           { void create(); }
-        namespace car_simulation  { void create();  }
     }
     //===========================================================
 
@@ -90,21 +90,21 @@ namespace spartan
         constexpr create_fn world_create[] =
         {
             worlds::showroom::create,
+            worlds::car_playground::create,
             worlds::forest::create,
             worlds::liminal_space::create,
             worlds::sponza::create,
             worlds::subway::create,
             worlds::minecraft::create,
             worlds::basic::create,
-            worlds::car_simulation::create,
         };
 
         constexpr tick_fn world_tick[] =
         {
             worlds::showroom::tick,
+            nullptr,
             worlds::forest::tick,
             worlds::liminal_space::tick,
-            nullptr,
             nullptr,
             nullptr,
             nullptr,
@@ -2616,8 +2616,8 @@ namespace spartan
         }
         //====================================================================================
 
-        //== CAR SIMULATION ==================================================================
-        namespace car_simulation
+        //== CAR PLAYGROUND ==================================================================
+        namespace car_playground
         {
             // helper to create a cube obstacle with physics
             // mass = 0 means static, mass > 0 means dynamic with that mass in kg
