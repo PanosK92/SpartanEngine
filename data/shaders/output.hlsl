@@ -296,6 +296,18 @@ float3 agx(float3 color)
     float3 x4 = x2 * x2;
     color = 15.5f * x4 * x2 - 40.14f * x4 * x + 31.96f * x4 - 6.868f * x2 * x + 0.4298f * x2 + 0.1191f * x - 0.00232f;
 
+    // agx look transform - restores saturation that log encoding removes
+    // without this, the image appears washed out (blender applies this by default)
+    float3 lw          = float3(0.2126f, 0.7152f, 0.0722f);
+    float luma         = dot(color, lw);
+    float3 offset      = color - luma;
+    float saturation   = 1.35f; // base agx look saturation boost
+    float contrast     = 1.10f; // subtle contrast enhancement
+    float contrast_mid = 0.18f; // pivot point for contrast (mid-gray)
+    color              = luma + offset * saturation;
+    color              = contrast_mid + (color - contrast_mid) * contrast;
+    color              = saturate(color);
+
     color = mul(agx_mat_outset, color);
 
     return saturate(color);

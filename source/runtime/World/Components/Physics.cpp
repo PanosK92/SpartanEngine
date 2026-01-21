@@ -349,8 +349,8 @@ namespace spartan
         else
         {
             // editor mode: sync entity -> physx, reset velocities
-            m_wheel_offsets_synced          = false;
-            m_interpolation_initialized     = false;
+            m_wheel_offsets_synced      = false;
+            m_interpolation_initialized = false;
             
             actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
             
