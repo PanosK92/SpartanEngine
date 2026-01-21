@@ -160,10 +160,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // Get directional light direction (first light in the buffer)
     float3 light_dir = -light_parameters[0].direction;
     
-    // Skip if clouds are disabled or no sun
+    // skip if clouds are disabled or no sun
     if (buffer_frame.cloud_coverage <= 0.0 || buffer_frame.cloud_shadows <= 0.0)
     {
-        tex_uav[thread_id.xy] = float4(1.0, 1.0, 1.0, 1.0);
+        tex_uav[thread_id.xy] = 1.0;
         return;
     }
     
@@ -178,10 +178,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // March direction: towards sun
     float3 march_dir = normalize(light_dir);
     
-    // If sun is below horizon, no shadows
+    // if sun is below horizon, no shadows
     if (march_dir.y <= 0.0)
     {
-        tex_uav[thread_id.xy] = float4(1.0, 1.0, 1.0, 1.0);
+        tex_uav[thread_id.xy] = 1.0;
         return;
     }
     
@@ -246,9 +246,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // Average samples
     float shadow = total_shadow / float(num_samples);
     
-    // Soft contrast curve
+    // soft contrast curve
     shadow = saturate(shadow);
     shadow = shadow * shadow * (3.0 - 2.0 * shadow);
     
-    tex_uav[thread_id.xy] = float4(shadow, shadow, shadow, 1.0);
+    tex_uav[thread_id.xy] = shadow;
 }
