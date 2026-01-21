@@ -799,62 +799,85 @@ namespace spartan
             Vector3 velocity = physics->GetLinearVelocity();
             float speed_kmh  = velocity.Length() * 3.6f;
             
-            float y_pos = 0.58f;
             const float line_spacing = 0.018f;
-            
-            // header
-            Renderer::DrawString("Vehicle Telemetry", Vector2(0.005f, y_pos));
-            y_pos += line_spacing * 1.2f;
-            
-            // speed, gear, and engine rpm
-            float engine_rpm = physics->GetEngineRPM();
-            float redline = physics->GetRedlineRPM();
-            const char* gear_str = physics->GetCurrentGearString();
-            bool is_shifting = physics->IsShifting();
-            snprintf(text_buffer, sizeof(text_buffer), "Speed: %.1f km/h   Gear: [%s]%s   Engine: %.0f / %.0f RPM", 
-                speed_kmh, gear_str, is_shifting ? "*" : "", engine_rpm, redline);
-            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            
-            // inputs
-            snprintf(text_buffer, sizeof(text_buffer), "Throttle: %.0f%%   Brake/Rev: %.0f%%   Steer: %+.0f%%   Handbrake: %.0f%%",
-                physics->GetVehicleThrottle() * 100.0f,
-                physics->GetVehicleBrake() * 100.0f,
-                physics->GetVehicleSteering() * 100.0f,
-                physics->GetVehicleHandbrake() * 100.0f);
-            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            
-            // driver assists status
-            bool abs_active = physics->IsAbsActiveAny();
-            bool tc_active  = physics->IsTcActive();
-            snprintf(text_buffer, sizeof(text_buffer), "Assists:  ABS [%s] %s   TC [%s] %s   Turbo [%s]   Trans [%s]",
-                physics->GetAbsEnabled() ? "ON" : "--",
-                abs_active ? "<ACTIVE>" : "",
-                physics->GetTcEnabled() ? "ON" : "--",
-                tc_active ? "<ACTIVE>" : "",
-                physics->GetTurboEnabled() ? "ON" : "--",
-                physics->GetManualTransmission() ? "MT" : "AT");
-            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            
-            // debug visualization status
-            snprintf(text_buffer, sizeof(text_buffer), "Debug:    Raycasts [%s]   Suspension [%s]",
-                physics->GetDrawRaycasts() ? "ON" : "--",
-                physics->GetDrawSuspension() ? "ON" : "--");
-            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-            y_pos += line_spacing * 1.5f;
+            const float left_x       = 0.005f;
+            const float right_x      = 0.75f;
+            const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
             
             // draw debug visualization
             physics->DrawDebugVisualization();
             
-            // per-wheel metrics header
-            Renderer::DrawString("Tire Physics:", Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            Renderer::DrawString("       GND   Slip Angle   Slip Ratio   Lat Force   Long Force", Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
+            // ============================================
+            // right side - traditional dashboard
+            // ============================================
+            float y_right = 0.70f;
             
-            const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
+            // speed (large, prominent)
+            snprintf(text_buffer, sizeof(text_buffer), "%.0f km/h", speed_kmh);
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing * 1.5f;
+            
+            // gear and rpm
+            float engine_rpm = physics->GetEngineRPM();
+            float redline    = physics->GetRedlineRPM();
+            const char* gear_str = physics->GetCurrentGearString();
+            bool is_shifting = physics->IsShifting();
+            snprintf(text_buffer, sizeof(text_buffer), "Gear: %s%s  RPM: %.0f/%.0f", 
+                gear_str, is_shifting ? "*" : "", engine_rpm, redline);
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing;
+            
+            // throttle/brake bars
+            int throttle_bar = static_cast<int>(physics->GetVehicleThrottle() * 10.0f);
+            int brake_bar    = static_cast<int>(physics->GetVehicleBrake() * 10.0f);
+            char thr_bar[16], brk_bar[16];
+            for (int j = 0; j < 10; j++) { thr_bar[j] = (j < throttle_bar) ? '=' : '.'; }
+            for (int j = 0; j < 10; j++) { brk_bar[j] = (j < brake_bar) ? '=' : '.'; }
+            thr_bar[10] = brk_bar[10] = '\0';
+            snprintf(text_buffer, sizeof(text_buffer), "THR [%s]  BRK [%s]", thr_bar, brk_bar);
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing;
+            
+            // steering indicator
+            float steer = physics->GetVehicleSteering();
+            char steer_bar[21];
+            for (int j = 0; j < 20; j++) steer_bar[j] = '.';
+            steer_bar[10] = '|'; // center
+            int steer_pos = 10 + static_cast<int>(steer * 9.0f);
+            steer_pos = steer_pos < 0 ? 0 : (steer_pos > 19 ? 19 : steer_pos);
+            steer_bar[steer_pos] = 'O';
+            steer_bar[20] = '\0';
+            snprintf(text_buffer, sizeof(text_buffer), "STR [%s]", steer_bar);
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing * 1.2f;
+            
+            // assists status (compact)
+            bool abs_active = physics->IsAbsActiveAny();
+            bool tc_active  = physics->IsTcActive();
+            snprintf(text_buffer, sizeof(text_buffer), "ABS:%s%s TC:%s%s %s",
+                physics->GetAbsEnabled() ? "ON" : "--",
+                abs_active ? "!" : "",
+                physics->GetTcEnabled() ? "ON" : "--",
+                tc_active ? "!" : "",
+                physics->GetManualTransmission() ? "MT" : "AT");
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing;
+            
+            // handbrake
+            if (physics->GetVehicleHandbrake() > 0.1f)
+            {
+                Renderer::DrawString("[ HANDBRAKE ]", Vector2(right_x, y_right));
+            }
+            
+            // ============================================
+            // left side - technical telemetry
+            // ============================================
+            float y_left = 0.58f;
+            
+            Renderer::DrawString("Tire Physics", Vector2(left_x, y_left));
+            y_left += line_spacing;
+            
+            // compact per-wheel data
             for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
             {
                 WheelIndex wheel = static_cast<WheelIndex>(i);
@@ -863,24 +886,20 @@ namespace spartan
                 float slip_ratio    = physics->GetWheelSlipRatio(wheel) * 100.0f;
                 float lat_force_kn  = physics->GetWheelLateralForce(wheel) / 1000.0f;
                 float long_force_kn = physics->GetWheelLongitudinalForce(wheel) / 1000.0f;
-                float load_kn       = physics->GetWheelTireLoad(wheel) / 1000.0f;
                 
-                snprintf(text_buffer, sizeof(text_buffer), "  %s:  %s   %+6.1f deg   %+6.1f %%    %+5.1f kN    %+5.1f kN   %.1f kN",
+                snprintf(text_buffer, sizeof(text_buffer), "%s %s SA:%+5.1f SR:%+5.1f Lat:%+4.1f Lon:%+4.1f",
                     wheel_names[i],
-                    grounded ? "YES" : " - ",
-                    slip_angle,
-                    slip_ratio,
-                    lat_force_kn,
-                    long_force_kn,
-                    load_kn);
-                Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-                y_pos += line_spacing;
+                    grounded ? "G" : "-",
+                    slip_angle, slip_ratio, lat_force_kn, long_force_kn);
+                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
+                y_left += line_spacing;
             }
             
-            // tire and brake temperature
-            y_pos += line_spacing * 0.5f;
-            Renderer::DrawString("Tire & Brake Temperature:", Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
+            // temperature section
+            y_left += line_spacing * 0.3f;
+            Renderer::DrawString("Temperature", Vector2(left_x, y_left));
+            y_left += line_spacing;
+            
             for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
             {
                 WheelIndex wheel = static_cast<WheelIndex>(i);
@@ -889,85 +908,61 @@ namespace spartan
                 float brake_temp       = physics->GetWheelBrakeTemp(wheel);
                 float brake_efficiency = physics->GetWheelBrakeEfficiency(wheel);
                 
-                // tire temperature bar: cold (blue) < optimal (green) < hot (red)
-                // optimal is around 90c, range is +/- 30c
-                int bar_len = static_cast<int>((temp / 150.0f) * 20.0f);
-                bar_len = bar_len > 20 ? 20 : (bar_len < 0 ? 0 : bar_len);
-                
-                char tire_bar[32];
-                for (int j = 0; j < 20; j++)
-                {
-                    if (j < bar_len)
-                    {
-                        // cold < 60, optimal 60-120, hot > 120
-                        float bar_temp = (j / 20.0f) * 150.0f;
-                        if (bar_temp < 60.0f)
-                            tire_bar[j] = '-';       // cold
-                        else if (bar_temp < 120.0f)
-                            tire_bar[j] = '=';       // optimal range
-                        else
-                            tire_bar[j] = '+';       // hot
-                    }
-                    else
-                        tire_bar[j] = '.';
-                }
-                tire_bar[20] = '\0';
-                
-                // brake temperature bar: cold < 400, optimal 400-700, fade > 700
-                int brake_bar_len = static_cast<int>((brake_temp / 900.0f) * 10.0f);
-                brake_bar_len = brake_bar_len > 10 ? 10 : (brake_bar_len < 0 ? 0 : brake_bar_len);
-                
-                char brake_bar[16];
+                // compact tire temp bar (10 chars)
+                int tire_bar_len = static_cast<int>((temp / 150.0f) * 10.0f);
+                tire_bar_len = tire_bar_len > 10 ? 10 : (tire_bar_len < 0 ? 0 : tire_bar_len);
+                char tire_bar[16];
                 for (int j = 0; j < 10; j++)
-                {
-                    if (j < brake_bar_len)
-                    {
-                        // cold < 400, optimal 400-700, fade > 700
-                        float bar_temp = (j / 10.0f) * 900.0f;
-                        if (bar_temp < 400.0f)
-                            brake_bar[j] = '-';       // cold
-                        else if (bar_temp < 700.0f)
-                            brake_bar[j] = '=';       // optimal
-                        else
-                            brake_bar[j] = '!';       // fade
-                    }
-                    else
-                        brake_bar[j] = '.';
-                }
-                brake_bar[10] = '\0';
+                    tire_bar[j] = (j < tire_bar_len) ? ((j < 4) ? '-' : ((j < 8) ? '=' : '+')) : '.';
+                tire_bar[10] = '\0';
                 
-                snprintf(text_buffer, sizeof(text_buffer), "  %s: Tire[%s] %3.0fC Grip:%.0f%%  Brake[%s] %3.0fC Eff:%.0f%%",
-                    wheel_names[i], tire_bar, temp, grip_factor * 100.0f,
-                    brake_bar, brake_temp, brake_efficiency * 100.0f);
-                Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-                y_pos += line_spacing;
+                // compact brake temp bar (6 chars)
+                int brk_bar_len = static_cast<int>((brake_temp / 900.0f) * 6.0f);
+                brk_bar_len = brk_bar_len > 6 ? 6 : (brk_bar_len < 0 ? 0 : brk_bar_len);
+                char brk_bar[8];
+                for (int j = 0; j < 6; j++)
+                    brk_bar[j] = (j < brk_bar_len) ? ((j < 3) ? '-' : ((j < 5) ? '=' : '!')) : '.';
+                brk_bar[6] = '\0';
+                
+                snprintf(text_buffer, sizeof(text_buffer), "%s T[%s]%.0f%% B[%s]%.0f%%",
+                    wheel_names[i], tire_bar, grip_factor * 100.0f, brk_bar, brake_efficiency * 100.0f);
+                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
+                y_left += line_spacing;
             }
             
-            // suspension compression visual
-            y_pos += line_spacing * 0.5f;
-            Renderer::DrawString("Suspension:", Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+            // suspension section
+            y_left += line_spacing * 0.3f;
+            Renderer::DrawString("Suspension", Vector2(left_x, y_left));
+            y_left += line_spacing;
+            
+            // show front pair and rear pair on same lines
+            for (int pair = 0; pair < 2; pair++)
             {
-                WheelIndex wheel = static_cast<WheelIndex>(i);
-                float compression = physics->GetWheelCompression(wheel);
-                // invert: show fewer bars when compressed (spring is shorter)
-                int bar_len = static_cast<int>((1.0f - compression) * 20.0f);
-                bar_len = bar_len > 20 ? 20 : bar_len;
+                int left_wheel  = pair * 2;
+                int right_wheel = pair * 2 + 1;
+                float comp_l = physics->GetWheelCompression(static_cast<WheelIndex>(left_wheel));
+                float comp_r = physics->GetWheelCompression(static_cast<WheelIndex>(right_wheel));
                 
-                char bar[32];
-                for (int j = 0; j < 20; j++)
-                    bar[j] = (j < bar_len) ? '|' : '.';
-                bar[20] = '\0';
+                // bars (8 chars each)
+                char bar_l[12], bar_r[12];
+                int len_l = static_cast<int>((1.0f - comp_l) * 8.0f);
+                int len_r = static_cast<int>((1.0f - comp_r) * 8.0f);
+                for (int j = 0; j < 8; j++) { bar_l[j] = (j < len_l) ? '|' : '.'; bar_r[j] = (j < len_r) ? '|' : '.'; }
+                bar_l[8] = bar_r[8] = '\0';
                 
-                snprintf(text_buffer, sizeof(text_buffer), "  %s: [%s] %.0f%%",
-                    wheel_names[i], bar, compression * 100.0f);
-                Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-                y_pos += line_spacing;
+                snprintf(text_buffer, sizeof(text_buffer), "%s[%s]%2.0f%%  %s[%s]%2.0f%%",
+                    wheel_names[left_wheel], bar_l, comp_l * 100.0f,
+                    wheel_names[right_wheel], bar_r, comp_r * 100.0f);
+                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
+                y_left += line_spacing;
             }
             
-            y_pos += line_spacing * 0.5f;
-            Renderer::DrawString("Controls: Arrows/Gamepad (RT=Throttle, LT=Brake, LS=Steer), Space/A=Handbrake, R/B=Reset", Vector2(0.005f, y_pos));
+            // debug toggles (compact)
+            y_left += line_spacing * 0.3f;
+            snprintf(text_buffer, sizeof(text_buffer), "Debug: Rays[%s] Susp[%s]",
+                physics->GetDrawRaycasts() ? "X" : "-",
+                physics->GetDrawSuspension() ? "X" : "-");
+            Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
         }
 
         void tick()
