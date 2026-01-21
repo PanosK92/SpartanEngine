@@ -591,35 +591,47 @@ namespace spartan
             }
         }
     
-        // behavior: physical body animation
+        // behavior: physical body animation (head bob when walking)
         if (GetFlag(CameraFlags::PhysicalBodyAnimation) && is_playing && has_physics_body && is_grounded)
         {
-            static Vector3 base_local_position    = GetEntity()->GetPositionLocal();
-            static Quaternion base_local_rotation = GetEntity()->GetRotationLocal();
-            static Vector3 bob_offset             = Vector3::Zero;
-            static float bob_timer                = 0.0f;
-            static float breathe_timer            = 0.0f;
-    
-            float velocity_magnitude = physics_body->GetLinearVelocity().Length();
-            if (velocity_magnitude > 0.01f) // walking head bob
+            static Vector3 prev_bob_offset = Vector3::Zero;
+            static float bob_timer         = 0.0f;
+            static float bob_amplitude     = 0.0f;
+            
+            const float max_amplitude    = 0.04f;
+            float velocity_magnitude     = physics_body->GetLinearVelocity().Length();
+            
+            if (velocity_magnitude > 0.1f) // walking - ramp up amplitude and advance timer
             {
-                bob_timer           += delta_time * velocity_magnitude * 1.5f;
-                float bob_amplitude  = 0.04f;
-                bob_offset.y         = sin(bob_timer) * bob_amplitude;
-                bob_offset.x         = cos(bob_timer) * bob_amplitude * 0.5f;
-                // reset breathing when walking
-                breathe_timer = 0.0f;
+                bob_timer     += delta_time * velocity_magnitude * 1.5f;
+                bob_amplitude  = min(bob_amplitude + delta_time * 0.5f, max_amplitude);
             }
-            else // breathing effect when resting
+            else // not walking - decay amplitude to zero (no wobble)
             {
-                breathe_timer               += delta_time * 2.0f;
-                float breathe_amplitude      = 0.0025f;
-                float pitch_offset           = sin(breathe_timer) * breathe_amplitude;
-                Quaternion breathe_rotation  = Quaternion::FromAxisAngle(Vector3::Right, pitch_offset * deg_to_rad);
-                // apply breathing as offset from base, not cumulative
-                GetEntity()->SetRotationLocal(base_local_rotation * breathe_rotation);
+                bob_amplitude *= 1.0f - clamp(delta_time * 8.0f, 0.0f, 1.0f);
+                if (bob_amplitude < 0.001f)
+                {
+                    bob_amplitude = 0.0f;
+                    bob_timer     = 0.0f;
+                }
             }
-            GetEntity()->SetPositionLocal(base_local_position + bob_offset);
+            
+            // compute bob offset
+            Vector3 bob_offset = Vector3::Zero;
+            if (bob_amplitude > 0.0f)
+            {
+                bob_offset.y = sin(bob_timer) * bob_amplitude;
+                bob_offset.x = cos(bob_timer) * bob_amplitude * 0.5f;
+            }
+            
+            // apply change in bob offset (delta) to avoid drift
+            Vector3 bob_delta = bob_offset - prev_bob_offset;
+            prev_bob_offset   = bob_offset;
+            
+            if (bob_delta.LengthSquared() > 0.0000001f)
+            {
+                GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() + bob_delta);
+            }
         }
     
         // behavior: jumping
