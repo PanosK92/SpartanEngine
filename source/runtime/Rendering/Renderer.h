@@ -178,6 +178,7 @@ namespace spartan
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();
+        static void ClearMaterialTextureReferences();
         static void SwapVisibilityBuffers();
 
     private:

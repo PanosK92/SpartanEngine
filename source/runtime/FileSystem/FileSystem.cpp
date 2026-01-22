@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES ================
 #include "pch.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL_misc.h>
 #include <SDL3/SDL_process.h>
 SP_WARNINGS_ON
-//========================
+//===========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -35,7 +35,7 @@ namespace spartan
 {
     namespace
     {
-        static const vector<string> supported_formats_image
+        const vector<string> supported_formats_image
         {
             ".jpg",
             ".png",
@@ -71,7 +71,7 @@ namespace spartan
             ".xpm"
         };
 
-        static const vector<string> supported_formats_audio
+        const vector<string> supported_formats_audio
         {
             ".aiff",
             ".asf",
@@ -96,7 +96,7 @@ namespace spartan
             ".xma" // XBOX 360
         };
 
-        static const vector<string> supported_formats_model
+        const vector<string> supported_formats_model
         {
             ".3ds",
             ".obj",
@@ -133,12 +133,12 @@ namespace spartan
             ".ndo"
         };
 
-        static const vector<string> supported_formats_shader
+        const vector<string> supported_formats_shader
         {
             ".hlsl"
         };
 
-        static const vector<string> supported_formats_font
+        const vector<string> supported_formats_font
         {
             ".ttf",
             ".ttc",
@@ -153,6 +153,36 @@ namespace spartan
             ".pfr"
         };
 
+        // create sdl process that runs silently (no visible window)
+        SDL_Process* create_silent_process(const vector<string>& args)
+        {
+            vector<const char*> c_args;
+            for (const auto& arg : args)
+                c_args.push_back(arg.c_str());
+            c_args.push_back(nullptr);
+
+            SDL_PropertiesID props = SDL_CreateProperties();
+            SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_NULL);
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_NULL);
+            SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+
+            SDL_Process* process = SDL_CreateProcessWithProperties(props);
+            SDL_DestroyProperties(props);
+            return process;
+        }
+
+        // run process and wait for completion
+        void run_silent_process(const vector<string>& args)
+        {
+            SDL_Process* process = create_silent_process(args);
+            if (process)
+            {
+                SDL_WaitProcess(process, true, nullptr);
+                SDL_DestroyProcess(process);
+            }
+        }
     }
 
     bool FileSystem::IsEmptyOrWhitespace(const string& var)
@@ -876,40 +906,6 @@ namespace spartan
         }
     }
 
-    namespace
-    {
-        // create sdl process that runs silently (no visible window)
-        SDL_Process* create_silent_process(const vector<string>& args)
-        {
-            vector<const char*> c_args;
-            for (const auto& arg : args)
-                c_args.push_back(arg.c_str());
-            c_args.push_back(nullptr);
-
-            SDL_PropertiesID props = SDL_CreateProperties();
-            SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
-            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
-            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_NULL);
-            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_NULL);
-            SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
-
-            SDL_Process* process = SDL_CreateProcessWithProperties(props);
-            SDL_DestroyProperties(props);
-            return process;
-        }
-
-        // run process and wait for completion
-        void run_silent_process(const vector<string>& args)
-        {
-            SDL_Process* process = create_silent_process(args);
-            if (process)
-            {
-                SDL_WaitProcess(process, true, nullptr);
-                SDL_DestroyProcess(process);
-            }
-        }
-    }
-
     bool FileSystem::DownloadFile(const string& url, const string& destination, function<void(float)> progress_callback)
     {
         namespace fs = filesystem;
@@ -1086,6 +1082,89 @@ namespace spartan
 
         SP_LOG_INFO("Extracted to: %s", destination_path.c_str());
         return true;
+    }
+
+    string FileSystem::ComputeFileSha256(const string& path)
+    {
+        namespace fs = filesystem;
+        error_code ec;
+
+        if (!fs::exists(path, ec))
+            return "";
+
+        // build args for hash command
+        vector<string> args;
+        #ifdef _WIN32
+            args = {"certutil", "-hashfile", path, "SHA256"};
+        #else
+            args = {"sha256sum", path};
+        #endif
+
+        // create process with stdout capture
+        vector<const char*> c_args;
+        for (const auto& arg : args)
+            c_args.push_back(arg.c_str());
+        c_args.push_back(nullptr);
+
+        SDL_PropertiesID props = SDL_CreateProperties();
+        SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
+        SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
+        SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP); // capture stdout
+        SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_NULL);
+        SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+
+        SDL_Process* process = SDL_CreateProcessWithProperties(props);
+        SDL_DestroyProperties(props);
+
+        if (!process)
+            return "";
+
+        // read all output
+        size_t data_size = 0;
+        int exit_code = 0;
+        char* output = static_cast<char*>(SDL_ReadProcess(process, &data_size, &exit_code));
+        SDL_DestroyProcess(process);
+
+        if (!output || data_size == 0)
+            return "";
+
+        string result(output, data_size);
+        SDL_free(output);
+
+        // parse hash from output
+        string hash;
+        istringstream stream(result);
+        string line;
+        int line_num = 0;
+        
+        while (getline(stream, line))
+        {
+            line_num++;
+            #ifdef _WIN32
+                // on windows, certutil outputs hash on the second line
+                if (line_num == 2)
+                {
+                    // remove spaces and carriage returns
+                    line.erase(remove(line.begin(), line.end(), ' '), line.end());
+                    line.erase(remove(line.begin(), line.end(), '\r'), line.end());
+                    hash = line;
+                    break;
+                }
+            #else
+                // on linux, sha256sum outputs: <hash>  <filename>
+                size_t space = line.find(' ');
+                if (space != string::npos)
+                    hash = line.substr(0, space);
+                else
+                    hash = line;
+                break;
+            #endif
+        }
+
+        // convert to lowercase for consistency
+        transform(hash.begin(), hash.end(), hash.begin(), ::tolower);
+        
+        return hash;
     }
 
    bool FileSystem::IsExecutableInPath(const string& executable)

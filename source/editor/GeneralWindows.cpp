@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "Game/Game.h"
 #include "Core/ProgressTracker.h"
+#include "Core/ThreadPool.h"
 #include "RHI/RHI_Device.h"
 //================================
 
@@ -553,19 +554,37 @@ namespace
 
         bool downloaded_and_extracted = false;
         bool visible_download_prompt  = false;
+        bool visible_update_prompt    = false;
         bool visible_world_list       = false;
 
         // asset download configuration
-        const char* assets_url         = "https://www.dropbox.com/scl/fi/2dsh84c9hokjxv5xmmv4t/assets.7z?rlkey=a88etud443hqddsnkjzbvlwpu&st=rg4ptyos&dl=1";
-        const char* assets_destination = "project/assets.7z";
-        const char* assets_extract_dir = "project/";
+        const char* assets_url          = "https://www.dropbox.com/scl/fi/2dsh84c9hokjxv5xmmv4t/assets.7z?rlkey=a88etud443hqddsnkjzbvlwpu&st=rg4ptyos&dl=1";
+        const char* assets_destination  = "project/assets.7z";
+        const char* assets_extract_dir  = "project/";
+        const char* assets_expected_sha = "a11dd5ae80d9bc85541646670f3e69f1ab7e48e4b4430712038f8f4fb1300637";
+        
+        void check_assets_outdated_async()
+        {
+            // run hash check in background so UI doesn't freeze
+            spartan::ThreadPool::AddTask([]()
+            {
+                if (!spartan::FileSystem::Exists(assets_destination))
+                    return;
+                
+                std::string local_hash = spartan::FileSystem::ComputeFileSha256(assets_destination);
+                if (!local_hash.empty() && local_hash != assets_expected_sha)
+                {
+                    visible_update_prompt = true;
+                }
+            });
+        }
 
         void download_and_extract()
         {
             visible_download_prompt = false;
 
-            // run download and extract in a separate thread
-            std::thread([]()
+            // run download and extract in background
+            spartan::ThreadPool::AddTask([]()
             {
                 // start progress tracking in continuous mode (job_count = 0)
                 spartan::Progress& progress = spartan::ProgressTracker::GetProgress(spartan::ProgressType::Download);
@@ -596,11 +615,12 @@ namespace
                 {
                     visible_world_list = true;
                 }
-            }).detach();
+            });
         }
 
         void window()
         {
+            // download prompt - assets don't exist
             if (visible_download_prompt)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -625,6 +645,44 @@ namespace
                         if (ImGui::Button("Cancel"))
                         {
                             visible_download_prompt = false;
+                        }
+                    }
+                    ImGui::EndGroup();
+                }
+                ImGui::End();
+            }
+
+            // update prompt - assets exist but are outdated (checked async)
+            if (visible_update_prompt)
+            {
+                // close world list when update prompt appears
+                visible_world_list = false;
+
+                ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                if (ImGui::Begin("Update available", &visible_update_prompt,
+                    ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::TextWrapped("A newer version of the assets is available. Would you like to update?");
+                    ImGui::Separator();
+
+                    ImGui::BeginGroup();
+                    {
+                        if (ImGui::Button("Update"))
+                        {
+                            visible_update_prompt = false;
+                            // delete old assets.7z so it downloads fresh
+                            if (spartan::FileSystem::Exists(assets_destination))
+                            {
+                                spartan::FileSystem::Delete(assets_destination);
+                            }
+                            download_and_extract();
+                        }
+
+                        ImGui::SameLine();
+                        if (ImGui::Button("Skip"))
+                        {
+                            visible_update_prompt = false;
+                            visible_world_list = true;
                         }
                     }
                     ImGui::EndGroup();
@@ -744,7 +802,9 @@ void GeneralWindows::Initialize(Editor* editor_in)
 
         if (worlds::downloaded_and_extracted)
         {
+            // show world list immediately, check for updates in background
             worlds::visible_world_list = true;
+            worlds::check_assets_outdated_async();
         }
         else
         {

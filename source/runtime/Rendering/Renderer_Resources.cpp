@@ -915,4 +915,14 @@ namespace spartan
     {
         return standard_material;
     }
+
+    void Renderer::ClearMaterialTextureReferences()
+    {
+        // clear texture pointers from materials owned by renderer
+        // this prevents dangling pointers when ResourceCache destroys cached textures
+        if (standard_material)
+        {
+            standard_material->ClearTextures();
+        }
+    }
 }
