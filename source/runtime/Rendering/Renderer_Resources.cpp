@@ -210,7 +210,7 @@ namespace spartan
             render_target(Renderer_RenderTarget::gbuffer_reflections_albedo)   = nullptr;
         }
         
-        // restir reservoirs (~330mb at 1080p)
+        // restir reservoirs - full resolution for correct uv/pixel mapping
         bool need_restir = cvar_restir_pt.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing();
         if (need_restir && !render_target(Renderer_RenderTarget::restir_reservoir0))
         {
@@ -224,6 +224,7 @@ namespace spartan
             render_target(Renderer_RenderTarget::restir_reservoir_prev2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev2");
             render_target(Renderer_RenderTarget::restir_reservoir_prev3) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev3");
             render_target(Renderer_RenderTarget::restir_reservoir_prev4) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev4");
+            render_target(Renderer_RenderTarget::denoiser_history)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "denoiser_history");
         }
         else if (!need_restir && render_target(Renderer_RenderTarget::restir_reservoir0))
         {
@@ -233,6 +234,7 @@ namespace spartan
             render_target(Renderer_RenderTarget::restir_reservoir3)      = nullptr;
             render_target(Renderer_RenderTarget::restir_reservoir4)      = nullptr;
             render_target(Renderer_RenderTarget::restir_reservoir_prev0) = nullptr;
+            render_target(Renderer_RenderTarget::denoiser_history)       = nullptr;
             render_target(Renderer_RenderTarget::restir_reservoir_prev1) = nullptr;
             render_target(Renderer_RenderTarget::restir_reservoir_prev2) = nullptr;
             render_target(Renderer_RenderTarget::restir_reservoir_prev3) = nullptr;
@@ -643,7 +645,7 @@ namespace spartan
             shader(Renderer_Shader::shadows_ray_hit_r) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::shadows_ray_hit_r)->Compile(RHI_Shader_Type::RayHit, shader_dir + "ray_traced_shadows.hlsl", async);
             
-            // restir path tracing gi - full importance sampling with temporal/spatial reuse
+            // restir gi
             shader(Renderer_Shader::restir_pt_ray_generation_r) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::restir_pt_ray_generation_r)->Compile(RHI_Shader_Type::RayGeneration, shader_dir + "restir_pt.hlsl", async);
             
@@ -655,7 +657,7 @@ namespace spartan
             shader(Renderer_Shader::restir_pt_ray_hit_r)->AddDefine("MAIN_HIT");
             shader(Renderer_Shader::restir_pt_ray_hit_r)->Compile(RHI_Shader_Type::RayHit, shader_dir + "restir_pt.hlsl", async);
             
-            // restir temporal/spatial resampling (compute shaders)
+            // restir resampling
             shader(Renderer_Shader::restir_pt_temporal_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::restir_pt_temporal_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "restir_pt_temporal.hlsl", async);
             
@@ -676,6 +678,23 @@ namespace spartan
             shader(Renderer_Shader::cloud_shadow_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::cloud_shadow_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\cloud_shadow.hlsl", async);
 
+        }
+
+        // denoiser
+        {
+            shader(Renderer_Shader::denoiser_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::denoiser_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "denoiser.hlsl", async);
+
+            shader(Renderer_Shader::denoiser_temporal_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::denoiser_temporal_c)->AddDefine("TEMPORAL_PASS");
+            shader(Renderer_Shader::denoiser_temporal_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "denoiser_temporal.hlsl", async);
+
+            shader(Renderer_Shader::denoiser_spatial_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::denoiser_spatial_c)->AddDefine("SPATIAL_PASS");
+            shader(Renderer_Shader::denoiser_spatial_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "denoiser_spatial.hlsl", async);
+
+            shader(Renderer_Shader::denoiser_upscale_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::denoiser_upscale_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "denoiser_upscale.hlsl", async);
         }
     }
 

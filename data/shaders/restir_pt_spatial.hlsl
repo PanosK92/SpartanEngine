@@ -77,7 +77,6 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
 
 float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 center_normal)
 {
-    // use radiance-based target pdf only - alignment factor was causing dark flat surfaces
     return calculate_target_pdf(sample.radiance);
 }
 
@@ -110,7 +109,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     uint seed = create_seed(pixel, buffer_frame.frame + 1000);
     
-    // init combined reservoir
+    // init combined reservoir with center
     Reservoir combined = create_empty_reservoir();
     
     float target_pdf_center = calculate_target_pdf(center.sample.radiance);
@@ -124,7 +123,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float z_values[RESTIR_SPATIAL_SAMPLES + 1];
     z_values[0] = center.M;
     
-    // random rotation
+    // random rotation for stratified sampling
     float rotation_angle = random_float(seed) * 2.0f * PI;
     float cos_rot = cos(rotation_angle);
     float sin_rot = sin(rotation_angle);
@@ -171,14 +170,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             combined.target_pdf = target_pdf_neighbor;
     }
     
-    // clamp M to prevent unbounded growth
+    // clamp M
     clamp_reservoir_M(combined, RESTIR_M_CAP);
     
-    // finalize weight - standard restir weight calculation
+    // finalize weight
     if (combined.target_pdf > 0 && combined.M > 0)
         combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
     else
         combined.W = 0;
+    
+    // clamp W to prevent energy explosion
+    combined.W = min(combined.W, 10.0f);
     
     // write reservoir
     float4 t0, t1, t2, t3, t4;

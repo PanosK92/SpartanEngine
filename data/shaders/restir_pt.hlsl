@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-static const uint INITIAL_CANDIDATE_SAMPLES = 12;
+static const uint INITIAL_CANDIDATE_SAMPLES = 6;       // 6spp for motion stability
 static const float RUSSIAN_ROULETTE_PROB    = 0.8f;
 
 struct [raypayload] PathPayload
@@ -106,16 +106,25 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     
     if (xi.x < 0.5f)
     {
+        // diffuse
         xi.x *= 2.0f;
         float3 local_dir = sample_cosine_hemisphere(xi, pdf);
         return local_to_world(local_dir, n);
     }
     else
     {
+        // specular
         xi.x = (xi.x - 0.5f) * 2.0f;
-        float3 h = sample_ggx(xi, max(roughness, 0.04f), pdf);
+        float pdf_h;
+        float3 h = sample_ggx(xi, max(roughness, 0.04f), pdf_h);
         float3 h_world = local_to_world(h, n);
-        return reflect(-v, h_world);
+        float3 l = reflect(-v, h_world);
+        
+        // jacobian for reflection pdf
+        float v_dot_h = max(dot(v, h_world), 0.001f);
+        pdf = pdf_h / (4.0f * v_dot_h);
+        
+        return l;
     }
 }
 
@@ -181,8 +190,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         
         sample.path_length = bounce + 1;
         
-        // direct lighting from sun/directional light
-        // intensity is in lux (lumen/m^2), normalize for path tracing brdf which already divides by PI
+        // direct sun lighting
         float3 light_dir       = -light_parameters[0].direction;
         float3 light_color     = light_parameters[0].color.rgb;
         float  light_intensity = light_parameters[0].intensity * 0.02f;
@@ -227,7 +235,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         throughput *= brdf / max(pdf, 1e-6f);
         sample.pdf *= pdf;
         
-        // firefly clamp - be generous to allow proper hdr range
+        // firefly clamp
         float max_throughput = max(max(throughput.r, throughput.g), throughput.b);
         if (max_throughput > 100.0f)
             throughput *= 100.0f / max_throughput;
@@ -245,7 +253,10 @@ void ray_gen()
 {
     uint2 launch_id   = DispatchRaysIndex().xy;
     uint2 launch_size = DispatchRaysDimensions().xy;
-    float2 uv         = (launch_id + 0.5f) / launch_size;
+    
+    // sample uv maps half-res tracing coordinates to full-res g-buffer
+    // the dispatch is at half resolution, so uv covers the full screen
+    float2 uv = (launch_id + 0.5f) / launch_size;
     
     // ensure geometry_infos is in pipeline layout
     if (geometry_infos[0].vertex_count == 0xFFFFFFFF)
@@ -273,7 +284,7 @@ void ray_gen()
     float3 normal_ws = get_normal(uv);
     float3 view_dir  = normalize(buffer_frame.camera_position - pos_ws);
     
-    // sample actual surface material properties for importance sampling
+    // get surface material
     float4 material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     float3 albedo    = tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb;
     float roughness  = max(material.r, 0.04f);
@@ -369,16 +380,15 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     if (mat.has_texture_albedo())
     {
         uint albedo_texture_index = material_index + material_texture_index_albedo;
-        float hit_distance = RayTCurrent();
-        float mip_level = clamp(log2(max(hit_distance * 0.5f, 1.0f)), 0.0f, 4.0f);
+        float dist = RayTCurrent();
+        float mip_level = clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
         
         float4 sampled = material_textures[albedo_texture_index].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
-        if (sampled.a > 0.01f)
-            albedo = sampled.rgb * mat.color.rgb;
+        albedo = sampled.rgb * mat.color.rgb;
     }
     
-    float hit_distance  = RayTCurrent();
+    float hit_distance = RayTCurrent();
     float3 hit_position = WorldRayOrigin() + WorldRayDirection() * hit_distance;
     
     payload.hit_position = hit_position;

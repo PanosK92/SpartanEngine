@@ -188,10 +188,10 @@ namespace spartan
                 Pass_ShadowMaps(cmd_list_graphics_present);
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
                 Pass_RayTracedShadows(cmd_list_graphics_present);
-                Pass_ReSTIR_PathTracing(cmd_list_graphics_present); // restir path tracing replaces simple bounce gi
+                Pass_ReSTIR_PathTracing(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
-                Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
-                Pass_Light_Composition(cmd_list_graphics_present, is_transparent); // compose all light (diffuse, specular, etc).
+                Pass_Light(cmd_list_graphics_present, is_transparent);
+                Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
                 cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
             }
 
@@ -1066,7 +1066,6 @@ namespace spartan
 
     void Renderer::SwapReSTIRReservoirs()
     {
-        // swap current and previous frame reservoirs for temporal resampling
         auto& render_targets = GetRenderTargets();
         swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir0)], 
              render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev0)]);
@@ -1113,10 +1112,12 @@ namespace spartan
         RHI_Texture* reservoir_prev4 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev4);
         RHI_Texture* tex_skysphere   = GetRenderTarget(Renderer_RenderTarget::skysphere);
 
-        // pass 1: initial path sampling with ris
+        uint32_t width  = tex_gi->GetWidth();
+        uint32_t height = tex_gi->GetHeight();
+
+        // initial sampling
         cmd_list->BeginTimeblock("restir_pt_initial");
         {
-            // get shaders
             RHI_Shader* shader_rgen = GetShader(Renderer_Shader::restir_pt_ray_generation_r);
             RHI_Shader* shader_miss = GetShader(Renderer_Shader::restir_pt_ray_miss_r);
             RHI_Shader* shader_hit  = GetShader(Renderer_Shader::restir_pt_ray_hit_r);
@@ -1126,16 +1127,14 @@ namespace spartan
             if (!shader_rgen->IsCompiled() || !shader_miss->IsCompiled() || !shader_hit->IsCompiled())
                 return;
             
-            // set pipeline state for ray tracing
             RHI_PipelineState pso;
             pso.name                   = "restir_pt_initial";
             pso.shaders[RayGeneration] = shader_rgen;
             pso.shaders[RayMiss]       = shader_miss;
             pso.shaders[RayHit]        = shader_hit;
-            // note: shadow hit/miss shaders are added via the sbt
             cmd_list->SetPipelineState(pso);
             
-            // create sbt if needed (3 groups: raygen, miss, hit)
+            // sbt
             if (!m_std_restir)
             {
                 uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
@@ -1143,22 +1142,18 @@ namespace spartan
             }
             m_std_restir->UpdateHandles(cmd_list);
             
-            // set textures and acceleration structure
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             
-            // bind skysphere for environment sampling in path tracer
             tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             
-            // geometry info buffer
             GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
             cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
             
-            // set output gi texture
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
             
-            // set reservoir uavs for writing
+            // reservoirs
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0), reservoir0, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir1), reservoir1, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir2), reservoir2, rhi_all_mips, 0, true);
@@ -1166,11 +1161,8 @@ namespace spartan
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir4, rhi_all_mips, 0, true);
             
             // trace
-            uint32_t width  = tex_gi->GetWidth();
-            uint32_t height = tex_gi->GetHeight();
             cmd_list->TraceRays(width, height, m_std_restir.get());
             
-            // barrier for reservoir textures
             cmd_list->InsertBarrier(reservoir0, RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrier(reservoir1, RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrier(reservoir2, RHI_BarrierType::EnsureWriteThenRead);
@@ -1179,7 +1171,7 @@ namespace spartan
         }
         cmd_list->EndTimeblock();
 
-        // pass 2: temporal resampling
+        // temporal resampling
         cmd_list->BeginTimeblock("restir_pt_temporal");
         {
             RHI_Shader* shader_temporal = GetShader(Renderer_Shader::restir_pt_temporal_c);
@@ -1194,34 +1186,28 @@ namespace spartan
             pso.shaders[Compute] = shader_temporal;
             cmd_list->SetPipelineState(pso);
             
-            // set common textures for g-buffer access
             SetCommonTextures(cmd_list);
             
-            // set previous frame reservoirs as srvs
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev0, reservoir_prev0);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev1, reservoir_prev1);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev2, reservoir_prev2);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev3, reservoir_prev3);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev4, reservoir_prev4);
             
-            // set current reservoirs as uavs (read/write)
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0), reservoir0, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir1), reservoir1, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir2), reservoir2, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir3), reservoir3, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir4, rhi_all_mips, 0, true);
             
-            // output
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
             
-            // dispatch
             const uint32_t thread_group_count_x = 8;
             const uint32_t thread_group_count_y = 8;
-            uint32_t dispatch_x = static_cast<uint32_t>(ceil(static_cast<float>(tex_gi->GetWidth()) / thread_group_count_x));
-            uint32_t dispatch_y = static_cast<uint32_t>(ceil(static_cast<float>(tex_gi->GetHeight()) / thread_group_count_y));
+            uint32_t dispatch_x = (width + thread_group_count_x - 1) / thread_group_count_x;
+            uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
             
-            // barriers
             cmd_list->InsertBarrier(reservoir0, RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrier(reservoir1, RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrier(reservoir2, RHI_BarrierType::EnsureWriteThenRead);
@@ -1230,7 +1216,7 @@ namespace spartan
         }
         cmd_list->EndTimeblock();
 
-        // pass 3: spatial resampling
+        // spatial resampling
         cmd_list->BeginTimeblock("restir_pt_spatial");
         {
             RHI_Shader* shader_spatial = GetShader(Renderer_Shader::restir_pt_spatial_c);
@@ -1246,13 +1232,8 @@ namespace spartan
             pso.shaders[Compute] = shader_spatial;
             cmd_list->SetPipelineState(pso);
             
-            // set common textures
             SetCommonTextures(cmd_list);
             
-            // spatial resampling reads current frame reservoirs and writes back to them
-            // note: this has a potential race condition when reading neighbors that may have been
-            // updated by other thread groups, but in practice this produces acceptable results
-            // for gi which is temporally stable. a proper fix would require ping-pong buffers.
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev0, reservoir0);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev1, reservoir1);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev2, reservoir2);
@@ -1265,23 +1246,164 @@ namespace spartan
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir3), reservoir3, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir4, rhi_all_mips, 0, true);
             
-            // output
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
             
-            // dispatch
             const uint32_t thread_group_count_x = 8;
             const uint32_t thread_group_count_y = 8;
-            uint32_t dispatch_x = static_cast<uint32_t>(ceil(static_cast<float>(tex_gi->GetWidth()) / thread_group_count_x));
-            uint32_t dispatch_y = static_cast<uint32_t>(ceil(static_cast<float>(tex_gi->GetHeight()) / thread_group_count_y));
+            uint32_t dispatch_x = (width + thread_group_count_x - 1) / thread_group_count_x;
+            uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
             
-            // ensure gi writes complete
             cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
         
-        // swap reservoirs for next frame
         SwapReSTIRReservoirs();
+        
+        // denoise
+        Pass_Denoiser(cmd_list, tex_gi, tex_gi);
+    }
+
+    void Renderer::Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        RHI_Texture* tex_history = GetRenderTarget(Renderer_RenderTarget::denoiser_history);
+        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTarget::blur);
+        if (!tex_history || !tex_scratch)
+            return;
+        
+        uint32_t in_width   = tex_in->GetWidth();
+        uint32_t in_height  = tex_in->GetHeight();
+        uint32_t out_width  = tex_out->GetWidth();
+        uint32_t out_height = tex_out->GetHeight();
+        
+        // check if we need upscaling (input smaller than output)
+        bool needs_upscale = (in_width != out_width) || (in_height != out_height);
+        
+        const uint32_t thread_group_count = 8;
+        
+        if (needs_upscale)
+        {
+            // use combined denoiser-upscaler for half-res to full-res
+            RHI_Shader* shader_upscale = GetShader(Renderer_Shader::denoiser_upscale_c);
+            if (!shader_upscale || !shader_upscale->IsCompiled())
+                return;
+            
+            cmd_list->BeginTimeblock("denoiser_upscale");
+            {
+                RHI_PipelineState pso;
+                pso.name             = "denoiser_upscale";
+                pso.shaders[Compute] = shader_upscale;
+                cmd_list->SetPipelineState(pso);
+                
+                SetCommonTextures(cmd_list);
+                
+                // pass input resolution via constants
+                m_pcb_pass_cpu.set_f3_value(static_cast<float>(in_width), static_cast<float>(in_height), 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+                
+                // input: half-res noisy, full-res history
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_history);
+                
+                // output: full-res denoised
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+                
+                // dispatch at output resolution
+                uint32_t dispatch_x = (out_width + thread_group_count - 1) / thread_group_count;
+                uint32_t dispatch_y = (out_height + thread_group_count - 1) / thread_group_count;
+                cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+                
+                cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
+            }
+            cmd_list->EndTimeblock();
+            
+            // copy result to history for next frame
+            cmd_list->BeginTimeblock("denoiser_copy_history");
+            {
+                Pass_Blit(cmd_list, tex_out, tex_history);
+            }
+            cmd_list->EndTimeblock();
+        }
+        else
+        {
+            // same resolution: use original temporal + spatial pipeline
+            RHI_Shader* shader_temporal = GetShader(Renderer_Shader::denoiser_temporal_c);
+            RHI_Shader* shader_spatial  = GetShader(Renderer_Shader::denoiser_spatial_c);
+            
+            if (!shader_temporal || !shader_temporal->IsCompiled())
+                return;
+            if (!shader_spatial || !shader_spatial->IsCompiled())
+                return;
+            
+            uint32_t dispatch_x = (in_width + thread_group_count - 1) / thread_group_count;
+            uint32_t dispatch_y = (in_height + thread_group_count - 1) / thread_group_count;
+            
+            // pass 1: temporal accumulation
+            cmd_list->BeginTimeblock("denoiser_temporal");
+            {
+                RHI_PipelineState pso;
+                pso.name             = "denoiser_temporal";
+                pso.shaders[Compute] = shader_temporal;
+                cmd_list->SetPipelineState(pso);
+                
+                SetCommonTextures(cmd_list);
+                
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_history);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+                
+                cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+                cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
+            }
+            cmd_list->EndTimeblock();
+            
+            // pass 2: spatial filtering (multi-pass atrous wavelet)
+            static const int atrous_step_sizes[] = { 1, 2, 4 };
+            static const int atrous_passes = 3;
+            
+            RHI_Texture* tex_src = tex_out;
+            RHI_Texture* tex_dst = tex_scratch;
+            
+            for (int pass = 0; pass < atrous_passes; pass++)
+            {
+                cmd_list->BeginTimeblock("denoiser_spatial");
+                {
+                    RHI_PipelineState pso;
+                    pso.name             = "denoiser_spatial";
+                    pso.shaders[Compute] = shader_spatial;
+                    cmd_list->SetPipelineState(pso);
+                    
+                    SetCommonTextures(cmd_list);
+                    
+                    m_pcb_pass_cpu.set_f3_value(static_cast<float>(atrous_step_sizes[pass]), 0.0f, 0.0f);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_src);
+                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_dst);
+                    
+                    cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+                    cmd_list->InsertBarrier(tex_dst, RHI_BarrierType::EnsureWriteThenRead);
+                }
+                cmd_list->EndTimeblock();
+                
+                swap(tex_src, tex_dst);
+            }
+            
+            // after odd number of passes, result is in tex_scratch
+            if (atrous_passes % 2 == 1)
+            {
+                cmd_list->BeginTimeblock("denoiser_copy_result");
+                Pass_Blit(cmd_list, tex_scratch, tex_out);
+                cmd_list->EndTimeblock();
+            }
+            
+            // copy result to history for next frame
+            cmd_list->BeginTimeblock("denoiser_copy_history");
+            {
+                Pass_Blit(cmd_list, tex_out, tex_history);
+            }
+            cmd_list->EndTimeblock();
+        }
     }
 
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)

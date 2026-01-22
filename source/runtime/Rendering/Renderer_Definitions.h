@@ -240,6 +240,11 @@ namespace spartan
         cloud_noise_detail_c,
         cloud_shadow_c,
         light_reflections_c,
+        // denoiser
+        denoiser_c,
+        denoiser_temporal_c,
+        denoiser_spatial_c,
+        denoiser_upscale_c,
         max
     };
     
@@ -298,6 +303,8 @@ namespace spartan
         cloud_noise_shape,
         cloud_noise_detail,
         cloud_shadow,
+        // denoiser history buffers
+        denoiser_history,
         max
     };
 

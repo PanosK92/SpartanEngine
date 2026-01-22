@@ -22,13 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_RESTIR_RESERVOIR
 #define SPARTAN_RESTIR_RESERVOIR
 
-// configuration
-static const uint RESTIR_MAX_PATH_LENGTH     = 5;
-static const uint RESTIR_M_CAP               = 30;
-static const uint RESTIR_SPATIAL_SAMPLES     = 5;
-static const float RESTIR_SPATIAL_RADIUS     = 12.0f;
-static const float RESTIR_DEPTH_THRESHOLD    = 0.02f;
-static const float RESTIR_NORMAL_THRESHOLD   = 0.98f;
+// configuration - balanced for quality and bias control
+static const uint RESTIR_MAX_PATH_LENGTH     = 2;      // 2 bounces is enough for most gi contribution
+static const uint RESTIR_M_CAP               = 12;     // lower cap = faster sample turnover, less bias
+static const uint RESTIR_SPATIAL_SAMPLES     = 5;      // spatial neighbor count (helps when temporal fails)
+static const float RESTIR_SPATIAL_RADIUS     = 20.0f;  // search radius in pixels
+static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;  // more lenient depth threshold
+static const float RESTIR_NORMAL_THRESHOLD   = 0.85f;  // more lenient for gi
+static const float RESTIR_TEMPORAL_DECAY     = 0.95f;  // decay old samples each frame
 
 struct PathSample
 {
@@ -108,8 +109,7 @@ Reservoir create_empty_reservoir()
 
 float calculate_target_pdf(float3 radiance)
 {
-    // luminance-based target pdf with sqrt for balanced importance sampling
-    // sqrt provides a good trade-off between noise reduction and preserving bright bounces
+    // sqrt(luminance) for balanced importance sampling
     float lum = dot(radiance, float3(0.299, 0.587, 0.114));
     return max(sqrt(lum + 0.001f), 1e-6f);
 }
@@ -152,6 +152,9 @@ void finalize_reservoir(inout Reservoir reservoir)
         reservoir.W = reservoir.weight_sum / (target_pdf * reservoir.M);
     else
         reservoir.W = 0;
+    
+    // clamp W to prevent energy explosion from bias accumulation
+    reservoir.W = min(reservoir.W, 10.0f);
 }
 
 void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
@@ -161,6 +164,10 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
         float scale = max_M / reservoir.M;
         reservoir.weight_sum *= scale;
         reservoir.M = max_M;
+        
+        // recalculate W after clamping
+        if (reservoir.target_pdf > 0 && reservoir.M > 0)
+            reservoir.W = reservoir.weight_sum / (reservoir.target_pdf * reservoir.M);
     }
 }
 
@@ -258,7 +265,7 @@ bool surface_similarity_check(float3 pos1, float3 normal1, float depth1, float3 
 
 bool visibility_check(float3 from, float3 to)
 {
-    return true; // implemented via tracery in main shader
+    return true; // handled by ray tracing in main shader
 }
 
 float power_heuristic(float pdf_a, float pdf_b)
