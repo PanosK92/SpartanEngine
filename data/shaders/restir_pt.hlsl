@@ -32,6 +32,7 @@ struct [raypayload] PathPayload
     float3 hit_position : read(caller) : write(closesthit);
     float3 hit_normal   : read(caller) : write(closesthit);
     float3 albedo       : read(caller) : write(closesthit);
+    float3 emission     : read(caller) : write(closesthit, miss);
     float  roughness    : read(caller) : write(closesthit);
     float  metallic     : read(caller) : write(closesthit);
     bool   hit          : read(caller) : write(closesthit, miss);
@@ -189,6 +190,10 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         }
         
         sample.path_length = bounce + 1;
+        
+        // add emission from emissive materials
+        if (any(payload.emission > 0.0f))
+            sample.radiance += throughput * payload.emission;
         
         // direct sun lighting
         float3 light_dir       = -light_parameters[0].direction;
@@ -388,12 +393,18 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
         albedo = sampled.rgb * mat.color.rgb;
     }
     
+    // emission only from explicitly flagged emissive materials
+    float3 emission = float3(0.0f, 0.0f, 0.0f);
+    if (mat.emissive_from_albedo())
+        emission = albedo;
+    
     float hit_distance = RayTCurrent();
     float3 hit_position = WorldRayOrigin() + WorldRayDirection() * hit_distance;
     
     payload.hit_position = hit_position;
     payload.hit_normal   = normal_world;
     payload.albedo       = albedo;
+    payload.emission     = emission;
     payload.roughness    = mat.roughness;
     payload.metallic     = mat.metallness;
 }
@@ -401,5 +412,6 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
 [shader("miss")]
 void miss(inout PathPayload payload : SV_RayPayload)
 {
-    payload.hit = false;
+    payload.hit      = false;
+    payload.emission = float3(0.0f, 0.0f, 0.0f);
 }

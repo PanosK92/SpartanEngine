@@ -197,7 +197,8 @@ float3 random_float3(inout uint seed)
 
 uint create_seed(uint2 pixel, uint frame)
 {
-    return pixel.x + pixel.y * 1920 + frame * 1920 * 1080;
+    // use nested hashing to avoid resolution-dependent correlation patterns
+    return pcg_hash(pixel.x ^ pcg_hash(pixel.y ^ pcg_hash(frame)));
 }
 
 // sampling
@@ -263,9 +264,37 @@ bool surface_similarity_check(float3 pos1, float3 normal1, float depth1, float3 
     return true;
 }
 
-bool visibility_check(float3 from, float3 to)
+// jacobian for converting sample contribution from one shading point to another
+// accounts for the geometric difference when reusing a sample at a different location
+float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 new_shading_pos, float3 sample_normal)
 {
-    return true; // handled by ray tracing in main shader
+    float3 dir_original = sample_pos - original_shading_pos;
+    float3 dir_new      = sample_pos - new_shading_pos;
+    
+    float dist_original_sq = dot(dir_original, dir_original);
+    float dist_new_sq      = dot(dir_new, dir_new);
+    
+    if (dist_original_sq < 1e-6f || dist_new_sq < 1e-6f)
+        return 1.0f;
+    
+    float dist_original = sqrt(dist_original_sq);
+    float dist_new      = sqrt(dist_new_sq);
+    
+    dir_original /= dist_original;
+    dir_new      /= dist_new;
+    
+    // cosine at sample point for both directions
+    float cos_original = abs(dot(sample_normal, -dir_original));
+    float cos_new      = abs(dot(sample_normal, -dir_new));
+    
+    if (cos_original < 1e-6f)
+        return 0.0f;
+    
+    // jacobian = (cos_new / dist_new^2) / (cos_original / dist_original^2)
+    float jacobian = (cos_new * dist_original_sq) / (cos_original * dist_new_sq + 1e-6f);
+    
+    // clamp to reasonable range to avoid fireflies
+    return clamp(jacobian, 0.0f, 10.0f);
 }
 
 float power_heuristic(float pdf_a, float pdf_b)

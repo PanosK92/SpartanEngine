@@ -1216,7 +1216,13 @@ namespace spartan
         }
         cmd_list->EndTimeblock();
 
-        // spatial resampling
+        // spatial resampling (using ping-pong buffers to avoid read-write hazard)
+        RHI_Texture* reservoir_spatial0 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial0);
+        RHI_Texture* reservoir_spatial1 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial1);
+        RHI_Texture* reservoir_spatial2 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial2);
+        RHI_Texture* reservoir_spatial3 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial3);
+        RHI_Texture* reservoir_spatial4 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial4);
+        
         cmd_list->BeginTimeblock("restir_pt_spatial");
         {
             RHI_Shader* shader_spatial = GetShader(Renderer_Shader::restir_pt_spatial_c);
@@ -1234,17 +1240,19 @@ namespace spartan
             
             SetCommonTextures(cmd_list);
             
+            // read from current reservoirs (after temporal pass)
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev0, reservoir0);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev1, reservoir1);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev2, reservoir2);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev3, reservoir3);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev4, reservoir4);
             
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0), reservoir0, rhi_all_mips, 0, true);
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir1), reservoir1, rhi_all_mips, 0, true);
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir2), reservoir2, rhi_all_mips, 0, true);
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir3), reservoir3, rhi_all_mips, 0, true);
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir4, rhi_all_mips, 0, true);
+            // write to separate spatial buffers (ping-pong to avoid read-write hazard)
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0), reservoir_spatial0, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir1), reservoir_spatial1, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir2), reservoir_spatial2, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir3), reservoir_spatial3, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir_spatial4, rhi_all_mips, 0, true);
             
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
             
@@ -1254,9 +1262,22 @@ namespace spartan
             uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
             
+            // ensure spatial output is complete before copying
+            cmd_list->InsertBarrier(reservoir_spatial0, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir_spatial1, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir_spatial2, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir_spatial3, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir_spatial4, RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
+        
+        // copy spatial results back to main reservoirs for next frame's temporal pass
+        cmd_list->Blit(reservoir_spatial0, reservoir0, false);
+        cmd_list->Blit(reservoir_spatial1, reservoir1, false);
+        cmd_list->Blit(reservoir_spatial2, reservoir2, false);
+        cmd_list->Blit(reservoir_spatial3, reservoir3, false);
+        cmd_list->Blit(reservoir_spatial4, reservoir4, false);
         
         SwapReSTIRReservoirs();
         

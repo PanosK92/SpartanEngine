@@ -75,9 +75,33 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
     return true;
 }
 
-float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 center_normal)
+float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 center_normal, float3 neighbor_pos)
 {
-    return calculate_target_pdf(sample.radiance);
+    // check if sample hit position is valid (not default zero)
+    float hit_dist_sq = dot(sample.hit_position, sample.hit_position);
+    if (hit_dist_sq < 1e-6f)
+        return 0.0f;
+    
+    // check if sample direction is valid from the new shading point
+    float3 dir_to_sample = sample.hit_position - center_pos;
+    float dist_sq = dot(dir_to_sample, dir_to_sample);
+    if (dist_sq < 1e-6f)
+        return 0.0f;
+    
+    dir_to_sample = dir_to_sample * rsqrt(dist_sq);
+    float cos_theta = dot(center_normal, dir_to_sample);
+    
+    // reject samples behind the surface (reduces light leaking)
+    if (cos_theta <= 0.0f)
+        return 0.0f;
+    
+    // compute jacobian to account for geometric difference between neighbor and center
+    float jacobian = compute_jacobian(sample.hit_position, neighbor_pos, center_pos, sample.hit_normal);
+    if (jacobian <= 0.0f)
+        return 0.0f;
+    
+    // scale target pdf by jacobian
+    return calculate_target_pdf(sample.radiance * jacobian);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -119,10 +143,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample = center.sample;
     combined.target_pdf = target_pdf_center;
     
-    uint valid_neighbor_count = 0;
-    float z_values[RESTIR_SPATIAL_SAMPLES + 1];
-    z_values[0] = center.M;
-    
     // random rotation for stratified sampling
     float rotation_angle = random_float(seed) * 2.0f * PI;
     float cos_rot = cos(rotation_angle);
@@ -141,10 +161,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         int2 neighbor_pixel = int2(pixel) + int2(rotated_offset * radius_scale);
         
         if (!is_neighbor_valid(neighbor_pixel, pos_ws, normal_ws, depth, resolution))
-        {
-            z_values[i + 1] = 0;
             continue;
-        }
+        
+        // get neighbor world position for jacobian calculation
+        float2 neighbor_uv = (neighbor_pixel + 0.5f) / resolution;
+        float3 neighbor_pos_ws = get_position(neighbor_uv);
         
         Reservoir neighbor = unpack_reservoir(
             tex_reservoir_in0[neighbor_pixel],
@@ -155,15 +176,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         );
         
         if (neighbor.M <= 0 || neighbor.W <= 0)
-        {
-            z_values[i + 1] = 0;
             continue;
-        }
         
-        valid_neighbor_count++;
-        z_values[i + 1] = neighbor.M;
-        
-        float target_pdf_neighbor = evaluate_target_pdf_spatial(neighbor.sample, pos_ws, normal_ws);
+        float target_pdf_neighbor = evaluate_target_pdf_spatial(neighbor.sample, pos_ws, normal_ws, neighbor_pos_ws);
         
         float rand = random_float(seed);
         if (merge_reservoir(combined, neighbor, target_pdf_neighbor, rand))

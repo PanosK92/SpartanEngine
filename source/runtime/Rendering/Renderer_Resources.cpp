@@ -219,26 +219,36 @@ namespace spartan
             render_target(Renderer_RenderTarget::restir_reservoir2)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir2");
             render_target(Renderer_RenderTarget::restir_reservoir3)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir3");
             render_target(Renderer_RenderTarget::restir_reservoir4)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir4");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev0) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev0");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev1) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev1");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev2");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev3) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev3");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev4) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev4");
-            render_target(Renderer_RenderTarget::denoiser_history)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "denoiser_history");
+            render_target(Renderer_RenderTarget::restir_reservoir_prev0)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev0");
+            render_target(Renderer_RenderTarget::restir_reservoir_prev1)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev1");
+            render_target(Renderer_RenderTarget::restir_reservoir_prev2)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev2");
+            render_target(Renderer_RenderTarget::restir_reservoir_prev3)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev3");
+            render_target(Renderer_RenderTarget::restir_reservoir_prev4)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_prev4");
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial0) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_spatial0");
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial1) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_spatial1");
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_spatial2");
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial3) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_spatial3");
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial4) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_spatial4");
+            render_target(Renderer_RenderTarget::denoiser_history)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "denoiser_history");
         }
         else if (!need_restir && render_target(Renderer_RenderTarget::restir_reservoir0))
         {
-            render_target(Renderer_RenderTarget::restir_reservoir0)      = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir1)      = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir2)      = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir3)      = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir4)      = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev0) = nullptr;
-            render_target(Renderer_RenderTarget::denoiser_history)       = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev1) = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev2) = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev3) = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev4) = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir0)         = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir1)         = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir2)         = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir3)         = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir4)         = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_prev0)    = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_prev1)    = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_prev2)    = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_prev3)    = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_prev4)    = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial0) = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial1) = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial2) = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial3) = nullptr;
+            render_target(Renderer_RenderTarget::restir_reservoir_spatial4) = nullptr;
+            render_target(Renderer_RenderTarget::denoiser_history)          = nullptr;
         }
         
         #undef render_target

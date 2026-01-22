@@ -299,6 +299,12 @@ namespace spartan
         restir_reservoir_prev2,
         restir_reservoir_prev3,
         restir_reservoir_prev4,
+        // restir reservoir buffers (spatial ping-pong)
+        restir_reservoir_spatial0,
+        restir_reservoir_spatial1,
+        restir_reservoir_spatial2,
+        restir_reservoir_spatial3,
+        restir_reservoir_spatial4,
         // volumetric clouds
         cloud_noise_shape,
         cloud_noise_detail,
