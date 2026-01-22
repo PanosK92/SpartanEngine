@@ -62,7 +62,8 @@ jobs:
           import subprocess
           import os
           api = os.environ["API"]
-          subprocess.run(f"python generate_vs2026_{api}.py ci")
+          choice = "1" if api == "vulkan" else "2"
+          subprocess.run(["python", "generate_project_files.py", choice])
           
       - name: Verify solution file exists
         shell: cmd
