@@ -160,7 +160,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         PathPayload payload;
         payload.hit = false;
         
-        TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 2, 0, ray, payload);
+        TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
         
         if (!payload.hit)
         {
@@ -168,7 +168,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             float2 sky_uv       = direction_sphere_uv(ray_dir);
             float3 sky_radiance = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, 2).rgb;
             
-            sample.radiance += throughput * sky_radiance * 0.5f;
+            sample.radiance += throughput * sky_radiance;
             break;
         }
         
@@ -182,10 +182,10 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         sample.path_length = bounce + 1;
         
         // direct lighting from sun/directional light
-        // normalize intensity from physical units (lux) to path tracing friendly range
+        // intensity is in lux (lumen/m^2), normalize for path tracing brdf which already divides by PI
         float3 light_dir       = -light_parameters[0].direction;
         float3 light_color     = light_parameters[0].color.rgb;
-        float  light_intensity = light_parameters[0].intensity * 0.00005f;
+        float  light_intensity = light_parameters[0].intensity * 0.02f;
         
         float n_dot_l = saturate(dot(payload.hit_normal, light_dir));
         if (n_dot_l > 0)
@@ -273,6 +273,12 @@ void ray_gen()
     float3 normal_ws = get_normal(uv);
     float3 view_dir  = normalize(buffer_frame.camera_position - pos_ws);
     
+    // sample actual surface material properties for importance sampling
+    float4 material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    float3 albedo    = tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb;
+    float roughness  = max(material.r, 0.04f);
+    float metallic   = material.g;
+    
     Reservoir reservoir = create_empty_reservoir();
     
     // ris candidate generation
@@ -280,7 +286,7 @@ void ray_gen()
     {
         float2 xi = random_float2(seed);
         float pdf;
-        float3 ray_dir = sample_brdf(float3(0.5f, 0.5f, 0.5f), 0.5f, 0.0f, normal_ws, view_dir, xi, pdf);
+        float3 ray_dir = sample_brdf(albedo, roughness, metallic, normal_ws, view_dir, xi, pdf);
         
         if (dot(ray_dir, normal_ws) <= 0)
             continue;

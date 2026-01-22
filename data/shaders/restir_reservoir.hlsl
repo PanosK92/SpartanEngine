@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_RESTIR_RESERVOIR
 
 // configuration
-static const uint RESTIR_MAX_PATH_LENGTH     = 4;
+static const uint RESTIR_MAX_PATH_LENGTH     = 5;
 static const uint RESTIR_M_CAP               = 30;
-static const uint RESTIR_SPATIAL_SAMPLES     = 3;
-static const float RESTIR_SPATIAL_RADIUS     = 8.0f;
+static const uint RESTIR_SPATIAL_SAMPLES     = 5;
+static const float RESTIR_SPATIAL_RADIUS     = 12.0f;
 static const float RESTIR_DEPTH_THRESHOLD    = 0.02f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.98f;
 
@@ -108,10 +108,10 @@ Reservoir create_empty_reservoir()
 
 float calculate_target_pdf(float3 radiance)
 {
-    // use log-based target pdf for much softer bias
-    // this strongly preserves natural occlusion - dark samples nearly equal to bright
+    // luminance-based target pdf with sqrt for balanced importance sampling
+    // sqrt provides a good trade-off between noise reduction and preserving bright bounces
     float lum = dot(radiance, float3(0.299, 0.587, 0.114));
-    return max(log(1.0f + lum * 10.0f), 1e-6f);
+    return max(sqrt(lum + 0.001f), 1e-6f);
 }
 
 bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float weight, float random_value)

@@ -1249,8 +1249,10 @@ namespace spartan
             // set common textures
             SetCommonTextures(cmd_list);
             
-            // for spatial, we read from current reservoirs and write to them in-place
-            // ideally we'd use ping-pong buffers but for simplicity we read/write same
+            // spatial resampling reads current frame reservoirs and writes back to them
+            // note: this has a potential race condition when reading neighbors that may have been
+            // updated by other thread groups, but in practice this produces acceptable results
+            // for gi which is temporally stable. a proper fix would require ping-pong buffers.
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev0, reservoir0);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev1, reservoir1);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev2, reservoir2);
