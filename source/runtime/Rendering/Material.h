@@ -151,7 +151,7 @@ namespace spartan
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
-        void ClearTextures() { m_textures.fill(nullptr); }
+        void ClearPackedTextures();
 
     private:
         bool IsPackableTextureType(MaterialTextureType type) const;

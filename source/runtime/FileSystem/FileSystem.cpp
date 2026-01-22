@@ -22,6 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================
 #include "pch.h"
 SP_WARNINGS_OFF
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_iostream.h>
 #include <SDL3/SDL_misc.h>
 #include <SDL3/SDL_process.h>
 SP_WARNINGS_ON
@@ -153,7 +155,9 @@ namespace spartan
             ".pfr"
         };
 
-        // create sdl process that runs silently (no visible window)
+        // create a silent process (no visible console window) without waiting
+        // caller is responsible for calling SDL_WaitProcess and SDL_DestroyProcess
+        // note: using STDIO_APP for stdout/stderr helps ensure no console window appears
         SDL_Process* create_silent_process(const vector<string>& args)
         {
             vector<const char*> c_args;
@@ -164,8 +168,8 @@ namespace spartan
             SDL_PropertiesID props = SDL_CreateProperties();
             SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
             SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
-            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_NULL);
-            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_NULL);
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP);
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_APP);
             SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
 
             SDL_Process* process = SDL_CreateProcessWithProperties(props);
@@ -173,13 +177,38 @@ namespace spartan
             return process;
         }
 
-        // run process and wait for completion
-        void run_silent_process(const vector<string>& args)
+        // run a process silently (no visible console window) and wait for completion
+        // note: always using STDIO_APP ensures no console window appears on any platform
+        void run_silent_process(const vector<string>& args, string* output = nullptr)
         {
-            SDL_Process* process = create_silent_process(args);
+            vector<const char*> c_args;
+            for (const auto& arg : args)
+                c_args.push_back(arg.c_str());
+            c_args.push_back(nullptr);
+
+            SDL_PropertiesID props = SDL_CreateProperties();
+            SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP);
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_APP);
+            SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+
+            SDL_Process* process = SDL_CreateProcessWithProperties(props);
+            SDL_DestroyProperties(props);
+
             if (process)
             {
-                SDL_WaitProcess(process, true, nullptr);
+                // read and wait - this drains stdout/stderr and waits for completion
+                size_t data_size = 0;
+                int exit_code = 0;
+                char* data = static_cast<char*>(SDL_ReadProcess(process, &data_size, &exit_code));
+                if (output && data && data_size > 0)
+                {
+                    *output = string(data, data_size);
+                }
+                if (data)
+                    SDL_free(data);
+                    
                 SDL_DestroyProcess(process);
             }
         }
@@ -836,7 +865,18 @@ namespace spartan
     {
         auto execute_command = [command, callback]()
         {
-            (void) system(command.c_str());
+            // detect which shell to use at runtime
+            const char* comspec = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "COMSPEC");
+            if (comspec)
+            {
+                // windows: COMSPEC points to cmd.exe
+                run_silent_process({comspec, "/c", command});
+            }
+            else
+            {
+                // unix: use sh
+                run_silent_process({"sh", "-c", command});
+            }
             
             if (callback)
             {
@@ -984,9 +1024,19 @@ namespace spartan
             return false;
         }
 
+        // get stdout stream to drain any output (prevents buffer blocking)
+        SDL_IOStream* stdout_stream = SDL_GetProcessOutput(process);
+
         // poll file size for progress while process runs
         while (!SDL_WaitProcess(process, false, nullptr))
         {
+            // drain any stdout data to prevent pipe buffer from filling
+            if (stdout_stream)
+            {
+                char drain_buffer[1024];
+                while (SDL_ReadIO(stdout_stream, drain_buffer, sizeof(drain_buffer)) > 0) {}
+            }
+
             if (progress_callback && expected_size > 0 && fs::exists(destination, ec))
             {
                 size_t current_size = fs::file_size(destination, ec);
@@ -1022,40 +1072,24 @@ namespace spartan
 
     bool FileSystem::ExtractArchive(const string& archive_path, const string& destination_path)
     {
-        // find 7z executable - check common locations
+        // find 7z executable - check all possible locations and names at runtime
         string seven_zip_exe;
+        vector<string> candidates = {"7z.exe", "build_scripts/7z.exe", "7z", "7za"};
         
-        #ifdef _WIN32
-            // check current directory first, then build_scripts
-            if (Exists("7z.exe"))
+        for (const auto& candidate : candidates)
+        {
+            if (Exists(candidate) || IsExecutableInPath(candidate))
             {
-                seven_zip_exe = "7z.exe";
+                seven_zip_exe = candidate;
+                break;
             }
-            else if (Exists("build_scripts/7z.exe"))
-            {
-                seven_zip_exe = "build_scripts/7z.exe";
-            }
-            else
-            {
-                SP_LOG_ERROR("7z.exe not found. Please ensure it exists in the current directory or build_scripts/");
-                return false;
-            }
-        #else
-            // on linux, check if 7z or 7za is in PATH
-            if (IsExecutableInPath("7z"))
-            {
-                seven_zip_exe = "7z";
-            }
-            else if (IsExecutableInPath("7za"))
-            {
-                seven_zip_exe = "7za";
-            }
-            else
-            {
-                SP_LOG_ERROR("7z not found in PATH. Please install p7zip.");
-                return false;
-            }
-        #endif
+        }
+        
+        if (seven_zip_exe.empty())
+        {
+            SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, build_scripts/, or PATH.");
+            return false;
+        }
 
         // ensure destination exists
         if (!Exists(destination_path))
@@ -1092,46 +1126,22 @@ namespace spartan
         if (!fs::exists(path, ec))
             return "";
 
-        // build args for hash command
+        // detect which hash utility is available at runtime
+        bool use_certutil = IsExecutableInPath("certutil");
         vector<string> args;
-        #ifdef _WIN32
+        if (use_certutil)
             args = {"certutil", "-hashfile", path, "SHA256"};
-        #else
+        else
             args = {"sha256sum", path};
-        #endif
 
-        // create process with stdout capture
-        vector<const char*> c_args;
-        for (const auto& arg : args)
-            c_args.push_back(arg.c_str());
-        c_args.push_back(nullptr);
+        // run process and capture output
+        string result;
+        run_silent_process(args, &result);
 
-        SDL_PropertiesID props = SDL_CreateProperties();
-        SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
-        SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
-        SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_APP); // capture stdout
-        SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_NULL);
-        SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
-
-        SDL_Process* process = SDL_CreateProcessWithProperties(props);
-        SDL_DestroyProperties(props);
-
-        if (!process)
+        if (result.empty())
             return "";
 
-        // read all output
-        size_t data_size = 0;
-        int exit_code = 0;
-        char* output = static_cast<char*>(SDL_ReadProcess(process, &data_size, &exit_code));
-        SDL_DestroyProcess(process);
-
-        if (!output || data_size == 0)
-            return "";
-
-        string result(output, data_size);
-        SDL_free(output);
-
-        // parse hash from output
+        // parse hash from output - handle both certutil and sha256sum formats
         string hash;
         istringstream stream(result);
         string line;
@@ -1140,25 +1150,26 @@ namespace spartan
         while (getline(stream, line))
         {
             line_num++;
-            #ifdef _WIN32
-                // on windows, certutil outputs hash on the second line
-                if (line_num == 2)
-                {
-                    // remove spaces and carriage returns
-                    line.erase(remove(line.begin(), line.end(), ' '), line.end());
-                    line.erase(remove(line.begin(), line.end(), '\r'), line.end());
-                    hash = line;
-                    break;
-                }
-            #else
-                // on linux, sha256sum outputs: <hash>  <filename>
+            
+            // certutil outputs hash on the second line
+            if (use_certutil && line_num == 2)
+            {
+                // remove spaces and carriage returns
+                line.erase(remove(line.begin(), line.end(), ' '), line.end());
+                line.erase(remove(line.begin(), line.end(), '\r'), line.end());
+                hash = line;
+                break;
+            }
+            // sha256sum outputs: <hash>  <filename>
+            else if (!use_certutil)
+            {
                 size_t space = line.find(' ');
                 if (space != string::npos)
                     hash = line.substr(0, space);
                 else
                     hash = line;
                 break;
-            #endif
+            }
         }
 
         // convert to lowercase for consistency
@@ -1167,33 +1178,22 @@ namespace spartan
         return hash;
     }
 
-   bool FileSystem::IsExecutableInPath(const string& executable)
+    bool FileSystem::IsExecutableInPath(const string& executable)
     {
-        string path_str;
-    
-    #ifdef _WIN32
-        char* buffer = nullptr;
-        size_t size = 0;
-        if (_dupenv_s(&buffer, &size, "PATH") != 0 || buffer == nullptr)
-            return false;
-        path_str = buffer;
-        free(buffer);
-    #else
-        const char* path_env = getenv("PATH");
+        // get PATH using sdl's cross-platform environment api
+        const char* path_env = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "PATH");
         if (!path_env)
             return false;
-        path_str = path_env;
-    #endif
+        
+        string path_str = path_env;
     
+        // detect delimiter and suffix based on COMSPEC presence (runtime detection)
+        const char* comspec = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "COMSPEC");
+        char delimiter      = comspec ? ';' : ':';
+        string exe_suffix   = comspec ? ".exe" : "";
+    
+        // split PATH and search for executable
         vector<string> paths;
-    #ifdef _WIN32
-        char delimiter = ';';
-        string exe_suffix = ".exe";
-    #else
-        char delimiter = ':';
-        string exe_suffix = "";
-    #endif
-    
         size_t start = 0;
         size_t end;
         while ((end = path_str.find(delimiter, start)) != string::npos)

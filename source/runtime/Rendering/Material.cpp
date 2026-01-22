@@ -946,4 +946,15 @@ namespace spartan
                 return false;
         }
     }
+
+    void Material::ClearPackedTextures()
+    {
+        // clear only packed texture slots - these are cached in ResourceCache and become
+        // dangling pointers when ResourceCache::Shutdown() is called
+        uint32_t packed_base_index = static_cast<uint32_t>(MaterialTextureType::Packed) * slots_per_texture;
+        for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
+        {
+            m_textures[packed_base_index + slot] = nullptr;
+        }
+    }
 }

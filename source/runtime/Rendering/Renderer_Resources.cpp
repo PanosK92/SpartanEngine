@@ -918,11 +918,12 @@ namespace spartan
 
     void Renderer::ClearMaterialTextureReferences()
     {
-        // clear texture pointers from materials owned by renderer
-        // this prevents dangling pointers when ResourceCache destroys cached textures
+        // clear packed texture pointers from materials owned by renderer
+        // these are cached in ResourceCache and become dangling when it shuts down
+        // other textures (like checkboard) are renderer-owned and remain valid
         if (standard_material)
         {
-            standard_material->ClearTextures();
+            standard_material->ClearPackedTextures();
         }
     }
 }
