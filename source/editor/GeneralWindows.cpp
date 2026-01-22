@@ -555,17 +555,48 @@ namespace
         bool visible_download_prompt  = false;
         bool visible_world_list       = false;
 
-        void world_on_download_finished()
-        {
-            spartan::ProgressTracker::SetGlobalLoadingState(false);
-            visible_world_list = true;
-        }
+        // asset download configuration
+        const char* assets_url         = "https://www.dropbox.com/scl/fi/2dsh84c9hokjxv5xmmv4t/assets.7z?rlkey=a88etud443hqddsnkjzbvlwpu&st=rg4ptyos&dl=1";
+        const char* assets_destination = "project/assets.7z";
+        const char* assets_extract_dir = "project/";
 
         void download_and_extract()
         {
-            spartan::FileSystem::Command("py download_assets.py", world_on_download_finished, false);
-            spartan::ProgressTracker::SetGlobalLoadingState(true);
             visible_download_prompt = false;
+
+            // run download and extract in a separate thread
+            std::thread([]()
+            {
+                // start progress tracking in continuous mode (job_count = 0)
+                spartan::Progress& progress = spartan::ProgressTracker::GetProgress(spartan::ProgressType::Download);
+                progress.Start(0, "Downloading assets...");
+                spartan::ProgressTracker::SetGlobalLoadingState(true);
+
+                // download with real-time progress callback
+                bool success = spartan::FileSystem::DownloadFile(
+                    assets_url,
+                    assets_destination,
+                    [&progress](float download_progress)
+                    {
+                        // download is 0-90%, extraction is 90-100%
+                        progress.SetFraction(download_progress * 0.9f);
+                    }
+                );
+
+                if (success)
+                {
+                    progress.SetText("Extracting assets...");
+                    progress.SetFraction(0.9f);
+                    success = spartan::FileSystem::ExtractArchive(assets_destination, assets_extract_dir);
+                    progress.SetFraction(1.0f);
+                }
+
+                spartan::ProgressTracker::SetGlobalLoadingState(false);
+                if (success)
+                {
+                    visible_world_list = true;
+                }
+            }).detach();
         }
 
         void window()
@@ -577,20 +608,6 @@ namespace
                     ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
                     ImGui::TextWrapped("No default worlds are present. Would you like to download them?");
-
-                    bool python_available =
-                        spartan::FileSystem::IsExecutableInPath("py") ||
-                        spartan::FileSystem::IsExecutableInPath("python") ||
-                        spartan::FileSystem::IsExecutableInPath("python3");
-
-                    if (!python_available)
-                    {
-                        ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
-                            "Error: Python is not installed or not found in your PATH.\n"
-                            "Please install it to enable downloading.");
-                    }
-
                     ImGui::Separator();
 
                     float button_width = ImGui::CalcTextSize("Download Worlds").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
@@ -599,12 +616,10 @@ namespace
 
                     ImGui::BeginGroup();
                     {
-                        ImGui::BeginDisabled(!python_available);
                         if (ImGui::Button("Download Worlds"))
                         {
                             download_and_extract();
                         }
-                        ImGui::EndDisabled();
 
                         ImGui::SameLine();
                         if (ImGui::Button("Cancel"))
@@ -733,14 +748,8 @@ void GeneralWindows::Initialize(Editor* editor_in)
         }
         else
         {
-            if (file_count == 0)
-            {
-                worlds::visible_download_prompt = true;
-            }
-            else // assets.7z is present but not extracted
-            {
-                worlds::download_and_extract();
-            }
+            // always ask the user before downloading
+            worlds::visible_download_prompt = true;
         }
     }
 }

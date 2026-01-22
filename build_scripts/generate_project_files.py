@@ -79,8 +79,6 @@ def main():
     
     print("\n1. Create binaries folder with the required data files...\n")
     file_utilities.copy("data", paths["binaries"]["data"])
-    file_utilities.copy(Path("build_scripts") / "download_assets.py", "binaries")
-    file_utilities.copy(Path("build_scripts") / "file_utilities.py", "binaries")
     file_utilities.copy(Path("build_scripts") / "7z.exe", "binaries")
     file_utilities.copy(Path("build_scripts") / "7z.dll", "binaries")
 

@@ -32,6 +32,7 @@ namespace spartan
         ModelImporter,
         World,
         Terrain,
+        Download,
         Max
     };
 
@@ -41,6 +42,7 @@ namespace spartan
         void Start(const uint32_t job_count, const std::string& text);
 
         float GetFraction() const;
+        void SetFraction(float fraction); // for continuous progress (0.0 to 1.0)
         void JobDone();
 
         const std::string& GetText();
@@ -51,6 +53,8 @@ namespace spartan
     private:
         std::atomic<uint32_t> m_jobs_done = 0;
         std::atomic<uint32_t> m_job_count = 0;
+        std::atomic<float> m_fraction     = 1.0f; // for continuous mode
+        bool m_continuous_mode            = false;
         std::string m_text;
     };
 

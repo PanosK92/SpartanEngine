@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============
 #include "pch.h"
-#include "httplib.h"
 SP_WARNINGS_OFF
-#include <SDL3/SDL_misc.h> // required for SDL_OpenURLWithApp
+#include <SDL3/SDL_misc.h>
+#include <SDL3/SDL_process.h>
 SP_WARNINGS_ON
 //========================
 
@@ -153,67 +153,6 @@ namespace spartan
             ".pfr"
         };
 
-        string compute_sha256(const string& input)
-        {
-        #ifdef _WIN32
-            #pragma comment(lib, "bcrypt.lib")
-
-            BCRYPT_ALG_HANDLE hAlg = NULL;
-            BCRYPT_HASH_HANDLE hHash = NULL;
-            DWORD hashObjSize = 0, hashSize = 0;
-            PBYTE hashObject = NULL, hashBuffer = NULL;
-        
-            // open an algorithm handle
-            if (BCRYPT_SUCCESS(BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_SHA256_ALGORITHM, NULL, 0)))
-            {
-                // get the size of the hash object and the hash
-                if (BCRYPT_SUCCESS(BCryptGetProperty(hAlg, BCRYPT_OBJECT_LENGTH, (PBYTE)&hashObjSize, sizeof(DWORD), NULL, 0)) && 
-                    BCRYPT_SUCCESS(BCryptGetProperty(hAlg, BCRYPT_HASH_LENGTH, (PBYTE)&hashSize, sizeof(DWORD), NULL, 0)))
-                {
-                    // allocate memory for hash object and hash buffer
-                    hashObject = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, hashObjSize);
-                    hashBuffer = (PBYTE)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, hashSize);
-        
-                    if (hashObject && hashBuffer)
-                    {
-                        // create a hash
-                        if (BCRYPT_SUCCESS(BCryptCreateHash(hAlg, &hHash, hashObject, hashObjSize, NULL, 0, 0)))
-                        {
-                            // hash the data
-                            if (BCRYPT_SUCCESS(BCryptHashData(hHash, (PBYTE)input.c_str(), (ULONG)input.length(), 0)))
-                            {
-                                // finish the hash and get the result
-                                if (BCRYPT_SUCCESS(BCryptFinishHash(hHash, hashBuffer, hashSize, 0)))
-                                {
-                                    stringstream ss;
-                                    for (DWORD i = 0; i < hashSize; i++)
-                                    {
-                                        ss << hex << setw(2) << setfill('0') << (int)hashBuffer[i];
-                                    }
-
-                                    // clean up
-                                    BCryptDestroyHash(hHash);
-                                    BCryptCloseAlgorithmProvider(hAlg, 0);
-                                    HeapFree(GetProcessHeap(), 0, hashObject);
-                                    HeapFree(GetProcessHeap(), 0, hashBuffer);
-                                    return ss.str();
-                                }
-                            }
-                            BCryptDestroyHash(hHash);
-                        }
-                    }
-                }
-                BCryptCloseAlgorithmProvider(hAlg, 0);
-            }
-
-            // free resources in case of early exit
-            if (hashObject) HeapFree(GetProcessHeap(), 0, hashObject);
-            if (hashBuffer) HeapFree(GetProcessHeap(), 0, hashBuffer);
-        #else
-            SP_LOG_ERROR("SHA256 is not implemented for this platform.");
-        #endif
-            return "";
-        }
     }
 
     bool FileSystem::IsEmptyOrWhitespace(const string& var)
@@ -937,97 +876,216 @@ namespace spartan
         }
     }
 
+    namespace
+    {
+        // create sdl process that runs silently (no visible window)
+        SDL_Process* create_silent_process(const vector<string>& args)
+        {
+            vector<const char*> c_args;
+            for (const auto& arg : args)
+                c_args.push_back(arg.c_str());
+            c_args.push_back(nullptr);
+
+            SDL_PropertiesID props = SDL_CreateProperties();
+            SDL_SetPointerProperty(props, SDL_PROP_PROCESS_CREATE_ARGS_POINTER, const_cast<char**>(c_args.data()));
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDIN_NUMBER, SDL_PROCESS_STDIO_NULL);
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDOUT_NUMBER, SDL_PROCESS_STDIO_NULL);
+            SDL_SetNumberProperty(props, SDL_PROP_PROCESS_CREATE_STDERR_NUMBER, SDL_PROCESS_STDIO_NULL);
+            SDL_SetBooleanProperty(props, SDL_PROP_PROCESS_CREATE_BACKGROUND_BOOLEAN, true);
+
+            SDL_Process* process = SDL_CreateProcessWithProperties(props);
+            SDL_DestroyProperties(props);
+            return process;
+        }
+
+        // run process and wait for completion
+        void run_silent_process(const vector<string>& args)
+        {
+            SDL_Process* process = create_silent_process(args);
+            if (process)
+            {
+                SDL_WaitProcess(process, true, nullptr);
+                SDL_DestroyProcess(process);
+            }
+        }
+    }
+
     bool FileSystem::DownloadFile(const string& url, const string& destination, function<void(float)> progress_callback)
     {
         namespace fs = filesystem;
-        httplib::Client cli(url.substr(0, url.find("/", 8))); // extract base URL
-        bool success = false;
-    
-        if (fs::exists(destination))
+        error_code ec;
+
+        // ensure destination directory exists
+        string dest_dir = GetDirectoryFromFilePath(destination);
+        if (!dest_dir.empty() && !Exists(dest_dir))
         {
-            // read the existing file content
-            ifstream file(destination, ios::binary);
-            if (!file)
+            CreateDirectory_(dest_dir);
+        }
+
+        // check if partial download exists (for resume support)
+        size_t existing_size = 0;
+        if (fs::exists(destination, ec))
+        {
+            existing_size = fs::file_size(destination, ec);
+            if (existing_size > 0)
             {
-                SP_LOG_ERROR("Failed to open existing file for reading.");
+                SP_LOG_INFO("Resuming download from %zu bytes", existing_size);
             }
-            else
+        }
+
+        SP_LOG_INFO("Downloading: %s", destination.c_str());
+
+        // first, get file size with a head request
+        string size_file = destination + ".size";
+        run_silent_process({"curl", "-sI", "-L", "-o", size_file, url});
+
+        // parse content-length from headers
+        size_t expected_size = 0;
+        if (fs::exists(size_file, ec))
+        {
+            ifstream header_file(size_file);
+            if (header_file.is_open())
             {
-                string file_content((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
-                string existing_hash = compute_sha256(file_content);
-    
-                // fetch the remote file to compute its hash
-                auto res = cli.Get(url.substr(url.find("/", 8)));
-                if (!res || res->status != 200)
+                string line;
+                while (getline(header_file, line))
                 {
-                    SP_LOG_ERROR("Failed to fetch remote file for hash comparison.");
-                }
-                else
-                {
-                    string remote_content = res->body;
-                    string new_hash = compute_sha256(remote_content);
-    
-                    // hash mismatch, download new file
-                    if (existing_hash != new_hash)
+                    string lower_line = line;
+                    transform(lower_line.begin(), lower_line.end(), lower_line.begin(), ::tolower);
+                    if (lower_line.find("content-length:") != string::npos)
                     {
-                        ofstream new_file(destination, ios::binary);
-                        if (!new_file)
+                        size_t pos = line.find(':');
+                        if (pos != string::npos)
                         {
-                            SP_LOG_ERROR("Failed to open file for writing new content.");
-                        }
-                        else
-                        {
-                            new_file.write(remote_content.data(), remote_content.length());
-                            success = true;
+                            string size_str = line.substr(pos + 1);
+                            size_str.erase(0, size_str.find_first_not_of(" \t\r\n"));
+                            size_str.erase(size_str.find_last_not_of(" \t\r\n") + 1);
+                            try { expected_size = stoull(size_str); } catch (...) {}
                         }
                     }
-                    else
-                    {
-                        success = true; // no need to download, hashes match
-                    }
+                }
+                header_file.close();
+            }
+            fs::remove(size_file, ec);
+        }
+
+        // start download process with resume support for unreliable connections
+        // -C - : auto-resume from where it left off
+        // --retry 10 : retry up to 10 times
+        // --retry-delay 3 : wait 3 seconds between retries
+        // --retry-all-errors : retry on all errors, not just transient ones
+        SDL_Process* process = create_silent_process({
+            "curl", "-L", "-s", "-f",
+            "-C", "-",
+            "--retry", "10",
+            "--retry-delay", "3",
+            "--retry-all-errors",
+            "-o", destination, url
+        });
+
+        if (!process)
+        {
+            SP_LOG_ERROR("Failed to start download: %s", SDL_GetError());
+            return false;
+        }
+
+        // poll file size for progress while process runs
+        while (!SDL_WaitProcess(process, false, nullptr))
+        {
+            if (progress_callback && expected_size > 0 && fs::exists(destination, ec))
+            {
+                size_t current_size = fs::file_size(destination, ec);
+                if (!ec)
+                {
+                    float progress = static_cast<float>(current_size) / static_cast<float>(expected_size);
+                    progress_callback(progress > 1.0f ? 1.0f : progress);
                 }
             }
+            this_thread::sleep_for(chrono::milliseconds(100));
+        }
+        SDL_DestroyProcess(process);
+
+        // verify download succeeded by checking file size matches expected (if known)
+        size_t final_size = fs::exists(destination, ec) ? fs::file_size(destination, ec) : 0;
+        bool success = final_size > 0 && (expected_size == 0 || final_size >= expected_size);
+        
+        if (success)
+        {
+            if (progress_callback)
+                progress_callback(1.0f);
+            SP_LOG_INFO("Downloaded: %s (%zu bytes)", destination.c_str(), final_size);
+            return true;
         }
         else
         {
-            // file doesn't exist, download it
-            auto res = cli.Get(url.substr(url.find("/", 8)));
-            if (!res || res->status != 200)
+            if (fs::exists(destination, ec))
+                fs::remove(destination, ec);
+            SP_LOG_ERROR("Failed to download: %s", url.c_str());
+            return false;
+        }
+    }
+
+    bool FileSystem::ExtractArchive(const string& archive_path, const string& destination_path)
+    {
+        // find 7z executable - check common locations
+        string seven_zip_exe;
+        
+        #ifdef _WIN32
+            // check current directory first, then build_scripts
+            if (Exists("7z.exe"))
             {
-                SP_LOG_ERROR("Failed to download file.");
+                seven_zip_exe = "7z.exe";
+            }
+            else if (Exists("build_scripts/7z.exe"))
+            {
+                seven_zip_exe = "build_scripts/7z.exe";
             }
             else
             {
-                size_t total_size = stoll(res->get_header_value("Content-Length", "0"));
-                ofstream file(destination, ios::binary);
-                if (!file)
-                {
-                    SP_LOG_ERROR("Failed to open file for writing new download.");
-                }
-                else
-                {
-                    size_t downloaded_size   = 0;
-                    const size_t buffer_size = 1024 * 1024; // 1MB buffer
-                    char buffer[buffer_size];
-                    
-                    while (!res->body.empty())
-                    {
-                        size_t read_size = min(buffer_size, res->body.size());
-                        memcpy(buffer, res->body.data(), read_size);
-                        file.write(buffer, read_size);
-                        res->body.erase(0, read_size);
-                        
-                        downloaded_size += read_size;
-                        float progress = (total_size > 0) ? (float)downloaded_size / total_size : 0.0f;
-                        progress_callback(progress);
-                    }
-                    success = true;
-                }
+                SP_LOG_ERROR("7z.exe not found. Please ensure it exists in the current directory or build_scripts/");
+                return false;
             }
+        #else
+            // on linux, check if 7z or 7za is in PATH
+            if (IsExecutableInPath("7z"))
+            {
+                seven_zip_exe = "7z";
+            }
+            else if (IsExecutableInPath("7za"))
+            {
+                seven_zip_exe = "7za";
+            }
+            else
+            {
+                SP_LOG_ERROR("7z not found in PATH. Please install p7zip.");
+                return false;
+            }
+        #endif
+
+        // ensure destination exists
+        if (!Exists(destination_path))
+        {
+            CreateDirectory_(destination_path);
         }
-    
-        progress_callback(1.0f);
-        return success;
+
+        SP_LOG_INFO("Extracting: %s", archive_path.c_str());
+        
+        // run 7z silently
+        run_silent_process({
+            seven_zip_exe, "x", archive_path,
+            "-o" + destination_path, "-aoa", "-bso0", "-bsp0"
+        });
+        
+        // verify extraction by checking destination has content
+        int result = IsDirectoryEmpty(destination_path) ? 1 : 0;
+
+        if (result != 0)
+        {
+            SP_LOG_ERROR("Failed to extract archive: %s (exit code: %d)", archive_path.c_str(), result);
+            return false;
+        }
+
+        SP_LOG_INFO("Extracted to: %s", destination_path.c_str());
+        return true;
     }
 
    bool FileSystem::IsExecutableInPath(const string& executable)
