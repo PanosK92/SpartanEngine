@@ -106,7 +106,7 @@ function spartan_project_configuration()
                 RUNTIME_DIR, RUNTIME_DIR .. "/Core",
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
-                "../third_party/meshoptimizer", "../third_party/dxc"
+                "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/nrd"
             }
              -- Ensure linker prioritizes project libraries over system paths
             linkoptions {
@@ -156,7 +156,7 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME)
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT", "meshoptimizer" }
+            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT", "meshoptimizer", "nrd" }
             links {
                 "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
                 "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle2_static_64", "PhysXCharacterKinematic_static_64"
@@ -179,7 +179,7 @@ function spartan_project_configuration()
             links { "dxcompiler" }
 
         filter { "configurations:debug", "system:windows" }
-            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug" }
+            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug", "nrd_debug" }
             links {
                 "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
                 "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle2_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
