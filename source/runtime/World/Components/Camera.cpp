@@ -526,17 +526,20 @@ namespace spartan
                 }
             }
     
-            // mouse and gamepad look - use local rotation to avoid unstable matrix decomposition
-            Quaternion current_rotation = GetEntity()->GetRotationLocal();
-            Vector2 input_delta = Vector2::Zero;
-            if (is_controlled)
-            {
-                input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
-            }
-            else if (is_gamepad_connected)
-            {
-                input_delta = Input::GetGamepadThumbStickRight();
-            }
+        // mouse and gamepad look - use local rotation to avoid unstable matrix decomposition
+        Quaternion current_rotation = GetEntity()->GetRotationLocal();
+        Vector2 input_delta = Vector2::Zero;
+        if (is_controlled)
+        {
+            input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
+        }
+        else if (is_gamepad_connected)
+        {
+            // gamepad stick is a rate (rotation speed), not accumulated movement like mouse
+            // scale by delta_time and a base rotation speed for framerate-independent behavior
+            const float gamepad_rotation_speed = 120.0f; // degrees per second at full stick deflection
+            input_delta = Input::GetGamepadThumbStickRight() * gamepad_rotation_speed * delta_time;
+        }
             Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
             Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
             Quaternion new_rotation    = yaw_increment * current_rotation * pitch_increment;
