@@ -24,75 +24,81 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-// current frame reservoir uavs
+/*------------------------------------------------------------------------------
+    RESOURCES
+------------------------------------------------------------------------------*/
 RWTexture2D<float4> tex_reservoir0 : register(u21);
 RWTexture2D<float4> tex_reservoir1 : register(u22);
 RWTexture2D<float4> tex_reservoir2 : register(u23);
 RWTexture2D<float4> tex_reservoir3 : register(u24);
 RWTexture2D<float4> tex_reservoir4 : register(u25);
 
-// previous frame reservoir srvs
 Texture2D<float4> tex_reservoir_prev0 : register(t21);
 Texture2D<float4> tex_reservoir_prev1 : register(t22);
 Texture2D<float4> tex_reservoir_prev2 : register(t23);
 Texture2D<float4> tex_reservoir_prev3 : register(t24);
 Texture2D<float4> tex_reservoir_prev4 : register(t25);
 
-float2 reproject_to_previous_frame(float2 current_uv, float depth)
+/*------------------------------------------------------------------------------
+    TEMPORAL REPROJECTION
+------------------------------------------------------------------------------*/
+float2 reproject_to_previous_frame(float2 current_uv)
 {
-    float3 world_pos = get_position(depth, current_uv);
-    float4 prev_clip = mul(float4(world_pos, 1.0f), buffer_frame.view_projection_previous);
-    float2 prev_ndc  = prev_clip.xy / prev_clip.w;
-    float2 prev_uv   = prev_ndc * float2(0.5f, -0.5f) + 0.5f;
-    return prev_uv;
+    float2 velocity = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).xy;
+    return current_uv - velocity;
 }
 
-// relaxed validation - gi is low frequency so we can be more lenient
-bool is_temporal_sample_valid(float2 prev_uv, float3 current_normal, out float confidence)
+bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_pos, float3 current_normal, float current_depth, out float confidence)
 {
     confidence = 1.0f;
     
     if (!is_valid_uv(prev_uv))
         return false;
     
-    // sample geometry at reprojected location (this is current frame geometry)
-    float prev_depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
-    if (prev_depth <= 0.0f)
+    // depth at reprojected location
+    float prev_uv_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
+    if (prev_uv_depth_raw <= 0.0f)
         return false;
     
-    float3 prev_normal = get_normal(prev_uv);
+    // disocclusion check
+    float3 prev_uv_pos      = get_position(prev_uv_depth_raw, prev_uv);
+    float3 pos_diff         = prev_uv_pos - current_pos;
+    float pos_dist          = length(pos_diff);
+    float depth_threshold   = max(current_depth * 0.1f, 0.5f);
     
-    // relaxed normal check - gi is diffuse so normals matter most
-    float normal_similarity = dot(current_normal, prev_normal);
-    if (normal_similarity < 0.7f)  // more lenient than 0.98
+    if (pos_dist > depth_threshold)
+    {
+        confidence = 0.0f;
+        return false;
+    }
+    
+    // normal check
+    float3 prev_uv_normal   = get_normal(prev_uv);
+    float normal_similarity = dot(current_normal, prev_uv_normal);
+    
+    if (normal_similarity < 0.7f)
         return false;
     
-    // reduce confidence based on normal difference
-    confidence = saturate((normal_similarity - 0.7f) / 0.3f);
+    // confidence
+    float2 motion           = (current_uv - prev_uv) * buffer_frame.resolution_render;
+    float motion_length     = length(motion);
+    float normal_confidence = saturate((normal_similarity - 0.7f) / 0.25f);
+    float motion_confidence = saturate(1.0f - motion_length * 0.02f);
+    float position_confidence = saturate(1.0f - pos_dist / depth_threshold);
     
+    confidence = normal_confidence * motion_confidence * position_confidence;
     return true;
 }
 
-float evaluate_target_pdf_at_point(PathSample sample, float3 shading_pos, float3 shading_normal, float3 current_radiance)
-{
-    float sample_lum = luminance(sample.radiance);
-    float current_lum = luminance(current_radiance);
-    
-    // if temporal sample is much brighter than current sample, be skeptical
-    // this catches cases where an area went into shadow but old bright samples persist
-    float brightness_ratio = sample_lum / max(current_lum, 0.001f);
-    float skepticism = saturate(brightness_ratio / 10.0f);  // start reducing at 10x brighter
-    float validity = 1.0f - skepticism * 0.9f;  // reduce to 10% at extreme ratios
-    
-    return calculate_target_pdf(sample.radiance) * validity;
-}
-
+/*------------------------------------------------------------------------------
+    MAIN
+------------------------------------------------------------------------------*/
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 {
     uint2 pixel = dispatch_id.xy;
-    
     float2 resolution = buffer_frame.resolution_render;
+    
     if (pixel.x >= (uint)resolution.x || pixel.y >= (uint)resolution.y)
         return;
     
@@ -120,20 +126,20 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     Reservoir combined = create_empty_reservoir();
     
     float target_pdf_current = calculate_target_pdf(current.sample.radiance);
-    float weight_current = target_pdf_current * current.W * current.M;
-    combined.weight_sum = weight_current;
-    combined.M = current.M;
-    combined.sample = current.sample;
-    combined.target_pdf = target_pdf_current;
+    float weight_current     = target_pdf_current * current.W * current.M;
+    combined.weight_sum      = weight_current;
+    combined.M               = current.M;
+    combined.sample          = current.sample;
+    combined.target_pdf      = target_pdf_current;
     
     // temporal reuse
-    float2 prev_uv = reproject_to_previous_frame(uv, depth);
+    float2 prev_uv = reproject_to_previous_frame(uv);
     float temporal_confidence;
+    float linear_depth = linearize_depth(depth);
     
-    if (is_temporal_sample_valid(prev_uv, normal_ws, temporal_confidence))
+    if (is_temporal_sample_valid(uv, prev_uv, pos_ws, normal_ws, linear_depth, temporal_confidence))
     {
-        int2 prev_pixel = int2(prev_uv * resolution);
-        prev_pixel = clamp(prev_pixel, int2(0, 0), int2(resolution) - int2(1, 1));
+        int2 prev_pixel = clamp(int2(prev_uv * resolution), int2(0, 0), int2(resolution) - int2(1, 1));
         
         Reservoir temporal = unpack_reservoir(
             tex_reservoir_prev0[prev_pixel],
@@ -143,51 +149,30 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_prev4[prev_pixel]
         );
         
-        // apply temporal decay - old samples lose influence over time
-        // this prevents stale bright samples from accumulating indefinitely
-        temporal.M *= RESTIR_TEMPORAL_DECAY;
+        // decay
+        temporal.M          *= RESTIR_TEMPORAL_DECAY;
         temporal.weight_sum *= RESTIR_TEMPORAL_DECAY;
         
-        // scale M by confidence to reduce influence of uncertain temporal samples
         float effective_M_cap = RESTIR_M_CAP * temporal_confidence;
         clamp_reservoir_M(temporal, max(effective_M_cap, 4.0f));
         
-        // compare temporal sample brightness against current - reject if suspiciously brighter
-        float target_pdf_temporal = evaluate_target_pdf_at_point(temporal.sample, pos_ws, normal_ws, current.sample.radiance);
+        float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
         
-        // additional sanity check: if temporal is way brighter, reduce its M further
-        float lum_temporal = luminance(temporal.sample.radiance);
-        float lum_current = luminance(current.sample.radiance);
-        if (lum_temporal > lum_current * 5.0f && lum_current > 0.001f)
-        {
-            // temporal sample is suspiciously bright - likely stale, reduce its influence
-            temporal.M *= 0.25f;
-            temporal.weight_sum *= 0.25f;
-        }
-        
-        float rand = random_float(seed);
-        if (merge_reservoir(combined, temporal, target_pdf_temporal, rand))
+        if (merge_reservoir(combined, temporal, target_pdf_temporal, random_float(seed)))
             combined.target_pdf = target_pdf_temporal;
-    }
-    else
-    {
-        // temporal failed - boost current frame's M slightly to prevent complete darkness
-        // this trades some bias for stability during motion
-        combined.M = max(combined.M, 2.0f);
     }
     
     clamp_reservoir_M(combined, RESTIR_M_CAP);
     
-    // finalize weight
+    // finalize
     if (combined.target_pdf > 0 && combined.M > 0)
         combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
     else
         combined.W = 0;
     
-    // clamp W to prevent energy explosion
-    combined.W = min(combined.W, 10.0f);
+    combined.W = min(combined.W, 20.0f);
     
-    // write reservoir
+    // output
     float4 t0, t1, t2, t3, t4;
     pack_reservoir(combined, t0, t1, t2, t3, t4);
     tex_reservoir0[pixel] = t0;
@@ -196,13 +181,10 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
     
-    // output
-    float3 gi = combined.sample.radiance * combined.W;
-    
-    // firefly clamp
-    float lum = luminance(gi);
-    if (lum > 100.0f)
-        gi *= 100.0f / lum;
+    float3 gi  = combined.sample.radiance * combined.W;
+    float lum  = luminance(gi);
+    if (lum > 200.0f)
+        gi *= 200.0f / lum;
     
     tex_uav[pixel] = float4(gi, 1.0f);
 }

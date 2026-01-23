@@ -34,7 +34,7 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 
 | Sponza 4K | Subway |
 |:-:|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>True-to-life scale recreation of the Sponza building from Dubrovnik | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_subway.jpg"/><br>Emissive materials and GI test |
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>Sponza building from Dubrovnik, great for path tracing | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_subway.jpg"/><br>Emissive materials and GI test |
 
 | Minecraft | Liminal Space |
 |:-:|:-:|
@@ -62,7 +62,7 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 - Screen-space shadows (from Days Gone) and ambient occlusion (XeGTAO + visibility bitfield)
 - Ray-traced reflections
 - Ray-traced shadows
-- ReSTIR path-traced global illumination with temporal and spatial reuse
+- ReSTIR path-tracing
 - Fast shadow mapping with penumbra via shadow map atlas
 - Volumetric fog
 

@@ -1515,8 +1515,7 @@ namespace spartan
                     {
                         if (Material* material = entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
                         {
-                            material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
-                            material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         }
                     }
                 }
@@ -1535,7 +1534,6 @@ namespace spartan
                         if (Material* material = leaves->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetProperty(MaterialProperty::CullMode,                   static_cast<float>(RHI_CullMode::None));
-                            material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
                             material->SetProperty(MaterialProperty::SubsurfaceScattering,       1.0f);
                             material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
                         }

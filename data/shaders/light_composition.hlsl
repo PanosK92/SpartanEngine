@@ -62,7 +62,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         if (is_restir_pt_enabled())
         {
             float3 gi = tex6.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
-            light_diffuse += gi * 8.0f; // strong gi boost for dramatic indirect lighting
+            light_diffuse += gi;
         }
     }
     

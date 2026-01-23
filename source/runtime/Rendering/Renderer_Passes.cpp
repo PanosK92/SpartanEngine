@@ -1240,6 +1240,9 @@ namespace spartan
             
             SetCommonTextures(cmd_list);
             
+            // bind tlas for inline ray tracing visibility checks
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            
             // read from current reservoirs (after temporal pass)
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev0, reservoir0);
             cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev1, reservoir1);

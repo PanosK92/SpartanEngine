@@ -22,15 +22,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_RESTIR_RESERVOIR
 #define SPARTAN_RESTIR_RESERVOIR
 
-// configuration - balanced for quality and bias control
-static const uint RESTIR_MAX_PATH_LENGTH     = 2;      // 2 bounces is enough for most gi contribution
-static const uint RESTIR_M_CAP               = 12;     // lower cap = faster sample turnover, less bias
-static const uint RESTIR_SPATIAL_SAMPLES     = 5;      // spatial neighbor count (helps when temporal fails)
-static const float RESTIR_SPATIAL_RADIUS     = 20.0f;  // search radius in pixels
-static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;  // more lenient depth threshold
-static const float RESTIR_NORMAL_THRESHOLD   = 0.85f;  // more lenient for gi
-static const float RESTIR_TEMPORAL_DECAY     = 0.95f;  // decay old samples each frame
+/*------------------------------------------------------------------------------
+    CONFIGURATION
+------------------------------------------------------------------------------*/
+static const uint RESTIR_MAX_PATH_LENGTH     = 2;
+static const uint RESTIR_M_CAP               = 24;
+static const uint RESTIR_SPATIAL_SAMPLES     = 8;
+static const float RESTIR_SPATIAL_RADIUS     = 20.0f;
+static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
+static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
+static const float RESTIR_TEMPORAL_DECAY     = 0.95f;
 
+/*------------------------------------------------------------------------------
+    DATA STRUCTURES
+------------------------------------------------------------------------------*/
 struct PathSample
 {
     float3 hit_position;
@@ -52,13 +57,19 @@ struct Reservoir
     float      target_pdf;
 };
 
-// texture packing layout:
-// tex0: hit_position.xyz, hit_normal.x
-// tex1: hit_normal.yz, direction.xy
-// tex2: direction.z, radiance.xyz
-// tex3: throughput.xyz, weight_sum
-// tex4: M, W, target_pdf, path_length | flags
+static const uint PATH_FLAG_SPECULAR = 1 << 0;
+static const uint PATH_FLAG_DIFFUSE  = 1 << 1;
+static const uint PATH_FLAG_CAUSTIC  = 1 << 2;
+static const uint PATH_FLAG_DELTA    = 1 << 3;
 
+/*------------------------------------------------------------------------------
+    RESERVOIR PACKING
+    tex0: hit_position.xyz, hit_normal.x
+    tex1: hit_normal.yz, direction.xy
+    tex2: direction.z, radiance.xyz
+    tex3: throughput.xyz, weight_sum
+    tex4: M, W, target_pdf, path_length | flags
+------------------------------------------------------------------------------*/
 void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4)
 {
     tex0 = float4(r.sample.hit_position, r.sample.hit_normal.x);
@@ -107,11 +118,13 @@ Reservoir create_empty_reservoir()
     return r;
 }
 
+/*------------------------------------------------------------------------------
+    RESERVOIR OPERATIONS
+------------------------------------------------------------------------------*/
 float calculate_target_pdf(float3 radiance)
 {
-    // sqrt(luminance) for balanced importance sampling
     float lum = dot(radiance, float3(0.299, 0.587, 0.114));
-    return max(sqrt(lum + 0.001f), 1e-6f);
+    return max(lum, 1e-6f);
 }
 
 bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float weight, float random_value)
@@ -153,8 +166,7 @@ void finalize_reservoir(inout Reservoir reservoir)
     else
         reservoir.W = 0;
     
-    // clamp W to prevent energy explosion from bias accumulation
-    reservoir.W = min(reservoir.W, 10.0f);
+    reservoir.W = min(reservoir.W, 20.0f);
 }
 
 void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
@@ -165,13 +177,14 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
         reservoir.weight_sum *= scale;
         reservoir.M = max_M;
         
-        // recalculate W after clamping
         if (reservoir.target_pdf > 0 && reservoir.M > 0)
             reservoir.W = reservoir.weight_sum / (reservoir.target_pdf * reservoir.M);
     }
 }
 
-// rng
+/*------------------------------------------------------------------------------
+    RANDOM NUMBER GENERATION
+------------------------------------------------------------------------------*/
 uint pcg_hash(uint seed)
 {
     uint state = seed * 747796405u + 2891336453u;
@@ -197,11 +210,12 @@ float3 random_float3(inout uint seed)
 
 uint create_seed(uint2 pixel, uint frame)
 {
-    // use nested hashing to avoid resolution-dependent correlation patterns
     return pcg_hash(pixel.x ^ pcg_hash(pixel.y ^ pcg_hash(frame)));
 }
 
-// sampling
+/*------------------------------------------------------------------------------
+    SAMPLING
+------------------------------------------------------------------------------*/
 float3 sample_cosine_hemisphere(float2 xi, out float pdf)
 {
     float phi       = 2.0f * 3.14159265f * xi.x;
@@ -252,6 +266,9 @@ float3 local_to_world(float3 local_dir, float3 n)
     return normalize(t * local_dir.x + b * local_dir.y + n * local_dir.z);
 }
 
+/*------------------------------------------------------------------------------
+    GEOMETRY
+------------------------------------------------------------------------------*/
 bool surface_similarity_check(float3 pos1, float3 normal1, float depth1, float3 pos2, float3 normal2, float depth2)
 {
     if (dot(normal1, normal2) < RESTIR_NORMAL_THRESHOLD)
@@ -264,8 +281,6 @@ bool surface_similarity_check(float3 pos1, float3 normal1, float depth1, float3 
     return true;
 }
 
-// jacobian for converting sample contribution from one shading point to another
-// accounts for the geometric difference when reusing a sample at a different location
 float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 new_shading_pos, float3 sample_normal)
 {
     float3 dir_original = sample_pos - original_shading_pos;
@@ -283,18 +298,14 @@ float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 ne
     dir_original /= dist_original;
     dir_new      /= dist_new;
     
-    // cosine at sample point for both directions
     float cos_original = abs(dot(sample_normal, -dir_original));
     float cos_new      = abs(dot(sample_normal, -dir_new));
     
     if (cos_original < 1e-6f)
         return 0.0f;
     
-    // jacobian = (cos_new / dist_new^2) / (cos_original / dist_original^2)
     float jacobian = (cos_new * dist_original_sq) / (cos_original * dist_new_sq + 1e-6f);
-    
-    // clamp to reasonable range to avoid fireflies
-    return clamp(jacobian, 0.0f, 10.0f);
+    return clamp(jacobian, 0.0f, 20.0f);
 }
 
 float power_heuristic(float pdf_a, float pdf_b)
@@ -303,11 +314,5 @@ float power_heuristic(float pdf_a, float pdf_b)
     float b2 = pdf_b * pdf_b;
     return a2 / max(a2 + b2, 1e-6f);
 }
-
-// path flags
-static const uint PATH_FLAG_SPECULAR = 1 << 0;
-static const uint PATH_FLAG_DIFFUSE  = 1 << 1;
-static const uint PATH_FLAG_CAUSTIC  = 1 << 2;
-static const uint PATH_FLAG_DELTA    = 1 << 3;
 
 #endif // SPARTAN_RESTIR_RESERVOIR
