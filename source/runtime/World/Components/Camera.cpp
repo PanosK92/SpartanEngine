@@ -458,6 +458,7 @@ namespace spartan
         bool mouse_click_right_down = Input::GetKeyDown(KeyCode::Click_Right);
         bool mouse_click_right      = Input::GetKey(KeyCode::Click_Right);
         bool mouse_click_left_down  = Input::GetKeyDown(KeyCode::Click_Left);
+        bool escape                 = Input::GetKeyDown(KeyCode::Esc);
 
         // if the camera is paranted to an entity with a physics body, we will control that instead
         Physics* physics_body = nullptr;
@@ -778,6 +779,12 @@ namespace spartan
             // apply bullet-like impulse
             float bullet_speed = 50.0f; // m/s
             physics->ApplyForce(GetEntity()->GetForward() * bullet_speed, PhysicsForce::Impulse);
+        }
+
+        // deselect on escape
+        if (escape)
+        {
+            ClearSelection();
         }
     }
 
