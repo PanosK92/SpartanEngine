@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_VendorTechnology.h"
 #include "../Core/Debugging.h"
+#include "../Core/Breadcrumbs.h"
 //==================================
 
 //= NAMESPACES =====
@@ -200,18 +201,20 @@ namespace spartan
             {
                 if (Debugging::IsBreadcrumbsEnabled())
                 {
-                    bool flush = false; // we don't need to flush and we do, this will call Submit() again, causing stack overflow
-                    RHI_Device::QueueWaitAll(flush);
-                    RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved();
+                    Breadcrumbs::OnDeviceLost();
+                    SP_ERROR_WINDOW("GPU crashed. Check 'gpu_crash.txt' for breadcrumbs report.");
                 }
-                SP_ERROR_WINDOW("GPU crashed");
+                else
+                {
+                    SP_ERROR_WINDOW("GPU crashed. To capture breadcrumbs, enable them in debugging.h and re-run.");
+                }
             }
     
             SP_ASSERT_VK(result);
         }
     }
 
-    void RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
+    bool RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
     {
         lock_guard<mutex> lock(get_mutex(this));
 
@@ -227,6 +230,15 @@ namespace spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = &image_index;
 
-        SP_ASSERT_VK(vkQueuePresentKHR(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), &present_info));
+        VkResult result = vkQueuePresentKHR(static_cast<VkQueue>(RHI_Device::GetQueueRhiResource(m_type)), &present_info);
+
+        // vk_error_out_of_date_khr and vk_suboptimal_khr are not errors, they indicate the swapchain needs recreation
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        {
+            return false; // signal swapchain needs recreation
+        }
+
+        SP_ASSERT_VK(result);
+        return true;
     }
 }

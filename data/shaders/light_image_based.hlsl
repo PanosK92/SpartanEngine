@@ -99,6 +99,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_ibl       = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl      = specular_skysphere * specular_energy * specular_occlusion;
 
+    // when ray traced reflections are enabled, they handle specular
+    if (is_ray_traced_reflections_enabled())
+    {
+        specular_ibl *= 0.0f; // fully handled by ray traced reflections
+    }
+
+    // when restir path tracing is enabled, nearly disable ibl diffuse as restir fully replaces it
+    if (is_restir_pt_enabled())
+    {
+        diffuse_ibl *= 0.0f; // restir fully handles indirect diffuse
+    }
+
     // combine ibl
     float3 ibl  = diffuse_ibl + specular_ibl;
     ibl        *= surface.alpha;

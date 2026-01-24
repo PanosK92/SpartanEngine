@@ -33,7 +33,7 @@ namespace spartan
 {
     namespace
     { 
-        array<Progress, 4> progresses;
+        array<Progress, static_cast<size_t>(ProgressType::Max)> progresses;
         recursive_mutex mutex_jobs;
         uint32_t anonymous_jobs = 0;
     }
@@ -44,19 +44,32 @@ namespace spartan
 
         lock_guard lock(mutex_jobs);
 
-        m_job_count = job_count;
-        m_jobs_done = 0;
-        m_text      = text;
+        m_job_count       = job_count;
+        m_jobs_done       = 0;
+        m_text            = text;
+        m_continuous_mode = (job_count == 0); // if job_count is 0, use continuous mode
+        m_fraction        = 0.0f;
     }
 
     float Progress::GetFraction() const
     {
         lock_guard lock(mutex_jobs);
 
+        if (m_continuous_mode)
+        {
+            return m_fraction.load();
+        }
+
         if (m_job_count == 0)
             return 1.0f;
 
         return static_cast<float>(m_jobs_done) / static_cast<float>(m_job_count);
+    }
+
+    void Progress::SetFraction(float fraction)
+    {
+        lock_guard lock(mutex_jobs);
+        m_fraction = (fraction < 0.0f) ? 0.0f : (fraction > 1.0f) ? 1.0f : fraction;
     }
 
     bool Progress::IsProgressing() const

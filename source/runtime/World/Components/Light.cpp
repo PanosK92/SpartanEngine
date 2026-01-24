@@ -60,6 +60,10 @@ namespace spartan
             {
                 return 15.0f;
             }
+            else if (type == LightType::Area)
+            {
+                return 20.0f;
+            }
 
             return 0.0f;
         }
@@ -75,6 +79,10 @@ namespace spartan
                 return Color::light_light_bulb;
             }
             else if (type == LightType::Spot)
+            {
+                return Color::light_light_bulb;
+            }
+            else if (type == LightType::Area)
             {
                 return Color::light_light_bulb;
             }
@@ -98,6 +106,8 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_active_previous_frame, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_changed_this_frame, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_index, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_width, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_height, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
         m_matrix_view.fill(Matrix::Identity);
@@ -177,7 +187,9 @@ namespace spartan
         node.append_attribute("range")         = m_range;
         node.append_attribute("angle")         = m_angle_rad;
         node.append_attribute("index")         = m_index;
-        node.append_attribute("preset")       = static_cast<int>(m_preset);
+        node.append_attribute("preset")        = static_cast<int>(m_preset);
+        node.append_attribute("area_width")    = m_area_width;
+        node.append_attribute("area_height")   = m_area_height;
     }
     
     void Light::Load(pugi::xml_node& node)
@@ -194,6 +206,8 @@ namespace spartan
         m_angle_rad            = node.attribute("angle").as_float(math::deg_to_rad * 30.0f);
         m_index                = node.attribute("index").as_uint(0);
         m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(LightPreset::custom)));
+        m_area_width           = node.attribute("area_width").as_float(1.0f);
+        m_area_height          = node.attribute("area_height").as_float(1.0f);
     
         UpdateMatrices(); // regenerate view/projection after loading
     }
@@ -336,7 +350,8 @@ namespace spartan
 
         float time_of_day = 0.0f;
         float temperature = 0.0f;
-        float intensity = 0.0f;
+        float intensity   = 0.0f;
+        float yaw_degrees = 0.0f; // horizontal rotation around Y axis
 
         switch (preset)
         {
@@ -368,6 +383,15 @@ namespace spartan
             intensity = 0.3f; // lux - full moon
             break;
 
+        case LightPreset::david_lynch:
+            // dreamy sunset - that david lynch/twin peaks vibe
+            // warm orange/pink colors, sun near horizon, dreamlike beauty
+            time_of_day = 0.74f; // sun near horizon for actual sunset colors
+            temperature = 2200.0f; // deep warm orange/pink
+            intensity   = 5000.0f; // lux - soft sunset light
+            yaw_degrees = 125.0f; // rotate to avoid mountain
+            break;
+
         case LightPreset::custom:
             // do nothing, keep current settings
             return;
@@ -383,9 +407,15 @@ namespace spartan
         // set rotation based on time of day (only for directional lights)
         if (m_light_type == LightType::Directional)
         {
-            float angle_rad = (time_of_day * 360.0f - 90.0f) * math::deg_to_rad;
-            Quaternion rotation = Quaternion::FromAxisAngle(Vector3::Right, angle_rad);
-            GetEntity()->SetRotation(rotation);
+            // elevation from time of day
+            float elevation_rad = (time_of_day * 360.0f - 90.0f) * math::deg_to_rad;
+            Quaternion elevation = Quaternion::FromAxisAngle(Vector3::Right, elevation_rad);
+            
+            // horizontal rotation (yaw)
+            Quaternion yaw = Quaternion::FromAxisAngle(Vector3::Up, yaw_degrees * math::deg_to_rad);
+            
+            // combine: yaw first, then elevation
+            GetEntity()->SetRotation(yaw * elevation);
             UpdateMatrices();
         }
 
@@ -437,6 +467,26 @@ namespace spartan
         UpdateMatrices();
     }
 
+    void Light::SetAreaWidth(float width)
+    {
+        width = clamp(width, 0.01f, 100.0f);
+        if (width == m_area_width)
+            return;
+
+        m_area_width = width;
+        UpdateMatrices();
+    }
+
+    void Light::SetAreaHeight(float height)
+    {
+        height = clamp(height, 0.01f, 100.0f);
+        if (height == m_area_height)
+            return;
+
+        m_area_height = height;
+        UpdateMatrices();
+    }
+
     bool Light::NeedsSkysphereUpdate() const
     {
         if (m_light_type != LightType::Directional)
@@ -483,7 +533,7 @@ namespace spartan
     {
         if (m_light_type == LightType::Directional) return 2;
         if (m_light_type == LightType::Point)       return 6;
-        return 1; // spot
+        return 1; // spot and area lights use a single slice
     }
 
     void Light::UpdateMatrices()
@@ -535,6 +585,11 @@ namespace spartan
         {
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + GetEntity()->GetForward(), Vector3::Up);
         }
+        else if (m_light_type == LightType::Area)
+        {
+            // area light looks along its forward direction
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + GetEntity()->GetForward(), Vector3::Up);
+        }
         else if (m_light_type == LightType::Point)
         {
             // +X (right)
@@ -572,6 +627,19 @@ namespace spartan
 
             m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0]);
             m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1]);
+        }
+        else if (m_light_type == LightType::Area)
+        {
+            // area lights use orthographic projection based on their dimensions
+            float half_width  = m_area_width * 0.5f;
+            float half_height = m_area_height * 0.5f;
+            
+            m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
+                -half_width, half_width,
+                -half_height, half_height,
+                m_range, 0.05f
+            );
+            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0]);
         }
         else // spot/point
         {
@@ -623,6 +691,40 @@ namespace spartan
             expand(pos_down);
             expand(pos_right);
             expand(pos_left);
+    
+            m_bounding_box = math::BoundingBox(min, max);
+        }
+        else if (m_light_type == LightType::Area)
+        {
+            // area light bounding box extends from the light rectangle to its range
+            const float half_width  = m_area_width * 0.5f;
+            const float half_height = m_area_height * 0.5f;
+    
+            // corners of the area light rectangle
+            const Vector3 right   = GetEntity()->GetRight();
+            const Vector3 up      = GetEntity()->GetUp();
+            const Vector3 forward = GetEntity()->GetForward();
+    
+            Vector3 min = position;
+            Vector3 max = position;
+    
+            auto expand = [&](const Vector3& p)
+            {
+                min = Vector3::Min(min, p);
+                max = Vector3::Max(max, p);
+            };
+    
+            // expand by corners of the light rectangle
+            expand(position + right * half_width + up * half_height);
+            expand(position - right * half_width + up * half_height);
+            expand(position + right * half_width - up * half_height);
+            expand(position - right * half_width - up * half_height);
+    
+            // expand by the range in the forward direction
+            expand(position + forward * m_range + right * half_width + up * half_height);
+            expand(position + forward * m_range - right * half_width + up * half_height);
+            expand(position + forward * m_range + right * half_width - up * half_height);
+            expand(position + forward * m_range - right * half_width - up * half_height);
     
             m_bounding_box = math::BoundingBox(min, max);
         }

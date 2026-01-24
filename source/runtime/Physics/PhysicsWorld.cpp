@@ -60,6 +60,11 @@ namespace spartan
         float gravity = -9.81f; // gravity value in m/s^2
         float hz      = 200.0f; // simulation frequency in hz
     }
+    
+    namespace interpolation
+    {
+        float alpha = 0.0f; // interpolation factor between physics steps (0 = previous, 1 = current)
+    }
 
     namespace picking
     {
@@ -283,6 +288,10 @@ namespace spartan
                     scene->fetchResults(true); // block
                     accumulated_time -= fixed_time_step;
                 }
+                
+                // compute interpolation alpha for smooth rendering
+                // alpha = how far into the next physics step we are (0 to 1)
+                interpolation::alpha = accumulated_time / fixed_time_step;
             }
             // object picking
             {
@@ -348,5 +357,10 @@ namespace spartan
     void* PhysicsWorld::GetPhysics()
     {
         return static_cast<void*>(physics);
+    }
+    
+    float PhysicsWorld::GetInterpolationAlpha()
+    {
+        return interpolation::alpha;
     }
 }

@@ -46,5 +46,9 @@ namespace spartan
         static math::Vector3 GetGravity();
         static void* GetScene();
         static void* GetPhysics();
+        
+        // interpolation alpha for smooth rendering between fixed physics steps
+        // 0 = at previous physics state, 1 = at current physics state
+        static float GetInterpolationAlpha();
     };
 }

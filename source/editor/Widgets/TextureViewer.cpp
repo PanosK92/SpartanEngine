@@ -86,6 +86,12 @@ void TextureViewer::OnTickVisible()
     if (render_targets.empty())
         return;
 
+    // clamp texture index to valid range (textures may have been deallocated)
+    if (m_texture_index >= render_targets.size())
+    {
+        m_texture_index = 0;
+    }
+
     // two columns: left for preview, right for properties
     ImGui::Columns(2, "texture_viewer_columns", false);
     ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() * 0.65f);

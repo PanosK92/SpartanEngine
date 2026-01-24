@@ -332,7 +332,7 @@ void Properties::ShowLight(spartan::Light* light) const
     if (component_begin("Light", light))
     {
         //= REFLECT ==========================================================================
-        static vector<string> types = { "Directional", "Point", "Spot" };
+        static vector<string> types = { "Directional", "Point", "Spot", "Area" };
         float intensity             = light->GetIntensityLumens();
         float temperature_kelvin    = light->GetTemperature();
         float angle                 = light->GetAngle() * math::rad_to_deg * 2.0f;
@@ -340,6 +340,8 @@ void Properties::ShowLight(spartan::Light* light) const
         bool shadows_screen_space   = light->GetFlag(spartan::LightFlags::ShadowsScreenSpace);
         bool volumetric             = light->GetFlag(spartan::LightFlags::Volumetric);
         float range                 = light->GetRange();
+        float area_width            = light->GetAreaWidth();
+        float area_height           = light->GetAreaHeight();
         m_colorPicker_light->SetColor(light->GetColor());
         //====================================================================================
 
@@ -454,10 +456,24 @@ void Properties::ShowLight(spartan::Light* light) const
             ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f);
         }
 
+        // area light dimensions
+        if (light->GetLightType() == LightType::Area)
+        {
+            ImGui::Text("Width");
+            ImGui::SameLine(column_pos_x);
+            ImGuiSp::draw_float_wrap("##lightAreaWidth", &area_width, 0.01f, 0.01f, 100.0f);
+
+            ImGui::Text("Height");
+            ImGui::SameLine(column_pos_x);
+            ImGuiSp::draw_float_wrap("##lightAreaHeight", &area_height, 0.01f, 0.01f, 100.0f);
+        }
+
         //= MAP ===================================================================================================
         if (intensity != light->GetIntensityLumens())             light->SetIntensity(intensity);
         if (angle != light->GetAngle() * math::rad_to_deg * 0.5f) light->SetAngle(angle * math::deg_to_rad * 0.5f);
         if (range != light->GetRange())                           light->SetRange(range);
+        if (area_width != light->GetAreaWidth())                  light->SetAreaWidth(area_width);
+        if (area_height != light->GetAreaHeight())                light->SetAreaHeight(area_height);
         if (m_colorPicker_light->GetColor() != light->GetColor()) light->SetColor(m_colorPicker_light->GetColor());
         if (temperature_kelvin != light->GetTemperature())        light->SetTemperature(temperature_kelvin);
         light->SetFlag(spartan::LightFlags::ShadowsScreenSpace, shadows_screen_space);
@@ -1303,6 +1319,10 @@ void Properties::ComponentContextMenu_Add() const
                 else if (ImGui::MenuItem("Spot"))
                 {
                     entity->AddComponent<Light>()->SetLightType(LightType::Spot);
+                }
+                else if (ImGui::MenuItem("Area"))
+                {
+                    entity->AddComponent<Light>()->SetLightType(LightType::Area);
                 }
 
                 ImGui::EndMenu();

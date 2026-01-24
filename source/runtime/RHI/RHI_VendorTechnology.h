@@ -31,13 +31,6 @@ namespace spartan
     class Camera;
     struct Cb_Frame;
 
-    enum class AMD_FFX_Marker
-    {
-        Pass,
-        Dispatch,
-        DrawIndexed
-    };
-
     class RHI_VendorTechnology
     {
     public:
@@ -68,13 +61,5 @@ namespace spartan
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_output
         );
-
-        // breadcrumbs
-        static void Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name);
-        static void Breadcrumbs_RegisterPipeline(RHI_Pipeline* pipeline);
-        static void Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline);
-        static void Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name);
-        static void Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list);
-        static void Breadcrumbs_OnDeviceRemoved();
     };
 }

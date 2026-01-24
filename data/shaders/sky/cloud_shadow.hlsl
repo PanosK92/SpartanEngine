@@ -88,27 +88,15 @@ float3 seed_transform(float3 p, float seed)
     return p + offset;
 }
 
-// Domain warping - must match skysphere.hlsl
+// domain warping - must match skysphere.hlsl
 float3 domain_warp(float3 p, float seed)
 {
-    const float phi = 1.61803398875;
-    const float sqrt2 = 1.41421356237;
-    const float sqrt3 = 1.73205080757;
-    const float e = 2.71828182846;
-    
-    float seed_phase = seed * 0.31415926;
+    float sp = seed * 0.31415926;
     
     float3 warp;
-    warp.x = sin(p.z * 0.00005 * phi + p.y * 0.00007 + seed_phase) * 1500.0
-           + sin(p.z * 0.00013 * sqrt2 + p.y * 0.00011 + seed_phase * 2.0) * 750.0
-           + sin(p.x * 0.00017 * sqrt3 + p.z * 0.00019 + seed_phase * 3.0) * 375.0;
-           
-    warp.y = sin(p.x * 0.00006 * e + p.z * 0.00008 + seed_phase) * 400.0
-           + sin(p.x * 0.00014 + p.z * 0.00012 * phi + seed_phase * 2.0) * 200.0;
-           
-    warp.z = sin(p.y * 0.00005 + p.x * 0.00009 * sqrt2 + seed_phase) * 1500.0
-           + sin(p.y * 0.00011 * phi + p.x * 0.00015 + seed_phase * 2.0) * 750.0
-           + sin(p.z * 0.00019 * sqrt3 + p.y * 0.00021 + seed_phase * 3.0) * 375.0;
+    warp.x = sin(p.z * 0.00008 + p.y * 0.00007 + sp) * 2000.0;
+    warp.y = sin(p.x * 0.00007 + p.z * 0.00008 + sp) * 500.0;
+    warp.z = sin(p.y * 0.00006 + p.x * 0.00009 + sp) * 2000.0;
     
     return p + warp;
 }
@@ -172,10 +160,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // Get directional light direction (first light in the buffer)
     float3 light_dir = -light_parameters[0].direction;
     
-    // Skip if clouds are disabled or no sun
+    // skip if clouds are disabled or no sun
     if (buffer_frame.cloud_coverage <= 0.0 || buffer_frame.cloud_shadows <= 0.0)
     {
-        tex_uav[thread_id.xy] = float4(1.0, 1.0, 1.0, 1.0);
+        tex_uav[thread_id.xy] = 1.0;
         return;
     }
     
@@ -190,49 +178,50 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // March direction: towards sun
     float3 march_dir = normalize(light_dir);
     
-    // If sun is below horizon, no shadows
+    // if sun is below horizon, no shadows
     if (march_dir.y <= 0.0)
     {
-        tex_uav[thread_id.xy] = float4(1.0, 1.0, 1.0, 1.0);
+        tex_uav[thread_id.xy] = 1.0;
         return;
     }
     
     // Time for wind animation
     float time = (float)buffer_frame.time * 0.001;
     
-    // Raymarch through cloud layer
-    const int shadow_steps = 24;
-    float cloud_thickness = cloud_base_top - cloud_base_bottom;
+    // raymarch through cloud layer
+    const int shadow_steps = 8;
     
-    // Use temporal jitter
+    // use local cloud bounds at sample position for accurate shadow calculation
+    // approximate center position for bounds lookup
+    float3 approx_center = float3(world_xz.x, (cloud_base_bottom + cloud_base_top) * 0.5, world_xz.y);
+    float local_bottom, local_top;
+    get_local_cloud_bounds(approx_center, seed, local_bottom, local_top);
+    float cloud_thickness = local_top - local_bottom;
+    
+    // use temporal jitter
     float2 screen_pos = float2(thread_id.xy);
     float jitter = noise_interleaved_gradient(screen_pos, true);
     
-    // Calculate the slant distance through cloud layer
+    // calculate the slant distance through cloud layer
     float slant_factor = 1.0 / max(march_dir.y, 0.1);
     float ray_length = cloud_thickness * min(slant_factor, 3.0);
     float step_size = ray_length / float(shadow_steps);
     
-    // Multi-sample for softer shadows
+    // single sample for performance (temporal accumulation handles noise)
     float total_shadow = 0.0;
-    const int num_samples = 4;
-    const float2 offsets[4] = {
-        float2(-0.5, -0.5),
-        float2( 0.5, -0.5),
-        float2(-0.5,  0.5),
-        float2( 0.5,  0.5)
-    };
+    const int num_samples = 1;
+    const float2 offsets[1] = { float2(0.0, 0.0) };
     
-    float sample_spread = 50.0;
+    float sample_spread = 0.0;
     
     [unroll]
     for (int s = 0; s < num_samples; s++)
     {
         float2 sample_xz = world_xz + offsets[s] * sample_spread;
         
-        // Start position: trace from ground to cloud layer
+        // start position: trace from ground to cloud layer using local bounds
         float3 ground_pos = float3(sample_xz.x, 0.0, sample_xz.y);
-        float t_to_bottom = cloud_base_bottom / max(march_dir.y, 0.001);
+        float t_to_bottom = local_bottom / max(march_dir.y, 0.001);
         float3 ray_start = ground_pos + march_dir * t_to_bottom;
         
         float optical_depth = 0.0;
@@ -257,9 +246,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // Average samples
     float shadow = total_shadow / float(num_samples);
     
-    // Soft contrast curve
+    // soft contrast curve
     shadow = saturate(shadow);
     shadow = shadow * shadow * (3.0 - 2.0 * shadow);
     
-    tex_uav[thread_id.xy] = float4(shadow, shadow, shadow, 1.0);
+    tex_uav[thread_id.xy] = shadow;
 }

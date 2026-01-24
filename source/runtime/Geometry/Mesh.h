@@ -46,14 +46,6 @@ namespace spartan
         PostProcessPreserveTerrainEdges = 1 << 6,
     };
 
-    enum class MeshLodDropoff
-    {
-        Exponential, // slow early, fast late poly reduction (t^2), detail-heavy mid-range
-        Linear,      // medium reduction across LODs (t), balanced for general use
-        Aggressive,  // fast early, slow late reduction (sqrt(t)), optimizes distant objects
-        Max
-    };
-
     enum class MeshType
     {
         Cube,
@@ -99,10 +91,6 @@ namespace spartan
         std::vector<uint32_t>& GetIndices()                   { return m_indices; }
         const SubMesh& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
 
-        // lod dropoff
-        MeshLodDropoff GetLodDropoff() const             { return m_lod_dropoff; }
-        void SetLodDropoff(const MeshLodDropoff dropoff) { m_lod_dropoff = dropoff; }
-
         // get counts
         uint32_t GetVertexCount() const;
         uint32_t GetIndexCount() const;
@@ -142,8 +130,7 @@ namespace spartan
 
         // misc
         std::mutex m_mutex;
-        Entity* m_root_entity        = nullptr;
-        MeshType m_type              = MeshType::Max;
-        MeshLodDropoff m_lod_dropoff = MeshLodDropoff::Linear;
+        Entity* m_root_entity = nullptr;
+        MeshType m_type       = MeshType::Max;
     };
 }

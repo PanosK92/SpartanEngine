@@ -36,6 +36,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Game/Game.h"
 #include "../Memory/Allocator.h"
 #include "../Testing/SmokeTest.h"
+#include "../RHI/RHI_Device.h"
+#include "../Commands/Console/ConsoleCommands.h"
+#include "Settings.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -81,6 +84,15 @@ namespace spartan
 
         // post-initialize
         {
+            // set ray tracing defaults for new users (no settings file)
+            // existing users keep their saved preferences
+            if (!Settings::HasLoadedUserSettingsFromFile())
+            {
+                bool ray_tracing_supported = RHI_Device::IsSupportedRayTracing();
+                ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections", std::to_string(static_cast<float>(ray_tracing_supported)));
+                ConsoleRegistry::Get().SetValueFromString("r.ray_traced_shadows", std::to_string(static_cast<float>(ray_tracing_supported)));
+            }
+
             ResourceCache::LoadDefaultResources(); // requires rhi to be initialized so they can be uploaded to the gpu
         }
 

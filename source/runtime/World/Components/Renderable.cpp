@@ -107,7 +107,40 @@ namespace spartan
         m_sub_mesh_index       = node.attribute("sub_mesh_index").as_uint();
         if (!mesh_name.empty())
         {
-            m_mesh = ResourceCache::GetByName<Mesh>(mesh_name).get();
+            // check for standard meshes first (owned by Renderer, not ResourceCache)
+            if (mesh_name == "standard_cube")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cube).get();
+            }
+            else if (mesh_name == "standard_quad")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Quad).get();
+            }
+            else if (mesh_name == "standard_sphere")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Sphere).get();
+            }
+            else if (mesh_name == "standard_cylinder")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cylinder).get();
+            }
+            else if (mesh_name == "standard_cone")
+            {
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cone).get();
+            }
+            else
+            {
+                // look up in ResourceCache for custom meshes
+                shared_ptr<Mesh> mesh = ResourceCache::GetByName<Mesh>(mesh_name);
+                if (mesh)
+                {
+                    m_mesh = mesh.get();
+                }
+                else
+                {
+                    SP_LOG_WARNING("Renderable::Load - mesh '%s' not found in cache", mesh_name.c_str());
+                }
+            }
         }
     
         // material
@@ -123,7 +156,8 @@ namespace spartan
         }
         else if (m_material_default)
         {
-            //SetDefaultMaterial(); /// cause crash, disable for now
+            // defer default material assignment - renderer may not be ready during load
+            m_needs_default_material = true;
         }
     
         // flags
@@ -160,6 +194,17 @@ namespace spartan
             }
         }
     
+        // compute mesh bounding box (needed for culling and LOD)
+        if (m_mesh)
+        {
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            m_mesh->GetGeometry(m_sub_mesh_index, nullptr, &vertices);
+            if (!vertices.empty())
+            {
+                m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+            }
+        }
+
         // update instance buffer and bounding boxes
         if (!m_instances.empty())
         {
@@ -173,6 +218,16 @@ namespace spartan
 
     void Renderable::Tick()
     {
+        // deferred default material assignment (renderer may not be ready during load)
+        if (m_needs_default_material)
+        {
+            if (Renderer::GetStandardMaterial())
+            {
+                SetDefaultMaterial();
+                m_needs_default_material = false;
+            }
+        }
+
         UpdateAabb();
         UpdateFrustumAndDistanceCulling();
         UpdateLodIndices();
@@ -180,19 +235,21 @@ namespace spartan
 
     void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
     {
-        // set mesh
+        if (!mesh)
         {
-            m_mesh             = mesh;
-            m_sub_mesh_index   = sub_mesh_index;
-            const MeshLod& lod = mesh->GetSubMesh(sub_mesh_index).lods[0];
-            SP_ASSERT(lod.index_count  != 0);
-            SP_ASSERT(lod.vertex_count != 0);
+            SP_LOG_WARNING("Renderable::SetMesh called with null mesh");
+            return;
         }
 
-        // compute and set bounding box
+        // set mesh
+        m_mesh           = mesh;
+        m_sub_mesh_index = sub_mesh_index;
+
+        // compute and set bounding box (GetGeometry validates bounds internally)
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
+        if (!vertices.empty())
         {
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            mesh->GetGeometry(sub_mesh_index, nullptr, &vertices);
             m_bounding_box_mesh = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
         }
 
@@ -206,6 +263,11 @@ namespace spartan
 
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
+        if (!m_mesh)
+        {
+            SP_LOG_WARNING("Renderable::GetGeometry called with null mesh");
+            return;
+        }
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
     
@@ -476,6 +538,13 @@ namespace spartan
 
     void Renderable::UpdateLodIndices()
     {
+        // screen-space coverage based lod selection
+        // this approach (used by unreal, unity, cryengine, frostbite) naturally handles:
+        // - distance: farther objects appear smaller
+        // - object size: larger objects maintain detail longer
+        // - fov: wider fov = everything smaller on screen
+        // - works uniformly for all object types (no special cases needed)
+
         const uint32_t lod_count = GetLodCount();
         if (lod_count == 0)
         {
@@ -486,94 +555,72 @@ namespace spartan
         Camera* camera = World::GetCamera();
         if (!camera)
         {
-            m_lod_index = lod_count - 1; // lowest lod
+            m_lod_index = lod_count - 1;
             return;
         }
 
         const BoundingBox& box        = GetBoundingBox();
         const Vector3 camera_position = camera->GetEntity()->GetPosition();
-        Vector3 closest_point         = box.GetClosestPoint(camera_position);
-        float distance                = (closest_point - camera_position).Length();
+
+        // camera inside bounding box = maximum detail
         if (box.Contains(camera_position))
         {
-            m_lod_index = 0; // inside: max detail
+            m_lod_index = 0;
             return;
         }
 
-        // hysteresis: relax threshold for downgrade to prevent popping
-        const float hysteresis_factor = (m_lod_index < lod_count - 1) ? 1.1f : 1.0f;
+        // distance from camera to closest point on bounding box
+        Vector3 closest_point = box.GetClosestPoint(camera_position);
+        float distance        = max((closest_point - camera_position).Length(), 0.001f);
 
-        uint32_t lod_index = lod_count - 1; // default: lowest lod
-        bool is_grass      = m_material && m_material->GetProperty(MaterialProperty::IsGrassBlade) != 0.0f;
-        if (is_grass)
+        // compute screen-space coverage: fraction of vertical screen space the object covers
+        // screen_fraction = (object_diameter) / (visible_height_at_distance)
+        // visible_height_at_distance = 2 * distance * tan(fov_v / 2)
+        float bounding_diameter = box.GetExtents().Length() * 2.0f;
+        float tan_half_fov      = tan(camera->GetFovVerticalRad() * 0.5f);
+        float screen_fraction   = bounding_diameter / (2.0f * distance * tan_half_fov);
+
+        // lod thresholds as percentage of screen height coverage
+        // calibrated so transitions remain imperceptible to the user
+        // higher threshold = object must cover more screen to qualify for that lod
+        static constexpr array<float, 5> screen_thresholds =
         {
-            static const array<float, 3> grass_distance_thresholds =
+            0.05f,   // lod0: object covers >= 5% of screen height
+            0.025f,  // lod1: object covers >= 2.5% of screen height
+            0.012f,  // lod2: object covers >= 1.2% of screen height
+            0.006f,  // lod3: object covers >= 0.6% of screen height
+            0.003f   // lod4: object covers >= 0.3% of screen height
+        };
+
+        // hysteresis prevents lod popping at threshold boundaries
+        // upgrading to higher detail requires exceeding threshold by 10%
+        // downgrading to lower detail requires dropping 10% below threshold
+        constexpr float hysteresis = 1.1f;
+
+        uint32_t new_lod = lod_count - 1;
+        for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(screen_thresholds.size())); i++)
+        {
+            float threshold = screen_thresholds[i];
+
+            // apply hysteresis based on relationship to current lod
+            if (i < m_lod_index)
             {
-                20.0f, // lod0: (high detail, 3 segments)
-                40.0f, // lod1: (medium, 2 segments)
-                80.0f  // lod2: (low, 1 segment)
-            };
-            for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(grass_distance_thresholds.size())); i++)
+                // upgrading to higher detail: raise the bar
+                threshold *= hysteresis;
+            }
+            else if (i == m_lod_index)
             {
-                if (distance < grass_distance_thresholds[i] * hysteresis_factor)
-                {
-                    lod_index = i;
-                    break;
-                }
+                // staying at current lod: lower the bar (easier to stay)
+                threshold /= hysteresis;
+            }
+
+            if (screen_fraction >= threshold)
+            {
+                new_lod = i;
+                break;
             }
         }
-        else
-        {
-            // hybrid: compute lod from angle and distance, take max index (lower detail)
 
-            // 1. angle-based lod (unchanged)
-            uint32_t lod_angle = lod_count - 1;
-            static const array<float, 5> lod_angle_thresholds =
-            {
-                4.0f * deg_to_rad,
-                3.0f * deg_to_rad,
-                2.5f * deg_to_rad,
-                1.7f * deg_to_rad,
-                0.86f * deg_to_rad
-            };
-            float radius          = box.GetExtents().Length();
-            float projected_angle = 2.0f * atan(radius / distance);
-            for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(lod_angle_thresholds.size())); i++)
-            {
-                float threshold = lod_angle_thresholds[i] * hysteresis_factor;
-                if (projected_angle > threshold)
-                {
-                    lod_angle = i;
-                    break;
-                }
-            }
-
-            // 2. distance-based lod
-            uint32_t lod_dist = lod_count - 1;
-            static const array<float, 5> lod_distance_thresholds =
-            {
-                100.0f,  // lod0
-                150.0f,  // lod1
-                300.0f,  // lod2
-                500.0f,  // lod3
-                700.0f   // lod4
-            };
-
-            // scale thresholds by object size (large objects keep detail longer)
-            float radius_scale = clamp(radius / 50.0f, 1.0f, 2.0f); // 50m radius = 1x, 100m = 2x
-            for (uint32_t i = 0; i < min(lod_count, static_cast<uint32_t>(lod_distance_thresholds.size())); i++)
-            {
-                float threshold = lod_distance_thresholds[i] * radius_scale * hysteresis_factor;
-                if (distance < threshold)
-                {
-                    lod_dist = i;
-                    break;
-                }
-            }
-
-            // 3. hybrid: take max index (lower detail wins)
-            lod_index = max(lod_angle, lod_dist);
-        }
-        m_lod_index = clamp(lod_index, 0u, lod_count - 1);
+        m_lod_index = clamp(new_lod, 0u, lod_count - 1);
     }
 }

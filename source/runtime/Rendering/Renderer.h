@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ===================================
 #include "Renderer_Definitions.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Math/Vector3.h"
@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <atomic>
 #include "../Math/Rectangle.h"
-//===============================
+//==============================================
 
 namespace spartan
 {
@@ -48,7 +48,7 @@ namespace spartan
         class Frustum;
     }
 
-    // renderer cvars (defined in Renderer.cpp, use .GetValue() or .GetValueAs<T>() for direct access in hot paths)
+    // console varibales
     extern TConsoleVar<float> cvar_aabb;
     extern TConsoleVar<float> cvar_picking_ray;
     extern TConsoleVar<float> cvar_grid;
@@ -63,6 +63,8 @@ namespace spartan
     extern TConsoleVar<float> cvar_fog;
     extern TConsoleVar<float> cvar_ssao;
     extern TConsoleVar<float> cvar_ray_traced_reflections;
+    extern TConsoleVar<float> cvar_ray_traced_shadows;
+    extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;
     extern TConsoleVar<float> cvar_film_grain;
@@ -81,7 +83,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_dynamic_resolution;
     extern TConsoleVar<float> cvar_occlusion_culling;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
-    // volumetric clouds
     extern TConsoleVar<float> cvar_clouds_enabled;
     extern TConsoleVar<float> cvar_cloud_animation;
     extern TConsoleVar<float> cvar_cloud_coverage;
@@ -101,14 +102,13 @@ namespace spartan
         math::Rectangle rect;
     };
 
-    // persistent debug line that expires after a certain duration
     struct PersistentLine
     {
         math::Vector3 from;
         math::Vector3 to;
         Color color_from;
         Color color_to;
-        double expire_time; // time in seconds when this line should expire
+        double expire_time;
     };
 
     class Renderer
@@ -178,6 +178,7 @@ namespace spartan
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();
+        static void ClearMaterialTextureReferences();
         static void SwapVisibilityBuffers();
 
     private:
@@ -191,6 +192,7 @@ namespace spartan
         static void CreateShaders();
         static void CreateSamplers();
         static void CreateRenderTargets(const bool create_render, const bool create_output, const bool create_dynamic);
+        static void UpdateOptionalRenderTargets();
         static void CreateFonts();
         static void CreateStandardMeshes();
         static void CreateStandardTextures();
@@ -206,6 +208,10 @@ namespace spartan
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
         static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list);
         static void Pass_RayTracedReflections(RHI_CommandList* cmd_list);
+        static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
+        static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
+        static void SwapReSTIRReservoirs();
+        static void Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Light_Reflections(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
@@ -286,6 +292,8 @@ namespace spartan
         static RHI_CommandList* m_cmd_list_present;
         static std::vector<ShadowSlice> m_shadow_slices;
         static std::unique_ptr<RHI_Buffer> m_std_reflections; // it temporarily lives here
+        static std::unique_ptr<RHI_Buffer> m_std_shadows;     // shader binding table for ray traced shadows
+        static std::unique_ptr<RHI_Buffer> m_std_restir;      // shader binding table for restir path tracing
         static uint32_t m_count_active_lights;
     };
 }

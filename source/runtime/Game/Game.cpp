@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Geometry/GeometryGeneration.h"
 #include "../Geometry/GeometryProcessing.h"
 #include "../Physics/Car.h"
+#include "../Logging/Log.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -52,13 +53,13 @@ namespace spartan
     namespace worlds
     {
         namespace showroom        { void create(); void tick(); }
+        namespace car_playground  { void create(); }
         namespace forest          { void create(); void tick(); }
         namespace liminal_space   { void create(); void tick(); }
         namespace sponza          { void create(); }
         namespace subway          { void create(); }
         namespace minecraft       { void create(); }
         namespace basic           { void create(); }
-        namespace car_simulation  { void create();  }
     }
     //===========================================================
 
@@ -89,21 +90,21 @@ namespace spartan
         constexpr create_fn world_create[] =
         {
             worlds::showroom::create,
+            worlds::car_playground::create,
             worlds::forest::create,
             worlds::liminal_space::create,
             worlds::sponza::create,
             worlds::subway::create,
             worlds::minecraft::create,
             worlds::basic::create,
-            worlds::car_simulation::create,
         };
 
         constexpr tick_fn world_tick[] =
         {
             worlds::showroom::tick,
+            nullptr,
             worlds::forest::tick,
             worlds::liminal_space::tick,
-            nullptr,
             nullptr,
             nullptr,
             nullptr,
@@ -303,7 +304,7 @@ namespace spartan
                     material->SetProperty(MaterialProperty::TextureTilingX,      1.0f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      1.0f);
                     material->SetProperty(MaterialProperty::IsWater,             1.0f);
-                    material->SetProperty(MaterialProperty::Normal,              0.1f);
+                    material->SetProperty(MaterialProperty::Normal,              0.01f);
                     material->SetProperty(MaterialProperty::TextureTilingX,      0.1f);
                     material->SetProperty(MaterialProperty::TextureTilingY,      0.1f);
                 }
@@ -378,8 +379,64 @@ namespace spartan
         Entity* vehicle_entity = nullptr;
         bool    show_telemetry = false;
 
+        // chase camera state - gran turismo 7 style
+        namespace chase_camera
+        {
+            Vector3 position     = Vector3::Zero;  // smoothed camera world position
+            Vector3 velocity     = Vector3::Zero;  // velocity for smooth damping
+            float   yaw          = 0.0f;           // smoothed yaw angle (radians)
+            float   yaw_bias     = 0.0f;           // manual horizontal camera rotation from right stick (radians)
+            float   pitch_bias   = 0.0f;           // manual vertical camera rotation from right stick (radians)
+            float   speed_factor = 0.0f;           // smoothed speed factor for dynamic adjustments
+            bool    initialized  = false;          // first frame initialization flag
+            
+            // base tuning parameters
+            constexpr float distance_base      = 5.0f;   // base distance behind the car
+            constexpr float distance_min       = 4.0f;   // minimum distance at high speed (camera pulls in)
+            constexpr float height_base        = 1.5f;   // base height above the car
+            constexpr float height_min         = 1.2f;   // minimum height at high speed (camera drops)
+            constexpr float position_smoothing = 0.15f;  // position smooth time (lower = faster, snappier)
+            constexpr float rotation_smoothing = 4.0f;   // rotation catch-up speed (higher = faster)
+            constexpr float speed_smoothing    = 2.0f;   // how fast speed factor changes
+            constexpr float look_offset_up     = 0.6f;   // look slightly above car center
+            constexpr float look_ahead_amount  = 2.5f;   // how far ahead to look based on velocity
+            constexpr float speed_reference    = 50.0f;  // speed (m/s) at which effects are maxed (~180 km/h)
+            
+            // right stick orbit parameters  
+            constexpr float orbit_bias_speed   = 1.5f;   // how fast the right stick rotates the camera (radians/sec)
+            constexpr float orbit_bias_decay   = 4.0f;   // how fast the camera returns to center when stick released
+            constexpr float yaw_bias_max       = math::pi; // maximum yaw angle (180 degrees, can look behind)
+            constexpr float pitch_bias_max     = 1.2f;   // maximum pitch angle (~70 degrees)
+
+            // smooth damp - critically damped spring for smooth following
+            Vector3 smooth_damp(const Vector3& current, const Vector3& target, Vector3& velocity, float smooth_time, float dt)
+            {
+                float omega = 2.0f / std::max(smooth_time, 0.0001f);
+                float x = omega * dt;
+                float exp_factor = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
+                Vector3 delta = current - target;
+                Vector3 temp = (velocity + omega * delta) * dt;
+                velocity = (velocity - omega * temp) * exp_factor;
+                return target + (delta + temp) * exp_factor;
+            }
+
+            float lerp_angle(float a, float b, float t)
+            {
+                // handle wrap-around for angles
+                float diff = fmodf(b - a + math::pi * 3.0f, math::pi * 2.0f) - math::pi;
+                return a + diff * t;
+            }
+        }
+
+        // track whether player is currently operating the car (independent of camera parenting)
+        bool is_in_vehicle = false;
+
+        // spawn position for reset functionality
+        Vector3 spawn_position = Vector3::Zero;
+
         // helper: loads car body mesh with material tweaks
-        Entity* create_body(bool remove_wheels)
+        // out_excluded_entities: if remove_wheels is true, returns entities that were disabled (for collision exclusion)
+        Entity* create_body(bool remove_wheels, vector<Entity*>* out_excluded_entities = nullptr)
         {
             uint32_t mesh_flags  = Mesh::GetDefaultFlags();
             mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
@@ -415,6 +472,12 @@ namespace spartan
                          entity_name.find("brakerear") != string::npos) // all four have this prefix
                      {
                          descendant->SetActive(false);
+                         
+                         // collect excluded entities for collision shape building
+                         if (out_excluded_entities)
+                         {
+                             out_excluded_entities->push_back(descendant);
+                         }
                      }
                 }
             }
@@ -641,6 +704,7 @@ namespace spartan
         Entity* create(const Config& config)
         {
             show_telemetry = config.show_telemetry;
+            spawn_position = config.position;
 
             if (config.drivable)
             {
@@ -655,7 +719,9 @@ namespace spartan
                 physics->SetBodyType(BodyType::Vehicle);
 
                 // create car body (without its original wheels)
-                default_car = create_body(true);
+                // collect excluded wheel entities for collision shape building
+                vector<Entity*> excluded_wheel_entities;
+                default_car = create_body(true, &excluded_wheel_entities);
                 if (default_car)
                 {
                     // the wheel distances are based on laferrari dimensions
@@ -667,10 +733,11 @@ namespace spartan
                     default_car->SetScaleLocal(1.1f);
 
                     // hook up chassis entity (the ferrari body that bounces on the suspension)
-                    physics->SetChassisEntity(default_car);
+                    // pass excluded wheel entities so they're not included in the collision shape
+                    physics->SetChassisEntity(default_car, excluded_wheel_entities);
                 }
 
-                add_audio_sources(default_car);
+                add_audio_sources(vehicle_entity);
                 create_wheels(vehicle_entity, physics);
 
                 // setup camera to follow if requested
@@ -680,6 +747,10 @@ namespace spartan
                     {
                         camera->SetFlag(CameraFlags::CanBeControlled, false);
                     }
+
+                    // start already inside the car (default chase view)
+                    is_in_vehicle             = true;
+                    chase_camera::initialized = false;
                 }
 
                 return vehicle_entity;
@@ -728,62 +799,85 @@ namespace spartan
             Vector3 velocity = physics->GetLinearVelocity();
             float speed_kmh  = velocity.Length() * 3.6f;
             
-            float y_pos = 0.58f;
             const float line_spacing = 0.018f;
-            
-            // header
-            Renderer::DrawString("Vehicle Telemetry", Vector2(0.005f, y_pos));
-            y_pos += line_spacing * 1.2f;
-            
-            // speed, gear, and engine rpm
-            float engine_rpm = physics->GetEngineRPM();
-            float redline = physics->GetRedlineRPM();
-            const char* gear_str = physics->GetCurrentGearString();
-            bool is_shifting = physics->IsShifting();
-            snprintf(text_buffer, sizeof(text_buffer), "Speed: %.1f km/h   Gear: [%s]%s   Engine: %.0f / %.0f RPM", 
-                speed_kmh, gear_str, is_shifting ? "*" : "", engine_rpm, redline);
-            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            
-            // inputs
-            snprintf(text_buffer, sizeof(text_buffer), "Throttle: %.0f%%   Brake/Rev: %.0f%%   Steer: %+.0f%%   Handbrake: %.0f%%",
-                physics->GetVehicleThrottle() * 100.0f,
-                physics->GetVehicleBrake() * 100.0f,
-                physics->GetVehicleSteering() * 100.0f,
-                physics->GetVehicleHandbrake() * 100.0f);
-            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            
-            // driver assists status
-            bool abs_active = physics->IsAbsActiveAny();
-            bool tc_active  = physics->IsTcActive();
-            snprintf(text_buffer, sizeof(text_buffer), "Assists:  ABS [%s] %s   TC [%s] %s   Turbo [%s]   Trans [%s]",
-                physics->GetAbsEnabled() ? "ON" : "--",
-                abs_active ? "<ACTIVE>" : "",
-                physics->GetTcEnabled() ? "ON" : "--",
-                tc_active ? "<ACTIVE>" : "",
-                physics->GetTurboEnabled() ? "ON" : "--",
-                physics->GetManualTransmission() ? "MT" : "AT");
-            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            
-            // debug visualization status
-            snprintf(text_buffer, sizeof(text_buffer), "Debug:    Raycasts [%s]   Suspension [%s]",
-                physics->GetDrawRaycasts() ? "ON" : "--",
-                physics->GetDrawSuspension() ? "ON" : "--");
-            Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-            y_pos += line_spacing * 1.5f;
+            const float left_x       = 0.005f;
+            const float right_x      = 0.75f;
+            const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
             
             // draw debug visualization
             physics->DrawDebugVisualization();
             
-            // per-wheel metrics header
-            Renderer::DrawString("Tire Physics:", Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            Renderer::DrawString("       GND   Slip Angle   Slip Ratio   Lat Force   Long Force", Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
+            // ============================================
+            // right side - traditional dashboard
+            // ============================================
+            float y_right = 0.70f;
             
-            const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
+            // speed (large, prominent)
+            snprintf(text_buffer, sizeof(text_buffer), "%.0f km/h", speed_kmh);
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing * 1.5f;
+            
+            // gear and rpm
+            float engine_rpm = physics->GetEngineRPM();
+            float redline    = physics->GetRedlineRPM();
+            const char* gear_str = physics->GetCurrentGearString();
+            bool is_shifting = physics->IsShifting();
+            snprintf(text_buffer, sizeof(text_buffer), "Gear: %s%s  RPM: %.0f/%.0f", 
+                gear_str, is_shifting ? "*" : "", engine_rpm, redline);
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing;
+            
+            // throttle/brake bars
+            int throttle_bar = static_cast<int>(physics->GetVehicleThrottle() * 10.0f);
+            int brake_bar    = static_cast<int>(physics->GetVehicleBrake() * 10.0f);
+            char thr_bar[16], brk_bar[16];
+            for (int j = 0; j < 10; j++) { thr_bar[j] = (j < throttle_bar) ? '=' : '.'; }
+            for (int j = 0; j < 10; j++) { brk_bar[j] = (j < brake_bar) ? '=' : '.'; }
+            thr_bar[10] = brk_bar[10] = '\0';
+            snprintf(text_buffer, sizeof(text_buffer), "THR [%s]  BRK [%s]", thr_bar, brk_bar);
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing;
+            
+            // steering indicator
+            float steer = physics->GetVehicleSteering();
+            char steer_bar[21];
+            for (int j = 0; j < 20; j++) steer_bar[j] = '.';
+            steer_bar[10] = '|'; // center
+            int steer_pos = 10 + static_cast<int>(steer * 9.0f);
+            steer_pos = steer_pos < 0 ? 0 : (steer_pos > 19 ? 19 : steer_pos);
+            steer_bar[steer_pos] = 'O';
+            steer_bar[20] = '\0';
+            snprintf(text_buffer, sizeof(text_buffer), "STR [%s]", steer_bar);
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing * 1.2f;
+            
+            // assists status (compact)
+            bool abs_active = physics->IsAbsActiveAny();
+            bool tc_active  = physics->IsTcActive();
+            snprintf(text_buffer, sizeof(text_buffer), "ABS:%s%s TC:%s%s %s",
+                physics->GetAbsEnabled() ? "ON" : "--",
+                abs_active ? "!" : "",
+                physics->GetTcEnabled() ? "ON" : "--",
+                tc_active ? "!" : "",
+                physics->GetManualTransmission() ? "MT" : "AT");
+            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
+            y_right += line_spacing;
+            
+            // handbrake
+            if (physics->GetVehicleHandbrake() > 0.1f)
+            {
+                Renderer::DrawString("[ HANDBRAKE ]", Vector2(right_x, y_right));
+            }
+            
+            // ============================================
+            // left side - technical telemetry
+            // ============================================
+            float y_left = 0.58f;
+            
+            Renderer::DrawString("Tire Physics", Vector2(left_x, y_left));
+            y_left += line_spacing;
+            
+            // compact per-wheel data
             for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
             {
                 WheelIndex wheel = static_cast<WheelIndex>(i);
@@ -792,24 +886,20 @@ namespace spartan
                 float slip_ratio    = physics->GetWheelSlipRatio(wheel) * 100.0f;
                 float lat_force_kn  = physics->GetWheelLateralForce(wheel) / 1000.0f;
                 float long_force_kn = physics->GetWheelLongitudinalForce(wheel) / 1000.0f;
-                float load_kn       = physics->GetWheelTireLoad(wheel) / 1000.0f;
                 
-                snprintf(text_buffer, sizeof(text_buffer), "  %s:  %s   %+6.1f deg   %+6.1f %%    %+5.1f kN    %+5.1f kN   %.1f kN",
+                snprintf(text_buffer, sizeof(text_buffer), "%s %s SA:%+5.1f SR:%+5.1f Lat:%+4.1f Lon:%+4.1f",
                     wheel_names[i],
-                    grounded ? "YES" : " - ",
-                    slip_angle,
-                    slip_ratio,
-                    lat_force_kn,
-                    long_force_kn,
-                    load_kn);
-                Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-                y_pos += line_spacing;
+                    grounded ? "G" : "-",
+                    slip_angle, slip_ratio, lat_force_kn, long_force_kn);
+                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
+                y_left += line_spacing;
             }
             
-            // tire and brake temperature
-            y_pos += line_spacing * 0.5f;
-            Renderer::DrawString("Tire & Brake Temperature:", Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
+            // temperature section
+            y_left += line_spacing * 0.3f;
+            Renderer::DrawString("Temperature", Vector2(left_x, y_left));
+            y_left += line_spacing;
+            
             for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
             {
                 WheelIndex wheel = static_cast<WheelIndex>(i);
@@ -818,85 +908,61 @@ namespace spartan
                 float brake_temp       = physics->GetWheelBrakeTemp(wheel);
                 float brake_efficiency = physics->GetWheelBrakeEfficiency(wheel);
                 
-                // tire temperature bar: cold (blue) < optimal (green) < hot (red)
-                // optimal is around 90c, range is +/- 30c
-                int bar_len = static_cast<int>((temp / 150.0f) * 20.0f);
-                bar_len = bar_len > 20 ? 20 : (bar_len < 0 ? 0 : bar_len);
-                
-                char tire_bar[32];
-                for (int j = 0; j < 20; j++)
-                {
-                    if (j < bar_len)
-                    {
-                        // cold < 60, optimal 60-120, hot > 120
-                        float bar_temp = (j / 20.0f) * 150.0f;
-                        if (bar_temp < 60.0f)
-                            tire_bar[j] = '-';       // cold
-                        else if (bar_temp < 120.0f)
-                            tire_bar[j] = '=';       // optimal range
-                        else
-                            tire_bar[j] = '+';       // hot
-                    }
-                    else
-                        tire_bar[j] = '.';
-                }
-                tire_bar[20] = '\0';
-                
-                // brake temperature bar: cold < 400, optimal 400-700, fade > 700
-                int brake_bar_len = static_cast<int>((brake_temp / 900.0f) * 10.0f);
-                brake_bar_len = brake_bar_len > 10 ? 10 : (brake_bar_len < 0 ? 0 : brake_bar_len);
-                
-                char brake_bar[16];
+                // compact tire temp bar (10 chars)
+                int tire_bar_len = static_cast<int>((temp / 150.0f) * 10.0f);
+                tire_bar_len = tire_bar_len > 10 ? 10 : (tire_bar_len < 0 ? 0 : tire_bar_len);
+                char tire_bar[16];
                 for (int j = 0; j < 10; j++)
-                {
-                    if (j < brake_bar_len)
-                    {
-                        // cold < 400, optimal 400-700, fade > 700
-                        float bar_temp = (j / 10.0f) * 900.0f;
-                        if (bar_temp < 400.0f)
-                            brake_bar[j] = '-';       // cold
-                        else if (bar_temp < 700.0f)
-                            brake_bar[j] = '=';       // optimal
-                        else
-                            brake_bar[j] = '!';       // fade
-                    }
-                    else
-                        brake_bar[j] = '.';
-                }
-                brake_bar[10] = '\0';
+                    tire_bar[j] = (j < tire_bar_len) ? ((j < 4) ? '-' : ((j < 8) ? '=' : '+')) : '.';
+                tire_bar[10] = '\0';
                 
-                snprintf(text_buffer, sizeof(text_buffer), "  %s: Tire[%s] %3.0fC Grip:%.0f%%  Brake[%s] %3.0fC Eff:%.0f%%",
-                    wheel_names[i], tire_bar, temp, grip_factor * 100.0f,
-                    brake_bar, brake_temp, brake_efficiency * 100.0f);
-                Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-                y_pos += line_spacing;
+                // compact brake temp bar (6 chars)
+                int brk_bar_len = static_cast<int>((brake_temp / 900.0f) * 6.0f);
+                brk_bar_len = brk_bar_len > 6 ? 6 : (brk_bar_len < 0 ? 0 : brk_bar_len);
+                char brk_bar[8];
+                for (int j = 0; j < 6; j++)
+                    brk_bar[j] = (j < brk_bar_len) ? ((j < 3) ? '-' : ((j < 5) ? '=' : '!')) : '.';
+                brk_bar[6] = '\0';
+                
+                snprintf(text_buffer, sizeof(text_buffer), "%s T[%s]%.0f%% B[%s]%.0f%%",
+                    wheel_names[i], tire_bar, grip_factor * 100.0f, brk_bar, brake_efficiency * 100.0f);
+                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
+                y_left += line_spacing;
             }
             
-            // suspension compression visual
-            y_pos += line_spacing * 0.5f;
-            Renderer::DrawString("Suspension:", Vector2(0.005f, y_pos));
-            y_pos += line_spacing;
-            for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
+            // suspension section
+            y_left += line_spacing * 0.3f;
+            Renderer::DrawString("Suspension", Vector2(left_x, y_left));
+            y_left += line_spacing;
+            
+            // show front pair and rear pair on same lines
+            for (int pair = 0; pair < 2; pair++)
             {
-                WheelIndex wheel = static_cast<WheelIndex>(i);
-                float compression = physics->GetWheelCompression(wheel);
-                // invert: show fewer bars when compressed (spring is shorter)
-                int bar_len = static_cast<int>((1.0f - compression) * 20.0f);
-                bar_len = bar_len > 20 ? 20 : bar_len;
+                int left_wheel  = pair * 2;
+                int right_wheel = pair * 2 + 1;
+                float comp_l = physics->GetWheelCompression(static_cast<WheelIndex>(left_wheel));
+                float comp_r = physics->GetWheelCompression(static_cast<WheelIndex>(right_wheel));
                 
-                char bar[32];
-                for (int j = 0; j < 20; j++)
-                    bar[j] = (j < bar_len) ? '|' : '.';
-                bar[20] = '\0';
+                // bars (8 chars each)
+                char bar_l[12], bar_r[12];
+                int len_l = static_cast<int>((1.0f - comp_l) * 8.0f);
+                int len_r = static_cast<int>((1.0f - comp_r) * 8.0f);
+                for (int j = 0; j < 8; j++) { bar_l[j] = (j < len_l) ? '|' : '.'; bar_r[j] = (j < len_r) ? '|' : '.'; }
+                bar_l[8] = bar_r[8] = '\0';
                 
-                snprintf(text_buffer, sizeof(text_buffer), "  %s: [%s] %.0f%%",
-                    wheel_names[i], bar, compression * 100.0f);
-                Renderer::DrawString(text_buffer, Vector2(0.005f, y_pos));
-                y_pos += line_spacing;
+                snprintf(text_buffer, sizeof(text_buffer), "%s[%s]%2.0f%%  %s[%s]%2.0f%%",
+                    wheel_names[left_wheel], bar_l, comp_l * 100.0f,
+                    wheel_names[right_wheel], bar_r, comp_r * 100.0f);
+                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
+                y_left += line_spacing;
             }
             
-            y_pos += line_spacing * 0.5f;
-            Renderer::DrawString("Controls: Arrows (Up=Throttle, Down=Brake/Reverse, L/R=Steer), Space=Handbrake", Vector2(0.005f, y_pos));
+            // debug toggles (compact)
+            y_left += line_spacing * 0.3f;
+            snprintf(text_buffer, sizeof(text_buffer), "Debug: Rays[%s] Susp[%s]",
+                physics->GetDrawRaycasts() ? "X" : "-",
+                physics->GetDrawSuspension() ? "X" : "-");
+            Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
         }
 
         void tick()
@@ -910,14 +976,150 @@ namespace spartan
                 Physics* physics = vehicle_entity->GetComponent<Physics>();
                 if (physics && Engine::IsFlagSet(EngineMode::Playing))
                 {
-                    physics->SetVehicleThrottle(Input::GetKey(KeyCode::Arrow_Up) ? 1.0f : 0.0f);
-                    physics->SetVehicleBrake(Input::GetKey(KeyCode::Arrow_Down) ? 1.0f : 0.0f);
-                    physics->SetVehicleHandbrake(Input::GetKey(KeyCode::Space) ? 1.0f : 0.0f);
+                    // input mapping - keyboard and gamepad combined into analog values
+                    bool is_gamepad_connected = Input::IsGamepadConnected();
 
+                    // throttle: right trigger (analog) or arrow up (binary)
+                    float throttle = 0.0f;
+                    if (is_gamepad_connected)
+                    {
+                        throttle = Input::GetGamepadTriggerRight();
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Up))
+                    {
+                        throttle = 1.0f;
+                    }
+
+                    // brake: left trigger (analog) or arrow down (binary)
+                    float brake = 0.0f;
+                    if (is_gamepad_connected)
+                    {
+                        brake = Input::GetGamepadTriggerLeft();
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Down))
+                    {
+                        brake = 1.0f;
+                    }
+
+                    // steering: left stick x-axis (analog) or arrow keys (binary)
                     float steering = 0.0f;
-                    if (Input::GetKey(KeyCode::Arrow_Left))  steering = -1.0f;
-                    if (Input::GetKey(KeyCode::Arrow_Right)) steering =  1.0f;
+                    if (is_gamepad_connected)
+                    {
+                        steering = Input::GetGamepadThumbStickLeft().x;
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Left))
+                    {
+                        steering = -1.0f;
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Right))
+                    {
+                        steering = 1.0f;
+                    }
+
+                    // handbrake: space or button south (A on Xbox, X on PlayStation)
+                    float handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_South)) ? 1.0f : 0.0f;
+
+                    // apply vehicle controls
+                    physics->SetVehicleThrottle(throttle);
+                    physics->SetVehicleBrake(brake);
                     physics->SetVehicleSteering(steering);
+                    physics->SetVehicleHandbrake(handbrake);
+
+                    // camera orbit: right stick rotates camera around the car (horizontal and vertical)
+                    float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+                    if (is_gamepad_connected)
+                    {
+                        Vector2 right_stick = Input::GetGamepadThumbStickRight();
+
+                        // horizontal (yaw) - three zones:
+                        // - active (> 0.3): orbit the camera
+                        // - hold (0.1 - 0.3): camera stays in place (small stick offset to lock view)
+                        // - release (< 0.1): camera reverts back behind the car
+                        float stick_x = fabsf(right_stick.x);
+                        if (stick_x > 0.3f)
+                        {
+                            chase_camera::yaw_bias += right_stick.x * chase_camera::orbit_bias_speed * dt;
+                            chase_camera::yaw_bias  = std::clamp(chase_camera::yaw_bias, -chase_camera::yaw_bias_max, chase_camera::yaw_bias_max);
+                        }
+                        else if (stick_x < 0.1f && fabsf(chase_camera::yaw_bias) > 0.01f)
+                        {
+                            chase_camera::yaw_bias *= expf(-chase_camera::orbit_bias_decay * dt);
+                        }
+                        // hold zone (0.1 - 0.3): do nothing, camera stays where it is
+
+                        // vertical (pitch) - same three zones as horizontal
+                        float stick_y = fabsf(right_stick.y);
+                        if (stick_y > 0.3f)
+                        {
+                            chase_camera::pitch_bias += right_stick.y * chase_camera::orbit_bias_speed * dt;
+                            chase_camera::pitch_bias  = std::clamp(chase_camera::pitch_bias, -chase_camera::pitch_bias_max, chase_camera::pitch_bias_max);
+                        }
+                        else if (stick_y < 0.1f && fabsf(chase_camera::pitch_bias) > 0.01f)
+                        {
+                            chase_camera::pitch_bias *= expf(-chase_camera::orbit_bias_decay * dt);
+                        }
+                        // hold zone (0.1 - 0.3): do nothing, camera stays where it is
+                    }
+
+                    // reset car to spawn position: R key or button east (B on Xbox, O on PlayStation)
+                    if (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_East))
+                    {
+                        physics->SetBodyTransform(spawn_position, Quaternion::Identity);
+                        chase_camera::initialized = false; // reset camera to avoid jump
+                    }
+
+                    // haptic feedback - focused on meaningful events
+                    if (is_gamepad_connected)
+                    {
+                        float left_motor  = 0.0f;  // low-frequency rumble (heavy, tire slip)
+                        float right_motor = 0.0f;  // high-frequency rumble (light, abs/braking)
+
+                        // collect wheel slip data
+                        float max_slip_ratio = 0.0f;
+                        float max_slip_angle = 0.0f;
+                        for (int i = 0; i < 4; i++)
+                        {
+                            WheelIndex wheel = static_cast<WheelIndex>(i);
+                            max_slip_ratio   = std::max(max_slip_ratio, fabsf(physics->GetWheelSlipRatio(wheel)));
+                            max_slip_angle   = std::max(max_slip_angle, fabsf(physics->GetWheelSlipAngle(wheel)));
+                        }
+
+                        // wheelspin (acceleration) or lockup (braking) - strong feedback
+                        if (max_slip_ratio > 0.15f)
+                        {
+                            float slip_intensity = std::clamp((max_slip_ratio - 0.15f) * 1.5f, 0.0f, 1.0f);
+                            left_motor += slip_intensity * 0.5f;
+                        }
+
+                        // drifting/sliding - moderate feedback
+                        if (max_slip_angle > 0.15f)
+                        {
+                            float drift_intensity = std::clamp((max_slip_angle - 0.15f) * 2.0f, 0.0f, 1.0f);
+                            left_motor  += drift_intensity * 0.3f;
+                            right_motor += drift_intensity * 0.2f;
+                        }
+
+                        // abs activation - distinctive pulsing feedback
+                        if (physics->IsAbsActiveAny())
+                        {
+                            static float abs_pulse = 0.0f;
+                            abs_pulse += dt * 25.0f;  // 25hz pulse
+                            float pulse_value = (sinf(abs_pulse * math::pi * 2.0f) + 1.0f) * 0.5f;
+                            right_motor += pulse_value * 0.6f;
+                            left_motor  += pulse_value * 0.3f;
+                        }
+
+                        // heavy braking feedback (without abs)
+                        if (brake > 0.8f && !physics->IsAbsActiveAny())
+                        {
+                            right_motor += (brake - 0.8f) * 0.4f;
+                        }
+
+                        // clamp and apply
+                        left_motor  = std::clamp(left_motor, 0.0f, 1.0f);
+                        right_motor = std::clamp(right_motor, 0.0f, 1.0f);
+                        Input::GamepadVibrate(left_motor, right_motor);
+                    }
                 }
 
                 // draw telemetry if enabled
@@ -927,15 +1129,71 @@ namespace spartan
                 }
             }
 
-            // view presets
-            enum class CarView { Dashboard, Hood, Chase };
-            static CarView current_view = CarView::Dashboard;
+            // view presets (chase is default like GT7)
+            enum class CarView { Chase, Hood, Dashboard };
+            static CarView current_view = CarView::Chase;
 
-            static const Vector3 car_view_positions[] =
+            // compute car aabb from all renderables in the hierarchy
+            auto get_car_aabb = []() -> BoundingBox
             {
-                Vector3(0.5f, 1.8f, -0.6f), // dashboard
-                Vector3(0.0f, 2.0f, 1.0f),  // hood
-                Vector3(0.0f, 3.0f, -10.0f) // chase
+                if (!default_car)
+                    return BoundingBox::Unit;
+
+                BoundingBox combined(Vector3::Infinity, Vector3::InfinityNeg);
+                vector<Entity*> descendants;
+                default_car->GetDescendants(&descendants);
+                descendants.push_back(default_car);
+
+                for (Entity* entity : descendants)
+                {
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    {
+                        combined.Merge(renderable->GetBoundingBox());
+                    }
+                }
+
+                return combined;
+            };
+
+            // compute view positions and rotations based on car aabb
+            struct CarViewData
+            {
+                Vector3    position;
+                Quaternion rotation;
+            };
+
+            auto get_car_view_data = [&]() -> array<CarViewData, 3>
+            {
+                // the car body is rotated 90 degrees around X for physics alignment
+                // we need to counter-rotate the camera to look forward
+                Quaternion car_local_rot     = default_car->GetRotationLocal();
+                Quaternion camera_correction = car_local_rot.Inverse();
+
+                // use fixed positions that work well for typical car models
+                // note: car's 90-degree X rotation swaps Y and Z axes
+                // x = right/left, y = forward/back, z = down/up (negative = up)
+                // order matches enum: Chase, Hood, Dashboard
+                return
+                {
+                    CarViewData
+                    {
+                        // chase: behind and above the car (handled dynamically, this is just fallback)
+                        Vector3(0.0f, -5.0, -1.5f),
+                        camera_correction
+                    },
+                    CarViewData
+                    {
+                        // hood: above the hood, looking forward
+                        Vector3(0.0f, 0.8f, -1.0f),
+                        camera_correction
+                    },
+                    CarViewData
+                    {
+                        // dashboard: driver seat position
+                        Vector3(-0.3f, 0.05f, -0.85f),
+                        camera_correction
+                    }
+                };
             };
 
             // need camera for inside/outside detection
@@ -943,20 +1201,18 @@ namespace spartan
                 return;
 
             // cached references
-            bool inside_the_car             = default_camera->GetChildrenCount() == 0;
-            Entity* sound_door_entity       = default_car->GetChildByName("sound_door");
-            Entity* sound_start_entity      = default_car->GetChildByName("sound_start");
-            Entity* sound_idle_entity       = default_car->GetChildByName("sound_idle");
+            bool inside_the_car             = is_in_vehicle;
+            Entity* sound_door_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_door")  : nullptr;
+            Entity* sound_start_entity      = vehicle_entity ? vehicle_entity->GetChildByName("sound_start") : nullptr;
+            Entity* sound_idle_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_idle")  : nullptr;
             AudioSource* audio_source_door  = sound_door_entity  ? sound_door_entity->GetComponent<AudioSource>()  : nullptr;
             AudioSource* audio_source_start = sound_start_entity ? sound_start_entity->GetComponent<AudioSource>() : nullptr;
             AudioSource* audio_source_idle  = sound_idle_entity  ? sound_idle_entity->GetComponent<AudioSource>()  : nullptr;
-            if (!audio_source_door || !audio_source_start || !audio_source_idle)
+            if (!vehicle_entity || !audio_source_door || !audio_source_start || !audio_source_idle)
                 return;
 
-            // engine sound: disabled for now (RPM simulation needs work)
-            // TODO: re-enable once RPM is properly tied to car speed
-            /*
-            if (vehicle_entity)
+            // engine sound: pitch and volume based on rpm
+            if (vehicle_entity && inside_the_car)
             {
                 Physics* physics = vehicle_entity->GetComponent<Physics>();
                 if (physics)
@@ -966,22 +1222,124 @@ namespace spartan
                         audio_source_idle->PlayClip();
                     }
                     
-                    float engine_rpm = physics->GetEngineRPM();
-                    float idle_rpm = 1000.0f;
-                    float redline_rpm = physics->GetRedlineRPM();
+                    float engine_rpm   = physics->GetEngineRPM();
+                    float idle_rpm     = physics->GetIdleRPM();
+                    float redline_rpm  = physics->GetRedlineRPM();
                     
                     float rpm_normalized = (engine_rpm - idle_rpm) / (redline_rpm - idle_rpm);
                     rpm_normalized = std::max(0.0f, std::min(1.0f, rpm_normalized));
                     
+                    // pitch curve: slight quadratic gives more response at higher rpm
                     float pitch_curve = rpm_normalized * rpm_normalized * 0.3f + rpm_normalized * 0.7f;
-                    float pitch = 0.7f + pitch_curve * 2.8f;
+                    float pitch = 0.8f + pitch_curve * 1.5f;  // 0.8 at idle, up to 2.3 at redline
                     audio_source_idle->SetPitch(pitch);
                     
-                    float volume = 0.5f + rpm_normalized * 0.5f;
+                    // volume increases with rpm
+                    float volume = 0.6f + rpm_normalized * 0.4f;
                     audio_source_idle->SetVolume(volume);
                 }
             }
-            */
+            else if (!inside_the_car && audio_source_idle->IsPlaying())
+            {
+                audio_source_idle->StopClip();
+            }
+
+            // gt7-style chase camera
+            if (inside_the_car && current_view == CarView::Chase && vehicle_entity)
+            {
+                // chase camera must be parented to default_camera, not the car
+                Entity* camera = default_camera->GetChildByName("component_camera");
+                if (!camera)
+                {
+                    camera = vehicle_entity->GetChildByName("component_camera");
+                    if (!camera)
+                        camera = default_car->GetChildByName("component_camera");
+                    if (camera)
+                    {
+                        camera->SetParent(default_camera);
+                        chase_camera::initialized = false;
+                    }
+                }
+                
+                if (camera)
+                {
+                    Physics* car_physics = vehicle_entity->GetComponent<Physics>();
+                    float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+                    
+                    // get car state (position is already smoothly interpolated by physics component)
+                    Vector3 car_position = vehicle_entity->GetPosition();
+                    Vector3 car_forward  = vehicle_entity->GetForward();
+                    Vector3 car_velocity = car_physics ? car_physics->GetLinearVelocity() : Vector3::Zero;
+                    float car_speed      = car_velocity.Length();
+                    
+                    // extract yaw from forward vector
+                    float target_yaw = atan2f(car_forward.x, car_forward.z);
+                    
+                    // gt7-style: smooth speed factor for gradual transitions
+                    float target_speed_factor = std::clamp(car_speed / chase_camera::speed_reference, 0.0f, 1.0f);
+                    chase_camera::speed_factor += (target_speed_factor - chase_camera::speed_factor) * 
+                        std::min(1.0f, chase_camera::speed_smoothing * dt);
+                    
+                    // gt7-style: dynamic distance and height based on speed
+                    float dynamic_distance = chase_camera::distance_base - 
+                        (chase_camera::distance_base - chase_camera::distance_min) * chase_camera::speed_factor;
+                    float dynamic_height = chase_camera::height_base - 
+                        (chase_camera::height_base - chase_camera::height_min) * chase_camera::speed_factor;
+                    
+                    // initialize chase camera state on first use
+                    if (!chase_camera::initialized)
+                    {
+                        chase_camera::yaw          = target_yaw;
+                        chase_camera::yaw_bias     = 0.0f;
+                        chase_camera::pitch_bias   = 0.0f;
+                        chase_camera::speed_factor = target_speed_factor;
+                        chase_camera::position     = car_position - Vector3(sinf(target_yaw), 0.0f, cosf(target_yaw)) * dynamic_distance
+                                                   + Vector3::Up * dynamic_height;
+                        chase_camera::velocity     = Vector3::Zero;
+                        chase_camera::initialized  = true;
+                    }
+                    
+                    // gt7-style: rotation follows car with slight lag (more lag = more dramatic swinging)
+                    float rotation_speed = chase_camera::rotation_smoothing * (1.0f + chase_camera::speed_factor * 0.5f);
+                    chase_camera::yaw = chase_camera::lerp_angle(chase_camera::yaw, target_yaw, 
+                        1.0f - expf(-rotation_speed * dt));
+                    
+                    // compute target camera position based on smoothed yaw/pitch + manual bias from right stick
+                    float effective_yaw   = chase_camera::yaw + chase_camera::yaw_bias;
+                    float effective_pitch = chase_camera::pitch_bias;
+
+                    // pitch affects the orbit: positive pitch = higher camera, negative = lower
+                    float horizontal_scale = cosf(effective_pitch);
+                    float vertical_offset  = sinf(effective_pitch) * dynamic_distance;
+
+                    Vector3 offset_direction = Vector3(sinf(effective_yaw), 0.0f, cosf(effective_yaw));
+                    Vector3 target_position  = car_position 
+                                             - offset_direction * dynamic_distance * horizontal_scale
+                                             + Vector3::Up * (dynamic_height + vertical_offset);
+                    
+                    // gt7-style: position smoothing gets snappier at higher speeds
+                    float position_smooth = chase_camera::position_smoothing * (1.0f - chase_camera::speed_factor * 0.3f);
+                    Vector3 prev_position = chase_camera::position;
+                    chase_camera::position = chase_camera::smooth_damp(
+                        chase_camera::position, target_position, chase_camera::velocity, 
+                        position_smooth, dt);
+                    
+                    // gt7-style: look-ahead based on velocity (camera looks where the car is going)
+                    Vector3 velocity_xz = Vector3(car_velocity.x, 0.0f, car_velocity.z);
+                    float velocity_xz_len = velocity_xz.Length();
+                    Vector3 look_ahead = Vector3::Zero;
+                    if (velocity_xz_len > 2.0f)
+                    {
+                        look_ahead = (velocity_xz / velocity_xz_len) * chase_camera::look_ahead_amount * chase_camera::speed_factor;
+                    }
+                    Vector3 look_at = car_position + Vector3::Up * chase_camera::look_offset_up + look_ahead;
+                    
+                    // update camera transform
+                    camera->SetPosition(chase_camera::position);
+                    Vector3 look_direction = (look_at - chase_camera::position).Normalized();
+                    camera->SetRotation(Quaternion::FromLookRotation(look_direction, Vector3::Up));
+                }
+            }
 
             // enter/exit car
             if (Input::GetKeyDown(KeyCode::E))
@@ -989,56 +1347,111 @@ namespace spartan
                 Entity* camera = nullptr;
                 if (!inside_the_car)
                 {
+                    // entering the car
                     camera = default_camera->GetChildByName("component_camera");
-                    camera->SetParent(default_car);
-                    camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
-                    camera->SetRotationLocal(Quaternion::Identity);
+                    
+                    if (current_view == CarView::Chase)
+                    {
+                        // chase: stays under default_camera, world-space following
+                        chase_camera::initialized = false;
+                    }
+                    else
+                    {
+                        // hood: parent to car body
+                        camera->SetParent(default_car);
+                        array<CarViewData, 3> view_data = get_car_view_data();
+                        camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                        camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                    }
+                    
                     audio_source_start->PlayClip();
-                    // audio_source_idle->PlayClip(); // disabled for now
-                    inside_the_car = true;
+                    is_in_vehicle = true;
                 }
                 else
                 {
+                    // exiting the car
                     camera = default_car->GetChildByName("component_camera");
+                    if (!camera)
+                        camera = default_camera->GetChildByName("component_camera");
+                    
                     camera->SetParent(default_camera);
                     camera->SetPositionLocal(default_camera->GetComponent<Physics>()->GetControllerTopLocal());
                     camera->SetRotationLocal(Quaternion::Identity);
-                    default_camera->SetPosition(default_car->GetPosition() + default_car->GetLeft() * 3.0f + Vector3::Up * 2.0f);
+                    
+                    BoundingBox car_aabb = get_car_aabb();
+                    Vector3 exit_offset  = default_car->GetLeft() * car_aabb.GetSize().x + Vector3::Up * car_aabb.GetSize().y * 0.5f;
+                    default_camera->SetPosition(default_car->GetPosition() + exit_offset);
+                    
                     audio_source_idle->StopClip();
-                    inside_the_car = false;
+                    chase_camera::initialized = false;
+                    is_in_vehicle = false;
+
+                    // stop vibration when exiting car
+                    Input::GamepadVibrate(0.0f, 0.0f);
                 }
 
-                camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !inside_the_car);
+                camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !is_in_vehicle);
                 audio_source_door->PlayClip();
 
                 if (default_car_window)
                 {
-                    default_car_window->SetActive(!inside_the_car);
+                    default_car_window->SetActive(!is_in_vehicle);
                 }
             }
 
-            // cycle camera view
-            if (Input::GetKeyDown(KeyCode::V))
+            // cycle camera view: V key or Right Shoulder button (like GT7)
+            if (Input::GetKeyDown(KeyCode::V) || Input::GetKeyDown(KeyCode::Right_Shoulder))
             {
                 if (inside_the_car)
                 {
-                    if (Entity* camera = default_car->GetChildByName("component_camera"))
+                    // find camera
+                    Entity* camera = default_car->GetChildByName("component_camera");
+                    if (!camera)
+                        camera = default_camera->GetChildByName("component_camera");
+
+                    if (camera)
                     {
-                        current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 3);
-                        camera->SetPositionLocal(car_view_positions[static_cast<int>(current_view)]);
+                        CarView previous_view = current_view;
+                        current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 2); // chase and hood only
+                        
+                        if (current_view == CarView::Chase)
+                        {
+                            // switching to chase: unparent for world-space following
+                            camera->SetParent(default_camera);
+                            chase_camera::initialized = false;
+                        }
+                        else
+                        {
+                            // switching to hood: parent to car body
+                            camera->SetParent(default_car);
+                            array<CarViewData, 3> view_data = get_car_view_data();
+                            camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                            camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                        }
                     }
                 }
             }
 
             // osd
-            Renderer::DrawString("WASD: Move Camera/Car | 'E': Enter/Exit Car | 'V': Change Car View", Vector2(0.005f, 0.98f));
+            Renderer::DrawString("WASD/Gamepad: Move | E: Enter/Exit | V/RB: Change View | R/B: Reset | RS: Look Around", Vector2(0.005f, 0.98f));
         }
 
         // reset state on shutdown
         void shutdown()
         {
-            vehicle_entity = nullptr;
-            show_telemetry = false;
+            vehicle_entity                 = nullptr;
+            show_telemetry                 = false;
+            is_in_vehicle                  = false;
+            chase_camera::initialized  = false;
+            chase_camera::position     = Vector3::Zero;
+            chase_camera::velocity     = Vector3::Zero;
+            chase_camera::yaw          = 0.0f;
+            chase_camera::yaw_bias     = 0.0f;
+            chase_camera::pitch_bias   = 0.0f;
+            chase_camera::speed_factor = 0.0f;
+
+            // stop any vibration
+            Input::GamepadVibrate(0.0f, 0.0f);
         }
     }
     //========================================================================================
@@ -1102,8 +1515,7 @@ namespace spartan
                     {
                         if (Material* material = entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
                         {
-                            material->SetProperty(MaterialProperty::CullMode,      static_cast<float>(RHI_CullMode::None));
-                            material->SetProperty(MaterialProperty::WindAnimation, 1.0f);
+                            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         }
                     }
                 }
@@ -1122,7 +1534,6 @@ namespace spartan
                         if (Material* material = leaves->GetComponent<Renderable>()->GetMaterial())
                         {
                             material->SetProperty(MaterialProperty::CullMode,                   static_cast<float>(RHI_CullMode::None));
-                            material->SetProperty(MaterialProperty::WindAnimation,              1.0f);
                             material->SetProperty(MaterialProperty::SubsurfaceScattering,       1.0f);
                             material->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
                         }
@@ -1221,7 +1632,7 @@ namespace spartan
                 const float per_triangle_density_rock        = 0.001f;
 
                 // lighting
-                entities::sun(LightPreset::dusk, true);
+                entities::sun(LightPreset::david_lynch, true);
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetFlag(LightFlags::Volumetric, true);
 
@@ -1705,7 +2116,7 @@ namespace spartan
 
                 // camera looking at car
                 {
-                    Vector3 camera_position = Vector3(1.8f, 0.9f, -4.0f);
+                    Vector3 camera_position = Vector3(0.2745f, 0.91f, 4.9059f);
                     entities::camera(true, camera_position);
                     Vector3 direction = (default_car->GetPosition() - camera_position).Normalized();
                     default_camera->GetChildByIndex(0)->SetRotationLocal(Quaternion::FromLookRotation(direction, Vector3::Up));
@@ -1730,25 +2141,40 @@ namespace spartan
                         {
                             if (Entity* entity_tube_light = floor_tube_lights->GetDescendantByName(descendant_name))
                             {
-                                entity_tube_light->GetComponent<Renderable>()->SetFlag(RenderableFlags::CastsShadows, false);
-                                if (Material* material = entity_tube_light->GetComponent<Renderable>()->GetMaterial())
+                                Renderable* renderable = entity_tube_light->GetComponent<Renderable>();
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                if (Material* material = renderable->GetMaterial())
                                 {
                                     material->SetColor(color);
                                     material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
 
-                                    // point light
+                                    // get tube mesh dimensions from bounding box
+                                    const math::BoundingBox& bbox = renderable->GetBoundingBox();
+                                    Vector3 size = bbox.GetSize();
+
+                                    // area light matching the tube mesh
                                     Entity* entity = World::CreateEntity();
-                                    entity->SetObjectName("light_point");
+                                    entity->SetObjectName("light_area");
                                     entity->SetParent(entity_tube_light);
 
+                                    // orient the area light to face downward (tubes are ceiling lights)
+                                    entity->SetRotationLocal(Quaternion::FromEulerAngles(90.0f, 0.0f, 0.0f));
+
                                     Light* light = entity->AddComponent<Light>();
-                                    light->SetLightType(LightType::Point);
+                                    light->SetLightType(LightType::Area);
                                     light->SetColor(color);
                                     light->SetRange(80.0f);
-                                    light->SetIntensity(15000.0f);
+                                    light->SetIntensity(4000.0f);
                                     light->SetFlag(LightFlags::Shadows,            true);
                                     light->SetFlag(LightFlags::ShadowsScreenSpace, false);
                                     light->SetFlag(LightFlags::Volumetric,         false);
+
+                                    // set area light dimensions from the tube's bounding box
+                                    // tube is oriented horizontally, so use x/z for width and y for height
+                                    float area_width  = max(size.x, size.z); // length of the tube
+                                    float area_height = min(size.x, size.z); // diameter of the tube
+                                    light->SetAreaWidth(area_width);
+                                    light->SetAreaHeight(area_height);
                                 }
                             }
                         };
@@ -1788,6 +2214,7 @@ namespace spartan
                             default_car->SetParent(turn_table);
                             default_car->SetScaleLocal(1.0f);
                             turn_table->SetPositionLocal(0.0f);
+                            turn_table->SetRotation(Quaternion::FromEulerAngles(0.0f, 142.9024f, 0.0f));
                             if (Material* material = turn_table->GetComponent<Renderable>()->GetMaterial())
                             {
                                 material->SetColor(Color::standard_black);
@@ -2181,39 +2608,237 @@ namespace spartan
         }
         //====================================================================================
 
-        //== CAR SIMULATION ==================================================================
-        namespace car_simulation
+        //== CAR PLAYGROUND ==================================================================
+        namespace car_playground
         {
+            // helper to create a cube obstacle with physics
+            // mass = 0 means static, mass > 0 means dynamic with that mass in kg
+            void create_cube(const string& name, const Vector3& position, const Vector3& euler_angles, const Vector3& scale, float mass = 0.0f)
+            {
+                Entity* entity = World::CreateEntity();
+                entity->SetObjectName(name);
+                entity->SetPosition(position);
+                entity->SetRotation(Quaternion::FromEulerAngles(euler_angles.x, euler_angles.y, euler_angles.z));
+                entity->SetScale(scale);
+
+                Renderable* renderable = entity->AddComponent<Renderable>();
+                renderable->SetMesh(MeshType::Cube);
+                renderable->SetDefaultMaterial();
+
+                Physics* physics_body = entity->AddComponent<Physics>();
+                physics_body->SetBodyType(BodyType::Box);
+                physics_body->SetStatic(mass == 0.0f);
+                physics_body->SetMass(mass);
+            }
+
             void create()
             {
-                entities::camera(false, Vector3(0.0f, 2.5f, -10.0f), Vector3(5.0f, 0.0f, 0.0f));
+                entities::camera(false, Vector3(0.0f, 8.0f, -25.0f), Vector3(15.0f, 0.0f, 0.0f));
                 entities::sun(LightPreset::dusk, true);
                 entities::floor();
 
                 // create drivable car with telemetry
                 car::Config car_config;
-                car_config.position       = Vector3(0.0f, 2.0f, 0.0f);
+                car_config.position       = Vector3(0.0f, 0.5f, 0.0f);
                 car_config.drivable       = true;
                 car_config.show_telemetry = true;
                 car_config.camera_follows = true;
                 car::create(car_config);
 
-                // ramp
+                //==================================================================================
+                // zone 1: main jump ramp area (in front of spawn)
+                //==================================================================================
+                
+                // gentle starter ramp
+                create_cube("ramp_starter", Vector3(12.0f, 0.3f, 0.0f), Vector3(0.0f, 0.0f, 8.0f), Vector3(8.0f, 0.6f, 6.0f));
+                
+                // main jump ramp - steep for big air
+                create_cube("ramp_jump_main", Vector3(28.0f, 1.2f, 0.0f), Vector3(0.0f, 0.0f, 18.0f), Vector3(10.0f, 0.8f, 7.0f));
+                
+                // landing ramp - downward slope for smooth landings
+                create_cube("ramp_landing", Vector3(50.0f, 0.5f, 0.0f), Vector3(0.0f, 0.0f, -12.0f), Vector3(12.0f, 0.6f, 7.0f));
+
+                //==================================================================================
+                // zone 2: suspension test track (to the right of spawn)
+                //==================================================================================
+                
+                // speed bumps - series of small bumps to test suspension
+                for (int i = 0; i < 8; i++)
                 {
-                    Entity* entity = World::CreateEntity();
-                    entity->SetObjectName("ramp");
-                    entity->SetPosition(Vector3(6.6f, 0.0f, 3.2f));
-                    entity->SetRotation(Quaternion::FromEulerAngles(0.0f, 0.0f, 5.3f));
-                    entity->SetScale(Vector3(5.8f, 1.0f, 5.4f));
-
-                    Renderable* renderable = entity->AddComponent<Renderable>();
-                    renderable->SetMesh(MeshType::Cube);
-                    renderable->SetDefaultMaterial();
-
-                    Physics* physics_body = entity->AddComponent<Physics>();
-                    physics_body->SetMass(Physics::mass_from_volume);
-                    physics_body->SetBodyType(BodyType::Box);
+                    float x_offset = i * 4.0f;
+                    create_cube("speed_bump_" + to_string(i), Vector3(15.0f + x_offset, 0.15f, 20.0f), Vector3::Zero, Vector3(1.5f, 0.3f, 5.0f));
                 }
+                
+                // rumble strips - alternating small ridges
+                for (int i = 0; i < 12; i++)
+                {
+                    float x_offset = i * 2.5f;
+                    float height   = (i % 2 == 0) ? 0.1f : 0.18f;
+                    create_cube("rumble_" + to_string(i), Vector3(15.0f + x_offset, height * 0.5f, 30.0f), Vector3::Zero, Vector3(1.0f, height, 4.0f));
+                }
+                
+                // pothole simulation - dips created by raised edges
+                create_cube("pothole_edge_1", Vector3(60.0f, 0.08f, 20.0f), Vector3::Zero, Vector3(0.8f, 0.16f, 6.0f));
+                create_cube("pothole_edge_2", Vector3(66.0f, 0.08f, 20.0f), Vector3::Zero, Vector3(0.8f, 0.16f, 6.0f));
+
+                //==================================================================================
+                // zone 3: stunt ramps and half-pipe (to the left of spawn)
+                //==================================================================================
+                
+                // half-pipe left wall
+                create_cube("halfpipe_left", Vector3(-25.0f, 2.0f, 0.0f), Vector3(0.0f, 0.0f, 35.0f), Vector3(8.0f, 0.5f, 20.0f));
+                
+                // half-pipe right wall
+                create_cube("halfpipe_right", Vector3(-25.0f, 2.0f, 15.0f), Vector3(0.0f, 0.0f, -35.0f), Vector3(8.0f, 0.5f, 20.0f));
+                
+                // half-pipe back wall (for u-turns)
+                create_cube("halfpipe_back", Vector3(-38.0f, 1.5f, 7.5f), Vector3(25.0f, 0.0f, 0.0f), Vector3(6.0f, 0.5f, 18.0f));
+                
+                // kicker ramp - small but steep for tricks
+                create_cube("kicker_ramp", Vector3(-10.0f, 0.6f, -15.0f), Vector3(0.0f, 0.0f, 25.0f), Vector3(4.0f, 0.5f, 4.0f));
+                
+                // side ramp for barrel rolls
+                create_cube("barrel_roll_ramp", Vector3(-15.0f, 0.8f, -25.0f), Vector3(30.0f, 45.0f, 15.0f), Vector3(5.0f, 0.4f, 3.0f));
+
+                //==================================================================================
+                // zone 4: slalom course (behind spawn)
+                //==================================================================================
+                
+                // slalom pylons - alternating obstacles (25 kg like plastic barriers)
+                for (int i = 0; i < 6; i++)
+                {
+                    float z_offset  = -20.0f - (i * 12.0f);
+                    float x_offset  = (i % 2 == 0) ? 5.0f : -5.0f;
+                    create_cube("slalom_pylon_" + to_string(i), Vector3(x_offset, 1.0f, z_offset), Vector3::Zero, Vector3(1.5f, 2.0f, 1.5f), 25.0f);
+                }
+                
+                // slalom finish gate pillars - dynamic so they can be knocked over
+                create_cube("gate_left", Vector3(-6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f), 30.0f);
+                create_cube("gate_right", Vector3(6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f), 30.0f);
+
+                //==================================================================================
+                // zone 5: banked turn circuit (far right area)
+                //==================================================================================
+                
+                // banked turn - outside wall
+                create_cube("bank_outer", Vector3(80.0f, 1.5f, 0.0f), Vector3(0.0f, 30.0f, -25.0f), Vector3(20.0f, 0.6f, 8.0f));
+                
+                // banked turn - inside wall
+                create_cube("bank_inner", Vector3(75.0f, 0.8f, 8.0f), Vector3(0.0f, 30.0f, -15.0f), Vector3(15.0f, 0.4f, 6.0f));
+                
+                // exit ramp from banked turn
+                create_cube("bank_exit_ramp", Vector3(95.0f, 0.4f, -10.0f), Vector3(0.0f, 60.0f, 10.0f), Vector3(8.0f, 0.5f, 5.0f));
+
+                //==================================================================================
+                // zone 6: obstacle course (scattered dynamic objects)
+                //==================================================================================
+                
+                // stack of crates to crash through (20 kg wooden crates)
+                // add small gaps (1.55 spacing for 1.5 size) to prevent interpenetration explosions
+                for (int row = 0; row < 3; row++)
+                {
+                    for (int col = 0; col < 3; col++)
+                    {
+                        float y_pos = 0.76f + (row * 1.55f);
+                        float x_pos = 35.0f + (col * 1.65f);
+                        create_cube("crate_stack_" + to_string(row) + "_" + to_string(col), Vector3(x_pos, y_pos, -30.0f), Vector3::Zero, Vector3(1.5f, 1.5f, 1.5f), 20.0f);
+                    }
+                }
+                
+                // barrel wall (15 kg empty barrels)
+                // add gaps to prevent interpenetration
+                for (int i = 0; i < 5; i++)
+                {
+                    float x_pos = 50.0f + (i * 2.2f);
+                    create_cube("barrel_" + to_string(i), Vector3(x_pos, 0.85f, -45.0f), Vector3(90.0f, 0.0f, 0.0f), Vector3(1.2f, 1.6f, 1.2f), 15.0f);
+                }
+                
+                // pyramid of boxes (15 kg cardboard boxes)
+                // add small gaps to prevent interpenetration explosions
+                int pyramid_base = 4;
+                for (int level = 0; level < pyramid_base; level++)
+                {
+                    int boxes_in_level = pyramid_base - level;
+                    float y_pos        = 0.62f + (level * 1.25f);
+                    float start_x      = 70.0f - (boxes_in_level * 0.65f);
+                    for (int b = 0; b < boxes_in_level; b++)
+                    {
+                        create_cube("pyramid_" + to_string(level) + "_" + to_string(b), Vector3(start_x + (b * 1.35f), y_pos, -60.0f), Vector3::Zero, Vector3(1.2f, 1.2f, 1.2f), 15.0f);
+                    }
+                }
+
+                //==================================================================================
+                // zone 7: wavy terrain (far left)
+                //==================================================================================
+                
+                // series of sine-wave like bumps
+                for (int i = 0; i < 10; i++)
+                {
+                    float z_pos  = -40.0f + (i * 6.0f);
+                    float height = 0.3f + 0.3f * sin(i * 0.8f);
+                    float angle  = 8.0f * sin(i * 0.5f);
+                    create_cube("wave_" + to_string(i), Vector3(-50.0f, height, z_pos), Vector3(angle, 0.0f, 0.0f), Vector3(8.0f, 0.4f, 4.0f));
+                }
+
+                //==================================================================================
+                // zone 8: stunt park center piece - mega ramp
+                //==================================================================================
+                
+                // approach ramp
+                create_cube("mega_approach", Vector3(-70.0f, 1.0f, -30.0f), Vector3(0.0f, 0.0f, 12.0f), Vector3(15.0f, 0.6f, 10.0f));
+                
+                // main mega ramp
+                create_cube("mega_ramp", Vector3(-90.0f, 4.0f, -30.0f), Vector3(0.0f, 0.0f, 30.0f), Vector3(12.0f, 0.8f, 10.0f));
+                
+                // mega ramp platform top
+                create_cube("mega_platform", Vector3(-105.0f, 7.5f, -30.0f), Vector3::Zero, Vector3(8.0f, 0.5f, 10.0f));
+                
+                // drop ramp on other side
+                create_cube("mega_drop", Vector3(-118.0f, 4.0f, -30.0f), Vector3(0.0f, 0.0f, -35.0f), Vector3(10.0f, 0.8f, 10.0f));
+
+                //==================================================================================
+                // zone 9: figure-8 crossover
+                //==================================================================================
+                
+                // elevated crossing ramp 1
+                create_cube("cross_ramp_up_1", Vector3(0.0f, 1.0f, 50.0f), Vector3(0.0f, 45.0f, 15.0f), Vector3(12.0f, 0.5f, 6.0f));
+                
+                // elevated bridge section
+                create_cube("cross_bridge", Vector3(8.0f, 2.5f, 58.0f), Vector3(0.0f, 45.0f, 0.0f), Vector3(10.0f, 0.4f, 6.0f));
+                
+                // elevated crossing ramp 2
+                create_cube("cross_ramp_down_1", Vector3(16.0f, 1.0f, 66.0f), Vector3(0.0f, 45.0f, -15.0f), Vector3(12.0f, 0.5f, 6.0f));
+                
+                // lower path goes underneath
+                create_cube("under_path_guide_left", Vector3(-2.0f, 0.4f, 62.0f), Vector3(0.0f, -45.0f, 0.0f), Vector3(0.5f, 0.8f, 15.0f));
+                create_cube("under_path_guide_right", Vector3(10.0f, 0.4f, 50.0f), Vector3(0.0f, -45.0f, 0.0f), Vector3(0.5f, 0.8f, 15.0f));
+
+                //==================================================================================
+                // zone 10: parking challenge (precision driving)
+                //==================================================================================
+                
+                // tight parking spots with pillars
+                for (int i = 0; i < 4; i++)
+                {
+                    float z_pos = 80.0f + (i * 8.0f);
+                    create_cube("parking_left_" + to_string(i), Vector3(-8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f), 5.0f);
+                    create_cube("parking_right_" + to_string(i), Vector3(8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f), 5.0f);
+                }
+                
+                // parking lot boundary walls
+                create_cube("parking_wall_back", Vector3(0.0f, 0.5f, 115.0f), Vector3::Zero, Vector3(20.0f, 1.0f, 0.5f));
+                create_cube("parking_wall_left", Vector3(-10.0f, 0.5f, 97.0f), Vector3::Zero, Vector3(0.5f, 1.0f, 38.0f));
+                create_cube("parking_wall_right", Vector3(10.0f, 0.5f, 97.0f), Vector3::Zero, Vector3(0.5f, 1.0f, 38.0f));
+
+                //==================================================================================
+                // decorative boundary markers
+                //==================================================================================
+                
+                // corner markers for the playground area
+                create_cube("marker_ne", Vector3(120.0f, 1.5f, 120.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
+                create_cube("marker_nw", Vector3(-130.0f, 1.5f, 120.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
+                create_cube("marker_se", Vector3(120.0f, 1.5f, -100.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
+                create_cube("marker_sw", Vector3(-130.0f, 1.5f, -100.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
 
                 // make room for the telemetry display
                 ConsoleRegistry::Get().SetValueFromString("r.performance_metrics", "0");

@@ -203,6 +203,8 @@ namespace spartan
         float angle;
         uint32_t flags;
         uint32_t screen_space_shadows_slice_index;
+        float area_width;  // area light width in meters
+        float area_height; // area light height in meters
         math::Matrix view_projection[6];
         math::Vector2 atlas_offsets[6];
         math::Vector2 atlas_scales[6];

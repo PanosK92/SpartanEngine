@@ -139,6 +139,12 @@ namespace spartan
         // volumetric clouds 3D noise
         tex3d_cloud_shape  = 19,
         tex3d_cloud_detail = 20,
+        // restir reservoir srv bindings (for temporal/spatial read)
+        reservoir_prev0    = 21,
+        reservoir_prev1    = 22,
+        reservoir_prev2    = 23,
+        reservoir_prev3    = 24,
+        reservoir_prev4    = 25,
     };
 
     enum class Renderer_BindingsUav
@@ -153,6 +159,13 @@ namespace spartan
         sb_spd        = 7,
         tex_spd       = 8,
         geometry_info = 20, // ray tracing geometry info buffer
+        // restir reservoir uav bindings
+        reservoir0    = 21,
+        reservoir1    = 22,
+        reservoir2    = 23,
+        reservoir3    = 24,
+        reservoir4    = 25,
+        tex_uint      = 26, // for integer format textures (vrs, etc)
     };
 
     enum class Renderer_Shader : uint8_t
@@ -212,11 +225,26 @@ namespace spartan
         reflections_ray_generation_r,
         reflections_ray_miss_r,
         reflections_ray_hit_r,
+        // ray traced shadows
+        shadows_ray_generation_r,
+        shadows_ray_miss_r,
+        shadows_ray_hit_r,
+        // restir path tracing gi
+        restir_pt_ray_generation_r,
+        restir_pt_ray_miss_r,
+        restir_pt_ray_hit_r,
+        restir_pt_temporal_c,
+        restir_pt_spatial_c,
         // volumetric clouds
         cloud_noise_shape_c,
         cloud_noise_detail_c,
         cloud_shadow_c,
         light_reflections_c,
+        // denoiser
+        denoiser_c,
+        denoiser_temporal_c,
+        denoiser_spatial_c,
+        denoiser_upscale_c,
         max
     };
     
@@ -255,10 +283,34 @@ namespace spartan
         shadow_atlas,
         auto_exposure,
         auto_exposure_previous,
+        // ray traced shadows
+        ray_traced_shadows,
+        // restir path tracing output
+        restir_output,
+        // restir reservoir buffers (current frame)
+        restir_reservoir0,
+        restir_reservoir1,
+        restir_reservoir2,
+        restir_reservoir3,
+        restir_reservoir4,
+        // restir reservoir buffers (previous frame for temporal)
+        restir_reservoir_prev0,
+        restir_reservoir_prev1,
+        restir_reservoir_prev2,
+        restir_reservoir_prev3,
+        restir_reservoir_prev4,
+        // restir reservoir buffers (spatial ping-pong)
+        restir_reservoir_spatial0,
+        restir_reservoir_spatial1,
+        restir_reservoir_spatial2,
+        restir_reservoir_spatial3,
+        restir_reservoir_spatial4,
         // volumetric clouds
         cloud_noise_shape,
         cloud_noise_detail,
         cloud_shadow,
+        // denoiser history buffers
+        denoiser_history,
         max
     };
 
@@ -293,14 +345,7 @@ namespace spartan
     enum class Renderer_StandardTexture
     {
         Noise_perlin,
-        Noise_blue_0,
-        Noise_blue_1,
-        Noise_blue_2,
-        Noise_blue_3,
-        Noise_blue_4,
-        Noise_blue_5,
-        Noise_blue_6,
-        Noise_blue_7,
+        Noise_blue, // single blue noise texture (was 8, only 1 used)
         Checkerboard,
         Gizmo_light_directional,
         Gizmo_light_point,

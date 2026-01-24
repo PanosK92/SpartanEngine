@@ -197,8 +197,8 @@ struct vertex_processing
         // wind simulation
         if (surface.is_grass_blade() || surface.is_flower())
         {
-            const float base_scale    = 0.025f;                              // spatial scale for noise sampling
-            const float time_scale    = 0.1f * (1.0f + base_wind_magnitude); // animation speed scales with wind strength
+            const float base_scale    = 0.032f;                              // spatial scale for noise sampling (higher = more waves)
+            const float time_scale    = 0.06f * (1.0f + base_wind_magnitude); // animation speed scales with wind strength
             const float sway_amp      = base_wind_magnitude * 2.5f;          // maximum bend angle multiplier
             const float max_angle_deg = 75.0f;                               // maximum rotation angle to prevent ground intersection
             
@@ -214,11 +214,15 @@ struct vertex_processing
             // layered noise for natural sway: broad base pattern + faster gust layer
             float2 uv   = position_world.xz * base_scale + base_wind_dir.xz * time * time_scale;
             float sway  = noise_perlin(uv) * 0.7f;
-            sway       += noise_perlin(uv * 2.0f + float2(time * 0.5f, 0.0f)) * 0.3f;
-            sway        = sway * sway_amp * height_factor * instance_var;
+            sway       += noise_perlin(uv * 1.5f + float2(time * 0.25f, 0.0f)) * 0.3f;
+            
+            // sharpen the wave transition for a more defined wave front
+            sway = sign(sway) * pow(abs(sway), 0.55f);
+            
+            sway = sway * sway_amp * height_factor * instance_var;
 
             // wind direction variation for natural randomness
-            float dir_var   = noise_perlin(position_world.xz * 0.01f + time * 0.05f) * (PI / 6.0f);
+            float dir_var   = noise_perlin(position_world.xz * 0.016f + time * 0.025f) * (PI / 6.0f);
             float3 bend_dir = normalize(base_wind_dir + float3(sin(dir_var), 0.0f, cos(dir_var)));
 
             // calculate maximum allowed angle: ensure blade never goes below horizontal
@@ -352,8 +356,20 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     vertex.tangent = normalize(mul(input.tangent, (float3x3)transform));
 
     // apply wind animation and other world-space effects
+    // note: we need to save and restore vertex.normal/tangent because process_world_space modifies them
+    // the second call is only for computing position_previous, we don't want to double-transform normals
     vertex_processing::process_world_space(surface, position, vertex, input.position.xyz, transform, instance_id, 0.0f);
+    
+    // save the correctly transformed normals before computing previous position
+    float3 saved_normal  = vertex.normal;
+    float3 saved_tangent = vertex.tangent;
+    
+    // compute previous position (this will incorrectly modify vertex.normal/tangent, but we'll restore them)
     vertex_processing::process_world_space(surface, position_previous, vertex, input.position.xyz, transform_previous, instance_id, -buffer_frame.delta_time);
+    
+    // restore the correct normals from the current frame
+    vertex.normal  = saved_normal;
+    vertex.tangent = saved_tangent;
 
     position_world          = position;
     position_world_previous = position_previous;

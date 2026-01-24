@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
+#include "../Rendering/Renderer.h"
 #include <unordered_map>
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
@@ -63,6 +64,10 @@ namespace spartan
 
     void ResourceCache::Shutdown()
     {
+        // clear texture references from materials owned by renderer before destroying cached textures
+        // this prevents dangling pointers since those materials outlive ResourceCache resources
+        Renderer::ClearMaterialTextureReferences();
+
         uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
         m_resources.clear();
         if (resource_count != 0)

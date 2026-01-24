@@ -281,19 +281,27 @@ namespace spartan
         RHI_DestroyResource();
     }
 
+    bool RHI_Texture::CanSaveToFile() const
+    {
+        // requires cpu bytes and compressed format
+        bool has_data   = !m_slices.empty() && !m_slices[0].mips.empty() && !m_slices[0].mips[0].bytes.empty();
+        bool compressed = IsCompressedFormat(m_format);
+        return has_data && compressed;
+    }
+
     void spartan::RHI_Texture::SaveToFile(const string& file_path)
     {
         // require cpu bytes
         if (m_slices.empty() || m_slices[0].mips.empty())
         {
-            SP_LOG_ERROR("SaveToFile failed for %s because no CPU-side bits are present. Use RHI_Texture_KeepData when preparing or add a readback path.", file_path.c_str());
+            SP_LOG_WARNING("SaveToFile skipped for %s - no CPU-side data (will re-import from source)", file_path.c_str());
             return;
         }
     
         // require compressed native format
         if (!IsCompressedFormat(m_format))
         {
-            SP_LOG_ERROR("SaveToFile expects a compressed native format. Current format is not compressed.");
+            SP_LOG_WARNING("SaveToFile skipped for %s - not compressed (will re-import from source)", file_path.c_str());
             return;
         }
     
@@ -443,6 +451,9 @@ namespace spartan
         ComputeMemoryUsage();
         m_resource_state = ResourceState::Max;
 
+        // automatically prepare the texture for gpu use
+        PrepareForGpu();
+
         ProgressTracker::SetGlobalLoadingState(false);
     }
 
@@ -542,7 +553,10 @@ namespace spartan
 
     void RHI_Texture::PrepareForGpu()
     {
-        SP_ASSERT_MSG(m_resource_state == ResourceState::Max, "Only unprepared textures can be prepared");
+        // skip if already prepared or currently preparing
+        if (m_resource_state != ResourceState::Max)
+            return;
+
         m_resource_state = ResourceState::PreparingForGpu;
 
         // skip textures with invalid dimensions (failed to load)

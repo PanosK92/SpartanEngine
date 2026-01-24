@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "Game/Game.h"
 #include "Core/ProgressTracker.h"
+#include "Core/ThreadPool.h"
 #include "RHI/RHI_Device.h"
 //================================
 
@@ -541,35 +542,85 @@ namespace
         const WorldEntry worlds[] =
         {
             { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech",                                                                  "Complete" ,  "Light",          2100 },
+            { "Car Playground",    "Highly realistic vehicle physics with proper tire slip, thermals, aero, LSD, multi ray tire, and speed dependent steering geometry.", "Prototype",  "Light",          2100 },
             { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                                                                                       "Prototype",  "Very demanding", 5600 },
             { "Liminal Space",     "Shifts your frequency to a nearby reality",                                                                                           "Prototype",  "Light",          2100 },
             { "Sponza 4K",         "High-resolution textures & meshes",                                                                                                   "Complete" ,  "Demanding",      2600 },
             { "Subway",            "GI test. No lights, only emissive textures",                                                                                          "Prototype" , "Moderate",       2600 },
             { "Minecraft",         "Blocky aesthetic",                                                                                                                    "Complete" ,  "Light",          2100 },
-            { "Basic",             "Light, camera, floor",                                                                                                                "Complete" ,  "Light",          2100 },
-            { "Car Simulation",    "Highly realistic vehicle physics with proper tire slip, thermals, aero, LSD, multi ray tire, and speed dependent steering geometry.", "Prototype",  "Light",          2100 }
+            { "Basic",             "Light, camera, floor",                                                                                                                "Complete" ,  "Light",          2100 }
         };
         int world_index = 0;
 
         bool downloaded_and_extracted = false;
         bool visible_download_prompt  = false;
+        bool visible_update_prompt    = false;
         bool visible_world_list       = false;
 
-        void world_on_download_finished()
+        // asset download configuration
+        const char* assets_url          = "https://www.dropbox.com/scl/fi/2dsh84c9hokjxv5xmmv4t/assets.7z?rlkey=a88etud443hqddsnkjzbvlwpu&st=rg4ptyos&dl=1";
+        const char* assets_destination  = "project/assets.7z";
+        const char* assets_extract_dir  = "project/";
+        const char* assets_expected_sha = "a11dd5ae80d9bc85541646670f3e69f1ab7e48e4b4430712038f8f4fb1300637";
+        
+        void check_assets_outdated_async()
         {
-            spartan::ProgressTracker::SetGlobalLoadingState(false);
-            visible_world_list = true;
+            // run hash check in background so UI doesn't freeze
+            spartan::ThreadPool::AddTask([]()
+            {
+                if (!spartan::FileSystem::Exists(assets_destination))
+                    return;
+                
+                std::string local_hash = spartan::FileSystem::ComputeFileSha256(assets_destination);
+                if (!local_hash.empty() && local_hash != assets_expected_sha)
+                {
+                    visible_update_prompt = true;
+                }
+            });
         }
 
         void download_and_extract()
         {
-            spartan::FileSystem::Command("py download_assets.py", world_on_download_finished, false);
-            spartan::ProgressTracker::SetGlobalLoadingState(true);
             visible_download_prompt = false;
+
+            // run download and extract in background
+            spartan::ThreadPool::AddTask([]()
+            {
+                // start progress tracking in continuous mode (job_count = 0)
+                spartan::Progress& progress = spartan::ProgressTracker::GetProgress(spartan::ProgressType::Download);
+                progress.Start(0, "Downloading assets...");
+                spartan::ProgressTracker::SetGlobalLoadingState(true);
+
+                // download with real-time progress callback
+                bool success = spartan::FileSystem::DownloadFile(
+                    assets_url,
+                    assets_destination,
+                    [&progress](float download_progress)
+                    {
+                        // download is 0-90%, extraction is 90-100%
+                        progress.SetFraction(download_progress * 0.9f);
+                    }
+                );
+
+                if (success)
+                {
+                    progress.SetText("Extracting assets...");
+                    progress.SetFraction(0.9f);
+                    success = spartan::FileSystem::ExtractArchive(assets_destination, assets_extract_dir);
+                    progress.SetFraction(1.0f);
+                }
+
+                spartan::ProgressTracker::SetGlobalLoadingState(false);
+                if (success)
+                {
+                    visible_world_list = true;
+                }
+            });
         }
 
         void window()
         {
+            // download prompt - assets don't exist
             if (visible_download_prompt)
             {
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -577,20 +628,6 @@ namespace
                     ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
                 {
                     ImGui::TextWrapped("No default worlds are present. Would you like to download them?");
-
-                    bool python_available =
-                        spartan::FileSystem::IsExecutableInPath("py") ||
-                        spartan::FileSystem::IsExecutableInPath("python") ||
-                        spartan::FileSystem::IsExecutableInPath("python3");
-
-                    if (!python_available)
-                    {
-                        ImGui::Spacing();
-                        ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f),
-                            "Error: Python is not installed or not found in your PATH.\n"
-                            "Please install it to enable downloading.");
-                    }
-
                     ImGui::Separator();
 
                     float button_width = ImGui::CalcTextSize("Download Worlds").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
@@ -599,17 +636,53 @@ namespace
 
                     ImGui::BeginGroup();
                     {
-                        ImGui::BeginDisabled(!python_available);
                         if (ImGui::Button("Download Worlds"))
                         {
                             download_and_extract();
                         }
-                        ImGui::EndDisabled();
 
                         ImGui::SameLine();
                         if (ImGui::Button("Cancel"))
                         {
                             visible_download_prompt = false;
+                        }
+                    }
+                    ImGui::EndGroup();
+                }
+                ImGui::End();
+            }
+
+            // update prompt - assets exist but are outdated (checked async)
+            if (visible_update_prompt)
+            {
+                // close world list when update prompt appears
+                visible_world_list = false;
+
+                ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+                if (ImGui::Begin("Update available", &visible_update_prompt,
+                    ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::TextWrapped("A newer version of the assets is available. Would you like to update?");
+                    ImGui::Separator();
+
+                    ImGui::BeginGroup();
+                    {
+                        if (ImGui::Button("Update"))
+                        {
+                            visible_update_prompt = false;
+                            // delete old assets.7z so it downloads fresh
+                            if (spartan::FileSystem::Exists(assets_destination))
+                            {
+                                spartan::FileSystem::Delete(assets_destination);
+                            }
+                            download_and_extract();
+                        }
+
+                        ImGui::SameLine();
+                        if (ImGui::Button("Skip"))
+                        {
+                            visible_update_prompt = false;
+                            visible_world_list = true;
                         }
                     }
                     ImGui::EndGroup();
@@ -729,18 +802,14 @@ void GeneralWindows::Initialize(Editor* editor_in)
 
         if (worlds::downloaded_and_extracted)
         {
+            // show world list immediately, check for updates in background
             worlds::visible_world_list = true;
+            worlds::check_assets_outdated_async();
         }
         else
         {
-            if (file_count == 0)
-            {
-                worlds::visible_download_prompt = true;
-            }
-            else // assets.7z is present but not extracted
-            {
-                worlds::download_and_extract();
-            }
+            // always ask the user before downloading
+            worlds::visible_download_prompt = true;
         }
     }
 }

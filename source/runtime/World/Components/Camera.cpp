@@ -67,10 +67,11 @@ namespace spartan
             SetFlag(CameraFlags::IsDirty, true);
         }
 
-        if (m_position != GetEntity()->GetPosition() || m_rotation != GetEntity()->GetRotation())
+        // check if transform changed by comparing matrix directly (avoids quaternion decomposition instability)
+        const Matrix& current_matrix = GetEntity()->GetMatrix();
+        if (m_matrix_previous != current_matrix)
         {
-            m_position = GetEntity()->GetPosition();
-            m_rotation = GetEntity()->GetRotation();
+            m_matrix_previous = current_matrix;
             SetFlag(CameraFlags::IsDirty, true);
         }
 
@@ -525,17 +526,20 @@ namespace spartan
                 }
             }
     
-            // mouse and gamepad look
-            Quaternion current_rotation = GetEntity()->GetRotation();
-            Vector2 input_delta = Vector2::Zero;
-            if (is_controlled)
-            {
-                input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
-            }
-            else if (is_gamepad_connected)
-            {
-                input_delta = Input::GetGamepadThumbStickRight();
-            }
+        // mouse and gamepad look - use local rotation to avoid unstable matrix decomposition
+        Quaternion current_rotation = GetEntity()->GetRotationLocal();
+        Vector2 input_delta = Vector2::Zero;
+        if (is_controlled)
+        {
+            input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
+        }
+        else if (is_gamepad_connected)
+        {
+            // gamepad stick is a rate (rotation speed), not accumulated movement like mouse
+            // scale by delta_time and a base rotation speed for framerate-independent behavior
+            const float gamepad_rotation_speed = 120.0f; // degrees per second at full stick deflection
+            input_delta = Input::GetGamepadThumbStickRight() * gamepad_rotation_speed * delta_time;
+        }
             Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
             Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
             Quaternion new_rotation    = yaw_increment * current_rotation * pitch_increment;
@@ -590,32 +594,47 @@ namespace spartan
             }
         }
     
-        // behavior: physical body animation
+        // behavior: physical body animation (head bob when walking)
         if (GetFlag(CameraFlags::PhysicalBodyAnimation) && is_playing && has_physics_body && is_grounded)
         {
-            static Vector3 base_local_position = GetEntity()->GetPositionLocal();
-            static Vector3 bob_offset          = Vector3::Zero;
-            static float bob_timer             = 0.0f;
-            static float breathe_timer         = 0.0f;
-    
-            float velocity_magnitude = physics_body->GetLinearVelocity().Length();
-            if (velocity_magnitude > 0.01f) // walking head bob
+            static Vector3 prev_bob_offset = Vector3::Zero;
+            static float bob_timer         = 0.0f;
+            static float bob_amplitude     = 0.0f;
+            
+            const float max_amplitude    = 0.04f;
+            float velocity_magnitude     = physics_body->GetLinearVelocity().Length();
+            
+            if (velocity_magnitude > 0.1f) // walking - ramp up amplitude and advance timer
             {
-                bob_timer           += delta_time * velocity_magnitude * 1.5f;
-                float bob_amplitude  = 0.04f;
-                bob_offset.y         = sin(bob_timer) * bob_amplitude;
-                bob_offset.x         = cos(bob_timer) * bob_amplitude * 0.5f;
+                bob_timer     += delta_time * velocity_magnitude * 1.5f;
+                bob_amplitude  = min(bob_amplitude + delta_time * 0.5f, max_amplitude);
             }
-            else // breathing effect when resting
+            else // not walking - decay amplitude to zero (no wobble)
             {
-                breathe_timer               += delta_time * 2.0f;
-                float breathe_amplitude      = 0.0025f;
-                float pitch_offset           = sin(breathe_timer) * breathe_amplitude;
-                Quaternion breathe_rotation  = Quaternion::FromAxisAngle(Vector3::Right, pitch_offset * deg_to_rad);
-                Quaternion current_rotation  = GetEntity()->GetRotationLocal();
-                GetEntity()->SetRotationLocal(current_rotation * breathe_rotation);
+                bob_amplitude *= 1.0f - clamp(delta_time * 8.0f, 0.0f, 1.0f);
+                if (bob_amplitude < 0.001f)
+                {
+                    bob_amplitude = 0.0f;
+                    bob_timer     = 0.0f;
+                }
             }
-            GetEntity()->SetPositionLocal(base_local_position + bob_offset);
+            
+            // compute bob offset
+            Vector3 bob_offset = Vector3::Zero;
+            if (bob_amplitude > 0.0f)
+            {
+                bob_offset.y = sin(bob_timer) * bob_amplitude;
+                bob_offset.x = cos(bob_timer) * bob_amplitude * 0.5f;
+            }
+            
+            // apply change in bob offset (delta) to avoid drift
+            Vector3 bob_delta = bob_offset - prev_bob_offset;
+            prev_bob_offset   = bob_offset;
+            
+            if (bob_delta.LengthSquared() > 0.0000001f)
+            {
+                GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() + bob_delta);
+            }
         }
     
         // behavior: jumping
@@ -860,15 +879,16 @@ namespace spartan
 
     Matrix Camera::UpdateViewMatrix() const
     {
-        Vector3 position = GetEntity()->GetPosition();
-        Vector3 look_at  = GetEntity()->GetRotation() * Vector3::Forward;
-        Vector3 up       = GetEntity()->GetRotation() * Vector3::Up;
-
-        // offset look_at by current position
-        look_at += position;
+        // extract basis vectors directly from world matrix to avoid quaternion decomposition instability
+        // row-major layout: row 0 = right (X), row 1 = up (Y), row 2 = forward (Z), row 3 = translation
+        const Matrix& m = GetEntity()->GetMatrix();
+        
+        Vector3 position = Vector3(m.m30, m.m31, m.m32);
+        Vector3 forward  = Vector3(m.m20, m.m21, m.m22).Normalized();
+        Vector3 up       = Vector3(m.m10, m.m11, m.m12).Normalized();
 
         // compute view matrix
-        return Matrix::CreateLookAtLH(position, look_at, up);
+        return Matrix::CreateLookAtLH(position, position + forward, up);
     }
 
     Matrix Camera::ComputeProjection(const float near_plane, const float far_plane)

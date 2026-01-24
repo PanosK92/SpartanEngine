@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #define PX_PHYSX_STATIC_LIB
 #include <physx/PxPhysicsAPI.h>
+#include <vector>
 #include "../Logging/Log.h"
 //======================================
 
@@ -44,7 +45,7 @@ namespace car
         constexpr float engine_idle_rpm        = 1000.0f;
         constexpr float engine_redline_rpm     = 9250.0f;
         constexpr float engine_max_rpm         = 9500.0f;
-        constexpr float engine_peak_torque     = 700.0f;
+        constexpr float engine_peak_torque     = 900.0f;   // laferrari: ~950 HP requires ~900 Nm peak
         constexpr float engine_peak_torque_rpm = 6750.0f;
         constexpr float engine_inertia         = 0.25f;
         constexpr float engine_friction        = 0.02f;
@@ -91,7 +92,9 @@ namespace car
         constexpr float min_slip_speed       = 0.5f;
         constexpr float load_sensitivity     = 0.92f;
         constexpr float load_reference       = 4000.0f;
-        constexpr float rear_grip_ratio      = 1.0f;
+        constexpr float rear_grip_ratio      = 1.12f;   // rear bias for stability (reduces oversteer)
+        constexpr float slip_angle_deadband  = 0.01f;   // radians (~0.6 deg) - ignore tiny slip angles
+        constexpr float min_lateral_grip     = 0.5f;    // preserve 50% lateral grip during wheelspin
         
         // tire temperature
         constexpr float tire_ambient_temp    = 50.0f;
@@ -117,14 +120,40 @@ namespace car
         constexpr float max_susp_force       = 35000.0f;
         constexpr float max_damper_velocity  = 5.0f;
         
-        // aerodynamics
-        constexpr float drag_coeff           = 0.35f;
-        constexpr float frontal_area         = 2.2f;
-        constexpr float air_density          = 1.225f;
+        // aerodynamics - base values (can be computed from shape)
+        constexpr float air_density          = 1.225f;  // kg/m³ at sea level
         constexpr float rolling_resistance   = 0.015f;
-        constexpr float lift_coeff_front     = -0.3f;
-        constexpr float lift_coeff_rear      = -0.4f;
-        constexpr float downforce_center_height = 0.3f;
+        
+        // these can be overridden by shape analysis
+        inline float drag_coeff              = 0.35f;   // cd - computed from shape or manual
+        inline float frontal_area            = 2.2f;    // m² - computed from convex hull projection
+        inline float lift_coeff_front        = -0.3f;   // negative = downforce
+        inline float lift_coeff_rear         = -0.4f;   // rear has more downforce (diffuser/wing)
+        inline float side_area               = 4.0f;    // m² - for crosswind/yaw drag
+        
+        // ground effect - downforce increases as ride height decreases
+        inline bool  ground_effect_enabled   = true;
+        inline float ground_effect_multiplier = 1.5f;   // max downforce multiplier at min height
+        inline float ground_effect_height_ref = 0.15f;  // reference height (m) for full ground effect
+        inline float ground_effect_height_max = 0.30f;  // height above which no ground effect
+        
+        // yaw-dependent aero - drag increases when car is sideways
+        inline bool  yaw_aero_enabled        = true;
+        inline float yaw_drag_multiplier     = 2.5f;    // drag multiplier at 90° yaw
+        inline float yaw_side_force_coeff    = 1.2f;    // side force coefficient when yawed
+        
+        // pitch-dependent aero - affects front/rear downforce balance
+        inline bool  pitch_aero_enabled      = true;
+        inline float pitch_sensitivity       = 0.5f;    // how much pitch affects f/r balance
+        
+        // center of mass offset from body center (tweakable for handling characteristics)
+        // laferrari: mid-engine layout with 41% front / 59% rear weight distribution
+        // x: positive = right, negative = left (should be 0 for symmetric car)
+        // y: positive = up, negative = down (lower is more stable)
+        // z: positive = front, negative = rear (rear-biased for mid-engine)
+        inline float center_of_mass_x = 0.0f;    // centered laterally
+        inline float center_of_mass_y = -0.15f;  // low center of gravity
+        inline float center_of_mass_z = -0.3f;   // slightly rearward for mid-engine
         
         // steering
         constexpr float max_steer_angle            = 0.65f;
@@ -146,9 +175,9 @@ namespace car
         constexpr float handbrake_sliding_factor = 0.75f;
         
         // lsd
-        constexpr float lsd_preload         = 100.0f;
-        constexpr float lsd_lock_ratio_accel = 0.4f;
-        constexpr float lsd_lock_ratio_decel = 0.2f;
+        constexpr float lsd_preload         = 150.0f;   // moderate preload
+        constexpr float lsd_lock_ratio_accel = 0.5f;    // reduced locking to prevent snap oversteer
+        constexpr float lsd_lock_ratio_decel = 0.3f;    // gentle locking on decel (reduces lift-off oversteer)
         
         // thresholds
         constexpr float input_deadzone          = 0.01f;
@@ -161,8 +190,8 @@ namespace car
         constexpr float max_power_reduction = 0.85f;
         
         // damping
-        constexpr float linear_damping  = 0.05f;
-        constexpr float angular_damping = 0.5f;
+        constexpr float linear_damping  = 0.001f;  // minimal - air drag handles velocity damping
+        constexpr float angular_damping = 0.5f;    // yaw stability (higher = less snappy rotation)
         
         // abs
         inline bool     abs_enabled        = false;
@@ -192,10 +221,31 @@ namespace car
         constexpr float surface_friction_grass       = 0.4f;
         constexpr float surface_friction_ice         = 0.1f;
         
-        // debug visualization
-        inline bool draw_raycasts   = true; // draw wheel raycast lines
-        inline bool draw_suspension = true; // draw suspension travel
+        // debug
+        inline bool draw_raycasts   = true;   // draw wheel raycast lines
+        inline bool draw_suspension = true;   // draw suspension travel
+        inline bool draw_aero       = true;   // draw aerodynamic forces
+        inline bool log_pacejka     = false;  // log pacejka tire model calculations
+        inline bool log_telemetry   = false;  // log simple telemetry (slip, grip, g-force)
     }
+    
+    // aerodynamic debug data
+    struct aero_debug_data
+    {
+        PxVec3 position         = PxVec3(0);  // car position
+        PxVec3 velocity         = PxVec3(0);  // velocity vector
+        PxVec3 drag_force       = PxVec3(0);  // drag force vector
+        PxVec3 front_downforce  = PxVec3(0);  // front downforce vector
+        PxVec3 rear_downforce   = PxVec3(0);  // rear downforce vector
+        PxVec3 side_force       = PxVec3(0);  // side force (yaw)
+        PxVec3 front_aero_pos   = PxVec3(0);  // front aero center position
+        PxVec3 rear_aero_pos    = PxVec3(0);  // rear aero center position
+        float  ride_height      = 0.0f;       // current ride height
+        float  yaw_angle        = 0.0f;       // yaw angle in radians
+        float  ground_effect_factor = 1.0f;   // current ground effect multiplier
+        bool   valid            = false;      // data is valid for this frame
+    };
+    inline static aero_debug_data aero_debug;
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
     enum surface_type { surface_asphalt = 0, surface_concrete, surface_wet_asphalt, surface_gravel, surface_grass, surface_ice, surface_count };
@@ -253,9 +303,6 @@ namespace car
     inline static float           wheel_moi[wheel_count];
     inline static float           spring_stiffness[wheel_count];
     inline static float           spring_damping[wheel_count];
-    inline static float           sprung_mass[wheel_count];
-    inline static PxVec3          prev_velocity = PxVec3(0);
-    inline static PxVec3          chassis_acceleration = PxVec3(0);
     inline static float           abs_phase = 0.0f;
     inline static bool            abs_active[wheel_count] = {};
     inline static float           tc_reduction = 0.0f;
@@ -291,16 +338,6 @@ namespace car
     {
         float Bx = B * slip;
         return D * sinf(C * atanf(Bx - E * (Bx - atanf(Bx))));
-    }
-    
-    inline float tire_force_lateral(float slip_angle)
-    {
-        return pacejka(slip_angle, tuning::lat_B, tuning::lat_C, tuning::lat_D, tuning::lat_E);
-    }
-    
-    inline float tire_force_longitudinal(float slip_ratio)
-    {
-        return pacejka(slip_ratio, tuning::long_B, tuning::long_C, tuning::long_D, tuning::long_E);
     }
     
     inline float load_sensitive_grip(float load)
@@ -396,14 +433,6 @@ namespace car
         return tuning::engine_peak_torque * factor;
     }
     
-    inline float engine_rpm_to_wheel_rpm(float eng_rpm, int gear)
-    {
-        if (gear < 0 || gear >= tuning::gear_count || gear == 1)
-            return 0.0f;
-        float ratio = tuning::gear_ratios[gear] * tuning::final_drive;
-        return (fabsf(ratio) < 0.001f) ? 0.0f : eng_rpm / fabsf(ratio);
-    }
-    
     inline float wheel_rpm_to_engine_rpm(float wheel_rpm, int gear)
     {
         if (gear < 0 || gear >= tuning::gear_count || gear == 1)
@@ -488,11 +517,14 @@ namespace car
         {
             bool can_shift = shift_cooldown <= 0.0f;
             
-            // upshift
+            // upshift - either by speed threshold OR by hitting redline (protects engine, helps with wheelspin)
             float upshift_threshold = get_upshift_speed(current_gear, throttle);
             if (last_shift_direction == -1) upshift_threshold += 10.0f;
             
-            if (can_shift && speed_kmh > upshift_threshold && current_gear < 8 && throttle > 0.1f)
+            bool speed_trigger = speed_kmh > upshift_threshold;
+            bool rpm_trigger = engine_rpm > tuning::shift_up_rpm; // upshift if hitting redline regardless of speed
+            
+            if (can_shift && (speed_trigger || rpm_trigger) && current_gear < 8 && throttle > 0.1f)
             {
                 current_gear++;
                 is_shifting = true;
@@ -544,10 +576,6 @@ namespace car
         static const char* names[] = { "R", "N", "1", "2", "3", "4", "5", "6", "7" };
         return (current_gear >= 0 && current_gear < tuning::gear_count) ? names[current_gear] : "?";
     }
-    
-    // these are kept for backwards compatibility, prefer the get_current_* versions below
-    inline int get_gear()       { return current_gear; }
-    inline float get_engine_rpm() { return engine_rpm; }
 
     inline void compute_constants()
     {
@@ -562,17 +590,17 @@ namespace car
         wheel_offsets[rear_left]   = PxVec3(-half_w, y, rear_z);
         wheel_offsets[rear_right]  = PxVec3( half_w, y, rear_z);
         
-        // per-axle sprung mass: 40% front, 60% rear, split per wheel
+        // suspension constants: 40% front, 60% rear weight distribution
         float axle_mass[2] = { cfg.mass * 0.40f * 0.5f, cfg.mass * 0.60f * 0.5f };
         float freq[2]      = { tuning::front_spring_freq, tuning::rear_spring_freq };
         
         for (int i = 0; i < wheel_count; i++)
         {
-            int axle      = is_front(i) ? 0 : 1;
-            float mass    = axle_mass[axle];
-            float omega   = 2.0f * PxPi * freq[axle];
-            wheel_moi[i]  = cfg.wheel_mass * cfg.wheel_radius * cfg.wheel_radius;
-            sprung_mass[i]      = mass;
+            int axle   = is_front(i) ? 0 : 1;
+            float mass = axle_mass[axle];
+            float omega = 2.0f * PxPi * freq[axle];
+            
+            wheel_moi[i]        = cfg.wheel_mass * cfg.wheel_radius * cfg.wheel_radius;
             spring_stiffness[i] = mass * omega * omega;
             spring_damping[i]   = 2.0f * tuning::damping_ratio * sqrtf(spring_stiffness[i] * mass);
         }
@@ -594,8 +622,6 @@ namespace car
         }
         input = input_state();
         input_target = input_state();
-        prev_velocity = PxVec3(0);
-        chassis_acceleration = PxVec3(0);
         abs_phase = 0.0f;
         tc_reduction = 0.0f;
         tc_active = false;
@@ -661,6 +687,169 @@ namespace car
         if (body)    { body->release();     body = nullptr; }
         if (material){ material->release(); material = nullptr; }
     }
+    
+    // removes all existing shapes from the chassis body
+    // call this before adding custom convex shapes
+    inline void clear_chassis_shapes()
+    {
+        if (!body)
+            return;
+            
+        PxU32 shape_count = body->getNbShapes();
+        if (shape_count == 0)
+            return;
+            
+        std::vector<PxShape*> shapes(shape_count);
+        body->getShapes(shapes.data(), shape_count);
+        
+        for (PxShape* shape : shapes)
+        {
+            body->detachShape(*shape);
+        }
+        
+        SP_LOG_INFO("cleared %u chassis shapes", shape_count);
+    }
+    
+    // attaches a convex shape to the chassis body with the given local transform
+    // returns true if successful
+    inline bool attach_chassis_convex_shape(PxConvexMesh* convex_mesh, const PxTransform& local_pose, PxPhysics* physics)
+    {
+        if (!body || !convex_mesh || !material || !physics)
+            return false;
+            
+        PxConvexMeshGeometry geometry(convex_mesh);
+        PxShape* shape = physics->createShape(geometry, *material);
+        if (!shape)
+            return false;
+            
+        shape->setLocalPose(local_pose);
+        shape->setFlag(PxShapeFlag::eSCENE_QUERY_SHAPE, false);
+        shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+        body->attachShape(*shape);
+        shape->release(); // body owns the shape now
+        
+        return true;
+    }
+    
+    // updates mass and inertia after changing chassis shapes
+    // applies center of mass offset from tuning parameters
+    inline void update_mass_properties()
+    {
+        if (!body)
+            return;
+        
+        // apply center of mass offset for realistic weight distribution
+        PxVec3 com(tuning::center_of_mass_x, tuning::center_of_mass_y, tuning::center_of_mass_z);
+        PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
+        
+        SP_LOG_INFO("car center of mass set to (%.2f, %.2f, %.2f)", com.x, com.y, com.z);
+    }
+    
+    // setters for center of mass (for runtime tweaking)
+    inline void set_center_of_mass(float x, float y, float z)
+    {
+        tuning::center_of_mass_x = x;
+        tuning::center_of_mass_y = y;
+        tuning::center_of_mass_z = z;
+        update_mass_properties();
+    }
+    
+    inline void set_center_of_mass_x(float x) { tuning::center_of_mass_x = x; update_mass_properties(); }
+    inline void set_center_of_mass_y(float y) { tuning::center_of_mass_y = y; update_mass_properties(); }
+    inline void set_center_of_mass_z(float z) { tuning::center_of_mass_z = z; update_mass_properties(); }
+    
+    inline float get_center_of_mass_x() { return tuning::center_of_mass_x; }
+    inline float get_center_of_mass_y() { return tuning::center_of_mass_y; }
+    inline float get_center_of_mass_z() { return tuning::center_of_mass_z; }
+    
+    // computes aerodynamic properties from a set of vertices (convex hull points)
+    // this should be called after building the chassis shape
+    inline void compute_aero_from_shape(const std::vector<PxVec3>& vertices)
+    {
+        if (vertices.size() < 4)
+            return;
+        
+        // find bounding box to get basic dimensions
+        PxVec3 min_pt(FLT_MAX, FLT_MAX, FLT_MAX);
+        PxVec3 max_pt(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+        
+        for (const PxVec3& v : vertices)
+        {
+            min_pt.x = PxMin(min_pt.x, v.x);
+            min_pt.y = PxMin(min_pt.y, v.y);
+            min_pt.z = PxMin(min_pt.z, v.z);
+            max_pt.x = PxMax(max_pt.x, v.x);
+            max_pt.y = PxMax(max_pt.y, v.y);
+            max_pt.z = PxMax(max_pt.z, v.z);
+        }
+        
+        float width  = max_pt.x - min_pt.x;  // x dimension
+        float height = max_pt.y - min_pt.y;  // y dimension  
+        float length = max_pt.z - min_pt.z;  // z dimension
+        
+        // frontal area approximation (looking from front, YZ plane)
+        // for a car shape, frontal area is roughly width * height * fill_factor
+        // typical car fill factor is 0.8-0.85 (not a perfect rectangle)
+        float frontal_fill_factor = 0.82f;
+        float computed_frontal_area = width * height * frontal_fill_factor;
+        
+        // side area approximation (looking from side, XY plane projected to length*height)
+        // for a car, side area is roughly length * height * fill_factor
+        float side_fill_factor = 0.75f; // cars have curved roofs, wheel wells, etc.
+        float computed_side_area = length * height * side_fill_factor;
+        
+        // estimate drag coefficient from shape proportions
+        // longer, lower cars are more aerodynamic
+        float length_height_ratio = length / PxMax(height, 0.1f);
+        float width_height_ratio  = width / PxMax(height, 0.1f);
+        
+        // base cd for a typical sports car is 0.30-0.35
+        // formula: lower and longer = better, taller and boxier = worse
+        float base_cd = 0.32f;
+        float ratio_factor = PxClamp(2.5f / length_height_ratio, 0.8f, 1.3f); // ideal ratio ~2.5
+        float computed_drag_coeff = base_cd * ratio_factor;
+        
+        // apply computed values (only if they're reasonable)
+        if (computed_frontal_area > 0.5f && computed_frontal_area < 10.0f)
+        {
+            tuning::frontal_area = computed_frontal_area;
+            SP_LOG_INFO("aero: computed frontal area = %.2f m²", computed_frontal_area);
+        }
+        
+        if (computed_side_area > 1.0f && computed_side_area < 20.0f)
+        {
+            tuning::side_area = computed_side_area;
+            SP_LOG_INFO("aero: computed side area = %.2f m²", computed_side_area);
+        }
+        
+        if (computed_drag_coeff > 0.2f && computed_drag_coeff < 0.6f)
+        {
+            tuning::drag_coeff = computed_drag_coeff;
+            SP_LOG_INFO("aero: computed drag coefficient = %.3f", computed_drag_coeff);
+        }
+        
+        SP_LOG_INFO("aero: shape dimensions: %.2f x %.2f x %.2f m (L x W x H)", length, width, height);
+    }
+    
+    // aero property getters
+    inline float get_frontal_area()   { return tuning::frontal_area; }
+    inline float get_side_area()      { return tuning::side_area; }
+    inline float get_drag_coeff()     { return tuning::drag_coeff; }
+    inline float get_lift_coeff_front() { return tuning::lift_coeff_front; }
+    inline float get_lift_coeff_rear()  { return tuning::lift_coeff_rear; }
+    
+    // aero property setters (for manual tuning)
+    inline void set_frontal_area(float area) { tuning::frontal_area = area; }
+    inline void set_side_area(float area)    { tuning::side_area = area; }
+    inline void set_drag_coeff(float cd)     { tuning::drag_coeff = cd; }
+    inline void set_lift_coeff_front(float cl) { tuning::lift_coeff_front = cl; }
+    inline void set_lift_coeff_rear(float cl)  { tuning::lift_coeff_rear = cl; }
+    
+    // ground effect settings
+    inline void set_ground_effect_enabled(bool enabled) { tuning::ground_effect_enabled = enabled; }
+    inline bool get_ground_effect_enabled() { return tuning::ground_effect_enabled; }
+    inline void set_ground_effect_multiplier(float mult) { tuning::ground_effect_multiplier = mult; }
+    inline float get_ground_effect_multiplier() { return tuning::ground_effect_multiplier; }
 
     inline void set_throttle(float v)  { input_target.throttle  = PxClamp(v, 0.0f, 1.0f); }
     inline void set_brake(float v)     { input_target.brake     = PxClamp(v, 0.0f, 1.0f); }
@@ -857,30 +1046,39 @@ namespace car
         }
     }
     
-    inline void update_chassis_acceleration(float dt)
-    {
-        PxVec3 vel = body->getLinearVelocity();
-        if (dt > 0.0f)
-            chassis_acceleration = (vel - prev_velocity) / dt;
-        prev_velocity = vel;
-    }
-    
     inline void apply_tire_forces(float wheel_angles[wheel_count], float dt)
     {
         PxTransform pose = body->getGlobalPose();
         PxVec3 chassis_fwd   = pose.q.rotate(PxVec3(0, 0, 1));
         PxVec3 chassis_right = pose.q.rotate(PxVec3(1, 0, 0));
         
+        static const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
+        
+        if (tuning::log_pacejka)
+            SP_LOG_INFO("=== tire forces: speed=%.1f m/s ===", body->getLinearVelocity().magnitude());
+        
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
+            const char* wheel_name = wheel_names[i];
             
             // airborne wheel
             if (!w.grounded || w.tire_load <= 0.0f)
             {
+                if (tuning::log_pacejka)
+                    SP_LOG_INFO("[%s] airborne: grounded=%d, tire_load=%.1f", wheel_name, w.grounded, w.tire_load);
                 w.slip_angle = w.slip_ratio = w.lateral_force = w.longitudinal_force = 0.0f;
-                w.angular_velocity = (is_rear(i) && input.handbrake > tuning::input_deadzone)
-                    ? 0.0f : w.angular_velocity * tuning::airborne_wheel_decay;
+                
+                // even when airborne, keep wheels roughly matching car velocity to prevent disconnect
+                // this prevents wheel speed from diverging wildly when car briefly leaves ground
+                PxVec3 vel = body->getLinearVelocity();
+                float car_fwd_speed = vel.dot(chassis_fwd);
+                float target_w = car_fwd_speed / cfg.wheel_radius;
+                
+                if (input.handbrake > tuning::input_deadzone && is_rear(i))
+                    w.angular_velocity = 0.0f;
+                else
+                    w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(5.0f, dt));
                 
                 float temp_above = w.temperature - tuning::tire_ambient_temp;
                 if (temp_above > 0.0f)
@@ -892,57 +1090,125 @@ namespace car
             
             // velocities
             PxVec3 world_pos = pose.transform(wheel_offsets[i]);
-            PxVec3 vel = body->getLinearVelocity() + body->getAngularVelocity().cross(world_pos - pose.p);
-            vel -= w.contact_normal * vel.dot(w.contact_normal);
+            PxVec3 wheel_vel = body->getLinearVelocity() + body->getAngularVelocity().cross(world_pos - pose.p);
+            wheel_vel -= w.contact_normal * wheel_vel.dot(w.contact_normal);
             
             float cs = cosf(wheel_angles[i]), sn = sinf(wheel_angles[i]);
             PxVec3 wheel_fwd = chassis_fwd * cs + chassis_right * sn;
             PxVec3 wheel_lat = chassis_right * cs - chassis_fwd * sn;
             
-            float vx = vel.dot(wheel_fwd);
-            float vy = vel.dot(wheel_lat);
+            float vx = wheel_vel.dot(wheel_fwd);
+            float vy = wheel_vel.dot(wheel_lat);
             float wheel_speed  = w.angular_velocity * cfg.wheel_radius;
             float ground_speed = sqrtf(vx * vx + vy * vy);
             float max_v = PxMax(fabsf(wheel_speed), fabsf(vx));
             
-            // combine all grip factors: base friction, load sensitivity, temperature, camber, surface
-            float base_grip = tuning::tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f));
-            float temp_factor = get_tire_temp_grip_factor(w.temperature);
+            if (tuning::log_pacejka)
+                SP_LOG_INFO("[%s] vx=%.3f, vy=%.3f, ws=%.3f", wheel_name, vx, vy, wheel_speed);
+            
+            // compute peak grip from all factors
+            float base_grip     = tuning::tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f));
+            float temp_factor   = get_tire_temp_grip_factor(w.temperature);
             float camber_factor = get_camber_grip_factor(i, w.slip_angle);
             float surface_factor = get_surface_friction(w.contact_surface);
-            float peak_force = base_grip * temp_factor * camber_factor * surface_factor;
+            float peak_force    = base_grip * temp_factor * camber_factor * surface_factor;
+            
+            if (tuning::log_pacejka)
+                SP_LOG_INFO("[%s] load=%.0f, peak_force=%.0f", wheel_name, w.tire_load, peak_force);
             
             // tire forces
             float lat_f = 0.0f, long_f = 0.0f;
             
+            // rest state: when both ground and wheel are nearly stopped, apply static friction
+            // this prevents oscillation while still stopping any residual slide
+            bool at_rest = ground_speed < 0.1f && fabsf(wheel_speed) < 0.2f;
+            if (at_rest)
+            {
+                w.slip_ratio = w.slip_angle = 0.0f;
+                w.angular_velocity = lerp(w.angular_velocity, 0.0f, exp_decay(20.0f, dt));
+                w.rotation += w.angular_velocity * dt;
+                
+                // apply static friction to stop residual sliding
+                // high gain needed: 1500kg car at 0.04m/s needs ~600N to stop in 0.1s
+                float friction_force = peak_force * 0.8f;
+                float friction_gain = cfg.mass * 10.0f; // aggressive braking
+                lat_f  = PxClamp(-vy * friction_gain, -friction_force, friction_force);
+                long_f = PxClamp(-vx * friction_gain, -friction_force, friction_force);
+                w.lateral_force = lat_f;
+                w.longitudinal_force = long_f;
+                PxRigidBodyExt::addForceAtPos(*body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos, PxForceMode::eFORCE);
+                
+                if (tuning::log_pacejka)
+                    SP_LOG_INFO("[%s] at rest: vx=%.3f, vy=%.3f, friction long_f=%.1f, lat_f=%.1f", wheel_name, vx, vy, long_f, lat_f);
+                continue;
+            }
+            
             if (max_v > tuning::min_slip_speed)
             {
+                // calculate slip values with relaxation
                 float raw_slip_ratio = PxClamp((wheel_speed - vx) / max_v, -1.0f, 1.0f);
                 float raw_slip_angle = atan2f(vy, fabsf(vx));
-                
                 float blend = exp_decay(ground_speed / tuning::tire_relaxation_length, dt);
                 w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, blend);
                 w.slip_angle = lerp(w.slip_angle, raw_slip_angle, blend);
                 
-                // combined slip via normalized stiffness
-                float norm_lat  = w.slip_angle * tuning::lat_B;
+                if (tuning::log_pacejka)
+                    SP_LOG_INFO("[%s] slip: sr=%.4f, sa=%.4f", wheel_name, w.slip_ratio, w.slip_angle);
+                
+                // soft deadband on slip angle to prevent high-speed drift from tiny perturbations
+                float effective_slip_angle = w.slip_angle;
+                if (fabsf(effective_slip_angle) < tuning::slip_angle_deadband)
+                {
+                    float factor = fabsf(effective_slip_angle) / tuning::slip_angle_deadband;
+                    effective_slip_angle *= factor * factor;
+                }
+                
+                // combined slip model
+                float norm_lat  = effective_slip_angle * tuning::lat_B;
                 float norm_long = w.slip_ratio * tuning::long_B;
                 float combined  = sqrtf(norm_lat * norm_lat + norm_long * norm_long);
                 
                 if (combined > 0.001f)
                 {
-                    float force_mag = pacejka(combined / tuning::lat_B, tuning::lat_B, tuning::lat_C, tuning::lat_D, tuning::lat_E) * peak_force;
-                    lat_f  = -force_mag * (norm_lat / combined);
-                    long_f =  force_mag * (norm_long / combined);
+                    float pacejka_output = pacejka(combined / tuning::lat_B, tuning::lat_B, tuning::lat_C, tuning::lat_D, tuning::lat_E);
+                    float force_mag = pacejka_output * peak_force;
+                    
+                    // force distribution with minimum lateral grip preservation
+                    float lat_fraction  = fabsf(norm_lat) / combined;
+                    float long_fraction = fabsf(norm_long) / combined;
+                    
+                    // ensure minimum lateral grip during high wheelspin
+                    if (lat_fraction < tuning::min_lateral_grip && fabsf(effective_slip_angle) > 0.001f)
+                    {
+                        float boost = tuning::min_lateral_grip - lat_fraction;
+                        lat_fraction = tuning::min_lateral_grip;
+                        long_fraction = PxMax(0.0f, long_fraction - boost);
+                        
+                        // renormalize to stay within friction circle
+                        float total = sqrtf(lat_fraction * lat_fraction + long_fraction * long_fraction);
+                        if (total > 1.0f) { lat_fraction /= total; long_fraction /= total; }
+                    }
+                    
+                    lat_f  = -force_mag * lat_fraction * (norm_lat > 0.0f ? 1.0f : -1.0f);
+                    long_f =  force_mag * long_fraction * (norm_long > 0.0f ? 1.0f : -1.0f);
                     if (is_rear(i)) lat_f *= tuning::rear_grip_ratio;
+                    
+                    if (tuning::log_pacejka)
+                        SP_LOG_INFO("[%s] pacejka: force_mag=%.1f, lat_f=%.1f, long_f=%.1f", wheel_name, force_mag, lat_f, long_f);
                 }
             }
             else
             {
-                // low speed linear model
+                // low speed: use damped linear model instead of pacejka
+                // scale forces down as speed approaches zero to prevent oscillation
                 w.slip_ratio = w.slip_angle = 0.0f;
-                long_f = PxClamp((wheel_speed - vx) / tuning::min_slip_speed, -1.0f, 1.0f) * peak_force;
-                lat_f  = PxClamp(-vy / tuning::min_slip_speed, -1.0f, 1.0f) * peak_force;
+                float speed_factor = PxClamp(max_v / tuning::min_slip_speed, 0.0f, 1.0f);
+                float low_speed_force = peak_force * speed_factor * 0.3f; // reduce max force at low speed
+                long_f = PxClamp((wheel_speed - vx) / tuning::min_slip_speed, -1.0f, 1.0f) * low_speed_force;
+                lat_f  = PxClamp(-vy / tuning::min_slip_speed, -1.0f, 1.0f) * low_speed_force;
+                
+                if (tuning::log_pacejka)
+                    SP_LOG_INFO("[%s] low-speed: max_v=%.3f, speed_factor=%.2f, long_f=%.1f, lat_f=%.1f", wheel_name, max_v, speed_factor, long_f, lat_f);
             }
             
             // tire temperature
@@ -973,25 +1239,36 @@ namespace car
             
             PxRigidBodyExt::addForceAtPos(*body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos, PxForceMode::eFORCE);
             
-            // wheel rotation
+            // wheel rotation update
             if (is_rear(i) && input.handbrake > tuning::input_deadzone)
             {
                 w.angular_velocity = 0.0f;
             }
             else
             {
-                float target_w = vx / cfg.wheel_radius;
+                // apply reaction torque from tire force
                 w.angular_velocity += (-long_f * cfg.wheel_radius / wheel_moi[i]) * dt;
                 
-                float match_rate = (ground_speed < tuning::min_slip_speed) ? tuning::ground_match_rate * 2.0f : tuning::ground_match_rate;
+                // match wheel speed to ground when coasting or at low speed
                 bool coasting = input.throttle < 0.01f && input.brake < 0.01f;
                 if (coasting || is_front(i) || ground_speed < tuning::min_slip_speed)
+                {
+                    float target_w = vx / cfg.wheel_radius;
+                    // when coasting, match ground speed very quickly to prevent drivetrain disconnect
+                    // use near-instant matching for coasting rear wheels to maintain engine braking feel
+                    float match_rate = coasting ? 50.0f : ((ground_speed < tuning::min_slip_speed) ? tuning::ground_match_rate * 2.0f : tuning::ground_match_rate);
                     w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(match_rate, dt));
+                }
                 
                 w.angular_velocity *= (1.0f - tuning::bearing_friction * dt);
             }
             w.rotation += w.angular_velocity * dt;
+            
+            if (tuning::log_pacejka)
+                SP_LOG_INFO("[%s] ang_vel=%.4f, lat_f=%.1f, long_f=%.1f", wheel_name, w.angular_velocity, lat_f, long_f);
         }
+        if (tuning::log_pacejka)
+            SP_LOG_INFO("=== pacejka tick end ===\n");
     }
     
     inline void apply_self_aligning_torque()
@@ -1009,14 +1286,23 @@ namespace car
     {
         float w_left  = wheels[rear_left].angular_velocity;
         float w_right = wheels[rear_right].angular_velocity;
-        float delta_w = w_right - w_left;
+        float delta_w = w_left - w_right;  // positive when left is spinning faster
         
         float lock_ratio = (total_torque >= 0.0f) ? tuning::lsd_lock_ratio_accel : tuning::lsd_lock_ratio_decel;
-        float lock_torque = PxMin(tuning::lsd_preload + fabsf(delta_w) * lock_ratio * fabsf(total_torque), fabsf(total_torque) * 0.5f);
         
-        float bias = (delta_w > 0.0f) ? -1.0f : 1.0f;
-        wheels[rear_left].angular_velocity  += (total_torque * 0.5f + bias * lock_torque * 0.5f) / wheel_moi[rear_left] * dt;
-        wheels[rear_right].angular_velocity += (total_torque * 0.5f - bias * lock_torque * 0.5f) / wheel_moi[rear_right] * dt;
+        // lsd lock torque: preload + speed-sensitive + torque-sensitive
+        // this torque biases power away from the spinning wheel toward the slower wheel
+        float lock_torque = tuning::lsd_preload + fabsf(delta_w) * lock_ratio * fabsf(total_torque);
+        lock_torque = PxMin(lock_torque, fabsf(total_torque) * 0.9f);  // allow up to 90% lock
+        
+        // bias torque: when left is faster (delta_w > 0), send less to left, more to right
+        // this is done by subtracting lock_torque from the fast side and adding to the slow side
+        float left_bias  = (delta_w > 0.0f) ? -lock_torque : lock_torque;
+        float right_bias = (delta_w > 0.0f) ? lock_torque : -lock_torque;
+        
+        // apply base torque (50/50) plus bias
+        wheels[rear_left].angular_velocity  += (total_torque * 0.5f + left_bias * 0.5f) / wheel_moi[rear_left] * dt;
+        wheels[rear_right].angular_velocity += (total_torque * 0.5f + right_bias * 0.5f) / wheel_moi[rear_right] * dt;
     }
     
     inline void apply_drivetrain(float forward_speed_kmh, float dt)
@@ -1028,6 +1314,15 @@ namespace car
         // engine rpm from wheel speed
         float avg_wheel_rpm = (wheels[rear_left].angular_velocity + wheels[rear_right].angular_velocity) * 0.5f * 60.0f / (2.0f * PxPi);
         float wheel_driven_rpm = wheel_rpm_to_engine_rpm(fabsf(avg_wheel_rpm), current_gear);
+        
+        // when coasting, use ground speed to drive engine rpm (prevents feedback loop when wheel speed diverges)
+        bool coasting = input.throttle < tuning::input_deadzone && input.brake < tuning::input_deadzone;
+        if (coasting && current_gear >= 2)
+        {
+            float ground_wheel_rpm = fabsf(forward_speed_ms) / cfg.wheel_radius * 60.0f / (2.0f * PxPi);
+            float ground_driven_rpm = wheel_rpm_to_engine_rpm(ground_wheel_rpm, current_gear);
+            wheel_driven_rpm = PxMax(wheel_driven_rpm, ground_driven_rpm);
+        }
         
         // clutch logic
         if (is_shifting)                                          clutch = 0.2f;
@@ -1178,11 +1473,28 @@ namespace car
                 abs_active[i] = false;
         }
         
-        // handbrake
+        // handbrake - only lock wheels if explicitly requested
         if (input.handbrake > tuning::input_deadzone)
         {
             wheels[rear_left].angular_velocity = 0.0f;
             wheels[rear_right].angular_velocity = 0.0f;
+        }
+        
+        // safety: ensure wheels don't diverge too far from ground speed when coasting
+        // this prevents drivetrain disconnect bugs
+        if (input.throttle < tuning::input_deadzone && input.brake < tuning::input_deadzone && input.handbrake < tuning::input_deadzone)
+        {
+            float ground_angular_v = fabsf(forward_speed_ms) / cfg.wheel_radius;
+            for (int i = rear_left; i <= rear_right; i++)
+            {
+                float wheel_v = fabsf(wheels[i].angular_velocity);
+                // if wheel is more than 50% off from ground speed, force correction
+                if (ground_angular_v > 1.0f && (wheel_v < ground_angular_v * 0.5f || wheel_v > ground_angular_v * 1.5f))
+                {
+                    float sign = (forward_speed_ms >= 0.0f) ? 1.0f : -1.0f;
+                    wheels[i].angular_velocity = sign * ground_angular_v;
+                }
+            }
         }
     }
     
@@ -1192,29 +1504,164 @@ namespace car
         PxVec3 vel = body->getLinearVelocity();
         float speed = vel.magnitude();
         
-        // drag
-        if (speed > 1.0f)
-            body->addForce(-vel.getNormalized() * 0.5f * tuning::air_density * tuning::drag_coeff * tuning::frontal_area * speed * speed, PxForceMode::eFORCE);
+        // compute aero application points (front and rear of car, elevated for visibility)
+        // front: at front bumper, above hood level
+        // rear: at rear bumper, above trunk/wing level
+        float aero_height = cfg.suspension_height + 0.3f; // above the body
+        PxVec3 front_pos = pose.p + pose.q.rotate(PxVec3(0, aero_height, cfg.length * 0.5f));
+        PxVec3 rear_pos  = pose.p + pose.q.rotate(PxVec3(0, aero_height, -cfg.length * 0.5f));
         
-        // downforce
-        if (speed > 10.0f)
+        // reset debug data - always set positions so we can visualize even when stationary
+        aero_debug.valid = false;
+        aero_debug.position = pose.p;
+        aero_debug.velocity = vel;
+        aero_debug.front_aero_pos = front_pos;
+        aero_debug.rear_aero_pos = rear_pos;
+        aero_debug.ride_height = cfg.suspension_height + cfg.wheel_radius; // default ride height
+        aero_debug.ground_effect_factor = 1.0f;
+        aero_debug.yaw_angle = 0.0f;
+        aero_debug.drag_force = PxVec3(0);
+        aero_debug.front_downforce = PxVec3(0);
+        aero_debug.rear_downforce = PxVec3(0);
+        aero_debug.side_force = PxVec3(0);
+        
+        if (speed < 0.5f)
         {
-            float dyn_pressure = 0.5f * tuning::air_density * speed * speed * tuning::frontal_area;
-            PxVec3 local_up = pose.q.rotate(PxVec3(0, 1, 0));
-            PxVec3 front_pos = pose.p + pose.q.rotate(PxVec3(0, tuning::downforce_center_height, cfg.length * 0.35f));
-            PxVec3 rear_pos  = pose.p + pose.q.rotate(PxVec3(0, tuning::downforce_center_height, -cfg.length * 0.35f));
-            
-            PxRigidBodyExt::addForceAtPos(*body, local_up * tuning::lift_coeff_front * dyn_pressure, front_pos, PxForceMode::eFORCE);
-            PxRigidBodyExt::addForceAtPos(*body, local_up * tuning::lift_coeff_rear * dyn_pressure, rear_pos, PxForceMode::eFORCE);
+            // only rolling resistance at very low speed
+            float tire_load = 0.0f;
+            for (int i = 0; i < wheel_count; i++)
+                if (wheels[i].grounded) tire_load += wheels[i].tire_load;
+            if (speed > 0.1f && tire_load > 0.0f)
+                body->addForce(-vel.getNormalized() * tuning::rolling_resistance * tire_load, PxForceMode::eFORCE);
+            aero_debug.valid = true; // mark valid so we see the aero points at least
+            return;
         }
         
-        // rolling resistance
+        // local coordinate system
+        PxVec3 local_fwd   = pose.q.rotate(PxVec3(0, 0, 1));
+        PxVec3 local_up    = pose.q.rotate(PxVec3(0, 1, 0));
+        PxVec3 local_right = pose.q.rotate(PxVec3(1, 0, 0));
+        
+        // decompose velocity into forward and lateral components
+        float forward_speed = vel.dot(local_fwd);
+        float lateral_speed = vel.dot(local_right);
+        
+        // yaw angle - angle between velocity and car forward direction
+        float yaw_angle = 0.0f;
+        if (speed > 1.0f)
+        {
+            PxVec3 vel_norm = vel.getNormalized();
+            float cos_yaw = PxClamp(vel_norm.dot(local_fwd), -1.0f, 1.0f);
+            yaw_angle = acosf(fabsf(cos_yaw)); // 0 = straight, pi/2 = sideways
+        }
+        
+        // pitch angle from suspension compression (positive = nose up)
+        float front_compression = (wheels[front_left].compression + wheels[front_right].compression) * 0.5f;
+        float rear_compression  = (wheels[rear_left].compression + wheels[rear_right].compression) * 0.5f;
+        float pitch_angle = (rear_compression - front_compression) * cfg.suspension_travel / (cfg.length * 0.7f);
+        
+        // ride height from average suspension compression (lower = more ground effect)
+        float avg_compression = (front_compression + rear_compression) * 0.5f;
+        float ride_height = cfg.suspension_height - avg_compression * cfg.suspension_travel + cfg.wheel_radius;
+        
+        // === DRAG ===
+        float base_drag = 0.5f * tuning::air_density * tuning::drag_coeff * tuning::frontal_area * speed * speed;
+        
+        // yaw increases drag significantly (car is less aerodynamic when sideways)
+        float yaw_drag_factor = 1.0f;
+        if (tuning::yaw_aero_enabled && yaw_angle > 0.01f)
+        {
+            // interpolate between frontal drag and side drag based on yaw
+            float yaw_factor = sinf(yaw_angle); // 0 at straight, 1 at 90°
+            float side_drag = 0.5f * tuning::air_density * tuning::drag_coeff * tuning::yaw_drag_multiplier * tuning::side_area * speed * speed;
+            yaw_drag_factor = 1.0f + yaw_factor * (tuning::yaw_drag_multiplier - 1.0f);
+        }
+        
+        // apply drag opposite to velocity direction
+        PxVec3 drag_force_vec = -vel.getNormalized() * base_drag * yaw_drag_factor;
+        body->addForce(drag_force_vec, PxForceMode::eFORCE);
+        
+        // === SIDE FORCE (crosswind/yaw) ===
+        PxVec3 side_force_vec(0);
+        if (tuning::yaw_aero_enabled && fabsf(lateral_speed) > 1.0f)
+        {
+            // side force pushes car laterally when yawed
+            float side_force = 0.5f * tuning::air_density * tuning::yaw_side_force_coeff * tuning::side_area * lateral_speed * fabsf(lateral_speed);
+            side_force_vec = -local_right * side_force;
+            body->addForce(side_force_vec, PxForceMode::eFORCE);
+        }
+        
+        // === DOWNFORCE ===
+        PxVec3 front_downforce_vec(0);
+        PxVec3 rear_downforce_vec(0);
+        float ground_effect_factor = 1.0f;
+        
+        if (speed > 10.0f)
+        {
+            float dyn_pressure = 0.5f * tuning::air_density * speed * speed;
+            
+            // base front/rear downforce coefficients
+            float front_cl = tuning::lift_coeff_front;
+            float rear_cl  = tuning::lift_coeff_rear;
+            
+            // ground effect - increases downforce at lower ride heights
+            if (tuning::ground_effect_enabled)
+            {
+                if (ride_height < tuning::ground_effect_height_max)
+                {
+                    // exponential increase in downforce as height decreases
+                    float height_ratio = PxClamp((tuning::ground_effect_height_max - ride_height) / 
+                                                 (tuning::ground_effect_height_max - tuning::ground_effect_height_ref), 0.0f, 1.0f);
+                    ground_effect_factor = 1.0f + height_ratio * (tuning::ground_effect_multiplier - 1.0f);
+                }
+            }
+            
+            // pitch affects front/rear balance
+            if (tuning::pitch_aero_enabled)
+            {
+                // nose up = more rear downforce, nose down = more front downforce
+                float pitch_shift = pitch_angle * tuning::pitch_sensitivity;
+                front_cl *= (1.0f - pitch_shift);
+                rear_cl  *= (1.0f + pitch_shift);
+            }
+            
+            // yaw reduces overall downforce efficiency
+            float yaw_downforce_factor = 1.0f;
+            if (tuning::yaw_aero_enabled && yaw_angle > 0.1f)
+            {
+                yaw_downforce_factor = PxMax(0.3f, 1.0f - sinf(yaw_angle) * 0.7f);
+            }
+            
+            // apply downforce at front and rear aero centers
+            float front_downforce = front_cl * dyn_pressure * tuning::frontal_area * ground_effect_factor * yaw_downforce_factor;
+            float rear_downforce  = rear_cl  * dyn_pressure * tuning::frontal_area * ground_effect_factor * yaw_downforce_factor;
+            
+            front_downforce_vec = local_up * front_downforce;
+            rear_downforce_vec  = local_up * rear_downforce;
+            
+            PxRigidBodyExt::addForceAtPos(*body, front_downforce_vec, front_pos, PxForceMode::eFORCE);
+            PxRigidBodyExt::addForceAtPos(*body, rear_downforce_vec, rear_pos, PxForceMode::eFORCE);
+        }
+        
+        // === ROLLING RESISTANCE ===
         float tire_load = 0.0f;
         for (int i = 0; i < wheel_count; i++)
             if (wheels[i].grounded) tire_load += wheels[i].tire_load;
         
-        if (speed > 0.1f && tire_load > 0.0f)
+        if (tire_load > 0.0f)
             body->addForce(-vel.getNormalized() * tuning::rolling_resistance * tire_load, PxForceMode::eFORCE);
+        
+        // store debug data for visualization
+        aero_debug.drag_force = drag_force_vec;
+        aero_debug.front_downforce = front_downforce_vec;
+        aero_debug.rear_downforce = rear_downforce_vec;
+        aero_debug.side_force = side_force_vec;
+        aero_debug.front_aero_pos = front_pos;
+        aero_debug.rear_aero_pos = rear_pos;
+        aero_debug.ride_height = ride_height;
+        aero_debug.yaw_angle = yaw_angle;
+        aero_debug.ground_effect_factor = ground_effect_factor;
+        aero_debug.valid = true;
     }
     
     inline void calculate_steering(float forward_speed, float speed_kmh, float out_angles[wheel_count])
@@ -1293,8 +1740,6 @@ namespace car
             }
         }
         
-        update_chassis_acceleration(dt);
-        
         float wheel_angles[wheel_count];
         calculate_steering(forward_speed, speed_kmh, wheel_angles);
         
@@ -1306,6 +1751,47 @@ namespace car
         apply_aero_and_resistance();
         
         body->addForce(PxVec3(0, -9.81f * cfg.mass, 0), PxForceMode::eFORCE);
+        
+        // final safety: ensure rear wheels match ground speed when coasting
+        // this runs AFTER all other wheel modifications to guarantee correct behavior
+        // unconditional check - if wheel speed is drastically wrong, fix it
+        float ground_angular_v = fabsf(forward_speed) / cfg.wheel_radius;
+        if (ground_angular_v > 5.0f && input.handbrake < tuning::input_deadzone)
+        {
+            float sign = (forward_speed >= 0.0f) ? 1.0f : -1.0f;
+            for (int i = rear_left; i <= rear_right; i++)
+            {
+                float wheel_v = fabsf(wheels[i].angular_velocity);
+                // if wheel is more than 30% off from ground speed, force correction
+                if (wheel_v < ground_angular_v * 0.3f || wheel_v > ground_angular_v * 1.5f)
+                    wheels[i].angular_velocity = sign * ground_angular_v;
+            }
+        }
+        
+        // telemetry logging
+        if (tuning::log_telemetry)
+        {
+            float g_long = vel.dot(fwd) / 9.81f;          // longitudinal g (accel/brake)
+            float g_lat = vel.dot(pose.q.rotate(PxVec3(1,0,0))) / 9.81f; // lateral g
+            
+            // calculate actual g from acceleration (change in velocity)
+            static PxVec3 prev_vel = PxVec3(0);
+            PxVec3 accel = (vel - prev_vel) / dt;
+            prev_vel = vel;
+            float accel_g = accel.dot(fwd) / 9.81f;
+            
+            // gearing telemetry: rpm, speed, gear, wheel angular velocity
+            float avg_wheel_w = (wheels[rear_left].angular_velocity + wheels[rear_right].angular_velocity) * 0.5f;
+            float wheel_surface_speed = avg_wheel_w * cfg.wheel_radius * 3.6f; // km/h
+            
+            SP_LOG_INFO("gearing: rpm=%.0f, speed=%.0f km/h, gear=%s%s, wheel_speed=%.0f km/h, throttle=%.0f%%",
+                engine_rpm,
+                speed_kmh,
+                get_gear_string(),
+                is_shifting ? "(shifting)" : "",
+                wheel_surface_speed,
+                input.throttle * 100.0f);
+        }
     }
 
     // accessors
@@ -1399,9 +1885,11 @@ namespace car
         begin_shift(0);
     }
     
-    // aliases for get_gear() and get_engine_rpm()
+    // drivetrain state
+    inline int         get_gear()                  { return current_gear; }
     inline int         get_current_gear()          { return current_gear; }
     inline const char* get_current_gear_string()   { return get_gear_string(); }
+    inline float       get_engine_rpm()            { return engine_rpm; }
     inline float       get_current_engine_rpm()    { return engine_rpm; }
     inline bool        get_is_shifting()           { return is_shifting; }
     inline float       get_clutch()                { return clutch; }
@@ -1462,6 +1950,13 @@ namespace car
     inline bool get_draw_raycasts()               { return tuning::draw_raycasts; }
     inline void set_draw_suspension(bool enabled) { tuning::draw_suspension = enabled; }
     inline bool get_draw_suspension()             { return tuning::draw_suspension; }
+    inline void set_draw_aero(bool enabled)       { tuning::draw_aero = enabled; }
+    inline bool get_draw_aero()                   { return tuning::draw_aero; }
+    inline void set_log_pacejka(bool enabled)     { tuning::log_pacejka = enabled; }
+    inline bool get_log_pacejka()                 { return tuning::log_pacejka; }
+    
+    // get aerodynamic debug data for visualization
+    inline const aero_debug_data& get_aero_debug() { return aero_debug; }
     
     inline void get_debug_ray(int wheel, int ray, PxVec3& origin, PxVec3& hit_point, bool& hit)
     {

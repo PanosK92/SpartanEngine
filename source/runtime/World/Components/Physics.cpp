@@ -82,6 +82,35 @@ namespace spartan
             if (rotation_lock.z) flags |= PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z;
             return flags;
         }
+
+        // transform conversion helpers
+        PxTransform to_px_transform(const Vector3& pos, const Quaternion& rot)
+        {
+            return PxTransform(PxVec3(pos.x, pos.y, pos.z), PxQuat(rot.x, rot.y, rot.z, rot.w));
+        }
+
+        PxTransform to_px_transform(const math::Matrix& matrix)
+        {
+            Vector3 pos = matrix.GetTranslation();
+            Quaternion rot = matrix.GetRotation();
+            return PxTransform(PxVec3(pos.x, pos.y, pos.z), PxQuat(rot.x, rot.y, rot.z, rot.w));
+        }
+
+        void from_px_transform(const PxTransform& pose, Vector3& pos, Quaternion& rot)
+        {
+            pos = Vector3(pose.p.x, pose.p.y, pose.p.z);
+            rot = Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
+        }
+
+        Vector3 from_px_vec3(const PxVec3& v)
+        {
+            return Vector3(v.x, v.y, v.z);
+        }
+
+        PxVec3 to_px_vec3(const Vector3& v)
+        {
+            return PxVec3(v.x, v.y, v.z);
+        }
     }
 
     Physics::Physics(Entity* entity) : Component(entity)
@@ -125,19 +154,14 @@ namespace spartan
 
     void Physics::Remove()
     {
+        // release controller if it exists
         if (m_controller)
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
-            
-            // release the material that was created for this controller
-            if (m_material)
-            {
-                static_cast<PxMaterial*>(m_material)->release();
-                m_material = nullptr;
-            }
         }
 
+        // release all actors
         for (auto* body : m_actors)
         {
             if (body)
@@ -150,235 +174,298 @@ namespace spartan
         m_actors.clear();
         m_actors_active.clear();
 
-        if (PxMaterial* material = static_cast<PxMaterial*>(m_material))
+        // release material (shared by both controller and regular bodies)
+        if (m_material)
         {
-            material->release();
+            static_cast<PxMaterial*>(m_material)->release();
             m_material = nullptr;
+        }
+    }
+
+    void Physics::PreTick()
+    {
+        // deferred creation after loading (renderable component needs to be available first)
+        if (m_needs_creation)
+        {
+            m_needs_creation = false;
+            Create();
+        }
+
+        // sync physics transforms to entities before other components (like camera) tick
+        // this ensures child entities have up-to-date parent transforms when they compute matrices
+        const bool is_playing  = Engine::IsFlagSet(EngineMode::Playing);
+        const float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
+
+        switch (m_body_type)
+        {
+            case BodyType::Controller:
+                TickController(is_playing, delta_time);
+                break;
+
+            case BodyType::Vehicle:
+                TickVehicle(is_playing, delta_time);
+                break;
+
+            default:
+                if (!m_is_static)
+                {
+                    TickDynamicBodies(is_playing);
+                }
+                break;
         }
     }
 
     void Physics::Tick()
     {
-        // map transform from physx to engine and vice versa
-        if (m_body_type == BodyType::Controller)
+        // distance-based activation/deactivation for static actors
+        if (m_body_type != BodyType::Controller && m_is_static)
         {
-            if (Engine::IsFlagSet(EngineMode::Playing))
+            TickDistanceActivation();
+        }
+    }
+
+    void Physics::TickController(bool is_playing, float delta_time)
+    {
+        if (!m_controller)
+            return;
+
+        PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
+
+        if (is_playing)
+        {
+            // apply gravity
+            m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
+            
+            // move controller
+            PxControllerFilters filters;
+            filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
+            PxControllerCollisionFlags collision_flags = controller->move(PxVec3(0.0f, m_velocity.y * delta_time, 0.0f), 0.001f, delta_time, filters);
+            
+            // reset vertical velocity on ground collision
+            if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
             {
-                // compute gravitational acceleration
-                float delta_time  = static_cast<float>(Timer::GetDeltaTimeSec());
-                m_velocity.y     += PhysicsWorld::GetGravity().y * delta_time;
-                PxVec3 displacement(0.0f, m_velocity.y * delta_time, 0.0f);
-
-                // if there is a collision below, zero out the vertical velocity
-                PxControllerFilters filters;
-                filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-                PxControllerCollisionFlags collision_flags = static_cast<PxCapsuleController*>(m_controller)->move(displacement, 0.001f, delta_time, filters);
-                if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
-                {
-                    m_velocity.y = 0.0f;
-                }
-
-                // set new position to entity
-                PxExtendedVec3 pos_ext = static_cast<PxCapsuleController*>(m_controller)->getPosition();
-                Vector3 pos_previous   = GetEntity()->GetPosition();
-                Vector3 pos            = Vector3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
-                GetEntity()->SetPosition(pos);
-
-                // compute velocity for xz
-                if (delta_time > 0.0f)
-                {
-                    m_velocity.x = (pos.x - pos_previous.x) / delta_time;
-                    m_velocity.z = (pos.z - pos_previous.z) / delta_time;
-                }
+                m_velocity.y = 0.0f;
             }
-            else
+
+            // sync physx -> entity position and compute xz velocity
+            PxExtendedVec3 pos_ext   = controller->getPosition();
+            Vector3 pos_previous     = GetEntity()->GetPosition();
+            Vector3 pos              = Vector3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
+            GetEntity()->SetPosition(pos);
+
+            if (delta_time > 0.0f)
             {
-                Vector3 entity_pos = GetEntity()->GetPosition();
-                static_cast<PxCapsuleController*>(m_controller)->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
-                m_velocity = Vector3::Zero;
+                m_velocity.x = (pos.x - pos_previous.x) / delta_time;
+                m_velocity.z = (pos.z - pos_previous.z) / delta_time;
             }
         }
-        else if (m_body_type == BodyType::Vehicle)
+        else
         {
-            if (Engine::IsFlagSet(EngineMode::Playing))
-            {
-                // sync wheel offsets from entity positions once at start of play
-                if (!m_wheel_offsets_synced)
-                {
-                    SyncWheelOffsetsFromEntities();
-                    m_wheel_offsets_synced = true;
-                }
-                
-                // update vehicle physics (input is set externally via vehicle::set_throttle/brake/steering)
-                float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
-                car::tick(delta_time);
-                
-                // sync physx -> entity
-                if (!m_actors.empty() && m_actors[0])
-                {
-                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
-                    PxTransform pose = actor->getGlobalPose();
-                    GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-                    GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                }
+            // editor mode: sync entity -> physx
+            Vector3 entity_pos = GetEntity()->GetPosition();
+            controller->setPosition(PxExtendedVec3(entity_pos.x, entity_pos.y, entity_pos.z));
+            m_velocity = Vector3::Zero;
+        }
+    }
 
-                // update wheel entity transforms (spin and steering)
-                UpdateWheelTransforms();
-            }
-            else
+    void Physics::TickVehicle(bool is_playing, float delta_time)
+    {
+        if (m_actors.empty() || !m_actors[0])
+            return;
+
+        PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+
+        if (is_playing)
+        {
+            // sync wheel offsets once at start of play
+            if (!m_wheel_offsets_synced)
             {
-                // editor mode: sync entity -> physx, reset velocities
-                m_wheel_offsets_synced = false; // reset so offsets re-sync on next play
+                SyncWheelOffsetsFromEntities();
+                m_wheel_offsets_synced = true;
+            }
+            
+            // update vehicle physics
+            car::tick(delta_time);
+            
+            // get current physics state
+            Vector3 physics_pos;
+            Quaternion physics_rot;
+            from_px_transform(actor->getGlobalPose(), physics_pos, physics_rot);
+            
+            // get physics velocity for smooth extrapolation
+            PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
+            Vector3 physics_vel = dynamic ? from_px_vec3(dynamic->getLinearVelocity()) : Vector3::Zero;
+            Vector3 physics_ang_vel = dynamic ? from_px_vec3(dynamic->getAngularVelocity()) : Vector3::Zero;
+            
+            // initialize smoothed state on first frame
+            if (!m_interpolation_initialized)
+            {
+                m_current_position          = physics_pos;
+                m_current_rotation          = physics_rot;
+                m_interpolation_initialized = true;
+            }
+            
+            // velocity-based extrapolation for smooth rendering
+            // physics position jumps discretely due to fixed timestep, but velocity is smooth
+            // we extrapolate using velocity and blend toward the real position to prevent drift
+            {
+                // extrapolate: move smoothed position forward by physics velocity
+                m_current_position = m_current_position + physics_vel * delta_time;
                 
-                if (!m_actors.empty() && m_actors[0])
+                // blend toward real physics position to prevent drift
+                // higher correction_rate = faster correction but more jitter
+                // lower correction_rate = smoother but more drift
+                constexpr float correction_rate = 8.0f;
+                float blend = 1.0f - expf(-correction_rate * delta_time);
+                m_current_position = m_current_position + (physics_pos - m_current_position) * blend;
+            }
+            
+            // rotation: use angular velocity for extrapolation
+            {
+                // extrapolate rotation using angular velocity
+                float ang_speed = physics_ang_vel.Length();
+                if (ang_speed > 0.001f)
                 {
-                    Vector3 pos = GetEntity()->GetPosition();
-                    Quaternion rot = GetEntity()->GetRotation();
-                    PxTransform pose(
-                        PxVec3(pos.x, pos.y, pos.z),
-                        PxQuat(rot.x, rot.y, rot.z, rot.w)
-                    );
-                    
-                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
-                    actor->setGlobalPose(pose);
-                    
-                    if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
-                    {
-                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
-                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
-                    }
+                    Vector3 axis = physics_ang_vel / ang_speed;
+                    float angle = ang_speed * delta_time;
+                    Quaternion delta_rot = Quaternion::FromAxisAngle(axis, angle);
+                    m_current_rotation = delta_rot * m_current_rotation;
+                    m_current_rotation.Normalize();
                 }
+                
+                // blend toward real physics rotation
+                constexpr float rot_correction_rate = 10.0f;
+                float rot_blend = 1.0f - expf(-rot_correction_rate * delta_time);
+                m_current_rotation = Quaternion::Lerp(m_current_rotation, physics_rot, rot_blend);
+            }
+            
+            // sync smoothed transform to entity
+            GetEntity()->SetPosition(m_current_position);
+            GetEntity()->SetRotation(m_current_rotation);
+
+            // update wheel visuals
+            UpdateWheelTransforms();
+        }
+        else
+        {
+            // editor mode: sync entity -> physx, reset velocities
+            m_wheel_offsets_synced      = false;
+            m_interpolation_initialized = false;
+            
+            actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
+            
+            if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+            {
+                dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                dynamic->setAngularVelocity(PxVec3(0, 0, 0));
             }
         }
-        else if (!m_is_static)
-        {
-            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
-            if (!renderable)
-                return;
+    }
 
-            for (uint32_t i = 0; i < m_actors.size(); i++)
+    void Physics::TickDynamicBodies(bool is_playing)
+    {
+        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        if (!renderable)
+            return;
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
+        {
+            if (!m_actors[i])
+                continue;
+                
+            PxRigidActor* actor     = static_cast<PxRigidActor*>(m_actors[i]);
+            PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
+
+            // get transform (from instance or entity)
+            auto get_transform = [&]() -> math::Matrix
             {
-                if (!m_actors[i])
-                    continue;
-                    
-                PxRigidActor* actor     = static_cast<PxRigidActor*>(m_actors[i]);
-                PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
-                if (Engine::IsFlagSet(EngineMode::Playing))
+                if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
+                    return renderable->GetInstance(i, true);
+                if (i == 0)
+                    return GetEntity()->GetMatrix();
+                return math::Matrix(); // invalid - caller should skip
+            };
+
+            if (is_playing)
+            {
+                if (m_is_kinematic && dynamic)
                 {
-                    if (m_is_kinematic && dynamic)
-                    {
-                        // sync entity -> physX (kinematic target)
-                        math::Matrix transform;
-                        if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
-                        {
-                            transform = renderable->GetInstance(i, true);
-                        }
-                        else if (i == 0)
-                        {
-                            transform = GetEntity()->GetMatrix();
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                        PxTransform target(
-                            PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
-                            PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
-                        );
-                        dynamic->setKinematicTarget(target);
-                    }
-                    else
-                    {
-                        // sync physx -> entity (simulated dynamic)
-                        PxTransform pose = actor->getGlobalPose();
-                        math::Matrix transform = math::Matrix::CreateTranslation(Vector3(pose.p.x, pose.p.y, pose.p.z)) * math::Matrix::CreateRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                        if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
-                        {
-                            //renderable->SetInstance(static_cast<uint32_t>(i), transform); // implement if needed
-                        }
-                        else if (i == 0)
-                        {
-                            GetEntity()->SetPosition(Vector3(pose.p.x, pose.p.y, pose.p.z));
-                            GetEntity()->SetRotation(Quaternion(pose.q.x, pose.q.y, pose.q.z, pose.q.w));
-                        }
-                    }
+                    // sync entity -> physx (kinematic target)
+                    math::Matrix transform = get_transform();
+                    if (transform == math::Matrix())
+                        continue;
+                    dynamic->setKinematicTarget(to_px_transform(transform));
                 }
                 else
                 {
-                    // editor mode: sync entity -> physx, reset velocities only for non-kinematics
-                    math::Matrix transform;
-                    if (renderable->HasInstancing() && i < renderable->GetInstanceCount())
+                    // sync physx -> entity (simulated dynamic)
+                    if (i == 0)
                     {
-                        transform = renderable->GetInstance(i, true);
-                    }
-                    else if (i == 0)
-                    {
-                        transform = GetEntity()->GetMatrix();
-                    }
-                    else
-                    {
-                        continue;
-                    }
-
-                    PxTransform pose(
-                        PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
-                        PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
-                    );
-                    actor->setGlobalPose(pose);
-
-                    if (dynamic && !m_is_kinematic)
-                    {
-                        dynamic->setLinearVelocity(PxVec3(0, 0, 0));
-                        dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+                        Vector3 pos;
+                        Quaternion rot;
+                        from_px_transform(actor->getGlobalPose(), pos, rot);
+                        GetEntity()->SetPosition(pos);
+                        GetEntity()->SetRotation(rot);
                     }
                 }
             }
+            else
+            {
+                // editor mode: sync entity -> physx
+                math::Matrix transform = get_transform();
+                if (transform == math::Matrix())
+                    continue;
+
+                actor->setGlobalPose(to_px_transform(transform));
+
+                // reset velocities for non-kinematics
+                if (dynamic && !m_is_kinematic)
+                {
+                    dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                    dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+                }
+            }
+        }
+    }
+
+    void Physics::TickDistanceActivation()
+    {
+        Camera* camera = World::GetCamera();
+        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        if (!camera || !renderable)
+            return;
+
+        const Vector3 camera_pos = camera->GetEntity()->GetPosition();
+        
+        // ensure tracking vector matches actor count
+        if (m_actors_active.size() != m_actors.size())
+        {
+            m_actors_active.resize(m_actors.size(), true);
         }
 
-        // distance-based activation/deactivation for static actors
-        // this optimization prevents the physics scene from being overwhelmed with distant static colliders
-        if (m_body_type != BodyType::Controller && m_is_static)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
         {
-            Camera* camera = World::GetCamera();
-            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
-            if (camera && renderable)
+            PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
+            if (!actor)
+                continue;
+
+            // compute distance to actor
+            Vector3 closest_point = renderable->HasInstancing()
+                ? renderable->GetInstance(i, true).GetTranslation()
+                : renderable->GetBoundingBox().GetClosestPoint(camera_pos);
+            const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
+
+            // use hysteresis to prevent flickering at boundary
+            const bool is_active = m_actors_active[i];
+            if (is_active && distance_squared > distance_deactivate_squared)
             {
-                const Vector3 camera_pos = camera->GetEntity()->GetPosition();
-                
-                // ensure tracking vector matches actor count
-                if (m_actors_active.size() != m_actors.size())
-                {
-                    m_actors_active.resize(m_actors.size(), true); // assume initially active
-                }
-
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_actors.size()); i++)
-                {
-                    PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[i]);
-                    if (!actor)
-                        continue;
-
-                    // compute distance to actor
-                    Vector3 closest_point = renderable->HasInstancing()
-                        ? renderable->GetInstance(i, true).GetTranslation()
-                        : renderable->GetBoundingBox().GetClosestPoint(camera_pos);
-                    const float distance_squared = Vector3::DistanceSquared(camera_pos, closest_point);
-
-                    // use hysteresis to prevent flickering at boundary
-                    const bool is_active     = m_actors_active[i];
-                    const bool should_remove = is_active && (distance_squared > distance_deactivate_squared);
-                    const bool should_add    = !is_active && (distance_squared <= distance_activate_squared);
-
-                    if (should_remove)
-                    {
-                        PhysicsWorld::RemoveActor(actor);
-                        m_actors_active[i] = false;
-                    }
-                    else if (should_add)
-                    {
-                        PhysicsWorld::AddActor(actor);
-                        m_actors_active[i] = true;
-                    }
-                }
+                PhysicsWorld::RemoveActor(actor);
+                m_actors_active[i] = false;
+            }
+            else if (!is_active && distance_squared <= distance_activate_squared)
+            {
+                PhysicsWorld::AddActor(actor);
+                m_actors_active[i] = true;
             }
         }
     }
@@ -422,7 +509,9 @@ namespace spartan
         m_center_of_mass.z = node.attribute("center_of_mass_z").as_float(0.0f);
         m_body_type        = static_cast<BodyType>(node.attribute("body_type").as_int(static_cast<int>(BodyType::Max)));
     
-        Create();
+        // defer creation until tick so that renderable component is available
+        // (components load in enum order, and renderable comes after physics)
+        m_needs_creation = true;
     }
 
     void Physics::SetMass(float mass)
@@ -569,6 +658,9 @@ namespace spartan
 
         for (auto* body : m_actors)
         {
+            if (!body)
+                continue;
+
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 dynamic->setLinearVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
@@ -608,6 +700,9 @@ namespace spartan
 
         for (auto* body : m_actors)
         {
+            if (!body)
+                continue;
+
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 dynamic->setAngularVelocity(PxVec3(velocity.x, velocity.y, velocity.z));
@@ -626,6 +721,9 @@ namespace spartan
 
         for (auto* body : m_actors)
         {
+            if (!body)
+                continue;
+
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 PxForceMode::Enum px_mode = (mode == PhysicsForce::Constant) ? PxForceMode::eFORCE : PxForceMode::eIMPULSE;
@@ -875,6 +973,46 @@ namespace spartan
         GetEntity()->SetPosition(Vector3(static_cast<float>(pos.x), static_cast<float>(pos.y), static_cast<float>(pos.z)));
     }
 
+    void Physics::SetBodyTransform(const Vector3& position, const Quaternion& rotation)
+    {
+        // reset interpolation state to avoid lerping from old position to new teleport position
+        m_interpolation_initialized = false;
+        m_prev_position             = position;
+        m_prev_rotation             = rotation;
+        m_current_position          = position;
+        m_current_rotation          = rotation;
+        
+        // for vehicles, use the car body directly
+        if (m_body_type == BodyType::Vehicle && car::body)
+        {
+            PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
+            car::body->setGlobalPose(pose);
+            car::body->setLinearVelocity(PxVec3(0, 0, 0));
+            car::body->setAngularVelocity(PxVec3(0, 0, 0));
+            
+            // reset wheel angular velocities
+            for (int i = 0; i < 4; i++)
+            {
+                car::wheels[i].angular_velocity = 0.0f;
+            }
+            return;
+        }
+
+        // for regular rigid bodies
+        if (!m_actors.empty() && m_actors[0])
+        {
+            PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
+            PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
+            actor->setGlobalPose(pose);
+            
+            if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+            {
+                dynamic->setLinearVelocity(PxVec3(0, 0, 0));
+                dynamic->setAngularVelocity(PxVec3(0, 0, 0));
+            }
+        }
+    }
+
     void Physics::SetVehicleThrottle(float value)
     {
         if (m_body_type != BodyType::Vehicle)
@@ -958,7 +1096,7 @@ namespace spartan
         return nullptr;
     }
 
-    void Physics::SetChassisEntity(Entity* entity)
+    void Physics::SetChassisEntity(Entity* entity, const vector<Entity*>& entities_to_exclude)
     {
         if (m_body_type != BodyType::Vehicle)
         {
@@ -971,13 +1109,208 @@ namespace spartan
         {
             // store base position so we can offset from it
             m_chassis_base_pos = entity->GetPositionLocal();
-            SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f)", 
-                entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z);
+            SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f), excluding %zu entities", 
+                entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z, entities_to_exclude.size());
+            
+            // build convex hull shapes from the chassis mesh hierarchy
+            BuildChassisConvexShapes(entity, entities_to_exclude);
         }
         else
         {
             SP_LOG_WARNING("SetChassisEntity: entity is null!");
         }
+    }
+    
+    void Physics::BuildChassisConvexShapes(Entity* chassis_entity, const vector<Entity*>& entities_to_exclude)
+    {
+        if (!car::body || !chassis_entity)
+            return;
+            
+        PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
+        if (!physics)
+            return;
+            
+        // collect all entities with renderables in the hierarchy
+        vector<Entity*> mesh_entities;
+        mesh_entities.push_back(chassis_entity);
+        chassis_entity->GetDescendants(&mesh_entities);
+        
+        // helper to check if an entity should be excluded
+        auto should_exclude = [&entities_to_exclude](Entity* ent) -> bool
+        {
+            for (Entity* excluded : entities_to_exclude)
+            {
+                if (ent == excluded)
+                    return true;
+                    
+                // also check if this entity is a descendant of an excluded entity
+                Entity* parent = ent->GetParent();
+                while (parent)
+                {
+                    if (parent == excluded)
+                        return true;
+                    parent = parent->GetParent();
+                }
+            }
+            return false;
+        };
+        
+        // filter to only entities with renderable components, excluding specified entities
+        vector<pair<Entity*, Renderable*>> renderable_entities;
+        for (Entity* ent : mesh_entities)
+        {
+            // skip inactive entities and excluded entities
+            if (!ent->GetActive())
+                continue;
+            if (should_exclude(ent))
+                continue;
+                
+            if (Renderable* renderable = ent->GetComponent<Renderable>())
+            {
+                renderable_entities.push_back({ent, renderable});
+            }
+        }
+        
+        if (renderable_entities.empty())
+        {
+            SP_LOG_WARNING("No renderable entities found in chassis hierarchy (after exclusions)");
+            return;
+        }
+        
+        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)", 
+            renderable_entities.size(), entities_to_exclude.size());
+        
+        // clear existing chassis shapes
+        car::clear_chassis_shapes();
+        
+        // the chassis entity's local transform relative to the vehicle (physics body)
+        Vector3 chassis_local_pos = chassis_entity->GetPositionLocal();
+        Quaternion chassis_local_rot = chassis_entity->GetRotationLocal();
+        Vector3 chassis_local_scale = chassis_entity->GetScaleLocal();
+        Vector3 chassis_world_pos = chassis_entity->GetPosition();
+        Quaternion chassis_world_rot = chassis_entity->GetRotation();
+        Quaternion chassis_world_rot_inv = chassis_world_rot.Conjugate();
+        
+        // collect ALL vertices from all meshes into a single list, transformed to vehicle body space
+        vector<PxVec3> all_vertices;
+        all_vertices.reserve(10000); // pre-allocate for performance
+        
+        for (const auto& [ent, renderable] : renderable_entities)
+        {
+            // get geometry
+            vector<uint32_t> indices;
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            renderable->GetGeometry(&indices, &vertices);
+            if (vertices.empty())
+                continue;
+            
+            // compute transform from entity space to vehicle body space
+            Vector3 ent_world_pos = ent->GetPosition();
+            Quaternion ent_world_rot = ent->GetRotation();
+            Vector3 ent_scale = ent->GetScale();
+            
+            // transform: entity local -> world -> chassis local -> vehicle body local
+            for (const auto& vertex : vertices)
+            {
+                // vertex in entity local space (scaled)
+                Vector3 v(vertex.pos[0] * ent_scale.x, vertex.pos[1] * ent_scale.y, vertex.pos[2] * ent_scale.z);
+                
+                // transform to world space
+                Vector3 world_v = ent_world_rot * v + ent_world_pos;
+                
+                // transform to chassis local space
+                Vector3 chassis_local_v = chassis_world_rot_inv * (world_v - chassis_world_pos);
+                
+                // apply chassis scale and transform to vehicle body space
+                chassis_local_v.x *= chassis_local_scale.x;
+                chassis_local_v.y *= chassis_local_scale.y;
+                chassis_local_v.z *= chassis_local_scale.z;
+                
+                Vector3 body_local_v = chassis_local_rot * chassis_local_v + chassis_local_pos;
+                
+                all_vertices.emplace_back(body_local_v.x, body_local_v.y, body_local_v.z);
+            }
+        }
+        
+        if (all_vertices.empty())
+        {
+            SP_LOG_WARNING("No vertices collected for chassis convex shape");
+            return;
+        }
+        
+        // subsample vertices if there are too many - physx convex hull works best with fewer points
+        const size_t max_input_vertices = 512;
+        if (all_vertices.size() > max_input_vertices)
+        {
+            // use a simple stride-based subsampling
+            size_t stride = all_vertices.size() / max_input_vertices;
+            vector<PxVec3> subsampled;
+            subsampled.reserve(max_input_vertices);
+            
+            for (size_t i = 0; i < all_vertices.size() && subsampled.size() < max_input_vertices; i += stride)
+            {
+                subsampled.push_back(all_vertices[i]);
+            }
+            
+            SP_LOG_INFO("BuildChassisConvexShapes: subsampled %zu vertices to %zu", all_vertices.size(), subsampled.size());
+            all_vertices = std::move(subsampled);
+        }
+        
+        SP_LOG_INFO("BuildChassisConvexShapes: creating convex hull from %zu vertices", all_vertices.size());
+        
+        // cooking parameters for convex hull generation
+        PxTolerancesScale px_scale;
+        px_scale.length = 1.0f;
+        Vector3 gravity = PhysicsWorld::GetGravity();
+        px_scale.speed = sqrtf(gravity.x * gravity.x + gravity.y * gravity.y + gravity.z * gravity.z);
+        PxCookingParams params(px_scale);
+        params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
+        params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+        params.meshWeldTolerance = 0.05f; // aggressive welding for cleaner hull
+        params.gaussMapLimit = 32;
+        
+        PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
+        
+        // create a SINGLE convex hull from all collected vertices
+        // physx will compute the convex hull automatically
+        PxConvexMeshDesc mesh_desc;
+        mesh_desc.points.count = static_cast<PxU32>(all_vertices.size());
+        mesh_desc.points.stride = sizeof(PxVec3);
+        mesh_desc.points.data = all_vertices.data();
+        mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX | PxConvexFlag::eSHIFT_VERTICES;
+        mesh_desc.vertexLimit = 64; // limit output hull complexity
+        
+        PxConvexMeshCookingResult::Enum condition;
+        PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+        if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+        {
+            SP_LOG_ERROR("Failed to create chassis convex hull: %d", static_cast<int>(condition));
+            if (convex_mesh)
+                convex_mesh->release();
+            return;
+        }
+        
+        // attach the single convex shape at identity pose (vertices are already in body space)
+        PxTransform local_pose(PxIdentity);
+        PxU32 hull_vert_count = convex_mesh->getNbVertices();
+        
+        if (!car::attach_chassis_convex_shape(convex_mesh, local_pose, physics))
+        {
+            SP_LOG_ERROR("Failed to attach chassis convex shape");
+            convex_mesh->release();
+            return;
+        }
+        
+        convex_mesh->release();
+        
+        // update mass properties after adding the shape
+        car::update_mass_properties();
+        
+        // compute aerodynamic properties from the shape
+        car::compute_aero_from_shape(all_vertices);
+        
+        SP_LOG_INFO("BuildChassisConvexShapes: created single convex hull with %u vertices from %zu source vertices", 
+            hull_vert_count, all_vertices.size());
     }
 
     void Physics::SetWheelRadius(float radius)
@@ -1332,6 +1665,13 @@ namespace spartan
         return car::get_engine_torque_current();
     }
     
+    float Physics::GetIdleRPM() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_idle_rpm();
+    }
+    
     float Physics::GetRedlineRPM() const
     {
         if (m_body_type != BodyType::Vehicle)
@@ -1413,6 +1753,106 @@ namespace spartan
                 Renderer::DrawLine(susp_top, susp_bottom, color_susp_top, color_susp_bot);
             }
         }
+        
+        // draw aerodynamics
+        if (car::get_draw_aero())
+        {
+            const car::aero_debug_data& aero = car::get_aero_debug();
+            
+            // colors for aero visualization
+            const Color color_velocity   = Color(1.0f, 1.0f, 1.0f, 1.0f);   // white - velocity vector
+            const Color color_drag       = Color(1.0f, 0.3f, 0.0f, 1.0f);   // orange - drag force
+            const Color color_downforce  = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - downforce
+            const Color color_side       = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - side force
+            const Color color_ground_eff = Color(0.0f, 1.0f, 0.5f, 1.0f);   // cyan - ground effect
+            const Color color_aero_point = Color(1.0f, 0.0f, 1.0f, 1.0f);   // magenta - aero application points
+            
+            // scale factors for visualization
+            // forces in Newtons - a typical car has 500-2000N of aero forces at speed
+            const float force_scale = 0.002f;      // 1000N = 2 meter arrow
+            const float velocity_scale = 0.15f;    // 30 m/s = 4.5 meter arrow
+            
+            // always show aero application points even when stationary
+            // offset car_pos upward so arrows are visible above the car body
+            Vector3 car_pos(aero.position.x, aero.position.y + 0.8f, aero.position.z);
+            Vector3 front_pos(aero.front_aero_pos.x, aero.front_aero_pos.y, aero.front_aero_pos.z);
+            Vector3 rear_pos(aero.rear_aero_pos.x, aero.rear_aero_pos.y, aero.rear_aero_pos.z);
+            
+            // draw aero application points (always visible) - larger circles for visibility
+            Renderer::DrawCircle(front_pos, Vector3::Up, 0.35f, 16, color_aero_point);
+            Renderer::DrawCircle(rear_pos, Vector3::Up, 0.35f, 16, color_aero_point);
+            
+            // draw lines connecting front/rear to center for clarity
+            Renderer::DrawLine(front_pos, car_pos, color_aero_point, color_aero_point);
+            Renderer::DrawLine(rear_pos, car_pos, color_aero_point, color_aero_point);
+            
+            if (aero.valid)
+            {
+                // velocity vector (white arrow)
+                if (aero.velocity.magnitude() > 1.0f)
+                {
+                    Vector3 vel_end = car_pos + Vector3(aero.velocity.x, aero.velocity.y, aero.velocity.z) * velocity_scale;
+                    Renderer::DrawDirectionalArrow(car_pos, vel_end, 0.15f, color_velocity);
+                }
+                
+                // drag force (orange arrow, opposite to velocity)
+                float drag_mag = aero.drag_force.magnitude();
+                if (drag_mag > 10.0f) // low threshold to see it at low speeds too
+                {
+                    Vector3 drag_end = car_pos + Vector3(aero.drag_force.x, aero.drag_force.y, aero.drag_force.z) * force_scale;
+                    Renderer::DrawDirectionalArrow(car_pos, drag_end, 0.12f, color_drag);
+                }
+                
+                // front downforce (blue arrow pointing down)
+                float front_df_mag = aero.front_downforce.magnitude();
+                if (front_df_mag > 10.0f)
+                {
+                    Vector3 front_df_end = front_pos + Vector3(aero.front_downforce.x, aero.front_downforce.y, aero.front_downforce.z) * force_scale;
+                    Renderer::DrawDirectionalArrow(front_pos, front_df_end, 0.12f, color_downforce);
+                    
+                    // draw circle at front aero point
+                    Renderer::DrawCircle(front_pos, Vector3::Up, 0.2f, 12, color_downforce);
+                }
+                
+                // rear downforce (blue arrow pointing down)
+                float rear_df_mag = aero.rear_downforce.magnitude();
+                if (rear_df_mag > 10.0f)
+                {
+                    Vector3 rear_df_end = rear_pos + Vector3(aero.rear_downforce.x, aero.rear_downforce.y, aero.rear_downforce.z) * force_scale;
+                    Renderer::DrawDirectionalArrow(rear_pos, rear_df_end, 0.12f, color_downforce);
+                    
+                    // draw circle at rear aero point
+                    Renderer::DrawCircle(rear_pos, Vector3::Up, 0.2f, 12, color_downforce);
+                }
+                
+                // side force (yellow arrow)
+                float side_mag = aero.side_force.magnitude();
+                if (side_mag > 10.0f)
+                {
+                    Vector3 side_end = car_pos + Vector3(aero.side_force.x, aero.side_force.y, aero.side_force.z) * force_scale;
+                    Renderer::DrawDirectionalArrow(car_pos, side_end, 0.12f, color_side);
+                }
+                
+                // ground effect indicator (green circles at car position, size based on effect strength)
+                if (aero.ground_effect_factor > 1.02f)
+                {
+                    float effect_radius = 0.3f + (aero.ground_effect_factor - 1.0f) * 0.8f;
+                    Vector3 ground_pos = car_pos;
+                    ground_pos.y -= aero.ride_height; // at ground level
+                    Renderer::DrawCircle(ground_pos, Vector3::Up, effect_radius, 16, color_ground_eff);
+                }
+            }
+        }
+    }
+    
+    void Physics::SetDrawAero(bool enabled)
+    {
+        car::set_draw_aero(enabled);
+    }
+    
+    bool Physics::GetDrawAero() const
+    {
+        return car::get_draw_aero();
     }
     
     void Physics::SyncWheelOffsetsFromEntities()
@@ -1453,6 +1893,41 @@ namespace spartan
             
             // update the physics wheel offset x and z to match the mesh position
             car::set_wheel_offset(i, local_pos.x, local_pos.z);
+        }
+    }
+    
+    void Physics::SetCenterOfMassOffset(const Vector3& offset)
+    {
+        SetCenterOfMassOffset(offset.x, offset.y, offset.z);
+    }
+    
+    void Physics::SetCenterOfMassOffset(float x, float y, float z)
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            SP_LOG_WARNING("SetCenterOfMassOffset only works with Vehicle body type");
+            return;
+        }
+        
+        car::set_center_of_mass(x, y, z);
+    }
+    
+    Vector3 Physics::GetCenterOfMassOffset() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return Vector3::Zero;
+            
+        return Vector3(car::get_center_of_mass_x(), car::get_center_of_mass_y(), car::get_center_of_mass_z());
+    }
+    
+    void Physics::SetMeshConvexSourceEntity(Entity* entity)
+    {
+        m_mesh_convex_source = entity;
+        
+        // if body type is already MeshConvex, recreate the physics shapes
+        if (m_body_type == BodyType::MeshConvex)
+        {
+            Create();
         }
     }
 
@@ -1602,6 +2077,194 @@ namespace spartan
             {
                 SP_LOG_ERROR("failed to create vehicle physics body");
             }
+        }
+        else if (m_body_type == BodyType::MeshConvex)
+        {
+            // compound shape built from convex hulls of entity hierarchy meshes
+            // this walks all descendants of a source entity and creates a convex hull for each mesh
+            
+            Entity* source_entity = m_mesh_convex_source ? m_mesh_convex_source : GetEntity();
+            if (!source_entity)
+            {
+                SP_LOG_ERROR("No source entity for MeshConvex body type");
+                return;
+            }
+            
+            // collect all entities with renderables in the hierarchy
+            vector<Entity*> mesh_entities;
+            mesh_entities.push_back(source_entity);
+            source_entity->GetDescendants(&mesh_entities);
+            
+            // filter to only entities with renderable components
+            vector<pair<Entity*, Renderable*>> renderable_entities;
+            for (Entity* entity : mesh_entities)
+            {
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                {
+                    renderable_entities.push_back({entity, renderable});
+                }
+            }
+            
+            if (renderable_entities.empty())
+            {
+                SP_LOG_ERROR("No renderable entities found in hierarchy for MeshConvex");
+                return;
+            }
+            
+            // create the rigid body at the physics entity's transform
+            Vector3 body_pos = GetEntity()->GetPosition();
+            Quaternion body_rot = GetEntity()->GetRotation();
+            PxTransform body_pose(
+                PxVec3(body_pos.x, body_pos.y, body_pos.z),
+                PxQuat(body_rot.x, body_rot.y, body_rot.z, body_rot.w)
+            );
+            
+            PxRigidActor* actor = nullptr;
+            if (IsStatic())
+            {
+                actor = physics->createRigidStatic(body_pose);
+            }
+            else
+            {
+                actor = physics->createRigidDynamic(body_pose);
+                PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
+                if (dynamic)
+                {
+                    dynamic->setMass(m_mass);
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eENABLE_CCD, !m_is_kinematic);
+                    dynamic->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, m_is_kinematic);
+                    dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
+                }
+            }
+            
+            if (!actor)
+            {
+                SP_LOG_ERROR("Failed to create rigid actor for MeshConvex");
+                return;
+            }
+            
+            // cooking parameters for convex hull generation
+            PxTolerancesScale px_scale;
+            px_scale.length = 1.0f;
+            Vector3 gravity = PhysicsWorld::GetGravity();
+            px_scale.speed = sqrtf(gravity.x * gravity.x + gravity.y * gravity.y + gravity.z * gravity.z);
+            PxCookingParams params(px_scale);
+            params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
+            params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
+            params.meshWeldTolerance = 0.01f;
+            params.gaussMapLimit = 32;
+            
+            PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
+            PxMaterial* material = static_cast<PxMaterial*>(m_material);
+            
+            // inverse transform to convert world positions to body-local space
+            Quaternion body_rot_inv = body_rot.Conjugate();
+            
+            int shapes_created = 0;
+            for (const auto& [entity, renderable] : renderable_entities)
+            {
+                // get geometry
+                vector<uint32_t> indices;
+                vector<RHI_Vertex_PosTexNorTan> vertices;
+                renderable->GetGeometry(&indices, &vertices);
+                if (vertices.empty())
+                    continue;
+                
+                // simplify geometry for physics (use moderate detail for convex hulls)
+                const size_t max_convex_verts = 256; // physx limit
+                if (vertices.size() > max_convex_verts)
+                {
+                    const size_t target_index_count = min<size_t>(indices.size(), max_convex_verts * 3);
+                    geometry_processing::simplify(indices, vertices, target_index_count, false, false);
+                }
+                
+                // compute the local transform of this entity relative to the physics body
+                Vector3 entity_world_pos = entity->GetPosition();
+                Quaternion entity_world_rot = entity->GetRotation();
+                Vector3 entity_scale = entity->GetScale();
+                
+                // transform entity position to body-local space
+                Vector3 local_pos = body_rot_inv * (entity_world_pos - body_pos);
+                Quaternion local_rot = body_rot_inv * entity_world_rot;
+                
+                // convert vertices to physx format in entity-local space (with scale)
+                vector<PxVec3> px_vertices;
+                px_vertices.reserve(vertices.size());
+                for (const auto& vertex : vertices)
+                {
+                    px_vertices.emplace_back(
+                        vertex.pos[0] * entity_scale.x,
+                        vertex.pos[1] * entity_scale.y,
+                        vertex.pos[2] * entity_scale.z
+                    );
+                }
+                
+                // create convex mesh
+                PxConvexMeshDesc mesh_desc;
+                mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
+                mesh_desc.points.stride = sizeof(PxVec3);
+                mesh_desc.points.data = px_vertices.data();
+                mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
+                
+                PxConvexMeshCookingResult::Enum condition;
+                PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
+                if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
+                {
+                    SP_LOG_WARNING("Failed to create convex hull for entity '%s'", entity->GetObjectName().c_str());
+                    if (convex_mesh)
+                        convex_mesh->release();
+                    continue;
+                }
+                
+                // create shape with local pose relative to body
+                PxConvexMeshGeometry geometry(convex_mesh);
+                PxShape* shape = physics->createShape(geometry, *material);
+                if (shape)
+                {
+                    // set local pose to position this shape relative to body center
+                    PxTransform local_pose(
+                        PxVec3(local_pos.x, local_pos.y, local_pos.z),
+                        PxQuat(local_rot.x, local_rot.y, local_rot.z, local_rot.w)
+                    );
+                    shape->setLocalPose(local_pose);
+                    shape->setFlag(PxShapeFlag::eVISUALIZATION, true);
+                    actor->attachShape(*shape);
+                    shape->release(); // actor owns the shape now
+                    shapes_created++;
+                }
+                
+                convex_mesh->release(); // shape holds its own reference
+            }
+            
+            if (shapes_created == 0)
+            {
+                SP_LOG_ERROR("No convex shapes were created for MeshConvex");
+                actor->release();
+                return;
+            }
+            
+            // update mass and inertia based on compound shape
+            if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
+            {
+                if (m_center_of_mass != Vector3::Zero)
+                {
+                    PxVec3 com(m_center_of_mass.x, m_center_of_mass.y, m_center_of_mass.z);
+                    PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass, &com);
+                }
+                else
+                {
+                    PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass);
+                }
+            }
+            
+            actor->userData = reinterpret_cast<void*>(GetEntity());
+            PhysicsWorld::AddActor(actor);
+            
+            m_actors.resize(1, nullptr);
+            m_actors[0] = actor;
+            m_actors_active.resize(1, true);
+            
+            SP_LOG_INFO("MeshConvex created: %d convex shapes from %zu entities", shapes_created, renderable_entities.size());
         }
         else
         {

@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ======================
 #include "Component.h"
 #include <vector>
 #include "../../Math/Vector3.h"
-//=============================
+#include "../../Math/Quaternion.h"
+//=================================
 
 namespace spartan
 {
@@ -46,6 +47,7 @@ namespace spartan
         Plane,
         Capsule,
         Mesh,
+        MeshConvex, // compound shape built from convex hulls of entity hierarchy meshes
         Controller,
         Vehicle,
         Max
@@ -70,6 +72,7 @@ namespace spartan
         // component
         void Initialize() override;
         void Remove() override;
+        void PreTick() override;
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
@@ -138,6 +141,7 @@ namespace spartan
         // misc
         void Move(const math::Vector3& offset);
         void Crouch(const bool crouch);
+        void SetBodyTransform(const math::Vector3& position, const math::Quaternion& rotation); // teleport physics body
 
         // vehicle controls (only works when body type is Vehicle)
         void SetVehicleThrottle(float value);   // 0 to 1
@@ -150,7 +154,8 @@ namespace spartan
         Entity* GetWheelEntity(WheelIndex wheel) const;
         
         // vehicle chassis entity (visual body that bounces on suspension)
-        void SetChassisEntity(Entity* entity);
+        // entities_to_exclude: optional list of entities to skip when building convex shapes (e.g. wheels)
+        void SetChassisEntity(Entity* entity, const std::vector<Entity*>& entities_to_exclude = {});
         Entity* GetChassisEntity() const { return m_chassis_entity; }
         
         // vehicle wheel radius (used for spin calculation and physics)
@@ -208,6 +213,7 @@ namespace spartan
         const char* GetCurrentGearString() const;               // gear display string ("R", "N", "1"-"7")
         float GetEngineRPM() const;                             // current engine rpm
         float GetEngineTorque() const;                          // current engine torque output (Nm)
+        float GetIdleRPM() const;                               // engine idle rpm
         float GetRedlineRPM() const;                            // engine redline rpm
         bool IsShifting() const;                                // is gearbox currently shifting
         
@@ -216,15 +222,34 @@ namespace spartan
         bool GetDrawRaycasts() const;
         void SetDrawSuspension(bool enabled);
         bool GetDrawSuspension() const;
+        void SetDrawAero(bool enabled);
+        bool GetDrawAero() const;
         void DrawDebugVisualization();                          // call each frame to draw debug lines
         
         // sync physics wheel positions from wheel entity positions
         void SyncWheelOffsetsFromEntities();
+        
+        // center of mass (for tuning handling characteristics)
+        void SetCenterOfMassOffset(const math::Vector3& offset);
+        void SetCenterOfMassOffset(float x, float y, float z);
+        math::Vector3 GetCenterOfMassOffset() const;
+        
+        // mesh convex compound shape - set the source entity whose hierarchy will be walked
+        // to build convex hull shapes from each mesh in the hierarchy
+        void SetMeshConvexSourceEntity(Entity* entity);
+        Entity* GetMeshConvexSourceEntity() const { return m_mesh_convex_source; }
 
     private:
+        // tick helpers (broken out for readability)
+        void TickController(bool is_playing, float delta_time);
+        void TickVehicle(bool is_playing, float delta_time);
+        void TickDynamicBodies(bool is_playing);
+        void TickDistanceActivation();
+        
         void UpdateWheelTransforms();
         void Create();
         void CreateBodies();
+        void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude); // builds convex shapes from chassis mesh hierarchy
 
         float m_mass                   = 1.0f;
         float m_friction               = 0.4f;
@@ -245,7 +270,6 @@ namespace spartan
 
         // vehicle wheel entities and state
         Entity* m_wheel_entities[static_cast<int>(WheelIndex::Count)] = { nullptr, nullptr, nullptr, nullptr };
-        float m_wheel_rotation = 0.0f; // cumulative wheel spin rotation (radians)
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
         float m_wheel_mesh_center_offset_y = 0.0f; // offset from entity origin to mesh center (for non-centered meshes)
         bool m_wheel_offsets_synced = false; // flag to ensure wheel offsets are synced from entities once
@@ -254,5 +278,18 @@ namespace spartan
         Entity* m_chassis_entity          = nullptr;
         math::Vector3 m_chassis_base_pos  = math::Vector3::Zero; // base local position of chassis
         float m_chassis_suspension_offset = 0.0f;                // current suspension offset (smoothed)
+        
+        // mesh convex source entity - the entity hierarchy to walk for building compound convex shapes
+        Entity* m_mesh_convex_source = nullptr;
+        
+        // deferred creation flag for loading (wait until renderable is available)
+        bool m_needs_creation = false;
+        
+        // interpolation state for smooth rendering between fixed physics timesteps
+        math::Vector3 m_prev_position     = math::Vector3::Zero; // position at previous physics step
+        math::Quaternion m_prev_rotation;                        // rotation at previous physics step
+        math::Vector3 m_current_position  = math::Vector3::Zero; // position at current physics step
+        math::Quaternion m_current_rotation;                     // rotation at current physics step
+        bool m_interpolation_initialized  = false;               // flag to track first-frame initialization
     };
 }

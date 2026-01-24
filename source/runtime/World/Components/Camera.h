@@ -179,8 +179,7 @@ namespace spartan
         math::Matrix m_projection_non_reverse_z      = math::Matrix::Identity;
         math::Matrix m_view_projection               = math::Matrix::Identity;
         math::Matrix m_view_projection_non_reverse_z = math::Matrix::Identity;
-        math::Vector3 m_position                     = math::Vector3::Zero;
-        math::Quaternion m_rotation                  = math::Quaternion::Identity;
+        math::Matrix m_matrix_previous               = math::Matrix::Identity;
         math::Vector2 m_mouse_last_position          = math::Vector2::Zero;
         math::Vector3 m_movement_speed               = math::Vector3::Zero;
         float m_movement_scroll_accumulator          = 0.0f;

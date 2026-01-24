@@ -523,7 +523,7 @@ namespace spartan
             pipeline_info.pStages                           = shader_stages.data();
             pipeline_info.groupCount                        = static_cast<uint32_t>(groups.size());
             pipeline_info.pGroups                           = groups.data();
-            pipeline_info.maxPipelineRayRecursionDepth      = 1; // number of bounces
+            pipeline_info.maxPipelineRayRecursionDepth      = 2; // number of bounces (2 for gi second bounce)
             pipeline_info.layout                            = static_cast<VkPipelineLayout>(m_rhi_resource_layout);
 
             SP_ASSERT_VK(pfn_vk_create_ray_tracing_pipelines_khr(RHI_Context::device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, reinterpret_cast<VkPipeline*>(&m_rhi_resource)));
@@ -531,11 +531,6 @@ namespace spartan
         }
 
         SP_ASSERT(m_rhi_resource != nullptr);
-
-        if (Debugging::IsBreadcrumbsEnabled())
-        { 
-            RHI_VendorTechnology::Breadcrumbs_RegisterPipeline(this);
-        }
     }
     
     RHI_Pipeline::~RHI_Pipeline()

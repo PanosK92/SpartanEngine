@@ -569,6 +569,10 @@ void WorldViewer::PopupContextMenu() const
         {
             ActionEntityCreateLightSpot();
         }
+        else if (ImGui::MenuItem("Area"))
+        {
+            ActionEntityCreateLightArea();
+        }
 
         ImGui::EndMenu();
     }
@@ -800,6 +804,16 @@ void WorldViewer::ActionEntityCreateLightSpot()
 
     spartan::Light* light = entity->AddComponent<spartan::Light>();
     light->SetLightType(spartan::LightType::Spot);
+    light->SetIntensity(spartan::LightIntensity::bulb_150_watt);
+}
+
+void WorldViewer::ActionEntityCreateLightArea()
+{
+    auto entity = ActionEntityCreateEmpty();
+    entity->SetObjectName("Area");
+
+    spartan::Light* light = entity->AddComponent<spartan::Light>();
+    light->SetLightType(spartan::LightType::Area);
     light->SetIntensity(spartan::LightIntensity::bulb_150_watt);
 }
 

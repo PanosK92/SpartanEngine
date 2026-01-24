@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 Copyright(c) 2015-2026 Panos Karabelas
 
@@ -26,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../Core/SpartanObject.h"
 #include "RHI_Descriptor.h"
+#include <vector>
 //================================
 
 namespace spartan
@@ -34,16 +33,16 @@ namespace spartan
     {
     public:
         RHI_DescriptorSet() = default;
-        RHI_DescriptorSet(const std::vector<RHI_Descriptor>& descriptors, RHI_DescriptorSetLayout* descriptor_set_layout, const char* name);
+        RHI_DescriptorSet(const std::vector<RHI_DescriptorWithBinding>& descriptors, RHI_DescriptorSetLayout* layout, const char* name);
         ~RHI_DescriptorSet() = default;
 
-        bool IsReferingToResource(void* resource);
-        void* GetResource() { return m_resource; }
+        bool IsReferingToResource(void* resource) const;
+        void* GetResource() const { return m_resource; }
 
     private:
-        void Update(const std::vector<RHI_Descriptor>& descriptors);
+        void Update(const std::vector<RHI_DescriptorWithBinding>& descriptors);
 
-        std::vector<RHI_Descriptor> m_descriptors;
+        std::vector<RHI_DescriptorWithBinding> m_descriptors;
         void* m_resource = nullptr;
     };
 }

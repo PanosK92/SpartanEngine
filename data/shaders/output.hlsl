@@ -173,6 +173,11 @@ float3 gran_turismo_7(float3 rgb, float max_display_nits, bool is_hdr)
     // step a: determine target nits (hdr display or sdr standard)
     float target_nits = is_hdr ? max_display_nits : gt7_sdr_paper_white;
     float fb_target   = gt7_nits_to_fb(target_nits);
+    
+    // scale input to match gt7's luminance paradigm where paper white (250 nits) = 2.5 fb units
+    // this aligns with other tonemappers where input ~1.0 represents peak scene white
+    float input_scale = gt7_sdr_paper_white / gt7_ref_luminance; // 2.5
+    rgb *= input_scale;
 
     // curve tunings
     float mid_point    = 0.538f;
@@ -291,6 +296,18 @@ float3 agx(float3 color)
     float3 x4 = x2 * x2;
     color = 15.5f * x4 * x2 - 40.14f * x4 * x + 31.96f * x4 - 6.868f * x2 * x + 0.4298f * x2 + 0.1191f * x - 0.00232f;
 
+    // agx look transform - restores saturation that log encoding removes
+    // without this, the image appears washed out (blender applies this by default)
+    float3 lw          = float3(0.2126f, 0.7152f, 0.0722f);
+    float luma         = dot(color, lw);
+    float3 offset      = color - luma;
+    float saturation   = 1.35f; // base agx look saturation boost
+    float contrast     = 1.10f; // subtle contrast enhancement
+    float contrast_mid = 0.18f; // pivot point for contrast (mid-gray)
+    color              = luma + offset * saturation;
+    color              = contrast_mid + (color - contrast_mid) * contrast;
+    color              = saturate(color);
+
     color = mul(agx_mat_outset, color);
 
     return saturate(color);
@@ -396,20 +413,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (is_hdr)
     {
         // normalize to pq range (0.0 - 1.0 where 1.0 = 10,000 nits)
-        const float pq_max_nits = 10000.0f;
+        const float pq_max_nits      = 10000.0f;
+        const float sdr_white_nits   = 203.0f; // bt.2408 reference white for sdr content on hdr displays
         
         if (tone_mapping == 4) // gran turismo 7
         {
             // gt7 outputs in fb units where 1.0 = 100 nits (gt7_ref_luminance)
-            // so we convert directly: output_nits = fb_value * 100
-            // boost to compensate for gt7 being darker in hdr compared to other tonemappers
+            // boost slightly to match perceived brightness of other tonemappers
             float hdr_boost = 1.8f;
             color.rgb = (color.rgb * gt7_ref_luminance * hdr_boost) / pq_max_nits;
         }
         else
         {
-            // other tonemappers output 0-1 where 1.0 = peak white (max_nits)
-            color.rgb = (color.rgb * max_nits) / pq_max_nits;
+            // sdr tonemappers output 0-1 where 1.0 = sdr white
+            // no tonemapping also uses this since exposure normalizes values to ~1.0 = white
+            color.rgb = (color.rgb * sdr_white_nits) / pq_max_nits;
         }
 
         // encode (color space conversion + pq curve)
