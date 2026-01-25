@@ -1290,144 +1290,52 @@ namespace spartan
 
     void Renderer::Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        RHI_Texture* tex_history = GetRenderTarget(Renderer_RenderTarget::denoiser_history);
-        RHI_Texture* tex_scratch = GetRenderTarget(Renderer_RenderTarget::blur);
-        if (!tex_history || !tex_scratch)
-            return;
+        return; // todo: fix
+
+        // initialize nrd if not already done
+        uint32_t width  = tex_in->GetWidth();
+        uint32_t height = tex_in->GetHeight();
         
-        uint32_t in_width   = tex_in->GetWidth();
-        uint32_t in_height  = tex_in->GetHeight();
-        uint32_t out_width  = tex_out->GetWidth();
-        uint32_t out_height = tex_out->GetHeight();
-        
-        // check if we need upscaling (input smaller than output)
-        bool needs_upscale = (in_width != out_width) || (in_height != out_height);
-        
-        const uint32_t thread_group_count = 8;
-        
-        if (needs_upscale)
+        if (!RHI_VendorTechnology::NRD_IsAvailable())
         {
-            // use combined denoiser-upscaler for half-res to full-res
-            RHI_Shader* shader_upscale = GetShader(Renderer_Shader::denoiser_upscale_c);
-            if (!shader_upscale || !shader_upscale->IsCompiled())
-                return;
-            
-            cmd_list->BeginTimeblock("denoiser_upscale");
-            {
-                RHI_PipelineState pso;
-                pso.name             = "denoiser_upscale";
-                pso.shaders[Compute] = shader_upscale;
-                cmd_list->SetPipelineState(pso);
-                
-                SetCommonTextures(cmd_list);
-                
-                // pass input resolution via constants
-                m_pcb_pass_cpu.set_f3_value(static_cast<float>(in_width), static_cast<float>(in_height), 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                
-                // input: half-res noisy, full-res history
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_history);
-                
-                // output: full-res denoised
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-                
-                // dispatch at output resolution
-                uint32_t dispatch_x = (out_width + thread_group_count - 1) / thread_group_count;
-                uint32_t dispatch_y = (out_height + thread_group_count - 1) / thread_group_count;
-                cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-                
-                cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
-            }
-            cmd_list->EndTimeblock();
-            
-            // copy result to history for next frame
-            cmd_list->BeginTimeblock("denoiser_copy_history");
-            {
-                Pass_Blit(cmd_list, tex_out, tex_history);
-            }
-            cmd_list->EndTimeblock();
+            RHI_VendorTechnology::NRD_Initialize(width, height);
         }
         else
         {
-            // same resolution: use original temporal + spatial pipeline
-            RHI_Shader* shader_temporal = GetShader(Renderer_Shader::denoiser_temporal_c);
-            RHI_Shader* shader_spatial  = GetShader(Renderer_Shader::denoiser_spatial_c);
-            
-            if (!shader_temporal || !shader_temporal->IsCompiled())
-                return;
-            if (!shader_spatial || !shader_spatial->IsCompiled())
-                return;
-            
-            uint32_t dispatch_x = (in_width + thread_group_count - 1) / thread_group_count;
-            uint32_t dispatch_y = (in_height + thread_group_count - 1) / thread_group_count;
-            
-            // pass 1: temporal accumulation
-            cmd_list->BeginTimeblock("denoiser_temporal");
-            {
-                RHI_PipelineState pso;
-                pso.name             = "denoiser_temporal";
-                pso.shaders[Compute] = shader_temporal;
-                cmd_list->SetPipelineState(pso);
-                
-                SetCommonTextures(cmd_list);
-                
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_in);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_history);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-                
-                cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-                cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
-            }
-            cmd_list->EndTimeblock();
-            
-            // pass 2: spatial filtering (multi-pass atrous wavelet)
-            static const int atrous_step_sizes[] = { 1, 2, 4 };
-            static const int atrous_passes = 3;
-            
-            RHI_Texture* tex_src = tex_out;
-            RHI_Texture* tex_dst = tex_scratch;
-            
-            for (int pass = 0; pass < atrous_passes; pass++)
-            {
-                cmd_list->BeginTimeblock("denoiser_spatial");
-                {
-                    RHI_PipelineState pso;
-                    pso.name             = "denoiser_spatial";
-                    pso.shaders[Compute] = shader_spatial;
-                    cmd_list->SetPipelineState(pso);
-                    
-                    SetCommonTextures(cmd_list);
-                    
-                    m_pcb_pass_cpu.set_f3_value(static_cast<float>(atrous_step_sizes[pass]), 0.0f, 0.0f);
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
-                    
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_src);
-                    cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_dst);
-                    
-                    cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-                    cmd_list->InsertBarrier(tex_dst, RHI_BarrierType::EnsureWriteThenRead);
-                }
-                cmd_list->EndTimeblock();
-                
-                swap(tex_src, tex_dst);
-            }
-            
-            // after odd number of passes, result is in tex_scratch
-            if (atrous_passes % 2 == 1)
-            {
-                cmd_list->BeginTimeblock("denoiser_copy_result");
-                Pass_Blit(cmd_list, tex_scratch, tex_out);
-                cmd_list->EndTimeblock();
-            }
-            
-            // copy result to history for next frame
-            cmd_list->BeginTimeblock("denoiser_copy_history");
-            {
-                Pass_Blit(cmd_list, tex_out, tex_history);
-            }
-            cmd_list->EndTimeblock();
+            RHI_VendorTechnology::NRD_Resize(width, height);
         }
+
+        if (!RHI_VendorTechnology::NRD_IsAvailable())
+            return;
+
+        // get camera matrices from frame constant buffer
+        Matrix view_matrix            = m_cb_frame_cpu.view;
+        Matrix projection_matrix      = m_cb_frame_cpu.projection;
+        Matrix view_matrix_prev       = m_cb_frame_cpu.view_previous;
+        Matrix projection_matrix_prev = m_cb_frame_cpu.projection_previous;
+
+        // get jitter values
+        float jitter_x      = m_cb_frame_cpu.taa_jitter_current.x;
+        float jitter_y      = m_cb_frame_cpu.taa_jitter_current.y;
+        float jitter_prev_x = m_cb_frame_cpu.taa_jitter_previous.x;
+        float jitter_prev_y = m_cb_frame_cpu.taa_jitter_previous.y;
+
+        // run nrd denoiser
+        RHI_VendorTechnology::NRD_Denoise(
+            cmd_list,
+            tex_in,
+            tex_out,
+            view_matrix,
+            projection_matrix,
+            view_matrix_prev,
+            projection_matrix_prev,
+            jitter_x,
+            jitter_y,
+            jitter_prev_x,
+            jitter_prev_y,
+            m_cb_frame_cpu.delta_time * 1000.0f, // convert to milliseconds
+            static_cast<uint32_t>(GetFrameNumber())
+        );
     }
 
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)

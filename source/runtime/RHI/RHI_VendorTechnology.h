@@ -61,5 +61,26 @@ namespace spartan
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_output
         );
+
+        // nvidia nrd (denoiser for restir path tracing)
+        static void NRD_Initialize(uint32_t width, uint32_t height);
+        static void NRD_Shutdown();
+        static void NRD_Resize(uint32_t width, uint32_t height);
+        static void NRD_Denoise(
+            RHI_CommandList* cmd_list,
+            RHI_Texture* tex_noisy,
+            RHI_Texture* tex_output,
+            const math::Matrix& view_matrix,
+            const math::Matrix& projection_matrix,
+            const math::Matrix& view_matrix_prev,
+            const math::Matrix& projection_matrix_prev,
+            float jitter_x,
+            float jitter_y,
+            float jitter_prev_x,
+            float jitter_prev_y,
+            float time_delta_ms,
+            uint32_t frame_index
+        );
+        static bool NRD_IsAvailable();
     };
 }

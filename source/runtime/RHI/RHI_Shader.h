@@ -51,6 +51,7 @@ namespace spartan
 
         // compilation
         void Compile(const RHI_Shader_Type type, const std::string& file_path, bool async, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Max);
+        void CompileFromSpirv(const RHI_Shader_Type type, const void* spirv_bytecode, uint64_t spirv_size, const std::string& name);
         RHI_ShaderCompilationState GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled() const                                { return m_compilation_state == RHI_ShaderCompilationState::Succeeded; }
 

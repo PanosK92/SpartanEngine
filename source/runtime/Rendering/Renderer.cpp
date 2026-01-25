@@ -396,6 +396,9 @@ namespace spartan
 
         RHI_CommandList::ImmediateExecutionShutdown();
 
+        // shutdown nrd denoiser
+        RHI_VendorTechnology::NRD_Shutdown();
+
         // manually destroy everything so that RHI_Device::ParseDeletionQueue() frees memory
         {
             DestroyResources();

@@ -229,7 +229,14 @@ namespace spartan
             render_target(Renderer_RenderTarget::restir_reservoir_spatial2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_spatial2");
             render_target(Renderer_RenderTarget::restir_reservoir_spatial3) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_spatial3");
             render_target(Renderer_RenderTarget::restir_reservoir_spatial4) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, flags, "restir_reservoir_spatial4");
-            render_target(Renderer_RenderTarget::denoiser_history)          = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "denoiser_history");
+            
+            // nrd denoiser textures
+            render_target(Renderer_RenderTarget::nrd_viewz)                    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16_Float,          flags, "nrd_viewz");
+            render_target(Renderer_RenderTarget::nrd_normal_roughness)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R10G10B10A2_Unorm,  flags, "nrd_normal_roughness");
+            render_target(Renderer_RenderTarget::nrd_diff_radiance_hitdist)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_diff_radiance_hitdist");
+            render_target(Renderer_RenderTarget::nrd_spec_radiance_hitdist)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_spec_radiance_hitdist");
+            render_target(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist)= make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_diff_radiance_hitdist");
+            render_target(Renderer_RenderTarget::nrd_out_spec_radiance_hitdist)= make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "nrd_out_spec_radiance_hitdist");
         }
         else if (!need_restir && render_target(Renderer_RenderTarget::restir_reservoir0))
         {
@@ -248,7 +255,14 @@ namespace spartan
             render_target(Renderer_RenderTarget::restir_reservoir_spatial2) = nullptr;
             render_target(Renderer_RenderTarget::restir_reservoir_spatial3) = nullptr;
             render_target(Renderer_RenderTarget::restir_reservoir_spatial4) = nullptr;
-            render_target(Renderer_RenderTarget::denoiser_history)          = nullptr;
+            
+            // nrd denoiser textures
+            render_target(Renderer_RenderTarget::nrd_viewz)                     = nullptr;
+            render_target(Renderer_RenderTarget::nrd_normal_roughness)          = nullptr;
+            render_target(Renderer_RenderTarget::nrd_diff_radiance_hitdist)     = nullptr;
+            render_target(Renderer_RenderTarget::nrd_spec_radiance_hitdist)     = nullptr;
+            render_target(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist) = nullptr;
+            render_target(Renderer_RenderTarget::nrd_out_spec_radiance_hitdist) = nullptr;
         }
         
         #undef render_target
@@ -690,22 +704,6 @@ namespace spartan
 
         }
 
-        // denoiser
-        {
-            shader(Renderer_Shader::denoiser_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::denoiser_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "denoiser.hlsl", async);
-
-            shader(Renderer_Shader::denoiser_temporal_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::denoiser_temporal_c)->AddDefine("TEMPORAL_PASS");
-            shader(Renderer_Shader::denoiser_temporal_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "denoiser_temporal.hlsl", async);
-
-            shader(Renderer_Shader::denoiser_spatial_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::denoiser_spatial_c)->AddDefine("SPATIAL_PASS");
-            shader(Renderer_Shader::denoiser_spatial_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "denoiser_spatial.hlsl", async);
-
-            shader(Renderer_Shader::denoiser_upscale_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::denoiser_upscale_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "denoiser_upscale.hlsl", async);
-        }
     }
 
     void Renderer::CreateFonts()
