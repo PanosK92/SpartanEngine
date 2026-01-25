@@ -1619,4 +1619,20 @@ namespace spartan
     {
         return tlas.get();
     }
+
+    void Renderer::DestroyAccelerationStructures()
+    {
+        // wait for gpu to finish using the acceleration structures
+        RHI_Device::QueueWaitAll();
+
+        // destroy tlas
+        tlas = nullptr;
+
+        // destroy shader binding tables (they reference the pipeline which might change)
+        m_std_reflections = nullptr;
+        m_std_shadows     = nullptr;
+        m_std_restir      = nullptr;
+
+        SP_LOG_INFO("Acceleration structures destroyed for world change");
+    }
 }

@@ -1083,21 +1083,6 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::SwapReSTIRReservoirs()
-    {
-        auto& render_targets = GetRenderTargets();
-        swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir0)], 
-             render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev0)]);
-        swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir1)], 
-             render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev1)]);
-        swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir2)], 
-             render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev2)]);
-        swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir3)], 
-             render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev3)]);
-        swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir4)], 
-             render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev4)]);
-    }
-
     void Renderer::Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list)
     {
         // skip when window is minimized or resolution is too small (e.g. during minimize animation)
@@ -1310,7 +1295,20 @@ namespace spartan
         cmd_list->Blit(reservoir_spatial3, reservoir3, false);
         cmd_list->Blit(reservoir_spatial4, reservoir4, false);
         
-        SwapReSTIRReservoirs();
+        // swap restir reservoirs
+        {
+            auto& render_targets = GetRenderTargets();
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir0)], 
+                 render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev0)]);
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir1)], 
+                 render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev1)]);
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir2)], 
+                 render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev2)]);
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir3)], 
+                 render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev3)]);
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir4)], 
+             render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev4)]);
+        }
         
         // denoise
         Pass_Denoiser(cmd_list, tex_gi, tex_gi);

@@ -175,6 +175,7 @@ namespace spartan
         static RHI_Buffer* GetBuffer(const Renderer_Buffer type);
         static RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
         static RHI_AccelerationStructure* GetTopLevelAccelerationStructure();
+        static void DestroyAccelerationStructures();
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();
@@ -210,7 +211,6 @@ namespace spartan
         static void Pass_RayTracedReflections(RHI_CommandList* cmd_list);
         static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
         static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
-        static void SwapReSTIRReservoirs();
         static void Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Light_Reflections(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);

@@ -58,7 +58,8 @@ bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sa
     float3 dir  = sample_hit_pos - center_pos;
     float dist  = length(dir);
     
-    if (dist < 0.02f)
+    // skip visibility check for very short distances (ensures TMax > TMin for ray query)
+    if (dist < 0.03f)
         return true;
     
     dir /= dist;

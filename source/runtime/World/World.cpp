@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioSource.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
+#include "../Rendering/Renderer.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -221,6 +222,7 @@ namespace spartan
     void World::Shutdown()
     {
         Engine::SetFlag(EngineMode::Playing, false); // stop simulation
+        Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
 
         // clear entities
