@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_RasterizerState.h"
 #include "../RHI/RHI_Device.h"
+#include "../Core/Window.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
 SP_WARNINGS_ON
@@ -844,10 +845,19 @@ namespace spartan
 
     void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list)
     {
+        // skip when window is minimized or resolution is too small (e.g. during minimize animation)
+        const uint32_t min_rt_dimension = 64;
+        if (Window::IsMinimized())
+            return;
+
         RHI_Texture* tex_reflections          = GetRenderTarget(Renderer_RenderTarget::reflections);
         RHI_Texture* tex_reflections_position = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_position);
         RHI_Texture* tex_reflections_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_normal);
         RHI_Texture* tex_reflections_albedo   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_albedo);
+
+        // skip if render targets have invalid or too-small dimensions
+        if (tex_reflections_position && (tex_reflections_position->GetWidth() < min_rt_dimension || tex_reflections_position->GetHeight() < min_rt_dimension))
+            return;
 
         // clear reflections once when disabled, then skip
         static bool cleared = false;
@@ -993,7 +1003,16 @@ namespace spartan
 
     void Renderer::Pass_RayTracedShadows(RHI_CommandList* cmd_list)
     {
+        // skip when window is minimized or resolution is too small (e.g. during minimize animation)
+        const uint32_t min_rt_dimension = 64;
+        if (Window::IsMinimized())
+            return;
+
         RHI_Texture* tex_shadows = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows);
+
+        // skip if render target has invalid or too-small dimensions
+        if (tex_shadows && (tex_shadows->GetWidth() < min_rt_dimension || tex_shadows->GetHeight() < min_rt_dimension))
+            return;
         
         // clear once if disabled
         static bool cleared = false;
@@ -1081,8 +1100,17 @@ namespace spartan
 
     void Renderer::Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list)
     {
+        // skip when window is minimized or resolution is too small (e.g. during minimize animation)
+        const uint32_t min_rt_dimension = 64;
+        if (Window::IsMinimized())
+            return;
+
         RHI_Texture* tex_gi      = GetRenderTarget(Renderer_RenderTarget::restir_output);
         RHI_Texture* reservoir0  = GetRenderTarget(Renderer_RenderTarget::restir_reservoir0);
+
+        // skip if render target has invalid or too-small dimensions
+        if (tex_gi && (tex_gi->GetWidth() < min_rt_dimension || tex_gi->GetHeight() < min_rt_dimension))
+            return;
 
         // clear output once when disabled, then skip
         static bool cleared = false;

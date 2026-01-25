@@ -1041,6 +1041,10 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(shader_binding_table && shader_binding_table->GetType() == RHI_Buffer_Type::ShaderBindingTable);
 
+        // skip if dimensions are invalid (can happen during window minimize/resize)
+        if (width == 0 || height == 0)
+            return;
+
         // bind descriptor sets (same as draw/dispatch)
         PreDraw();
 

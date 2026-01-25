@@ -34,8 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    // custom breadcrumbs system for gpu crash tracing
-    // works on all gpus by tracking command markers in cpu memory
     class Breadcrumbs
     {
     public:

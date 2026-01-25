@@ -453,6 +453,11 @@ namespace spartan
             }
         }
     
+        // check if we can render (not minimized and resolution is valid)
+        const uint32_t min_render_dimension = 64;
+        bool resolution_valid = m_resolution_render.x >= min_render_dimension && m_resolution_render.y >= min_render_dimension;
+        bool can_render = !Window::IsMinimized() && m_initialized_resources && resolution_valid;
+
         // begin the primary graphics command list
         {
             RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
@@ -460,7 +465,8 @@ namespace spartan
             m_cmd_list_present->Begin();
         }
 
-        // update CPU and GPU resources
+        // update CPU and GPU resources (only when we can render to avoid GPU work during window transitions)
+        if (can_render)
         {
             // fill draw call list and determine ideal occluders
             UpdateDrawCalls(m_cmd_list_present);
@@ -525,10 +531,10 @@ namespace spartan
             UpdatePersistentLines();
             AddLinesToBeRendered();
         }
-    
-        // produce the frame if window is not minimized
+
+        // produce the frame if window is not minimized and resolution is valid
         {
-            if (!Window::IsMinimized() && m_initialized_resources)
+            if (can_render)
             {
                 ProduceFrame(m_cmd_list_present, nullptr);
             }
@@ -537,13 +543,13 @@ namespace spartan
         // blit to back buffer when standalone
         {
             bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
-            if (is_standalone)
+            if (is_standalone && can_render)
             {
                 BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
             }
         }
     
-        // present frame when standalone
+        // present frame when standalone (always submit command list to avoid stalled commands)
         {
             bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
             if (is_standalone)
