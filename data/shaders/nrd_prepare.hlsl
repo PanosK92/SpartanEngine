@@ -79,6 +79,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float roughness     = max(material.r, 0.04f);
     float metallic      = material.g;
     
+    // transform normal to view space (nrd expects view-space normals)
+    // use row-vector * matrix convention consistent with engine
+    float3 normal_view = normalize(mul(normal_world, (float3x3)buffer_frame.view));
+    
     // get noisy radiance from path tracer (bound at tex slot 7)
     float3 radiance = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb;
     
@@ -90,9 +94,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_radiance  = radiance * (1.0f - metallic);
     float3 specular_radiance = radiance * metallic;
     
-    // write nrd input textures
+    // write nrd input textures (nrd expects view-space normals)
     tex_uav_nrd_viewz[pos]            = float4(view_z, 0.0f, 0.0f, 0.0f);
-    tex_uav_nrd_normal_roughness[pos] = pack_normal_roughness(normal_world, roughness);
+    tex_uav_nrd_normal_roughness[pos] = pack_normal_roughness(normal_view, roughness);
     tex_uav_nrd_diff_radiance[pos]    = float4(diffuse_radiance, hit_distance);
     tex_uav_nrd_spec_radiance[pos]    = float4(specular_radiance, hit_distance);
 }

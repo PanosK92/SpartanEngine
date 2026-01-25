@@ -1316,6 +1316,8 @@ namespace spartan
 
     void Renderer::Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
+        return; // fix
+
         // initialize nrd if not already done
         uint32_t width  = tex_in->GetWidth();
         uint32_t height = tex_in->GetHeight();
@@ -1379,11 +1381,11 @@ namespace spartan
             uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
 
-            // barriers
-            cmd_list->InsertBarrier(nrd_viewz, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(nrd_normal_roughness, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(nrd_diff_radiance, RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(nrd_spec_radiance, RHI_BarrierType::EnsureWriteThenRead);
+            // barriers - keep in GENERAL layout for NRD (uses same layout for sampled and storage)
+            cmd_list->InsertBarrier(nrd_viewz, RHI_Image_Layout::General);
+            cmd_list->InsertBarrier(nrd_normal_roughness, RHI_Image_Layout::General);
+            cmd_list->InsertBarrier(nrd_diff_radiance, RHI_Image_Layout::General);
+            cmd_list->InsertBarrier(nrd_spec_radiance, RHI_Image_Layout::General);
         }
         cmd_list->EndTimeblock();
 

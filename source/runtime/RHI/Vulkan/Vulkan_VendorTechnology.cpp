@@ -1327,6 +1327,12 @@ namespace spartan
         }
         nvidia::nrd_binding_offsets = lib_desc->spirvBindingOffsets;
 
+        SP_LOG_INFO("NRD SPIRV binding offsets - sampler: %u, texture: %u, cb: %u, storage: %u",
+            nvidia::nrd_binding_offsets.samplerOffset,
+            nvidia::nrd_binding_offsets.textureOffset,
+            nvidia::nrd_binding_offsets.constantBufferOffset,
+            nvidia::nrd_binding_offsets.storageTextureAndBufferOffset);
+
         // create nrd instance with relax diffuse+specular denoiser (best for restir)
         nrd::DenoiserDesc denoiser_desc = {};
         denoiser_desc.identifier        = 0;
@@ -1493,6 +1499,8 @@ namespace spartan
 
         if (result != nrd::Result::SUCCESS || dispatch_count == 0 || nvidia::nrd_compute_pipelines.empty())
         {
+            SP_LOG_WARNING("NRD dispatch failed - result: %d, dispatch_count: %u, pipelines: %zu",
+                static_cast<int>(result), dispatch_count, nvidia::nrd_compute_pipelines.size());
             // fallback: copy noisy diffuse input directly to output
             RHI_Texture* diffuse_in = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_diff_radiance_hitdist);
             if (diffuse_in && tex_output)
@@ -1535,6 +1543,72 @@ namespace spartan
             return nullptr;
         };
 
+        // pre-pass: transition pool textures and motion vectors to GENERAL layout
+        // nrd input textures (viewz, normal_roughness, radiance) are already in GENERAL from Renderer_Passes.cpp
+        {
+            set<void*> transitioned_images;
+            vector<VkImageMemoryBarrier> pre_barriers;
+
+            for (uint32_t dispatch_idx = 0; dispatch_idx < dispatch_count; dispatch_idx++)
+            {
+                const nrd::DispatchDesc& dispatch = dispatch_descs[dispatch_idx];
+                for (uint32_t r = 0; r < dispatch.resourcesNum; r++)
+                {
+                    const nrd::ResourceDesc& res = dispatch.resources[r];
+                    RHI_Texture* texture = get_texture_for_resource(res.type, res.indexInPool);
+                    if (!texture)
+                        continue;
+
+                    // skip textures we know are already in GENERAL (nrd inputs from nrd_prepare)
+                    bool is_nrd_input = (res.type == nrd::ResourceType::IN_VIEWZ ||
+                                        res.type == nrd::ResourceType::IN_NORMAL_ROUGHNESS ||
+                                        res.type == nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST ||
+                                        res.type == nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST);
+                    if (is_nrd_input)
+                        continue;
+
+                    VkImage image = static_cast<VkImage>(texture->GetRhiResource());
+                    if (transitioned_images.find(image) != transitioned_images.end())
+                        continue; // already handled
+
+                    transitioned_images.insert(image);
+
+                    // for pool textures and outputs, use UNDEFINED as old layout (first use or don't care about contents)
+                    // for motion vectors, use SHADER_READ_ONLY_OPTIMAL (likely layout from G-buffer pass)
+                    VkImageLayout old_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+                    if (res.type == nrd::ResourceType::IN_MV)
+                    {
+                        old_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                    }
+
+                    VkImageMemoryBarrier barrier = {};
+                    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                    barrier.srcAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                    barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                    barrier.oldLayout                       = old_layout;
+                    barrier.newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
+                    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                    barrier.image                           = image;
+                    barrier.subresourceRange.aspectMask     = texture->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+                    barrier.subresourceRange.baseMipLevel   = 0;
+                    barrier.subresourceRange.levelCount     = texture->GetMipCount();
+                    barrier.subresourceRange.baseArrayLayer = 0;
+                    barrier.subresourceRange.layerCount     = 1;
+
+                    pre_barriers.push_back(barrier);
+                }
+            }
+
+            if (!pre_barriers.empty())
+            {
+                vkCmdPipelineBarrier(vk_cmd,
+                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    0, 0, nullptr, 0, nullptr,
+                    static_cast<uint32_t>(pre_barriers.size()), pre_barriers.data());
+            }
+        }
+
         // execute each dispatch using custom vulkan pipeline
         for (uint32_t dispatch_idx = 0; dispatch_idx < dispatch_count; dispatch_idx++)
         {
@@ -1557,7 +1631,8 @@ namespace spartan
                 memcpy(nvidia::nrd_constant_mapped, dispatch.constantBufferData, dispatch.constantBufferDataSize);
             }
 
-            // transition image layouts for this dispatch
+            // transition all resources to GENERAL layout (compatible with both sampled and storage access)
+            // use memory barriers for coherency between dispatches
             vector<VkImageMemoryBarrier> image_barriers;
             for (uint32_t r = 0; r < dispatch.resourcesNum; r++)
             {
@@ -1570,9 +1645,9 @@ namespace spartan
                 VkImageMemoryBarrier barrier = {};
                 barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
                 barrier.srcAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-                barrier.dstAccessMask                   = (res.descriptorType == nrd::DescriptorType::TEXTURE) ? VK_ACCESS_SHADER_READ_BIT : (VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+                barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
                 barrier.oldLayout                       = VK_IMAGE_LAYOUT_GENERAL;
-                barrier.newLayout                       = (res.descriptorType == nrd::DescriptorType::TEXTURE) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                barrier.newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
                 barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
                 barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
                 barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
@@ -1624,18 +1699,9 @@ namespace spartan
                     continue;
 
                 VkDescriptorImageInfo img_info = {};
-                img_info.sampler   = VK_NULL_HANDLE;
-                img_info.imageView = static_cast<VkImageView>(texture->GetRhiSrv());
-
-                // set appropriate layout based on access type
-                if (res.descriptorType == nrd::DescriptorType::TEXTURE)
-                {
-                    img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                }
-                else
-                {
-                    img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-                }
+                img_info.sampler     = VK_NULL_HANDLE;
+                img_info.imageView   = static_cast<VkImageView>(texture->GetRhiSrv());
+                img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
                 image_infos.push_back(img_info);
 
@@ -1686,6 +1752,8 @@ namespace spartan
         RHI_Texture* denoised = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist);
         if (denoised && tex_output)
         {
+            // transition output texture for reading
+            cmd_list->InsertBarrier(denoised, RHI_Image_Layout::General);
             cmd_list->Blit(denoised, tex_output, false);
         }
     #endif
