@@ -659,6 +659,10 @@ namespace spartan
             shader(Renderer_Shader::light_reflections_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_reflections_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_reflections.hlsl", async);
             
+            // nrd input preparation
+            shader(Renderer_Shader::nrd_prepare_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::nrd_prepare_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "nrd_prepare.hlsl", async);
+            
             // ray traced shadows
             shader(Renderer_Shader::shadows_ray_generation_r) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::shadows_ray_generation_r)->Compile(RHI_Shader_Type::RayGeneration, shader_dir + "ray_traced_shadows.hlsl", async);

@@ -1485,8 +1485,16 @@ namespace spartan
             dispatch_descs, dispatch_count
         );
 
-        if (result != nrd::Result::SUCCESS || dispatch_count == 0)
+        if (result != nrd::Result::SUCCESS || dispatch_count == 0 || nvidia::nrd_compute_pipelines.empty())
+        {
+            // fallback: copy noisy diffuse input directly to output
+            RHI_Texture* diffuse_in = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_diff_radiance_hitdist);
+            if (diffuse_in && tex_output)
+            {
+                cmd_list->Blit(diffuse_in, tex_output, false);
+            }
             return;
+        }
 
         // helper to get texture for nrd resource type
         auto get_texture_for_resource = [&](nrd::ResourceType type, uint16_t index_in_pool) -> RHI_Texture*

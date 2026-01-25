@@ -1306,7 +1306,62 @@ namespace spartan
         }
 
         if (!RHI_VendorTechnology::NRD_IsAvailable())
+        {
+            // fallback: just pass through
+            if (tex_in && tex_out && tex_in != tex_out)
+            {
+                cmd_list->Blit(tex_in, tex_out, false);
+            }
             return;
+        }
+
+        // prepare nrd input textures from g-buffer and path tracer output
+        cmd_list->BeginTimeblock("nrd_prepare");
+        {
+            RHI_Shader* shader = GetShader(Renderer_Shader::nrd_prepare_c);
+            if (!shader || !shader->IsCompiled())
+            {
+                cmd_list->EndTimeblock();
+                // fallback
+                if (tex_in && tex_out && tex_in != tex_out)
+                    cmd_list->Blit(tex_in, tex_out, false);
+                return;
+            }
+
+            RHI_Texture* nrd_viewz            = GetRenderTarget(Renderer_RenderTarget::nrd_viewz);
+            RHI_Texture* nrd_normal_roughness = GetRenderTarget(Renderer_RenderTarget::nrd_normal_roughness);
+            RHI_Texture* nrd_diff_radiance    = GetRenderTarget(Renderer_RenderTarget::nrd_diff_radiance_hitdist);
+            RHI_Texture* nrd_spec_radiance    = GetRenderTarget(Renderer_RenderTarget::nrd_spec_radiance_hitdist);
+
+            RHI_PipelineState pso;
+            pso.name             = "nrd_prepare";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
+
+            SetCommonTextures(cmd_list);
+
+            // input: noisy radiance from path tracer
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+
+            // outputs: nrd input textures
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), nrd_viewz, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), nrd_normal_roughness, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), nrd_diff_radiance, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex4), nrd_spec_radiance, rhi_all_mips, 0, true);
+
+            const uint32_t thread_group_count_x = 8;
+            const uint32_t thread_group_count_y = 8;
+            uint32_t dispatch_x = (width + thread_group_count_x - 1) / thread_group_count_x;
+            uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
+            cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+
+            // barriers
+            cmd_list->InsertBarrier(nrd_viewz, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(nrd_normal_roughness, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(nrd_diff_radiance, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(nrd_spec_radiance, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
 
         // get camera matrices from frame constant buffer
         Matrix view_matrix            = m_cb_frame_cpu.view;
