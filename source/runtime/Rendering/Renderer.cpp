@@ -1585,33 +1585,50 @@ namespace spartan
 
     void Renderer::Screenshot()
     {
+        static uint32_t screenshot_index = 0;
+
+        // use frame_output (post-AA, post-tonemapping) for both formats
         RHI_Texture* frame_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
         uint32_t width            = frame_output->GetWidth();
         uint32_t height           = frame_output->GetHeight();
-        RHI_Format format         = frame_output->GetFormat();
         uint32_t bits_per_channel = frame_output->GetBitsPerChannel();
         uint32_t channel_count    = frame_output->GetChannelCount();
         size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
-        
-        // create staging buffer (linear: element_count=1, stride=data_size; mappable=true for coherent host-visible)
-        auto staging = make_unique<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
-        
-        // copy image to buffer
+
+        // check if hdr mode is active (affects how png is saved)
+        bool is_hdr = cvar_hdr.GetValueAs<bool>();
+
+        // create staging buffer
+        auto staging = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
+
+        // copy texture to staging buffer
         if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
             cmd_list->CopyTextureToBuffer(frame_output, staging.get());
             RHI_CommandList::ImmediateExecutionEnd(cmd_list);
         }
-        
-        // read mapped data (coherent, so direct access post-submit)
+
+        // get mapped data pointer
         void* mapped_data = staging->GetMappedData();
         SP_ASSERT_MSG(mapped_data, "Staging buffer not mappable");
 
-        spartan::ThreadPool::AddTask([width, height, channel_count, bits_per_channel, mapped_data]()
+        // generate filenames with index
+        uint32_t index = screenshot_index++;
+        string exr_path = "screenshot_" + to_string(index) + ".exr";
+        string png_path = "screenshot_" + to_string(index) + ".png";
+
+        // save screenshots in background
+        spartan::ThreadPool::AddTask([=]()
         {
-            SP_LOG_INFO("Saving screenshot...");
-            ImageImporter::Save("screenshot.exr", width, height, channel_count, bits_per_channel, mapped_data);
-            SP_LOG_INFO("Screenshot saved as 'screenshot.exr'");
+            SP_LOG_INFO("Saving screenshots...");
+
+            // save exr (post-tonemapped, as originally)
+            ImageImporter::Save(exr_path, width, height, channel_count, bits_per_channel, mapped_data);
+
+            // save png (convert hdr/pq to sdr if needed, otherwise direct save)
+            ImageImporter::SaveSdr(png_path, width, height, channel_count, bits_per_channel, mapped_data, is_hdr);
+
+            SP_LOG_INFO("Screenshots saved as '%s' and '%s'", exr_path.c_str(), png_path.c_str());
         });
     }
 

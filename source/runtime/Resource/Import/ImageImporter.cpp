@@ -377,18 +377,115 @@ namespace spartan
             uint32_t f;
             if (exp == 0)
             {
-                f = (sign << 31) | (mant ? ((127 - 15) << 23) | (mant << 13) : 0); // Denormals as zero for simplicity
+                f = (sign << 31) | (mant ? ((127 - 15) << 23) | (mant << 13) : 0); // denormals as zero for simplicity
             }
             else if (exp == 0x1F)
             {
-                f = (sign << 31) | (0x7F800000) | (mant << 13); // Inf/NaN
+                f = (sign << 31) | (0x7F800000) | (mant << 13); // inf/nan
             }
             else
             {
                 f = (sign << 31) | ((exp + (127 - 15)) << 23) | (mant << 13);
             }
 
-            return *reinterpret_cast<float*>(&f); // Assumes IEEE 754 and little-endian
+            return *reinterpret_cast<float*>(&f); // assumes ieee 754 and little-endian
+        }
+
+        // attempt to reverse the srgb gamma if data is already gamma-encoded
+        float srgb_to_linear(float srgb)
+        {
+            if (srgb <= 0.04045f)
+                return srgb / 12.92f;
+            return powf((srgb + 0.055f) / 1.055f, 2.4f);
+        }
+
+        // attempt to reverse any existing tonemapping (approximate inverse reinhard)
+        float inverse_tonemap(float x)
+        {
+            // inverse of x/(x+1) is x/(1-x), clamped to avoid division issues
+            x = min(x, 0.999f);
+            return x / (1.0f - x);
+        }
+
+        // aces tonemapping (same as shader implementation)
+        void aces_tonemap(float& r, float& g, float& b)
+        {
+            // srgb => xyz => d65_2_d60 => ap1 => rrt_sat
+            float ir = r * 0.59719f + g * 0.35458f + b * 0.04823f;
+            float ig = r * 0.07600f + g * 0.90834f + b * 0.01566f;
+            float ib = r * 0.02840f + g * 0.13383f + b * 0.83777f;
+
+            // rrt and odt fit
+            float ar = ir * (ir + 0.0245786f) - 0.000090537f;
+            float ag = ig * (ig + 0.0245786f) - 0.000090537f;
+            float ab = ib * (ib + 0.0245786f) - 0.000090537f;
+            float br = ir * (0.983729f * ir + 0.4329510f) + 0.238081f;
+            float bg = ig * (0.983729f * ig + 0.4329510f) + 0.238081f;
+            float bb = ib * (0.983729f * ib + 0.4329510f) + 0.238081f;
+            ir = ar / br;
+            ig = ag / bg;
+            ib = ab / bb;
+
+            // odt_sat => xyz => d60_2_d65 => srgb
+            r =  ir *  1.60475f + ig * -0.53108f + ib * -0.07367f;
+            g =  ir * -0.10208f + ig *  1.10813f + ib * -0.00605f;
+            b =  ir * -0.00327f + ig * -0.07276f + ib *  1.07602f;
+
+            // clamp
+            r = max(0.0f, min(1.0f, r));
+            g = max(0.0f, min(1.0f, g));
+            b = max(0.0f, min(1.0f, b));
+        }
+
+        // linear to srgb gamma correction
+        float linear_to_srgb(float linear)
+        {
+            if (linear <= 0.0031308f)
+                return linear * 12.92f;
+            return 1.055f * powf(linear, 1.0f / 2.4f) - 0.055f;
+        }
+
+        // decode pq/st.2084 to linear (inverse of linear_to_hdr10 in output.hlsl)
+        void pq_to_linear(float& r, float& g, float& b)
+        {
+            // inverse rec.2020 to rec.709 matrix
+            static const float m[3][3] = {
+                {  1.6605f, -0.5876f, -0.0728f },
+                { -0.1246f,  1.1329f, -0.0083f },
+                { -0.0182f, -0.1006f,  1.1187f }
+            };
+
+            // inverse pq (st.2084) constants
+            const float m1 = 0.1593017578125f;
+            const float m2 = 78.84375f;
+            const float c1 = 0.8359375f;
+            const float c2 = 18.8515625f;
+            const float c3 = 18.6875f;
+            const float pq_max_nits = 10000.0f;
+            const float sdr_white_nits = 203.0f;
+
+            // decode pq curve
+            auto decode_pq = [&](float v) -> float {
+                v = max(v, 0.0f);
+                float vp = powf(v, 1.0f / m2);
+                float num = max(vp - c1, 0.0f);
+                float den = c2 - c3 * vp;
+                float linear = powf(num / max(den, 0.0001f), 1.0f / m1);
+                return linear * pq_max_nits / sdr_white_nits; // normalize to sdr range
+            };
+
+            float lr = decode_pq(r);
+            float lg = decode_pq(g);
+            float lb = decode_pq(b);
+
+            // convert rec.2020 back to rec.709/srgb
+            r = m[0][0] * lr + m[0][1] * lg + m[0][2] * lb;
+            g = m[1][0] * lr + m[1][1] * lg + m[1][2] * lb;
+            b = m[2][0] * lr + m[2][1] * lg + m[2][2] * lb;
+
+            r = max(r, 0.0f);
+            g = max(g, 0.0f);
+            b = max(b, 0.0f);
         }
     }
 
@@ -572,6 +669,59 @@ namespace spartan
         if (!saved)
         {
             SP_LOG_ERROR("Failed to save HDR EXR to %s", file_path.c_str());
+        }
+    }
+
+    void ImageImporter::SaveSdr(const string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data, bool is_hdr)
+    {
+        const uint16_t* src_half = static_cast<const uint16_t*>(data);
+
+        // allocate 24-bit RGB bitmap (8 bits per channel)
+        FIBITMAP* bitmap = FreeImage_Allocate(width, height, 24);
+        if (!bitmap)
+        {
+            SP_LOG_ERROR("Failed to allocate FreeImage SDR bitmap");
+            return;
+        }
+
+        for (uint32_t y = 0; y < height; y++)
+        {
+            BYTE* scanline = FreeImage_GetScanLine(bitmap, height - 1 - y);
+            for (uint32_t x = 0; x < width; x++)
+            {
+                uint32_t src_idx = (y * width + x) * 4;
+
+                // convert half to float
+                float r = half_to_float(src_half[src_idx + 0]);
+                float g = half_to_float(src_half[src_idx + 1]);
+                float b = half_to_float(src_half[src_idx + 2]);
+
+                if (is_hdr)
+                {
+                    // hdr mode: frame_output contains pq-encoded data (already tonemapped)
+                    // decode pq to linear, then apply srgb gamma (no additional tonemapping needed)
+                    pq_to_linear(r, g, b);
+                    r = linear_to_srgb(r);
+                    g = linear_to_srgb(g);
+                    b = linear_to_srgb(b);
+                }
+                // sdr mode: frame_output is already srgb, save directly
+
+                // convert to 8-bit (FreeImage uses BGR order)
+                uint32_t dst_idx = x * 3;
+                scanline[dst_idx + 0] = static_cast<BYTE>(min(max(b, 0.0f), 1.0f) * 255.0f + 0.5f);
+                scanline[dst_idx + 1] = static_cast<BYTE>(min(max(g, 0.0f), 1.0f) * 255.0f + 0.5f);
+                scanline[dst_idx + 2] = static_cast<BYTE>(min(max(r, 0.0f), 1.0f) * 255.0f + 0.5f);
+            }
+        }
+
+        // save as PNG (lossless, universal format)
+        BOOL saved = FreeImage_Save(FIF_PNG, bitmap, file_path.c_str(), PNG_Z_BEST_COMPRESSION);
+        FreeImage_Unload(bitmap);
+
+        if (!saved)
+        {
+            SP_LOG_ERROR("Failed to save SDR PNG to %s", file_path.c_str());
         }
     }
 }

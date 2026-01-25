@@ -36,5 +36,6 @@ namespace spartan
         static void Shutdown();
         static void Load(const std::string& file_path, const uint32_t slice_index, RHI_Texture* texture);
         static void Save(const std::string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data);
+        static void SaveSdr(const std::string& file_path, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel, void* data, bool is_hdr);
     };
 }
