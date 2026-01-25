@@ -241,5 +241,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (lum > 200.0f)
         gi *= 200.0f / lum;
     
+    // nan/inf protection
+    if (any(isnan(gi)) || any(isinf(gi)))
+        gi = float3(0.0f, 0.0f, 0.0f);
+    
     tex_uav[pixel] = float4(gi, 1.0f);
 }

@@ -124,7 +124,18 @@ Reservoir create_empty_reservoir()
 float calculate_target_pdf(float3 radiance)
 {
     float lum = dot(radiance, float3(0.299, 0.587, 0.114));
-    return max(lum, 1e-6f);
+    
+    // clamp to prevent inf/nan: inf / (1 + inf) = nan
+    lum = clamp(lum, 0.0f, 65504.0f); // fp16 max
+    
+    // use reinhard-style compression to prevent extremely bright samples (like direct sunlight)
+    // from dominating the reservoir. this preserves interior scene behavior since low luminance
+    // values remain nearly linear: lum / (1 + lum) ≈ lum when lum << 1
+    // for bright exteriors, it compresses: lum = 100 -> 0.99, lum = 1000 -> 0.999
+    // the sqrt provides additional perceptual weighting
+    float compressed = lum / (1.0f + lum);
+    
+    return max(sqrt(compressed), 1e-6f);
 }
 
 bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float weight, float random_value)

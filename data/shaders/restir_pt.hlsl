@@ -348,7 +348,15 @@ void ray_gen()
     tex_reservoir3[launch_id] = t3;
     tex_reservoir4[launch_id] = t4;
     
-    float3 gi = reservoir.sample.radiance * reservoir.W;
+    float3 gi  = reservoir.sample.radiance * reservoir.W;
+    float lum  = luminance(gi);
+    if (lum > 200.0f)
+        gi *= 200.0f / lum;
+    
+    // nan/inf protection
+    if (any(isnan(gi)) || any(isinf(gi)))
+        gi = float3(0.0f, 0.0f, 0.0f);
+    
     tex_uav[launch_id] = float4(gi, 1.0f);
 }
 
