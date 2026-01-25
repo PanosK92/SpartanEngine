@@ -124,6 +124,7 @@ struct MaterialParameters
     bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }
     bool has_texture_roughness() { return (flags & (1 << 3))  != 0; }
     bool has_texture_metalness() { return (flags & (1 << 4))  != 0; }
+    bool has_texture_emissive()  { return (flags & (1 << 6))  != 0; }
     bool emissive_from_albedo()  { return (flags & (1 << 15)) != 0; }
 };
 

@@ -314,6 +314,22 @@ void ray_gen()
     float roughness = max(material.r, 0.04f);
     float metallic  = material.g;
     
+    // skip metallic surfaces - metals have no diffuse, only specular (handled by rtr)
+    // in-between values are mostly texture filtering artifacts at metal/dielectric boundaries
+    if (metallic >= 0.5f)
+    {
+        Reservoir empty = create_empty_reservoir();
+        float4 t0, t1, t2, t3, t4;
+        pack_reservoir(empty, t0, t1, t2, t3, t4);
+        tex_reservoir0[launch_id] = t0;
+        tex_reservoir1[launch_id] = t1;
+        tex_reservoir2[launch_id] = t2;
+        tex_reservoir3[launch_id] = t3;
+        tex_reservoir4[launch_id] = t4;
+        tex_uav[launch_id] = float4(0, 0, 0, 1);
+        return;
+    }
+    
     // ris candidate generation
     Reservoir reservoir = create_empty_reservoir();
     
@@ -424,8 +440,17 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     
     // emission
     float3 emission = float3(0.0f, 0.0f, 0.0f);
+    if (mat.has_texture_emissive())
+    {
+        uint emissive_texture_index = material_index + material_texture_index_emission;
+        float dist      = RayTCurrent();
+        float mip_level = clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
+        
+        emission = material_textures[emissive_texture_index].SampleLevel(
+            GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
+    }
     if (mat.emissive_from_albedo())
-        emission = albedo;
+        emission += albedo;
     
     float hit_distance  = RayTCurrent();
     float3 hit_position = WorldRayOrigin() + WorldRayDirection() * hit_distance;
