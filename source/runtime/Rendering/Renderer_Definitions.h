@@ -158,7 +158,6 @@ namespace spartan
         visibility    = 6,
         sb_spd        = 7,
         tex_spd       = 8,
-        tex_uint      = 9, // for integer format textures (vrs, etc)
         geometry_info = 20, // ray tracing geometry info buffer
         // restir reservoir uav bindings
         reservoir0    = 21,
@@ -171,6 +170,8 @@ namespace spartan
         nrd_normal_roughness   = 27,
         nrd_diff_radiance      = 28,
         nrd_spec_radiance      = 29,
+        // integer format textures (vrs, etc)
+        tex_uint               = 30,
     };
 
     enum class Renderer_Shader : uint8_t

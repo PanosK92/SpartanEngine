@@ -1369,11 +1369,11 @@ namespace spartan
             // input: noisy radiance from path tracer
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
-            // outputs: nrd input textures
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), nrd_viewz, rhi_all_mips, 0, true);
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), nrd_normal_roughness, rhi_all_mips, 0, true);
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), nrd_diff_radiance, rhi_all_mips, 0, true);
-            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex4), nrd_spec_radiance, rhi_all_mips, 0, true);
+            // outputs: nrd input textures (using dedicated nrd binding slots)
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_viewz), nrd_viewz, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_normal_roughness), nrd_normal_roughness, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_diff_radiance), nrd_diff_radiance, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_spec_radiance), nrd_spec_radiance, rhi_all_mips, 0, true);
 
             const uint32_t thread_group_count_x = 8;
             const uint32_t thread_group_count_y = 8;

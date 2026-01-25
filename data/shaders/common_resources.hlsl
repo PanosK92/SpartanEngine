@@ -225,7 +225,14 @@ RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
 RWStructuredBuffer<uint> visibility                        : register(u6);
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
 globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
-RWTexture2D<uint> tex_uav_uint                             : register(u26); // for integer format textures (vrs, etc)
+// nrd denoiser output bindings
+RWTexture2D<float4> tex_uav_nrd_viewz            : register(u26);
+RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
+RWTexture2D<float4> tex_uav_nrd_diff_radiance    : register(u28);
+RWTexture2D<float4> tex_uav_nrd_spec_radiance    : register(u29);
+
+// integer format textures (vrs, etc)
+RWTexture2D<uint> tex_uav_uint : register(u30);
 
 // buffers
 [[vk::push_constant]]

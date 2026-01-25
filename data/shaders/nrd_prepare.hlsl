@@ -23,15 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common.hlsl"
 
-// input textures
-Texture2D<float4> tex_noisy_radiance : register(t0);
-
-// output textures for nrd
-RWTexture2D<float>  tex_nrd_viewz            : register(u0);
-RWTexture2D<float4> tex_nrd_normal_roughness : register(u1);
-RWTexture2D<float4> tex_nrd_diff_radiance    : register(u2);
-RWTexture2D<float4> tex_nrd_spec_radiance    : register(u3);
-
 // octahedron encoding for normals
 float2 oct_wrap(float2 v)
 {
@@ -70,10 +61,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (depth <= 0.0f)
     {
         // sky pixel
-        tex_nrd_viewz[pos]            = 100000.0f;
-        tex_nrd_normal_roughness[pos] = float4(0.5f, 0.5f, 0.0f, 0.0f);
-        tex_nrd_diff_radiance[pos]    = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        tex_nrd_spec_radiance[pos]    = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav_nrd_viewz[pos]            = float4(100000.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav_nrd_normal_roughness[pos] = float4(0.5f, 0.5f, 0.0f, 0.0f);
+        tex_uav_nrd_diff_radiance[pos]    = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav_nrd_spec_radiance[pos]    = float4(0.0f, 0.0f, 0.0f, 0.0f);
         return;
     }
     
@@ -88,8 +79,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float roughness     = max(material.r, 0.04f);
     float metallic      = material.g;
     
-    // get noisy radiance from path tracer
-    float3 radiance = tex_noisy_radiance.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb;
+    // get noisy radiance from path tracer (bound at tex slot 7)
+    float3 radiance = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb;
     
     // estimate hit distance from depth (approximation)
     float hit_distance = length(pos_world - buffer_frame.camera_position);
@@ -100,8 +91,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_radiance = radiance * metallic;
     
     // write nrd input textures
-    tex_nrd_viewz[pos]            = view_z;
-    tex_nrd_normal_roughness[pos] = pack_normal_roughness(normal_world, roughness);
-    tex_nrd_diff_radiance[pos]    = float4(diffuse_radiance, hit_distance);
-    tex_nrd_spec_radiance[pos]    = float4(specular_radiance, hit_distance);
+    tex_uav_nrd_viewz[pos]            = float4(view_z, 0.0f, 0.0f, 0.0f);
+    tex_uav_nrd_normal_roughness[pos] = pack_normal_roughness(normal_world, roughness);
+    tex_uav_nrd_diff_radiance[pos]    = float4(diffuse_radiance, hit_distance);
+    tex_uav_nrd_spec_radiance[pos]    = float4(specular_radiance, hit_distance);
 }

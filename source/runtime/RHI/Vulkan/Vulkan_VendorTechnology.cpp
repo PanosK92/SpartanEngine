@@ -1551,6 +1551,40 @@ namespace spartan
                 memcpy(nvidia::nrd_constant_mapped, dispatch.constantBufferData, dispatch.constantBufferDataSize);
             }
 
+            // transition image layouts for this dispatch
+            vector<VkImageMemoryBarrier> image_barriers;
+            for (uint32_t r = 0; r < dispatch.resourcesNum; r++)
+            {
+                const nrd::ResourceDesc& res = dispatch.resources[r];
+                RHI_Texture* texture = get_texture_for_resource(res.type, res.indexInPool);
+                
+                if (!texture)
+                    continue;
+
+                VkImageMemoryBarrier barrier = {};
+                barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                barrier.srcAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                barrier.dstAccessMask                   = (res.descriptorType == nrd::DescriptorType::TEXTURE) ? VK_ACCESS_SHADER_READ_BIT : (VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+                barrier.oldLayout                       = VK_IMAGE_LAYOUT_GENERAL;
+                barrier.newLayout                       = (res.descriptorType == nrd::DescriptorType::TEXTURE) ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
+                barrier.subresourceRange.aspectMask     = texture->IsDepthFormat() ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+                barrier.subresourceRange.baseMipLevel   = 0;
+                barrier.subresourceRange.levelCount     = 1;
+                barrier.subresourceRange.baseArrayLayer = 0;
+                barrier.subresourceRange.layerCount     = 1;
+
+                image_barriers.push_back(barrier);
+            }
+
+            if (!image_barriers.empty())
+            {
+                vkCmdPipelineBarrier(vk_cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(image_barriers.size()), image_barriers.data());
+            }
+
             // build descriptor writes
             vector<VkDescriptorImageInfo> image_infos;
             vector<VkWriteDescriptorSet> writes;
@@ -1584,11 +1618,19 @@ namespace spartan
                     continue;
 
                 VkDescriptorImageInfo img_info = {};
-                img_info.imageView   = static_cast<VkImageView>(texture->GetRhiSrv());
-                img_info.imageLayout = (res.descriptorType == nrd::DescriptorType::TEXTURE) 
-                    ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL 
-                    : VK_IMAGE_LAYOUT_GENERAL;
-                img_info.sampler     = VK_NULL_HANDLE;
+                img_info.sampler   = VK_NULL_HANDLE;
+                img_info.imageView = static_cast<VkImageView>(texture->GetRhiSrv());
+
+                // set appropriate layout based on access type
+                if (res.descriptorType == nrd::DescriptorType::TEXTURE)
+                {
+                    img_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                }
+                else
+                {
+                    img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+                }
+
                 image_infos.push_back(img_info);
 
                 VkWriteDescriptorSet write = {};
