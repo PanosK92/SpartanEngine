@@ -30,7 +30,7 @@ jobs:
           - api: d3d12
             configuration: release
 
-    runs-on: windows-2022
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -45,13 +45,14 @@ jobs:
       - name: Setup MSBuild / Visual Studio Environment
         uses: microsoft/setup-msbuild@v1
         with:
-          vs-version: '[17.0,20.0)'
+          vs-version: '[18.0,20.0)'
 
       - name: Show MSVC version (for debugging)
         shell: cmd
         run: |
           where msbuild
           msbuild /version
+          call "C:\Program Files\Microsoft Visual Studio\2026\Enterprise\VC\Auxiliary\Build\vcvars64.bat" && cl
 
       - name: Generate project files
         shell: python
@@ -79,7 +80,7 @@ jobs:
       - name: Build
         shell: cmd
         working-directory: ${{ github.workspace }}
-        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /p:PlatformToolset=v143 /m spartan.slnx
+        run: msbuild /p:Platform=x64 /p:Configuration=${{ matrix.configuration }} /p:PlatformToolset=v144 /m spartan.slnx
 
       - name: Create artifacts
         if: github.event_name != 'pull_request' && matrix.api == 'vulkan'
