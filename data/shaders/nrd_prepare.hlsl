@@ -70,8 +70,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     // compute linear view z from world position
     float3 pos_world = get_position(uv);
-    float3 pos_view  = mul(buffer_frame.view, float4(pos_world, 1.0f)).xyz;
-    float view_z     = pos_view.z;
+    float3 pos_view  = world_to_view(pos_world, true);
+    float view_z     = abs(pos_view.z); // nrd expects positive viewz (distance from camera plane)
     
     // get normal and material properties
     float3 normal_world = get_normal(uv);

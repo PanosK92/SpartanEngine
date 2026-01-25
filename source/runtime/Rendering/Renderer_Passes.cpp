@@ -1316,8 +1316,6 @@ namespace spartan
 
     void Renderer::Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        return; // todo: fix
-
         // initialize nrd if not already done
         uint32_t width  = tex_in->GetWidth();
         uint32_t height = tex_in->GetHeight();

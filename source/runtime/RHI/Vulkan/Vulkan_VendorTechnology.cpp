@@ -1423,11 +1423,17 @@ namespace spartan
         // update nrd common settings
         nrd::CommonSettings settings = {};
 
-        // copy matrices (nrd expects column-major)
-        memcpy(settings.worldToViewMatrix,      view_matrix.Data(),            sizeof(float) * 16);
-        memcpy(settings.worldToViewMatrixPrev,  view_matrix_prev.Data(),       sizeof(float) * 16);
-        memcpy(settings.viewToClipMatrix,       projection_matrix.Data(),      sizeof(float) * 16);
-        memcpy(settings.viewToClipMatrixPrev,   projection_matrix_prev.Data(), sizeof(float) * 16);
+        // nrd expects row-major matrices, engine stores column-major, so transpose
+        // also nrd is left-handed like the engine, so no handedness conversion needed
+        Matrix view_transposed      = view_matrix.Transposed();
+        Matrix view_prev_transposed = view_matrix_prev.Transposed();
+        Matrix proj_transposed      = projection_matrix.Transposed();
+        Matrix proj_prev_transposed = projection_matrix_prev.Transposed();
+
+        memcpy(settings.worldToViewMatrix,      view_transposed.Data(),      sizeof(float) * 16);
+        memcpy(settings.worldToViewMatrixPrev,  view_prev_transposed.Data(), sizeof(float) * 16);
+        memcpy(settings.viewToClipMatrix,       proj_transposed.Data(),      sizeof(float) * 16);
+        memcpy(settings.viewToClipMatrixPrev,   proj_prev_transposed.Data(), sizeof(float) * 16);
 
         // motion vector scale (screen space uvs)
         settings.motionVectorScale[0] = 1.0f;
