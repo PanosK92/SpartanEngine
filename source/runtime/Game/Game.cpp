@@ -366,13 +366,13 @@ namespace spartan
                     material->SetObjectName("material_ocean");
                     material->SetResourceFilePath("ocean" + string(EXTENSION_MATERIAL));
 
-                    material->LoadFromFile(material->GetResourceFilePath());
+                    //material->LoadFromFile(material->GetResourceFilePath());
                     material->SetOceanTileCount(grid_size);
 
                     material->SetOceanTileSize(tile_size);
                     material->SetOceanVerticesCount(density);
                     material->MarkSpectrumAsComputed(false);
-                    material->SetTexture(MaterialTextureType::Flowmap, "project\\materials\\water\\flowmap.png");
+                    //material->SetTexture(MaterialTextureType::Flowmap, "project\\materials\\water\\flowmap.png");
 
                     // if material fails to load from file
                     if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)

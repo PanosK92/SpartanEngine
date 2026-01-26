@@ -194,15 +194,15 @@ namespace spartan
 
                 prev_material = material;
 
-                if (material->ShouldComputeSpectrum())
-                {
-                    SP_LOG_INFO("Computing Ocean Spectrum...");
+                //if (material->ShouldComputeSpectrum())
+                //{
+                    //SP_LOG_INFO("Computing Ocean Spectrum...");
                     Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
                     // calculates conjugate and stores it in BA channels of the initial spectrum
                     Pass_PackSpectrum(cmd_list_graphics_present);
 
                     material->MarkSpectrumAsComputed(true);
-                }
+                //}
 
                 // computes displacement and slope maps
                 Pass_AdvanceSpectrum(cmd_list_graphics_present);
