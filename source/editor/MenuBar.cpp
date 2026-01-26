@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
+#include "ImGui/Source/Animation/im_anim.h"
 //================================
 
 //= NAMESPACES =====
@@ -47,11 +48,13 @@ using namespace std;
 
 namespace
 {
-    bool show_file_dialog          = false;
-    bool show_imgui_metrics_window = false;
-    bool show_imgui_style_window   = false;
-    bool show_imgui_demo_widow     = false;
-    Editor* editor                 = nullptr;
+    bool show_file_dialog               = false;
+    bool show_imgui_metrics_window      = false;
+    bool show_imgui_style_window        = false;
+    bool show_imgui_demo_widow          = false;
+    bool show_im_anim_profiler_window   = false;
+    bool show_im_anim_demo_window       = false;
+    Editor* editor                      = nullptr;
     string file_dialog_selection_path;
     unique_ptr<FileDialog> file_dialog;
 
@@ -185,7 +188,9 @@ namespace
                 {
                     ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
                     ImGui::MenuItem("Style", nullptr, &show_imgui_style_window);
-                    ImGui::MenuItem("Demo", nullptr, &show_imgui_demo_widow);
+                    ImGui::MenuItem("ImGui Demo", nullptr, &show_imgui_demo_widow);
+                    ImGui::MenuItem("Animation Debug", nullptr, &show_im_anim_profiler_window);
+                    ImGui::MenuItem("Animation Demo", nullptr, &show_im_anim_demo_window);
 
                     ImGui::EndMenu();
                 }
@@ -545,6 +550,16 @@ void MenuBar::Tick()
         if (show_imgui_demo_widow)
         {
             ImGui::ShowDemoWindow(&show_imgui_demo_widow);
+        }
+
+        if (show_im_anim_profiler_window)
+        { 
+            iam_show_unified_inspector(&show_im_anim_profiler_window);
+        }
+
+        if (show_im_anim_demo_window)
+        {
+            ImAnimDemoWindow(); 
         }
 
         editor->GetWidget<Style>()->SetVisible(show_imgui_style_window);

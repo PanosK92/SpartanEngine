@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // FWD DECLARATIONS =
 class Editor;
+extern void ImAnimDemoWindow();
 //===================
 
 class MenuBar

@@ -138,7 +138,9 @@ void Editor::Tick()
             {
                 ImGui_ImplSDL3_NewFrame();
                 ImGui::NewFrame();
-                iam_update_begin_frame();
+
+                // iam animation
+                iam_update_begin_frame(); 
                 iam_clip_update(ImGui::GetIO().DeltaTime);
             }
 
