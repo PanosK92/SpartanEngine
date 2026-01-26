@@ -141,7 +141,7 @@ namespace ImGui::Style
 
         style.WindowMinSize             = ImVec2(32.0f, 32.0f);
         style.WindowTitleAlign          = ImVec2(0.0f, 0.5f);
-        style.WindowMenuButtonPosition  = ImGuiDir_Left;
+        style.WindowMenuButtonPosition  = ImGuiDir_None;
 
         style.ItemInnerSpacing          = ImVec2(2.0f, 2.0f);
         style.IndentSpacing             = 21.0f;

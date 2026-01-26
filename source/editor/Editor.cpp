@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/ImGui_Extension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl3.h"
+#include "ImGui/Source/Animation/im_anim.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
 #include "Widgets/Style.h"
@@ -137,6 +138,8 @@ void Editor::Tick()
             {
                 ImGui_ImplSDL3_NewFrame();
                 ImGui::NewFrame();
+                iam_update_begin_frame();
+                iam_clip_update(ImGui::GetIO().DeltaTime);
             }
 
             // engine
