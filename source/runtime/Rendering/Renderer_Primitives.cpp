@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Entity.h"
+#include "../Core/Timer.h"
 //=====================================
 
 //= NAMESPACES ===============
@@ -34,51 +35,66 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Color& color_from, const Color& color_to)
+    void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Color& color_from, const Color& color_to, float duration_sec /*= 0.0f*/)
     {
-        m_lines_vertices.emplace_back(from, color_from);
-        m_lines_vertices.emplace_back(to, color_to);
+        if (duration_sec <= 0.0f)
+        {
+            // single frame line - add directly to render list
+            m_lines_vertices.emplace_back(from, color_from);
+            m_lines_vertices.emplace_back(to, color_to);
+        }
+        else
+        {
+            // persistent line - add to persistent list with expiration time
+            PersistentLine line;
+            line.from        = from;
+            line.to          = to;
+            line.color_from  = color_from;
+            line.color_to    = color_to;
+            line.expire_time = Timer::GetTimeSec() + static_cast<double>(duration_sec);
+            m_persistent_lines.push_back(line);
+        }
     }
 
-    void Renderer::DrawTriangle(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Color& color /*= DEBUG_COLOR*/)
+    void Renderer::DrawTriangle(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Color& color /*= DEBUG_COLOR*/, float duration_sec /*= 0.0f*/)
     {
-        DrawLine(v0, v1, color, color);
-        DrawLine(v1, v2, color, color);
-        DrawLine(v2, v0, color, color);
+        DrawLine(v0, v1, color, color, duration_sec);
+        DrawLine(v1, v2, color, color, duration_sec);
+        DrawLine(v2, v0, color, color, duration_sec);
     }
 
-    void Renderer::DrawBox(const BoundingBox& box, const Color& color)
+    void Renderer::DrawBox(const BoundingBox& box, const Color& color, float duration_sec /*= 0.0f*/)
     {
         const Vector3& min = box.GetMin();
         const Vector3& max = box.GetMax();
     
-        DrawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color, color);
-        DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, max.y, min.z), color, color);
-        DrawLine(Vector3(max.x, max.y, min.z), Vector3(min.x, max.y, min.z), color, color);
-        DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, min.y, min.z), color, color);
-        DrawLine(Vector3(min.x, min.y, min.z), Vector3(min.x, min.y, max.z), color, color);
-        DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, min.y, max.z), color, color);
-        DrawLine(Vector3(max.x, max.y, min.z), Vector3(max.x, max.y, max.z), color, color);
-        DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, max.y, max.z), color, color);
-        DrawLine(Vector3(min.x, min.y, max.z), Vector3(max.x, min.y, max.z), color, color);
-        DrawLine(Vector3(max.x, min.y, max.z), Vector3(max.x, max.y, max.z), color, color);
-        DrawLine(Vector3(max.x, max.y, max.z), Vector3(min.x, max.y, max.z), color, color);
-        DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color);
+        DrawLine(Vector3(min.x, min.y, min.z), Vector3(max.x, min.y, min.z), color, color, duration_sec);
+        DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, max.y, min.z), color, color, duration_sec);
+        DrawLine(Vector3(max.x, max.y, min.z), Vector3(min.x, max.y, min.z), color, color, duration_sec);
+        DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, min.y, min.z), color, color, duration_sec);
+        DrawLine(Vector3(min.x, min.y, min.z), Vector3(min.x, min.y, max.z), color, color, duration_sec);
+        DrawLine(Vector3(max.x, min.y, min.z), Vector3(max.x, min.y, max.z), color, color, duration_sec);
+        DrawLine(Vector3(max.x, max.y, min.z), Vector3(max.x, max.y, max.z), color, color, duration_sec);
+        DrawLine(Vector3(min.x, max.y, min.z), Vector3(min.x, max.y, max.z), color, color, duration_sec);
+        DrawLine(Vector3(min.x, min.y, max.z), Vector3(max.x, min.y, max.z), color, color, duration_sec);
+        DrawLine(Vector3(max.x, min.y, max.z), Vector3(max.x, max.y, max.z), color, color, duration_sec);
+        DrawLine(Vector3(max.x, max.y, max.z), Vector3(min.x, max.y, max.z), color, color, duration_sec);
+        DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, duration_sec);
     }
 
-    void Renderer::DrawCircle(const Vector3& center, const Vector3& axis, const float radius, uint32_t segment_count, const Color& color /*= DEBUG_COLOR*/)
+    void Renderer::DrawCircle(const Vector3& center, const Vector3& axis, const float radius, uint32_t segment_count, const Color& color /*= DEBUG_COLOR*/, float duration_sec /*= 0.0f*/)
     {
         if (radius <= 0.0f)
             return;
 
-        // Need at least 4 segments
+        // need at least 4 segments
         segment_count = max<uint32_t>(segment_count, static_cast<uint32_t>(4));
 
         vector<Vector3> points;
         points.reserve(segment_count + 1);
         points.resize(segment_count + 1);
 
-        // Compute points on circle
+        // compute points on circle
         float angle_step = math::pi_2 / (float)segment_count;
         for (uint32_t i = 0; i <= segment_count; i++)
         {
@@ -97,16 +113,16 @@ namespace spartan
             }
         }
 
-        // Draw
+        // draw
         for (uint32_t i = 0; i <= segment_count - 1; i++)
         {
-            DrawLine(points[i], points[i + 1], color, color);
+            DrawLine(points[i], points[i + 1], color, color, duration_sec);
         }
     }
 
-    void Renderer::DrawSphere(const Vector3& center, float radius, uint32_t segment_count, const Color& color /*= DEBUG_COLOR*/)
+    void Renderer::DrawSphere(const Vector3& center, float radius, uint32_t segment_count, const Color& color /*= DEBUG_COLOR*/, float duration_sec /*= 0.0f*/)
     {
-        // Need at least 4 segments
+        // need at least 4 segments
         segment_count = max(segment_count, static_cast<uint32_t>(4));
 
         Vector3 Vertex1, Vertex2, Vertex3, Vertex4;
@@ -136,8 +152,8 @@ namespace spartan
                 Vertex2 = Vector3((CosX * SinY1), (SinX * SinY1), CosY1) * radius + center;
                 Vertex4 = Vector3((CosX * SinY2), (SinX * SinY2), CosY2) * radius + center;
 
-                DrawLine(Vertex1, Vertex2, color, color);
-                DrawLine(Vertex1, Vertex3, color, color);
+                DrawLine(Vertex1, Vertex2, color, color, duration_sec);
+                DrawLine(Vertex1, Vertex3, color, color, duration_sec);
 
                 Vertex1 = Vertex2;
                 Vertex3 = Vertex4;
@@ -149,11 +165,11 @@ namespace spartan
         }
     }
 
-    void Renderer::DrawDirectionalArrow(const Vector3& start, const Vector3& end, float arrow_size, const Color& color /*= DEBUG_COLOR*/)
+    void Renderer::DrawDirectionalArrow(const Vector3& start, const Vector3& end, float arrow_size, const Color& color /*= DEBUG_COLOR*/, float duration_sec /*= 0.0f*/)
     {
         arrow_size = max(0.1f, arrow_size);
 
-        DrawLine(start, end, color, color);
+        DrawLine(start, end, color, color, duration_sec);
 
         Vector3 Dir = (end - start);
         Dir.Normalize();
@@ -172,21 +188,43 @@ namespace spartan
         // since dir is x direction, my arrow will be pointing +y, -x and -y, -x
         float arrow_sqrt = sqrt(arrow_size);
         Vector3 arrow_pos;
-        DrawLine(end, end + TM * Vector3(-arrow_sqrt, arrow_sqrt, 0), color, color);
-        DrawLine(end, end + TM * Vector3(-arrow_sqrt, -arrow_sqrt, 0), color, color);
+        DrawLine(end, end + TM * Vector3(-arrow_sqrt, arrow_sqrt, 0), color, color, duration_sec);
+        DrawLine(end, end + TM * Vector3(-arrow_sqrt, -arrow_sqrt, 0), color, color, duration_sec);
     }
 
-    void Renderer::DrawPlane(const math::Plane& plane, const Color& color /*= DEBUG_COLOR*/)
+    void Renderer::DrawPlane(const math::Plane& plane, const Color& color /*= DEBUG_COLOR*/, float duration_sec /*= 0.0f*/)
     {
-        // Arrow indicating normal
+        // arrow indicating normal
         Vector3 plane_origin = plane.normal * plane.d;
-        DrawDirectionalArrow(plane_origin, plane_origin + plane.normal * 2.0f, 0.2f, color);
+        DrawDirectionalArrow(plane_origin, plane_origin + plane.normal * 2.0f, 0.2f, color, duration_sec);
 
         Vector3 U, V;
         plane.normal.FindBestAxisVectors(U, V);
         static const float scale = 10000.0f;
-        DrawLine(plane_origin - U * scale, plane_origin + U * scale, color, color);
-        DrawLine(plane_origin - V * scale, plane_origin + V * scale, color, color);
+        DrawLine(plane_origin - U * scale, plane_origin + U * scale, color, color, duration_sec);
+        DrawLine(plane_origin - V * scale, plane_origin + V * scale, color, color, duration_sec);
+    }
+
+    void Renderer::UpdatePersistentLines()
+    {
+        double current_time = Timer::GetTimeSec();
+
+        // add non-expired persistent lines to the render list and remove expired ones
+        for (auto it = m_persistent_lines.begin(); it != m_persistent_lines.end();)
+        {
+            if (current_time < it->expire_time)
+            {
+                // line is still valid, add to render list
+                m_lines_vertices.emplace_back(it->from, it->color_from);
+                m_lines_vertices.emplace_back(it->to, it->color_to);
+                ++it;
+            }
+            else
+            {
+                // line has expired, remove it
+                it = m_persistent_lines.erase(it);
+            }
+        }
     }
 
     void Renderer::AddLinesToBeRendered()
@@ -195,64 +233,90 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
-        if (GetOption<bool>(Renderer_Option::PickingRay))
+        if (cvar_picking_ray.GetValueAs<bool>())
         {
             Ray ray = World::GetCamera()->ComputePickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * World::GetCamera()->GetFarPlane(), Color(0, 1, 0, 1));
         }
         
-        if (GetOption<bool>(Renderer_Option::Lights))
+        if (cvar_lights.GetValueAs<bool>())
         {
-            for (Entity* entity : World::GetEntities())
+            if (Camera* camera = World::GetCamera())
             {
-                if (Camera* camera = World::GetCamera())
+                // iterate through all selected entities
+                for (Entity* entity : camera->GetSelectedEntities())
                 {
-                    Entity* entity_selected = camera->GetSelectedEntity();
-                    if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
-                    {
-                        if (Light* light = entity->GetComponent<Light>())
-                        { 
-                            if (light->GetLightType() == LightType::Directional)
-                            {
-                                Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * FLT_MAX;
-                                DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
-                            }
-                            else if (light->GetLightType() == LightType::Point)
-                            {
-                                Vector3 center = light->GetEntity()->GetPosition();
-                                float radius   = light->GetRange();
-                                uint32_t segment_count = 64;
+                    if (!entity)
+                        continue;
+                        
+                    if (Light* light = entity->GetComponent<Light>())
+                    { 
+                        if (light->GetLightType() == LightType::Directional)
+                        {
+                            Vector3 pos = light->GetEntity()->GetPosition() - light->GetEntity()->GetForward() * FLT_MAX;
+                            DrawDirectionalArrow(pos, Vector3::Zero, 2.5f);
+                        }
+                        else if (light->GetLightType() == LightType::Point)
+                        {
+                            Vector3 center = light->GetEntity()->GetPosition();
+                            float radius   = light->GetRange();
+                            uint32_t segment_count = 64;
 
-                                DrawCircle(center, Vector3::Up,      radius, segment_count);
-                                DrawCircle(center, Vector3::Right,   radius, segment_count);
-                                DrawCircle(center, Vector3::Forward, radius, segment_count);
-                            }
-                            else if (light->GetLightType() == LightType::Spot)
-                            {
-                                // tan(angle) = opposite/adjacent
-                                // opposite = adjacent * tan(angle)
-                                float opposite = light->GetRange() * tan(light->GetAngle());
+                            DrawCircle(center, Vector3::Up,      radius, segment_count);
+                            DrawCircle(center, Vector3::Right,   radius, segment_count);
+                            DrawCircle(center, Vector3::Forward, radius, segment_count);
+                        }
+                        else if (light->GetLightType() == LightType::Spot)
+                        {
+                            // tan(angle) = opposite/adjacent
+                            // opposite = adjacent * tan(angle)
+                            float opposite = light->GetRange() * tan(light->GetAngle());
 
-                                Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
-                                Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp()    * opposite;
-                                Vector3 pos_end_right  = pos_end_center + light->GetEntity()->GetRight() * opposite;
-                                Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown()  * opposite;
-                                Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft()  * opposite;
+                            Vector3 pos_end_center = light->GetEntity()->GetForward() * light->GetRange();
+                            Vector3 pos_end_up     = pos_end_center + light->GetEntity()->GetUp()    * opposite;
+                            Vector3 pos_end_right  = pos_end_center + light->GetEntity()->GetRight() * opposite;
+                            Vector3 pos_end_down   = pos_end_center + light->GetEntity()->GetDown()  * opposite;
+                            Vector3 pos_end_left   = pos_end_center + light->GetEntity()->GetLeft()  * opposite;
 
-                                Vector3 pos_start = light->GetEntity()->GetPosition();
-                                DrawLine(pos_start, pos_start + pos_end_center);
-                                DrawLine(pos_start, pos_start + pos_end_up);
-                                DrawLine(pos_start, pos_start + pos_end_right);
-                                DrawLine(pos_start, pos_start + pos_end_down);
-                                DrawLine(pos_start, pos_start + pos_end_left);
-                            }
+                            Vector3 pos_start = light->GetEntity()->GetPosition();
+                            DrawLine(pos_start, pos_start + pos_end_center);
+                            DrawLine(pos_start, pos_start + pos_end_up);
+                            DrawLine(pos_start, pos_start + pos_end_right);
+                            DrawLine(pos_start, pos_start + pos_end_down);
+                            DrawLine(pos_start, pos_start + pos_end_left);
+                        }
+                        else if (light->GetLightType() == LightType::Area)
+                        {
+                            // area light is a rectangular emitter
+                            Vector3 center     = light->GetEntity()->GetPosition();
+                            Vector3 right      = light->GetEntity()->GetRight();
+                            Vector3 up         = light->GetEntity()->GetUp();
+                            Vector3 forward    = light->GetEntity()->GetForward();
+                            float half_width   = light->GetAreaWidth() * 0.5f;
+                            float half_height  = light->GetAreaHeight() * 0.5f;
+
+                            // compute the four corners of the rectangle
+                            Vector3 corner_tl = center - right * half_width + up * half_height; // top-left
+                            Vector3 corner_tr = center + right * half_width + up * half_height; // top-right
+                            Vector3 corner_br = center + right * half_width - up * half_height; // bottom-right
+                            Vector3 corner_bl = center - right * half_width - up * half_height; // bottom-left
+
+                            // draw the rectangle outline
+                            DrawLine(corner_tl, corner_tr);
+                            DrawLine(corner_tr, corner_br);
+                            DrawLine(corner_br, corner_bl);
+                            DrawLine(corner_bl, corner_tl);
+
+                            // draw direction indicator (arrow from center pointing forward)
+                            float arrow_length = min(half_width, half_height) * 0.5f;
+                            DrawDirectionalArrow(center, center + forward * arrow_length, arrow_length * 0.3f);
                         }
                     }
                 }
             }
         }
         
-        if (GetOption<bool>(Renderer_Option::Aabb))
+        if (cvar_aabb.GetValueAs<bool>())
         {
             auto get_color = [](Renderable* renderable)
             {

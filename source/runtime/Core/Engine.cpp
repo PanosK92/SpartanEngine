@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Display/Display.h"
 #include "../Game/Game.h"
 #include "../Memory/Allocator.h"
+#include "../RHI/RHI_Device.h"
+#include "../Commands/Console/ConsoleCommands.h"
+#include "Settings.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -92,6 +95,15 @@ namespace spartan
 
         // post-initialize
         {
+            // set ray tracing defaults for new users (no settings file)
+            // existing users keep their saved preferences
+            if (!Settings::HasLoadedUserSettingsFromFile())
+            {
+                bool ray_tracing_supported = RHI_Device::IsSupportedRayTracing();
+                ConsoleRegistry::Get().SetValueFromString("r.ray_traced_reflections", std::to_string(static_cast<float>(ray_tracing_supported)));
+                ConsoleRegistry::Get().SetValueFromString("r.ray_traced_shadows", std::to_string(static_cast<float>(ray_tracing_supported)));
+            }
+
             ResourceCache::LoadDefaultResources(); // requires rhi to be initialized so they can be uploaded to the gpu
         }
 

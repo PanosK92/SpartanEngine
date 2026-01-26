@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -288,11 +288,14 @@ namespace spartan
 
         Create();
     
-        SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
+        m_window_resize_event_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
     }
 
     RHI_SwapChain::~RHI_SwapChain()
     {
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WindowResized, m_window_resize_event_handle);
+        m_window_resize_event_handle = 0;
+
         for (void*& image_view : m_rhi_rtv)
         {
             if (image_view)
@@ -317,8 +320,15 @@ namespace spartan
 
     RHI_SyncPrimitive* RHI_SwapChain::GetImageAcquiredSemaphore() const
     {
-        // when minimized, image acquisition is not needed, so return nullptr
-        return Window::IsMinimized() ? nullptr : m_image_acquired_semaphore[m_image_index].get();
+        // only return the semaphore if we actually acquired an image
+        return m_image_acquired ? m_image_acquired_semaphore[m_image_index].get() : nullptr;
+    }
+
+    RHI_SyncPrimitive* RHI_SwapChain::GetRenderingCompleteSemaphore() const
+    {
+        // use per-image semaphores to avoid reusing a semaphore that's still in use by presentation
+        // when image N is re-acquired, it means any previous presentation of image N has completed
+        return m_image_acquired ? m_rendering_complete_semaphore[m_image_index].get() : nullptr;
     }
 
     void RHI_SwapChain::Create()
@@ -344,7 +354,7 @@ namespace spartan
                            "On NVIDIA Optimus laptops, switch to 'High-performance NVIDIA processor' in NVIDIA Control Panel or Windows Graphics Settings,"
                            "or update to NVIDIA driver 551.xx+ for Vulkan HDR support.", rhi_format_to_string(m_format), color_space);
 
-            Renderer::SetOption(Renderer_Option::Hdr, 0.0f);
+            ConsoleRegistry::Get().SetValueFromString("r.hdr", "0");
             m_format    = format_sdr; 
             color_space = get_color_space(m_format); 
         }
@@ -410,10 +420,11 @@ namespace spartan
             SP_ASSERT_VK(vkCreateImageView(RHI_Context::device, &view_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])));
         }
     
-        // sync primitives
-        for (uint32_t i = 0; i < static_cast<uint32_t>( m_image_acquired_semaphore.size()); i++)
+        // sync primitives - per-image semaphores to avoid reuse conflicts
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_image_acquired_semaphore.size()); i++)
         {
-            m_image_acquired_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_" + to_string(i)).c_str());
+            m_image_acquired_semaphore[i]     = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_acquire_" + to_string(i)).c_str());
+            m_rendering_complete_semaphore[i] = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, ("swapchain_present_" + to_string(i)).c_str());
         }
     
         // set HDR metadata only if HDR is enabled
@@ -431,7 +442,10 @@ namespace spartan
             m_present_mode == RHI_Present_Mode::Fifo ? "enabled" : "disabled"
         );
 
-        m_image_index = 0;
+        // reset state after swapchain recreation
+        m_image_index    = 0;
+        semaphore_index  = 0;
+        m_image_acquired = false;
     }
 
     void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height)
@@ -456,68 +470,92 @@ namespace spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        // when the window is minimized acquisition will fail and it's not necessery either
+        // reset acquisition state
+        m_image_acquired = false;
+
+        // when the window is minimized acquisition will fail and it's not necessary either
         if (Window::IsMinimized())
             return;
 
-        // get semaphore
-        RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
+        // ensure swapchain is valid
+        if (!m_rhi_swapchain)
+            return;
 
-        // ensure the semaphore is free; with enough semaphores, waits are rare as command lists typically complete before reuse
-        if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
+        // try to acquire, with retry after swapchain recreation
+        for (uint32_t attempt = 0; attempt < 2; attempt++)
         {
-            if (cmd_list->GetState() == RHI_CommandListState::Submitted)
-            { 
-                cmd_list->WaitForExecution();
+            // use per-image semaphores indexed by the current semaphore_index
+            // this avoids reusing a semaphore that may still be in use by presentation
+            RHI_SyncPrimitive* signal_semaphore = m_image_acquired_semaphore[semaphore_index].get();
+
+            // ensure the semaphore is free; wait for any command list that used this semaphore
+            if (RHI_CommandList* cmd_list = signal_semaphore->GetUserCmdList())
+            {
+                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+                { 
+                    cmd_list->WaitForExecution();
+                }
+                SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Idle);
             }
-            SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Idle);
-        }
- 
-        // vk_not_ready can happen if the swapchain is not ready yet, possible during window events
-        // it can happen often on some gpus/drivers and less and on others, regardless, it has to be handled
-        uint32_t retry_count     = 0;
-        const uint32_t retry_max = 10;
-        while (retry_count < retry_max)
-        {
+
+            // acquire with a reasonable timeout
             VkResult result = vkAcquireNextImageKHR(
                 RHI_Context::device,
                 static_cast<VkSwapchainKHR>(m_rhi_swapchain),
-                16000000, // 16ms
+                100000000, // 100ms timeout
                 static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()),
                 nullptr,
                 &m_image_index
             );
-        
-            if (result == VK_SUCCESS)
+
+            if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR)
             {
-                // associate the semaphore with the acquired image index
-                m_image_acquired_semaphore[m_image_index] = m_image_acquired_semaphore[semaphore_index];
-                semaphore_index                           = (semaphore_index + 1) % m_image_acquired_semaphore.size(); // rotate through semaphores
+                // move the semaphore we used to the acquired image's slot for proper per-image tracking
+                swap(m_image_acquired_semaphore[m_image_index], m_image_acquired_semaphore[semaphore_index]);
+                semaphore_index = (semaphore_index + 1) % m_image_acquired_semaphore.size();
+                m_image_acquired = true;
                 return;
-            }
-            else if (result == VK_NOT_READY || result == VK_SUBOPTIMAL_KHR)
-            {
-                this_thread::sleep_for(chrono::milliseconds(16));
-                retry_count++;
             }
             else if (result == VK_ERROR_OUT_OF_DATE_KHR)
             {
+                // swapchain needs recreation, then try to acquire again
                 Create();
+                if (!m_rhi_swapchain)
+                    return;
+                // continue to retry acquisition
+            }
+            else if (result == VK_TIMEOUT || result == VK_NOT_READY)
+            {
+                // window is likely minimized or transitioning - this is normal
+                return;
             }
             else
             {
                 SP_ASSERT_VK(result);
+                return;
             }
         }
     }
     
     void RHI_SwapChain::Present(RHI_CommandList* cmd_list_frame)
     {
-        // when the window is minimized acquisition isn't happening, so neither is presentation
-        if (Window::IsMinimized())
+        // only present if we successfully acquired an image
+        if (!m_image_acquired)
             return;
 
-        cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, cmd_list_frame->GetRenderingCompleteSemaphore());
+        // use per-image semaphore to avoid reuse conflicts - when this image is re-acquired,
+        // we know the previous presentation completed, so the semaphore is safe to signal again
+        RHI_SyncPrimitive* rendering_complete_semaphore = m_rendering_complete_semaphore[m_image_index].get();
+        bool success = cmd_list_frame->GetQueue()->Present(m_rhi_swapchain, m_image_index, rendering_complete_semaphore);
+
+        // clear acquisition state after presentation
+        m_image_acquired = false;
+
+        // if present failed (swapchain out of date), mark for recreation
+        if (!success)
+        {
+            m_is_dirty = true;
+        }
 
         // recreate the swapchain if needed - we do it here so that no semaphores are being destroyed while they are being waited for
         if (m_is_dirty)
@@ -535,6 +573,12 @@ namespace spartan
         }
     
         RHI_Format new_format = enabled ? format_hdr : format_sdr;
+    
+        // nvidia supports B8R8G8A8_Unorm instead of R8G8B8A8_Unorm
+        if (new_format == RHI_Format::R8G8B8A8_Unorm && RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
+        {
+            new_format = RHI_Format::B8R8G8A8_Unorm;
+        }
     
         if (new_format != m_format)
         {

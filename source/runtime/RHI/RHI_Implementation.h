@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -244,6 +244,7 @@ static const VkObjectType vulkan_object_type[] =
     VK_OBJECT_TYPE_PIPELINE,
     VK_OBJECT_TYPE_PIPELINE_LAYOUT,
     VK_OBJECT_TYPE_QUEUE,
+    VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR,
     VK_OBJECT_TYPE_UNKNOWN
 };
 

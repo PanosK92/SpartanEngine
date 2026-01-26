@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Buffer.h"
-#include "../../Core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
@@ -188,50 +187,53 @@ namespace spartan
 
     namespace functions
     {
-        PFN_vkCreateDebugUtilsMessengerEXT  create_messenger          = nullptr;
-        PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger         = nullptr;
-        PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag            = nullptr;
-        PFN_vkSetDebugUtilsObjectNameEXT    set_object_name           = nullptr;
-        PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin              = nullptr;
-        PFN_vkCmdEndDebugUtilsLabelEXT      marker_end                = nullptr;
-        PFN_vkCmdSetFragmentShadingRateKHR  set_fragment_shading_rate = nullptr;
+        // function pointers
+        PFN_vkCreateDebugUtilsMessengerEXT    create_messenger               = nullptr;
+        PFN_vkDestroyDebugUtilsMessengerEXT   destroy_messenger              = nullptr;
+        PFN_vkSetDebugUtilsObjectTagEXT       set_object_tag                 = nullptr;
+        PFN_vkSetDebugUtilsObjectNameEXT      set_object_name                = nullptr;
+        PFN_vkCmdBeginDebugUtilsLabelEXT      marker_begin                   = nullptr;
+        PFN_vkCmdEndDebugUtilsLabelEXT        marker_end                     = nullptr;
+        PFN_vkCmdSetFragmentShadingRateKHR    set_fragment_shading_rate      = nullptr;
+        PFN_vkGetBufferDeviceAddress          get_buffer_device_address      = nullptr;
+        PFN_vkDestroyAccelerationStructureKHR destroy_acceleration_structure = nullptr;
 
-        void get_pointers()
+        void load(void** out_func, const char* name)
         {
-            #define get_func(var, def)\
-            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
-            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
-
-            /* VK_EXT_debug_utils */
+            *out_func = reinterpret_cast<void*>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), name));
+            if (!*out_func)
+            {
+                SP_LOG_ERROR("Failed to get function pointer for %s", name);
+            }
+        }
+    
+        void get_pointers_from_gpu_driver()
+        {
+            // debug utils
             {
                 if (Debugging::IsValidationLayerEnabled())
                 {
-                    get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
-                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
-
-                    SP_ASSERT(create_messenger && destroy_messenger);
+                    load(reinterpret_cast<void**>(&create_messenger), "vkCreateDebugUtilsMessengerEXT");
+                    load(reinterpret_cast<void**>(&destroy_messenger), "vkDestroyDebugUtilsMessengerEXT");
+                    load(reinterpret_cast<void**>(&set_object_tag), "vkSetDebugUtilsObjectTagEXT");
+                    load(reinterpret_cast<void**>(&set_object_name), "vkSetDebugUtilsObjectNameEXT");
                 }
-
+    
                 if (Debugging::IsGpuMarkingEnabled())
                 {
-                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
-                    get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
-
-                    SP_ASSERT(marker_begin && marker_end);
+                    load(reinterpret_cast<void**>(&marker_begin), "vkCmdBeginDebugUtilsLabelEXT");
+                    load(reinterpret_cast<void**>(&marker_end), "vkCmdEndDebugUtilsLabelEXT");
                 }
             }
 
-            /* VK_EXT_debug_marker */
-            if (Debugging::IsValidationLayerEnabled())
-            {
-                get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
-                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
+            // ray tracing
+            load(reinterpret_cast<void**>(&get_buffer_device_address), "vkGetBufferDeviceAddress");
+    
+            // fragment shading rate
+            load(reinterpret_cast<void**>(&set_fragment_shading_rate), "vkCmdSetFragmentShadingRateKHR");
 
-                SP_ASSERT(set_object_tag && set_object_name);
-            }
-
-            get_func(set_fragment_shading_rate, vkCmdSetFragmentShadingRateKHR);
-            SP_ASSERT(set_fragment_shading_rate);
+            // acceleration structure
+            load(reinterpret_cast<void**>(&destroy_acceleration_structure), "vkDestroyAccelerationStructureKHR");
         }
     }
 
@@ -242,7 +244,7 @@ namespace spartan
         vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace", };
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
-            "VK_EXT_memory_budget",         // to obtain precise memory usage information from Vulkan Memory Allocator
+            "VK_EXT_memory_budget",          // to obtain precise memory usage information from Vulkan Memory Allocator
             "VK_KHR_fragment_shading_rate",
             "VK_EXT_hdr_metadata",
             "VK_KHR_robustness2",
@@ -256,6 +258,8 @@ namespace spartan
             "VK_KHR_acceleration_structure",
             "VK_KHR_ray_tracing_pipeline",
             "VK_KHR_deferred_host_operations",
+            "VK_KHR_ray_query",
+            "VK_KHR_ray_tracing_maintenance1"
         };
 
         bool is_present_device(const char* extension_name, VkPhysicalDevice device_physical)
@@ -294,11 +298,6 @@ namespace spartan
 
         vector<const char*> get_extensions_device()
         {
-            if (Debugging::IsBreadcrumbsEnabled())
-            {
-                extensions_device.emplace_back("VK_AMD_buffer_marker");
-            }
-
             vector<const char*> extensions_supported;
             for (const auto& extension : extensions_device)
             {
@@ -490,20 +489,11 @@ namespace spartan
         uint32_t index_compute  = numeric_limits<uint32_t>::max();
         uint32_t index_copy     = numeric_limits<uint32_t>::max();
 
-        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular;   // graphics, compute, and copy
-        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> immediate; // graphics, compute, and copy
-
-        // sync for immediate execution
-        mutex mutex_queue;
-        mutex mutex_immediate_execution;
-        condition_variable condition_variable_immediate_execution;
-        bool is_immediate_executing = false;
-        RHI_Queue* queue            = nullptr;
+        array<shared_ptr<RHI_Queue>, static_cast<uint32_t>(RHI_Queue_Type::Max)> regular; // graphics, compute, and copy
 
         void destroy()
         {
             regular.fill(nullptr);
-            immediate.fill(nullptr);
         }
 
         uint32_t get_queue_family_index(const vector<VkQueueFamilyProperties>& queue_families, VkQueueFlags queue_flags)
@@ -730,6 +720,11 @@ namespace spartan
             allocator_info.instance               = RHI_Context::instance;
             allocator_info.vulkanApiVersion       = vulkan_version::used;
             allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+            if (RHI_Device::IsSupportedRayTracing())
+            {
+                allocator_info.flags |= VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+            }
+
             SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &allocator));
             Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", "3.3.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
         }
@@ -777,14 +772,15 @@ namespace spartan
 
         void create_pool()
         {
-            static array<VkDescriptorPoolSize, 6> pool_sizes =
+            static array<VkDescriptorPoolSize, 7> pool_sizes =
             {
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_max_array_size * rhi_max_descriptor_set_count }
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                    32 * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,              32 * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,              rhi_max_array_size * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,             32 * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,     32 * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,     32 * rhi_max_descriptor_set_count },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32 * rhi_max_descriptor_set_count }
             };
 
             // describe
@@ -898,6 +894,21 @@ namespace spartan
                         merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::Domain]->GetDescriptors());
                     }
                 }
+                else if (pipeline_state.IsRayTracing())
+                {
+                    SP_ASSERT(pipeline_state.shaders[RHI_Shader_Type::RayGeneration]->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
+                    merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayGeneration]->GetDescriptors());
+
+                    if (pipeline_state.shaders[RHI_Shader_Type::RayMiss])
+                    {
+                        merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayMiss]->GetDescriptors());
+                    }
+        
+                    if (pipeline_state.shaders[RHI_Shader_Type::RayHit])
+                    {
+                        merge_descriptors(pipeline_state.shaders[RHI_Shader_Type::RayHit]->GetDescriptors());
+                    }
+                }
         
                 // simple bubble sort
                 for (size_t i = 0; i < static_size; ++i)
@@ -953,7 +964,7 @@ namespace spartan
 
             if (cached)
             {
-                descriptor_set_layout->ClearDescriptorData();
+                descriptor_set_layout->ClearBindings();
             }
 
             return descriptor_set_layout;
@@ -961,150 +972,170 @@ namespace spartan
 
         namespace bindless
         {
-            array<VkDescriptorSet, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> sets;
-            array<VkDescriptorSetLayout, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> layouts;
-
-            void create_layout(const RHI_Device_Bindless_Resource type, const uint32_t count, const uint32_t binding, const char* name)
+            // resource configuration - defines how each bindless resource type is set up
+            struct ResourceConfig
             {
-                  VkDescriptorSetLayoutBinding layout_binding = {};
-                  layout_binding.binding                      = binding;
-                  layout_binding.descriptorType               = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-                  if (type == RHI_Device_Bindless_Resource::MaterialTextures)
-                  {
-                      layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                  }
-                  else if (type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters || type == RHI_Device_Bindless_Resource::Aabbs)
-                  {
-                      layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                  }
-                  else if (type == RHI_Device_Bindless_Resource::SamplersComparison || type == RHI_Device_Bindless_Resource::SamplersRegular)
-                  {
-                      layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-                  }
-                  layout_binding.descriptorCount    = count;
-                  layout_binding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
+                VkDescriptorType descriptor_type;
+                uint32_t register_shift; // rhi_shader_register_shift_t or _s
+                uint32_t slot;           // hlsl register slot
+                uint32_t count;          // descriptor array count
+                const char* name;
+            };
 
-                  VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+            // lookup table indexed by RHI_Device_Bindless_Resource
+            static const ResourceConfig configs[] =
+            {
+                { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  rhi_shader_register_shift_t, 15, rhi_max_array_size, "material_textures"   }, // MaterialTextures
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, rhi_shader_register_shift_t, 16, 1,                  "material_parameters" }, // MaterialParameters
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, rhi_shader_register_shift_t, 17, 1,                  "light_parameters"    }, // LightParameters
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, rhi_shader_register_shift_t, 18, 1,                  "aabbs"               }, // Aabbs
+                { VK_DESCRIPTOR_TYPE_SAMPLER,        rhi_shader_register_shift_s, 0,  1,                  "samplers_comparison" }, // SamplersComparison
+                { VK_DESCRIPTOR_TYPE_SAMPLER,        rhi_shader_register_shift_s, 1,  8,                  "samplers_regular"    }, // SamplersRegular
+            };
+            static_assert(sizeof(configs) / sizeof(configs[0]) == static_cast<size_t>(RHI_Device_Bindless_Resource::Max), "config table size mismatch");
 
-                  VkDescriptorSetLayoutBindingFlagsCreateInfo layout_binding_flags = {};
-                  layout_binding_flags.sType                                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-                  layout_binding_flags.bindingCount                                = 1;
-                  layout_binding_flags.pBindingFlags                               = &binding_flags;
-                  
-                  VkDescriptorSetLayoutCreateInfo layout_info = {};
-                  layout_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-                  layout_info.bindingCount                    = 1;
-                  layout_info.pBindings                       = &layout_binding;
-                  layout_info.flags                           = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
-                  layout_info.pNext                           = &layout_binding_flags;
+            // storage
+            array<VkDescriptorSet, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> sets       = {};
+            array<VkDescriptorSetLayout, static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max)> layouts = {};
 
-                  VkDescriptorSetLayout* layout = &layouts[static_cast<uint32_t>(type)];
-                  SP_ASSERT_VK(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, layout));
-                  RHI_Device::SetResourceName(static_cast<void*>(*layout), RHI_Resource_Type::DescriptorSetLayout, name);
+            uint32_t get_binding(RHI_Device_Bindless_Resource type)
+            {
+                const ResourceConfig& cfg = configs[static_cast<uint32_t>(type)];
+                return cfg.register_shift + cfg.slot;
             }
 
-            void create_set(const RHI_Device_Bindless_Resource type, const uint32_t count, const char* name)
+            void create_layout_and_set(RHI_Device_Bindless_Resource type)
             {
-                // allocate descriptor set with actual descriptor count
-                VkDescriptorSetVariableDescriptorCountAllocateInfoEXT real_descriptor_count_info = {};
-                real_descriptor_count_info.sType                                                 = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
-                real_descriptor_count_info.descriptorSetCount                                    = 1;      // one descriptor set
-                real_descriptor_count_info.pDescriptorCounts                                     = &count; // actual number of textures being used
+                uint32_t index              = static_cast<uint32_t>(type);
+                const ResourceConfig& cfg   = configs[index];
+                uint32_t binding            = cfg.register_shift + cfg.slot;
 
-                // allocate descriptor set
-                VkDescriptorSetAllocateInfo allocation_info = {};
-                allocation_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-                allocation_info.descriptorPool              = descriptors::descriptor_pool;
-                allocation_info.descriptorSetCount          = 1;
-                allocation_info.pSetLayouts                 = &layouts[static_cast<uint32_t>(type)];
-                allocation_info.pNext                       = &real_descriptor_count_info;
+                // layout
+                VkDescriptorSetLayoutBinding layout_binding = {};
+                layout_binding.binding                      = binding;
+                layout_binding.descriptorType               = cfg.descriptor_type;
+                layout_binding.descriptorCount              = cfg.count;
+                layout_binding.stageFlags                   = VK_SHADER_STAGE_VERTEX_BIT |
+                                                              VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                                                              VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                                                              VK_SHADER_STAGE_FRAGMENT_BIT |
+                                                              VK_SHADER_STAGE_COMPUTE_BIT |
+                                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR |
+                                                              VK_SHADER_STAGE_MISS_BIT_KHR |
+                                                              VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
-                // create
-                VkDescriptorSet* descriptor_set = &sets[static_cast<uint32_t>(type)];
-                SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &allocation_info, descriptor_set));
-                RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, name);
+                VkDescriptorBindingFlags binding_flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+
+                VkDescriptorSetLayoutBindingFlagsCreateInfo binding_flags_info = {};
+                binding_flags_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+                binding_flags_info.bindingCount  = 1;
+                binding_flags_info.pBindingFlags = &binding_flags;
+
+                VkDescriptorSetLayoutCreateInfo layout_info = {};
+                layout_info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+                layout_info.bindingCount = 1;
+                layout_info.pBindings    = &layout_binding;
+                layout_info.flags        = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
+                layout_info.pNext        = &binding_flags_info;
+
+                SP_ASSERT_VK(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, &layouts[index]));
+                RHI_Device::SetResourceName(static_cast<void*>(layouts[index]), RHI_Resource_Type::DescriptorSetLayout, cfg.name);
+
+                // set
+                VkDescriptorSetVariableDescriptorCountAllocateInfoEXT count_info = {};
+                count_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+                count_info.descriptorSetCount = 1;
+                count_info.pDescriptorCounts  = &cfg.count;
+
+                VkDescriptorSetAllocateInfo alloc_info = {};
+                alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+                alloc_info.descriptorPool     = descriptors::descriptor_pool;
+                alloc_info.descriptorSetCount = 1;
+                alloc_info.pSetLayouts        = &layouts[index];
+                alloc_info.pNext              = &count_info;
+
+                SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &alloc_info, &sets[index]));
+                RHI_Device::SetResourceName(static_cast<void*>(sets[index]), RHI_Resource_Type::DescriptorSet, cfg.name);
             }
 
-            void update(void* data, const uint32_t count, const uint32_t slot, const RHI_Device_Bindless_Resource type, const char* name)
+            void initialize()
             {
-                // deduce binding from slot (HLSL register style)
-                uint32_t binding = 0;
-                if (type == RHI_Device_Bindless_Resource::MaterialTextures  || type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters || type == RHI_Device_Bindless_Resource::Aabbs)
+                for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Device_Bindless_Resource::Max); i++)
                 {
-                    binding = rhi_shader_register_shift_t + slot;
+                    create_layout_and_set(static_cast<RHI_Device_Bindless_Resource>(i));
                 }
-                else
+            }
+
+            void update_textures(const array<RHI_Texture*, rhi_max_array_size>* textures)
+            {
+                const uint32_t index      = static_cast<uint32_t>(RHI_Device_Bindless_Resource::MaterialTextures);
+                const ResourceConfig& cfg = configs[index];
+
+                vector<VkDescriptorImageInfo> image_infos(cfg.count);
+                void* fallback = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard)->GetRhiSrv();
+
+                for (uint32_t i = 0; i < cfg.count; ++i)
                 {
-                    binding = rhi_shader_register_shift_s + slot;
+                    RHI_Texture* tex     = (*textures)[i];
+                    void* srv            = (tex && tex->GetRhiSrv()) ? tex->GetRhiSrv() : fallback;
+                    image_infos[i].imageView   = static_cast<VkImageView>(srv);
+                    image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 }
 
-                // on the first run, create layout and set
-                if (layouts[static_cast<uint32_t>(type)] == nullptr)
-                {
-                    create_layout(type, count, binding, name);
-                    create_set(type, count, name);
-                }
-            
-                // update
-                if (type == RHI_Device_Bindless_Resource::MaterialTextures || type == RHI_Device_Bindless_Resource::SamplersRegular || type == RHI_Device_Bindless_Resource::SamplersComparison)
-                {
-                    vector<VkDescriptorImageInfo> image_infos(count);
-                    if (type == RHI_Device_Bindless_Resource::MaterialTextures)
-                    {
-                        const auto* textures = static_cast<const array<RHI_Texture*, rhi_max_array_size>*>(data);
-            
-                        for (uint32_t i = 0; i < count; ++i)
-                        {
-                            // get texture with fallback to a default texture
-                            RHI_Texture* texture   = (*textures)[i];
-                            void* resource_default = Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard)->GetRhiSrv();
-                            void* resource         = (texture && texture->GetRhiSrv()) ? texture->GetRhiSrv() : resource_default;
+                VkWriteDescriptorSet write = {};
+                write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.dstSet          = sets[index];
+                write.dstBinding      = get_binding(RHI_Device_Bindless_Resource::MaterialTextures);
+                write.dstArrayElement = 0;
+                write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                write.descriptorCount = cfg.count;
+                write.pImageInfo      = image_infos.data();
 
-                            image_infos[i].imageView   = static_cast<VkImageView>(resource);
-                            image_infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                        }
-                    }
-                    else if (type == RHI_Device_Bindless_Resource::SamplersRegular || type == RHI_Device_Bindless_Resource::SamplersComparison)
-                    {
-                        const auto* samplers = static_cast<const shared_ptr<RHI_Sampler>*>(data);
-            
-                        for (uint32_t i = 0; i < count; ++i)
-                        {
-                            image_infos[i].sampler = static_cast<VkSampler>(samplers[i]->GetRhiResource());
-                        }
-                    }
-            
-                    VkWriteDescriptorSet descriptor_write = {};
-                    descriptor_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    descriptor_write.dstSet               = sets[static_cast<uint32_t>(type)];
-                    descriptor_write.dstBinding           = binding;
-                    descriptor_write.dstArrayElement      = 0; // starting element in the array
-                    descriptor_write.descriptorType       = type == RHI_Device_Bindless_Resource::MaterialTextures ? VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE : VK_DESCRIPTOR_TYPE_SAMPLER;
-                    descriptor_write.descriptorCount      = count;
-                    descriptor_write.pImageInfo           = image_infos.data();
-            
-                    vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
-                }
-                else if (type == RHI_Device_Bindless_Resource::MaterialParameters || type == RHI_Device_Bindless_Resource::LightParameters || type == RHI_Device_Bindless_Resource::Aabbs)
-                {
-                    RHI_Buffer* buffer = static_cast<RHI_Buffer*>(data);
+                vkUpdateDescriptorSets(RHI_Context::device, 1, &write, 0, nullptr);
+            }
 
-                    VkDescriptorBufferInfo buffer_info = {};
-                    buffer_info.buffer                 = static_cast<VkBuffer>(buffer->GetRhiResource());
-                    buffer_info.offset                 = 0;
-                    buffer_info.range                  = buffer->GetObjectSize();
-            
-                    VkWriteDescriptorSet descriptor_write = {};
-                    descriptor_write.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    descriptor_write.dstSet               = sets[static_cast<uint32_t>(type)];
-                    descriptor_write.dstBinding           = binding;
-                    descriptor_write.dstArrayElement      = 0; // starting element in the array
-                    descriptor_write.descriptorType       = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                    descriptor_write.descriptorCount      = count;
-                    descriptor_write.pBufferInfo          = &buffer_info;
-            
-                    vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
+            void update_samplers(RHI_Device_Bindless_Resource type, const shared_ptr<RHI_Sampler>* samplers, uint32_t count)
+            {
+                const uint32_t index      = static_cast<uint32_t>(type);
+                const ResourceConfig& cfg = configs[index];
+
+                vector<VkDescriptorImageInfo> image_infos(count);
+                for (uint32_t i = 0; i < count; ++i)
+                {
+                    image_infos[i].sampler = static_cast<VkSampler>(samplers[i]->GetRhiResource());
                 }
+
+                VkWriteDescriptorSet write = {};
+                write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.dstSet          = sets[index];
+                write.dstBinding      = get_binding(type);
+                write.dstArrayElement = 0;
+                write.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
+                write.descriptorCount = count;
+                write.pImageInfo      = image_infos.data();
+
+                vkUpdateDescriptorSets(RHI_Context::device, 1, &write, 0, nullptr);
+            }
+
+            void update_buffer(RHI_Device_Bindless_Resource type, RHI_Buffer* buffer)
+            {
+                const uint32_t index = static_cast<uint32_t>(type);
+
+                VkDescriptorBufferInfo buffer_info = {};
+                buffer_info.buffer = static_cast<VkBuffer>(buffer->GetRhiResource());
+                buffer_info.offset = 0;
+                buffer_info.range  = buffer->GetObjectSize();
+
+                VkWriteDescriptorSet write = {};
+                write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                write.dstSet          = sets[index];
+                write.dstBinding      = get_binding(type);
+                write.dstArrayElement = 0;
+                write.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                write.descriptorCount = 1;
+                write.pBufferInfo     = &buffer_info;
+
+                vkUpdateDescriptorSets(RHI_Context::device, 1, &write, 0, nullptr);
             }
         }
 
@@ -1117,12 +1148,17 @@ namespace spartan
 
             for (uint32_t i = 0; i < static_cast<uint32_t>(bindless::layouts.size()); i++)
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, bindless::layouts[i]);
+                if (bindless::layouts[i])
+                {
+                    RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, bindless::layouts[i]);
+                }
             }
+            bindless::sets.fill(nullptr);
+            bindless::layouts.fill(nullptr);
         }
     }
 
-   namespace device_features
+    namespace device_features
     {
         VkPhysicalDeviceFeatures2 features                                           = {};
         VkPhysicalDeviceRobustness2FeaturesEXT features_robustness                   = {};
@@ -1131,73 +1167,66 @@ namespace spartan
         VkPhysicalDeviceVulkan12Features features_1_2                                = {};
         VkPhysicalDeviceFragmentShadingRateFeaturesKHR features_vrs                  = {};
         VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT features_mutable_descriptor = {}; // xess
+        VkPhysicalDeviceRayQueryFeaturesKHR features_ray_query                       = {};
         VkPhysicalDeviceAccelerationStructureFeaturesKHR features_accel_struct       = {};
         VkPhysicalDeviceRayTracingPipelineFeaturesKHR features_ray_tracing_pipeline  = {};
-    
+
         void detect(bool* is_shading_rate_supported, bool* is_xess_supported, bool* is_ray_tracing_supported)
         {
             // features that will be enabled
-            features_vrs.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-            features_vrs.pNext = nullptr;
-    
-            features_robustness.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            features_robustness.pNext = &features_vrs;
-    
-            features_1_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            features_1_2.pNext = &features_robustness;
-    
-            features_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            features_1_3.pNext = &features_1_2;
-    
-            features_1_4.sType                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
-            features_1_4.pNext                = &features_1_3;
-            features_mutable_descriptor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
-            features_mutable_descriptor.pNext = &features_1_4;
-    
+            features_vrs.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            features_vrs.pNext                  = nullptr;
+            features_robustness.sType           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+            features_robustness.pNext           = &features_vrs;
+            features_1_2.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            features_1_2.pNext                  = &features_robustness;
+            features_1_3.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            features_1_3.pNext                  = &features_1_2;
+            features_1_4.sType                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+            features_1_4.pNext                  = &features_1_3;
+            features_mutable_descriptor.sType   = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
+            features_mutable_descriptor.pNext   = &features_1_4;
             features_accel_struct.sType         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
             features_accel_struct.pNext         = &features_mutable_descriptor;
+            features_ray_query.sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+            features_ray_query.pNext            = &features_accel_struct;
             features_ray_tracing_pipeline.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-            features_ray_tracing_pipeline.pNext = &features_accel_struct;
-    
-            features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            features.pNext = &features_ray_tracing_pipeline;
-    
+            features_ray_tracing_pipeline.pNext = &features_ray_query;
+            features.sType                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            features.pNext                      = &features_ray_tracing_pipeline;
+
             // detect which features are supported
-            VkPhysicalDeviceFragmentShadingRateFeaturesKHR support_vrs = {};
-            support_vrs.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
-    
-            VkPhysicalDeviceRobustness2FeaturesEXT support_robustness = {};
-            support_robustness.sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-            support_robustness.pNext                                  = &support_vrs;
-    
-            VkPhysicalDeviceVulkan12Features support_1_2 = {};
-            support_1_2.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            support_1_2.pNext                            = &support_robustness;
-    
-            VkPhysicalDeviceVulkan13Features support_1_3 = {};
-            support_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-            support_1_3.pNext                            = &support_1_2;
-    
+            VkPhysicalDeviceFragmentShadingRateFeaturesKHR support_vrs                  = {};
+            support_vrs.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR;
+            VkPhysicalDeviceRobustness2FeaturesEXT support_robustness                   = {};
+            support_robustness.sType                                                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+            support_robustness.pNext                                                    = &support_vrs;
+            VkPhysicalDeviceVulkan12Features support_1_2                                = {};
+            support_1_2.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            support_1_2.pNext                                                           = &support_robustness;
+            VkPhysicalDeviceVulkan13Features support_1_3                                = {};
+            support_1_3.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            support_1_3.pNext                                                           = &support_1_2;
             VkPhysicalDeviceVulkan14Features support_1_4                                = {};
             support_1_4.sType                                                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
             support_1_4.pNext                                                           = &support_1_3;
             VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT support_mutable_descriptor = {};
             support_mutable_descriptor.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT;
             support_mutable_descriptor.pNext                                            = &support_1_4;
-    
-            VkPhysicalDeviceAccelerationStructureFeaturesKHR support_accel_struct      = {};
-            support_accel_struct.sType                                                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
-            support_accel_struct.pNext                                                 = &support_mutable_descriptor;
-            VkPhysicalDeviceRayTracingPipelineFeaturesKHR support_ray_tracing_pipeline = {};
-            support_ray_tracing_pipeline.sType                                         = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-            support_ray_tracing_pipeline.pNext                                         = &support_accel_struct;
-    
-            VkPhysicalDeviceFeatures2 support = {};
-            support.sType                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            support.pNext                     = &support_ray_tracing_pipeline;
-    
+            VkPhysicalDeviceAccelerationStructureFeaturesKHR support_accel_struct       = {};
+            support_accel_struct.sType                                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+            support_accel_struct.pNext                                                  = &support_mutable_descriptor;
+            VkPhysicalDeviceRayQueryFeaturesKHR support_ray_query                       = {};
+            support_ray_query.sType                                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+            support_ray_query.pNext                                                     = &support_accel_struct;
+            VkPhysicalDeviceRayTracingPipelineFeaturesKHR support_ray_tracing_pipeline  = {};
+            support_ray_tracing_pipeline.sType                                          = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+            support_ray_tracing_pipeline.pNext                                          = &support_ray_query;
+            VkPhysicalDeviceFeatures2 support                                           = {};
+            support.sType                                                               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            support.pNext                                                               = &support_ray_tracing_pipeline;
             vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &support);
-    
+
             // check if certain features are supported and enable them
             {
                 // variable shading rate
@@ -1212,7 +1241,7 @@ namespace spartan
                 {
                     support_robustness.pNext = features_vrs.pNext; // remove from chain
                 }
-    
+
                 // misc
                 {
                     // tessellation
@@ -1222,6 +1251,10 @@ namespace spartan
                     // depth clamp
                     SP_ASSERT(support.features.depthClamp == VK_TRUE);
                     features.features.depthClamp = VK_TRUE;
+
+                    // 64-bit integers in shaders (needed for buffer device address)
+                    SP_ASSERT(support.features.shaderInt64 == VK_TRUE);
+                    features.features.shaderInt64 = VK_TRUE;
 
                     // anisotropic filtering
                     SP_ASSERT(support.features.samplerAnisotropy == VK_TRUE);
@@ -1243,7 +1276,7 @@ namespace spartan
                     SP_ASSERT(support.features.pipelineStatisticsQuery == VK_TRUE);
                     features.features.pipelineStatisticsQuery = VK_TRUE;
                 }
-    
+
                 // quality of life improvements
                 {
                     // dynamic render passes and no frame buffer objects
@@ -1262,7 +1295,7 @@ namespace spartan
                     SP_ASSERT(support.features.shaderFloat64 == VK_TRUE);
                     features.features.shaderFloat64 = VK_TRUE;
                 }
-    
+
                 // descriptors
                 {
                     SP_ASSERT(support_1_2.descriptorBindingVariableDescriptorCount == VK_TRUE);
@@ -1287,7 +1320,7 @@ namespace spartan
                     //SP_ASSERT(support_1_4.pushDescriptor == VK_TRUE);
                     //features_1_4.pushDescriptor = VK_TRUE;
                 }
-    
+
                 // fidelity fx
                 {
                     // spd
@@ -1316,7 +1349,7 @@ namespace spartan
                         features_1_3.subgroupSizeControl = VK_TRUE;
                     }
                 }
-    
+
                 // xess
                 {
                     SP_ASSERT(support_1_2.shaderInt8 == VK_TRUE);
@@ -1338,14 +1371,24 @@ namespace spartan
                         features.pNext = features.pNext; // remove from chain
                     }
                 }
-    
+
                 // ray tracing
                 {
-                    *is_ray_tracing_supported = support_accel_struct.accelerationStructure == VK_TRUE && support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE;
+                    *is_ray_tracing_supported = support_accel_struct.accelerationStructure == VK_TRUE && support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE && support_ray_query.rayQuery == VK_TRUE;
+
                     if (*is_ray_tracing_supported)
                     {
-                        features_accel_struct.accelerationStructure      = VK_TRUE;
+                        SP_ASSERT(support_accel_struct.accelerationStructure == VK_TRUE);
+                        features_accel_struct.accelerationStructure = VK_TRUE;
+
+                        SP_ASSERT(support_ray_tracing_pipeline.rayTracingPipeline == VK_TRUE);
                         features_ray_tracing_pipeline.rayTracingPipeline = VK_TRUE;
+
+                        SP_ASSERT(support_ray_query.rayQuery == VK_TRUE);
+                        features_ray_query.rayQuery = VK_TRUE;
+
+                        SP_ASSERT(support_1_2.bufferDeviceAddress == VK_TRUE);
+                        features_1_2.bufferDeviceAddress = VK_TRUE;
                     }
                     else
                     {
@@ -1353,7 +1396,6 @@ namespace spartan
                         features.pNext = features_ray_tracing_pipeline.pNext;
                     }
                 }
-    
                 // directx shader compiler spir-v output automatically enables certain capabilities
                 {
                     // geometry
@@ -1480,7 +1522,7 @@ namespace spartan
             // create the vulkan instance
             SP_ASSERT_VK(vkCreateInstance(&info_instance, nullptr, &RHI_Context::instance));
 
-            functions::get_pointers();
+            functions::get_pointers_from_gpu_driver();
             validation_layer::logging::enable();
         }
 
@@ -1516,32 +1558,45 @@ namespace spartan
 
             // properties
             {
+                VkPhysicalDeviceRayTracingPipelinePropertiesKHR ray_tracing_properties = {};
+                ray_tracing_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+
                 VkPhysicalDeviceFragmentShadingRatePropertiesKHR shading_rate_properties = {};
-                shading_rate_properties.sType                                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
+                shading_rate_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR;
+
+                VkPhysicalDeviceAccelerationStructurePropertiesKHR acceleration_structure_properties = {};
+                acceleration_structure_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+                acceleration_structure_properties.pNext = &ray_tracing_properties;
+
+                ray_tracing_properties.pNext = &shading_rate_properties;
 
                 VkPhysicalDeviceVulkan13Properties device_properties_1_3 = {};
-                device_properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-                device_properties_1_3.pNext                              = &shading_rate_properties;
+                device_properties_1_3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+                device_properties_1_3.pNext = &acceleration_structure_properties;
 
                 VkPhysicalDeviceProperties2 properties_device = {};
-                properties_device.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-                properties_device.pNext                       = &device_properties_1_3;
+                properties_device.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+                properties_device.pNext = &device_properties_1_3;
 
                 vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &properties_device);
 
                 // save some properties
-                m_timestamp_period                     = properties_device.properties.limits.timestampPeriod;
-                m_min_uniform_buffer_offset_alignment  = properties_device.properties.limits.minUniformBufferOffsetAlignment;
-                m_min_storage_buffer_offset_alignment  = properties_device.properties.limits.minStorageBufferOffsetAlignment;
-                m_max_texture_1d_dimension             = properties_device.properties.limits.maxImageDimension1D;
-                m_max_texture_2d_dimension             = properties_device.properties.limits.maxImageDimension2D;
-                m_max_texture_3d_dimension             = properties_device.properties.limits.maxImageDimension3D;
-                m_max_texture_cube_dimension           = properties_device.properties.limits.maxImageDimensionCube;
-                m_max_texture_array_layers             = properties_device.properties.limits.maxImageArrayLayers;
-                m_max_push_constant_size               = properties_device.properties.limits.maxPushConstantsSize;
-                m_max_shading_rate_texel_size_x        = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
-                m_max_shading_rate_texel_size_y        = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
-                m_optimal_buffer_copy_offset_alignment = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
+                m_timestamp_period                         = properties_device.properties.limits.timestampPeriod;
+                m_min_uniform_buffer_offset_alignment      = properties_device.properties.limits.minUniformBufferOffsetAlignment;
+                m_min_storage_buffer_offset_alignment      = properties_device.properties.limits.minStorageBufferOffsetAlignment;
+                m_min_acceleration_buffer_offset_alignment = acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment;
+                m_max_texture_1d_dimension                 = properties_device.properties.limits.maxImageDimension1D;
+                m_max_texture_2d_dimension                 = properties_device.properties.limits.maxImageDimension2D;
+                m_max_texture_3d_dimension                 = properties_device.properties.limits.maxImageDimension3D;
+                m_max_texture_cube_dimension               = properties_device.properties.limits.maxImageDimensionCube;
+                m_max_texture_array_layers                 = properties_device.properties.limits.maxImageArrayLayers;
+                m_max_push_constant_size                   = properties_device.properties.limits.maxPushConstantsSize;
+                m_max_shading_rate_texel_size_x            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.width;
+                m_max_shading_rate_texel_size_y            = shading_rate_properties.maxFragmentShadingRateAttachmentTexelSize.height;
+                m_optimal_buffer_copy_offset_alignment     = properties_device.properties.limits.optimalBufferCopyOffsetAlignment;
+                m_shader_group_handle_size                 = ray_tracing_properties.shaderGroupHandleSize;
+                m_shader_group_handle_alignment            = ray_tracing_properties.shaderGroupHandleAlignment;
+                m_shader_group_base_alignment              = ray_tracing_properties.shaderGroupBaseAlignment;
 
                 // disable profiler if timestamps are not supported
                 if (Debugging::IsGpuTimingEnabled())
@@ -1582,14 +1637,11 @@ namespace spartan
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
             queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
-
-            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Graphics)] = make_shared<RHI_Queue>(RHI_Queue_Type::Graphics, "graphics");
-            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
-            queues::immediate[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
         }
 
         vulkan_memory_allocator::initialize();
         descriptors::create_pool();
+        descriptors::bindless::initialize();
 
         // register the vulkan sdk version, which can be higher than the version we are using which is driver dependent
         string version_Sdlk = to_string(VK_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_PATCH(VK_HEADER_VERSION_COMPLETE));
@@ -1715,18 +1767,19 @@ namespace spartan
 
                 switch (resource_type)
                 {
-                    case RHI_Resource_Type::Image:               MemoryTextureDestroy(resource);                                                                           break;
-                    case RHI_Resource_Type::ImageView:           vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Sampler:             vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
-                    case RHI_Resource_Type::Buffer:              MemoryBufferDestroy(resource);                                                                            break;
-                    case RHI_Resource_Type::Shader:              vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
-                    case RHI_Resource_Type::Semaphore:           vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Fence:               vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
-                    case RHI_Resource_Type::DescriptorSetLayout: vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr); break;
-                    case RHI_Resource_Type::QueryPool:           vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Pipeline:            vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
-                    case RHI_Resource_Type::PipelineLayout:      vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
-                    default:                                     SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
+                    case RHI_Resource_Type::Image:                 MemoryTextureDestroy(resource);                                                                                            break;
+                    case RHI_Resource_Type::ImageView:             vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                                      break;
+                    case RHI_Resource_Type::Sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                                     break;
+                    case RHI_Resource_Type::Buffer:                MemoryBufferDestroy(resource);                                                                                             break;
+                    case RHI_Resource_Type::Shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);                                break;
+                    case RHI_Resource_Type::Semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                                      break;
+                    case RHI_Resource_Type::Fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                                              break;
+                    case RHI_Resource_Type::DescriptorSetLayout:   vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr);                  break;
+                    case RHI_Resource_Type::QueryPool:             vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                                      break;
+                    case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                                        break;
+                    case RHI_Resource_Type::PipelineLayout:        vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);                            break;
+                    case RHI_Resource_Type::AccelerationStructure: functions::destroy_acceleration_structure(RHI_Context::device,static_cast<VkAccelerationStructureKHR>(resource), nullptr); break;
+                    default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                                  break;
                 }
 
                 // delete descriptor sets which are now invalid (because they are referring to a deleted resource)
@@ -1792,7 +1845,7 @@ namespace spartan
 
     // descriptors
 
-    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_Descriptor>& descriptors_)
+    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors)
     {
         // describe
         array<void*, 1> descriptor_set_layouts    = { descriptor_set_layout->GetRhiResource() };
@@ -1840,70 +1893,48 @@ namespace spartan
         if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 
+        if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+
         SP_ASSERT_MSG(false, "Unhandled descriptor type");
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
     void RHI_Device::UpdateBindlessResources(
         array<RHI_Texture*, rhi_max_array_size>* material_textures,
-        RHI_Buffer* material_parameteres,
+        RHI_Buffer* material_parameters,
         RHI_Buffer* light_parameters,
         const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
         RHI_Buffer* bindless_aabbs
     )
     {
+        // samplers
         if (samplers)
         {
-            // comparison
-            {
-                vector<shared_ptr<RHI_Sampler>> data =
-                {
-                    (*samplers)[0], // comparison
-                };
-
-                descriptors::bindless::update(&data[0], static_cast<uint32_t>(data.size()), 0, RHI_Device_Bindless_Resource::SamplersComparison, "samplers_comparison");
-            }
-
-            // regular
-            {
-                vector<shared_ptr<RHI_Sampler>> data =
-                {
-                    (*samplers)[1], // point_clamp_edge
-                    (*samplers)[2], // point_clamp_border
-                    (*samplers)[3], // point_wrap
-                    (*samplers)[4], // bilinear_clamp_edge
-                    (*samplers)[5], // bilinear_clamp_border
-                    (*samplers)[6], // bilinear_wrap
-                    (*samplers)[7], // trilinear_clamp
-                    (*samplers)[8]  // anisotropic_wrap
-                };
-
-                descriptors::bindless::update(&data[0], static_cast<uint32_t>(data.size()), 1, RHI_Device_Bindless_Resource::SamplersRegular, "samplers_regular");
-            }
+            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersComparison, &(*samplers)[0], 1);
+            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersRegular, &(*samplers)[1], 8);
         }
 
         // lights
         if (light_parameters)
         {
-            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_light_parameters);
-            descriptors::bindless::update(light_parameters, 1, binding_slot, RHI_Device_Bindless_Resource::LightParameters, "light_parameters");
+            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::LightParameters, light_parameters);
         }
 
-        // textures
-        if (material_textures || material_parameteres)
+        // materials (textures and parameters)
+        if (material_textures)
         {
-            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_material_textures);
-            descriptors::bindless::update(&material_textures[0], rhi_max_array_size, binding_slot, RHI_Device_Bindless_Resource::MaterialTextures, "material_textures");
-
-            binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_material_parameters);
-            descriptors::bindless::update(material_parameteres, 1, binding_slot, RHI_Device_Bindless_Resource::MaterialParameters, "material_parameters");
+            descriptors::bindless::update_textures(material_textures);
+        }
+        if (material_parameters)
+        {
+            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::MaterialParameters, material_parameters);
         }
 
-        // aabb
+        // aabbs
         if (bindless_aabbs)
         {
-            uint32_t binding_slot = static_cast<uint32_t>(Renderer_BindingsSrv::bindless_aabbs);
-            descriptors::bindless::update(bindless_aabbs, 1, binding_slot, RHI_Device_Bindless_Resource::Aabbs, "aabbs");
+            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::Aabbs, bindless_aabbs);
         }
     }
 
@@ -1962,6 +1993,13 @@ namespace spartan
         allocation_create_info.usage                   = VMA_MEMORY_USAGE_AUTO;
         allocation_create_info.flags                   = 0;            // flags vma
         allocation_create_info.requiredFlags           = flags_memory; // flags vulkan
+        
+        // for large buffers (>16mb), use dedicated allocations to avoid vma pooling
+        const uint64_t size_16_mb = 16 * 1024 * 1024;
+        if (size >= size_16_mb)
+        {
+            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+        }
 
         bool is_mappable = (flags_memory & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
         if (is_mappable)
@@ -2068,6 +2106,16 @@ namespace spartan
             VmaAllocationCreateInfo create_info_allocation  = {};
             create_info_allocation.usage                    = VMA_MEMORY_USAGE_AUTO;
             create_info_allocation.flags                    = (texture->GetFlags() & RHI_Texture_Mappable) ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
+            
+            // for large textures (>16mb), use dedicated allocations to avoid vma pooling
+            // this ensures memory is returned to the driver when freed rather than held in pools
+            uint32_t bytes_per_pixel  = rhi_format_to_bytes(texture->GetFormat());
+            uint64_t texture_size     = static_cast<uint64_t>(texture->GetWidth()) * texture->GetHeight() * texture->GetDepth() * texture->GetMipCount() * bytes_per_pixel;
+            const uint64_t size_16_mb = 16 * 1024 * 1024;
+            if (texture_size >= size_16_mb)
+            {
+                create_info_allocation.flags |= VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+            }
 
             void*& resource = texture->GetRhiResource();
             VkResult result = vmaCreateImage
@@ -2197,35 +2245,6 @@ namespace spartan
     
         return bytes / (1024ull * 1024ull);
     }
-  
-    // immediate command list
-
-    RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
-    {
-        // wait until it's safe to proceed
-        unique_lock<mutex> lock(queues::mutex_immediate_execution);
-        queues::condition_variable_immediate_execution.wait(lock, [] { return !queues::is_immediate_executing; });
-        queues::is_immediate_executing = true;
-        ProgressTracker::SetGlobalLoadingState(true);
-
-        // get command pool
-        queues::queue = queues::immediate[static_cast<uint32_t>(queue_type)].get();
-        RHI_CommandList* cmd_list = queues::queue->NextCommandList();
-        cmd_list->Begin();
-
-        return cmd_list;
-    }
-
-    void RHI_Device::CmdImmediateSubmit(RHI_CommandList* cmd_list)
-    {
-        cmd_list->Submit(nullptr, true);
-        cmd_list->WaitForExecution();
-
-        // signal that it's safe to proceed with the next ImmediateBegin()
-        queues::is_immediate_executing = false;
-        queues::condition_variable_immediate_execution.notify_one();
-        ProgressTracker::SetGlobalLoadingState(false);
-    }
 
     // markers
 
@@ -2249,6 +2268,15 @@ namespace spartan
     }
 
     // misc
+
+    uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)
+    {
+        VkBufferDeviceAddressInfo info = {};
+        info.sType                     = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        info.pNext                     = nullptr;
+        info.buffer                    = static_cast<VkBuffer>(buffer);
+        return functions::get_buffer_device_address(static_cast<VkDevice>(RHI_Context::device), &info);
+    }
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name)
     {

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +41,7 @@ namespace spartan
         Directional,
         Point,
         Spot,
+        Area,
         Max
     };
 
@@ -55,6 +56,16 @@ namespace spartan
         bulb_flashlight, // light emitted by an average flashlight, portable and less intense
         black_hole,      // no light emitted
         custom           // custom intensity
+    };
+
+    enum class LightPreset
+    {
+        dawn,        // sunrise - early morning with warm orange glow
+        day,         // bright midday sun - direct sunlight at peak intensity
+        dusk,        // sunset - evening with warm golden tones
+        night,       // nighttime with soft moonlight
+        david_lynch, // dreamy late afternoon - low sun, soft eerie light
+        custom       // custom settings
     };
 
     enum LightFlags : uint32_t
@@ -100,9 +111,9 @@ namespace spartan
         LightIntensity GetIntensity() const { return m_intensity; }
         float GetIntensityWatt() const;
 
-        // bias
-        static float GetBias()            { return -0.0007f; }
-        static float GetBiasSlopeScaled() { return -1.2f; }
+        // preset
+        void SetPreset(const LightPreset preset);
+        LightPreset GetPreset() const { return m_preset; }
 
         // range
         void SetRange(float range);
@@ -111,6 +122,12 @@ namespace spartan
         // angle
         void SetAngle(float angle_rad);
         auto GetAngle() const { return m_angle_rad; }
+
+        // area light dimensions
+        void SetAreaWidth(float width);
+        float GetAreaWidth() const { return m_area_width; }
+        void SetAreaHeight(float height);
+        float GetAreaHeight() const { return m_area_height; }
 
         // matrices
         const math::Matrix GetViewProjectionMatrix(uint32_t index) const { return m_matrix_view[index] * m_matrix_projection[index]; }
@@ -156,8 +173,11 @@ namespace spartan
         LightType m_light_type           = LightType::Max;
         Color m_color_rgb                = Color::standard_black;
         float m_temperature_kelvin       = 0.0f;
+        LightPreset m_preset             = LightPreset::custom;
         float m_range                    = 32.0f;
         float m_angle_rad                = math::deg_to_rad * 30.0f;
+        float m_area_width               = 1.0f;  // area light width in meters
+        float m_area_height              = 1.0f;  // area light height in meters
         uint32_t m_index                 = 0;
         math::BoundingBox m_bounding_box = math::BoundingBox::Zero;
         math::Vector3 m_far_cascade_min  = math::Vector3::Zero;

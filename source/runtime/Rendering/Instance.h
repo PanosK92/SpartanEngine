@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -60,7 +60,7 @@ namespace spartan
                 quat_align               = math::Quaternion(cross_prod.x, cross_prod.y, cross_prod.z, s * 0.5f);
             }
             float yaw = (static_cast<float>(yaw_packed) / 255.0f) * math::pi_2;
-            math::Quaternion quat_yaw(0.0f, std::sin(-yaw * 0.5f), 0.0f, std::cos(yaw * 0.5f));
+            math::Quaternion quat_yaw(0.0f, std::sin(-yaw * 0.5f), 0.0f, std::cos(-yaw * 0.5f));
             math::Quaternion quat = quat_align * quat_yaw;
 
             // compose scale

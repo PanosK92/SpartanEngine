@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class Material;
+    class RHI_CommandList;
 
     enum RenderableFlags : uint32_t
     {
@@ -64,6 +65,9 @@ namespace spartan
         RHI_Buffer* GetIndexBuffer() const;
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
+        void BuildAccelerationStructure(RHI_CommandList* cmd_list);
+        bool HasAccelerationStructure() const;
+        uint64_t GetAccelerationStructureDeviceAddress() const;
 
         // bounding box
         const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}
@@ -127,6 +131,9 @@ namespace spartan
         // misc
         math::Matrix m_transform_previous = math::Matrix::Identity;
         uint32_t m_flags                  = RenderableFlags::CastsShadows;
+
+        // deferred default material assignment (renderer may not be ready during load)
+        bool m_needs_default_material = false;
 
         // visibility & lods
         float m_max_distance_render = FLT_MAX;

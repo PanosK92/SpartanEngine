@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "software"), to deal
@@ -24,7 +24,7 @@ connection with the software or the use or other dealings in the software.
 //= includes =========
 #include "Component.h"
 #include <string>
-//=====================
+//====================
 
 struct SDL_AudioStream;
 struct SDL_AudioSpec;

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,52 +35,54 @@ namespace spartan::geometry_processing
     static void register_meshoptimizer()
     {
         static std::atomic<bool> registered = false;
-        if (registered)
+
+        // quick check without lock
+        if (registered.load(std::memory_order_acquire))
             return;
 
-         // give credit where credit is due
-        const int major = MESHOPTIMIZER_VERSION / 1000;
-        const int minor = (MESHOPTIMIZER_VERSION % 1000) / 10;
-        const int rev   = MESHOPTIMIZER_VERSION % 10;
-        Settings::RegisterThirdPartyLib("meshoptimizer", std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(rev), "https://github.com/zeux/meshoptimizer");
-
-        registered = true;
+        // thread-safe registration with compare-exchange
+        bool expected = false;
+        if (registered.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
+        {
+            const int major = MESHOPTIMIZER_VERSION / 1000;
+            const int minor = (MESHOPTIMIZER_VERSION % 1000) / 10;
+            const int rev   = MESHOPTIMIZER_VERSION % 10;
+            Settings::RegisterThirdPartyLib("meshoptimizer", std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(rev), "https://github.com/zeux/meshoptimizer");
+        }
     }
 
     static void simplify(
         std::vector<uint32_t>& indices,
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         size_t target_index_count,
-        const bool preserve_uvs,  // typically true, and false for anything that doesn't need to be rendererd, say physics meshes
-        const bool preserve_edges // ideal for terrain tiles, where you want the edges to remain intact, so they meet with neighboring tiles
+        const bool preserve_uvs,  // typically true, false for non-rendered geometry like physics meshes
+        const bool preserve_edges // for terrain tiles where edges must match neighboring tiles
     )
     {
         register_meshoptimizer();
-    
-        // starting parameters
-        float  error                  = 0.01f;
-        size_t index_count            = indices.size();
-        size_t current_triangle_count = index_count / 3;
-    
-        // early exit if target is already met
+
+        size_t index_count  = indices.size();
+        size_t vertex_count = vertices.size();
+
+        // early exit conditions
         if (target_index_count >= index_count)
             return;
-    
-        // early exit if mesh is too small, few vertices can collapse to nothing
-        if (vertices.size() <= 16)
+
+        if (vertex_count <= 16 || index_count < 12)
             return;
-    
-        // temporary buffer for simplified indices
+
+        target_index_count = std::max(target_index_count, static_cast<size_t>(12));
+
+        // output buffer for simplified indices
         std::vector<uint32_t> indices_simplified(index_count);
-    
-        // vertex lock array for preserving perimeter vertices
+
+        // build vertex lock array for edge preservation (terrain tiles)
         std::vector<unsigned char> vertex_locks;
-        size_t                     vertex_count = vertices.size();
         if (preserve_edges)
         {
-            vertex_locks.resize(vertex_count, 0); // 0 = unlocked, 1 = locked
-    
-            // compute tile bounding box
+            vertex_locks.resize(vertex_count, 0);
+
+            // compute bounding box
             float min_x = std::numeric_limits<float>::max();
             float max_x = std::numeric_limits<float>::lowest();
             float min_z = std::numeric_limits<float>::max();
@@ -92,10 +94,9 @@ namespace spartan::geometry_processing
                 min_z = std::min(min_z, vertex.pos[2]);
                 max_z = std::max(max_z, vertex.pos[2]);
             }
-    
-            // lock vertices near bounding box edges
+
+            // lock vertices on bounding box perimeter
             const float edge_tolerance = 0.01f;
-            size_t      locked_count   = 0;
             for (size_t i = 0; i < vertex_count; ++i)
             {
                 float x = vertices[i].pos[0];
@@ -103,129 +104,124 @@ namespace spartan::geometry_processing
                 if (std::abs(x - min_x) < edge_tolerance || std::abs(x - max_x) < edge_tolerance ||
                     std::abs(z - min_z) < edge_tolerance || std::abs(z - max_z) < edge_tolerance)
                 {
-                    vertex_locks[i] = 1; // lock vertex on tile boundary
-                    locked_count++;
+                    vertex_locks[i] = 1;
                 }
             }
         }
-    
-        // prepare attribute buffer for uvs (packed as float2 per vertex) if preserve_uvs is true
+
+        // prepare uv attribute buffer for attribute-aware simplification
         std::vector<float> attr_buffer;
-        const float* vertex_attributes = nullptr;
-        size_t attr_stride = 0;
-        size_t attr_count = 0;
-        static constexpr float uv_weights[2] = {0.5f, 0.5f}; // weights for uv components
-        const float* attr_weights = nullptr;
-    
+        const float* vertex_attributes        = nullptr;
+        size_t attr_stride                    = 0;
+        size_t attr_count                     = 0;
+        static constexpr float uv_weights[2]  = { 0.5f, 0.5f };
+        const float* attr_weights             = nullptr;
+
         if (preserve_uvs)
         {
-            attr_buffer.reserve(vertex_count * 2); // 2 components per uv
-            for (const auto& v : vertices)
+            attr_buffer.resize(vertex_count * 2);
+            for (size_t i = 0; i < vertex_count; ++i)
             {
-                attr_buffer.push_back(v.tex[0]);
-                attr_buffer.push_back(v.tex[1]);
+                attr_buffer[i * 2 + 0] = vertices[i].tex[0];
+                attr_buffer[i * 2 + 1] = vertices[i].tex[1];
             }
             vertex_attributes = attr_buffer.data();
-            attr_stride = sizeof(float) * 2; // packed float2
-            attr_weights = uv_weights;
-            attr_count = 2; // uv components
+            attr_stride       = sizeof(float) * 2;
+            attr_weights      = uv_weights;
+            attr_count        = 2;
         }
-    
-        // get locks or nullptr
-        const unsigned char* locks = preserve_edges && !vertex_locks.empty() ? vertex_locks.data() : nullptr;
-    
-        // simplification loop up to error = 1.0
-        float lod_error = 0.0f;
-        while (current_triangle_count > (target_index_count / 3) && error <= 1.0f)
+
+        const unsigned char* locks = preserve_edges ? vertex_locks.data() : nullptr;
+
+        // strategic error thresholds - fewer iterations with larger steps
+        // meshoptimizer tries to reach target_index_count while staying within error bound
+        static constexpr float error_thresholds[] = { 0.02f, 0.05f, 0.1f, 0.2f, 0.5f, 1.0f };
+        static constexpr size_t threshold_count   = sizeof(error_thresholds) / sizeof(error_thresholds[0]);
+
+        float lod_error        = 0.0f;
+        size_t result_count    = index_count;
+        size_t best_count      = index_count;
+        bool target_reached    = false;
+
+        for (size_t i = 0; i < threshold_count && !target_reached; ++i)
         {
-            if (target_index_count < 3)
-                break;
-    
-            size_t index_count_new = meshopt_simplifyWithAttributes(
-                indices_simplified.data(),       // destination for simplified indices
-                indices.data(),                  // source indices
-                index_count,                     // current index count
-                &vertices[0].pos[0],             // vertex position data
-                vertex_count,                    // vertex count
-                sizeof(RHI_Vertex_PosTexNorTan), // vertex stride
-                vertex_attributes,               // attribute data start
-                attr_stride,                     // attribute stride per vertex
-                attr_weights,                    // weights array
-                attr_count,                      // total components
-                locks,                           // vertex lock array or nullptr
-                target_index_count,              // desired index count
-                error,                           // error tolerance
-                0,                               // options (default)
-                &lod_error                       // output error
+            result_count = meshopt_simplifyWithAttributes(
+                indices_simplified.data(),
+                indices.data(),
+                index_count,
+                &vertices[0].pos[0],
+                vertex_count,
+                sizeof(RHI_Vertex_PosTexNorTan),
+                vertex_attributes,
+                attr_stride,
+                attr_weights,
+                attr_count,
+                locks,
+                target_index_count,
+                error_thresholds[i],
+                0,
+                &lod_error
             );
-    
-            // update indices and triangle count
-            index_count = index_count_new;
-            indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
-            current_triangle_count = index_count / 3;
-    
-            // increase error linearly
-            error += 0.1f;
-        }
-    
-        // second attempt: use meshopt_simplifySloppy if needed, it doesn't respect topology or attributes, it just reduces indices aggressively
-        if (current_triangle_count > (target_index_count / 3) && !preserve_edges)
-        {
-            if (target_index_count >= 3)
+
+            // check if we reached the target or made meaningful progress
+            if (result_count <= target_index_count)
             {
-                float  target_error    = FLT_MAX;
-                size_t index_count_new = 0;
-    
-                // keep trying with reduced aggressiveness until we get valid indices
-                do
-                {
-                    index_count_new = meshopt_simplifySloppy(
-                        indices_simplified.data(),
-                        indices.data(),
-                        index_count,
-                        &vertices[0].pos[0],
-                        vertex_count,
-                        sizeof(RHI_Vertex_PosTexNorTan),
-                        target_index_count,
-                        target_error,
-                        &lod_error
-                    );
-    
-                    // if we got zero indices, reduce the error and try again
-                    if (index_count_new == 0)
-                        target_error *= 0.5f; // reduce error
-    
-                    // stop if error becomes too small to be practical
-                    if (target_error < 0.1f)
-                        break;
-    
-                } while (index_count_new == 0);
-    
-                // only update if we got valid indices
-                if (index_count_new > 0)
-                {
-                    index_count            = index_count_new;
-                    indices.assign(indices_simplified.begin(), indices_simplified.begin() + index_count);
-                    current_triangle_count = index_count / 3;
-                }
+                target_reached = true;
+            }
+            else if (result_count < best_count)
+            {
+                best_count = result_count;
+            }
+            else
+            {
+                // no progress at this error level, increasing error won't help
+                break;
             }
         }
-    
-        // we early exit for 16 or less indices, but aggressive simplification still has a small probability of collapsing to no indices - if that happens, assert and improve the function
-        SP_ASSERT(!indices.empty());
-    
-        // optimize the vertex buffer
-        std::vector<RHI_Vertex_PosTexNorTan> new_vertices(vertices.size());
-        size_t new_vertex_count = meshopt_optimizeVertexFetch(
-            new_vertices.data(),
+
+        // fallback: use sloppy simplification for aggressive reduction (ignores topology/attributes)
+        if (result_count > target_index_count && !preserve_edges && target_index_count >= 12)
+        {
+            size_t sloppy_count = meshopt_simplifySloppy(
+                indices_simplified.data(),
+                indices.data(),
+                index_count,
+                &vertices[0].pos[0],
+                vertex_count,
+                sizeof(RHI_Vertex_PosTexNorTan),
+                target_index_count,
+                FLT_MAX,
+                &lod_error
+            );
+
+            if (sloppy_count > 0 && sloppy_count < result_count)
+            {
+                result_count = sloppy_count;
+            }
+        }
+
+        // safeguard: if simplification collapsed to zero indices, keep original mesh
+        if (result_count == 0)
+        {
+            SP_LOG_WARNING("simplification collapsed mesh to zero indices, keeping original");
+            return;
+        }
+
+        // commit simplified indices
+        indices.assign(indices_simplified.begin(), indices_simplified.begin() + result_count);
+
+        // optimize vertex buffer: removes unused vertices and reorders for cache efficiency
+        std::vector<RHI_Vertex_PosTexNorTan> optimized_vertices(vertex_count);
+        size_t optimized_vertex_count = meshopt_optimizeVertexFetch(
+            optimized_vertices.data(),
             indices.data(),
-            index_count,
+            result_count,
             vertices.data(),
-            vertices.size(),
+            vertex_count,
             sizeof(RHI_Vertex_PosTexNorTan)
         );
-    
-        vertices.assign(new_vertices.begin(), new_vertices.begin() + new_vertex_count);
+
+        vertices.assign(optimized_vertices.begin(), optimized_vertices.begin() + optimized_vertex_count);
     }
 
     static void optimize(std::vector<RHI_Vertex_PosTexNorTan>& vertices, std::vector<uint32_t>& indices)

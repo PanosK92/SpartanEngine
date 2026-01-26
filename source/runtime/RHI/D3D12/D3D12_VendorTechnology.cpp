@@ -90,42 +90,42 @@ namespace spartan
 
     }
 
-    void RHI_VendorTechnology::SSSR_Dispatch(
+    void RHI_VendorTechnology::NRD_Initialize(uint32_t width, uint32_t height)
+    {
+
+    }
+
+    void RHI_VendorTechnology::NRD_Shutdown()
+    {
+
+    }
+
+    void RHI_VendorTechnology::NRD_Resize(uint32_t width, uint32_t height)
+    {
+
+    }
+
+    void RHI_VendorTechnology::NRD_Denoise(
         RHI_CommandList* cmd_list,
-        RHI_Texture* tex_color,
-        RHI_Texture* tex_depth,
-        RHI_Texture* tex_velocity,
-        RHI_Texture* tex_normal,
-        RHI_Texture* tex_material,
-        RHI_Texture* tex_brdf,
-        RHI_Texture* tex_output
+        RHI_Texture* tex_noisy,
+        RHI_Texture* tex_output,
+        const Matrix& view_matrix,
+        const Matrix& projection_matrix,
+        const Matrix& view_matrix_prev,
+        const Matrix& projection_matrix_prev,
+        float jitter_x,
+        float jitter_y,
+        float jitter_prev_x,
+        float jitter_prev_y,
+        float time_delta_ms,
+        uint32_t frame_index
     )
     {
 
     }
 
-    void RHI_VendorTechnology::Breadcrumbs_RegisterCommandList(RHI_CommandList* cmd_list, const RHI_Queue* queue, const char* name)
+    bool RHI_VendorTechnology::NRD_IsAvailable()
     {
-
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_SetPipelineState(RHI_CommandList* cmd_list, RHI_Pipeline* pipeline)
-    {
-
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_MarkerBegin(RHI_CommandList* cmd_list, const AMD_FFX_Marker marker, const char* name)
-    {
-
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_MarkerEnd(RHI_CommandList* cmd_list)
-    {
-
-    }
-
-    void RHI_VendorTechnology::Breadcrumbs_OnDeviceRemoved()
-    {
-
+        return false;
     }
 }

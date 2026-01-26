@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ModelImporter.h"
 #include "../../Core/ProgressTracker.h"
+#include "../../Core/ThreadPool.h"
 #include "../../RHI/RHI_Texture.h"
 #include "../../Rendering/Animation.h"
 #include "../../Geometry/Mesh.h"
@@ -48,14 +49,18 @@ using namespace Assimp;
 
 namespace spartan
 {
+    struct ImportContext
+    {
+        string file_path;
+        string model_name;
+        string model_directory;
+        Mesh* mesh           = nullptr;
+        const aiScene* scene = nullptr;
+    };
+
     namespace
     {
-        string model_file_path;
-        string model_name;
-        Mesh* mesh               = nullptr;
-        bool model_has_animation = false;
-        const aiScene* scene     = nullptr;
-        mutex mutex_assimp;
+        mutex mutex_import;
 
         Matrix to_matrix(const aiMatrix4x4& transform)
         {
@@ -83,11 +88,6 @@ namespace spartan
             return Vector3(ai_vector.x, ai_vector.y, ai_vector.z);
         }
 
-        Vector2 to_vector2(const aiVector2D& ai_vector)
-        {
-            return Vector2(ai_vector.x, ai_vector.y);
-        }
-
         Quaternion to_quaternion(const aiQuaternion& ai_quaternion)
         {
             return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
@@ -95,53 +95,45 @@ namespace spartan
 
         void set_entity_transform(const aiNode* node, Entity* entity)
         {
-            // convert to engine matrix
             const Matrix matrix_engine = to_matrix(node->mTransformation);
-
-            // apply position, rotation and scale
             entity->SetPositionLocal(matrix_engine.GetTranslation());
             entity->SetRotationLocal(matrix_engine.GetRotation());
             entity->SetScaleLocal(matrix_engine.GetScale());
         }
 
-        void compute_node_count(const aiNode* node, uint32_t* count)
+        uint32_t compute_node_count(const aiNode* node)
         {
             if (!node)
-                return;
+                return 0;
 
-            (*count)++;
-
-            // Process children
+            uint32_t count = 1;
             for (uint32_t i = 0; i < node->mNumChildren; i++)
             {
-                compute_node_count(node->mChildren[i], count);
+                count += compute_node_count(node->mChildren[i]);
             }
+            return count;
         }
 
-        // progress reporting interface
         class AssimpProgress : public ProgressHandler
         {
         public:
             AssimpProgress(const string& file_path)
+                : m_file_name(FileSystem::GetFileNameFromFilePath(file_path))
             {
-                m_file_path = file_path;
-                m_file_name = FileSystem::GetFileNameFromFilePath(file_path);
             }
-            ~AssimpProgress() = default;
 
             bool Update(float percentage) override { return true; }
 
             void UpdateFileRead(int current_step, int number_of_steps) override
             {
-                // Reading from drive file progress is ignored because it's not called in a consistent manner.
-                // At least two calls are needed (start, end), but this can be called only once.
+                // reading progress is ignored - assimp doesn't call this consistently
             }
 
             void UpdatePostProcess(int current_step, int number_of_steps) override
             {
                 if (current_step == 0)
                 {
-                    ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone(); // "Loading model from drive..."
+                    ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
                     ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(number_of_steps, "Post-processing model...");
                 }
                 else
@@ -151,73 +143,48 @@ namespace spartan
             }
 
         private:
-            string m_file_path;
             string m_file_name;
         };
 
-        string texture_try_multiple_extensions(const string& file_path)
+        string resolve_texture_path(const string& original_path, const string& model_directory)
         {
-            // Remove extension
-            const string file_path_no_ext = FileSystem::GetFilePathWithoutExtension(file_path);
+            // try the original path first (relative to model)
+            string full_path = model_directory + original_path;
+            if (FileSystem::Exists(full_path))
+                return full_path;
 
-            // Check if the file exists using all engine supported extensions
-            for (const auto& supported_format : FileSystem::GetSupportedImageFormats())
+            // get base path without extension
+            const string base_path = FileSystem::GetFilePathWithoutExtension(full_path);
+            const string file_name = FileSystem::GetFileNameFromFilePath(original_path);
+            const string file_name_no_ext = FileSystem::GetFileNameWithoutExtensionFromFilePath(original_path);
+
+            // common texture formats ordered by likelihood
+            static const array<const char*, 8> extensions = {
+                ".png", ".jpg", ".jpeg", ".tga", ".bmp", ".dds", ".PNG", ".JPG"
+            };
+
+            // try with different extensions
+            for (const char* ext : extensions)
             {
-                string new_file_path = file_path_no_ext + supported_format;
-                string new_file_path_upper = file_path_no_ext + FileSystem::ConvertToUppercase(supported_format);
-
-                if (FileSystem::Exists(new_file_path))
-                {
-                    return new_file_path;
-                }
-
-                if (FileSystem::Exists(new_file_path_upper))
-                {
-                    return new_file_path_upper;
-                }
+                string test_path = base_path + ext;
+                if (FileSystem::Exists(test_path))
+                    return test_path;
             }
 
-            return file_path;
-        }
+            // try in model directory (common for absolute paths baked by artists)
+            for (const char* ext : extensions)
+            {
+                string test_path = model_directory + file_name_no_ext + ext;
+                if (FileSystem::Exists(test_path))
+                    return test_path;
+            }
 
-        string texture_validate_path(string original_texture_path, const string& file_path)
-        {
-            // Models usually return a texture path which is relative to the model's directory.
-            // However, to load anything, we'll need an absolute path, so we construct it here.
-            const string model_dir = FileSystem::GetDirectoryFromFilePath(file_path);
-            string full_texture_path = model_dir + original_texture_path;
-
-            // 1. Check if the texture path is valid
-            if (FileSystem::Exists(full_texture_path))
-                return full_texture_path;
-
-            // 2. Check the same texture path as previously but 
-            // this time with different file extensions (jpg, png and so on).
-            full_texture_path = texture_try_multiple_extensions(full_texture_path);
-            if (FileSystem::Exists(full_texture_path))
-                return full_texture_path;
-
-            // At this point we know the provided path is wrong, we will make a few guesses.
-            // The most common mistake is that the artist provided a path which is absolute to his computer.
-
-            // 3. Check if the texture is in the same folder as the model
-            full_texture_path = model_dir + FileSystem::GetFileNameFromFilePath(full_texture_path);
-            if (FileSystem::Exists(full_texture_path))
-                return full_texture_path;
-
-            // 4. Check the same texture path as previously but 
-            // this time with different file extensions (jpg, png and so on).
-            full_texture_path = texture_try_multiple_extensions(full_texture_path);
-            if (FileSystem::Exists(full_texture_path))
-                return full_texture_path;
-
-            // Give up, no valid texture path was found
             return "";
         }
 
+        // load texture synchronously (original working behavior)
         bool load_material_texture(
-            Mesh* mesh,
-            const string& file_path,
+            const string& model_directory,
             shared_ptr<Material> material,
             const aiMaterial* material_assimp,
             const MaterialTextureType texture_type,
@@ -225,7 +192,7 @@ namespace spartan
             const aiTextureType texture_type_assimp_legacy
         )
         {
-            // determine if this is a pbr material or not
+            // determine texture type (prefer pbr)
             aiTextureType type_assimp = aiTextureType_NONE;
             type_assimp = material_assimp->GetTextureCount(texture_type_assimp_pbr) > 0 ? texture_type_assimp_pbr : type_assimp;
             type_assimp = (type_assimp == aiTextureType_NONE) ? (material_assimp->GetTextureCount(texture_type_assimp_legacy) > 0 ? texture_type_assimp_legacy : type_assimp) : type_assimp;
@@ -234,35 +201,32 @@ namespace spartan
             if (material_assimp->GetTextureCount(type_assimp) == 0)
                 return true;
 
-            // try to get the texture path
+            // get texture path
             aiString texture_path;
             if (material_assimp->GetTexture(type_assimp, 0, &texture_path) != AI_SUCCESS)
                 return false;
 
-            // see if the texture type is supported by the engine
-            const string deduced_path = texture_validate_path(texture_path.data, file_path);
-            if (!FileSystem::IsSupportedImageFile(deduced_path))
+            // resolve actual file path
+            const string resolved_path = resolve_texture_path(texture_path.data, model_directory);
+            if (!FileSystem::IsSupportedImageFile(resolved_path))
                 return false;
 
             // load the texture and set it to the material
             {
-                // try to get the texture
-                const string tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(deduced_path);
+                const string tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(resolved_path);
                 shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
 
                 if (texture)
                 {
-                    // set cached texture
                     material->SetTexture(texture_type, texture);
                 }
                 else
                 {
-                    // load new texture
-                    material->SetTexture(texture_type, deduced_path);
+                    material->SetTexture(texture_type, resolved_path);
                 }
             }
 
-            // FIX: materials that have a diffuse texture should not be tinted black/gray
+            // fix: materials with diffuse texture should not be tinted black/gray
             if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
             {
                 material->SetProperty(MaterialProperty::ColorR, 1.0f);
@@ -271,7 +235,7 @@ namespace spartan
                 material->SetProperty(MaterialProperty::ColorA, 1.0f);
             }
 
-            // FIX: Some models pass a normal map as a height map and vice versa, we correct that
+            // fix: some models pass a normal map as a height map and vice versa
             if (texture_type == MaterialTextureType::Normal || texture_type == MaterialTextureType::Height)
             {
                 if (RHI_Texture* texture = material->GetTexture(texture_type))
@@ -291,23 +255,25 @@ namespace spartan
             return true;
         }
 
-        shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const aiMaterial* material_assimp)
+        shared_ptr<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp)
         {
             SP_ASSERT(material_assimp != nullptr);
             shared_ptr<Material> material = make_shared<Material>();
 
-            //                                                                         texture type,           texture type assimp (pbr),       texture type assimp (legacy/fallback)
-            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // use specular as fallback
-            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Metalness,  aiTextureType_METALNESS,         aiTextureType_NONE);
-            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
-            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
-            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
-            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
-            load_material_texture(mesh, file_path, material, material_assimp, MaterialTextureType::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+            // synchronous texture loading (async was causing race conditions with texture packing)
+            // note: gltf uses aiTextureType_GLTF_METALLIC_ROUGHNESS for combined metallic-roughness texture
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Color,     aiTextureType_BASE_COLOR,              aiTextureType_DIFFUSE);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Roughness, aiTextureType_GLTF_METALLIC_ROUGHNESS, aiTextureType_DIFFUSE_ROUGHNESS);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Metalness, aiTextureType_GLTF_METALLIC_ROUGHNESS, aiTextureType_METALNESS);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Normal,    aiTextureType_NORMAL_CAMERA,           aiTextureType_NORMALS);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Occlusion, aiTextureType_AMBIENT_OCCLUSION,       aiTextureType_LIGHTMAP);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Emission,  aiTextureType_EMISSION_COLOR,          aiTextureType_EMISSIVE);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::Height,    aiTextureType_HEIGHT,                  aiTextureType_NONE);
+            load_material_texture(ctx.model_directory, material, material_assimp, MaterialTextureType::AlphaMask, aiTextureType_OPACITY,                 aiTextureType_NONE);
 
-            // gltf detection
-            bool is_gltf = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
+            // gltf detection (including .glb binary format)
+            const string extension = FileSystem::GetExtensionFromFilePath(ctx.file_path);
+            const bool is_gltf = (extension == ".gltf") || (extension == ".glb");
             material->SetProperty(MaterialProperty::Gltf, is_gltf ? 1.0f : 0.0f);
 
             // name
@@ -322,31 +288,30 @@ namespace spartan
 
             // opacity
             aiColor4D opacity(1.0f, 1.0f, 1.0f, 1.0f);
+            aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
+
+            // convert name to lowercase once for all comparisons
+            string name_lower = name;
+            transform(name_lower.begin(), name_lower.end(), name_lower.begin(), ::tolower);
+
+            // detect transparency
+            bool is_transparent = opacity.r < 1.0f;
+            if (!is_transparent)
             {
-                aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
+                is_transparent =
+                    name_lower.find("glass")       != string::npos ||
+                    name_lower.find("transparent") != string::npos ||
+                    name_lower.find("bottle")      != string::npos;
+            }
 
-                // convert name to lowercase for case insensitive comparisons below
-                transform(name.begin(), name.end(), name.begin(), ::tolower);
-
-                // detect transparency
-                bool is_transparent  = opacity.r < 1.0f;
-                if (!is_transparent)
-                {
-                    is_transparent =
-                        name.find("glass")       != string::npos ||
-                        name.find("transparent") != string::npos ||
-                        name.find("bottle")      != string::npos;
-                }
-
-                // set appropriate properties for transparents which are not PBR (aka badly set materials)
-                bool has_roughness   = material->HasTextureOfType(MaterialTextureType::Roughness);
-                bool has_metalness   = material->HasTextureOfType(MaterialTextureType::Metalness);
-                bool is_pbr_material = has_roughness && has_metalness;
-                if (is_transparent && !is_pbr_material)
-                {
-                    opacity.r = 0.5f;
-                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                }
+            // set appropriate properties for transparents which are not pbr
+            const bool has_roughness   = material->HasTextureOfType(MaterialTextureType::Roughness);
+            const bool has_metalness   = material->HasTextureOfType(MaterialTextureType::Metalness);
+            const bool is_pbr_material = has_roughness && has_metalness;
+            if (is_transparent && !is_pbr_material)
+            {
+                opacity.r = 0.5f;
+                material->SetProperty(MaterialProperty::Roughness, 0.0f);
             }
 
             // set color and opacity
@@ -356,34 +321,32 @@ namespace spartan
             material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
             // two-sided
-            int no_culling = opacity.r != 1.0f; // if transparent, default to no culling
+            int no_culling = opacity.r != 1.0f;
             aiGetMaterialInteger(material_assimp, AI_MATKEY_TWOSIDED, &no_culling);
             if (no_culling != 0)
             {
                 material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
             }
 
-            // if metalness and/or roughness are not provided, try to deduce some sensible values
-            if (!material->HasTextureOfType(MaterialTextureType::Metalness) || !material->HasTextureOfType(MaterialTextureType::Roughness))
+            // deduce metalness/roughness from material name if textures missing
+            if (!has_metalness || !has_roughness)
             {
-                bool is_metal =
-                    name.find("metal")    != string::npos ||
-                    name.find("iron")     != string::npos ||
-                    name.find("radiator") != string::npos ||
-                    name.find("chrome")   != string::npos;
+                const bool is_metal =
+                    name_lower.find("metal")    != string::npos ||
+                    name_lower.find("iron")     != string::npos ||
+                    name_lower.find("radiator") != string::npos ||
+                    name_lower.find("chrome")   != string::npos;
 
-                bool is_smooth  = name.find("ceramic") != string::npos; // plate
-                bool is_plaster = name.find("plaster") != string::npos; // wall
-                bool is_tile    = name.find("tile")    != string::npos; // floor
+                const bool is_smooth  = name_lower.find("ceramic") != string::npos;
+                const bool is_plaster = name_lower.find("plaster") != string::npos;
+                const bool is_tile    = name_lower.find("tile")    != string::npos;
 
-                // metalness
-                if (!material->HasTextureOfType(MaterialTextureType::Metalness) && is_metal)
+                if (!has_metalness && is_metal)
                 {
                     material->SetProperty(MaterialProperty::Metalness, 1.0f);
                 }
 
-                // roughness
-                if (!material->HasTextureOfType(MaterialTextureType::Roughness))
+                if (!has_roughness)
                 {
                     if (is_smooth || is_metal)
                     {
@@ -401,6 +364,137 @@ namespace spartan
             }
 
             return material;
+        }
+
+        // parallel vertex processing for large meshes
+        void process_vertices_parallel(
+            const aiMesh* assimp_mesh,
+            vector<RHI_Vertex_PosTexNorTan>& vertices
+        )
+        {
+            const uint32_t vertex_count = assimp_mesh->mNumVertices;
+            vertices.resize(vertex_count);
+
+            // use parallel loop for meshes with more than 10k vertices
+            constexpr uint32_t parallel_threshold = 10000;
+
+            if (vertex_count >= parallel_threshold)
+            {
+                ThreadPool::ParallelLoop([&](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t i = start; i < end; i++)
+                    {
+                        RHI_Vertex_PosTexNorTan& vertex = vertices[i];
+
+                        // position
+                        const aiVector3D& pos = assimp_mesh->mVertices[i];
+                        vertex.pos[0] = pos.x;
+                        vertex.pos[1] = pos.y;
+                        vertex.pos[2] = pos.z;
+
+                        // normal
+                        if (assimp_mesh->mNormals)
+                        {
+                            const aiVector3D& normal = assimp_mesh->mNormals[i];
+                            vertex.nor[0] = normal.x;
+                            vertex.nor[1] = normal.y;
+                            vertex.nor[2] = normal.z;
+                        }
+
+                        // tangent
+                        if (assimp_mesh->mTangents)
+                        {
+                            const aiVector3D& tangent = assimp_mesh->mTangents[i];
+                            vertex.tan[0] = tangent.x;
+                            vertex.tan[1] = tangent.y;
+                            vertex.tan[2] = tangent.z;
+                        }
+
+                        // texture coordinates
+                        if (assimp_mesh->HasTextureCoords(0))
+                        {
+                            const auto& tex_coords = assimp_mesh->mTextureCoords[0][i];
+                            vertex.tex[0] = tex_coords.x;
+                            vertex.tex[1] = tex_coords.y;
+                        }
+                    }
+                }, vertex_count);
+            }
+            else
+            {
+                // sequential for small meshes (avoid thread overhead)
+                for (uint32_t i = 0; i < vertex_count; i++)
+                {
+                    RHI_Vertex_PosTexNorTan& vertex = vertices[i];
+
+                    const aiVector3D& pos = assimp_mesh->mVertices[i];
+                    vertex.pos[0] = pos.x;
+                    vertex.pos[1] = pos.y;
+                    vertex.pos[2] = pos.z;
+
+                    if (assimp_mesh->mNormals)
+                    {
+                        const aiVector3D& normal = assimp_mesh->mNormals[i];
+                        vertex.nor[0] = normal.x;
+                        vertex.nor[1] = normal.y;
+                        vertex.nor[2] = normal.z;
+                    }
+
+                    if (assimp_mesh->mTangents)
+                    {
+                        const aiVector3D& tangent = assimp_mesh->mTangents[i];
+                        vertex.tan[0] = tangent.x;
+                        vertex.tan[1] = tangent.y;
+                        vertex.tan[2] = tangent.z;
+                    }
+
+                    if (assimp_mesh->HasTextureCoords(0))
+                    {
+                        const auto& tex_coords = assimp_mesh->mTextureCoords[0][i];
+                        vertex.tex[0] = tex_coords.x;
+                        vertex.tex[1] = tex_coords.y;
+                    }
+                }
+            }
+        }
+
+        // parallel index processing for large meshes
+        void process_indices_parallel(
+            const aiMesh* assimp_mesh,
+            vector<uint32_t>& indices
+        )
+        {
+            const uint32_t face_count = assimp_mesh->mNumFaces;
+            const uint32_t index_count = face_count * 3;
+            indices.resize(index_count);
+
+            constexpr uint32_t parallel_threshold = 5000;
+
+            if (face_count >= parallel_threshold)
+            {
+                ThreadPool::ParallelLoop([&](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t face_index = start; face_index < end; face_index++)
+                    {
+                        const aiFace& face           = assimp_mesh->mFaces[face_index];
+                        const uint32_t indices_index = face_index * 3;
+                        indices[indices_index + 0]   = face.mIndices[0];
+                        indices[indices_index + 1]   = face.mIndices[1];
+                        indices[indices_index + 2]   = face.mIndices[2];
+                    }
+                }, face_count);
+            }
+            else
+            {
+                for (uint32_t face_index = 0; face_index < face_count; face_index++)
+                {
+                    const aiFace& face           = assimp_mesh->mFaces[face_index];
+                    const uint32_t indices_index = face_index * 3;
+                    indices[indices_index + 0]   = face.mIndices[0];
+                    indices[indices_index + 1]   = face.mIndices[1];
+                    indices[indices_index + 2]   = face.mIndices[2];
+                }
+            }
         }
     }
 
@@ -422,13 +516,15 @@ namespace spartan
             return;
         }
 
-        lock_guard<mutex> guard(mutex_assimp);
+        lock_guard<mutex> guard(mutex_import);
 
-        // model params
-        model_file_path = file_path;
-        model_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        mesh            = mesh_in;
-        mesh->SetObjectName(model_name);
+        // initialize import context
+        ImportContext ctx;
+        ctx.file_path       = file_path;
+        ctx.model_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        ctx.model_directory = FileSystem::GetDirectoryFromFilePath(file_path);
+        ctx.mesh            = mesh_in;
+        ctx.mesh->SetObjectName(ctx.model_name);
 
         // set up the importer
         Importer importer;
@@ -447,66 +543,64 @@ namespace spartan
         // import flags
         uint32_t import_flags = 0;
         {
-            import_flags |= aiProcess_ValidateDataStructure; // validates the imported scene data structure
-            import_flags |= aiProcess_Triangulate;           // triangulates all faces of all meshes
-            import_flags |= aiProcess_SortByPType;           // splits meshes with more than one primitive type in homogeneous sub-meshes
+            import_flags |= aiProcess_ValidateDataStructure;
+            import_flags |= aiProcess_Triangulate;
+            import_flags |= aiProcess_SortByPType;
 
             // switch to engine conventions
-            import_flags |= aiProcess_MakeLeftHanded;   // directx style
-            import_flags |= aiProcess_FlipUVs;          // directx style
-            import_flags |= aiProcess_FlipWindingOrder; // directx style
+            import_flags |= aiProcess_MakeLeftHanded;
+            import_flags |= aiProcess_FlipUVs;
+            import_flags |= aiProcess_FlipWindingOrder;
 
-            // generate missing normals or UVs
-            import_flags |= aiProcess_CalcTangentSpace; // calculates  tangents and bitangents
-            import_flags |= aiProcess_GenSmoothNormals; // ignored if the mesh already has normals
-            import_flags |= aiProcess_GenUVCoords;      // converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
+            // generate missing normals or uvs
+            import_flags |= aiProcess_CalcTangentSpace;
+            import_flags |= aiProcess_GenSmoothNormals;
+            import_flags |= aiProcess_GenUVCoords;
 
             // combine meshes
-            if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportCombineMeshes))
+            if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportCombineMeshes))
             {
                 import_flags |= aiProcess_OptimizeMeshes;
-                import_flags |= aiProcess_PreTransformVertices; // this is incompatible with aiProcess_OptimizeGraph (assert occurs)
+                import_flags |= aiProcess_PreTransformVertices;
             }
 
             // validate
-            if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData))
+            if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData))
             {
-                import_flags |= aiProcess_RemoveRedundantMaterials; // searches for redundant/unreferenced materials and removes them
-                import_flags |= aiProcess_JoinIdenticalVertices;    // identifies and joins identical vertex data sets within all imported meshes
-                import_flags |= aiProcess_FindDegenerates;          // convert degenerate primitives to proper lines or points.
-                import_flags |= aiProcess_FindInvalidData;          // this step searches all meshes for invalid data, such as zeroed normal vectors or invalid UV coords and removes / fixes them
-                import_flags |= aiProcess_FindInstances;            // this step searches for duplicate meshes and replaces them with references to the first mesh
+                import_flags |= aiProcess_RemoveRedundantMaterials;
+                import_flags |= aiProcess_JoinIdenticalVertices;
+                import_flags |= aiProcess_FindDegenerates;
+                import_flags |= aiProcess_FindInvalidData;
+                import_flags |= aiProcess_FindInstances;
             }
         }
 
         ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
 
-        // read the 3D model file from drive
-        if (scene = importer.ReadFile(file_path, import_flags))
+        // read the 3d model file from drive
+        ctx.scene = importer.ReadFile(file_path, import_flags);
+        if (ctx.scene)
         {
             // update progress tracking
-            uint32_t job_count = 0;
-            compute_node_count(scene->mRootNode, &job_count);
+            const uint32_t job_count = compute_node_count(ctx.scene->mRootNode);
             ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(job_count, "Parsing model...");
 
-            model_has_animation = scene->mNumAnimations != 0;
-
             // recursively parse nodes
-            ParseNode(scene->mRootNode);
+            ParseNode(ctx, ctx.scene->mRootNode);
 
             // update model geometry
             {
                 while (ProgressTracker::GetProgress(ProgressType::ModelImporter).GetFraction() != 1.0f)
                 {
                     SP_LOG_INFO("Waiting for node processing threads to finish before creating GPU buffers...");
-                    this_thread::sleep_for(std::chrono::milliseconds(16));
+                    this_thread::sleep_for(chrono::milliseconds(16));
                 }
 
-                mesh->CreateGpuBuffers();
+                ctx.mesh->CreateGpuBuffers();
             }
 
             // make the root entity active since it's now thread-safe
-            mesh->GetRootEntity()->SetActive(true);
+            ctx.mesh->GetRootEntity()->SetActive(true);
         }
         else
         {
@@ -515,32 +609,29 @@ namespace spartan
         }
 
         importer.FreeScene();
-        mesh = nullptr;
     }
 
-    void ModelImporter::ParseNode(const aiNode* node, Entity* parent_entity)
+    void ModelImporter::ParseNode(ImportContext& ctx, const aiNode* node, Entity* parent_entity)
     {
         // create an entity that will match this node
         Entity* entity = World::CreateEntity();
 
         // set root entity to mesh
-        bool is_root_node = parent_entity == nullptr;
+        const bool is_root_node = parent_entity == nullptr;
         if (is_root_node)
         {
-            mesh->SetRootEntity(entity);
-
-            // the root entity is created as inactive for thread-safety
+            ctx.mesh->SetRootEntity(entity);
             entity->SetActive(false);
         }
 
         // name the entity
-        string node_name = is_root_node ? model_name : node->mName.C_Str();
-        entity->SetObjectName(model_name);
+        const string node_name = is_root_node ? ctx.model_name : node->mName.C_Str();
+        entity->SetObjectName(node_name);
 
         // update progress tracking
         ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
-        // set the transform of parent_node as the parent of the new_entity's transform
+        // set parent
         entity->SetParent(parent_entity);
 
         // apply node transformation
@@ -549,69 +640,56 @@ namespace spartan
         // mesh components
         if (node->mNumMeshes > 0)
         {
-            ParseNodeMeshes(node, entity);
+            ParseNodeMeshes(ctx, node, entity);
         }
 
         // light component
-        if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportLights))
+        if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportLights))
         {
-            ParseNodeLight(node, entity);
+            ParseNodeLight(ctx, node, entity);
         }
 
         // children nodes
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
-            ParseNode(node->mChildren[i], entity);
+            ParseNode(ctx, node->mChildren[i], entity);
         }
 
         // update progress tracking
         ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
     }
 
-    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, Entity* node_entity)
+    void ModelImporter::ParseNodeMeshes(ImportContext& ctx, const aiNode* assimp_node, Entity* node_entity)
     {
-        // An aiNode can have any number of meshes (albeit typically, it's one).
-        // If it has more than one meshes, then we create children entities to store them.
-
         SP_ASSERT_MSG(assimp_node->mNumMeshes != 0, "No meshes to process");
 
         for (uint32_t i = 0; i < assimp_node->mNumMeshes; i++)
         {
             Entity* entity     = node_entity;
-            aiMesh* node_mesh = scene->mMeshes[assimp_node->mMeshes[i]];
-            string node_name  = assimp_node->mName.C_Str();
+            aiMesh* node_mesh  = ctx.scene->mMeshes[assimp_node->mMeshes[i]];
+            string node_name   = assimp_node->mName.C_Str();
 
-            // if this node has more than one meshes, create an entity for each mesh, then make that entity a child of node_entity
+            // if this node has more than one mesh, create an entity for each
             if (assimp_node->mNumMeshes > 1)
             {
-                // create entity
                 entity = World::CreateEntity();
-
-                // set parent
                 entity->SetParent(node_entity);
-
-                // set name
-                node_name += "_" + to_string(i + 1); // set name
+                node_name += "_" + to_string(i + 1);
             }
 
-            // set entity name
             entity->SetObjectName(node_name);
-            
-            // load the mesh onto the entity (via a Renderable component)
-            ParseMesh(node_mesh, entity);
+            ParseMesh(ctx, node_mesh, entity);
         }
     }
 
-    void ModelImporter::ParseNodeLight(const aiNode* node, Entity* new_entity)
+    void ModelImporter::ParseNodeLight(ImportContext& ctx, const aiNode* node, Entity* new_entity)
     {
-        for (uint32_t i = 0; i < scene->mNumLights; i++)
+        for (uint32_t i = 0; i < ctx.scene->mNumLights; i++)
         {
-            if (scene->mLights[i]->mName == node->mName)
+            if (ctx.scene->mLights[i]->mName == node->mName)
             {
-                // get assimp light
-                const aiLight* light_assimp = scene->mLights[i];
+                const aiLight* light_assimp = ctx.scene->mLights[i];
 
-                // add a light component
                 Light* light = new_entity->AddComponent<Light>();
 
                 // disable shadows (to avoid tanking the framerate)
@@ -626,212 +704,56 @@ namespace spartan
                 light->SetColor(to_color(light_assimp->mColorDiffuse));
 
                 // type
-                if (light_assimp->mType == aiLightSource_DIRECTIONAL)
+                switch (light_assimp->mType)
                 {
-                    light->SetLightType(LightType::Directional);
-                }
-                else if (light_assimp->mType == aiLightSource_POINT)
-                {
-                    light->SetLightType(LightType::Point);
-                }
-                else if (light_assimp->mType == aiLightSource_SPOT)
-                {
-                    light->SetLightType(LightType::Spot);
-                }
-                else if (light_assimp->mType == aiLightSource_AREA)
-                {
-                    light->SetLightType(LightType::Point);
+                    case aiLightSource_DIRECTIONAL:
+                        light->SetLightType(LightType::Directional);
+                        break;
+                    case aiLightSource_POINT:
+                    case aiLightSource_AREA:
+                        light->SetLightType(LightType::Point);
+                        break;
+                    case aiLightSource_SPOT:
+                        light->SetLightType(LightType::Spot);
+                        break;
+                    default:
+                        break;
                 }
             }
         }
     }
 
-    void ModelImporter::ParseMesh(aiMesh* assimp_mesh, Entity* entity_parent)
+    void ModelImporter::ParseMesh(ImportContext& ctx, aiMesh* assimp_mesh, Entity* entity_parent)
     {
         SP_ASSERT(assimp_mesh != nullptr);
         SP_ASSERT(entity_parent != nullptr);
 
-        const uint32_t vertex_count = assimp_mesh->mNumVertices;
-        const uint32_t index_count  = assimp_mesh->mNumFaces * 3;
+        // process vertices and indices (parallel for large meshes)
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices;
 
-        // vertices
-        vector<RHI_Vertex_PosTexNorTan> vertices(vertex_count);
-        {
-            for (uint32_t i = 0; i < vertex_count; i++)
-            {
-                RHI_Vertex_PosTexNorTan& vertex = vertices[i];
-
-                // position
-                const aiVector3D& pos = assimp_mesh->mVertices[i];
-                vertex.pos[0] = pos.x;
-                vertex.pos[1] = pos.y;
-                vertex.pos[2] = pos.z;
-
-                // normal
-                if (assimp_mesh->mNormals)
-                {
-                    const aiVector3D& normal = assimp_mesh->mNormals[i];
-                    vertex.nor[0] = normal.x;
-                    vertex.nor[1] = normal.y;
-                    vertex.nor[2] = normal.z;
-                }
-
-                // tangent
-                if (assimp_mesh->mTangents)
-                {
-                    const aiVector3D& tangent = assimp_mesh->mTangents[i];
-                    vertex.tan[0] = tangent.x;
-                    vertex.tan[1] = tangent.y;
-                    vertex.tan[2] = tangent.z;
-                }
-
-                // texture coordinates
-                const uint32_t uv_channel = 0;
-                if (assimp_mesh->HasTextureCoords(uv_channel))
-                {
-                    const auto& tex_coords = assimp_mesh->mTextureCoords[uv_channel][i];
-                    vertex.tex[0] = tex_coords.x;
-                    vertex.tex[1] = tex_coords.y;
-                }
-            }
-        }
-
-        // indices
-        vector<uint32_t> indices(index_count);
-        {
-            // get indices by iterating through each face of the mesh.
-            for (uint32_t face_index = 0; face_index < assimp_mesh->mNumFaces; face_index++)
-            {
-                // if (aiPrimitiveType_LINE | aiPrimitiveType_POINT) && aiProcess_Triangulate) then (face.mNumIndices == 3)
-                const aiFace& face           = assimp_mesh->mFaces[face_index];
-                const uint32_t indices_index = (face_index * 3);
-                indices[indices_index + 0]   = face.mIndices[0];
-                indices[indices_index + 1]   = face.mIndices[1];
-                indices[indices_index + 2]   = face.mIndices[2];
-            }
-        }
+        process_vertices_parallel(assimp_mesh, vertices);
+        process_indices_parallel(assimp_mesh, indices);
 
         // add vertex and index data to the mesh
         uint32_t sub_mesh_index = 0;
-        mesh->AddGeometry(vertices, indices, true, &sub_mesh_index);
+        ctx.mesh->AddGeometry(vertices, indices, true, &sub_mesh_index);
 
         // set the geometry
-        entity_parent->AddComponent<Renderable>()->SetMesh(mesh, sub_mesh_index);
+        entity_parent->AddComponent<Renderable>()->SetMesh(ctx.mesh, sub_mesh_index);
 
         // material
-        if (scene->HasMaterials())
+        if (ctx.scene->HasMaterials())
         {
-            // get aiMaterial
-            const aiMaterial* assimp_material = scene->mMaterials[assimp_mesh->mMaterialIndex];
+            const aiMaterial* assimp_material = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex];
+            shared_ptr<Material> material = load_material(ctx, assimp_material);
 
-            // convert it and add it to the model
-            shared_ptr<Material> material = load_material(mesh, model_file_path, assimp_material);
-
-            // generate normal from albedo if no normal map is provided
-            if (!material->HasTextureOfType(MaterialTextureType::Normal))
-            { 
-                material->SetProperty(MaterialProperty::NormalFromAlbedo, 0.0f); // disable for now (I need to find a way for this to be defined externally (by the user)
-            }
-
-            // create a file path for this material (required for the material to be able to be cached by the resource cache)
-            const string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(model_file_path) + material->GetObjectName() + EXTENSION_MATERIAL;
+            // create a file path for this material
+            const string spartan_asset_path = ctx.model_directory + material->GetObjectName() + EXTENSION_MATERIAL;
             material->SetResourceFilePath(spartan_asset_path);
 
             // add a renderable and set the material to it
             entity_parent->AddComponent<Renderable>()->SetMaterial(material);
         }
-
-        // Bones
-        ParseNodes(assimp_mesh);
-    }
-
-    void ModelImporter::ParseAnimations()
-    {
-        for (uint32_t i = 0; i < scene->mNumAnimations; i++)
-        {
-            const auto assimp_animation = scene->mAnimations[i];
-            auto animation = make_shared<Animation>();
-
-            // Basic properties
-            animation->SetObjectName(assimp_animation->mName.C_Str());
-            animation->SetDuration(assimp_animation->mDuration);
-            animation->SetTicksPerSec(assimp_animation->mTicksPerSecond != 0.0f ? assimp_animation->mTicksPerSecond : 25.0f);
-
-            // Animation channels
-            for (uint32_t j = 0; j < static_cast<uint32_t>(assimp_animation->mNumChannels); j++)
-            {
-                const aiNodeAnim* assimp_node_anim = assimp_animation->mChannels[j];
-                AnimationNode animation_node;
-
-                animation_node.name = assimp_node_anim->mNodeName.C_Str();
-
-                // Position keys
-                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumPositionKeys); k++)
-                {
-                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = to_vector3(assimp_node_anim->mPositionKeys[k].mValue);
-
-                    animation_node.positionFrames.emplace_back(KeyVector{ time, value });
-                }
-
-                // Rotation keys
-                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumRotationKeys); k++)
-                {
-                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = to_quaternion(assimp_node_anim->mRotationKeys[k].mValue);
-
-                    animation_node.rotationFrames.emplace_back(KeyQuaternion{ time, value });
-                }
-
-                // Scaling keys
-                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumScalingKeys); k++)
-                {
-                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = to_vector3(assimp_node_anim->mScalingKeys[k].mValue);
-
-                    animation_node.scaleFrames.emplace_back(KeyVector{ time, value });
-                }
-            }
-        }
-    }
-
-    void ModelImporter::ParseNodes(const aiMesh* assimp_mesh)
-    {
-        // Maximum number of bones per mesh
-        // Must not be higher than same const in skinning shader
-        constexpr uint8_t MAX_BONES = 64;
-        // Maximum number of bones per vertex
-        constexpr uint8_t MAX_BONES_PER_VERTEX = 4;
-
-        //for (uint32_t i = 0; i < assimp_mesh->mNumBones; i++)
-        //{
-        //    uint32_t index = 0;
-
-        //    assert(assimp_mesh->mNumBones <= MAX_BONES);
-
-        //    string name = assimp_mesh->mBones[i]->mName.data;
-
-        //    if (boneMapping.find(name) == boneMapping.end())
-        //    {
-        //        // Bone not present, add new one
-        //        index = numBones;
-        //        numBones++;
-        //        BoneInfo bone;
-        //        boneInfo.push_back(bone);
-        //        boneInfo[index].offset = pMesh->mBones[i]->mOffsetMatrix;
-        //        boneMapping[name] = index;
-        //    }
-        //    else
-        //    {
-        //        index = boneMapping[name];
-        //    }
-
-        //    for (uint32_t j = 0; j < assimp_mesh->mBones[i]->mNumWeights; j++)
-        //    {
-        //        uint32_t vertexID = vertexOffset + pMesh->mBones[i]->mWeights[j].mVertexId;
-        //        Bones[vertexID].add(index, pMesh->mBones[i]->mWeights[j].mWeight);
-        //    }
-        //}
-        //boneTransforms.resize(numBones);
     }
 }

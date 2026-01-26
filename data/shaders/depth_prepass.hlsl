@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ======================
 #include "common.hlsl"
-//====================
+#include "common_tessellation.hlsl"
+//=================================
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
@@ -33,11 +34,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     vertex                         = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
 
     // transform to clip space
-    const bool is_tesselated = pass_get_f3_value().x == 1.0f;
-    if (!is_tesselated)
-    {
-        vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
-    }
+    vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
 
     return vertex;
 }

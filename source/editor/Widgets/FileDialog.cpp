@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -200,8 +200,8 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         // split manually
         const char* delimiters = "/\\";
         char* context = nullptr;
-        char* token = strtok_s(current_path, delimiters, &context);
-        bool first = true;
+        char* token   = strtok_s(current_path, delimiters, &context);
+        bool first    = true;
 
         while (token)
         {
@@ -216,7 +216,9 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
                 strncat_s(accumulated_path, sizeof(accumulated_path), "/", _TRUNCATE);
             }
 
-            if (FileSystem::GetDirectoryFromFilePath(accumulated_path) == root_path)
+            size_t root_len = strlen(root_path);
+            size_t acc_len  = strlen(accumulated_path);
+            if (acc_len == root_len + 1 && accumulated_path[root_len] == '/' && strncmp(accumulated_path, root_path, root_len) == 0)
             {
                 token = strtok_s(nullptr, delimiters, &context);
                 continue;
@@ -704,6 +706,10 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
                 ThreadPool::AddTask([this, file_path]()
                     {
                         auto texture = spartan::ResourceCache::Load<RHI_Texture>(file_path);
+                        if (texture)
+                        {
+                            texture->PrepareForGpu();
+                        }
                         lock_guard<mutex> lock(m_mutex_items);
                         m_items.emplace_back(file_path, texture.get());
                     });

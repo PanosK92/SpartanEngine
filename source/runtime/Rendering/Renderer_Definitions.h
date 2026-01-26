@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -47,6 +47,7 @@ namespace spartan
         Fog,
         ScreenSpaceAmbientOcclusion,
         ScreenSpaceReflections,
+        RayTracedReflections,
         MotionBlur,
         DepthOfField,
         FilmGrain,
@@ -66,6 +67,16 @@ namespace spartan
         DynamicResolution,
         OcclusionCulling,
         AutoExposureAdaptationSpeed,
+        // volumetric clouds
+        CloudAnimation, // whether clouds animate (wind movement)
+        CloudCoverage,  // 0=no clouds, >0=clouds visible
+        CloudType,
+        CloudShadows,
+        CloudColorR,
+        CloudColorG,
+        CloudColorB,
+        CloudDarkness,
+        CloudSeed,      // seed for cloud generation
         Max
     };
 
@@ -75,6 +86,7 @@ namespace spartan
         AgX,
         Reinhard,
         AcesNautilus,
+        GranTurismo7,
         Max,
     };
 
@@ -100,39 +112,66 @@ namespace spartan
         gbuffer_velocity = 3,
         gbuffer_depth    = 4,
 
+        // ray-tracing
+        tlas = 5,
+
         // other
-        ssao = 5,
+        ssao = 6,
     
         // misc
-        tex   = 6,
-        tex2  = 7,
-        tex3  = 8,
-        tex4  = 9,
-        tex5  = 10,
-        tex6  = 11,
-        tex3d = 12,
+        tex   = 7,
+        tex2  = 8,
+        tex3  = 9,
+        tex4  = 10,
+        tex5  = 11,
+        tex6  = 12,
+        tex3d = 13,
 
         // noise
-        tex_perlin = 13,
+        tex_perlin = 14,
 
         // bindless
-        bindless_material_textures   = 14,
-        bindless_material_parameters = 15,
-        bindless_light_parameters    = 16,
-        bindless_aabbs               = 17,
+        bindless_material_textures   = 15,
+        bindless_material_parameters = 16,
+        bindless_light_parameters    = 17,
+        bindless_aabbs               = 18,
+        
+        // volumetric clouds 3D noise
+        tex3d_cloud_shape  = 19,
+        tex3d_cloud_detail = 20,
+        // restir reservoir srv bindings (for temporal/spatial read)
+        reservoir_prev0    = 21,
+        reservoir_prev1    = 22,
+        reservoir_prev2    = 23,
+        reservoir_prev3    = 24,
+        reservoir_prev4    = 25,
     };
 
     enum class Renderer_BindingsUav
     {
-        tex         = 0,
-        tex2        = 1,
-        tex3        = 2,
-        tex4        = 3,
-        tex3d       = 4,
-        tex_sss     = 5,
-        visibility  = 6,
-        sb_spd      = 7,
-        tex_spd     = 8,
+        tex           = 0,
+        tex2          = 1,
+        tex3          = 2,
+        tex4          = 3,
+        tex3d         = 4,
+        tex_sss       = 5,
+        visibility    = 6,
+        sb_spd        = 7,
+        tex_spd       = 8,
+        geometry_info = 20, // ray tracing geometry info buffer
+        // restir reservoir uav bindings
+        reservoir0    = 21,
+        reservoir1    = 22,
+        reservoir2    = 23,
+        reservoir3    = 24,
+        reservoir4    = 25,
+        // nrd output bindings
+        nrd_viewz              = 26,
+        nrd_normal_roughness   = 27,
+        nrd_diff_radiance      = 28,
+        nrd_spec_radiance      = 29,
+        // integer format textures (vrs, etc)
+        tex_uint               = 30,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -154,6 +193,7 @@ namespace spartan
         bloom_luminance_c,
         bloom_blend_frame_c,
         bloom_upsample_blend_mip_c,
+        bloom_downsample_c,
         output_c,
         light_integration_brdf_specular_lut_c,
         light_integration_environment_filter_c,
@@ -173,6 +213,8 @@ namespace spartan
         sss_c_bend,
         skysphere_c,
         skysphere_lut_c,
+        skysphere_transmittance_lut_c,
+        skysphere_multiscatter_lut_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
         variable_rate_shading_c,
@@ -180,14 +222,32 @@ namespace spartan
         ffx_spd_average_c,
         ffx_spd_min_c,
         ffx_spd_max_c,
-        ffx_spd_luminance_c,
         blit_c,
         occlusion_c,
         icon_c,
         dithering_c,
         transparency_reflection_refraction_c,
         auto_exposure_c,
-        ray_tracing_r,
+        reflections_ray_generation_r,
+        reflections_ray_miss_r,
+        reflections_ray_hit_r,
+        // ray traced shadows
+        shadows_ray_generation_r,
+        shadows_ray_miss_r,
+        shadows_ray_hit_r,
+        // restir path tracing gi
+        restir_pt_ray_generation_r,
+        restir_pt_ray_miss_r,
+        restir_pt_ray_hit_r,
+        restir_pt_temporal_c,
+        restir_pt_spatial_c,
+        // volumetric clouds
+        cloud_noise_shape_c,
+        cloud_noise_detail_c,
+        cloud_shadow_c,
+        light_reflections_c,
+        // nrd denoiser
+        nrd_prepare_c,
         max
     };
     
@@ -203,16 +263,20 @@ namespace spartan
         gbuffer_depth_opaque_output,
         lut_brdf_specular,
         lut_atmosphere_scatter,
+        lut_atmosphere_transmittance,
+        lut_atmosphere_multiscatter,
         light_diffuse,
         light_specular,
-        light_shadow,
         light_volumetric,
         frame_render,
         frame_render_opaque,
         frame_output,
         frame_output_2,
         ssao,
-        ssr,
+        reflections,
+        gbuffer_reflections_position,
+        gbuffer_reflections_normal,
+        gbuffer_reflections_albedo,
         sss,
         skysphere,
         bloom,
@@ -222,6 +286,39 @@ namespace spartan
         shadow_atlas,
         auto_exposure,
         auto_exposure_previous,
+        // ray traced shadows
+        ray_traced_shadows,
+        // restir path tracing output
+        restir_output,
+        // restir reservoir buffers (current frame)
+        restir_reservoir0,
+        restir_reservoir1,
+        restir_reservoir2,
+        restir_reservoir3,
+        restir_reservoir4,
+        // restir reservoir buffers (previous frame for temporal)
+        restir_reservoir_prev0,
+        restir_reservoir_prev1,
+        restir_reservoir_prev2,
+        restir_reservoir_prev3,
+        restir_reservoir_prev4,
+        // restir reservoir buffers (spatial ping-pong)
+        restir_reservoir_spatial0,
+        restir_reservoir_spatial1,
+        restir_reservoir_spatial2,
+        restir_reservoir_spatial3,
+        restir_reservoir_spatial4,
+        // volumetric clouds
+        cloud_noise_shape,
+        cloud_noise_detail,
+        cloud_shadow,
+        // nrd denoiser textures
+        nrd_viewz,
+        nrd_normal_roughness,
+        nrd_diff_radiance_hitdist,
+        nrd_spec_radiance_hitdist,
+        nrd_out_diff_radiance_hitdist,
+        nrd_out_spec_radiance_hitdist,
         max
     };
 
@@ -249,20 +346,14 @@ namespace spartan
         AABBs,
         Visibility,
         VisibilityPrevious,
+        GeometryInfo,
         Max
     };
 
     enum class Renderer_StandardTexture
     {
         Noise_perlin,
-        Noise_blue_0,
-        Noise_blue_1,
-        Noise_blue_2,
-        Noise_blue_3,
-        Noise_blue_4,
-        Noise_blue_5,
-        Noise_blue_6,
-        Noise_blue_7,
+        Noise_blue, // single blue noise texture (was 8, only 1 used)
         Checkerboard,
         Gizmo_light_directional,
         Gizmo_light_point,
@@ -302,8 +393,7 @@ namespace spartan
     {
         Min,
         Max,
-        Average,
-        Luminance
+        Average
     };
 
     class Renderable;

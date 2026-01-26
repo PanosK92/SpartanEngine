@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class RHI_Buffer;
+    class RHI_AccelerationStructure;
+    class RHI_CommandList;
 
     enum class MeshFlags : uint32_t
     {
@@ -42,14 +44,6 @@ namespace spartan
         PostProcessOptimize             = 1 << 4,
         PostProcessGenerateLods         = 1 << 5,
         PostProcessPreserveTerrainEdges = 1 << 6,
-    };
-
-    enum class MeshLodDropoff
-    {
-        Exponential, // slow early, fast late poly reduction (t^2), detail-heavy mid-range
-        Linear,      // medium reduction across LODs (t), balanced for general use
-        Aggressive,  // fast early, slow late reduction (sqrt(t)), optimizes distant objects
-        Max
     };
 
     enum class MeshType
@@ -97,16 +91,13 @@ namespace spartan
         std::vector<uint32_t>& GetIndices()                   { return m_indices; }
         const SubMesh& GetSubMesh(const uint32_t index) const { return m_sub_meshes[index]; }
 
-        // lod dropoff
-        MeshLodDropoff GetLodDropoff() const             { return m_lod_dropoff; }
-        void SetLodDropoff(const MeshLodDropoff dropoff) { m_lod_dropoff = dropoff; }
-
         // get counts
         uint32_t GetVertexCount() const;
         uint32_t GetIndexCount() const;
 
         // gpu buffers
         void CreateGpuBuffers();
+        void BuildAccelerationStructure(RHI_CommandList* cmd_list);
         RHI_Buffer* GetIndexBuffer()  { return m_index_buffer.get();  }
         RHI_Buffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
 
@@ -122,6 +113,10 @@ namespace spartan
         uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
 
+        // acceleration structure - one blas per sub-mesh to avoid shared geometry issues
+        RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const;
+        bool HasBlas(uint32_t sub_mesh_index) const;
+
     private:
         // geometry
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices; // all vertices of a model file
@@ -129,13 +124,13 @@ namespace spartan
         std::vector<SubMesh> m_sub_meshes;               // tracks sub-meshes and lods within the above vectors
 
         // gpu buffers
-        std::shared_ptr<RHI_Buffer> m_vertex_buffer;
-        std::shared_ptr<RHI_Buffer> m_index_buffer;
+        std::unique_ptr<RHI_Buffer> m_vertex_buffer;
+        std::unique_ptr<RHI_Buffer> m_index_buffer;
+        std::vector<std::unique_ptr<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh
 
         // misc
         std::mutex m_mutex;
-        Entity* m_root_entity        = nullptr;
-        MeshType m_type              = MeshType::Max;
-        MeshLodDropoff m_lod_dropoff = MeshLodDropoff::Linear;
+        Entity* m_root_entity = nullptr;
+        MeshType m_type       = MeshType::Max;
     };
 }

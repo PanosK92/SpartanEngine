@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -85,6 +85,12 @@ void TextureViewer::OnTickVisible()
 {
     if (render_targets.empty())
         return;
+
+    // clamp texture index to valid range (textures may have been deallocated)
+    if (m_texture_index >= render_targets.size())
+    {
+        m_texture_index = 0;
+    }
 
     // two columns: left for preview, right for properties
     ImGui::Columns(2, "texture_viewer_columns", false);

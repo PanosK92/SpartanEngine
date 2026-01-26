@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@ namespace spartan
 
         void Wait(const bool flush = false);
         void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline);
-        void Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait);
+        bool Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait);
         RHI_CommandList* NextCommandList();
         RHI_Queue_Type GetType() const { return m_type; }
 

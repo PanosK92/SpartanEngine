@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,6 @@ namespace spartan
     enum class MaterialProperty
     {
         // system / meta
-        Optimized,                  // material has been optimized (packed/compressed textures)
         Gltf,                       // imported from gltf file
     
         // world / geometry context
@@ -83,6 +82,8 @@ namespace spartan
         TextureTilingY,             // tiling along y axis
         TextureOffsetX,             // offset along x axis
         TextureOffsetY,             // offset along y axis
+        TextureInvertX,             // invert texture along x axis (mirror horizontally)
+        TextureInvertY,             // invert texture along y axis (mirror vertically)
     
         // special effects
         IsTerrain,                  // slope-based texture mapping
@@ -150,11 +151,15 @@ namespace spartan
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
+        void ClearPackedTextures();
 
     private:
+        bool IsPackableTextureType(MaterialTextureType type) const;
+
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
-        uint32_t m_index = 0;
+        uint32_t m_index        = 0;
+        bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
         std::mutex m_mutex;
     };
 }

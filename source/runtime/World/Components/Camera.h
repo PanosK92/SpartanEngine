@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "Component.h"
 #include <memory>
+#include <vector>
 #include "../../RHI/RHI_Viewport.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
@@ -103,20 +104,19 @@ namespace spartan
         float GetIso() const         { return m_iso; }
         void SetIso(const float iso) { m_iso = iso; }
 
-        // exposure
         float GetExposure() const
         {
             // computed ev (using squared aperture for photometric accuracy)
+            // note: this calculates the exposure scale factor (1/l_avg)
             float ev100 = std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);
-
-            // base exposure from ev
-            float base_exposure = 1.0f / (std::pow(2.0f, ev100));
-
-            // the base exposure is very low for bright conditions
-            // so we apply an artistic bias here, to make it look right
-            float exposure_bias = 600.0f;
-
-            return base_exposure * exposure_bias;
+        
+            // standard standard output sensitivity (sos) calculation
+            // 1.2 is a common calibration constant (matches ue5/frostbite)
+            // this maps the average scene luminance to middle grey (0.18)
+            const float calibration_constant = 1.2f;
+            float base_exposure = 1.0f / (calibration_constant * std::pow(2.0f, ev100));
+        
+            return base_exposure;
         }
 
         // planes/projection
@@ -142,8 +142,19 @@ namespace spartan
 
         // misc
         bool IsWalking()                                { return m_is_walking; }
-        void SetSelectedEntity(spartan::Entity* entity) { m_selected_entity = entity; }
-        spartan::Entity* GetSelectedEntity()            { return m_selected_entity; }
+        
+        // selection - single entity (for compatibility)
+        void SetSelectedEntity(spartan::Entity* entity);
+        spartan::Entity* GetSelectedEntity();
+        
+        // selection - multiple entities
+        void AddToSelection(spartan::Entity* entity);
+        void RemoveFromSelection(spartan::Entity* entity);
+        void ToggleSelection(spartan::Entity* entity);
+        void ClearSelection();
+        bool IsSelected(spartan::Entity* entity) const;
+        const std::vector<spartan::Entity*>& GetSelectedEntities() const { return m_selected_entities; }
+        uint32_t GetSelectedEntityCount() const { return static_cast<uint32_t>(m_selected_entities.size()); }
 
         math::Matrix UpdateViewMatrix() const;
         math::Matrix ComputeProjection(const float near_plane, const float far_plane);
@@ -168,8 +179,7 @@ namespace spartan
         math::Matrix m_projection_non_reverse_z      = math::Matrix::Identity;
         math::Matrix m_view_projection               = math::Matrix::Identity;
         math::Matrix m_view_projection_non_reverse_z = math::Matrix::Identity;
-        math::Vector3 m_position                     = math::Vector3::Zero;
-        math::Quaternion m_rotation                  = math::Quaternion::Identity;
+        math::Matrix m_matrix_previous               = math::Matrix::Identity;
         math::Vector2 m_mouse_last_position          = math::Vector2::Zero;
         math::Vector3 m_movement_speed               = math::Vector3::Zero;
         float m_movement_scroll_accumulator          = 0.0f;
@@ -187,6 +197,11 @@ namespace spartan
         Entity* m_flashlight                         = nullptr;
         RHI_Viewport m_last_known_viewport;
         math::Frustum m_frustum;
-        spartan::Entity* m_selected_entity = nullptr;
+        std::vector<spartan::Entity*> m_selected_entities;
+        
+        // pre-allocated buffers for picking (to avoid heap allocations)
+        std::vector<math::RayHitResult> m_pick_hits;
+        std::vector<uint32_t> m_pick_indices;
+        std::vector<RHI_Vertex_PosTexNorTan> m_pick_vertices;
     };
 }

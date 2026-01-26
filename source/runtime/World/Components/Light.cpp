@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,8 @@ namespace spartan
     namespace
     {
         // directional matrix parameters
-        const float cascade_near_extent    = 100.0f;
+        const float cascade_near_extent    = 20.0f;
+        const float cascade_far_extent     = 300.0f;
         const float cascade_depth          = 1000.0f;
         const float cascade_far_max_extent = FLT_MAX;
 
@@ -59,6 +60,10 @@ namespace spartan
             {
                 return 15.0f;
             }
+            else if (type == LightType::Area)
+            {
+                return 20.0f;
+            }
 
             return 0.0f;
         }
@@ -74,6 +79,10 @@ namespace spartan
                 return Color::light_light_bulb;
             }
             else if (type == LightType::Spot)
+            {
+                return Color::light_light_bulb;
+            }
+            else if (type == LightType::Area)
             {
                 return Color::light_light_bulb;
             }
@@ -97,6 +106,8 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_active_previous_frame, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_changed_this_frame, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_index, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_width, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_height, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
 
         m_matrix_view.fill(Matrix::Identity);
@@ -136,7 +147,7 @@ namespace spartan
             {
                 Quaternion rotation = Quaternion::FromAxisAngle(
                     Vector3::Right,                                                                               // x-axis rotation (left to right)
-                    (World::GetTimeOfDay(GetFlag(LightFlags::RealTimeCycle)) * 360.0f - 90.0f) * math::deg_to_rad // angle in radians, -90° offset for horizon
+                    (World::GetTimeOfDay(GetFlag(LightFlags::RealTimeCycle)) * 360.0f - 90.0f) * math::deg_to_rad // angle in radians, -90ï¿½ offset for horizon
                 );
 
                 GetEntity()->SetRotation(rotation);
@@ -176,6 +187,9 @@ namespace spartan
         node.append_attribute("range")         = m_range;
         node.append_attribute("angle")         = m_angle_rad;
         node.append_attribute("index")         = m_index;
+        node.append_attribute("preset")        = static_cast<int>(m_preset);
+        node.append_attribute("area_width")    = m_area_width;
+        node.append_attribute("area_height")   = m_area_height;
     }
     
     void Light::Load(pugi::xml_node& node)
@@ -191,6 +205,9 @@ namespace spartan
         m_range                = node.attribute("range").as_float(32.0f);
         m_angle_rad            = node.attribute("angle").as_float(math::deg_to_rad * 30.0f);
         m_index                = node.attribute("index").as_uint(0);
+        m_preset               = static_cast<LightPreset>(node.attribute("preset").as_int(static_cast<int>(LightPreset::custom)));
+        m_area_width           = node.attribute("area_width").as_float(1.0f);
+        m_area_height          = node.attribute("area_height").as_float(1.0f);
     
         UpdateMatrices(); // regenerate view/projection after loading
     }
@@ -327,23 +344,107 @@ namespace spartan
         m_changed_this_frame = true;
     }
 
-    float Light::GetIntensityWatt() const
+    void Light::SetPreset(const LightPreset preset)
     {
-        // ideal luminous efficacy at 555nm in lm/w
-        const float luminous_efficacy = 683.0f;
-        float intensity               = m_intensity_lumens_lux;
-        
+        m_preset = preset;
+
+        float time_of_day = 0.0f;
+        float temperature = 0.0f;
+        float intensity   = 0.0f;
+        float yaw_degrees = 0.0f; // horizontal rotation around Y axis
+
+        switch (preset)
+        {
+        case LightPreset::dawn:
+            // sunrise - early morning with warm orange glow
+            time_of_day = 0.25f; // 6:00 AM
+            temperature = 2500.0f; // warm sunrise orange
+            intensity = 500.0f; // lux - dawn light
+            break;
+
+        case LightPreset::day:
+            // bright midday sun - direct sunlight at peak intensity
+            time_of_day = 0.5f; // 12:00 PM
+            temperature = 5778.0f; // sun color temperature
+            intensity = 100000.0f; // lux - direct sunlight
+            break;
+
+        case LightPreset::dusk:
+            // sunset - evening with warm golden tones
+            time_of_day = 0.69f; // 4:30 PM
+            temperature = 3200.0f; // warm golden
+            intensity = 10000.0f; // lux - golden hour light
+            break;
+
+        case LightPreset::night:
+            // nighttime with soft moonlight
+            time_of_day = 0.875f; // 9:00 PM
+            temperature = 4100.0f; // moonlight color
+            intensity = 0.3f; // lux - full moon
+            break;
+
+        case LightPreset::david_lynch:
+            // dreamy sunset - that david lynch/twin peaks vibe
+            // warm orange/pink colors, sun near horizon, dreamlike beauty
+            time_of_day = 0.74f; // sun near horizon for actual sunset colors
+            temperature = 2200.0f; // deep warm orange/pink
+            intensity   = 5000.0f; // lux - soft sunset light
+            yaw_degrees = 125.0f; // rotate to avoid mountain
+            break;
+
+        case LightPreset::custom:
+            // do nothing, keep current settings
+            return;
+        }
+
+        // set time of day
+        World::SetTimeOfDay(time_of_day);
+
+        // set light properties
+        SetTemperature(temperature);
+        SetIntensity(intensity);
+
+        // set rotation based on time of day (only for directional lights)
         if (m_light_type == LightType::Directional)
         {
-            // assume the intensity is in lux (lm/m^2)
-            // converting lux to W/m^2 using a reference area of 1 m^2
-            intensity = m_intensity_lumens_lux / luminous_efficacy;
-        } else
-        {
-            intensity = m_intensity_lumens_lux / luminous_efficacy;
+            // elevation from time of day
+            float elevation_rad = (time_of_day * 360.0f - 90.0f) * math::deg_to_rad;
+            Quaternion elevation = Quaternion::FromAxisAngle(Vector3::Right, elevation_rad);
+            
+            // horizontal rotation (yaw)
+            Quaternion yaw = Quaternion::FromAxisAngle(Vector3::Up, yaw_degrees * math::deg_to_rad);
+            
+            // combine: yaw first, then elevation
+            GetEntity()->SetRotation(yaw * elevation);
+            UpdateMatrices();
         }
-        
-        return intensity;
+
+        m_changed_this_frame = true;
+    }
+
+    float Light::GetIntensityWatt() const
+    {
+        // ideal luminous efficacy of monochromatic radiation at 555 nm (lm/w).
+        // note: for broad spectrum white light, ~250-400 is more accurate,
+        // but 683 is the standard "ideal" definition used in engines like ue5/frostbite
+        const float luminous_efficacy = 683.0f; 
+    
+        // 1. convert photometric (lumens/lux) to radiometric (watts)
+        float radiant_flux = m_intensity_lumens_lux / luminous_efficacy;
+    
+        if (m_light_type == LightType::Directional)
+        {
+            // directional: input is lux (lm/m^2), output is irradiance (w/m^2)
+            // no solid angle conversion needed
+            return radiant_flux;
+        }
+        else
+        {
+            // point/spot: input is lumens (lm) -> flux (watts)
+            // we need radiant intensity (watts/sr)
+            // divide by 4pi to distribute flux over the sphere
+            return radiant_flux / (4.0f * 3.14159265359f);
+        }
     }
 
     void Light::SetRange(float range)
@@ -363,6 +464,26 @@ namespace spartan
             return;
 
         m_angle_rad = angle;
+        UpdateMatrices();
+    }
+
+    void Light::SetAreaWidth(float width)
+    {
+        width = clamp(width, 0.01f, 100.0f);
+        if (width == m_area_width)
+            return;
+
+        m_area_width = width;
+        UpdateMatrices();
+    }
+
+    void Light::SetAreaHeight(float height)
+    {
+        height = clamp(height, 0.01f, 100.0f);
+        if (height == m_area_height)
+            return;
+
+        m_area_height = height;
         UpdateMatrices();
     }
 
@@ -412,7 +533,7 @@ namespace spartan
     {
         if (m_light_type == LightType::Directional) return 2;
         if (m_light_type == LightType::Point)       return 6;
-        return 1; // spot
+        return 1; // spot and area lights use a single slice
     }
 
     void Light::UpdateMatrices()
@@ -426,7 +547,7 @@ namespace spartan
 
     void Light::UpdateViewMatrix()
     {
-        const Vector3 position = GetEntity()->GetPosition(); // light’s base position (arbitrary for directional)
+        const Vector3 position = GetEntity()->GetPosition(); // lightï¿½s base position (arbitrary for directional)
 
         if (m_light_type == LightType::Directional)
         {
@@ -434,52 +555,26 @@ namespace spartan
             if (!camera)
                 return;
     
-            // near cascade (tight, camera following)
+            // both cascades follow the camera
             Vector3 camera_pos = camera->GetEntity()->GetPosition();
             Vector3 position   = camera_pos - GetEntity()->GetForward() * cascade_depth * 0.5f;
             m_matrix_view[0]   = Matrix::CreateLookAtLH(position, camera_pos, Vector3::Up);
             m_matrix_view[1]   = m_matrix_view[0];
-
-            // far cascade (world bounds in light space)
-            {
-                // get world bounds
-                BoundingBox& world_box = World::GetBoundingBox();
-                array<Vector3, 8> corners_world;
-                world_box.GetCorners(&corners_world);
-
-                // transform into light space (using far cascade view)
-                m_far_cascade_min = Vector3::Infinity;
-                m_far_cascade_max = Vector3::InfinityNeg;
-                for (const Vector3& corner : corners_world)
-                {
-                    Vector3 corner_ls = corner * m_matrix_view[1];
-                    corner_ls.x       = clamp(corner_ls.x, -cascade_far_max_extent, cascade_far_max_extent);
-                    corner_ls.y       = clamp(corner_ls.y, -cascade_far_max_extent, cascade_far_max_extent);
-                    corner_ls.z       = clamp(corner_ls.z, -cascade_far_max_extent, cascade_far_max_extent);
-                    m_far_cascade_min = Vector3::Min(m_far_cascade_min, corner_ls);
-                    m_far_cascade_max = Vector3::Max(m_far_cascade_max, corner_ls);
-                }
-            }
     
             // move the light in words units per texel to avoid shimmering
             {
-                // compute shadow extents
+                // compute shadow extents (both fixed sizes)
                 float extents[2];
-
-                // near cascade: fixed
-                extents[0] = cascade_near_extent;
-
-                // far cascade: compute from world bounds in light space
-                Vector3 far_extent = (m_far_cascade_max - m_far_cascade_min) * 0.5f;
-                extents[1]         = max(far_extent.x, far_extent.y); // use largest xy extent for square shadow map
+                extents[0] = cascade_near_extent; // near cascade: fixed
+                extents[1] = cascade_far_extent;  // far cascade: fixed, bigger than near
                 
                 float atlas_width = static_cast<float>(Renderer::GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth());
                 for (uint32_t i  = 0; i < 2; i++)
                 {
-                    float rect_width           = m_atlas_rectangles[i].width; // cascade rectangle width in atlas
-                    float atlas_scale          = rect_width / atlas_width;    // proportion of atlas used by cascade
-                    float effective_resolution = atlas_width * atlas_scale;   // effective resolution for cascade
-                    float texel_size_world     = (2.0f * extents[i]) / effective_resolution; // World units per texel
+                    float rect_width           = m_atlas_rectangles[i].width;                // cascade rectangle width in atlas
+                    float atlas_scale          = rect_width / atlas_width;                   // proportion of atlas used by cascade
+                    float effective_resolution = atlas_width * atlas_scale;                  // effective resolution for cascade
+                    float texel_size_world     = (2.0f * extents[i]) / effective_resolution; // world units per texel
                     m_matrix_view[i].m30       = round(m_matrix_view[i].m30 / texel_size_world) * texel_size_world; // snap x
                     m_matrix_view[i].m31       = round(m_matrix_view[i].m31 / texel_size_world) * texel_size_world; // snap y
                     // z-translation (m32) remains unchanged for orthographic projection
@@ -488,6 +583,11 @@ namespace spartan
         }
         else if (m_light_type == LightType::Spot)
         {
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + GetEntity()->GetForward(), Vector3::Up);
+        }
+        else if (m_light_type == LightType::Area)
+        {
+            // area light looks along its forward direction
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + GetEntity()->GetForward(), Vector3::Up);
         }
         else if (m_light_type == LightType::Point)
@@ -518,15 +618,28 @@ namespace spartan
                 cascade_depth, 0.0f
             );
 
-            // far cascade (world bounds in light space)
+            // far cascade (camera following, fixed size, bigger than near cascade)
             m_matrix_projection[1] = Matrix::CreateOrthoOffCenterLH(
-                m_far_cascade_min.x, m_far_cascade_max.x, // left, right
-                m_far_cascade_min.y, m_far_cascade_max.y, // bottom, top
-                m_far_cascade_max.z, m_far_cascade_min.z  // reverse-z near, far
+                -cascade_far_extent, cascade_far_extent,
+                -cascade_far_extent, cascade_far_extent,
+                cascade_depth, 0.0f
             );
 
             m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0]);
             m_frustums[1] = Frustum(m_matrix_view[1], m_matrix_projection[1]);
+        }
+        else if (m_light_type == LightType::Area)
+        {
+            // area lights use orthographic projection based on their dimensions
+            float half_width  = m_area_width * 0.5f;
+            float half_height = m_area_height * 0.5f;
+            
+            m_matrix_projection[0] = Matrix::CreateOrthoOffCenterLH(
+                -half_width, half_width,
+                -half_height, half_height,
+                m_range, 0.05f
+            );
+            m_frustums[0] = Frustum(m_matrix_view[0], m_matrix_projection[0]);
         }
         else // spot/point
         {
@@ -578,6 +691,40 @@ namespace spartan
             expand(pos_down);
             expand(pos_right);
             expand(pos_left);
+    
+            m_bounding_box = math::BoundingBox(min, max);
+        }
+        else if (m_light_type == LightType::Area)
+        {
+            // area light bounding box extends from the light rectangle to its range
+            const float half_width  = m_area_width * 0.5f;
+            const float half_height = m_area_height * 0.5f;
+    
+            // corners of the area light rectangle
+            const Vector3 right   = GetEntity()->GetRight();
+            const Vector3 up      = GetEntity()->GetUp();
+            const Vector3 forward = GetEntity()->GetForward();
+    
+            Vector3 min = position;
+            Vector3 max = position;
+    
+            auto expand = [&](const Vector3& p)
+            {
+                min = Vector3::Min(min, p);
+                max = Vector3::Max(max, p);
+            };
+    
+            // expand by corners of the light rectangle
+            expand(position + right * half_width + up * half_height);
+            expand(position - right * half_width + up * half_height);
+            expand(position + right * half_width - up * half_height);
+            expand(position - right * half_width - up * half_height);
+    
+            // expand by the range in the forward direction
+            expand(position + forward * m_range + right * half_width + up * half_height);
+            expand(position + forward * m_range - right * half_width + up * half_height);
+            expand(position + forward * m_range + right * half_width - up * half_height);
+            expand(position + forward * m_range - right * half_width - up * half_height);
     
             m_bounding_box = math::BoundingBox(min, max);
         }

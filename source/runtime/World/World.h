@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -64,6 +64,7 @@ namespace spartan
 
         // world time: 0.0 = midnight, 0.5 = noon, 1.0 = next midnight
         static float GetTimeOfDay(bool use_real_world_time = false);
+        static void SetTimeOfDay(float time_of_day);
 
     private:
         static void ProcessPendingRemovals();

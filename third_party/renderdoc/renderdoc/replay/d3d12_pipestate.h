@@ -625,13 +625,18 @@ struct RootParam
 
   bool operator==(const RootParam &o) const
   {
-    return visibility == o.visibility && heap == o.heap && heapByteOffset == o.heapByteOffset &&
-           tableRanges == o.tableRanges && descriptor == o.descriptor && constants == o.constants;
+    return visibility == o.visibility && space == o.space && reg == o.reg && heap == o.heap &&
+           heapByteOffset == o.heapByteOffset && tableRanges == o.tableRanges &&
+           descriptor == o.descriptor && constants == o.constants;
   }
   bool operator<(const RootParam &o) const
   {
     if(!(visibility == o.visibility))
       return visibility < o.visibility;
+    if(!(space == o.space))
+      return space < o.space;
+    if(!(reg == o.reg))
+      return reg < o.reg;
     if(!(heap == o.heap))
       return heap < o.heap;
     if(!(heapByteOffset == o.heapByteOffset))
@@ -650,6 +655,18 @@ struct RootParam
 :type: ShaderStageMask
 )");
   ShaderStageMask visibility;
+
+  DOCUMENT(R"(For a root parameter, the register space of the binding.
+
+:type: int
+)");
+  uint32_t space = 0;
+
+  DOCUMENT(R"(For a root parameter, the register of the binding.
+
+:type: int
+)");
+  uint32_t reg = 0;
 
   DOCUMENT(R"(For a root constant parameter, the words defined.
 

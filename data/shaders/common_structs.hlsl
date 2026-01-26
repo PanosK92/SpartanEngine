@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8,7 +8,7 @@ to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
 
-The abofe copyright notice and this permission notice shall be included in
+The above copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -144,6 +144,8 @@ struct Light
     float  angle;
     float  near;
     float  far;
+    float  area_width;
+    float  area_height;
     float3 radiance;
     float  n_dot_l;
     float  attenuation;
@@ -157,27 +159,34 @@ struct Light
     bool is_directional()           { return flags & uint(1U << 0); }
     bool is_point()                 { return flags & uint(1U << 1); }
     bool is_spot()                  { return flags & uint(1U << 2); }
+    bool is_area()                  { return flags & uint(1U << 6); }
     bool has_shadows()              { return flags & uint(1U << 3); }
     bool has_shadows_screen_space() { return flags & uint(1U << 4); }
     bool is_volumetric()            { return flags & uint(1U << 5); }
 
     float compute_attenuation_distance(const float3 surface_position)
     {
-        float distance_to_pixel = length(surface_position - position);
-        float attenuation       = saturate(1.0f - distance_to_pixel / far);
-
-        return attenuation * attenuation;
+        float d = length(surface_position - position);
+        
+        // 1. Physically correct Inverse Square Law
+        // We add a small epsilon (0.0001) to prevent division by zero at the light source
+        float attenuation_phys = 1.0f / (d * d + 0.0001f);
+    
+        // 2. Windowing function (Forces light to 0 at 'far' distance)
+        float distance_falloff  = saturate(1.0f - d / far);
+        distance_falloff       *= distance_falloff; // square it for smoother fade
+    
+        return attenuation_phys * distance_falloff;
     }
 
     float compute_attenuation_angle()
     {
-        float cos_outer         = cos(angle);
-        float cos_inner         = cos(angle * 0.9f);
-        float cos_outer_squared = cos_outer * cos_outer;
-        float scale             = 1.0f / max(0.001f, cos_inner - cos_outer);
-        float offset            = -cos_outer * scale;
-        float cd                = dot(to_pixel, forward);
-        float attenuation       = saturate(cd * scale + offset);
+        float cos_outer   = cos(angle);
+        float cos_inner   = cos(angle * 0.9f);
+        float scale       = 1.0f / max(0.001f, cos_inner - cos_outer);
+        float offset      = -cos_outer * scale;
+        float cd          = dot(to_pixel, forward);
+        float attenuation = saturate(cd * scale + offset);
         
         return attenuation * attenuation;
     }
@@ -185,6 +194,94 @@ struct Light
     float2 compute_resolution()
     {
         return 1.0f / atlas_texel_size[0]; // assuming all slices are the same resolution
+    }
+
+    // builds an orthonormal basis for the area light, handling all orientations including straight up/down
+    void compute_area_light_basis(out float3 light_right, out float3 light_up)
+    {
+        // choose a reference vector that's not parallel to forward
+        float3 ref = abs(forward.y) < 0.999f ? float3(0, 1, 0) : float3(1, 0, 0);
+        
+        light_right = normalize(cross(ref, forward));
+        light_up    = normalize(cross(forward, light_right));
+    }
+
+    // finds the closest point on the rectangular area light to the surface position
+    float3 compute_closest_point_on_area(const float3 surface_position)
+    {
+        float3 light_right, light_up;
+        compute_area_light_basis(light_right, light_up);
+        
+        float3 to_surface = surface_position - position;
+        
+        // project onto light plane and clamp to rectangle bounds
+        float half_width  = area_width  * 0.5f;
+        float half_height = area_height * 0.5f;
+        
+        float right_proj = clamp(dot(to_surface, light_right), -half_width, half_width);
+        float up_proj    = clamp(dot(to_surface, light_up), -half_height, half_height);
+        
+        return position + light_right * right_proj + light_up * up_proj;
+    }
+
+    // finds the representative point on the area light for specular calculations
+    // this is the point that contributes most to the specular highlight based on the reflected view ray
+    float3 compute_representative_point_on_area(const float3 surface_position, const float3 surface_normal, const float3 view_direction)
+    {
+        float3 light_right, light_up;
+        compute_area_light_basis(light_right, light_up);
+        
+        // compute reflection vector
+        float3 reflection = reflect(-view_direction, surface_normal);
+        
+        // find where the reflection ray intersects the light plane
+        // plane equation: dot(p - position, forward) = 0
+        float3 to_light  = position - surface_position;
+        float denom      = dot(reflection, -forward);
+        
+        float3 representative_point;
+        
+        if (abs(denom) > 0.0001f)
+        {
+            // ray intersects the plane
+            float t            = dot(to_light, -forward) / denom;
+            float3 plane_point = surface_position + reflection * max(t, 0.0f);
+            
+            // project intersection point onto light rectangle and clamp
+            float3 point_on_plane = plane_point - position;
+            float half_width      = area_width  * 0.5f;
+            float half_height     = area_height * 0.5f;
+            
+            float right_proj = clamp(dot(point_on_plane, light_right), -half_width, half_width);
+            float up_proj    = clamp(dot(point_on_plane, light_up), -half_height, half_height);
+            
+            representative_point = position + light_right * right_proj + light_up * up_proj;
+        }
+        else
+        {
+            // reflection is parallel to light plane, fall back to closest point
+            representative_point = compute_closest_point_on_area(surface_position);
+        }
+        
+        return representative_point;
+    }
+
+    float compute_attenuation_area(const float3 surface_position)
+    {
+        // find closest point on the area light rectangle to the surface
+        float3 closest_point = compute_closest_point_on_area(surface_position);
+        
+        // compute distance from closest point
+        float d = length(surface_position - closest_point);
+        
+        // inverse square falloff with small epsilon to prevent division by zero
+        float attenuation = 1.0f / (d * d + 0.0001f);
+        
+        // windowing function (forces light to 0 at range)
+        float distance_falloff = saturate(1.0f - d / far);
+        distance_falloff *= distance_falloff;
+        
+        return attenuation * distance_falloff;
     }
 
     float compute_attenuation(const float3 surface_position)
@@ -203,6 +300,10 @@ struct Light
         {
             attenuation = compute_attenuation_distance(surface_position) * compute_attenuation_angle();
         }
+        else if (is_area())
+        {
+            attenuation = compute_attenuation_area(surface_position);
+        }
 
         return attenuation;
     }
@@ -216,7 +317,7 @@ struct Light
             // keep sun-elevation atten for consistency, as it's global (no dist)
             atten = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
         }
-        else if (is_point() || is_spot())
+        else if (is_point() || is_spot() || is_area())
         {
             float dist_to_vol = length(vol_position - position);
             float atten_dist  = saturate(1.0f - dist_to_vol / far);
@@ -251,7 +352,7 @@ struct Light
         {
             direction = normalize(forward.xyz);
         }
-        else if (is_point() || is_spot())
+        else if (is_point() || is_spot() || is_area())
         {
             direction = normalize(fragment_position - light_position);
         }
@@ -301,11 +402,29 @@ struct Light
         near                             = 0.01f;
         far                              = light.range;
         angle                            = light.angle;
-        forward                          = is_point() ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
+        area_width                       = light.area_width;
+        area_height                      = light.area_height;
+        forward                          = (is_point() && !is_area()) ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
         distance_to_pixel                = length(surface.position - position);
-        to_pixel                         = compute_direction(position, surface.position);
-        n_dot_l                          = saturate(dot(surface.normal, -to_pixel));
-        attenuation                      = compute_attenuation(surface.position);
+        
+        // for area lights, use representative point for accurate specular reflections
+        // this makes rectangular area lights produce elongated reflections instead of circular ones
+        if (is_area())
+        {
+            float3 view_direction       = normalize(-surface.camera_to_pixel);
+            float3 representative_point = compute_representative_point_on_area(surface.position, surface.normal, view_direction);
+            to_pixel                    = normalize(surface.position - representative_point);
+        }
+        else
+        {
+            to_pixel = compute_direction(position, surface.position);
+        }
+        
+        n_dot_l = saturate(dot(surface.normal, -to_pixel));
+        
+        // compute attenuation
+        attenuation = compute_attenuation(surface.position);
+        
         resolution                       = compute_resolution();
         screen_space_shadows_slice_index = light.screen_space_shadow_slice_index;
         transform                        = light.transform;

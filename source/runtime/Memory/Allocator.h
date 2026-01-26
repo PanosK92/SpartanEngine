@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====
 #include <cstddef>
+#include <cstdint>
 //================
 
 namespace spartan
 {
+    // memory tags for tracking allocations by subsystem
+    enum class MemoryTag : uint8_t
+    {
+        Untagged = 0,
+        Rendering,
+        Physics,
+        Audio,
+        Scripting,
+        Resources,
+        World,
+        Ui,
+        Count
+    };
+
     class Allocator
     {
     public:
-         // allocate aligned memory
-        static void* Allocate(std::size_t size, std::size_t alignment = alignof(std::max_align_t));
+        // allocate aligned memory with optional tag for tracking
+        static void* Allocate(std::size_t size, std::size_t alignment = alignof(std::max_align_t), MemoryTag tag = MemoryTag::Untagged);
 
         // free previously allocated memory
         static void Free(void* ptr);
 
-        // caleld once per frame
+        // called once per frame
         static void Tick();
 
         // total memory allocated by the engine
@@ -54,5 +69,10 @@ namespace spartan
         // total physical system memory
         static float GetMemoryTotalMb();
 
+        // memory allocated by a specific tag/subsystem
+        static float GetMemoryAllocatedByTagMb(MemoryTag tag);
+
+        // get tag name as string
+        static const char* GetTagName(MemoryTag tag);
     };
 }

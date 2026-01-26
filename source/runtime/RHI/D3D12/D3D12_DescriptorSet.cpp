@@ -32,7 +32,7 @@ using namespace std;
 
 namespace spartan
 {
-    void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)
+    void RHI_DescriptorSet::Update(const vector<RHI_DescriptorWithBinding>& descriptors)
     {
 
     }
