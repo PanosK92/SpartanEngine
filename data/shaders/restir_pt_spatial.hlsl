@@ -58,7 +58,7 @@ bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sa
     float3 dir  = sample_hit_pos - center_pos;
     float dist  = length(dir);
     
-    // skip visibility check for very short distances (ensures TMax > TMin for ray query)
+    // skip very short distances
     if (dist < 0.03f)
         return true;
     
@@ -106,10 +106,12 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
     return true;
 }
 
-float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 center_normal, float3 neighbor_pos)
+float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 center_normal, float3 neighbor_pos, out float jacobian)
 {
-    float hit_dist_sq = dot(sample.hit_position, sample.hit_position);
-    if (hit_dist_sq < 1e-6f)
+    jacobian = 0.0f;
+    
+    // reject invalid samples
+    if (sample.path_length == 0 || all(sample.radiance <= 0.0f))
         return 0.0f;
     
     float3 dir_to_sample = sample.hit_position - center_pos;
@@ -123,7 +125,8 @@ float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 c
     if (cos_theta <= 0.0f)
         return 0.0f;
     
-    float jacobian = compute_jacobian(sample.hit_position, neighbor_pos, center_pos, sample.hit_normal);
+    // compute solid angle correction
+    jacobian = compute_jacobian(sample.hit_position, neighbor_pos, center_pos, sample.hit_normal);
     if (jacobian <= 0.0f)
         return 0.0f;
     
@@ -151,7 +154,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
     
-    // load center reservoir
+    // load center pixel reservoir
     Reservoir center = unpack_reservoir(
         tex_reservoir_in0[pixel],
         tex_reservoir_in1[pixel],
@@ -162,7 +165,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     uint seed = create_seed(pixel, buffer_frame.frame + 1000);
     
-    // init combined reservoir
+    // initialize combined reservoir with center sample
     Reservoir combined = create_empty_reservoir();
     
     float target_pdf_center = calculate_target_pdf(center.sample.radiance);
@@ -172,12 +175,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample         = center.sample;
     combined.target_pdf     = target_pdf_center;
     
-    // rotation for stratified sampling
+    // stratified sampling rotation
     float rotation_angle = random_float(seed) * 2.0f * PI;
     float cos_rot = cos(rotation_angle);
     float sin_rot = sin(rotation_angle);
     
-    // spatial reuse
+    // spatial reuse from neighbors
     for (uint i = 0; i < RESTIR_SPATIAL_SAMPLES; i++)
     {
         float2 offset = SPATIAL_OFFSETS[i % 16];
@@ -206,12 +209,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (neighbor.M <= 0 || neighbor.W <= 0)
             continue;
         
-        // visibility check
-        float hit_dist_sq = dot(neighbor.sample.hit_position, neighbor.sample.hit_position);
-        if (hit_dist_sq > 1e-6f && !check_spatial_visibility(pos_ws, normal_ws, neighbor.sample.hit_position))
+        if (neighbor.sample.path_length == 0 || all(neighbor.sample.radiance <= 0.0f))
             continue;
         
-        float target_pdf_neighbor = evaluate_target_pdf_spatial(neighbor.sample, pos_ws, normal_ws, neighbor_pos_ws);
+        if (!check_spatial_visibility(pos_ws, normal_ws, neighbor.sample.hit_position))
+            continue;
+        
+        float neighbor_jacobian;
+        float target_pdf_neighbor = evaluate_target_pdf_spatial(neighbor.sample, pos_ws, normal_ws, neighbor_pos_ws, neighbor_jacobian);
         
         if (merge_reservoir(combined, neighbor, target_pdf_neighbor, random_float(seed)))
             combined.target_pdf = target_pdf_neighbor;
@@ -219,7 +224,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     clamp_reservoir_M(combined, RESTIR_M_CAP);
     
-    // finalize
+    // compute final weight
     if (combined.target_pdf > 0 && combined.M > 0)
         combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
     else
@@ -227,7 +232,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     combined.W = min(combined.W, 20.0f);
     
-    // output
+    // store reservoir
     float4 t0, t1, t2, t3, t4;
     pack_reservoir(combined, t0, t1, t2, t3, t4);
     tex_reservoir0[pixel] = t0;
@@ -236,14 +241,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
     
+    // output weighted radiance
     float3 gi = combined.sample.radiance * combined.W;
+    
+    // numerical stability
+    if (any(isnan(gi)) || any(isinf(gi)))
+        gi = float3(0.0f, 0.0f, 0.0f);
+    
+    // clamp extreme values
     float lum = luminance(gi);
     if (lum > 200.0f)
         gi *= 200.0f / lum;
-    
-    // nan/inf protection
-    if (any(isnan(gi)) || any(isinf(gi)))
-        gi = float3(0.0f, 0.0f, 0.0f);
     
     tex_uav[pixel] = float4(gi, 1.0f);
 }

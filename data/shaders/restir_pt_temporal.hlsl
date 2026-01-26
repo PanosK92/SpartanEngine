@@ -55,38 +55,49 @@ bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_
     if (!is_valid_uv(prev_uv))
         return false;
     
-    // depth at reprojected location
+    // check depth at reprojected location
     float prev_uv_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
     if (prev_uv_depth_raw <= 0.0f)
         return false;
     
-    // disocclusion check
-    float3 prev_uv_pos      = get_position(prev_uv_depth_raw, prev_uv);
-    float3 pos_diff         = prev_uv_pos - current_pos;
-    float pos_dist          = length(pos_diff);
-    float depth_threshold   = max(current_depth * 0.1f, 0.5f);
+    // position consistency check
+    float3 prev_uv_pos_ws = get_position(prev_uv);
+    float3 pos_diff       = current_pos - prev_uv_pos_ws;
+    float pos_distance    = length(pos_diff);
     
-    if (pos_dist > depth_threshold)
+    // depth-scaled threshold
+    float distance_threshold = max(current_depth * 0.02f, 0.05f);
+    if (pos_distance > distance_threshold)
     {
         confidence = 0.0f;
         return false;
     }
     
-    // normal check
+    // normal consistency check
     float3 prev_uv_normal   = get_normal(prev_uv);
     float normal_similarity = dot(current_normal, prev_uv_normal);
     
-    if (normal_similarity < 0.7f)
+    if (normal_similarity < 0.8f)
         return false;
     
-    // confidence
-    float2 motion           = (current_uv - prev_uv) * buffer_frame.resolution_render;
-    float motion_length     = length(motion);
-    float normal_confidence = saturate((normal_similarity - 0.7f) / 0.25f);
-    float motion_confidence = saturate(1.0f - motion_length * 0.02f);
-    float position_confidence = saturate(1.0f - pos_dist / depth_threshold);
+    // disocclusion detection via motion and depth edges
+    float2 motion       = (current_uv - prev_uv) * buffer_frame.resolution_render;
+    float motion_length = length(motion);
     
-    confidence = normal_confidence * motion_confidence * position_confidence;
+    float2 texel_size    = 1.0f / buffer_frame.resolution_render;
+    float depth_left     = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv + float2(-texel_size.x, 0), 0).r;
+    float depth_right    = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv + float2(texel_size.x, 0), 0).r;
+    float depth_gradient = abs(linearize_depth(depth_left) - linearize_depth(depth_right));
+    bool is_depth_edge   = depth_gradient > current_depth * 0.1f;
+    
+    float edge_penalty = is_depth_edge ? saturate(1.0f - motion_length * 0.1f) : 1.0f;
+    
+    // aggregate confidence factors
+    float pos_confidence    = saturate(1.0f - pos_distance / distance_threshold);
+    float normal_confidence = saturate((normal_similarity - 0.8f) / 0.15f);
+    float motion_confidence = saturate(1.0f - motion_length * 0.01f);
+    
+    confidence = pos_confidence * normal_confidence * motion_confidence * edge_penalty;
     return true;
 }
 
@@ -111,7 +122,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
     
-    // load current reservoir
+    // load current frame reservoir
     Reservoir current = unpack_reservoir(
         tex_reservoir0[pixel],
         tex_reservoir1[pixel],
@@ -122,7 +133,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     uint seed = create_seed(pixel, buffer_frame.frame);
     
-    // init combined reservoir
+    // initialize combined reservoir with current sample
     Reservoir combined = create_empty_reservoir();
     
     float target_pdf_current = calculate_target_pdf(current.sample.radiance);
@@ -132,7 +143,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample          = current.sample;
     combined.target_pdf      = target_pdf_current;
     
-    // temporal reuse
+    // temporal reuse from previous frame
     float2 prev_uv = reproject_to_previous_frame(uv);
     float temporal_confidence;
     float linear_depth = linearize_depth(depth);
@@ -149,7 +160,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_prev4[prev_pixel]
         );
         
-        // decay
+        // apply temporal decay
         temporal.M          *= RESTIR_TEMPORAL_DECAY;
         temporal.weight_sum *= RESTIR_TEMPORAL_DECAY;
         
@@ -164,7 +175,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     clamp_reservoir_M(combined, RESTIR_M_CAP);
     
-    // finalize
+    // compute final weight
     if (combined.target_pdf > 0 && combined.M > 0)
         combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
     else
@@ -172,7 +183,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     
     combined.W = min(combined.W, 20.0f);
     
-    // output
+    // store reservoir
     float4 t0, t1, t2, t3, t4;
     pack_reservoir(combined, t0, t1, t2, t3, t4);
     tex_reservoir0[pixel] = t0;
@@ -181,14 +192,16 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
     
-    float3 gi  = combined.sample.radiance * combined.W;
-    float lum  = luminance(gi);
-    if (lum > 200.0f)
-        gi *= 200.0f / lum;
+    float3 gi = combined.sample.radiance * combined.W;
     
-    // nan/inf protection
+    // numerical stability
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0.0f, 0.0f, 0.0f);
+    
+    // clamp extreme values
+    float lum = luminance(gi);
+    if (lum > 200.0f)
+        gi *= 200.0f / lum;
     
     tex_uav[pixel] = float4(gi, 1.0f);
 }

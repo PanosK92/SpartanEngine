@@ -461,17 +461,17 @@ namespace spartan
             const float c1 = 0.8359375f;
             const float c2 = 18.8515625f;
             const float c3 = 18.6875f;
-            const float pq_max_nits = 10000.0f;
-            const float sdr_white_nits = 203.0f;
 
-            // decode pq curve
+            // decode pq curve - output is normalized for aces input
             auto decode_pq = [&](float v) -> float {
                 v = max(v, 0.0f);
                 float vp = powf(v, 1.0f / m2);
                 float num = max(vp - c1, 0.0f);
                 float den = c2 - c3 * vp;
-                float linear = powf(num / max(den, 0.0001f), 1.0f / m1);
-                return linear * pq_max_nits / sdr_white_nits; // normalize to sdr range
+                if (den <= 0.0001f) return 0.0f;
+                float linear = powf(num / den, 1.0f / m1);
+                // scale for good aces input range
+                return linear * 40.0f;
             };
 
             float lr = decode_pq(r);
@@ -698,9 +698,11 @@ namespace spartan
 
                 if (is_hdr)
                 {
-                    // hdr mode: frame_output contains pq-encoded data (already tonemapped)
-                    // decode pq to linear, then apply srgb gamma (no additional tonemapping needed)
+                    // hdr mode: frame_output contains pq-encoded data
+                    // decode pq to linear (values can exceed 1.0 for hdr highlights)
+                    // apply aces to compress hdr range to sdr with proper toe/shoulder
                     pq_to_linear(r, g, b);
+                    aces_tonemap(r, g, b);
                     r = linear_to_srgb(r);
                     g = linear_to_srgb(g);
                     b = linear_to_srgb(b);

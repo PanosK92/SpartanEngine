@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
     CONFIGURATION
 ------------------------------------------------------------------------------*/
-static const uint RESTIR_MAX_PATH_LENGTH     = 2;
+static const uint RESTIR_MAX_PATH_LENGTH     = 3; // balanced for quality and performance
 static const uint RESTIR_M_CAP               = 24;
 static const uint RESTIR_SPATIAL_SAMPLES     = 8;
 static const float RESTIR_SPATIAL_RADIUS     = 20.0f;
@@ -64,11 +64,6 @@ static const uint PATH_FLAG_DELTA    = 1 << 3;
 
 /*------------------------------------------------------------------------------
     RESERVOIR PACKING
-    tex0: hit_position.xyz, hit_normal.x
-    tex1: hit_normal.yz, direction.xy
-    tex2: direction.z, radiance.xyz
-    tex3: throughput.xyz, weight_sum
-    tex4: M, W, target_pdf, path_length | flags
 ------------------------------------------------------------------------------*/
 void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4)
 {
@@ -87,11 +82,11 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.sample.direction    = float3(tex1.zw, tex2.x);
     r.sample.radiance     = tex2.yzw;
     r.sample.throughput   = tex3.xyz;
-    r.sample.pdf          = 1.0f;
     r.weight_sum          = tex3.w;
     r.M                   = tex4.x;
     r.W                   = tex4.y;
     r.target_pdf          = tex4.z;
+    r.sample.pdf          = 1.0f;
     
     uint packed = asuint(tex4.w);
     r.sample.path_length = packed & 0xFFFF;
@@ -125,14 +120,10 @@ float calculate_target_pdf(float3 radiance)
 {
     float lum = dot(radiance, float3(0.299, 0.587, 0.114));
     
-    // clamp to prevent inf/nan: inf / (1 + inf) = nan
-    lum = clamp(lum, 0.0f, 65504.0f); // fp16 max
+    // clamp to fp16 max
+    lum = clamp(lum, 0.0f, 65504.0f);
     
-    // use reinhard-style compression to prevent extremely bright samples (like direct sunlight)
-    // from dominating the reservoir. this preserves interior scene behavior since low luminance
-    // values remain nearly linear: lum / (1 + lum) ≈ lum when lum << 1
-    // for bright exteriors, it compresses: lum = 100 -> 0.99, lum = 1000 -> 0.999
-    // the sqrt provides additional perceptual weighting
+    // reinhard compression with perceptual weighting
     float compressed = lum / (1.0f + lum);
     
     return max(sqrt(compressed), 1e-6f);
@@ -294,6 +285,7 @@ bool surface_similarity_check(float3 pos1, float3 normal1, float depth1, float3 
 
 float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 new_shading_pos, float3 sample_normal)
 {
+    // solid angle ratio between original and new shading points
     float3 dir_original = sample_pos - original_shading_pos;
     float3 dir_new      = sample_pos - new_shading_pos;
     
