@@ -24,12 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-// minimum confidence threshold - samples below this are rejected entirely
 static const float TEMPORAL_MIN_CONFIDENCE = 0.1f;
 
-/*------------------------------------------------------------------------------
-    RESOURCES
-------------------------------------------------------------------------------*/
 RWTexture2D<float4> tex_reservoir0 : register(u21);
 RWTexture2D<float4> tex_reservoir1 : register(u22);
 RWTexture2D<float4> tex_reservoir2 : register(u23);
@@ -42,28 +38,35 @@ Texture2D<float4> tex_reservoir_prev2 : register(t23);
 Texture2D<float4> tex_reservoir_prev3 : register(t24);
 Texture2D<float4> tex_reservoir_prev4 : register(t25);
 
-/*------------------------------------------------------------------------------
-    VISIBILITY
-------------------------------------------------------------------------------*/
-bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3 sample_hit_pos)
+// visibility check for temporal sample reuse
+bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3 sample_hit_pos, float3 sample_hit_normal)
 {
     float3 dir  = sample_hit_pos - shading_pos;
     float dist  = length(dir);
 
-    // skip very short distances
-    if (dist < 0.03f)
+    if (dist < 0.001f)
         return true;
 
     dir /= dist;
 
-    if (dot(dir, shading_normal) <= 0.0f)
+    // grazing angle check
+    float cos_theta = dot(dir, shading_normal);
+    if (cos_theta <= 0.1f)
         return false;
+
+    // back-face check
+    float cos_back = dot(sample_hit_normal, -dir);
+    if (cos_back <= 0.05f)
+        return false;
+
+    if (dist < 0.05f)
+        return true;
 
     RayDesc ray;
     ray.Origin    = shading_pos + shading_normal * RESTIR_RAY_NORMAL_OFFSET;
     ray.Direction = dir;
     ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = dist - 0.02f;
+    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET * 2.0f;
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -72,15 +75,14 @@ bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-/*------------------------------------------------------------------------------
-    TEMPORAL REPROJECTION
-------------------------------------------------------------------------------*/
+// velocity-based reprojection to previous frame
 float2 reproject_to_previous_frame(float2 current_uv)
 {
     float2 velocity = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).xy;
     return current_uv - velocity;
 }
 
+// validate temporal sample and compute confidence
 bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_pos, float3 current_normal, float current_depth, out float confidence)
 {
     confidence = 0.0f;
@@ -88,26 +90,24 @@ bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_
     if (!is_valid_uv(prev_uv))
         return false;
 
-    // reproject current world position to previous frame clip space to validate temporal consistency
-    // this avoids needing a separate previous frame depth buffer
+    // verify reprojection matches velocity
     float4 prev_clip  = mul(float4(current_pos, 1.0f), buffer_frame.view_projection_previous);
     float3 prev_ndc   = prev_clip.xyz / prev_clip.w;
     float2 expected_prev_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
 
-    // check if reprojection matches velocity-based reprojection
     float2 reproj_diff = abs(prev_uv - expected_prev_uv) * buffer_frame.resolution_render;
     float reproj_dist  = length(reproj_diff);
-    if (reproj_dist > 2.0f) // allow 2 pixel tolerance
+    if (reproj_dist > 2.0f)
         return false;
 
-    // normal consistency check using current frame data at reprojected location
+    // normal consistency
     float3 prev_uv_normal   = get_normal(prev_uv);
     float normal_similarity = dot(current_normal, prev_uv_normal);
 
     if (normal_similarity < 0.8f)
         return false;
 
-    // disocclusion detection via motion and depth edges
+    // disocclusion detection
     float2 motion       = (current_uv - prev_uv) * buffer_frame.resolution_render;
     float motion_length = length(motion);
 
@@ -119,23 +119,19 @@ bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_
 
     float edge_penalty = is_depth_edge ? saturate(1.0f - motion_length * 0.1f) : 1.0f;
 
-    // aggregate confidence factors
+    // compute aggregate confidence
     float reproj_confidence = saturate(1.0f - reproj_dist / 2.0f);
     float normal_confidence = saturate((normal_similarity - 0.8f) / 0.15f);
     float motion_confidence = saturate(1.0f - motion_length * 0.01f);
 
     confidence = reproj_confidence * normal_confidence * motion_confidence * edge_penalty;
 
-    // reject if confidence is too low
     if (confidence < TEMPORAL_MIN_CONFIDENCE)
         return false;
 
     return true;
 }
 
-/*------------------------------------------------------------------------------
-    MAIN
-------------------------------------------------------------------------------*/
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 {
@@ -154,7 +150,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
 
-    // load current frame reservoir
     Reservoir current = unpack_reservoir(
         tex_reservoir0[pixel],
         tex_reservoir1[pixel],
@@ -163,24 +158,22 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir4[pixel]
     );
 
-    // validate current reservoir
     if (!is_reservoir_valid(current))
         current = create_empty_reservoir();
 
-    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 1); // pass 1: temporal reuse
+    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 1);
 
-    // initialize combined reservoir with current sample
-    // start with M=1 to avoid double-counting when merging
+    // init combined reservoir with current sample
     Reservoir combined = create_empty_reservoir();
 
     float target_pdf_current = calculate_target_pdf(current.sample.radiance);
-    float weight_current     = target_pdf_current * current.W; // don't multiply by M here
+    float weight_current     = target_pdf_current * current.W;
     combined.weight_sum      = weight_current;
-    combined.M               = 1.0f; // start with 1, not current.M to avoid bias
+    combined.M               = 1.0f;
     combined.sample          = current.sample;
     combined.target_pdf      = target_pdf_current;
 
-    // temporal reuse from previous frame
+    // temporal reuse
     float2 prev_uv = reproject_to_previous_frame(uv);
     float temporal_confidence;
     float linear_depth = linearize_depth(depth);
@@ -197,31 +190,25 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_prev4[prev_pixel]
         );
 
-        // validate temporal reservoir
         if (is_reservoir_valid(temporal) && temporal.M > 0 && temporal.W > 0)
         {
-            // apply temporal decay
             temporal.M          *= RESTIR_TEMPORAL_DECAY;
             temporal.weight_sum *= RESTIR_TEMPORAL_DECAY;
 
-            // scale M cap by confidence - low confidence gets lower cap
             float effective_M_cap = RESTIR_M_CAP * temporal_confidence;
             clamp_reservoir_M(temporal, max(effective_M_cap, 4.0f));
 
-            // verify temporal sample is still visible from current shading point
             bool temporal_visible = temporal.sample.path_length == 0 ||
                                     all(temporal.sample.radiance <= 0.0f) ||
-                                    check_temporal_visibility(pos_ws, normal_ws, temporal.sample.hit_position);
+                                    check_temporal_visibility(pos_ws, normal_ws, temporal.sample.hit_position, temporal.sample.hit_normal);
 
             if (temporal_visible)
             {
                 float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
-
-                // use unbiased merge: weight = target_pdf * W (without M multiplication)
                 float weight_temporal = target_pdf_temporal * temporal.W;
 
                 combined.weight_sum += weight_temporal;
-                combined.M += 1.0f; // increment by 1, not by temporal.M
+                combined.M += 1.0f;
 
                 if (random_float(seed) * combined.weight_sum < weight_temporal)
                 {
@@ -234,15 +221,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     clamp_reservoir_M(combined, RESTIR_M_CAP);
 
-    // compute final weight
     if (combined.target_pdf > 0 && combined.M > 0)
         combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
     else
         combined.W = 0;
 
-    combined.W = min(combined.W, 20.0f);
+    combined.W = min(combined.W, 5.0f);
 
-    // store reservoir
     float4 t0, t1, t2, t3, t4;
     pack_reservoir(combined, t0, t1, t2, t3, t4);
     tex_reservoir0[pixel] = t0;
@@ -253,14 +238,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float3 gi = combined.sample.radiance * combined.W;
 
-    // numerical stability
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0.0f, 0.0f, 0.0f);
 
-    // clamp extreme values
     float lum = luminance(gi);
-    if (lum > 200.0f)
-        gi *= 200.0f / lum;
+    if (lum > 20.0f)
+        gi *= 20.0f / lum;
 
     tex_uav[pixel] = float4(gi, 1.0f);
 }

@@ -28,6 +28,7 @@ static const float SUN_ANGULAR_RADIUS = 0.00465f * 2.0f; // sun disk size in rad
 struct [raypayload] ShadowPayload
 {
     float hit_distance : read(caller) : write(caller, closesthit, miss);
+    float shadow_alpha : read(caller) : write(caller, closesthit, miss); // how much light is blocked (0 = transparent, 1 = opaque)
 };
 
 float2 concentric_disk_sample(float2 u)
@@ -133,7 +134,7 @@ void ray_gen()
     float avg_blocker_dist   = 0.0f;
     float blocker_count      = 0.0f;
     float hit_distances[TOTAL_SAMPLES];
-    bool  hit_flags[TOTAL_SAMPLES];
+    float shadow_alphas[TOTAL_SAMPLES];
     
     // blocker search
     for (uint i = 0; i < TOTAL_SAMPLES; i++)
@@ -151,28 +152,29 @@ void ray_gen()
         
         ShadowPayload payload;
         payload.hit_distance = -1.0f;
+        payload.shadow_alpha = 0.0f;
         
         TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
         
         hit_distances[i] = payload.hit_distance;
-        hit_flags[i]     = payload.hit_distance > 0.0f;
+        shadow_alphas[i] = payload.shadow_alpha;
         
-        if (hit_flags[i])
+        if (payload.hit_distance > 0.0f && payload.shadow_alpha > 0.0f)
         {
             avg_blocker_dist += payload.hit_distance;
-            blocker_count    += 1.0f;
+            blocker_count    += payload.shadow_alpha; // weight by opacity
         }
     }
     
-    // fully lit
-    if (blocker_count < 0.5f)
+    // fully lit (no blockers at all)
+    if (blocker_count < 0.01f)
     {
         tex_uav[launch_id] = float4(1.0f, 1.0f, 1.0f, 1.0f);
         return;
     }
     
-    // fully shadowed
-    if (blocker_count >= float(TOTAL_SAMPLES) - 0.5f)
+    // fully shadowed (all samples hit fully opaque blockers)
+    if (blocker_count >= float(TOTAL_SAMPLES) - 0.01f)
     {
         tex_uav[launch_id] = float4(0.0f, 0.0f, 0.0f, 1.0f);
         return;
@@ -197,7 +199,8 @@ void ray_gen()
         float weight = lerp(1.0f, 1.0f - sample_dist * 0.5f, penumbra_size);
         weight       = max(weight, 0.1f);
         
-        float sample_visibility = hit_flags[j] ? 0.0f : 1.0f;
+        // use shadow alpha for partial transparency (0 = fully lit, 1 = fully shadowed)
+        float sample_visibility = 1.0f - shadow_alphas[j];
         weighted_visibility    += sample_visibility * weight;
         total_weight           += weight;
     }
@@ -210,6 +213,7 @@ void ray_gen()
 void miss(inout ShadowPayload payload : SV_RayPayload)
 {
     payload.hit_distance = -1.0f;
+    payload.shadow_alpha = 0.0f;
 }
 
 [shader("closesthit")]
@@ -218,6 +222,7 @@ void closest_hit(inout ShadowPayload payload : SV_RayPayload, in BuiltInTriangle
     uint material_index     = InstanceID();
     MaterialParameters mat  = material_parameters[material_index];
     
-    // transparent materials don't cast shadows
-    payload.hit_distance = (mat.color.a < 1.0f) ? -1.0f : RayTCurrent();
+    // transparent materials cast partial shadows based on their opacity
+    payload.hit_distance = RayTCurrent();
+    payload.shadow_alpha = mat.color.a;
 }

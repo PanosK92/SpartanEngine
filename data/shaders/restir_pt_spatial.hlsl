@@ -24,14 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-// adaptive radius parameters
-static const float SPATIAL_RADIUS_MIN = 5.0f;
-static const float SPATIAL_RADIUS_MAX = 30.0f;
-static const float SPATIAL_DEPTH_SCALE = 0.5f; // how much depth affects radius
+static const float SPATIAL_RADIUS_MIN   = 4.0f;
+static const float SPATIAL_RADIUS_MAX   = 16.0f;
+static const float SPATIAL_DEPTH_SCALE  = 0.5f;
 
-/*------------------------------------------------------------------------------
-    RESOURCES
-------------------------------------------------------------------------------*/
 Texture2D<float4> tex_reservoir_in0 : register(t21);
 Texture2D<float4> tex_reservoir_in1 : register(t22);
 Texture2D<float4> tex_reservoir_in2 : register(t23);
@@ -55,28 +51,36 @@ static const float2 SPATIAL_OFFSETS[16] = {
     float2( 0.8420,  0.5394), float2(-0.9987,  0.0502)
 };
 
-/*------------------------------------------------------------------------------
-    VISIBILITY
-------------------------------------------------------------------------------*/
-bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sample_hit_pos)
+// visibility check for spatial sample reuse
+bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sample_hit_pos, float3 sample_hit_normal, float linear_depth)
 {
-    float3 dir  = sample_hit_pos - center_pos;
-    float dist  = length(dir);
+    float3 dir = sample_hit_pos - center_pos;
+    float dist = length(dir);
 
-    // skip very short distances
-    if (dist < 0.03f)
+    if (dist < 0.001f)
         return true;
 
     dir /= dist;
 
-    if (dot(dir, center_normal) <= 0.0f)
+    // grazing angle check - reject samples nearly parallel to surface
+    float cos_theta = dot(dir, center_normal);
+    if (cos_theta <= 0.1f)
         return false;
+
+    // back-face check - reject if sample surface faces away
+    float cos_back = dot(sample_hit_normal, -dir);
+    if (cos_back <= 0.05f)
+        return false;
+
+    // skip ray trace for very short distances
+    if (dist < 0.05f)
+        return true;
 
     RayDesc ray;
     ray.Origin    = center_pos + center_normal * RESTIR_RAY_NORMAL_OFFSET;
     ray.Direction = dir;
     ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = dist - 0.02f;
+    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET * 2.0f;
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -85,9 +89,7 @@ bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sa
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-/*------------------------------------------------------------------------------
-    NEIGHBOR VALIDATION
-------------------------------------------------------------------------------*/
+// neighbor pixel validation based on depth and normal similarity
 bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_normal, float center_linear_depth, float2 resolution)
 {
     if (neighbor_pixel.x < 0 || neighbor_pixel.x >= (int)resolution.x ||
@@ -100,7 +102,6 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
     if (neighbor_depth <= 0.0f)
         return false;
 
-    // use linearized depth for perceptually consistent threshold
     float neighbor_linear_depth = linearize_depth(neighbor_depth);
     float depth_ratio = center_linear_depth / max(neighbor_linear_depth, 1e-6f);
     if (abs(depth_ratio - 1.0f) > RESTIR_DEPTH_THRESHOLD)
@@ -113,70 +114,32 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
     return true;
 }
 
-/*------------------------------------------------------------------------------
-    UNBIASED SPATIAL RESAMPLING WITH 1/Z MIS
-
-    This implements unbiased spatial reuse using 1/Z normalization.
-    For each sample, the MIS weight is: p(x) / sum_i(p_i(x))
-    where p_i(x) is the target PDF evaluated at pixel i.
-    This ensures unbiased results without double-counting M values.
-------------------------------------------------------------------------------*/
-struct SpatialCandidate
+// jacobian for solid angle measure conversion
+float evaluate_jacobian_for_reuse(PathSample sample, float3 center_pos, float3 center_normal, float3 neighbor_pos)
 {
-    Reservoir reservoir;
-    float3    shading_pos;
-    float     target_pdf_at_center;
-    float     jacobian;
-    bool      visible;
-    bool      valid;
-};
-
-float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 center_normal, float3 neighbor_pos, out float jacobian)
-{
-    jacobian = 1.0f;
-
-    // reject invalid samples
-    if (all(sample.radiance <= 0.0f))
-        return 0.0f;
-
     float3 dir_to_sample = sample.hit_position - center_pos;
-    float dist_sq        = dot(dir_to_sample, dir_to_sample);
+    float dist_sq = dot(dir_to_sample, dir_to_sample);
     if (dist_sq < 1e-6f)
         return 0.0f;
-
-    dir_to_sample     = dir_to_sample * rsqrt(dist_sq);
-    float cos_theta   = dot(center_normal, dir_to_sample);
-
-    if (cos_theta <= 0.0f)
+    
+    dir_to_sample = dir_to_sample * rsqrt(dist_sq);
+    float cos_theta = dot(center_normal, dir_to_sample);
+    if (cos_theta <= 0.1f)
         return 0.0f;
-
-    // compute solid angle jacobian for measure conversion
-    jacobian = compute_jacobian(sample.hit_position, neighbor_pos, center_pos, sample.hit_normal);
-    if (jacobian <= 0.0f)
-        return 0.0f;
-
-    // target PDF stays consistent - jacobian is applied to weight separately
-    return calculate_target_pdf(sample.radiance);
+    
+    float jacobian = compute_jacobian(sample.hit_position, neighbor_pos, center_pos, sample.hit_normal);
+    return max(jacobian, 0.0f);
 }
 
+// depth-adaptive sampling radius
 float compute_adaptive_radius(float linear_depth, float center_roughness)
 {
-    // larger radius for distant surfaces (less screen-space detail)
-    // smaller radius for nearby surfaces (preserve detail)
     float depth_factor = saturate(linear_depth * SPATIAL_DEPTH_SCALE / 100.0f);
-
-    // interpolate between min and max radius based on depth
     float base_radius = lerp(SPATIAL_RADIUS_MIN, SPATIAL_RADIUS_MAX, depth_factor);
-
-    // rougher surfaces can tolerate larger radius
     float roughness_factor = lerp(0.7f, 1.0f, center_roughness);
-
     return base_radius * roughness_factor;
 }
 
-/*------------------------------------------------------------------------------
-    MAIN
-------------------------------------------------------------------------------*/
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 {
@@ -196,11 +159,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 pos_ws      = get_position(uv);
     float3 normal_ws   = get_normal(uv);
 
-    // get roughness for adaptive radius
     float4 material = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
     float roughness = max(material.r, 0.04f);
 
-    // load center pixel reservoir
     Reservoir center = unpack_reservoir(
         tex_reservoir_in0[pixel],
         tex_reservoir_in1[pixel],
@@ -209,29 +170,31 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir_in4[pixel]
     );
 
-    // validate center reservoir
     if (!is_reservoir_valid(center))
         center = create_empty_reservoir();
 
-    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 2); // pass 2: spatial reuse
+    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 2);
 
-    // compute adaptive radius based on depth and roughness
     float adaptive_radius = compute_adaptive_radius(linear_depth, roughness);
 
-    // collect valid candidates first for proper MIS weighting
-    SpatialCandidate candidates[RESTIR_SPATIAL_SAMPLES];
-    uint valid_count = 0;
+    // init combined reservoir with center sample
+    Reservoir combined = create_empty_reservoir();
+    float target_pdf_center = calculate_target_pdf(center.sample.radiance);
+    
+    float weight_center = target_pdf_center * center.W * center.M;
+    combined.weight_sum = weight_center;
+    combined.M          = center.M;
+    combined.sample     = center.sample;
+    combined.target_pdf = target_pdf_center;
 
-    // stratified sampling rotation
+    // random rotation for stratified sampling
     float rotation_angle = random_float(seed) * 2.0f * PI;
     float cos_rot = cos(rotation_angle);
     float sin_rot = sin(rotation_angle);
 
-    // gather candidates
+    // spatial reuse from neighbors
     for (uint i = 0; i < RESTIR_SPATIAL_SAMPLES; i++)
     {
-        candidates[i].valid = false;
-
         float2 offset = SPATIAL_OFFSETS[i % 16];
         float2 rotated_offset = float2(
             offset.x * cos_rot - offset.y * sin_rot,
@@ -255,7 +218,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_in4[neighbor_pixel]
         );
 
-        // validate neighbor reservoir
         if (!is_reservoir_valid(neighbor))
             continue;
 
@@ -265,101 +227,45 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (neighbor.sample.path_length == 0 || all(neighbor.sample.radiance <= 0.0f))
             continue;
 
-        // check visibility
-        bool visible = check_spatial_visibility(pos_ws, normal_ws, neighbor.sample.hit_position);
+        bool visible = check_spatial_visibility(pos_ws, normal_ws, neighbor.sample.hit_position, neighbor.sample.hit_normal, linear_depth);
         if (!visible)
             continue;
 
-        float neighbor_jacobian;
-        float target_pdf_neighbor = evaluate_target_pdf_spatial(
-            neighbor.sample, pos_ws, normal_ws, neighbor_pos_ws, neighbor_jacobian);
-
-        if (target_pdf_neighbor <= 0.0f || neighbor_jacobian <= 0.0f)
+        float jacobian = evaluate_jacobian_for_reuse(neighbor.sample, pos_ws, normal_ws, neighbor_pos_ws);
+        if (jacobian <= 0.0f)
             continue;
 
-        candidates[i].reservoir           = neighbor;
-        candidates[i].shading_pos         = neighbor_pos_ws;
-        candidates[i].target_pdf_at_center = target_pdf_neighbor;
-        candidates[i].jacobian            = neighbor_jacobian;
-        candidates[i].visible             = true;
-        candidates[i].valid               = true;
-        valid_count++;
-    }
-
-    // initialize combined reservoir with center sample
-    // start with M=1 to avoid double-counting when merging
-    Reservoir combined = create_empty_reservoir();
-
-    float target_pdf_center = calculate_target_pdf(center.sample.radiance);
-
-    // compute MIS weight for center sample
-    // center's MIS weight considers all valid neighbors using 1/Z normalization
-    float center_mis_weight = 1.0f;
-    if (valid_count > 0 && target_pdf_center > 0.0f)
-    {
-        // 1/Z MIS: denominator is sum of target PDFs at all pixels where sample is valid
-        float denominator = target_pdf_center; // center contribution
-        for (uint i = 0; i < RESTIR_SPATIAL_SAMPLES; i++)
-        {
-            if (candidates[i].valid)
-            {
-                // add neighbor's target PDF contribution
-                denominator += candidates[i].target_pdf_at_center;
-            }
-        }
-        center_mis_weight = target_pdf_center / max(denominator, 1e-6f);
-    }
-
-    // add center sample with MIS weight (don't multiply by M)
-    float weight_center = target_pdf_center * center.W * center_mis_weight;
-    combined.weight_sum = weight_center;
-    combined.M          = 1.0f; // start with 1, not center.M
-    combined.sample     = center.sample;
-    combined.target_pdf = target_pdf_center;
-
-    // add neighbor samples with 1/Z MIS
-    for (uint i = 0; i < RESTIR_SPATIAL_SAMPLES; i++)
-    {
-        if (!candidates[i].valid)
+        float target_pdf_at_center = calculate_target_pdf(neighbor.sample.radiance);
+        if (target_pdf_at_center <= 0.0f)
             continue;
 
-        Reservoir neighbor = candidates[i].reservoir;
-
-        // compute 1/Z MIS weight for this neighbor
-        // denominator is sum of target PDFs at center and all valid neighbors
-        float mis_denominator = target_pdf_center; // center can also generate this sample
-        for (uint j = 0; j < RESTIR_SPATIAL_SAMPLES; j++)
-        {
-            if (candidates[j].valid)
-                mis_denominator += candidates[j].target_pdf_at_center;
-        }
-        float mis_weight = candidates[i].target_pdf_at_center / max(mis_denominator, 1e-6f);
-
-        // apply jacobian and MIS weight to the contribution (don't multiply by M)
-        float weight = candidates[i].target_pdf_at_center * neighbor.W *
-                      candidates[i].jacobian * mis_weight;
+        // clamp neighbor's effective M to prevent any single neighbor from dominating
+        float effective_M = min(neighbor.M, 4.0f);
+        float weight = target_pdf_at_center * neighbor.W * effective_M * jacobian;
+        
+        // also clamp maximum weight relative to center to prevent splotchy artifacts
+        float max_weight = weight_center * 4.0f + 0.1f;
+        weight = min(weight, max_weight);
 
         combined.weight_sum += weight;
-        combined.M += 1.0f; // increment by 1, not by neighbor.M
+        combined.M += effective_M;
 
         if (random_float(seed) * combined.weight_sum < weight)
         {
             combined.sample     = neighbor.sample;
-            combined.target_pdf = candidates[i].target_pdf_at_center;
+            combined.target_pdf = target_pdf_at_center;
         }
     }
 
     clamp_reservoir_M(combined, RESTIR_M_CAP);
 
-    // compute final weight
     if (combined.target_pdf > 0 && combined.M > 0)
         combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
     else
         combined.W = 0;
 
-    combined.W = min(combined.W, 20.0f);
+    combined.W = min(combined.W, 5.0f);
 
-    // store reservoir
     float4 t0, t1, t2, t3, t4;
     pack_reservoir(combined, t0, t1, t2, t3, t4);
     tex_reservoir0[pixel] = t0;
@@ -368,17 +274,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
 
-    // output weighted radiance
     float3 gi = combined.sample.radiance * combined.W;
 
-    // numerical stability
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0.0f, 0.0f, 0.0f);
 
-    // clamp extreme values
     float lum = luminance(gi);
-    if (lum > 200.0f)
-        gi *= 200.0f / lum;
+    if (lum > 20.0f)
+        gi *= 20.0f / lum;
 
     tex_uav[pixel] = float4(gi, 1.0f);
 }
