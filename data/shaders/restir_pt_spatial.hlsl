@@ -109,28 +109,29 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
 float evaluate_target_pdf_spatial(PathSample sample, float3 center_pos, float3 center_normal, float3 neighbor_pos, out float jacobian)
 {
     jacobian = 0.0f;
-    
+
     // reject invalid samples
     if (sample.path_length == 0 || all(sample.radiance <= 0.0f))
         return 0.0f;
-    
+
     float3 dir_to_sample = sample.hit_position - center_pos;
     float dist_sq        = dot(dir_to_sample, dir_to_sample);
     if (dist_sq < 1e-6f)
         return 0.0f;
-    
+
     dir_to_sample     = dir_to_sample * rsqrt(dist_sq);
     float cos_theta   = dot(center_normal, dir_to_sample);
-    
+
     if (cos_theta <= 0.0f)
         return 0.0f;
-    
-    // compute solid angle correction
+
+    // compute solid angle correction (jacobian corrects measure, not radiance)
     jacobian = compute_jacobian(sample.hit_position, neighbor_pos, center_pos, sample.hit_normal);
     if (jacobian <= 0.0f)
         return 0.0f;
-    
-    return calculate_target_pdf(sample.radiance * jacobian);
+
+    // jacobian multiplies the target pdf, not the radiance
+    return calculate_target_pdf(sample.radiance) * jacobian;
 }
 
 /*------------------------------------------------------------------------------
@@ -163,15 +164,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir_in4[pixel]
     );
     
-    uint seed = create_seed(pixel, buffer_frame.frame + 1000);
+    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 2); // pass 2: spatial reuse
     
     // initialize combined reservoir with center sample
     Reservoir combined = create_empty_reservoir();
-    
+
     float target_pdf_center = calculate_target_pdf(center.sample.radiance);
-    float weight_center     = target_pdf_center * center.W * center.M;
+    float weight_center     = target_pdf_center * center.W;
     combined.weight_sum     = weight_center;
-    combined.M              = center.M;
+    combined.M              = 1.0f; // canonical sample counts as 1
     combined.sample         = center.sample;
     combined.target_pdf     = target_pdf_center;
     

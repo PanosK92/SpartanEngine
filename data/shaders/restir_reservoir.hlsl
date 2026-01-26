@@ -70,7 +70,7 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     tex0 = float4(r.sample.hit_position, r.sample.hit_normal.x);
     tex1 = float4(r.sample.hit_normal.yz, r.sample.direction.xy);
     tex2 = float4(r.sample.direction.z, r.sample.radiance);
-    tex3 = float4(r.sample.throughput, r.weight_sum);
+    tex3 = float4(r.sample.pdf, r.sample.throughput.x, r.sample.throughput.y, r.weight_sum);
     tex4 = float4(r.M, r.W, r.target_pdf, asfloat((r.sample.path_length & 0xFFFF) | ((r.sample.flags & 0xFFFF) << 16)));
 }
 
@@ -81,17 +81,17 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
     r.sample.hit_normal   = float3(tex0.w, tex1.xy);
     r.sample.direction    = float3(tex1.zw, tex2.x);
     r.sample.radiance     = tex2.yzw;
-    r.sample.throughput   = tex3.xyz;
+    r.sample.pdf          = tex3.x;
+    r.sample.throughput   = float3(tex3.y, tex3.z, 1.0f); // z component not stored, default to 1
     r.weight_sum          = tex3.w;
     r.M                   = tex4.x;
     r.W                   = tex4.y;
     r.target_pdf          = tex4.z;
-    r.sample.pdf          = 1.0f;
-    
+
     uint packed = asuint(tex4.w);
     r.sample.path_length = packed & 0xFFFF;
     r.sample.flags       = (packed >> 16) & 0xFFFF;
-    
+
     return r;
 }
 
@@ -213,6 +213,14 @@ float3 random_float3(inout uint seed)
 uint create_seed(uint2 pixel, uint frame)
 {
     return pcg_hash(pixel.x ^ pcg_hash(pixel.y ^ pcg_hash(frame)));
+}
+
+// pass-specific seed to avoid correlation between passes
+// pass_id: 0 = initial, 1 = temporal, 2 = spatial
+uint create_seed_for_pass(uint2 pixel, uint frame, uint pass_id)
+{
+    uint pass_salt = pcg_hash(pass_id * 0x9E3779B9u); // golden ratio based salt
+    return pcg_hash(pixel.x ^ pcg_hash(pixel.y ^ pcg_hash(frame ^ pass_salt)));
 }
 
 /*------------------------------------------------------------------------------

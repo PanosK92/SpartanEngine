@@ -227,14 +227,20 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         {
             if (bounce == 0 || prev_specular)
             {
+                // first bounce or after specular: no MIS needed
                 sample.radiance += throughput * payload.emission;
             }
             else
             {
+                // MIS with implicit emissive hit
+                // light_pdf = distance^2 / (cos_theta * area)
+                // we assume a nominal emissive area of 1m^2 for MIS balance
+                // this is a heuristic since we don't track actual emissive surface areas
+                static const float NOMINAL_EMISSIVE_AREA = 1.0f;
                 float3 to_light     = payload.hit_position - ray_origin;
                 float light_dist_sq = dot(to_light, to_light);
                 float cos_light     = abs(dot(payload.hit_normal, -ray_dir));
-                float light_pdf     = light_dist_sq / max(cos_light, 0.001f) * 0.01f;
+                float light_pdf     = light_dist_sq / (max(cos_light, 0.001f) * NOMINAL_EMISSIVE_AREA);
                 float mis_weight    = power_heuristic(prev_brdf_pdf, light_pdf);
                 sample.radiance += throughput * payload.emission * mis_weight;
             }
@@ -412,7 +418,7 @@ void ray_gen()
         return;
     }
     
-    uint seed = create_seed(launch_id, buffer_frame.frame);
+    uint seed = create_seed_for_pass(launch_id, buffer_frame.frame, 0); // pass 0: initial candidate generation
     
     // fetch surface properties
     float3 pos_ws    = get_position(uv);

@@ -40,6 +40,36 @@ Texture2D<float4> tex_reservoir_prev3 : register(t24);
 Texture2D<float4> tex_reservoir_prev4 : register(t25);
 
 /*------------------------------------------------------------------------------
+    VISIBILITY
+------------------------------------------------------------------------------*/
+bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3 sample_hit_pos)
+{
+    float3 dir  = sample_hit_pos - shading_pos;
+    float dist  = length(dir);
+
+    // skip very short distances
+    if (dist < 0.03f)
+        return true;
+
+    dir /= dist;
+
+    if (dot(dir, shading_normal) <= 0.0f)
+        return false;
+
+    RayDesc ray;
+    ray.Origin    = shading_pos + shading_normal * 0.01f;
+    ray.Direction = dir;
+    ray.TMin      = 0.001f;
+    ray.TMax      = dist - 0.02f;
+
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+    query.Proceed();
+
+    return query.CommittedStatus() == COMMITTED_NOTHING;
+}
+
+/*------------------------------------------------------------------------------
     TEMPORAL REPROJECTION
 ------------------------------------------------------------------------------*/
 float2 reproject_to_previous_frame(float2 current_uv)
@@ -51,53 +81,49 @@ float2 reproject_to_previous_frame(float2 current_uv)
 bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_pos, float3 current_normal, float current_depth, out float confidence)
 {
     confidence = 1.0f;
-    
+
     if (!is_valid_uv(prev_uv))
         return false;
-    
-    // check depth at reprojected location
-    float prev_uv_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
-    if (prev_uv_depth_raw <= 0.0f)
-        return false;
-    
-    // position consistency check
-    float3 prev_uv_pos_ws = get_position(prev_uv);
-    float3 pos_diff       = current_pos - prev_uv_pos_ws;
-    float pos_distance    = length(pos_diff);
-    
-    // depth-scaled threshold
-    float distance_threshold = max(current_depth * 0.02f, 0.05f);
-    if (pos_distance > distance_threshold)
+
+    // reproject current world position to previous frame clip space to validate temporal consistency
+    // this avoids needing a separate previous frame depth buffer
+    float4 prev_clip  = mul(float4(current_pos, 1.0f), buffer_frame.view_projection_previous);
+    float3 prev_ndc   = prev_clip.xyz / prev_clip.w;
+    float2 expected_prev_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
+
+    // check if reprojection matches velocity-based reprojection
+    float2 reproj_diff = abs(prev_uv - expected_prev_uv) * buffer_frame.resolution_render;
+    if (length(reproj_diff) > 2.0f) // allow 2 pixel tolerance
     {
         confidence = 0.0f;
         return false;
     }
-    
-    // normal consistency check
+
+    // normal consistency check using current frame data at reprojected location
     float3 prev_uv_normal   = get_normal(prev_uv);
     float normal_similarity = dot(current_normal, prev_uv_normal);
-    
+
     if (normal_similarity < 0.8f)
         return false;
-    
+
     // disocclusion detection via motion and depth edges
     float2 motion       = (current_uv - prev_uv) * buffer_frame.resolution_render;
     float motion_length = length(motion);
-    
+
     float2 texel_size    = 1.0f / buffer_frame.resolution_render;
     float depth_left     = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv + float2(-texel_size.x, 0), 0).r;
     float depth_right    = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv + float2(texel_size.x, 0), 0).r;
     float depth_gradient = abs(linearize_depth(depth_left) - linearize_depth(depth_right));
     bool is_depth_edge   = depth_gradient > current_depth * 0.1f;
-    
+
     float edge_penalty = is_depth_edge ? saturate(1.0f - motion_length * 0.1f) : 1.0f;
-    
+
     // aggregate confidence factors
-    float pos_confidence    = saturate(1.0f - pos_distance / distance_threshold);
+    float reproj_confidence = saturate(1.0f - length(reproj_diff) / 2.0f);
     float normal_confidence = saturate((normal_similarity - 0.8f) / 0.15f);
     float motion_confidence = saturate(1.0f - motion_length * 0.01f);
-    
-    confidence = pos_confidence * normal_confidence * motion_confidence * edge_penalty;
+
+    confidence = reproj_confidence * normal_confidence * motion_confidence * edge_penalty;
     return true;
 }
 
@@ -131,15 +157,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir4[pixel]
     );
     
-    uint seed = create_seed(pixel, buffer_frame.frame);
+    uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 1); // pass 1: temporal reuse
     
     // initialize combined reservoir with current sample
     Reservoir combined = create_empty_reservoir();
-    
+
     float target_pdf_current = calculate_target_pdf(current.sample.radiance);
-    float weight_current     = target_pdf_current * current.W * current.M;
+    float weight_current     = target_pdf_current * current.W;
     combined.weight_sum      = weight_current;
-    combined.M               = current.M;
+    combined.M               = 1.0f; // canonical sample counts as 1
     combined.sample          = current.sample;
     combined.target_pdf      = target_pdf_current;
     
@@ -163,14 +189,22 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         // apply temporal decay
         temporal.M          *= RESTIR_TEMPORAL_DECAY;
         temporal.weight_sum *= RESTIR_TEMPORAL_DECAY;
-        
+
         float effective_M_cap = RESTIR_M_CAP * temporal_confidence;
         clamp_reservoir_M(temporal, max(effective_M_cap, 4.0f));
-        
-        float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
-        
-        if (merge_reservoir(combined, temporal, target_pdf_temporal, random_float(seed)))
-            combined.target_pdf = target_pdf_temporal;
+
+        // verify temporal sample is still visible from current shading point
+        bool temporal_visible = temporal.sample.path_length == 0 ||
+                                all(temporal.sample.radiance <= 0.0f) ||
+                                check_temporal_visibility(pos_ws, normal_ws, temporal.sample.hit_position);
+
+        if (temporal_visible)
+        {
+            float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
+
+            if (merge_reservoir(combined, temporal, target_pdf_temporal, random_float(seed)))
+                combined.target_pdf = target_pdf_temporal;
+        }
     }
     
     clamp_reservoir_M(combined, RESTIR_M_CAP);
