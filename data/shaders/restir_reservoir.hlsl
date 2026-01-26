@@ -25,13 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
     CONFIGURATION
 ------------------------------------------------------------------------------*/
-static const uint RESTIR_MAX_PATH_LENGTH     = 3; // balanced for quality and performance
+static const uint RESTIR_MAX_PATH_LENGTH     = 3;   // balanced for quality and performance
 static const uint RESTIR_M_CAP               = 24;
 static const uint RESTIR_SPATIAL_SAMPLES     = 8;
 static const float RESTIR_SPATIAL_RADIUS     = 20.0f;
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
 static const float RESTIR_TEMPORAL_DECAY     = 0.95f;
+static const float RESTIR_RAY_NORMAL_OFFSET  = 0.005f; // consistent offset for all ray origins
+static const float RESTIR_RAY_T_MIN          = 0.001f;
 
 /*------------------------------------------------------------------------------
     DATA STRUCTURES
@@ -42,7 +44,6 @@ struct PathSample
     float3 hit_normal;
     float3 direction;
     float3 radiance;
-    float3 throughput;
     uint   path_length;
     uint   flags;
     float  pdf;
@@ -63,36 +64,104 @@ static const uint PATH_FLAG_CAUSTIC  = 1 << 2;
 static const uint PATH_FLAG_DELTA    = 1 << 3;
 
 /*------------------------------------------------------------------------------
-    RESERVOIR PACKING
+    OCTAHEDRAL ENCODING
+    Compact normal encoding: 3 floats -> 2 floats
 ------------------------------------------------------------------------------*/
+float2 octahedral_encode(float3 n)
+{
+    n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    if (n.z < 0.0f)
+    {
+        float2 sign_not_zero = float2(n.x >= 0.0f ? 1.0f : -1.0f, n.y >= 0.0f ? 1.0f : -1.0f);
+        n.xy = (1.0f - abs(n.yx)) * sign_not_zero;
+    }
+    return n.xy;
+}
+
+float3 octahedral_decode(float2 e)
+{
+    float3 n = float3(e.xy, 1.0f - abs(e.x) - abs(e.y));
+    if (n.z < 0.0f)
+    {
+        float2 sign_not_zero = float2(n.x >= 0.0f ? 1.0f : -1.0f, n.y >= 0.0f ? 1.0f : -1.0f);
+        n.xy = (1.0f - abs(n.yx)) * sign_not_zero;
+    }
+    return normalize(n);
+}
+
+/*------------------------------------------------------------------------------
+    RESERVOIR PACKING
+    Layout using octahedral encoding for normals (5 textures for C++ compatibility):
+    tex0: hit_position.xyz, hit_normal_oct.x
+    tex1: hit_normal_oct.y, direction_oct.xy, radiance.x
+    tex2: radiance.yz, pdf, weight_sum
+    tex3: M, W, target_pdf, path_length_and_flags (packed as uint)
+    tex4: reserved for future use / padding
+------------------------------------------------------------------------------*/
+uint pack_path_info(uint path_length, uint flags)
+{
+    return (path_length & 0xFFFF) | ((flags & 0xFFFF) << 16);
+}
+
+void unpack_path_info(uint packed, out uint path_length, out uint flags)
+{
+    path_length = packed & 0xFFFF;
+    flags = (packed >> 16) & 0xFFFF;
+}
+
 void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4)
 {
-    tex0 = float4(r.sample.hit_position, r.sample.hit_normal.x);
-    tex1 = float4(r.sample.hit_normal.yz, r.sample.direction.xy);
-    tex2 = float4(r.sample.direction.z, r.sample.radiance);
-    tex3 = float4(r.sample.pdf, r.sample.throughput.x, r.sample.throughput.y, r.weight_sum);
-    tex4 = float4(r.M, r.W, r.target_pdf, asfloat((r.sample.path_length & 0xFFFF) | ((r.sample.flags & 0xFFFF) << 16)));
+    float2 normal_oct    = octahedral_encode(r.sample.hit_normal);
+    float2 direction_oct = octahedral_encode(r.sample.direction);
+
+    tex0 = float4(r.sample.hit_position, normal_oct.x);
+    tex1 = float4(normal_oct.y, direction_oct.xy, r.sample.radiance.x);
+    tex2 = float4(r.sample.radiance.yz, r.sample.pdf, r.weight_sum);
+    tex3 = float4(r.M, r.W, r.target_pdf, asfloat(pack_path_info(r.sample.path_length, r.sample.flags)));
+    tex4 = float4(0, 0, 0, 0); // reserved
 }
 
 Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4)
 {
     Reservoir r;
     r.sample.hit_position = tex0.xyz;
-    r.sample.hit_normal   = float3(tex0.w, tex1.xy);
-    r.sample.direction    = float3(tex1.zw, tex2.x);
-    r.sample.radiance     = tex2.yzw;
-    r.sample.pdf          = tex3.x;
-    r.sample.throughput   = float3(tex3.y, tex3.z, 1.0f); // z component not stored, default to 1
-    r.weight_sum          = tex3.w;
-    r.M                   = tex4.x;
-    r.W                   = tex4.y;
-    r.target_pdf          = tex4.z;
+    r.sample.hit_normal   = octahedral_decode(float2(tex0.w, tex1.x));
+    r.sample.direction    = octahedral_decode(tex1.yz);
+    r.sample.radiance     = float3(tex1.w, tex2.xy);
+    r.sample.pdf          = tex2.z;
+    r.weight_sum          = tex2.w;
+    r.M                   = tex3.x;
+    r.W                   = tex3.y;
+    r.target_pdf          = tex3.z;
 
-    uint packed = asuint(tex4.w);
-    r.sample.path_length = packed & 0xFFFF;
-    r.sample.flags       = (packed >> 16) & 0xFFFF;
+    uint packed_info = asuint(tex3.w);
+    unpack_path_info(packed_info, r.sample.path_length, r.sample.flags);
+
+    // tex4 reserved for future use
 
     return r;
+}
+
+bool is_reservoir_valid(Reservoir r)
+{
+    // check for NaN/inf in critical fields
+    if (any(isnan(r.sample.hit_position)) || any(isinf(r.sample.hit_position)))
+        return false;
+    if (any(isnan(r.sample.radiance)) || any(isinf(r.sample.radiance)))
+        return false;
+    if (any(isnan(r.sample.hit_normal)) || any(isinf(r.sample.hit_normal)))
+        return false;
+    if (isnan(r.W) || isinf(r.W) || r.W < 0)
+        return false;
+    if (isnan(r.M) || r.M < 0)
+        return false;
+
+    // check for degenerate normal
+    float normal_len = length(r.sample.hit_normal);
+    if (normal_len < 0.5f || normal_len > 1.5f)
+        return false;
+
+    return true;
 }
 
 Reservoir create_empty_reservoir()
@@ -102,7 +171,6 @@ Reservoir create_empty_reservoir()
     r.sample.hit_normal   = float3(0, 1, 0);
     r.sample.direction    = float3(0, 0, 1);
     r.sample.radiance     = float3(0, 0, 0);
-    r.sample.throughput   = float3(1, 1, 1);
     r.sample.path_length  = 0;
     r.sample.flags        = 0;
     r.sample.pdf          = 0;
@@ -119,13 +187,13 @@ Reservoir create_empty_reservoir()
 float calculate_target_pdf(float3 radiance)
 {
     float lum = dot(radiance, float3(0.299, 0.587, 0.114));
-    
+
     // clamp to fp16 max
     lum = clamp(lum, 0.0f, 65504.0f);
-    
+
     // reinhard compression with perceptual weighting
     float compressed = lum / (1.0f + lum);
-    
+
     return max(sqrt(compressed), 1e-6f);
 }
 
@@ -133,7 +201,7 @@ bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float we
 {
     reservoir.weight_sum += weight;
     reservoir.M += 1.0f;
-    
+
     if (random_value * reservoir.weight_sum < weight)
     {
         reservoir.sample = new_sample;
@@ -142,13 +210,14 @@ bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float we
     return false;
 }
 
+// Standard reservoir merge (for temporal reuse where bias is acceptable with visibility)
 bool merge_reservoir(inout Reservoir dst, Reservoir src, float target_pdf_at_dst, float random_value)
 {
     float weight = target_pdf_at_dst * src.W * src.M;
-    
+
     dst.weight_sum += weight;
     dst.M += src.M;
-    
+
     if (random_value * dst.weight_sum < weight)
     {
         dst.sample     = src.sample;
@@ -162,12 +231,12 @@ void finalize_reservoir(inout Reservoir reservoir)
 {
     float target_pdf = calculate_target_pdf(reservoir.sample.radiance);
     reservoir.target_pdf = target_pdf;
-    
+
     if (target_pdf > 0 && reservoir.M > 0)
         reservoir.W = reservoir.weight_sum / (target_pdf * reservoir.M);
     else
         reservoir.W = 0;
-    
+
     reservoir.W = min(reservoir.W, 20.0f);
 }
 
@@ -178,7 +247,7 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
         float scale = max_M / reservoir.M;
         reservoir.weight_sum *= scale;
         reservoir.M = max_M;
-        
+
         if (reservoir.target_pdf > 0 && reservoir.M > 0)
             reservoir.W = reservoir.weight_sum / (reservoir.target_pdf * reservoir.M);
     }
@@ -231,7 +300,7 @@ float3 sample_cosine_hemisphere(float2 xi, out float pdf)
     float phi       = 2.0f * 3.14159265f * xi.x;
     float cos_theta = sqrt(xi.y);
     float sin_theta = sqrt(1.0f - xi.y);
-    
+
     pdf = cos_theta / 3.14159265f;
     return float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
@@ -240,16 +309,16 @@ float3 sample_ggx(float2 xi, float roughness, out float pdf)
 {
     float a  = roughness * roughness;
     float a2 = a * a;
-    
+
     float phi       = 2.0f * 3.14159265f * xi.x;
     float cos_theta = sqrt((1.0f - xi.y) / (1.0f + (a2 - 1.0f) * xi.y));
     float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
-    
+
     float3 h = float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
-    
+
     float d = (a2 - 1.0f) * cos_theta * cos_theta + 1.0f;
     pdf = a2 * cos_theta / (3.14159265f * d * d);
-    
+
     return h;
 }
 
@@ -283,11 +352,11 @@ bool surface_similarity_check(float3 pos1, float3 normal1, float depth1, float3 
 {
     if (dot(normal1, normal2) < RESTIR_NORMAL_THRESHOLD)
         return false;
-    
+
     float depth_ratio = depth1 / max(depth2, 1e-6f);
     if (abs(depth_ratio - 1.0f) > RESTIR_DEPTH_THRESHOLD)
         return false;
-    
+
     return true;
 }
 
@@ -296,27 +365,27 @@ float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 ne
     // solid angle ratio between original and new shading points
     float3 dir_original = sample_pos - original_shading_pos;
     float3 dir_new      = sample_pos - new_shading_pos;
-    
+
     float dist_original_sq = dot(dir_original, dir_original);
     float dist_new_sq      = dot(dir_new, dir_new);
-    
+
     if (dist_original_sq < 1e-6f || dist_new_sq < 1e-6f)
         return 1.0f;
-    
+
     float dist_original = sqrt(dist_original_sq);
     float dist_new      = sqrt(dist_new_sq);
-    
+
     dir_original /= dist_original;
     dir_new      /= dist_new;
-    
+
     float cos_original = abs(dot(sample_normal, -dir_original));
     float cos_new      = abs(dot(sample_normal, -dir_new));
-    
+
     if (cos_original < 1e-6f)
         return 0.0f;
-    
+
     float jacobian = (cos_new * dist_original_sq) / (cos_original * dist_new_sq + 1e-6f);
-    return clamp(jacobian, 0.0f, 20.0f);
+    return clamp(jacobian, 0.0f, 10.0f);
 }
 
 float power_heuristic(float pdf_a, float pdf_b)
