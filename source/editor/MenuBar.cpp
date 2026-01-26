@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
+#include "Widgets/NodeWidget.h"
 //================================
 
 //= NAMESPACES =====
@@ -177,6 +178,7 @@ namespace
                     menu_entry<Properties>();
                     menu_entry<Viewport>();
                     menu_entry<WorldViewer>();
+                    menu_entry<NodeWidget>();
 
                     ImGui::EndMenu();
                 }
@@ -354,6 +356,7 @@ namespace
                         world_press,
                         nullptr
                     );
+
                 }
 
                 // buttons from widgets
@@ -456,6 +459,7 @@ void MenuBar::Initialize(Editor* _editor)
     buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Shader)]        = editor->GetWidget<ShaderEditor>();
     buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Gear)]          = editor->GetWidget<RenderOptions>();
     buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Texture)]       = editor->GetWidget<TextureViewer>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Node)]          = editor->GetWidget<NodeWidget>();
 
     spartan::Engine::SetFlag(spartan::EngineMode::Playing, false);
 }
