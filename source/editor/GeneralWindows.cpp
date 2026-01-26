@@ -546,9 +546,10 @@ namespace
             { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                                                                                       "Prototype",  "Very demanding", 5600 },
             { "Liminal Space",     "Shifts your frequency to a nearby reality",                                                                                           "Prototype",  "Light",          2100 },
             { "Sponza 4K",         "High-resolution textures & meshes",                                                                                                   "Complete" ,  "Demanding",      2600 },
-            { "Subway",            "GI test. No lights, only emissive textures",                                                                                          "Prototype" , "Moderate",       2600 },
+            { "Subway",            "GI test. No lights, only emissive textures",                                                                                          "Prototype",  "Moderate",       2600 },
             { "Minecraft",         "Blocky aesthetic",                                                                                                                    "Complete" ,  "Light",          2100 },
-            { "Basic",             "Light, camera, floor",                                                                                                                "Complete" ,  "Light",          2100 }
+            { "Basic",             "Light, camera, floor",                                                                                                                "Complete" ,  "Light",          2100 },
+            { "Water",             "Light, camera, ocean",                                                                                                                "Prototype",  "Light",          2100 },
         };
         int world_index = 0;
 

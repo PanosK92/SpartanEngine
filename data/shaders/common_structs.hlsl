@@ -26,6 +26,40 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON_STRUCT
 #define SPARTAN_COMMON_STRUCT
 
+struct OceanParameters
+{
+    float scale;
+    float spreadBlend;
+    float swell;
+    float gamma;
+    float shortWavesFade;
+
+    float windDirection;
+    float fetch;
+    float windSpeed;
+    float repeatTime;
+    float angle;
+    float alpha;
+    float peakOmega;
+
+    float depth;
+    float lowCutoff;
+    float highCutoff;
+
+    float foamDecayRate;
+    float foamBias;
+    float foamThreshold;
+    float foamAdd;
+    
+    float displacementScale;
+    float slopeScale;
+    float lengthScale;
+
+    float debugDisplacement;
+    float debugSlope;
+    float debugSynthesised;
+};
+
 struct Surface
 {
     // properties
@@ -54,6 +88,8 @@ struct Surface
     float  camera_to_pixel_length;
     float3 diffuse_energy;
 
+    OceanParameters ocean_parameters;
+
     // easy access to certain properties
     bool has_texture_height()            { return flags & uint(1U << 0);  }
     bool has_texture_normal()            { return flags & uint(1U << 1);  }
@@ -70,6 +106,7 @@ struct Surface
     bool is_flower()                     { return flags & uint(1U << 12); }
     bool is_water()                      { return flags & uint(1U << 13); }
     bool is_tessellated()                { return flags & uint(1U << 14); }
+    bool is_ocean()                      { return flags & uint(1U << 16); }
     bool is_sky()                        { return alpha == 0.0f; }
     bool is_opaque()                     { return alpha == 1.0f; }
     bool is_transparent()                { return alpha > 0.0f && alpha < 1.0f; }
@@ -104,6 +141,33 @@ struct Surface
         sheen                 = material.sheen;
         subsurface_scattering = material.subsurface_scattering;
         diffuse_energy        = 1.0f;
+        
+        // jonswap parameters
+        ocean_parameters.alpha             = material.ocean_parameters.alpha;
+        ocean_parameters.angle             = material.ocean_parameters.angle;
+        ocean_parameters.fetch             = material.ocean_parameters.fetch;
+        ocean_parameters.gamma             = material.ocean_parameters.gamma;
+        ocean_parameters.peakOmega         = material.ocean_parameters.peakOmega;
+        ocean_parameters.repeatTime        = material.ocean_parameters.repeatTime;
+        ocean_parameters.scale             = material.ocean_parameters.scale;
+        ocean_parameters.shortWavesFade    = material.ocean_parameters.shortWavesFade;
+        ocean_parameters.spreadBlend       = material.ocean_parameters.spreadBlend;
+        ocean_parameters.swell             = material.ocean_parameters.swell;
+        ocean_parameters.windDirection     = material.ocean_parameters.windDirection;
+        ocean_parameters.windSpeed         = material.ocean_parameters.windSpeed;
+        ocean_parameters.depth             = material.ocean_parameters.depth;
+        ocean_parameters.lowCutoff         = material.ocean_parameters.lowCutoff;
+        ocean_parameters.highCutoff        = material.ocean_parameters.highCutoff;
+        ocean_parameters.foamDecayRate     = material.ocean_parameters.foamDecayRate;
+        ocean_parameters.foamBias          = material.ocean_parameters.foamBias;
+        ocean_parameters.foamThreshold     = material.ocean_parameters.foamThreshold;
+        ocean_parameters.foamAdd           = material.ocean_parameters.foamAdd;
+        ocean_parameters.displacementScale = material.ocean_parameters.displacementScale;
+        ocean_parameters.slopeScale        = material.ocean_parameters.slopeScale;
+        ocean_parameters.lengthScale       = material.ocean_parameters.lengthScale;
+        ocean_parameters.debugDisplacement = material.ocean_parameters.debugDisplacement;
+        ocean_parameters.debugSlope        = material.ocean_parameters.debugSlope;
+        ocean_parameters.debugSynthesised  = material.ocean_parameters.debugSynthesised;
 
         // roughness is authored as perceptual roughness, as is convention
         roughness_alpha = roughness * roughness;

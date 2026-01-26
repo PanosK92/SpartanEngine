@@ -43,6 +43,7 @@ namespace spartan
         Height,    // packed a
         AlphaMask, // packed into color a
         Packed,    // occlusion, roughness, metalness, height
+        Flowmap,
         Max
     };
 
@@ -92,6 +93,7 @@ namespace spartan
         WindAnimation,              // vertex wind animation
         ColorVariationFromInstance, // per-instance color variation
         IsWater,                    // water flow animation
+        IsOcean,                    // fft ocean rendering
     
         // render settings
         CullMode,                   // face culling mode
@@ -108,6 +110,44 @@ namespace spartan
         Glass,
         Sapphire,
         Diamond,
+        Max
+    };
+
+    // used for ocean calculations
+    enum class OceanParameters
+    {
+        Scale, // used to scale the Spectrum [1.0f, 5.0f] --> Value Range
+        SpreadBlend, // used to blend between agitated water motion, and windDirection [0.0f, 1.0f]
+        Swell, // influences wave choppines, the bigger the swell, the longer the wave length [0.0f, 1.0f]
+        Gamma, // defines the Spectrum Peak [0.0f, 7.0f]
+
+        ShortWavesFade, // [0.0f, 1.0f]
+        WindDirection, // [0.0f, 360.0f]
+        Fetch,  // distance over which Wind impacts Wave Formation [0.0f, 10000.0f]
+        WindSpeed, // [0.0f, 100.0f]
+
+        RepeatTime,
+        Angle,
+        Alpha,
+        PeakOmega,
+
+        Depth,
+        LowCutoff,
+        HighCutoff,
+
+        FoamDecayRate,
+        FoamBias,
+        FoamThreshold,
+        FoamAdd,
+
+        DisplacementScale,
+        SlopeScale,
+        LengthScale,
+
+        DebugDisplacement,
+        DebugSlope,
+        DebugSynthesised,
+
         Max
     };
 
@@ -141,6 +181,8 @@ namespace spartan
         // properties
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
         void SetProperty(const MaterialProperty property_type, const float value);
+        float GetOceanProperty(const OceanParameters property_type) const;
+        void SetOceanProperty(const OceanParameters property_type, const float value);
         void SetColor(const Color& color);
         bool IsTransparent() const { return GetProperty(MaterialProperty::ColorA) < 1.0f; }
         bool IsAlphaTested();
@@ -150,7 +192,20 @@ namespace spartan
         uint32_t GetUsedSlotCount() const;
         void SetIndex(const uint32_t index) { m_index = index; }
         uint32_t GetIndex() const           { return m_index; }
+
+        // ocean
+        bool ShouldComputeSpectrum() const { return m_should_compute_spectrum; }
+        void MarkSpectrumAsComputed(const bool flag) { m_should_compute_spectrum = !flag; }
+        void SetOceanTileCount(const uint32_t count) { m_ocean_tiles = count; }
+        uint32_t GetOceanTileCount() const { return m_ocean_tiles; }
+        void SetOceanVerticesCount(const uint32_t count) { m_ocean_vertices_count = count; }
+        uint32_t GetOceanVerticesCount() const { return m_ocean_vertices_count; }
+        void SetOceanTileSize(const float size) { m_ocean_tile_size = size; }
+        float GetOceanTileSize() const { return m_ocean_tile_size; }
+        bool IsOcean() const { return GetProperty(MaterialProperty::IsOcean) == 1.0f; }
+
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
+        const std::array<float, static_cast<uint32_t>(OceanParameters::Max)>& GetOceanProperties() const { return m_ocean_properties; }
         void ClearPackedTextures();
 
     private:
@@ -158,8 +213,14 @@ namespace spartan
 
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
+        std::array<float, static_cast<uint32_t>(OceanParameters::Max)> m_ocean_properties;
         uint32_t m_index        = 0;
         bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
         std::mutex m_mutex;
+
+        bool m_should_compute_spectrum = false;
+        uint32_t m_ocean_tiles = 1;
+        uint32_t m_ocean_vertices_count = 0;
+        float m_ocean_tile_size = 0.0f;
     };
 }

@@ -60,6 +60,7 @@ namespace spartan
         namespace subway          { void create(); }
         namespace minecraft       { void create(); }
         namespace basic           { void create(); }
+        namespace ocean           { void create(); void tick(); }
     }
     //===========================================================
 
@@ -78,7 +79,7 @@ namespace spartan
         Entity* default_environment       = nullptr;
         Entity* default_light_directional = nullptr;
         Entity* default_metal_cube        = nullptr;
-        Entity* default_water             = nullptr;
+        Entity* default_ocean             = nullptr;
         vector<shared_ptr<Mesh>> meshes;
         //==========================================
 
@@ -97,6 +98,7 @@ namespace spartan
             worlds::subway::create,
             worlds::minecraft::create,
             worlds::basic::create,
+            worlds::ocean::create,
         };
 
         constexpr tick_fn world_tick[] =
@@ -109,6 +111,7 @@ namespace spartan
             nullptr,
             nullptr,
             nullptr,
+            worlds::ocean::tick,
         };
 
         static_assert(size(world_create) == static_cast<size_t>(DefaultWorld::Max), "world_create out of sync with DefaultWorld enum");
@@ -349,8 +352,115 @@ namespace spartan
 
                 return water;
             }
+
+            Entity* ocean(std::shared_ptr<Material> material, const Vector3& position, float tile_size, uint32_t density, uint32_t grid_size)
+            {
+                // entity
+                Entity* water = World::CreateEntity();
+                water->SetObjectName("ocean");
+                water->SetPosition(position);
+                water->SetScale({ 1.0f, 1.0f, 1.0f });
+
+                // material
+                {
+                    material->SetObjectName("material_ocean");
+                    material->SetResourceFilePath("ocean" + string(EXTENSION_MATERIAL));
+
+                    //material->LoadFromFile(material->GetResourceFilePath());
+                    material->SetOceanTileCount(grid_size);
+
+                    material->SetOceanTileSize(tile_size);
+                    material->SetOceanVerticesCount(density);
+                    material->MarkSpectrumAsComputed(false);
+                    //material->SetTexture(MaterialTextureType::Flowmap, "project\\materials\\water\\flowmap.png");
+
+                    // if material fails to load from file
+                    if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)
+                    {
+                        material->SetColor(Color(0.0f, 142.0f / 255.0f, 229.0f / 255.0f, 254.0f / 255.0f)); 
+                        material->SetProperty(MaterialProperty::IsOcean, 1.0f);
+
+                        material->SetOceanProperty(OceanParameters::Angle, 0.0f); //handled internally
+                        material->SetOceanProperty(OceanParameters::Alpha, 0.0f); // handled internally
+                        material->SetOceanProperty(OceanParameters::PeakOmega, 0.0f); // handled internally
+
+                        material->SetOceanProperty(OceanParameters::Scale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::SpreadBlend, 0.9f);
+                        material->SetOceanProperty(OceanParameters::Swell, 1.0f);
+                        material->SetOceanProperty(OceanParameters::Fetch, 1280000.0f);
+                        material->SetOceanProperty(OceanParameters::WindDirection, 135.0f);
+                        material->SetOceanProperty(OceanParameters::WindSpeed, 2.8f);
+                        material->SetOceanProperty(OceanParameters::Gamma, 3.3f);
+                        material->SetOceanProperty(OceanParameters::ShortWavesFade, 0.0f);
+                        material->SetOceanProperty(OceanParameters::RepeatTime, 200.0f);
+
+                        material->SetOceanProperty(OceanParameters::Depth, 20.0f);
+                        material->SetOceanProperty(OceanParameters::LowCutoff, 0.001f);
+                        material->SetOceanProperty(OceanParameters::HighCutoff, 1000.0f);
+
+                        material->SetOceanProperty(OceanParameters::FoamDecayRate, 3.0f);
+                        material->SetOceanProperty(OceanParameters::FoamThreshold, 0.5f);
+                        material->SetOceanProperty(OceanParameters::FoamBias, 1.2f);
+                        material->SetOceanProperty(OceanParameters::FoamAdd, 1.0f);
+
+                        material->SetOceanProperty(OceanParameters::DisplacementScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::SlopeScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::LengthScale, 128.0f);
+                    }
+                }
+
+                // geometry
+                {
+                    // generate grid
+                    const uint32_t grid_points_per_dimension = density;
+                    vector<RHI_Vertex_PosTexNorTan> vertices;
+                    vector<uint32_t> indices;
+                    geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, tile_size);
+
+                    string name = "ocean mesh";
+
+                    // create mesh if it doesn't exist
+                    shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                    mesh->SetObjectName(name);
+                    mesh->SetRootEntity(water);
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                    mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+                    mesh->AddGeometry(vertices, indices, false);
+                    mesh->CreateGpuBuffers();
+
+                    // create a child entity, add a renderable, and this mesh tile to it
+                    for (uint32_t row = 0; row < grid_size; row++)
+                    {
+                        for (uint32_t col = 0; col < grid_size; col++)
+                        {
+                            int tile_index = col + row * grid_size;
+
+                            string tile_name = "ocean tile_" + to_string(tile_index);
+
+                            Entity* entity_tile = World::CreateEntity();
+                            entity_tile->SetObjectName(tile_name);
+                            entity_tile->SetParent(water);
+
+                            Vector3 tile_position = { col * tile_size, 0.0f, row * tile_size };
+                            entity_tile->SetPosition(tile_position);
+
+                            if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
+                            {
+                                renderable->SetMesh(mesh.get());
+                                renderable->SetMaterial(material);
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                            }
+
+                            // enable buoyancy
+                            //Physics* physics = entity_tile->AddComponent<Physics>();
+                            //physics->SetBodyType(BodyType::Water);
+                        }
+                    }
+                }
+
+                return water;
+            }
         }
-        //========================================================================================
 
         // reset renderer options to defaults
         void set_base_renderer_options()
@@ -1620,6 +1730,217 @@ namespace spartan
         //= FOREST ===========================================================================
         namespace forest
         {
+            uint32_t ocean_tile_count = 1;
+            float tile_size = 128.0f;
+            uint32_t vertices_count = 512;
+            shared_ptr<Material> ocean_material = make_shared<Material>();
+            shared_ptr<RHI_Texture> flow_map;
+
+            inline int idx(int x, int y, int w) { return y * w + x; }
+
+            void GenerateLakeOutwardFlow(
+                const float* height_data,
+                uint32_t tex_width,
+                uint32_t tex_height,
+                float waterLevel,                    // e.g. 0.0f
+                std::vector<Vector2>& out_flow_data, // output, size must be tex_width*tex_height
+                int blurRadius = 3,                  // optional smoothing radius (3..8)
+                float center_strength = 1.0f         // scale of outward strength
+            )
+            {
+                const int W = (int)tex_width;
+                const int H = (int)tex_height;
+                const int N = W * H;
+                out_flow_data.assign(N, Vector2(0.5f, 0.5f));
+
+                // 1) lake mask and shore detection
+                std::vector<uint8_t> isLake(N, 0);
+                std::vector<uint8_t> isShore(N, 0);
+
+                for (int y = 0; y < H; ++y)
+                {
+                    for (int x = 0; x < W; ++x)
+                    {
+                        int i = idx(x, y, W);
+                        if (height_data[i] <= waterLevel) isLake[i] = 1;
+                    }
+                }
+
+                // find shore pixels: lake pixel adjacent to any non-lake (4-neighbour)
+                auto inBounds = [&](int x, int y) { return x >= 0 && x < W && y >= 0 && y < H; };
+                for (int y = 0; y < H; ++y)
+                {
+                    for (int x = 0; x < W; ++x)
+                    {
+                        int i = idx(x, y, W);
+                        if (!isLake[i]) continue;
+                        bool shore = false;
+                        const int nx[4] = { 1,-1,0,0 };
+                        const int ny[4] = { 0,0,1,-1 };
+                        for (int k = 0; k < 4; ++k)
+                        {
+                            int sx = x + nx[k], sy = y + ny[k];
+                            if (!inBounds(sx, sy) || !isLake[idx(sx, sy, W)]) { shore = true; break; }
+                        }
+                        if (shore) isShore[i] = 1;
+                    }
+                }
+
+                // 2) multi-source BFS from shore pixels
+                // store nearest shore coords and distance (in pixels)
+                const int INF = 1 << 30;
+                std::vector<int> dist(N, INF);
+                std::vector<int> nearestX(N, -1), nearestY(N, -1);
+                std::deque<int> q;
+
+                // push all shore pixels as index seeds
+                for (int y = 0; y < H; ++y)
+                {
+                    for (int x = 0; x < W; ++x)
+                    {
+                        int i = idx(x, y, W);
+                        if (isShore[i])
+                        {
+                            dist[i] = 0;
+                            nearestX[i] = x;
+                            nearestY[i] = y;
+                            q.push_back(i);
+                        }
+                    }
+                }
+
+                // if no shore pixels (rare), bail out
+                if (q.empty()) {
+                    // fallback: set small wind or zero flow
+                    for (int i = 0; i < N; i++) out_flow_data[i] = Vector2(0.5f, 0.5f);
+                    return;
+                }
+
+                const int nbrX[4] = { 1,-1,0,0 };
+                const int nbrY[4] = { 0,0,1,-1 };
+
+                while (!q.empty())
+                {
+                    int cur = q.front(); q.pop_front();
+                    int cx = cur % W;
+                    int cy = cur / W;
+                    int cd = dist[cur];
+
+                    for (int k = 0; k < 4; ++k)
+                    {
+                        int nxp = cx + nbrX[k];
+                        int nyp = cy + nbrY[k];
+                        if (!inBounds(nxp, nyp)) continue;
+                        int ni = idx(nxp, nyp, W);
+                        if (!isLake[ni]) continue; // only propagate inside lakes
+
+                        if (dist[ni] > cd + 1)
+                        {
+                            dist[ni] = cd + 1;
+                            nearestX[ni] = nearestX[cur];
+                            nearestY[ni] = nearestY[cur];
+                            q.push_back(ni);
+                        }
+                    }
+                }
+
+                // 3) build outward flow: nearest shore vector -> direction to shore
+                // also compute max distance for normalization
+                int maxDist = 0;
+                for (int i = 0; i < N; i++) if (isLake[i] && dist[i] < INF) maxDist = std::max(maxDist, dist[i]);
+
+                if (maxDist == 0) maxDist = 1;
+
+                for (int y = 0; y < H; ++y)
+                {
+                    for (int x = 0; x < W; ++x)
+                    {
+                        int i = idx(x, y, W);
+                        if (!isLake[i])
+                        {
+                            // encode 0 flow on land (or whatever you prefer)
+                            out_flow_data[i] = Vector2(0.5f, 0.5f);
+                            continue;
+                        }
+
+                        int sx = nearestX[i];
+                        int sy = nearestY[i];
+                        if (sx < 0)
+                        {
+                            // no nearest shore found (shouldn't happen) => tiny noise/wind
+                            out_flow_data[i] = Vector2(0.5f, 0.5f);
+                            continue;
+                        }
+
+                        // vector from pixel -> shore
+                        float vx = (float)sx - (float)x;
+                        float vy = (float)sy - (float)y;
+                        float d = std::sqrt(vx * vx + vy * vy);
+                        if (d < 1e-6f) {
+                            // on the shore pixel: zero magnitude
+                            out_flow_data[i] = Vector2(0.5f, 0.5f);
+                        }
+                        else {
+                            // normalized direction towards shore (points outward)
+                            float nxv = vx / d;
+                            float nyv = vy / d;
+
+                            // optional magnitude: stronger near center (far from shore)
+                            float mag = (float)dist[i] / (float)maxDist; // 0..1 (0 at shore, 1 at farthest)
+                            mag = pow(mag, 0.8f) * center_strength;    // tweak exponent for shape
+
+                            // combine direction and magnitude (we'll store unit direction only; magnitude can be separate channel)
+                            float ux = nxv * mag;
+                            float uy = nyv * mag;
+
+                            // store as signed normalized vector in [-1,1] then encode to [0,1]
+                            float ex = ux * 0.5f + 0.5f;
+                            float ey = uy * 0.5f + 0.5f;
+                            out_flow_data[i] = Vector2(ex, ey);
+                        }
+                    }
+                }
+
+                // 4) optional: blur/smooth the flow vectors (box blur or Gaussian)
+                if (blurRadius > 0)
+                {
+                    std::vector<Vector2> temp = out_flow_data;
+                    for (int y = 0; y < H; ++y)
+                    {
+                        for (int x = 0; x < W; ++x)
+                        {
+                            int i = idx(x, y, W);
+                            if (!isLake[i]) continue;
+                            float sx = 0.0f, sy = 0.0f; int cnt = 0;
+                            for (int oy = -blurRadius; oy <= blurRadius; ++oy)
+                            {
+                                for (int ox = -blurRadius; ox <= blurRadius; ++ox)
+                                {
+                                    int nxp = std::clamp(x + ox, 0, W - 1);
+                                    int nyp = std::clamp(y + oy, 0, H - 1);
+                                    int ni = idx(nxp, nyp, W);
+                                    if (!isLake[ni]) continue;
+                                    sx += (temp[ni].x - 0.5f) * 2.0f; // decode back -1..1
+                                    sy += (temp[ni].y - 0.5f) * 2.0f;
+                                    cnt++;
+                                }
+                            }
+                            if (cnt > 0) {
+                                sx /= (float)cnt;
+                                sy /= (float)cnt;
+                                float l = std::sqrt(sx * sx + sy * sy);
+                                if (l > 1e-6f) { sx /= l; sy /= l; }
+                                // reapply magnitude based on dist (optional)
+                                float mag = (float)dist[i] / (float)maxDist;
+                                float ux = sx * mag;
+                                float uy = sy * mag;
+                                out_flow_data[i] = Vector2(ux * 0.5f + 0.5f, uy * 0.5f + 0.5f);
+                            }
+                        }
+                    }
+                }
+            }
+
             void create()
             {
                 // config
@@ -1651,6 +1972,7 @@ namespace spartan
                 // terrain root
                 default_terrain = World::CreateEntity();
                 default_terrain->SetObjectName("terrain");
+                default_ocean = entities::ocean(ocean_material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
 
                 // audio
                 {
@@ -1745,6 +2067,116 @@ namespace spartan
                         Physics* physics_body = terrain_tile->AddComponent<Physics>();
                         physics_body->SetBodyType(BodyType::Mesh);
                     }
+                }
+
+                // TEMP - ocean
+                RHI_Texture* height_map = terrain->GetHeightMapFinal();
+                //default_ocean = entities::ocean(ocean_material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
+                ocean_material->SetTexture(MaterialTextureType::Height, height_map);
+                // generate flowmap
+                {
+                    const float* height_data = reinterpret_cast<const float*>(height_map->GetMip(0, 0)->bytes.data());
+
+                    const uint32_t tex_width = height_map->GetWidth();
+                    const uint32_t tex_height = height_map->GetHeight();
+
+                    SP_ASSERT(height_map->GetMip(0, 0)->bytes.size() == tex_width * tex_height * sizeof(float));
+
+                    std::vector<Vector2> flow_data(tex_width * tex_height);
+                    std::vector<Vector2> lake_flow(tex_width * tex_height);
+
+                    const float waterLevel = 0.0f; // threshold for "lake" height
+                    const int kernelRadius = 8;    // used for slope-based flow smoothing
+
+                    // --- 1) Generate lake outward flow field ---
+                    GenerateLakeOutwardFlow(height_data, tex_width, tex_height, waterLevel, lake_flow, 4, 1.0f);
+
+                    // --- 2) Generate slope-based (river) flow field ---
+                    for (uint32_t y = 0; y < tex_height; y++)
+                    {
+                        for (uint32_t x = 0; x < tex_width; x++)
+                        {
+                            float gx = 0.0f;
+                            float gy = 0.0f;
+                            int samples = 0;
+
+                            for (int ky = -kernelRadius; ky <= kernelRadius; ky++)
+                            {
+                                for (int kx = -kernelRadius; kx <= kernelRadius; kx++)
+                                {
+                                    uint32_t ix = std::clamp<int>(x + kx, 0, tex_width - 1);
+                                    uint32_t iy = std::clamp<int>(y + ky, 0, tex_height - 1);
+                                    uint32_t ixL = std::clamp<int>(ix - 1, 0, tex_width - 1);
+                                    uint32_t ixR = std::clamp<int>(ix + 1, 0, tex_width - 1);
+                                    uint32_t iyU = std::clamp<int>(iy + 1, 0, tex_height - 1);
+                                    uint32_t iyD = std::clamp<int>(iy - 1, 0, tex_height - 1);
+
+                                    float hL = height_data[iy * tex_width + ixL];
+                                    float hR = height_data[iy * tex_width + ixR];
+                                    float hU = height_data[iyU * tex_width + ix];
+                                    float hD = height_data[iyD * tex_width + ix];
+
+                                    gx += (hR - hL);
+                                    gy += (hD - hU);
+                                    samples++;
+                                }
+                            }
+
+                            gx /= (samples * 2.0f);
+                            gy /= (samples * 2.0f);
+
+                            Vector2 flow = { -gx, -gy };
+
+                            // --- 3) Replace flow with lake pattern where below waterLevel ---
+                            if (height_data[y * tex_width + x] <= waterLevel)
+                            {
+                                flow_data[y * tex_width + x] = lake_flow[y * tex_width + x];
+                                continue;
+                            }
+
+                            float len = std::sqrt(flow.x * flow.x + flow.y * flow.y);
+                            if (len > 0.0001f)
+                                flow /= len;
+
+                            // Encode slope flow into [0,1]
+                            flow_data[y * tex_width + x] = Vector2(flow.x * 0.5f + 0.5f, flow.y * 0.5f + 0.5f);
+                        }
+                    }
+
+                    // --- 4) Encode into R8G8_UNORM texture ---
+                    vector<RHI_Texture_Slice> data(1);
+                    auto& slice = data[0];
+                    slice.mips.resize(1);
+                    auto& mip_bytes = slice.mips[0].bytes;
+                    mip_bytes.resize(tex_width * tex_height * 2); // 2 bytes per pixel for R8G8_Unorm
+
+                    auto copy_data = [&flow_data, &mip_bytes](uint32_t start, uint32_t end)
+                        {
+                            for (uint32_t i = start; i < end; i++)
+                            {
+                                const Vector2& f = flow_data[i];
+                                float fx = std::clamp(f.x, 0.0f, 1.0f);
+                                float fy = std::clamp(f.y, 0.0f, 1.0f);
+                                uint8_t r = static_cast<uint8_t>(std::round(fx * 255.0f));
+                                uint8_t g = static_cast<uint8_t>(std::round(fy * 255.0f));
+                                mip_bytes[i * 2 + 0] = static_cast<byte>(r);
+                                mip_bytes[i * 2 + 1] = static_cast<byte>(g);
+                            }
+                        };
+
+                    ThreadPool::ParallelLoop(copy_data, tex_width * tex_height);
+
+                    // --- 5) Upload to GPU ---
+                    flow_map = std::make_shared<RHI_Texture>(
+                        RHI_Texture_Type::Type2D,
+                        tex_width, tex_height, 1, 1,
+                        RHI_Format::R8G8_Unorm,
+                        RHI_Texture_Srv,
+                        "terrain_flowmap",
+                        data
+                    );
+
+                    ocean_material->SetTexture(MaterialTextureType::Flowmap, flow_map);
                 }
 
                 // water
@@ -2606,7 +3038,6 @@ namespace spartan
                 entities::material_ball(Vector3::Zero);
             }
         }
-        //====================================================================================
 
         //== CAR PLAYGROUND ==================================================================
         namespace car_playground
@@ -2639,8 +3070,8 @@ namespace spartan
 
                 // create drivable car with telemetry
                 car::Config car_config;
-                car_config.position       = Vector3(0.0f, 0.5f, 0.0f);
-                car_config.drivable       = true;
+                car_config.position = Vector3(0.0f, 0.5f, 0.0f);
+                car_config.drivable = true;
                 car_config.show_telemetry = true;
                 car_config.camera_follows = true;
                 car::create(car_config);
@@ -2648,35 +3079,35 @@ namespace spartan
                 //==================================================================================
                 // zone 1: main jump ramp area (in front of spawn)
                 //==================================================================================
-                
+
                 // gentle starter ramp
                 create_cube("ramp_starter", Vector3(12.0f, 0.3f, 0.0f), Vector3(0.0f, 0.0f, 8.0f), Vector3(8.0f, 0.6f, 6.0f));
-                
+
                 // main jump ramp - steep for big air
                 create_cube("ramp_jump_main", Vector3(28.0f, 1.2f, 0.0f), Vector3(0.0f, 0.0f, 18.0f), Vector3(10.0f, 0.8f, 7.0f));
-                
+
                 // landing ramp - downward slope for smooth landings
                 create_cube("ramp_landing", Vector3(50.0f, 0.5f, 0.0f), Vector3(0.0f, 0.0f, -12.0f), Vector3(12.0f, 0.6f, 7.0f));
 
                 //==================================================================================
                 // zone 2: suspension test track (to the right of spawn)
                 //==================================================================================
-                
+
                 // speed bumps - series of small bumps to test suspension
                 for (int i = 0; i < 8; i++)
                 {
                     float x_offset = i * 4.0f;
                     create_cube("speed_bump_" + to_string(i), Vector3(15.0f + x_offset, 0.15f, 20.0f), Vector3::Zero, Vector3(1.5f, 0.3f, 5.0f));
                 }
-                
+
                 // rumble strips - alternating small ridges
                 for (int i = 0; i < 12; i++)
                 {
                     float x_offset = i * 2.5f;
-                    float height   = (i % 2 == 0) ? 0.1f : 0.18f;
+                    float height = (i % 2 == 0) ? 0.1f : 0.18f;
                     create_cube("rumble_" + to_string(i), Vector3(15.0f + x_offset, height * 0.5f, 30.0f), Vector3::Zero, Vector3(1.0f, height, 4.0f));
                 }
-                
+
                 // pothole simulation - dips created by raised edges
                 create_cube("pothole_edge_1", Vector3(60.0f, 0.08f, 20.0f), Vector3::Zero, Vector3(0.8f, 0.16f, 6.0f));
                 create_cube("pothole_edge_2", Vector3(66.0f, 0.08f, 20.0f), Vector3::Zero, Vector3(0.8f, 0.16f, 6.0f));
@@ -2684,34 +3115,34 @@ namespace spartan
                 //==================================================================================
                 // zone 3: stunt ramps and half-pipe (to the left of spawn)
                 //==================================================================================
-                
+
                 // half-pipe left wall
                 create_cube("halfpipe_left", Vector3(-25.0f, 2.0f, 0.0f), Vector3(0.0f, 0.0f, 35.0f), Vector3(8.0f, 0.5f, 20.0f));
-                
+
                 // half-pipe right wall
                 create_cube("halfpipe_right", Vector3(-25.0f, 2.0f, 15.0f), Vector3(0.0f, 0.0f, -35.0f), Vector3(8.0f, 0.5f, 20.0f));
-                
+
                 // half-pipe back wall (for u-turns)
                 create_cube("halfpipe_back", Vector3(-38.0f, 1.5f, 7.5f), Vector3(25.0f, 0.0f, 0.0f), Vector3(6.0f, 0.5f, 18.0f));
-                
+
                 // kicker ramp - small but steep for tricks
                 create_cube("kicker_ramp", Vector3(-10.0f, 0.6f, -15.0f), Vector3(0.0f, 0.0f, 25.0f), Vector3(4.0f, 0.5f, 4.0f));
-                
+
                 // side ramp for barrel rolls
                 create_cube("barrel_roll_ramp", Vector3(-15.0f, 0.8f, -25.0f), Vector3(30.0f, 45.0f, 15.0f), Vector3(5.0f, 0.4f, 3.0f));
 
                 //==================================================================================
                 // zone 4: slalom course (behind spawn)
                 //==================================================================================
-                
+
                 // slalom pylons - alternating obstacles (25 kg like plastic barriers)
                 for (int i = 0; i < 6; i++)
                 {
-                    float z_offset  = -20.0f - (i * 12.0f);
-                    float x_offset  = (i % 2 == 0) ? 5.0f : -5.0f;
+                    float z_offset = -20.0f - (i * 12.0f);
+                    float x_offset = (i % 2 == 0) ? 5.0f : -5.0f;
                     create_cube("slalom_pylon_" + to_string(i), Vector3(x_offset, 1.0f, z_offset), Vector3::Zero, Vector3(1.5f, 2.0f, 1.5f), 25.0f);
                 }
-                
+
                 // slalom finish gate pillars - dynamic so they can be knocked over
                 create_cube("gate_left", Vector3(-6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f), 30.0f);
                 create_cube("gate_right", Vector3(6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f), 30.0f);
@@ -2719,20 +3150,20 @@ namespace spartan
                 //==================================================================================
                 // zone 5: banked turn circuit (far right area)
                 //==================================================================================
-                
+
                 // banked turn - outside wall
                 create_cube("bank_outer", Vector3(80.0f, 1.5f, 0.0f), Vector3(0.0f, 30.0f, -25.0f), Vector3(20.0f, 0.6f, 8.0f));
-                
+
                 // banked turn - inside wall
                 create_cube("bank_inner", Vector3(75.0f, 0.8f, 8.0f), Vector3(0.0f, 30.0f, -15.0f), Vector3(15.0f, 0.4f, 6.0f));
-                
+
                 // exit ramp from banked turn
                 create_cube("bank_exit_ramp", Vector3(95.0f, 0.4f, -10.0f), Vector3(0.0f, 60.0f, 10.0f), Vector3(8.0f, 0.5f, 5.0f));
 
                 //==================================================================================
                 // zone 6: obstacle course (scattered dynamic objects)
                 //==================================================================================
-                
+
                 // stack of crates to crash through (20 kg wooden crates)
                 // add small gaps (1.55 spacing for 1.5 size) to prevent interpenetration explosions
                 for (int row = 0; row < 3; row++)
@@ -2744,7 +3175,7 @@ namespace spartan
                         create_cube("crate_stack_" + to_string(row) + "_" + to_string(col), Vector3(x_pos, y_pos, -30.0f), Vector3::Zero, Vector3(1.5f, 1.5f, 1.5f), 20.0f);
                     }
                 }
-                
+
                 // barrel wall (15 kg empty barrels)
                 // add gaps to prevent interpenetration
                 for (int i = 0; i < 5; i++)
@@ -2752,15 +3183,15 @@ namespace spartan
                     float x_pos = 50.0f + (i * 2.2f);
                     create_cube("barrel_" + to_string(i), Vector3(x_pos, 0.85f, -45.0f), Vector3(90.0f, 0.0f, 0.0f), Vector3(1.2f, 1.6f, 1.2f), 15.0f);
                 }
-                
+
                 // pyramid of boxes (15 kg cardboard boxes)
                 // add small gaps to prevent interpenetration explosions
                 int pyramid_base = 4;
                 for (int level = 0; level < pyramid_base; level++)
                 {
                     int boxes_in_level = pyramid_base - level;
-                    float y_pos        = 0.62f + (level * 1.25f);
-                    float start_x      = 70.0f - (boxes_in_level * 0.65f);
+                    float y_pos = 0.62f + (level * 1.25f);
+                    float start_x = 70.0f - (boxes_in_level * 0.65f);
                     for (int b = 0; b < boxes_in_level; b++)
                     {
                         create_cube("pyramid_" + to_string(level) + "_" + to_string(b), Vector3(start_x + (b * 1.35f), y_pos, -60.0f), Vector3::Zero, Vector3(1.2f, 1.2f, 1.2f), 15.0f);
@@ -2770,45 +3201,45 @@ namespace spartan
                 //==================================================================================
                 // zone 7: wavy terrain (far left)
                 //==================================================================================
-                
+
                 // series of sine-wave like bumps
                 for (int i = 0; i < 10; i++)
                 {
-                    float z_pos  = -40.0f + (i * 6.0f);
+                    float z_pos = -40.0f + (i * 6.0f);
                     float height = 0.3f + 0.3f * sin(i * 0.8f);
-                    float angle  = 8.0f * sin(i * 0.5f);
+                    float angle = 8.0f * sin(i * 0.5f);
                     create_cube("wave_" + to_string(i), Vector3(-50.0f, height, z_pos), Vector3(angle, 0.0f, 0.0f), Vector3(8.0f, 0.4f, 4.0f));
                 }
 
                 //==================================================================================
                 // zone 8: stunt park center piece - mega ramp
                 //==================================================================================
-                
+
                 // approach ramp
                 create_cube("mega_approach", Vector3(-70.0f, 1.0f, -30.0f), Vector3(0.0f, 0.0f, 12.0f), Vector3(15.0f, 0.6f, 10.0f));
-                
+
                 // main mega ramp
                 create_cube("mega_ramp", Vector3(-90.0f, 4.0f, -30.0f), Vector3(0.0f, 0.0f, 30.0f), Vector3(12.0f, 0.8f, 10.0f));
-                
+
                 // mega ramp platform top
                 create_cube("mega_platform", Vector3(-105.0f, 7.5f, -30.0f), Vector3::Zero, Vector3(8.0f, 0.5f, 10.0f));
-                
+
                 // drop ramp on other side
                 create_cube("mega_drop", Vector3(-118.0f, 4.0f, -30.0f), Vector3(0.0f, 0.0f, -35.0f), Vector3(10.0f, 0.8f, 10.0f));
 
                 //==================================================================================
                 // zone 9: figure-8 crossover
                 //==================================================================================
-                
+
                 // elevated crossing ramp 1
                 create_cube("cross_ramp_up_1", Vector3(0.0f, 1.0f, 50.0f), Vector3(0.0f, 45.0f, 15.0f), Vector3(12.0f, 0.5f, 6.0f));
-                
+
                 // elevated bridge section
                 create_cube("cross_bridge", Vector3(8.0f, 2.5f, 58.0f), Vector3(0.0f, 45.0f, 0.0f), Vector3(10.0f, 0.4f, 6.0f));
-                
+
                 // elevated crossing ramp 2
                 create_cube("cross_ramp_down_1", Vector3(16.0f, 1.0f, 66.0f), Vector3(0.0f, 45.0f, -15.0f), Vector3(12.0f, 0.5f, 6.0f));
-                
+
                 // lower path goes underneath
                 create_cube("under_path_guide_left", Vector3(-2.0f, 0.4f, 62.0f), Vector3(0.0f, -45.0f, 0.0f), Vector3(0.5f, 0.8f, 15.0f));
                 create_cube("under_path_guide_right", Vector3(10.0f, 0.4f, 50.0f), Vector3(0.0f, -45.0f, 0.0f), Vector3(0.5f, 0.8f, 15.0f));
@@ -2816,7 +3247,7 @@ namespace spartan
                 //==================================================================================
                 // zone 10: parking challenge (precision driving)
                 //==================================================================================
-                
+
                 // tight parking spots with pillars
                 for (int i = 0; i < 4; i++)
                 {
@@ -2824,7 +3255,7 @@ namespace spartan
                     create_cube("parking_left_" + to_string(i), Vector3(-8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f), 5.0f);
                     create_cube("parking_right_" + to_string(i), Vector3(8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f), 5.0f);
                 }
-                
+
                 // parking lot boundary walls
                 create_cube("parking_wall_back", Vector3(0.0f, 0.5f, 115.0f), Vector3::Zero, Vector3(20.0f, 1.0f, 0.5f));
                 create_cube("parking_wall_left", Vector3(-10.0f, 0.5f, 97.0f), Vector3::Zero, Vector3(0.5f, 1.0f, 38.0f));
@@ -2833,7 +3264,7 @@ namespace spartan
                 //==================================================================================
                 // decorative boundary markers
                 //==================================================================================
-                
+
                 // corner markers for the playground area
                 create_cube("marker_ne", Vector3(120.0f, 1.5f, 120.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
                 create_cube("marker_nw", Vector3(-130.0f, 1.5f, 120.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
@@ -2845,23 +3276,173 @@ namespace spartan
             }
         }
         //====================================================================================
+
+        //== Ocean ===========================================================================
+        namespace ocean
+        {
+            uint32_t ocean_tile_count = 6;
+            float tile_size = 128.0f;
+            uint32_t vertices_count = 512;
+            shared_ptr<Material> material = make_shared<Material>();
+
+            void create()
+            {
+                entities::camera(false);
+                entities::sun(LightPreset::day, true);
+
+                auto entity = World::CreateEntity();
+
+                default_ocean = entities::ocean(material, { 0.0f, 0.0f, 0.0f }, tile_size, vertices_count, ocean_tile_count);
+
+                default_ocean->SetParent(entity);
+
+                /*auto light_entity = World::CreateEntity();
+                light_entity->SetPosition({ 196.0f, 280.0f, 196.0f });
+
+                Light* point = light_entity->AddComponent<Light>();
+                point->SetLightType(LightType::Point);
+                point->SetRange(800.0f);
+                point->SetTemperature(10000.0f);
+                point->SetIntensity(8500.0f);
+                point->SetObjectName("Point Light");
+                */
+
+                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+            }
+
+            void tick()
+            {
+                if (!material)
+                    return;
+
+                uint32_t current_tile_count = material->GetOceanTileCount();
+                if (current_tile_count != ocean_tile_count || tile_size != material->GetOceanTileSize() || vertices_count != material->GetOceanVerticesCount())
+                {
+                    ocean_tile_count = current_tile_count;
+                    auto& children = default_ocean->GetChildren();
+
+                    for (uint32_t i = 0; i < children.size(); i++)
+                    {
+                        World::RemoveEntity(children[i]);
+                    }
+                    children.clear();
+
+                    std::shared_ptr<Mesh> ocean_mesh;
+
+                    for (size_t i = 0; i < meshes.size(); i++)
+                    {
+                        if (meshes[i]->GetObjectName() == "ocean mesh")
+                            ocean_mesh = meshes[i];
+                    }
+
+                    if (ocean_mesh.get() == nullptr)
+                        return;
+
+                    // regenerate mesh
+                    if (tile_size != material->GetOceanTileSize() || vertices_count != material->GetOceanVerticesCount())
+                    {
+                        tile_size = material->GetOceanTileSize();
+                        vertices_count = material->GetOceanVerticesCount();
+
+                        // generate grid
+                        const uint32_t grid_points_per_dimension = vertices_count;
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_grid(&vertices, &indices, grid_points_per_dimension, tile_size);
+
+                        //string name = "ocean mesh";
+
+                        // create mesh if it doesn't exist
+                        ocean_mesh->Clear();
+
+                        //for (std::vector<std::shared_ptr<Mesh>>::iterator it = meshes.begin(); it != meshes.end();)
+                        //{
+                        //    std::shared_ptr<Mesh> m = *it;
+                        //    if (m->GetObjectName() == "ocean mesh")
+                        //        it = meshes.erase(it);
+                        //    else;
+                        //        ++it;
+                        //}
+
+                        /*ocean_mesh = meshes.emplace_back(make_shared<Mesh>());
+                        ocean_mesh->SetObjectName(name);
+                        ocean_mesh->SetRootEntity(default_ocean);
+                        ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                        ocean_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);*/
+                        ocean_mesh->AddGeometry(vertices, indices, false);
+                        ocean_mesh->CreateGpuBuffers();
+                    }
+
+                    for (uint32_t row = 0; row < current_tile_count; row++)
+                    {
+                        for (uint32_t col = 0; col < current_tile_count; col++)
+                        {
+                            int tile_index = col + row * current_tile_count;
+
+                            string tile_name = "ocean tile_" + to_string(tile_index);
+
+                            Entity* entity_tile = World::CreateEntity();
+                            entity_tile->SetObjectName(tile_name);
+                            entity_tile->SetParent(default_ocean);
+
+                            Vector3 tile_position = { col * tile_size, 0.0f, row * tile_size };
+                            entity_tile->SetPosition(tile_position);
+
+                            if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
+                            {
+                                renderable->SetMesh(ocean_mesh.get());
+                                renderable->SetMaterial(material);
+                                renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                            }
+
+                            // enable buoyancy
+                            //Physics* physics = entity_tile->AddComponent<Physics>();
+                            //physics->SetBodyType(BodyType::Water);
+                        }
+                    }
+                }
+
+                Vector3 camera_pos = default_camera->GetPosition();
+
+                //Vector3 ocean_pos = default_ocean->GetPosition();
+                //Vector3 new_ocean_pos = ocean_pos;
+                //new_ocean_pos.x = camera_pos.x;
+                //new_ocean_pos.z = camera_pos.z;
+                //default_ocean->SetPosition(new_ocean_pos);
+            }
+
+            void shutdown()
+            {
+                if (!default_ocean)
+                    return;
+
+                if (!material)
+                    SP_ASSERT_MSG(false, "Failed to get ocean material");
+
+                material->SaveToFile(material->GetResourceFilePath());
+
+                default_ocean = nullptr;
+            }
+        }
+        //========================================================================================
     }
-    //========================================================================================
+    //====================================================================================
 
     //= PUBLIC API ===========================================================================
     void Game::Shutdown()
     {
         // reset shared entities
-        default_floor             = nullptr;
-        default_camera            = nullptr;
-        default_environment       = nullptr;
-        default_light_directional = nullptr;
-        default_terrain           = nullptr;
-        default_car               = nullptr;
-        default_metal_cube        = nullptr;
+        default_floor                          = nullptr;
+        default_camera                         = nullptr;
+        default_environment                    = nullptr;
+        default_light_directional              = nullptr;
+        default_terrain                        = nullptr;
+        default_car                            = nullptr;
+        default_metal_cube                     = nullptr;
 
         // reset world-specific state
         worlds::showroom::texture_brand_logo = nullptr;
+        worlds::ocean::shutdown();
         car::shutdown();
         meshes.clear();
     }
@@ -2870,6 +3451,12 @@ namespace spartan
     {
         // car tick (always)
         car::tick();
+
+        // ocean-specific tick
+        if (loaded_world == DefaultWorld::Ocean)
+        {
+            worlds::ocean::tick();
+        }
 
         // world-specific tick
         if (loaded_world != DefaultWorld::Max)

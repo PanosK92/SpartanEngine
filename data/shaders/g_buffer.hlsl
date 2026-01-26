@@ -20,6 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "common.hlsl"
 #include "common_tessellation.hlsl"
+#include "ocean/synthesise_maps.hlsl"
 //=================================
 
 struct gbuffer
@@ -114,10 +115,42 @@ float3 compute_flower_color(float height_percent, uint instance_id)
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
+    MaterialParameters material = GetMaterial();
+    Surface surface;
+    surface.flags = material.flags;
+
+    float2 pos = float2(0.0f, 0.0f);
+    
+    if (surface.is_ocean() && material.ocean_parameters.displacementScale > -1.0f)
+    {
+        const float3 pass_values = pass_get_f3_value();
+        const float2 tile_xz_pos = pass_values.xy;
+        const float tile_size = pass_values.z;
+        const float2 tile_local_uv = ocean_get_world_space_uvs(input.uv, tile_xz_pos, tile_size);
+        
+        const float2 world_pos = mul(input.position, buffer_pass.transform).xz;
+        
+        const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
+
+        float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        //synthesize(tex2, displacement, world_space_tile_uv);
+        synthesize_with_flow(tex2, displacement, tex5, world_pos, material.ocean_parameters.windDirection, tile_local_uv);
+
+        const float height = tex4.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
+        
+        input.position.y += height <= 0.0f ? 0.0f : height + 3.0f;
+        input.position.xyz += displacement.xyz * material.ocean_parameters.displacementScale;
+
+        pos = world_pos;
+    }
+    
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
-    return transform_to_clip_space(vertex, position_world, position_world_previous);
+    vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
+    vertex.tile_position = pos;
+    
+    return vertex;
 }
 
 gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
@@ -254,6 +287,59 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         tangent_normal.xy         *= normal_intensity;
         float3x3 tangent_to_world  = make_tangent_to_world_matrix(vertex.normal, vertex.tangent);
         normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
+    }
+    else if (surface.is_ocean())
+    {
+        const float3 pass_values = pass_get_f3_value();
+        const float2 tile_xz_pos = pass_values.xy;
+        const float tile_size = pass_values.z;
+        const float2 tile_local_uv = ocean_get_world_space_uvs(vertex.uv_misc.xy, tile_xz_pos, tile_size);
+        
+        float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        //synthesize(tex3, slope, world_space_tile_uv);
+        synthesize_with_flow(tex3, slope, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv);
+        
+        slope = slope * material.ocean_parameters.slopeScale;
+        normal = normalize(float3(-slope.x, vertex.normal.y, -slope.y));
+
+        // apply foam (foam mask is stored in the alpha channel of slope map)
+        //const float foam_noise = compute_foam_noise(vertex.uv_misc.xy, buffer_frame.time);
+        albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
+
+        if (material.ocean_parameters.debugDisplacement == 1.0f) // displacement
+        {
+            if (material.ocean_parameters.debugSynthesised == 1.0f) // show synthesised version
+            {
+                // first we must synthesise again since we dont have access
+                // to the synthesised displacement (it's calculated in the vertex stage)
+                float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                //synthesize(tex2, displacement, world_space_tile_uv);
+                synthesize_with_flow(tex2, displacement, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv, true);
+                
+                normal = displacement;
+
+                //{
+                //    const float2 world_pos = vertex.tile_position;
+                //    const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
+                //    float4 flow = float4(tex5.Sample(samplers[sampler_point_wrap], uv).rg, 0.0f, 1.0f);
+                //    albedo = float4(uv, 0.0f, 1.0f);
+                //    albedo = flow;
+                //}
+            }
+            else // show original displacement
+                albedo = tex2.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy).rgba;
+        }
+        else if (material.ocean_parameters.debugSlope == 1.0f) // slope
+        {
+            if (material.ocean_parameters.debugSynthesised == 1.0f) // show synthesised version
+                albedo = slope;
+            else // show original slope
+                albedo = tex3.Sample(samplers[sampler_trilinear_clamp], vertex.uv_misc.xy);
+        }
+
+        //albedo = tex4.Sample(samplers[sampler_anisotropic_wrap], world_space_tile_uv / float2(6.0f, 6.0f)).rgba;
+        //albedo = float4(flow_dir * 0.5f + 0.5f, 0.0f, 1.0f);
+        //albedo = tex5.Sample(samplers[sampler_point_clamp], vertex.uv_misc.xy);
     }
 
     // foliage curved normals

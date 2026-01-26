@@ -158,6 +158,13 @@ namespace spartan
         visibility    = 6,
         sb_spd        = 7,
         tex_spd       = 8,
+        ocean_initial_spectrum = 9,
+        ocean_displacement_spectrum = 10,
+        ocean_slope_spectrum = 11,
+        ocean_displacement_map = 12,
+        ocean_slope_map = 13,
+        ocean_synthesised_displacement = 14,
+        ocean_synthesised_slope = 15,
         geometry_info = 20, // ray tracing geometry info buffer
         // restir reservoir uav bindings
         reservoir0    = 21,
@@ -248,6 +255,13 @@ namespace spartan
         light_reflections_c,
         // nrd denoiser
         nrd_prepare_c,
+        // ocean
+        ocean_initial_spectrum_c,
+        ocean_pack_spectrum_c,
+        ocean_advance_spectrum_c,
+        ocean_horizontal_fft_c,
+        ocean_vertical_fft_c,
+        ocean_generate_maps_c,
         max
     };
     
@@ -319,6 +333,11 @@ namespace spartan
         nrd_spec_radiance_hitdist,
         nrd_out_diff_radiance_hitdist,
         nrd_out_spec_radiance_hitdist,
+        ocean_initial_spectrum,
+        ocean_displacement_spectrum,
+        ocean_slope_spectrum,
+        ocean_displacement_map,
+        ocean_slope_map,
         max
     };
 

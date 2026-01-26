@@ -224,6 +224,13 @@ namespace spartan
         // passes - volumetric clouds
         static void Pass_CloudNoise(RHI_CommandList* cmd_list);
         static void Pass_CloudShadow(RHI_CommandList* cmd_list);
+        // passes - ocean
+        static void Pass_ComputeInitialSpectrum(RHI_CommandList* cmd_list);
+        static void Pass_PackSpectrum(RHI_CommandList* cmd_list);
+        static void Pass_AdvanceSpectrum(RHI_CommandList* cmd_list);
+        static void Pass_ApplyHorizontalFFT(RHI_CommandList* cmd_list);
+        static void Pass_ApplyVerticalFFT(RHI_CommandList* cmd_list);
+        static void Pass_GenerateMaps(RHI_CommandList* cmd_list);
         // passes - debug/editor
         static void Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);

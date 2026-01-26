@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2026 Panos Karabelas
+Copyright(c) 2025 George Bolba
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,34 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+// Inspired by Acerola's Implementation:
+// https://github.com/GarrettGunnell/Water/blob/main/Assets/Shaders/FFTWater.compute
 
-namespace spartan
+#include "fft_common.hlsl"
+
+[numthreads(SPECTRUM_TEX_SIZE, 1, 1)]
+void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    enum class DefaultWorld
-    {
-        Showroom,
-        CarPlayground,
-        Forest,
-        LiminalSpace,
-        Sponza,
-        Subway,
-        Minecraft,
-        Basic,
-        Ocean,
-        Max
-    };
-
-    class Game
-    {
-    public:
-        // called once on world shutdown
-        static void Shutdown();
-
-        // called every frame in play mode
-        static void Tick();
-
-        // load a default world
-        static void Load(DefaultWorld default_world);
-    };
+    displacement_spectrum[thread_id.xy] = FFT(thread_id.x, displacement_spectrum[thread_id.xy]);
+    slope_spectrum[thread_id.xy] = FFT(thread_id.x, slope_spectrum[thread_id.xy]);
 }
