@@ -541,14 +541,15 @@ namespace
 
         const WorldEntry worlds[] =
         {
-            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" , "Light",          4000 },
-            { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", 5400 },
-            { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype", "Light",          2048 },
-            { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      5000 },
-            { "Subway",            "GI test. No lights, only emissive textures",                         "Complete" , "Moderate",       5000 },
-            { "Minecraft",         "Blocky aesthetic",                                                   "Complete" , "Light",          4000 },
-            { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          4000 },
-            { "Water",             "Light, camera, ocean",                                               "Prototype", "Light",          4000 },
+            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech",                                                                  "Complete" ,  "Light",          2100 },
+            { "Car Playground",    "Highly realistic vehicle physics with proper tire slip, thermals, aero, LSD, multi ray tire, and speed dependent steering geometry.", "Prototype",  "Light",          2100 },
+            { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                                                                                       "Prototype",  "Very demanding", 5600 },
+            { "Liminal Space",     "Shifts your frequency to a nearby reality",                                                                                           "Prototype",  "Light",          2100 },
+            { "Sponza 4K",         "High-resolution textures & meshes",                                                                                                   "Complete" ,  "Demanding",      2600 },
+            { "Subway",            "GI test. No lights, only emissive textures",                                                                                          "Prototype",  "Moderate",       2600 },
+            { "Minecraft",         "Blocky aesthetic",                                                                                                                    "Complete" ,  "Light",          2100 },
+            { "Basic",             "Light, camera, floor",                                                                                                                "Complete" ,  "Light",          2100 },
+            { "Water",             "Light, camera, ocean",                                                                                                                "Prototype",  "Light",          2100 },
         };
         int world_index = 0;
 
