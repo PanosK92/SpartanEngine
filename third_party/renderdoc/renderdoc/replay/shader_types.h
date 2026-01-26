@@ -136,7 +136,7 @@ struct ShaderDirectAccess
   DOCUMENT("");
   ShaderDirectAccess()
   {
-    category = DescriptorCategory::Unknown;
+    type = DescriptorType::Unknown;
     descriptorStore = ResourceId();
     byteOffset = 0;
     byteSize = 0;
@@ -144,20 +144,17 @@ struct ShaderDirectAccess
   ShaderDirectAccess(const ShaderDirectAccess &) = default;
   ShaderDirectAccess &operator=(const ShaderDirectAccess &) = default;
 
-  ShaderDirectAccess(DescriptorCategory category, ResourceId descriptorStore, uint32_t byteOffset,
+  ShaderDirectAccess(DescriptorType type, ResourceId descriptorStore, uint32_t byteOffset,
                      uint32_t byteSize)
-      : category(category),
-        descriptorStore(descriptorStore),
-        byteOffset(byteOffset),
-        byteSize(byteSize)
+      : type(type), descriptorStore(descriptorStore), byteOffset(byteOffset), byteSize(byteSize)
   {
   }
   ShaderDirectAccess(const DescriptorAccess &access);
 
   bool operator<(const ShaderDirectAccess &o) const
   {
-    if(category != o.category)
-      return category < o.category;
+    if(type != o.type)
+      return type < o.type;
     if(descriptorStore != o.descriptorStore)
       return descriptorStore < o.descriptorStore;
     if(byteOffset != o.byteOffset)
@@ -166,15 +163,15 @@ struct ShaderDirectAccess
   }
   bool operator==(const ShaderDirectAccess &o) const
   {
-    return category == o.category && descriptorStore == o.descriptorStore &&
-           byteOffset == o.byteOffset && byteSize == o.byteSize;
+    return type == o.type && descriptorStore == o.descriptorStore && byteOffset == o.byteOffset &&
+           byteSize == o.byteSize;
   }
 
-  DOCUMENT(R"(The category of the resource being accessed.
+  DOCUMENT(R"(The type of the resource being accessed.
 
-:type: DescriptorCategory
+:type: DescriptorType
 )");
-  DescriptorCategory category;
+  DescriptorType type;
 
   DOCUMENT(R"(The backing storage of the descriptor.
 
@@ -509,7 +506,7 @@ The :class:`ShaderDirectAccess` uniquely refers to a resource descriptor.
 )");
   inline void SetDirectAccess(const ShaderDirectAccess &access)
   {
-    value.u32v[0] = (uint32_t)access.category;
+    value.u32v[0] = (uint32_t)access.type;
     value.u32v[1] = access.byteOffset;
     value.u32v[2] = access.byteSize;
     // This marks the variable as ShaderDirectAccess and not ShaderBindIndex
@@ -532,7 +529,7 @@ The :class:`ShaderDirectAccess` uniquely refers to a resource descriptor.
   {
     ResourceId descriptorStore;
     memcpy(&descriptorStore, &value.u64v[2], sizeof(descriptorStore));
-    return ShaderDirectAccess((DescriptorCategory)value.u64v[0], descriptorStore, value.u32v[1],
+    return ShaderDirectAccess((DescriptorType)value.u64v[0], descriptorStore, value.u32v[1],
                               value.u32v[2]);
   }
 

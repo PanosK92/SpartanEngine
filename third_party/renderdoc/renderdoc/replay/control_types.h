@@ -643,6 +643,7 @@ struct DescriptorRange
   {
     offset = access.byteOffset;
     descriptorSize = access.byteSize;
+    type = access.type;
   }
 
   DOCUMENT("The offset in the descriptor storage where the descriptor range starts.");
@@ -651,11 +652,17 @@ struct DescriptorRange
   uint32_t descriptorSize = 1;
   DOCUMENT("The number of descriptors in this range.");
   uint32_t count = 1;
+  DOCUMENT(R"(The type of descriptor in the descriptor range.
+
+:type: DescriptorType
+)");
+  DescriptorType type = DescriptorType::Unknown;
 
   DOCUMENT("");
   bool operator==(const DescriptorRange &o) const
   {
-    return offset == o.offset && descriptorSize == o.descriptorSize && count == o.count;
+    return offset == o.offset && descriptorSize == o.descriptorSize && count == o.count &&
+           type == o.type;
   }
   bool operator<(const DescriptorRange &o) const
   {
@@ -665,6 +672,8 @@ struct DescriptorRange
       return descriptorSize < o.descriptorSize;
     if(!(count == o.count))
       return count < o.count;
+    if(!(type == o.type))
+      return type < o.type;
     return false;
   }
 };

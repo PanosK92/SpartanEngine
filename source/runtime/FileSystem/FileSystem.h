@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -94,8 +94,10 @@ namespace spartan
         static bool CreateDirectory_(const std::string& path);
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);
 
-        // internet & path
+        // internet & archives
         static bool DownloadFile(const std::string& url, const std::string& destination, std::function<void(float)> progress_callback);
+        static bool ExtractArchive(const std::string& archive_path, const std::string& destination_path);
+        static std::string ComputeFileSha256(const std::string& path);
         static bool IsExecutableInPath(const std::string& executable);
     };
 

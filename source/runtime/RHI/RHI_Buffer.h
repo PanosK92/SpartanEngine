@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,15 @@ namespace spartan
         Instance,
         Storage,
         Constant,
+        ShaderBindingTable,
         Max
+    };
+
+    struct RHI_StridedDeviceAddressRegion
+    {
+        uint64_t device_address = 0;
+        uint32_t stride         = 0;
+        uint32_t size           = 0;
     };
 
     class RHI_Buffer : public SpartanObject
@@ -49,9 +57,13 @@ namespace spartan
             SP_ASSERT(stride != 0);
             SP_ASSERT(element_count != 0);
             SP_ASSERT_MSG(name != nullptr, "Name the buffer to aid the validation layer");
-            if (type == RHI_Buffer_Type::Constant)
+            if (type == RHI_Buffer_Type::Constant )
             {
                 SP_ASSERT_MSG(mappable, "Constant buffers must be mappable");
+            }
+            if (type == RHI_Buffer_Type::ShaderBindingTable)
+            {
+                SP_ASSERT_MSG(mappable, "Shader binding tables must be mappable");
             }
 
             // set
@@ -72,6 +84,10 @@ namespace spartan
         void Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size = 0);
         void ResetOffset() { m_offset = 0; first_update = true; }
 
+        // ray tracing
+        RHI_StridedDeviceAddressRegion GetRegion(const RHI_Shader_Type group_type, const uint32_t stride_extra = 0) const;
+        void UpdateHandles(RHI_CommandList* cmd_list);
+
         // propeties
         uint32_t GetStrideUnaligned() const { return m_stride_unaligned; }
         uint32_t GetStride() const          { return m_stride; }
@@ -80,16 +96,22 @@ namespace spartan
         void* GetMappedData() const         { return m_data_gpu; }
         void* GetRhiResource() const        { return m_rhi_resource; }
         RHI_Buffer_Type GetType() const     { return m_type; }
+        uint64_t GetDeviceAddress() const   { return m_device_address; }
 
     private:
-        RHI_Buffer_Type m_type      = RHI_Buffer_Type::Max;
-        uint32_t m_stride_unaligned = 0;
-        uint32_t m_stride           = 0;
-        uint32_t m_element_count    = 0;
-        uint32_t m_offset           = 0;
-        void* m_data_gpu            = nullptr;
-        bool m_mappable             = false;
-        bool first_update           = true;
+        RHI_Buffer_Type m_type         = RHI_Buffer_Type::Max;
+        uint32_t m_stride_unaligned    = 0;
+        uint32_t m_stride              = 0;
+        uint32_t m_element_count       = 0;
+        uint32_t m_offset              = 0;
+        uint32_t m_aligned_handle_size = 0;
+        uint64_t m_raygen_offset       = 0;
+        uint64_t m_miss_offset         = 0;
+        uint64_t m_hit_offset          = 0;
+        uint64_t m_device_address      = 0;
+        void* m_data_gpu               = nullptr;
+        bool m_mappable                = false;
+        bool first_update              = true;
 
         // rhi
         void RHI_DestroyResource();

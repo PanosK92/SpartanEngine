@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,90 +41,87 @@ namespace spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::CreateRhiResource(vector<RHI_Descriptor> descriptors)
+    void RHI_DescriptorSetLayout::CreateRhiResource()
     {
         SP_ASSERT(m_rhi_resource == nullptr);
 
-        // remove certain descriptors
-        descriptors.erase
-        (
-            remove_if(descriptors.begin(), descriptors.end(), [](RHI_Descriptor& descriptor)
-            { 
-                    return descriptor.type == RHI_Descriptor_Type::PushConstantBuffer ||          // push constants are not part of the descriptor set layout
-                          (descriptor.as_array && descriptor.array_length == rhi_max_array_size); // binldess arrays have their own layout
-            }),
-            descriptors.end()
-        );
-
-        // ensure unique binding numbers
+        // filter descriptors - exclude push constants and bindless arrays
+        vector<RHI_Descriptor> filtered;
+        filtered.reserve(m_descriptors.size());
+        for (const RHI_Descriptor& desc : m_descriptors)
         {
-            unordered_set<uint32_t> unique_bindings;
-            vector<VkDescriptorSetLayoutBinding> duplicate_bindings;
-
-            for (const auto& descriptor : descriptors)
-            {
-                if (!unique_bindings.insert(descriptor.slot).second)
-                {
-                    // if insertion failed, the binding number is not unique, store it for inspection
-                    duplicate_bindings.push_back
-                    ({
-                        descriptor.slot,                                   // binding
-                        static_cast<VkDescriptorType>(descriptor.type),    // descriptorType
-                        descriptor.as_array ? descriptor.array_length : 1, // descriptorCount
-                        descriptor.stage,                                  // stageFlags
-                        nullptr                                            // pImmutableSamplers
-                    });
-                }
-            }
-
-            SP_ASSERT(duplicate_bindings.empty());
+            if (desc.type == RHI_Descriptor_Type::PushConstantBuffer)
+                continue;
+            if (desc.as_array && desc.array_length == rhi_max_array_size)
+                continue;
+            filtered.push_back(desc);
         }
 
-        // layout bindings
-        static const uint8_t descriptors_max = 255;
-        static array<VkDescriptorSetLayoutBinding, descriptors_max> layout_bindings;
-        static array<VkDescriptorBindingFlags, descriptors_max> layout_binding_flags;
-
-        for (uint32_t i = 0; i < static_cast<uint32_t>(descriptors.size()); i++)
+        if (filtered.empty())
         {
-            const RHI_Descriptor& descriptor = descriptors[i];
+            // create empty layout
+            VkDescriptorSetLayoutCreateInfo create_info = {};
+            create_info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+            create_info.bindingCount = 0;
+            create_info.pBindings    = nullptr;
 
-            // stage flags
-            VkShaderStageFlags stage_flags  = 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Vertex))  ? VK_SHADER_STAGE_VERTEX_BIT                  : 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Hull))    ? VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT    : 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))  ? VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT : 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))   ? VK_SHADER_STAGE_FRAGMENT_BIT                : 0;
-            stage_flags                    |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute)) ? VK_SHADER_STAGE_COMPUTE_BIT                 : 0;
+            SP_ASSERT_VK(vkCreateDescriptorSetLayout(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_rhi_resource)));
+            RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::DescriptorSetLayout, m_object_name.c_str());
+            return;
+        }
 
-            layout_bindings[i].descriptorType     = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(descriptor));
-            layout_bindings[i].binding            = descriptor.slot;
-            layout_bindings[i].descriptorCount    = descriptor.as_array ? descriptor.array_length : 1;
-            layout_bindings[i].stageFlags         = stage_flags;
-            layout_bindings[i].pImmutableSamplers = nullptr;
+        // validate unique bindings
+        {
+            unordered_set<uint32_t> unique_bindings;
+            for (const RHI_Descriptor& desc : filtered)
+            {
+                bool inserted = unique_bindings.insert(desc.slot).second;
+                SP_ASSERT_MSG(inserted, "Duplicate binding slot detected");
+            }
+        }
 
-            // bindless support
-            layout_binding_flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT; 
+        // build vulkan layout bindings
+        constexpr uint32_t max_bindings = 255;
+        array<VkDescriptorSetLayoutBinding, max_bindings> layout_bindings = {};
+        array<VkDescriptorBindingFlags, max_bindings> binding_flags = {};
+
+        for (size_t i = 0; i < filtered.size(); ++i)
+        {
+            const RHI_Descriptor& desc = filtered[i];
+
+            // convert stage mask to vulkan flags
+            VkShaderStageFlags stage_flags = 0;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Vertex))        stage_flags |= VK_SHADER_STAGE_VERTEX_BIT;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Hull))          stage_flags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))        stage_flags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))         stage_flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute))       stage_flags |= VK_SHADER_STAGE_COMPUTE_BIT;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayGeneration)) stage_flags |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayMiss))       stage_flags |= VK_SHADER_STAGE_MISS_BIT_KHR;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayHit))        stage_flags |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+
+            auto& binding              = layout_bindings[i];
+            binding.binding            = desc.slot;
+            binding.descriptorType     = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(desc));
+            binding.descriptorCount    = desc.as_array ? desc.array_length : 1;
+            binding.stageFlags         = stage_flags;
+            binding.pImmutableSamplers = nullptr;
+
+            binding_flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
         }
 
         VkDescriptorSetLayoutBindingFlagsCreateInfoEXT flags_info = {};
-        flags_info.sType                                          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
-        flags_info.pNext                                          = nullptr;
-        flags_info.bindingCount                                   = static_cast<uint32_t>(descriptors.size());
-        flags_info.pBindingFlags                                  = layout_binding_flags.data();
+        flags_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+        flags_info.bindingCount  = static_cast<uint32_t>(filtered.size());
+        flags_info.pBindingFlags = binding_flags.data();
 
-        // create info
         VkDescriptorSetLayoutCreateInfo create_info = {};
-        create_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        create_info.flags                           = 0;
-        create_info.pNext                           = &flags_info;
-        create_info.bindingCount                    = static_cast<uint32_t>(descriptors.size());
-        create_info.pBindings                       = layout_bindings.data();
+        create_info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        create_info.pNext        = &flags_info;
+        create_info.bindingCount = static_cast<uint32_t>(filtered.size());
+        create_info.pBindings    = layout_bindings.data();
 
-        // descriptor set layout
         SP_ASSERT_VK(vkCreateDescriptorSetLayout(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_rhi_resource)));
-
-        // name
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::DescriptorSetLayout, m_object_name.c_str());
     }
 }

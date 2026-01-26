@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,7 +50,6 @@ namespace spartan
     enum class MaterialProperty
     {
         // system / meta
-        Optimized,                  // material has been optimized (packed/compressed textures)
         Gltf,                       // imported from gltf file
     
         // world / geometry context
@@ -84,6 +83,8 @@ namespace spartan
         TextureTilingY,             // tiling along y axis
         TextureOffsetX,             // offset along x axis
         TextureOffsetY,             // offset along y axis
+        TextureInvertX,             // invert texture along x axis (mirror horizontally)
+        TextureInvertY,             // invert texture along y axis (mirror vertically)
     
         // special effects
         IsTerrain,                  // slope-based texture mapping
@@ -205,12 +206,16 @@ namespace spartan
 
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
         const std::array<float, static_cast<uint32_t>(OceanParameters::Max)>& GetOceanProperties() const { return m_ocean_properties; }
+        void ClearPackedTextures();
 
     private:
+        bool IsPackableTextureType(MaterialTextureType type) const;
+
         std::array<RHI_Texture*, static_cast<uint32_t>(MaterialTextureType::Max) * slots_per_texture> m_textures;
         std::array<float, static_cast<uint32_t>(MaterialProperty::Max)> m_properties;
         std::array<float, static_cast<uint32_t>(OceanParameters::Max)> m_ocean_properties;
-        uint32_t m_index = 0;
+        uint32_t m_index        = 0;
+        bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
         std::mutex m_mutex;
 
         bool m_should_compute_spectrum = false;

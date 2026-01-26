@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "AudioSource.h"
 #include "Terrain.h"
+#include "Volume.h"
 //======================
 
 //= NAMESPACES =====
@@ -47,13 +48,10 @@ namespace spartan
     template<typename T>
     inline constexpr void validate_component_type() { static_assert(is_base_of<Component, T>::value, "Provided type does not implement IComponent"); }
 
-    #define REGISTER_COMPONENT(T, enumT) template<>  ComponentType Component::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
+    #define REGISTER_COMPONENT(T, enumT) template<> ComponentType Component::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
 
-    // to add a new component to the engine, simply register it here
-    REGISTER_COMPONENT(AudioSource, ComponentType::AudioSource)
-    REGISTER_COMPONENT(Camera,      ComponentType::Camera)
-    REGISTER_COMPONENT(Light,       ComponentType::Light)
-    REGISTER_COMPONENT(Renderable,  ComponentType::Renderable)
-    REGISTER_COMPONENT(Physics,     ComponentType::Physics)
-    REGISTER_COMPONENT(Terrain,     ComponentType::Terrain)
+    // auto-generated from SP_COMPONENT_LIST - no manual registration needed
+    #define X(type, str) REGISTER_COMPONENT(type, ComponentType::type)
+    SP_COMPONENT_LIST
+    #undef X
 }

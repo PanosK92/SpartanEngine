@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,12 +26,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //===============
 
 struct aiNode;
+struct aiScene;
 struct aiMesh;
 
 namespace spartan
 {
     class Entity;
     class Mesh;
+
+    // forward declaration for import context
+    struct ImportContext;
 
     class ModelImporter
     {
@@ -40,11 +44,9 @@ namespace spartan
         static void Load(Mesh* mesh, const std::string& file_path);
 
     private:
-        static void ParseNode(const aiNode* node, Entity* parent_entity = nullptr);
-        static void ParseNodeMeshes(const aiNode* node, Entity* new_entity);
-        static void ParseNodeLight(const aiNode* node, Entity* new_entity);
-        static void ParseAnimations();
-        static void ParseMesh(aiMesh* mesh, Entity* entity_parent);
-        static void ParseNodes(const aiMesh* mesh);
+        static void ParseNode(ImportContext& ctx, const aiNode* node, Entity* parent_entity = nullptr);
+        static void ParseNodeMeshes(ImportContext& ctx, const aiNode* node, Entity* new_entity);
+        static void ParseNodeLight(ImportContext& ctx, const aiNode* node, Entity* new_entity);
+        static void ParseMesh(ImportContext& ctx, aiMesh* mesh, Entity* entity_parent);
     };
 }

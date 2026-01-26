@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,34 +19,40 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ============================
+#include "pch.h"
+#include "../RHI_AccelerationStructure.h"
+//=======================================
 
-//= INCLUDES =======
-#include <memory>
-#include "Vector3.h"
+//= NAMESPACES =====
+using namespace std;
 //==================
 
 namespace spartan
 {
-    class Entity;
-
-    namespace math
+    RHI_AccelerationStructure::RHI_AccelerationStructure(const RHI_AccelerationStructureType type, const char* name)
     {
-        class RayHit
-        {
-        public:
-            RayHit(Entity* entity, const Vector3& position, float distance, bool is_inside)
-            {
-                m_entity   = entity;
-                m_position = position;
-                m_distance = distance;
-                m_inside   = is_inside;
-            };
+        m_type        = type;
+        m_object_name = name ? name : "acceleration_structure";
+    }
 
-            Entity* m_entity;
-            Vector3 m_position;
-            float m_distance;
-            bool m_inside;
-        };
+    RHI_AccelerationStructure::~RHI_AccelerationStructure()
+    {
+
+    }
+
+    void RHI_AccelerationStructure::BuildBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
+    {
+
+    }
+
+    void RHI_AccelerationStructure::BuildTopLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureInstance>& instances)
+    {
+
+    }
+
+    uint64_t RHI_AccelerationStructure::GetDeviceAddress()
+    {
+        return 0;
     }
 }

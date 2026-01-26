@@ -804,6 +804,8 @@ eventId guarantees are desired, this function should be avoided.
 Also eventIds may not correspond directly to an actual function call - sometimes a function such as
 a multi action indirect will be one function call that expands to multiple events to allow inspection
 of results part way through the multi action.
+
+:type: int
 )");
   uint32_t eventId = 0;
 
@@ -811,6 +813,8 @@ of results part way through the multi action.
 
 If no chunk index is available this will be set to :data:`NoChunk`. This will only happen for fake
 markers added to the capture after load.
+
+:type: int
 )");
   uint32_t chunkIndex = 0;
 
@@ -818,6 +822,8 @@ markers added to the capture after load.
 
 .. note:: This should only be used as a relative measure, it is not a literal number of bytes from
   the start of the file on disk.
+
+:type: int
 )");
   uint64_t fileOffset = 0;
 

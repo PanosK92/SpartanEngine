@@ -45,6 +45,7 @@ function solution_configuration()
         location ".."
         language "C++"
         configurations { "debug", "release" }
+        flags { "FatalWarnings" }
 
         filter { "configurations:debug" }
             defines { "DEBUG" }
@@ -105,7 +106,7 @@ function spartan_project_configuration()
                 RUNTIME_DIR, RUNTIME_DIR .. "/Core",
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
-                "../third_party/pugixml", "../third_party/meshoptimizer", "../third_party/dxc"
+                "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/nrd"
             }
              -- Ensure linker prioritizes project libraries over system paths
             linkoptions {
@@ -155,7 +156,7 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME)
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT", "meshoptimizer" }
+            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT", "meshoptimizer", "NRD", "ShaderMakeBlob" }
             links {
                 "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
                 "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle2_static_64", "PhysXCharacterKinematic_static_64"
@@ -166,7 +167,7 @@ function spartan_project_configuration()
                     links {
                         "spirv-cross-c", "spirv-cross-core", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl",
                         "ffx_backend_vk_x64", "ffx_frameinterpolation_x64", "ffx_fsr3_x64", "ffx_fsr3upscaler_x64",
-                        "ffx_opticalflow_x64", "ffx_denoiser_x64", "ffx_sssr_x64", "ffx_breadcrumbs_x64", "libxess"
+                        "ffx_opticalflow_x64", "ffx_denoiser_x64", "libxess"
                     }
                 end
 
@@ -178,7 +179,7 @@ function spartan_project_configuration()
             links { "dxcompiler" }
 
         filter { "configurations:debug", "system:windows" }
-            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug" }
+            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug", "NRD_debug", "ShaderMakeBlob_debug" }
             links {
                 "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
                 "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle2_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
@@ -187,7 +188,7 @@ function spartan_project_configuration()
                 links {
                     "spirv-cross-c_debug", "spirv-cross-core_debug", "spirv-cross-cpp_debug", "spirv-cross-glsl_debug", "spirv-cross-hlsl_debug",
                     "ffx_backend_vk_x64d", "ffx_frameinterpolation_x64d", "ffx_fsr3_x64d", "ffx_fsr3upscaler_x64d",
-                    "ffx_opticalflow_x64d", "ffx_denoiser_x64d", "ffx_sssr_x64d", "ffx_breadcrumbs_x64d", "libxess"
+                    "ffx_opticalflow_x64d", "ffx_denoiser_x64d", "libxess"
                 }
             end
 

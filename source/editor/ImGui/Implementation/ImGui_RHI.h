@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -401,10 +401,20 @@ namespace ImGui::RHI
 
         cmd_list->EndTimeblock();
 
+        // for child windows, submit and prepare for presentation
         if (!is_main_window)
         {
-            cmd_list->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
-            cmd_list->Submit(swapchain->GetImageAcquiredSemaphore(), false);
+            if (swapchain->IsImageAcquired())
+            {
+                cmd_list->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
+                // use per-swapchain-image semaphore to signal rendering complete
+                cmd_list->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
+            }
+            else
+            {
+                // no image acquired (window minimized/transitioning), submit without presentation semaphores
+                cmd_list->Submit(nullptr, true);
+            }
         }
     }
 

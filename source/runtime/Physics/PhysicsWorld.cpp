@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
 #include "../World/Components/Camera.h"
+#include "../World/Components/Physics.h"
 #include "../World/World.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
@@ -58,6 +59,11 @@ namespace spartan
     {
         float gravity = -9.81f; // gravity value in m/s^2
         float hz      = 200.0f; // simulation frequency in hz
+    }
+    
+    namespace interpolation
+    {
+        float alpha = 0.0f; // interpolation factor between physics steps (0 = previous, 1 = current)
     }
 
     namespace picking
@@ -246,6 +252,9 @@ namespace spartan
         // cleanup picking
         picking::UnpickBody();
 
+        // release controller manager (owned by physics component system)
+        Physics::Shutdown();
+
         // release physx resources
         PX_RELEASE(scene);
         PX_RELEASE(dispatcher);
@@ -279,6 +288,10 @@ namespace spartan
                     scene->fetchResults(true); // block
                     accumulated_time -= fixed_time_step;
                 }
+                
+                // compute interpolation alpha for smooth rendering
+                // alpha = how far into the next physics step we are (0 to 1)
+                interpolation::alpha = accumulated_time / fixed_time_step;
             }
             // object picking
             {
@@ -293,7 +306,7 @@ namespace spartan
                 picking::MovePickedBody();
             }
         }
-        else if (Renderer::GetOption<bool>(Renderer_Option::Physics))
+        else if (cvar_physics.GetValueAs<bool>())
         {
             // render debug visuals (accessing while the simulation is running can result in undefined behavior)
             const PxRenderBuffer& rb = scene->getRenderBuffer();
@@ -344,5 +357,10 @@ namespace spartan
     void* PhysicsWorld::GetPhysics()
     {
         return static_cast<void*>(physics);
+    }
+    
+    float PhysicsWorld::GetInterpolationAlpha()
+    {
+        return interpolation::alpha;
     }
 }

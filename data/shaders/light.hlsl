@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,67 +26,126 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //============================
 
+// Cloud shadow map sampling
+// tex3 is bound as the cloud shadow map in Pass_Light
+float sample_cloud_shadow(float3 world_pos)
+{
+    // skip if cloud shadows are disabled
+    if (buffer_frame.cloud_shadows <= 0.0 || buffer_frame.cloud_coverage <= 0.0)
+        return 1.0;
+    
+    // cloud shadow map covers 10km x 10km area centered on camera
+    float shadow_map_size = 10000.0;
+    float2 relative_pos = world_pos.xz - buffer_frame.camera_position.xz;
+    float2 uv = relative_pos / shadow_map_size + 0.5;
+    
+    // out of bounds check
+    if (any(uv < 0.0) || any(uv > 1.0))
+        return 1.0;
+    
+    // sample cloud shadow (tex3 is the cloud shadow map)
+    float shadow = tex3.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
+    
+    return shadow;
+}
+
+// ray traced shadow sampling
+// tex4 is bound as the ray traced shadow texture in Pass_Light
+float sample_ray_traced_shadow(float2 uv)
+{
+    if (!is_ray_traced_shadows_enabled())
+        return 1.0;
+    
+    // sample ray traced shadow (tex4 is the ray traced shadow texture)
+    float shadow = tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
+    
+    return shadow;
+}
+
+// Subsurface scattering with wrapped diffuse and thickness estimation
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
-    const float distortion         = 0.3f;
-    const float sss_exponent       = 4.0f;
-    const float thickness_exponent = 2.0f;
-    const float ambient            = 0.1f;
-    const float sss_strength       = surface.subsurface_scattering * 0.5f;
-
-    // compute key vectors
-    float3 L = normalize(-light.to_pixel);          // to light
-    float3 V = normalize(-surface.camera_to_pixel); // to camera
-    float3 N = surface.normal;                      // surface normal
+    // material-dependent scattering parameters
+    const float wrap_factor        = 0.5f;  // wrapped lighting factor (0 = no wrap, 1 = full wrap)
+    const float sss_exponent       = 3.0f;  // translucency falloff sharpness
+    const float thickness_exponent = 1.5f;  // edge thickness falloff
+    const float sss_scale          = 0.8f;  // overall scattering strength multiplier
+    const float min_scatter        = 0.05f; // minimum ambient scattering
     
-    // distorted half-vector for better translucency
-    float3 H = normalize(L + N * distortion);
-    float translucency = pow(saturate(dot(V, -H)), sss_exponent);
+    // compute key vectors (use geometric normal for sss)
+    float3 L = normalize(-light.to_pixel);
+    float3 V = normalize(-surface.camera_to_pixel);
+    float3 N = surface.normal;
     
-    // combined scattering term
-    float sss_term = (translucency + ambient);
+    // Wrapped diffuse: allows light to wrap around surface, simulating subsurface penetration
+    float n_dot_l_wrapped = saturate((dot(N, L) + wrap_factor) / (1.0f + wrap_factor));
+    float wrapped_diffuse = n_dot_l_wrapped * n_dot_l_wrapped; // square for smoother falloff
     
-    // modulation: stronger near edges
-    float dot_N_V    = saturate(dot(N, V));
-    float modulation = pow(1.0f - dot_N_V, thickness_exponent);
+    // Back-scattering translucency: light passing through from behind using distorted normal
+    const float distortion = 0.4f;
+    float3 N_distorted     = normalize(N + L * distortion);
+    float back_scatter     = saturate(dot(V, -N_distorted));
+    back_scatter           = pow(back_scatter, sss_exponent);
     
-    // light contribution
-    float3 light_color = light.color * light.intensity * light.attenuation;
+    // Combine forward (wrapped diffuse) and backward (translucency) scattering
+    float sss_term = lerp(back_scatter, wrapped_diffuse, saturate(dot(N, L) * 0.5f + 0.5f));
+    sss_term = max(sss_term, min_scatter); // ensure minimum scattering
     
-    // combine
-    return light_color * sss_term * modulation * sss_strength * surface.albedo;
+    // Thickness modulation: stronger scattering at thin edges (view-dependent)
+    float n_dot_v = saturate(dot(N, V));
+    float view_thickness = pow(1.0f - n_dot_v, thickness_exponent);
+    
+    // Light-dependent: backlit areas show more scattering
+    float n_dot_l = saturate(dot(N, L));
+    float light_thickness = pow(1.0f - n_dot_l, 1.0f);
+    
+    // combine thickness terms
+    float thickness_modulation = saturate(view_thickness + light_thickness * 0.5f);
+    
+    // compute light contribution with proper radiance
+    float3 light_radiance = light.radiance;
+    
+    // apply material strength and scale
+    float sss_strength = surface.subsurface_scattering * sss_scale;
+    
+    // Color tinting: preserve material color for subsurface scattering
+    float3 sss_color = surface.albedo;
+    
+    // combine all terms
+    return light_radiance * sss_term * thickness_modulation * sss_strength * sss_color;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // build surface
+    // get resolution and build surface data
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, true);
 
-    // early exits
-    bool early_exit_1 = pass_is_opaque()      && surface.is_transparent() && !surface.is_sky();
+    // early exit for mismatched pass/surface types
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent() && !surface.is_sky();
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
         return;
-    
+
+    // initialize output accumulators
     float3 out_diffuse    = 0.0f;
     float3 out_specular   = 0.0f;
-    float  out_shadow     = 1.0f;
     float3 out_volumetric = 0.0f;
 
-    // we pre-compute the part that we can
+    // pre-compute common terms (alpha and occlusion)
     float3 light_precomputed = surface.alpha * surface.occlusion;
     
-    // loop lights and accumulate
+    // loop over all lights and accumulate contributions
     uint light_count = pass_get_f3_value().x;
     for (uint i = 0; i < light_count; i++)
     {
         Light light;
         light.Build(i, surface);
 
+        // per-light accumulators
         float  L_shadow        = 1.0f;
         float3 L_specular_sum  = 0.0f;
         float3 L_diffuse_term  = 0.0f;
@@ -95,25 +154,46 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
         if (!surface.is_sky())
         {
-            // shadows
-            if (light.has_shadows())
+            // compute shadow term
+            // for directional lights: ray traced shadows are mutually exclusive with rasterized/screen-space shadows
+            bool use_ray_traced_shadow = light.is_directional() && is_ray_traced_shadows_enabled();
+            
+            if (use_ray_traced_shadow)
             {
+                // ray traced shadows for directional light
+                L_shadow = sample_ray_traced_shadow(surface.uv);
+                light.radiance *= L_shadow;
+            }
+            else if (light.has_shadows())
+            {
+                // rasterized shadow mapping
                 L_shadow = compute_shadow(surface, light);
 
+                // combine with screen-space shadows if available
                 if (light.has_shadows_screen_space() && surface.is_opaque())
                 {
                     L_shadow = min(L_shadow, tex_uav_sss[int3(thread_id.xy, light.screen_space_shadows_slice_index)].x);
                 }
 
+                // apply shadow to light radiance
                 light.radiance *= L_shadow;
             }
+            
+            // apply cloud shadows for directional lights (always, regardless of shadow method)
+            if (light.is_directional())
+            {
+                float cloud_shadow = sample_cloud_shadow(surface.position);
+                L_shadow = min(L_shadow, cloud_shadow);
+                light.radiance *= cloud_shadow;
+            }
 
-            // reflectance terms
+            // build angular information for brdf calculations
             AngularInfo angular_info;
             angular_info.Build(light, surface);
 
-            // specular lobes
+            // compute specular brdf lobes
             {
+                // main specular lobe (anisotropic or isotropic)
                 if (surface.anisotropic > 0.0f)
                 {
                     L_specular_sum += BRDF_Specular_Anisotropic(surface, angular_info);
@@ -123,48 +203,49 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     L_specular_sum += BRDF_Specular_Isotropic(surface, angular_info);
                 }
                 
+                // clearcoat layer (secondary specular)
                 if (surface.clearcoat > 0.0f)
                 {
                     L_specular_sum += BRDF_Specular_Clearcoat(surface, angular_info);
                 }
                 
+                // sheen layer (cloth-like materials)
                 if (surface.sheen > 0.0f)
                 {
                     L_specular_sum += BRDF_Specular_Sheen(surface, angular_info);
                 }
                 
-                // subsurface
+                // subsurface scattering (translucent materials)
                 if (surface.subsurface_scattering > 0.0f)
                 {
                     L_subsurface += subsurface_scattering(surface, light, angular_info);
                 }
             }
             
-            // diffuse term before radiance
+            // compute diffuse brdf term
             L_diffuse_term += BRDF_Diffuse(surface, angular_info);
         }
 
-        // volumetric
+        // compute volumetric fog contribution
         if (light.is_volumetric())
         {
             L_volumetric += compute_volumetric_fog(surface, light, thread_id.xy);
         }
         
-        // convert per light terms to what we actually store in the UAVs
+        // combine per-light terms with radiance and precomputed factors
         float3 write_diffuse    = L_diffuse_term * light.radiance * light_precomputed * surface.diffuse_energy + L_subsurface;
         float3 write_specular   = L_specular_sum * light.radiance * light_precomputed;
         float  write_shadow     = L_shadow;
         float3 write_volumetric = L_volumetric;
 
-        // accumulate
+        // accumulate into output buffers
         out_diffuse    += write_diffuse;
         out_specular   += write_specular;
-        out_shadow     *= write_shadow;
         out_volumetric += write_volumetric;
     }
 
+    // write results to output buffers
     tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,    1.0f));
     tex_uav2[thread_id.xy] = validate_output(float4(out_specular,   1.0f));
-    tex_uav3[thread_id.xy] = validate_output(out_shadow);
-    tex_uav4[thread_id.xy] = validate_output(float4(out_volumetric, 1.0f));
+    tex_uav3[thread_id.xy] = validate_output(float4(out_volumetric, 1.0f));
 }

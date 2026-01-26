@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -46,5 +46,9 @@ namespace spartan
         static math::Vector3 GetGravity();
         static void* GetScene();
         static void* GetPhysics();
+        
+        // interpolation alpha for smooth rendering between fixed physics steps
+        // 0 = at previous physics state, 1 = at current physics state
+        static float GetInterpolationAlpha();
     };
 }

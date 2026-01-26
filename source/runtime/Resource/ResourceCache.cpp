@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
+#include "../Rendering/Renderer.h"
 #include <unordered_map>
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
@@ -63,6 +64,10 @@ namespace spartan
 
     void ResourceCache::Shutdown()
     {
+        // clear texture references from materials owned by renderer before destroying cached textures
+        // this prevents dangling pointers since those materials outlive ResourceCache resources
+        Renderer::ClearMaterialTextureReferences();
+
         uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
         m_resources.clear();
         if (resource_count != 0)
@@ -108,6 +113,16 @@ namespace spartan
         m_default_icons[IconType::Camera]        = Load<RHI_Texture>(data_dir + "Icons\\camera.png");
         m_default_icons[IconType::Physics]       = Load<RHI_Texture>(data_dir + "Icons\\physics.png");
         m_default_icons[IconType::Compressed]    = Load<RHI_Texture>(data_dir + "Icons\\compressed.png");
+        m_default_icons[IconType::Logo]          = Load<RHI_Texture>(data_dir + "logo.ico");
+
+        // prepare icons for gpu (standalone textures, not processed by material)
+        for (auto& [type, icon] : m_default_icons)
+        {
+            if (icon)
+            {
+                icon->PrepareForGpu();
+            }
+        }
     }
 
     void ResourceCache::UnloadDefaultResources()

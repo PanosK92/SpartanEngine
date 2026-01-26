@@ -79,14 +79,12 @@ def main():
     
     print("\n1. Create binaries folder with the required data files...\n")
     file_utilities.copy("data", paths["binaries"]["data"])
-    file_utilities.copy(Path("build_scripts") / "download_assets.py", "binaries")
-    file_utilities.copy(Path("build_scripts") / "file_utilities.py", "binaries")
     file_utilities.copy(Path("build_scripts") / "7z.exe", "binaries")
     file_utilities.copy(Path("build_scripts") / "7z.dll", "binaries")
 
     print("\n2. Download and extract libraries...")
-    library_url           = 'https://www.dropbox.com/scl/fi/ib94tmovcxp12klvo6of6/libraries.7z?rlkey=an8oc20brqdamnw1ei5krejw8&st=t6aybyvv&dl=1'
-    library_expected_hash = '02e221d7e8b2522a4512b9e4b1a5a96de2f6eac96e96aa410f66657df7fa69ba'
+    library_url           = 'https://www.dropbox.com/scl/fi/riyxlqtedaj5gtul7fulj/libraries.7z?rlkey=yqkrz9zzknrhui5sxxrdj0vt5&st=os8a7lqt&dl=1'
+    library_expected_hash = '20a9de62ae5585853e1db3792aa39ee14d01afbfb8476e8f832fe0236836107c'
     library_destination   = Path("third_party") / "libraries" / "libraries.7z"
     file_utilities.download_file(library_url, str(library_destination), library_expected_hash)
     file_utilities.extract_archive(str(library_destination), str(Path("third_party") / "libraries"))

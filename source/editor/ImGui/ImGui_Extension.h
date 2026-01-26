@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -72,9 +72,9 @@ namespace ImGuiSp
     static bool button(const char* label, const ImVec2& size = ImVec2(0, 0))
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+        // use label as the id - cursor position was causing id changes between
+        // frames due to floating point precision
         bool result = ImGui::Button(label, size);
-        ImGui::PopID();
         ImGui::PopStyleVar();
         return result;
     }
@@ -102,7 +102,10 @@ namespace ImGuiSp
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         }
 
-        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+        // use the texture pointer as a stable id - cursor position was causing
+        // id changes between frames due to floating point precision, which caused
+        // clicks to not register properly (requiring multiple clicks)
+        ImGui::PushID(texture);
         bool result = ImGui::ImageButton
         (
             "",                                     // str_id
@@ -275,17 +278,17 @@ namespace ImGuiSp
     {
         static const uint32_t screen_edge_padding = 10;
         ImGuiIO& io = ImGui::GetIO();
-    
+        
         static ImVec2 last_mouse_pos = io.MousePos;
-    
+        
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             ImVec2 mouse_pos = io.MousePos;
             bool wrapped = false;
-    
+        
             float left  = static_cast<float>(screen_edge_padding);
             float right = static_cast<float>(spartan::Display::GetWidth() - screen_edge_padding);
-    
+        
             if (mouse_pos.x >= right)
             {
                 mouse_pos.x = left + 1;
@@ -296,14 +299,14 @@ namespace ImGuiSp
                 mouse_pos.x = right - 1;
                 wrapped = true;
             }
-    
+        
             if (wrapped)
             {
                 io.MousePos        = mouse_pos;
                 io.WantSetMousePos = true;
                 io.MouseDelta.x    = 0.0f;
                 io.MouseDelta.y    = 0.0f;
-    
+        
                 // update last_mouse_pos to avoid delta spikes in the next frame
                 last_mouse_pos = mouse_pos;
             }
@@ -313,39 +316,40 @@ namespace ImGuiSp
                 last_mouse_pos = mouse_pos;
             }
         }
-    
+        
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-        bool result = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+        bool changed = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
         ImGui::PopID();
-
-        return result;
+    
+        return changed;
     }
-
 
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
     {
-        // Clamp the selection index in case it's larger than the actual option count.
         const uint32_t option_count = static_cast<uint32_t>(options.size());
+    
+        // clamp index
         if (*selection_index >= option_count)
         {
-            *selection_index = option_count - 1;
+            *selection_index = option_count ? option_count - 1 : 0;
         }
-
-        bool selection_made          = false;
-        std::string selection_string = options[*selection_index];
-
-        if (ImGui::BeginCombo(label, selection_string.c_str()))
+    
+        bool selection_made = false;
+    
+        // preview: direct pointer into existing string buffer
+        const char* preview = option_count ? options[*selection_index].data() : "";
+    
+        if (ImGui::BeginCombo(label, preview))
         {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(options.size()); i++)
+            for (uint32_t i = 0; i < option_count; ++i)
             {
-                const bool is_selected = *selection_index == i;
-
-                if (ImGui::Selectable(options[i].c_str(), is_selected))
+                const bool is_selected = (*selection_index == i);
+                // direct data() — null-terminated, no copy
+                if (ImGui::Selectable(options[i].data(), is_selected))
                 {
-                    *selection_index    = i;
-                    selection_made      = true;
+                    *selection_index = i;
+                    selection_made     = true;
                 }
-
                 if (is_selected)
                 {
                     ImGui::SetItemDefaultFocus();
@@ -353,49 +357,80 @@ namespace ImGuiSp
             }
             ImGui::EndCombo();
         }
-
         return selection_made;
     }
 
-    static void vector3(const char* label, spartan::math::Vector3& vector)
+    static void vector3(const char* label, spartan::math::Vector3& vector, bool vertical = true)
     {
-        const float label_indetation = 15.0f * spartan::Window::GetDpiScale();
-
-        const auto show_float = [](spartan::math::Vector3 axis, float* value)
-        {
-            const float label_float_spacing = 15.0f * spartan::Window::GetDpiScale();
-            const float step                = 0.01f;
-
-            // label
-            ImGui::TextUnformatted(axis.x == 1.0f ? "X" : axis.y == 1.0f ? "Y" : "Z");
-            ImGui::SameLine(label_float_spacing);
-            spartan::math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
-
-            // float
-            ImGui::PushItemWidth(128.0f);
-            ImGuiSp::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
-            ImGui::PopItemWidth();
-
-            // axis color
-            static const ImU32 color_x                 = IM_COL32(168, 46, 2, 255);
-            static const ImU32 color_y                 = IM_COL32(112, 162, 22, 255);
-            static const ImU32 color_z                 = IM_COL32(51, 122, 210, 255);
-            static const spartan::math::Vector2 size   = spartan::math::Vector2(4.0f, 19.0f);
-            static const spartan::math::Vector2 offset = spartan::math::Vector2(5.0f, 4.0);
-            pos_post_label += offset;
-            ImRect axis_color_rect = ImRect(pos_post_label.x, pos_post_label.y, pos_post_label.x + size.x, pos_post_label.y + size.y);
-            ImGui::GetWindowDrawList()->AddRectFilled(axis_color_rect.Min, axis_color_rect.Max, axis.x == 1.0f ? color_x : axis.y == 1.0f ? color_y : color_z);
-        };
-
+        // configuration
+        const float label_indent = 15.0f * spartan::Window::GetDpiScale();
+        const float axis_spacing = 15.0f * spartan::Window::GetDpiScale();
+        const float step         = 0.01f;
+    
+        ImGui::PushID(label);
         ImGui::BeginGroup();
-        ImGui::Indent(label_indetation);
+    
+        // label
+        ImGui::Indent(label_indent);
         ImGui::TextUnformatted(label);
-        ImGui::Unindent(label_indetation);
-        show_float(spartan::math::Vector3(1.0f, 0.0f, 0.0f), &vector.x);
-        show_float(spartan::math::Vector3(0.0f, 1.0f, 0.0f), &vector.y);
-        show_float(spartan::math::Vector3(0.0f, 0.0f, 1.0f), &vector.z);
+        ImGui::Unindent(label_indent);
+    
+        // layout calculation
+        float item_width = 128.0f;
+        if (!vertical)
+        {
+            float avail_x       = ImGui::GetContentRegionAvail().x;
+            float spacing       = ImGui::GetStyle().ItemSpacing.x;
+            float total_spacing = spacing * 2.0f;
+            item_width          = (avail_x - total_spacing) / 3.0f;
+            item_width          -= axis_spacing;
+    
+            if (item_width < 1.0f)
+                item_width = 1.0f;
+        }
+    
+        float* values[3]           = { &vector.x, &vector.y, &vector.z };
+        const char* axis_labels[3] = { "X", "Y", "Z" };
+        const ImU32 axis_colors[3] = {
+            IM_COL32(168, 46, 2, 255),
+            IM_COL32(112, 162, 22, 255),
+            IM_COL32(51, 122, 210, 255)
+        };
+    
+        // components
+        for (int i = 0; i < 3; ++i)
+        {
+            ImGui::PushID(i);
+    
+            // horizontal layout
+            if (!vertical && i > 0)
+            {
+                ImGui::SameLine();
+            }
+    
+            // axis label
+            ImGui::TextUnformatted(axis_labels[i]);
+            ImGui::SameLine();
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + axis_spacing - ImGui::CalcTextSize(axis_labels[i]).x);
+            spartan::math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
+    
+            // float input
+            ImGui::PushItemWidth(item_width);
+            ImGuiSp::draw_float_wrap("##v", values[i], step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
+            ImGui::PopItemWidth();
+    
+            // color bar decoration
+            static const spartan::math::Vector2 size   = spartan::math::Vector2(4.0f, 19.0f);
+            static const spartan::math::Vector2 offset = spartan::math::Vector2(-7.0f, 4.0f);
+            spartan::math::Vector2 draw_pos            = pos_post_label + offset;
+            ImGui::GetWindowDrawList()->AddRectFilled(draw_pos, draw_pos + size, axis_colors[i]);
+    
+            ImGui::PopID();
+        }
+    
         ImGui::EndGroup();
-    };
+        ImGui::PopID();
+    }
 
     inline ButtonPress window_yes_no(const char* title, const char* text)
     {

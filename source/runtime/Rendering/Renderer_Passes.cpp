@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -30,9 +30,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
+#include "../RHI/RHI_AccelerationStructure.h"
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_RasterizerState.h"
+#include "../RHI/RHI_Device.h"
+#include "../Core/Window.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
 SP_WARNINGS_ON
@@ -49,6 +52,9 @@ namespace spartan
     uint32_t Renderer::m_draw_call_count;
     array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls_prepass;
     uint32_t Renderer::m_draw_calls_prepass_count;
+    unique_ptr<RHI_Buffer> Renderer::m_std_reflections;
+    unique_ptr<RHI_Buffer> Renderer::m_std_shadows;
+    unique_ptr<RHI_Buffer> Renderer::m_std_restir;
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
@@ -79,21 +85,95 @@ namespace spartan
             brdf_produced = true;
         }
 
-        // once per skysphere update
+        // generate cloud noise textures (once at startup, before skysphere needs them)
+        Pass_CloudNoise(cmd_list_graphics_present);
+
+        // Skysphere update logic:
+        // - Always render once on startup (for initial clouds)
+        // - Re-render when light changes
+        // - Re-render every frame if cloud animation is enabled
+        // - Run for multiple frames after change for temporal accumulation to converge
+        //   (checkerboard needs 2 frames, temporal blend ~0.2 needs ~5-8 frames = 8 total)
+        bool clouds_enabled = cvar_clouds_enabled.GetValueAs<bool>();
+        bool clouds_visible = clouds_enabled && cvar_cloud_coverage.GetValue() > 0.0f;
+        bool cloud_animation = clouds_enabled && cvar_cloud_animation.GetValue() > 0.0f;
+        
         {
-            bool update_skysphere = false; // true when the light updates or it gets added/removed
+            bool update_skysphere = false;
+            Light* directional_light = World::GetDirectionalLight();
+            
             {
+                static bool first_frame = true;
                 static bool had_directional_light = false;
-                bool has_directional_light        = World::GetDirectionalLight() != nullptr;
-                update_skysphere                  = (has_directional_light && World::GetDirectionalLight()->NeedsSkysphereUpdate()) || (has_directional_light != had_directional_light);
-                had_directional_light             = has_directional_light;
+                static bool last_clouds_enabled = false;
+                static float last_coverage = -1.0f;
+                static float last_seed = -1.0f;
+                static float last_cloud_type = -1.0f;
+                static float last_darkness = -1.0f;
+                static uint32_t frames_remaining = 0; // temporal convergence counter
+                const uint32_t temporal_convergence_frames = 8; // frames needed for checkerboard + temporal blend
+                
+                bool has_directional_light = directional_light != nullptr;
+                float current_coverage = cvar_cloud_coverage.GetValue();
+                float current_seed = cvar_cloud_seed.GetValue();
+                float current_type = cvar_cloud_type.GetValue();
+                float current_darkness = cvar_cloud_darkness.GetValue();
+                
+                // Update skysphere when:
+                // 1. First frame (initial render)
+                // 2. Light changes
+                // 3. Cloud parameters changed (enabled, coverage, seed, type, darkness)
+                // 4. Cloud animation is enabled (for wind movement)
+                // 5. Temporal convergence still in progress
+                bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) || 
+                                     (has_directional_light != had_directional_light);
+                bool cloud_params_changed = (clouds_enabled != last_clouds_enabled) ||
+                                            (current_coverage != last_coverage) ||
+                                            (current_seed != last_seed) ||
+                                            (current_type != last_cloud_type) ||
+                                            (current_darkness != last_darkness);
+                
+                // reset convergence counter when something changes
+                if (first_frame || light_changed || cloud_params_changed)
+                {
+                    frames_remaining = temporal_convergence_frames;
+                }
+                
+                // update if animating, converging, or something changed
+                update_skysphere = cloud_animation || (frames_remaining > 0);
+                
+                // decrement convergence counter
+                if (frames_remaining > 0)
+                {
+                    frames_remaining--;
+                }
+                
+                first_frame = false;
+                had_directional_light = has_directional_light;
+                last_clouds_enabled = clouds_enabled;
+                last_coverage = current_coverage;
+                last_seed = current_seed;
+                last_cloud_type = current_type;
+                last_darkness = current_darkness;
             }
             
             if (update_skysphere)
             {
-                Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
+                // Only update LUT when light changes (it's expensive)
+                static bool lut_generated = false;
+                if (!lut_generated || (directional_light && directional_light->NeedsSkysphereUpdate()))
+                {
+                    Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
+                    lut_generated = true;
+                }
                 Pass_Skysphere(cmd_list_graphics_present);
             }
+        }
+
+        // Only update cloud shadow map when clouds are visible
+        if (clouds_visible)
+        {
+            Pass_CloudShadow(cmd_list_graphics_present);
         }
 
         if (Camera* camera = World::GetCamera())
@@ -139,9 +219,11 @@ namespace spartan
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_ShadowMaps(cmd_list_graphics_present);
                 Pass_ScreenSpaceShadows(cmd_list_graphics_present);
+                Pass_RayTracedShadows(cmd_list_graphics_present);
+                Pass_ReSTIR_PathTracing(cmd_list_graphics_present);
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_graphics_present);
-                Pass_Light(cmd_list_graphics_present, is_transparent);             // compute diffuse and specular buffers
-                Pass_Light_Composition(cmd_list_graphics_present, is_transparent); // compose all light (diffuse, specular, etc).
+                Pass_Light(cmd_list_graphics_present, is_transparent);
+                Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
                 cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
             }
 
@@ -156,6 +238,12 @@ namespace spartan
             }
 
             Pass_Light_ImageBased(cmd_list_graphics_present);
+            
+            // ray traced reflections run after transparent g-buffer so depth includes transparents
+            // this way opaques behind glass don't trace rays (only visible surfaces get reflections)
+            Pass_RayTracedReflections(cmd_list_graphics_present);
+            Pass_Light_Reflections(cmd_list_graphics_present);
+            
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
 
             Pass_AA_Upscale(cmd_list_graphics_present);
@@ -179,13 +267,24 @@ namespace spartan
 
     void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(Renderer_Option::VariableRateShading))
+        if (!cvar_variable_rate_shading.GetValueAs<bool>())
             return;
 
         // acquire resources
         RHI_Shader* shader_c = GetShader(Renderer_Shader::variable_rate_shading_c);
         RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate);
+        if (!shader_c || !shader_c->IsCompiled() || !tex_in || !tex_out)
+            return;
+
+        // clear to full rate (0 = 1x1) to ensure safe initial values when vrs is first enabled
+        // we track this per-texture since render targets can be recreated on resolution changes
+        static RHI_Texture* last_cleared_texture = nullptr;
+        if (tex_out != last_cleared_texture)
+        {
+            cmd_list->ClearTexture(tex_out, Color(0.0f, 0.0f, 0.0f, 0.0f));
+            last_cleared_texture = tex_out;
+        }
 
         cmd_list->BeginTimeblock("variable_rate_shading");
         {
@@ -195,9 +294,9 @@ namespace spartan
             pso.shaders[Compute] = shader_c;
             cmd_list->SetPipelineState(pso);
 
-            // set textures
+            // set textures (uses previous frame's output for temporal feedback)
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
 
             // render
             cmd_list->Dispatch(tex_out);
@@ -329,7 +428,7 @@ namespace spartan
         // objects failing Hi-Z but recently visible get precise occlusion queries, with results read next frame
         // recently visible objects are drawn until confirmed occluded, avoiding sudden disappearances
 
-        if (!GetOption<bool>(Renderer_Option::OcclusionCulling))
+        if (!cvar_occlusion_culling.GetValueAs<bool>())
             return;
     
         cmd_list->BeginTimeblock("occlusion");
@@ -531,7 +630,7 @@ namespace spartan
         RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output); // output resolution
    
         // deduce rasterizer state
-        bool is_wireframe                     = GetOption<bool>(Renderer_Option::Wireframe);
+        bool is_wireframe                     = cvar_wireframe.GetValueAs<bool>();
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
 
@@ -544,7 +643,7 @@ namespace spartan
             pso.rasterizer_state                 = rasterizer_state;
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
-            pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+            pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
             pso.render_target_depth_texture      = tex_depth;
             pso.resolution_scale                 = true;
             pso.clear_depth                      = 0.0f;
@@ -576,9 +675,8 @@ namespace spartan
     
                 // pass constants
                 {
-                    bool is_tessellated    = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                     bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
-                    m_pcb_pass_cpu.set_f3_value(is_tessellated ? 1.0f : 0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
+                    m_pcb_pass_cpu.set_f3_value(0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
 
                     if (material->IsOcean())
                     {
@@ -619,14 +717,14 @@ namespace spartan
             }
 
             // blit to output resolution
-            float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
+            float resolution_scale = cvar_resolution_scale.GetValue();
             cmd_list->Blit(tex_depth, tex_depth_output, false, resolution_scale);
     
             // perform early resource transitions
             {
                 tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
                 tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-                cmd_list->InsertPendingBarrierGroup();
+                cmd_list->FlushBarriers();
             }
         }
         cmd_list->EndTimeblock();
@@ -649,9 +747,9 @@ namespace spartan
             pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::gbuffer_v);
             pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
             pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-            pso.rasterizer_state                 = GetOption<bool>(Renderer_Option::Wireframe) ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual); // transparents are few, no pre-pass needed
-            pso.vrs_input_texture                = GetOption<bool>(Renderer_Option::VariableRateShading) ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
+            pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual); // transparents are see-through, no pre-pass needed
+            pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
             pso.resolution_scale                 = true;
             pso.render_target_color_textures[0]  = tex_color;
             pso.render_target_color_textures[1]  = tex_normal;
@@ -675,8 +773,8 @@ namespace spartan
                 // tessellation & culling
                 {
                     bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    RHI_Shader* hull     = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-                    RHI_Shader* domain   = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+                    RHI_Shader* hull    = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+                    RHI_Shader* domain  = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
                 
                     if (pso.shaders[RHI_Shader_Type::Hull] != hull || pso.shaders[RHI_Shader_Type::Domain] != domain)
                     {
@@ -708,7 +806,7 @@ namespace spartan
     
                 // draw
                 {
-                    cmd_list->SetCullMode(GetOption<bool>(Renderer_Option::Wireframe) ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
+                    cmd_list->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                     cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                     cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
 
@@ -746,38 +844,32 @@ namespace spartan
             tex_material->SetLayout(RHI_Image_Layout::General, cmd_list);
             tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
             tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // Pass_Sss() reads it as a srv
-            cmd_list->InsertPendingBarrierGroup();
+            cmd_list->FlushBarriers();
         }
         cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list)
     {
-        static bool cleared = false;
+        if (!cvar_ssao.GetValueAs<bool>())
+            return;
+            
         RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);
+        if (!tex_ssao)
+            return;
 
-        if (GetOption<bool>(Renderer_Option::ScreenSpaceAmbientOcclusion))
+        RHI_PipelineState pso;
+        pso.name             = "screen_space_ambient_occlusion";
+        pso.shaders[Compute] = GetShader(Renderer_Shader::ssao_c);
+
+        cmd_list->BeginTimeblock(pso.name);
         {
-            RHI_PipelineState pso;
-            pso.name             = "screen_space_ambient_occlusion";
-            pso.shaders[Compute] = GetShader(Renderer_Shader::ssao_c);
-
-            cmd_list->BeginTimeblock(pso.name);
-            {
-                cmd_list->SetPipelineState(pso);
-                SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
-                cmd_list->Dispatch(tex_ssao, GetOption<float>(Renderer_Option::ResolutionScale));
-
-                cleared = false;
-            }
-            cmd_list->EndTimeblock();
+            cmd_list->SetPipelineState(pso);
+            SetCommonTextures(cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssao);
+            cmd_list->Dispatch(tex_ssao, cvar_resolution_scale.GetValue());
         }
-        else if (!cleared)
-        {
-            cmd_list->ClearTexture(tex_ssao, Color::standard_white);
-            cleared = true;
-        }
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list)
@@ -785,45 +877,21 @@ namespace spartan
         static bool cleared = false;
 
         RHI_Texture* tex_frame             = GetRenderTarget(Renderer_RenderTarget::frame_render);
-        RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::ssr);
+        RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::reflections);
         RHI_Texture* tex_refraction_source = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
 
         cmd_list->BeginTimeblock("transparency_reflection_refraction");
         {
-            if (GetOption<bool>(Renderer_Option::ScreenSpaceReflections))
-            { 
-                cmd_list->BeginMarker("ssr");
-                {
-                    // do any pending barriers as we don't have control over vendor tech
-                    tex_frame->SetLayout(RHI_Image_Layout::General, cmd_list);
-                    cmd_list->RenderPassEnd();
-                    cmd_list->InsertPendingBarrierGroup();
+            bool use_ray_traced = cvar_ray_traced_reflections.GetValueAs<bool>();
 
-                    RHI_VendorTechnology::SSSR_Dispatch(
-                        cmd_list,
-                        tex_frame, // source of reflection
-                        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),
-                        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity),
-                        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),
-                        GetRenderTarget(Renderer_RenderTarget::gbuffer_material),
-                        GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular),
-                        tex_ssr
-                    );
-
-                    // wait for vendor tech to finish writing to the texture
-                    cmd_list->InsertBarrierReadWrite(tex_ssr, RHI_BarrierType::EnsureWriteThenRead);
-                
-                    cleared = false;
-                }
-                cmd_list->EndMarker();
-            }
-            else if (!cleared)
+             if (!cleared && !use_ray_traced)
             {
+                // only clear if neither ssr nor ray traced reflections wrote to this texture
                 cmd_list->ClearTexture(tex_ssr, Color::standard_transparent);
                 cleared = true;
             }
 
-            cmd_list->InsertBarrierReadWrite(tex_frame, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_frame, RHI_BarrierType::EnsureReadThenWrite);
 
             cmd_list->BeginMarker("apply");
             {
@@ -845,6 +913,582 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list)
+    {
+        // skip when window is minimized or resolution is too small (e.g. during minimize animation)
+        const uint32_t min_rt_dimension = 64;
+        if (Window::IsMinimized())
+            return;
+
+        RHI_Texture* tex_reflections          = GetRenderTarget(Renderer_RenderTarget::reflections);
+        RHI_Texture* tex_reflections_position = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_position);
+        RHI_Texture* tex_reflections_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_normal);
+        RHI_Texture* tex_reflections_albedo   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_albedo);
+
+        // skip if render targets have invalid or too-small dimensions
+        if (tex_reflections_position && (tex_reflections_position->GetWidth() < min_rt_dimension || tex_reflections_position->GetHeight() < min_rt_dimension))
+            return;
+
+        // clear reflections once when disabled, then skip
+        static bool cleared = false;
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>() || !tex_reflections_position)
+        {
+            if (!cleared)
+            {
+                cmd_list->ClearTexture(tex_reflections, Color::standard_black);
+                cleared = true;
+            }
+            return;
+        }
+        cleared = false;
+
+        cmd_list->BeginTimeblock("ray_traced_reflections");
+        {
+            RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
+            if (!tlas || !tlas->GetRhiResource())
+            {
+                tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
+                cmd_list->ClearTexture(tex_reflections, Color(1.0f, 1.0f, 0.0f, 1.0f));
+                cmd_list->EndTimeblock();
+                return;
+            }
+
+            // transition output textures to general layout for uav writes
+            tex_reflections_position->SetLayout(RHI_Image_Layout::General, cmd_list);
+            tex_reflections_normal->SetLayout(RHI_Image_Layout::General, cmd_list);
+            tex_reflections_albedo->SetLayout(RHI_Image_Layout::General, cmd_list);
+            cmd_list->InsertBarrier(tex_reflections_position, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_reflections_normal, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_reflections_albedo, RHI_BarrierType::EnsureReadThenWrite);
+
+            // set pipeline state
+            RHI_PipelineState pso;
+            pso.name                   = "ray_traced_reflections";
+            pso.shaders[RayGeneration] = GetShader(Renderer_Shader::reflections_ray_generation_r);
+            pso.shaders[RayMiss]       = GetShader(Renderer_Shader::reflections_ray_miss_r);
+            pso.shaders[RayHit]        = GetShader(Renderer_Shader::reflections_ray_hit_r);
+            cmd_list->SetPipelineState(pso);
+
+            // create or update shader binding table (must be after pipeline is set)
+            if (!m_std_reflections)
+            {
+                uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+                m_std_reflections = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "reflections_sbt");
+            }
+            // update handles every frame in case pipeline changed (UpdateHandles needs pipeline to be set first)
+            m_std_reflections->UpdateHandles(cmd_list);
+
+            // set textures and acceleration structure
+            SetCommonTextures(cmd_list);
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            
+            // ensure skysphere is in shader read layout for sampling
+            RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
+            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+            
+            // geometry info buffer for vertex/index access in hit shader
+            // reset offset to bind from start (Update advances offset for ring buffer pattern)
+            GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
+            cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+
+            // set output textures (as UAVs for ray tracing write) - deferred g-buffer outputs
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex),  tex_reflections_position, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_reflections_normal,   rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), tex_reflections_albedo,   rhi_all_mips, 0, true);
+
+            // trace full screen (match tex resolution)
+            uint32_t width  = tex_reflections_position->GetWidth();
+            uint32_t height = tex_reflections_position->GetHeight();
+            cmd_list->TraceRays(width, height, m_std_reflections.get());
+
+            // ensure writes complete before the textures are read
+            cmd_list->InsertBarrier(tex_reflections_position, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_reflections_normal, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_reflections_albedo, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+    }
+    
+    void Renderer::Pass_Light_Reflections(RHI_CommandList* cmd_list)
+    {
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
+            return;
+            
+        RHI_Texture* tex_reflections          = GetRenderTarget(Renderer_RenderTarget::reflections);
+        RHI_Texture* tex_reflections_position = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_position);
+        RHI_Texture* tex_reflections_normal   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_normal);
+        RHI_Texture* tex_reflections_albedo   = GetRenderTarget(Renderer_RenderTarget::gbuffer_reflections_albedo);
+        RHI_Texture* tex_skysphere            = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        
+        // gbuffer reflections are lazy allocated
+        if (!tex_reflections_position)
+            return;
+        RHI_Texture* tex_shadow_atlas         = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
+        
+        cmd_list->BeginTimeblock("light_reflections");
+        {
+            // transition output texture for writing
+            tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
+            cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureReadThenWrite);
+            
+            // transition input textures for reading
+            tex_reflections_position->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_reflections_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_reflections_albedo->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_shadow_atlas->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            
+            // set pipeline state
+            RHI_PipelineState pso;
+            pso.name             = "light_reflections";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::light_reflections_c);
+            cmd_list->SetPipelineState(pso);
+            
+            // set common textures (includes bindless materials)
+            SetCommonTextures(cmd_list);
+            
+            // set input textures (reflection g-buffer)
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_reflections_position);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_reflections_normal);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_reflections_albedo);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_skysphere);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_shadow_atlas);
+            
+            // set output texture
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_reflections, rhi_all_mips, 0, true);
+            
+            // push constants: light count, skysphere mip count
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_count_active_lights), static_cast<float>(tex_skysphere->GetMipCount()));
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            
+            // dispatch
+            cmd_list->Dispatch(tex_reflections);
+            
+            // ensure writes complete before the texture is read
+            cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_RayTracedShadows(RHI_CommandList* cmd_list)
+    {
+        // skip when window is minimized or resolution is too small (e.g. during minimize animation)
+        const uint32_t min_rt_dimension = 64;
+        if (Window::IsMinimized())
+            return;
+
+        RHI_Texture* tex_shadows = GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows);
+
+        // skip if render target has invalid or too-small dimensions
+        if (tex_shadows && (tex_shadows->GetWidth() < min_rt_dimension || tex_shadows->GetHeight() < min_rt_dimension))
+            return;
+        
+        // clear once if disabled
+        static bool cleared = false;
+        if (!cvar_ray_traced_shadows.GetValueAs<bool>())
+        {
+            if (!cleared)
+            {
+                cmd_list->ClearTexture(tex_shadows, Color::standard_white);
+                cleared = true;
+            }
+            return;
+        }
+        cleared = false;
+        
+        // validate ray tracing support
+        if (!RHI_Device::IsSupportedRayTracing())
+            return;
+            
+        RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
+        if (!tlas)
+            return;
+        
+        // render
+        cmd_list->BeginTimeblock("ray_traced_shadows");
+        {
+            // create or get sbt (shader binding table) for shadow ray tracing
+            RHI_Shader* shader_rgen = GetShader(Renderer_Shader::shadows_ray_generation_r);
+            RHI_Shader* shader_miss = GetShader(Renderer_Shader::shadows_ray_miss_r);
+            RHI_Shader* shader_hit  = GetShader(Renderer_Shader::shadows_ray_hit_r);
+            
+            if (!shader_rgen || !shader_miss || !shader_hit)
+                return;
+            if (!shader_rgen->IsCompiled() || !shader_miss->IsCompiled() || !shader_hit->IsCompiled())
+                return;
+            
+            // set pipeline state for ray tracing
+            RHI_PipelineState pso;
+            pso.name                    = "ray_traced_shadows";
+            pso.shaders[RayGeneration] = shader_rgen;
+            pso.shaders[RayMiss]       = shader_miss;
+            pso.shaders[RayHit]        = shader_hit;
+            cmd_list->SetPipelineState(pso);
+            
+            // create sbt if needed (once)
+            if (!m_std_shadows)
+            {
+                uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+                m_std_shadows = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "shadows_sbt");
+            }
+            // update handles every frame in case pipeline changed
+            m_std_shadows->UpdateHandles(cmd_list);
+            
+            // set textures and acceleration structure
+            SetCommonTextures(cmd_list);
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            
+            // set output texture (as UAV for ray tracing write)
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_shadows, rhi_all_mips, 0, true);
+            
+            // trace full screen
+            uint32_t width  = tex_shadows->GetWidth();
+            uint32_t height = tex_shadows->GetHeight();
+            cmd_list->TraceRays(width, height, m_std_shadows.get());
+            
+            // ensure writes complete before the texture is read
+            cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list)
+    {
+        // skip when window is minimized or resolution is too small (e.g. during minimize animation)
+        const uint32_t min_rt_dimension = 64;
+        if (Window::IsMinimized())
+            return;
+
+        RHI_Texture* tex_gi      = GetRenderTarget(Renderer_RenderTarget::restir_output);
+        RHI_Texture* reservoir0  = GetRenderTarget(Renderer_RenderTarget::restir_reservoir0);
+
+        // skip if render target has invalid or too-small dimensions
+        if (tex_gi && (tex_gi->GetWidth() < min_rt_dimension || tex_gi->GetHeight() < min_rt_dimension))
+            return;
+
+        // clear output once when disabled, then skip
+        static bool cleared = false;
+        if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing() || !reservoir0)
+        {
+            if (!cleared)
+            {
+                cmd_list->ClearTexture(tex_gi, Color::standard_black);
+                cleared = true;
+            }
+            return;
+        }
+        cleared = false;
+            
+        RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
+        if (!tlas)
+            return;
+
+        RHI_Texture* reservoir1      = GetRenderTarget(Renderer_RenderTarget::restir_reservoir1);
+        RHI_Texture* reservoir2      = GetRenderTarget(Renderer_RenderTarget::restir_reservoir2);
+        RHI_Texture* reservoir3      = GetRenderTarget(Renderer_RenderTarget::restir_reservoir3);
+        RHI_Texture* reservoir4      = GetRenderTarget(Renderer_RenderTarget::restir_reservoir4);
+        RHI_Texture* reservoir_prev0 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev0);
+        RHI_Texture* reservoir_prev1 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev1);
+        RHI_Texture* reservoir_prev2 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev2);
+        RHI_Texture* reservoir_prev3 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev3);
+        RHI_Texture* reservoir_prev4 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_prev4);
+        RHI_Texture* tex_skysphere   = GetRenderTarget(Renderer_RenderTarget::skysphere);
+
+        uint32_t width  = tex_gi->GetWidth();
+        uint32_t height = tex_gi->GetHeight();
+
+        // initial sampling
+        cmd_list->BeginTimeblock("restir_pt_initial");
+        {
+            RHI_Shader* shader_rgen = GetShader(Renderer_Shader::restir_pt_ray_generation_r);
+            RHI_Shader* shader_miss = GetShader(Renderer_Shader::restir_pt_ray_miss_r);
+            RHI_Shader* shader_hit  = GetShader(Renderer_Shader::restir_pt_ray_hit_r);
+            
+            if (!shader_rgen || !shader_miss || !shader_hit)
+                return;
+            if (!shader_rgen->IsCompiled() || !shader_miss->IsCompiled() || !shader_hit->IsCompiled())
+                return;
+            
+            RHI_PipelineState pso;
+            pso.name                   = "restir_pt_initial";
+            pso.shaders[RayGeneration] = shader_rgen;
+            pso.shaders[RayMiss]       = shader_miss;
+            pso.shaders[RayHit]        = shader_hit;
+            cmd_list->SetPipelineState(pso);
+            
+            // sbt
+            if (!m_std_restir)
+            {
+                uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+                m_std_restir = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "restir_sbt");
+            }
+            m_std_restir->UpdateHandles(cmd_list);
+            
+            SetCommonTextures(cmd_list);
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            
+            tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+            
+            GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
+            cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
+            
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
+            
+            // reservoirs
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0), reservoir0, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir1), reservoir1, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir2), reservoir2, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir3), reservoir3, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir4, rhi_all_mips, 0, true);
+            
+            // trace
+            cmd_list->TraceRays(width, height, m_std_restir.get());
+            
+            cmd_list->InsertBarrier(reservoir0, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir1, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir2, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir3, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir4, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+
+        // temporal resampling
+        cmd_list->BeginTimeblock("restir_pt_temporal");
+        {
+            RHI_Shader* shader_temporal = GetShader(Renderer_Shader::restir_pt_temporal_c);
+            if (!shader_temporal || !shader_temporal->IsCompiled())
+            {
+                cmd_list->EndTimeblock();
+                return;
+            }
+            
+            RHI_PipelineState pso;
+            pso.name             = "restir_pt_temporal";
+            pso.shaders[Compute] = shader_temporal;
+            cmd_list->SetPipelineState(pso);
+            
+            SetCommonTextures(cmd_list);
+            
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev0, reservoir_prev0);
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev1, reservoir_prev1);
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev2, reservoir_prev2);
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev3, reservoir_prev3);
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev4, reservoir_prev4);
+            
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0), reservoir0, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir1), reservoir1, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir2), reservoir2, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir3), reservoir3, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir4, rhi_all_mips, 0, true);
+            
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
+            
+            const uint32_t thread_group_count_x = 8;
+            const uint32_t thread_group_count_y = 8;
+            uint32_t dispatch_x = (width + thread_group_count_x - 1) / thread_group_count_x;
+            uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
+            cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+            
+            cmd_list->InsertBarrier(reservoir0, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir1, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir2, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir3, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir4, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+
+        // spatial resampling (using ping-pong buffers to avoid read-write hazard)
+        RHI_Texture* reservoir_spatial0 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial0);
+        RHI_Texture* reservoir_spatial1 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial1);
+        RHI_Texture* reservoir_spatial2 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial2);
+        RHI_Texture* reservoir_spatial3 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial3);
+        RHI_Texture* reservoir_spatial4 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir_spatial4);
+        
+        cmd_list->BeginTimeblock("restir_pt_spatial");
+        {
+            RHI_Shader* shader_spatial = GetShader(Renderer_Shader::restir_pt_spatial_c);
+            if (!shader_spatial || !shader_spatial->IsCompiled())
+            {
+                cmd_list->EndTimeblock();
+                cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
+                return;
+            }
+            
+            RHI_PipelineState pso;
+            pso.name             = "restir_pt_spatial";
+            pso.shaders[Compute] = shader_spatial;
+            cmd_list->SetPipelineState(pso);
+            
+            SetCommonTextures(cmd_list);
+            
+            // bind tlas for inline ray tracing visibility checks
+            cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            
+            // read from current reservoirs (after temporal pass)
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev0, reservoir0);
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev1, reservoir1);
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev2, reservoir2);
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev3, reservoir3);
+            cmd_list->SetTexture(Renderer_BindingsSrv::reservoir_prev4, reservoir4);
+            
+            // write to separate spatial buffers (ping-pong to avoid read-write hazard)
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0), reservoir_spatial0, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir1), reservoir_spatial1, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir2), reservoir_spatial2, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir3), reservoir_spatial3, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir_spatial4, rhi_all_mips, 0, true);
+            
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
+            
+            const uint32_t thread_group_count_x = 8;
+            const uint32_t thread_group_count_y = 8;
+            uint32_t dispatch_x = (width + thread_group_count_x - 1) / thread_group_count_x;
+            uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
+            cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+            
+            // ensure spatial output is complete before copying
+            cmd_list->InsertBarrier(reservoir_spatial0, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir_spatial1, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir_spatial2, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir_spatial3, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(reservoir_spatial4, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+        
+        // copy spatial results back to main reservoirs for next frame's temporal pass
+        cmd_list->Blit(reservoir_spatial0, reservoir0, false);
+        cmd_list->Blit(reservoir_spatial1, reservoir1, false);
+        cmd_list->Blit(reservoir_spatial2, reservoir2, false);
+        cmd_list->Blit(reservoir_spatial3, reservoir3, false);
+        cmd_list->Blit(reservoir_spatial4, reservoir4, false);
+        
+        // swap restir reservoirs
+        {
+            auto& render_targets = GetRenderTargets();
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir0)], 
+                 render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev0)]);
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir1)], 
+                 render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev1)]);
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir2)], 
+                 render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev2)]);
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir3)], 
+                 render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev3)]);
+            swap(render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir4)], 
+             render_targets[static_cast<uint8_t>(Renderer_RenderTarget::restir_reservoir_prev4)]);
+        }
+        
+        // denoise
+        Pass_Denoiser(cmd_list, tex_gi, tex_gi);
+    }
+
+    void Renderer::Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        return; // fix
+
+        // initialize nrd if not already done
+        uint32_t width  = tex_in->GetWidth();
+        uint32_t height = tex_in->GetHeight();
+        
+        if (!RHI_VendorTechnology::NRD_IsAvailable())
+        {
+            RHI_VendorTechnology::NRD_Initialize(width, height);
+        }
+        else
+        {
+            RHI_VendorTechnology::NRD_Resize(width, height);
+        }
+
+        if (!RHI_VendorTechnology::NRD_IsAvailable())
+        {
+            // fallback: just pass through
+            if (tex_in && tex_out && tex_in != tex_out)
+            {
+                cmd_list->Blit(tex_in, tex_out, false);
+            }
+            return;
+        }
+
+        // prepare nrd input textures from g-buffer and path tracer output
+        cmd_list->BeginTimeblock("nrd_prepare");
+        {
+            RHI_Shader* shader = GetShader(Renderer_Shader::nrd_prepare_c);
+            if (!shader || !shader->IsCompiled())
+            {
+                cmd_list->EndTimeblock();
+                // fallback
+                if (tex_in && tex_out && tex_in != tex_out)
+                    cmd_list->Blit(tex_in, tex_out, false);
+                return;
+            }
+
+            RHI_Texture* nrd_viewz            = GetRenderTarget(Renderer_RenderTarget::nrd_viewz);
+            RHI_Texture* nrd_normal_roughness = GetRenderTarget(Renderer_RenderTarget::nrd_normal_roughness);
+            RHI_Texture* nrd_diff_radiance    = GetRenderTarget(Renderer_RenderTarget::nrd_diff_radiance_hitdist);
+            RHI_Texture* nrd_spec_radiance    = GetRenderTarget(Renderer_RenderTarget::nrd_spec_radiance_hitdist);
+
+            RHI_PipelineState pso;
+            pso.name             = "nrd_prepare";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
+
+            SetCommonTextures(cmd_list);
+
+            // input: noisy radiance from path tracer
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+
+            // outputs: nrd input textures (using dedicated nrd binding slots)
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_viewz), nrd_viewz, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_normal_roughness), nrd_normal_roughness, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_diff_radiance), nrd_diff_radiance, rhi_all_mips, 0, true);
+            cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_spec_radiance), nrd_spec_radiance, rhi_all_mips, 0, true);
+
+            const uint32_t thread_group_count_x = 8;
+            const uint32_t thread_group_count_y = 8;
+            uint32_t dispatch_x = (width + thread_group_count_x - 1) / thread_group_count_x;
+            uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
+            cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+
+            // barriers - keep in GENERAL layout for NRD (uses same layout for sampled and storage)
+            cmd_list->InsertBarrier(nrd_viewz, RHI_Image_Layout::General);
+            cmd_list->InsertBarrier(nrd_normal_roughness, RHI_Image_Layout::General);
+            cmd_list->InsertBarrier(nrd_diff_radiance, RHI_Image_Layout::General);
+            cmd_list->InsertBarrier(nrd_spec_radiance, RHI_Image_Layout::General);
+        }
+        cmd_list->EndTimeblock();
+
+        // get camera matrices from frame constant buffer
+        Matrix view_matrix            = m_cb_frame_cpu.view;
+        Matrix projection_matrix      = m_cb_frame_cpu.projection;
+        Matrix view_matrix_prev       = m_cb_frame_cpu.view_previous;
+        Matrix projection_matrix_prev = m_cb_frame_cpu.projection_previous;
+
+        // get jitter values
+        float jitter_x      = m_cb_frame_cpu.taa_jitter_current.x;
+        float jitter_y      = m_cb_frame_cpu.taa_jitter_current.y;
+        float jitter_prev_x = m_cb_frame_cpu.taa_jitter_previous.x;
+        float jitter_prev_y = m_cb_frame_cpu.taa_jitter_previous.y;
+
+        // run nrd denoiser
+        RHI_VendorTechnology::NRD_Denoise(
+            cmd_list,
+            tex_in,
+            tex_out,
+            view_matrix,
+            projection_matrix,
+            view_matrix_prev,
+            projection_matrix_prev,
+            jitter_x,
+            jitter_y,
+            jitter_prev_x,
+            jitter_prev_y,
+            m_cb_frame_cpu.delta_time * 1000.0f, // convert to milliseconds
+            static_cast<uint32_t>(GetFrameNumber())
+        );
+    }
+
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)
     {
         // get resources
@@ -852,7 +1496,7 @@ namespace spartan
 
         cmd_list->BeginTimeblock("screen_space_shadows");
         {
-            cmd_list->InsertBarrierReadWrite(tex_sss, RHI_BarrierType::EnsureReadThenWrite); // ensure any previous reads are complete
+            cmd_list->InsertBarrier(tex_sss, RHI_BarrierType::EnsureReadThenWrite); // ensure any previous reads are complete
 
             // set pipeline state
             RHI_PipelineState pso;
@@ -920,7 +1564,7 @@ namespace spartan
                         cmd_list->Dispatch(dispatch.WaveCount[0], dispatch.WaveCount[1], dispatch.WaveCount[2]);
                     }
 
-                    cmd_list->InsertBarrierReadWrite(tex_sss, RHI_BarrierType::EnsureWriteThenRead); // ensure the texture is ready for the next light
+                    cmd_list->InsertBarrier(tex_sss, RHI_BarrierType::EnsureWriteThenRead); // ensure the texture is ready for the next light
                 }
             }
 
@@ -931,12 +1575,16 @@ namespace spartan
 
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_skysphere              = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_skysphere                    = GetRenderTarget(Renderer_RenderTarget::skysphere);
+        RHI_Texture* tex_lut_atmosphere_scatter       = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
+        RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
+        RHI_Texture* tex_cloud_shape                  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
+        RHI_Texture* tex_cloud_detail                 = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
 
         cmd_list->BeginTimeblock("skysphere");
         {
-            // 1. atmospheric scattering
+            // 1. atmospheric scattering + volumetric clouds
             if (World::GetDirectionalLight())
             {
                 RHI_PipelineState pso;
@@ -945,7 +1593,16 @@ namespace spartan
                 cmd_list->SetPipelineState(pso);
     
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
+                
+                // bind 3D cloud noise textures (if available)
+                if (tex_cloud_shape)
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, tex_cloud_shape);
+                if (tex_cloud_detail)
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_cloud_detail);
+                
                 cmd_list->Dispatch(tex_skysphere);
             }
             else
@@ -976,7 +1633,7 @@ namespace spartan
                     const uint32_t resolution_x = tex_skysphere->GetWidth() >> mip_level;
                     const uint32_t resolution_y = tex_skysphere->GetHeight() >> mip_level;
                     cmd_list->Dispatch(tex_skysphere);
-                    cmd_list->InsertBarrierReadWrite(tex_skysphere, RHI_BarrierType::EnsureWriteThenRead);
+                    cmd_list->InsertBarrier(tex_skysphere, RHI_BarrierType::EnsureWriteThenRead);
                 }
             }
         }
@@ -988,43 +1645,42 @@ namespace spartan
         // acquire resources
         RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
-        RHI_Texture* light_shadow     = GetRenderTarget(Renderer_RenderTarget::light_shadow);
         RHI_Texture* light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
-
+    
         // define pipeline state
         RHI_PipelineState pso;
         pso.name             = is_transparent_pass ? "light_transparent" : "light";
         pso.shaders[Compute] = GetShader(Renderer_Shader::light_c);
-
+    
         // dispatch on the bindless light array and the shadow atlas
         cmd_list->BeginTimeblock(pso.name);
         {
             cmd_list->SetPipelineState(pso);
-
+    
             // textures
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::skysphere));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::cloud_shadow));        // cloud shadows
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex4,    GetRenderTarget(Renderer_RenderTarget::ray_traced_shadows)); // ray traced shadows
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,    light_specular);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_shadow);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex4,    light_volumetric);
-
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_volumetric);
+    
             // push constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(static_cast<uint32_t>(World::GetLightCount())), GetOption<float>(Renderer_Option::Fog));
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_count_active_lights), cvar_fog.GetValue());
             cmd_list->PushConstants(m_pcb_pass_cpu);
-
+    
             // dispatch
-            cmd_list->Dispatch(light_diffuse, GetOption<float>(Renderer_Option::ResolutionScale)); // adds read write barrier for light_diffuse internally
-            cmd_list->InsertBarrierReadWrite(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrierReadWrite(light_shadow,     RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrierReadWrite(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->Dispatch(light_diffuse, cvar_resolution_scale.GetValue()); // adds read write barrier for light_diffuse internally
+            cmd_list->InsertBarrier(light_specular,   RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(light_volumetric, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
     }
-
+    
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // acquire resources
@@ -1034,8 +1690,9 @@ namespace spartan
         RHI_Texture* tex_light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
+        RHI_Texture* tex_gi               = GetRenderTarget(Renderer_RenderTarget::restir_output);
 
-        cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
+        cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
         {
@@ -1047,7 +1704,7 @@ namespace spartan
 
             // push pass constants
             m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
-            m_pcb_pass_cpu.set_f3_value(0.0f, GetOption<float>(Renderer_Option::Fog), 0.0f);
+            m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue(), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // set textures
@@ -1057,16 +1714,17 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_light_specular);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_light_volumetric);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex6, tex_gi);
 
             // render
-            cmd_list->Dispatch(tex_out, GetOption<float>(Renderer_Option::ResolutionScale));
+            cmd_list->Dispatch(tex_out, cvar_resolution_scale.GetValue());
         }
         cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list)
     {
-        // acquire resources
+        // get resources
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
@@ -1083,16 +1741,15 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     tex_out);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::light_shadow));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3,    GetRenderTarget(Renderer_RenderTarget::skysphere));
 
-            // set pass constants
+            // set constants
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(GetRenderTarget(Renderer_RenderTarget::skysphere)->GetMipCount()));
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // render
-            cmd_list->Dispatch(tex_out, GetOption<float>(Renderer_Option::ResolutionScale));
+            cmd_list->Dispatch(tex_out, cvar_resolution_scale.GetValue());
         }
         cmd_list->EndTimeblock();
     }
@@ -1120,21 +1777,144 @@ namespace spartan
 
     void Renderer::Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list)
     {
-        RHI_Texture* tex_lut_atmosphere_scatter = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_lut_atmosphere_scatter      = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
+        RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
+        RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
 
         cmd_list->BeginTimeblock("lut_atmospheric_scattering");
         {
-            // set pipeline state
+            // 1. transmittance lut - precomputes optical depth from any point to top of atmosphere
+            {
+                RHI_PipelineState pso;
+                pso.name             = "lut_atmosphere_transmittance";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_transmittance_lut_c);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_transmittance);
+                cmd_list->Dispatch(tex_lut_atmosphere_transmittance);
+
+                tex_lut_atmosphere_transmittance->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            }
+
+            // 2. multi-scatter lut - approximates infinite bounce scattering (needs transmittance lut)
+            {
+                RHI_PipelineState pso;
+                pso.name             = "lut_atmosphere_multiscatter";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_multiscatter_lut_c);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_lut_atmosphere_multiscatter);
+                cmd_list->Dispatch(tex_lut_atmosphere_multiscatter);
+
+                tex_lut_atmosphere_multiscatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            }
+
+            // 3. legacy 3d lut (backward compatibility)
+            {
+                RHI_PipelineState pso;
+                pso.name             = "lut_atmospheric_scattering";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_lut_c);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
+                cmd_list->Dispatch(tex_lut_atmosphere_scatter);
+
+                tex_lut_atmosphere_scatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            }
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_CloudNoise(RHI_CommandList* cmd_list)
+    {
+        // Generate 3D noise textures for volumetric clouds (only once at startup)
+        static bool noise_generated = false;
+        if (noise_generated)
+            return;
+
+        RHI_Texture* tex_shape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
+        RHI_Texture* tex_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
+
+        if (!tex_shape || !tex_detail)
+            return;
+
+        // Check if shaders are ready (they compile async)
+        RHI_Shader* shader_shape  = GetShader(Renderer_Shader::cloud_noise_shape_c);
+        RHI_Shader* shader_detail = GetShader(Renderer_Shader::cloud_noise_detail_c);
+        if (!shader_shape || !shader_shape->IsCompiled() || !shader_detail || !shader_detail->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("cloud_noise");
+        {
+            // Generate shape noise (128x128x128)
+            {
+                RHI_PipelineState pso;
+                pso.name             = "cloud_noise_shape";
+                pso.shaders[Compute] = shader_shape;
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_shape);
+                cmd_list->Dispatch(tex_shape);
+            }
+
+            // Generate detail noise (32x32x32)
+            {
+                RHI_PipelineState pso;
+                pso.name             = "cloud_noise_detail";
+                pso.shaders[Compute] = shader_detail;
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_detail);
+                cmd_list->Dispatch(tex_detail);
+            }
+
+            // Transition to shader read for later use
+            tex_shape->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_detail->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+
+        noise_generated = true;
+    }
+
+    void Renderer::Pass_CloudShadow(RHI_CommandList* cmd_list)
+    {
+        // skip if clouds are disabled or cloud shadows are off
+        if (!cvar_clouds_enabled.GetValueAs<bool>() || cvar_cloud_coverage.GetValue() <= 0.0f || cvar_cloud_shadows.GetValue() <= 0.0f)
+            return;
+
+        // Skip if no directional light
+        if (!World::GetDirectionalLight())
+            return;
+
+        // Check if shader is compiled
+        RHI_Shader* shader = GetShader(Renderer_Shader::cloud_shadow_c);
+        if (!shader || !shader->IsCompiled())
+            return;
+
+        RHI_Texture* tex_shadow = GetRenderTarget(Renderer_RenderTarget::cloud_shadow);
+        RHI_Texture* tex_shape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
+        RHI_Texture* tex_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
+
+        if (!tex_shadow || !tex_shape || !tex_detail)
+            return;
+
+        cmd_list->BeginTimeblock("cloud_shadow");
+        {
             RHI_PipelineState pso;
-            pso.name             = "lut_atmospheric_scattering";
-            pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_lut_c);
+            pso.name             = "cloud_shadow";
+            pso.shaders[Compute] = shader;
             cmd_list->SetPipelineState(pso);
-        
-            cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_lut_atmosphere_scatter);
-            cmd_list->Dispatch(tex_lut_atmosphere_scatter);
-        
-            // for the lifetime of the engine, this will be read as an srv, so transition here
-            tex_lut_atmosphere_scatter->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+
+            // Bind 3D noise textures using the correct slots (t19, t20)
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape,  tex_shape);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_detail);
+
+            // Bind shadow map as output
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_shadow);
+
+            cmd_list->Dispatch(tex_shadow);
         }
         cmd_list->EndTimeblock();
     }
@@ -1280,7 +2060,7 @@ namespace spartan
         bool any_pass_ran    = false;
     
         // depth of field
-        if (GetOption<bool>(Renderer_Option::DepthOfField))
+        if (cvar_depth_of_field.GetValueAs<bool>())
         {
             Pass_DepthOfField(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
@@ -1288,7 +2068,7 @@ namespace spartan
         }
     
         // motion blur
-        if (GetOption<bool>(Renderer_Option::MotionBlur))
+        if (cvar_motion_blur.GetValueAs<bool>())
         {
             Pass_MotionBlur(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
@@ -1296,7 +2076,7 @@ namespace spartan
         }
     
         // bloom
-        if (GetOption<bool>(Renderer_Option::Bloom))
+        if (cvar_bloom.GetValueAs<bool>())
         {
             Pass_Bloom(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
@@ -1304,7 +2084,7 @@ namespace spartan
         }
     
         // auto-exposure
-        if (GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed) > 0.0f)
+        if (cvar_auto_exposure_adaptation_speed.GetValue() > 0.0f)
         {
             RHI_Texture* tex_exposure = tex_in;
 
@@ -1328,37 +2108,37 @@ namespace spartan
         swap(tex_in, tex_out);
     
         // dithering
-        if (GetOption<bool>(Renderer_Option::Dithering))
+        if (cvar_dithering.GetValueAs<bool>())
         {
             Pass_Dithering(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
         }
     
         // sharpening
-        Renderer_AntiAliasing_Upsampling aa_upsampling = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+        Renderer_AntiAliasing_Upsampling aa_upsampling = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
         bool is_fsr                                    = aa_upsampling == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr; // fsr does it's own sharpening
-        if (GetOption<bool>(Renderer_Option::Sharpness) && !is_fsr)
+        if (cvar_sharpness.GetValueAs<bool>() && !is_fsr)
         {
             Pass_Sharpening(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
         }
     
         // film grain
-        if (GetOption<bool>(Renderer_Option::FilmGrain))
+        if (cvar_film_grain.GetValueAs<bool>())
         {
             Pass_FilmGrain(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
         }
     
         // chromatic aberration
-        if (GetOption<bool>(Renderer_Option::ChromaticAberration))
+        if (cvar_chromatic_aberration.GetValueAs<bool>())
         {
             Pass_ChromaticAberration(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
         }
     
         // vhs
-        if (GetOption<bool>(Renderer_Option::Vhs))
+        if (cvar_vhs.GetValueAs<bool>())
         {
             Pass_Vhs(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
@@ -1383,92 +2163,153 @@ namespace spartan
     {
         // acquire resources
         RHI_Shader* shader_luminance          = GetShader(Renderer_Shader::bloom_luminance_c);
+        RHI_Shader* shader_downsample         = GetShader(Renderer_Shader::bloom_downsample_c);
         RHI_Shader* shader_upsample_blend_mip = GetShader(Renderer_Shader::bloom_upsample_blend_mip_c);
         RHI_Shader* shader_blend_frame        = GetShader(Renderer_Shader::bloom_blend_frame_c);
         RHI_Texture* tex_bloom                = GetRenderTarget(Renderer_RenderTarget::bloom);
-
+    
+        // calculate the safe mip count
+        // we stop when dimensions drop below 32px to avoid the "giant unstable block" artifact
+        uint32_t bloom_mip_count = 0;
+        for (uint32_t i = 0; i < tex_bloom->GetMipCount(); i++)
+        {
+            uint32_t mip_width  = tex_bloom->GetWidth() >> i;
+            uint32_t mip_height = tex_bloom->GetHeight() >> i;
+            
+            if (mip_width < 32 || mip_height < 32)
+                break;
+            
+            bloom_mip_count++;
+        }
+    
         cmd_list->BeginTimeblock("bloom");
-
-        // luminance
+    
+        // 1. luminance & initial downsample (mip 0)
+        // ---------------------------------------------------------
         cmd_list->BeginMarker("luminance");
         {
             // define pipeline state
             RHI_PipelineState pso;
             pso.name             = "bloom_luminance";
             pso.shaders[Compute] = shader_luminance;
-
+            
             // set pipeline state
             cmd_list->SetPipelineState(pso);
-
-            // set textures
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom);
+    
+            // input: hdr frame, output: bloom mip 0
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, 0, 1);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-
+            
             // render
-            cmd_list->Dispatch(tex_bloom);
+            cmd_list->Dispatch(tex_bloom->GetWidth(), tex_bloom->GetHeight());
         }
         cmd_list->EndMarker();
-
-        // generate mips
-        Pass_Downscale(cmd_list, tex_bloom, Renderer_DownsampleFilter::Luminance);
-
-        // starting from the lowest mip, upsample and blend with the higher one
-        cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
+    
+        // 2. stable downsample chain (mip 0 -> 1 -> ... -> n)
+        // ---------------------------------------------------------
+        cmd_list->BeginMarker("downsample_chain");
+        {
+            // define pipeline state
+            RHI_PipelineState pso;
+            pso.name             = "bloom_downsample";
+            pso.shaders[Compute] = shader_downsample;
+            
+            // set pipeline state
+            cmd_list->SetPipelineState(pso);
+    
+            for (uint32_t i = 0; i < bloom_mip_count - 1; i++)
+            {
+                // input: mip i, output: mip i+1
+                RHI_Texture* input_mip = tex_bloom;
+                int input_mip_idx      = i;
+                int output_mip_idx     = i + 1;
+                
+                uint32_t output_width  = tex_bloom->GetWidth() >> output_mip_idx;
+                uint32_t output_height = tex_bloom->GetHeight() >> output_mip_idx;
+    
+                // set textures
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, input_mip, input_mip_idx, 1);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, input_mip, output_mip_idx, 1);
+                
+                // dispatch
+                // calculate groups based on output size, assuming 8x8 thread group
+                uint32_t thread_group_count = 8;
+                uint32_t dispatch_x = (output_width + thread_group_count - 1) / thread_group_count;
+                uint32_t dispatch_y = (output_height + thread_group_count - 1) / thread_group_count;
+                
+                cmd_list->Dispatch(dispatch_x, dispatch_y);
+                
+                // barrier to ensure mip i is written before mip i+1 reads it
+                cmd_list->InsertBarrier(tex_bloom, RHI_BarrierType::EnsureWriteThenRead);
+            }
+        }
+        cmd_list->EndMarker();
+    
+        // 3. upsample & blend chain (mip n -> ... -> 1 -> 0)
+        // ---------------------------------------------------------
+        cmd_list->BeginMarker("upsample_chain");
         {
             // define pipeline state
             RHI_PipelineState pso;
             pso.name             = "bloom_upsample_blend_mip";
             pso.shaders[Compute] = shader_upsample_blend_mip;
-
+            
             // set pipeline state
             cmd_list->SetPipelineState(pso);
-
-            // render
-            for (int i = static_cast<int>(tex_bloom->GetMipCount() - 1); i > 0; i--)
+    
+            // start from the smallest mip we generated and work our way up
+            for (int i = bloom_mip_count - 1; i > 0; i--)
             {
-                int mip_index_small   = i;
-                int mip_index_big     = i - 1;
-                int mip_width_large   = tex_bloom->GetWidth()  >> mip_index_big;
-                int mip_height_height = tex_bloom->GetHeight() >> mip_index_big;
-
+                int small_mip_idx = i;
+                int big_mip_idx   = i - 1;
+                
+                // we render into the bigger mip (blending the small onto the big)
+                uint32_t big_width  = tex_bloom->GetWidth() >> big_mip_idx;
+                uint32_t big_height = tex_bloom->GetHeight() >> big_mip_idx;
+    
                 // set textures
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip_index_small, 1);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip_index_big, 1);
-
-                // blend
-                uint32_t thread_group_count    = 8;
-                uint32_t thread_group_count_x_ = static_cast<uint32_t>(ceil(static_cast<float>(mip_width_large) / thread_group_count));
-                uint32_t thread_group_count_y_ = static_cast<uint32_t>(ceil(static_cast<float>(mip_height_height) / thread_group_count));
-                cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, small_mip_idx, 1); // source (small)
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, big_mip_idx, 1);   // target (big)
+    
+                // dispatch
+                uint32_t thread_group_count = 8;
+                uint32_t dispatch_x = (big_width + thread_group_count - 1) / thread_group_count;
+                uint32_t dispatch_y = (big_height + thread_group_count - 1) / thread_group_count;
+                
+                cmd_list->Dispatch(dispatch_x, dispatch_y);
+                
+                // barrier to ensure the blend is finished before the next upsample step reads this mip
+                 cmd_list->InsertBarrier(tex_bloom, RHI_BarrierType::EnsureWriteThenRead);
             }
         }
         cmd_list->EndMarker();
-
-        // blend with the frame
+    
+        // 4. composite (apply to frame)
+        // ---------------------------------------------------------
         cmd_list->BeginMarker("blend_with_frame");
         {
             // define pipeline state
             RHI_PipelineState pso;
             pso.name             = "bloom_blend_frame";
             pso.shaders[Compute] = shader_blend_frame;
-
+            
             // set pipeline state
             cmd_list->SetPipelineState(pso);
-
+    
             // set pass constants
-            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Bloom), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f3_value(cvar_bloom.GetValue(), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
-
+    
             // set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bloom, 0, 1);
-
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_bloom, 0, 1); // sample from mip 0
+    
             // render
             cmd_list->Dispatch(tex_out);
         }
         cmd_list->EndMarker();
-
+    
         cmd_list->EndTimeblock();
     }
 
@@ -1486,7 +2327,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         // set pass constants
-        m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Tonemapping));
+        m_pcb_pass_cpu.set_f3_value(cvar_tonemapping.GetValue(), cvar_auto_exposure_adaptation_speed.GetValue());
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         // set textures
@@ -1646,15 +2487,15 @@ namespace spartan
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* tex_velocity    = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
         RHI_Texture* tex_depth       = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
-        const float resolution_scale = GetOption<float>(Renderer_Option::ResolutionScale);
+        const float resolution_scale = cvar_resolution_scale.GetValue();
 
         cmd_list->BeginTimeblock("aa_upscale");
         {
             // output is displayed in the viewport, so add a barrier to ensure it's not being read by the gpu
-            cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureReadThenWrite);
-            cmd_list->InsertPendingBarrierGroup();
+            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->FlushBarriers();
 
-            Renderer_AntiAliasing_Upsampling method = GetOption<Renderer_AntiAliasing_Upsampling>(Renderer_Option::AntiAliasing_Upsampling);
+            Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
             if (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) // highest quality, most expensive
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
@@ -1671,7 +2512,7 @@ namespace spartan
                     cmd_list,
                     World::GetCamera(),
                     m_cb_frame_cpu.delta_time,
-                    GetOption<float>(Renderer_Option::Sharpness),
+                    cvar_sharpness.GetValue(),
                     tex_in,
                     tex_depth,
                     tex_velocity,
@@ -1690,7 +2531,7 @@ namespace spartan
             }
 
             // wait for vendor tech to finish writing to the texture
-            cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
 
             // used for refraction by the transparent passes, so generate mips to emulate roughness
             Pass_Downscale(cmd_list, tex_out, Renderer_DownsampleFilter::Average);
@@ -1715,7 +2556,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
     
             // push constants
-            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::AutoExposureAdaptationSpeed));
+            m_pcb_pass_cpu.set_f3_value(cvar_auto_exposure_adaptation_speed.GetValue());
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);                 // input: current frame
@@ -1780,14 +2621,13 @@ namespace spartan
 
         // acquire shader
         Renderer_Shader shader = Renderer_Shader::ffx_spd_average_c;
-        shader                 = filter == Renderer_DownsampleFilter::Min       ? Renderer_Shader::ffx_spd_min_c       : shader;
-        shader                 = filter == Renderer_DownsampleFilter::Max       ? Renderer_Shader::ffx_spd_max_c       : shader;
-        shader                 = filter == Renderer_DownsampleFilter::Luminance ? Renderer_Shader::ffx_spd_luminance_c : shader;
+        shader                 = filter == Renderer_DownsampleFilter::Min ? Renderer_Shader::ffx_spd_min_c: shader;
+        shader                 = filter == Renderer_DownsampleFilter::Max ? Renderer_Shader::ffx_spd_max_c: shader;
         RHI_Shader* shader_c   = GetShader(shader);
 
         cmd_list->BeginMarker("downscale");
         {
-            cmd_list->InsertBarrierReadWrite(GetBuffer(Renderer_Buffer::SpdCounter));
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::SpdCounter));
 
             // set pipeline state
             RHI_PipelineState pso;
@@ -1807,7 +2647,7 @@ namespace spartan
 
             // render
             cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
-            cmd_list->InsertBarrierReadWrite(tex, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndMarker();
     }
@@ -1823,7 +2663,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
             
             // set pass constants
-            m_pcb_pass_cpu.set_f3_value(GetOption<float>(Renderer_Option::Sharpness), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f3_value(cvar_sharpness.GetValue(), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
             
             // set textures
@@ -1848,7 +2688,7 @@ namespace spartan
             
             // set textures
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue_0));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue));
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
 
             // render
@@ -1920,20 +2760,25 @@ namespace spartan
     {
         // append icons from entities
         if (!Engine::IsFlagSet(EngineMode::Playing))
-        { 
+        {
+            Vector3 pos_camera = World::GetCamera() ? World::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
             for (Entity* entity : World::GetEntities())
             {
-                math::Vector3 pos_world = entity->GetPosition();
+                // icons will eratically move all over the screen if they are close the camera
+                // that's because their direction can change very fast, so we skip those
+                if ((entity->GetPosition() - pos_camera).LengthSquared() <= 0.01f)
+                    continue;
+
                 if (entity->GetComponent<AudioSource>())
                 {
-                    if (GetOption<bool>(Renderer_Option::AudioSources))
+                    if (cvar_audio_sources.GetValueAs<bool>())
                     {
                         m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
                     }
                 }
                 else if (Light* light = entity->GetComponent<Light>())
                 {
-                    if (GetOption<bool>(Renderer_Option::Lights))
+                    if (cvar_lights.GetValueAs<bool>())
                     {
                         // append light icon based on type
                         RHI_Texture* texture = nullptr;
@@ -1986,7 +2831,7 @@ namespace spartan
 
                     // this is to avoid out of order UAV access and flickering overlapping icons
                     // ideally, we batch all the icons in one buffer and do a single dispatch, but for now this works
-                    cmd_list->InsertBarrierReadWrite(tex_out, RHI_BarrierType::EnsureWriteThenRead);
+                    cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureWriteThenRead);
                 };
 
                 // dispatch all icons in m_icons
@@ -2004,7 +2849,7 @@ namespace spartan
 
     void Renderer::Pass_Grid(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::Grid))
+        if (!cvar_grid.GetValueAs<bool>())
             return;
 
         // acquire resources
@@ -2094,7 +2939,7 @@ namespace spartan
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(Renderer_Option::SelectionOutline) || Engine::IsFlagSet(EngineMode::Playing))
+        if (!cvar_selection_outline.GetValueAs<bool>() || Engine::IsFlagSet(EngineMode::Playing))
             return;
 
         // acquire shaders
@@ -2104,46 +2949,58 @@ namespace spartan
 
         if (Camera* camera = World::GetCamera())
         {
-            if (Entity* entity_selected = camera->GetSelectedEntity())
+            const std::vector<Entity*>& selected_entities = camera->GetSelectedEntities();
+            if (!selected_entities.empty())
             {
                 cmd_list->BeginTimeblock("outline");
                 {
                     RHI_Texture* tex_outline = GetRenderTarget(Renderer_RenderTarget::outline);
 
-                    if (Renderable* renderable = entity_selected->GetComponent<Renderable>())
+                    // draw silhouettes for all selected entities
+                    bool any_rendered = false;
+                    cmd_list->BeginMarker("color_silhouette");
                     {
-                        cmd_list->BeginMarker("color_silhouette");
+                        // set pipeline state once for all entities
+                        RHI_PipelineState pso;
+                        pso.name                             = "color_silhouette";
+                        pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
+                        pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
+                        pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+                        pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
+                        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
+                        pso.render_target_color_textures[0]  = tex_outline;
+                        pso.clear_color[0]                   = Color::standard_transparent;
+                        cmd_list->SetPipelineState(pso);
+                    
+                        // render each selected entity
+                        for (Entity* entity_selected : selected_entities)
                         {
-                            // set pipeline state
-                            RHI_PipelineState pso;
-                            pso.name                             = "color_silhouette";
-                            pso.shaders[RHI_Shader_Type::Vertex] = shader_v;
-                            pso.shaders[RHI_Shader_Type::Pixel]  = shader_p;
-                            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-                            pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-                            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
-                            pso.render_target_color_textures[0]  = tex_outline;
-                            pso.clear_color[0]                   = Color::standard_transparent;
-                            cmd_list->SetPipelineState(pso);
-                        
-                            // render
-                            {
-                                // push draw data
-                                m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
-                                m_pcb_pass_cpu.transform = entity_selected->GetMatrix();
-                                cmd_list->PushConstants(m_pcb_pass_cpu);
+                            if (!entity_selected)
+                                continue;
+                                
+                            Renderable* renderable = entity_selected->GetComponent<Renderable>();
+                            if (!renderable)
+                                continue;
+                                
+                            // no mesh (vertex/index buffer) can occur if the mesh is selected but not loaded or the user removed it
+                            if (!renderable->GetVertexBuffer() || !renderable->GetIndexBuffer())
+                                continue;
 
-                                // no mesh (vertex/index buffer) can occur if the mesh is selected but not loaded or the user removed it
-                                if (renderable->GetVertexBuffer() && renderable->GetIndexBuffer())
-                                {
-                                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-                                    cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-                                }
-                            }
+                            // push draw data
+                            m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
+                            m_pcb_pass_cpu.transform = entity_selected->GetMatrix();
+                            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                            cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                            cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                            cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                            any_rendered = true;
                         }
-                        cmd_list->EndMarker();
-                        
+                    }
+                    cmd_list->EndMarker();
+                    
+                    if (any_rendered)
+                    {
                         // blur the color silhouette
                         {
                             const float radius = 30.0f;
@@ -2177,7 +3034,7 @@ namespace spartan
     void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         // acquire resources
-        const bool draw       = GetOption<bool>(Renderer_Option::PerformanceMetrics);
+        const bool draw       = cvar_performance_metrics.GetValueAs<bool>();
         const auto& shader_v  = GetShader(Renderer_Shader::font_v);
         const auto& shader_p  = GetShader(Renderer_Shader::font_p);
         shared_ptr<Font> font = GetFont();

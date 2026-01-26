@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -66,20 +66,29 @@ namespace spartan
         float camera_last_movement_time;
         float hdr_enabled;
         float hdr_max_nits;
-        float hdr_white_point;
+        float padding;
 
         math::Vector3 camera_position_previous;
         float resolution_scale;
 
         double time;
         float camera_fov;
-        float padding;
+        float padding2;
 
         math::Vector3 wind;
         float gamma;
 
         math::Vector3 camera_right;
         float camera_exposure;
+
+        // weather/clouds
+        float cloud_coverage;
+        float cloud_type;
+        float cloud_shadows;
+        float cloud_darkness;
+
+        math::Vector3 cloud_color;
+        float cloud_seed;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -161,6 +170,7 @@ namespace spartan
 
         math::Vector2 tiling_uv = math::Vector2::Zero;
         math::Vector2 offset_uv = math::Vector2::Zero;
+        math::Vector2 invert_uv = math::Vector2::Zero;
 
         float roughness_mul = 0.0f;
         float metallic_mul  = 0.0f;
@@ -227,6 +237,8 @@ namespace spartan
         float angle;
         uint32_t flags;
         uint32_t screen_space_shadows_slice_index;
+        float area_width;  // area light width in meters
+        float area_height; // area light height in meters
         math::Matrix view_projection[6];
         math::Vector2 atlas_offsets[6];
         math::Vector2 atlas_scales[6];
@@ -239,5 +251,16 @@ namespace spartan
         float is_occluder;
         math::Vector3 max;
         float padding2;
+    };
+
+    // ray tracing geometry info for vertex/index buffer access
+    struct Sb_GeometryInfo
+    {
+        uint64_t vertex_buffer_address;
+        uint64_t index_buffer_address;
+        uint32_t vertex_offset;
+        uint32_t index_offset;
+        uint32_t vertex_count;
+        uint32_t index_count;
     };
 }

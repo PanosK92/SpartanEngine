@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +50,7 @@ namespace spartan
     class RHI_Texture;
     class RHI_Shader;
     class RHI_SyncPrimitive;
+    class RHI_AccelerationStructure;
     struct RHI_Texture_Mip;
     struct RHI_Texture_Slice;
     struct RHI_Vertex_Undefined;
@@ -214,6 +215,7 @@ namespace spartan
         Pipeline,
         PipelineLayout,
         Queue,
+        AccelerationStructure,
         Max
     };
 
@@ -266,6 +268,7 @@ namespace spartan
         PushConstantBuffer,
         ConstantBuffer,
         StructuredBuffer,
+        AccelerationStructure,
         Max
     };
 
@@ -289,7 +292,9 @@ namespace spartan
         Domain,
         Pixel,
         Compute,
-        RayTracing,
+        RayGeneration,
+        RayMiss,
+        RayHit,
         Max
     };
 
@@ -297,12 +302,15 @@ namespace spartan
     {
         switch (type)
         {
-            case RHI_Shader_Type::Vertex:  return 1 << 0;
-            case RHI_Shader_Type::Hull:    return 1 << 1;
-            case RHI_Shader_Type::Domain:  return 1 << 2;
-            case RHI_Shader_Type::Pixel:   return 1 << 3;
-            case RHI_Shader_Type::Compute: return 1 << 4;
-            default:                       return 0;
+            case RHI_Shader_Type::Vertex:        return 1 << 0;
+            case RHI_Shader_Type::Hull:          return 1 << 1;
+            case RHI_Shader_Type::Domain:        return 1 << 2;
+            case RHI_Shader_Type::Pixel:         return 1 << 3;
+            case RHI_Shader_Type::Compute:       return 1 << 4;
+            case RHI_Shader_Type::RayGeneration: return 1 << 5;
+            case RHI_Shader_Type::RayMiss:       return 1 << 6;
+            case RHI_Shader_Type::RayHit:        return 1 << 7;
+            default:                             return 0;
         }
     }
 
@@ -320,9 +328,105 @@ namespace spartan
 
     enum class RHI_BarrierType
     {
-        EnsureWriteThenRead,  // RAW: Make prior write visible before read (e.g., post-dispatch)
-        EnsureReadThenWrite,  // WAR: Order read before write (execution dep; e.g., pre-dispatch)
-        EnsureWriteThenWrite  // WAW: Order prior write before new write (e.g., sequential computes on same UAV)
+        EnsureWriteThenRead,  // RAW: make prior write visible before read (e.g., post-dispatch)
+        EnsureReadThenWrite,  // WAR: order read before write (execution dep; e.g., pre-dispatch)
+        EnsureWriteThenWrite  // WAW: order prior write before new write (e.g., sequential computes on same UAV)
+    };
+
+    // allows specifying barrier scope instead of conservative auto-deduction
+    enum class RHI_Barrier_Scope : uint8_t
+    {
+        Auto,     // deduce from layout/usage (default, conservative)
+        Graphics, // vertex/fragment/tessellation stages
+        Compute,  // compute stage only
+        Transfer, // transfer stage only
+        Fragment, // fragment stage only
+        All       // all commands (most conservative, explicit)
+    };
+
+    // unified barrier description - can represent any barrier type
+    struct RHI_Barrier
+    {
+        enum class Type : uint8_t
+        {
+            ImageLayout, // layout transition
+            ImageSync,   // execution/memory barrier, no layout change
+            BufferSync   // buffer memory barrier
+        };
+
+        Type type = Type::ImageLayout;
+
+        // scope control - defaults to auto for backwards compatibility
+        RHI_Barrier_Scope scope_src = RHI_Barrier_Scope::Auto;
+        RHI_Barrier_Scope scope_dst = RHI_Barrier_Scope::Auto;
+
+        // for image barriers
+        RHI_Texture* texture       = nullptr;
+        void* image                = nullptr; // raw handle for swapchain images
+        RHI_Format format          = RHI_Format::Max;
+        uint32_t mip_index         = 0;
+        uint32_t mip_range         = 1;
+        uint32_t array_length      = 1;
+        RHI_Image_Layout layout    = RHI_Image_Layout::Max;
+        RHI_BarrierType sync_type  = RHI_BarrierType::EnsureWriteThenRead;
+
+        // for buffer barriers
+        RHI_Buffer* buffer = nullptr;
+        uint64_t offset    = 0;
+        uint64_t size      = 0; // 0 = whole buffer
+
+        // factory: texture layout transition
+        static RHI_Barrier image_layout(RHI_Texture* tex, RHI_Image_Layout new_layout,
+                                        uint32_t mip = std::numeric_limits<uint32_t>::max(), uint32_t range = 0)
+        {
+            RHI_Barrier b;
+            b.type      = Type::ImageLayout;
+            b.texture   = tex;
+            b.layout    = new_layout;
+            b.mip_index = mip;
+            b.mip_range = range;
+            return b;
+        }
+
+        // factory: raw image layout transition (for swapchain etc.)
+        static RHI_Barrier image_layout(void* img, RHI_Format fmt, uint32_t mip,
+                                        uint32_t range, uint32_t arr_len, RHI_Image_Layout new_layout)
+        {
+            RHI_Barrier b;
+            b.type         = Type::ImageLayout;
+            b.image        = img;
+            b.format       = fmt;
+            b.mip_index    = mip;
+            b.mip_range    = range;
+            b.array_length = arr_len;
+            b.layout       = new_layout;
+            return b;
+        }
+
+        // factory: texture sync barrier (no layout change)
+        static RHI_Barrier image_sync(RHI_Texture* tex, RHI_BarrierType sync)
+        {
+            RHI_Barrier b;
+            b.type      = Type::ImageSync;
+            b.texture   = tex;
+            b.sync_type = sync;
+            return b;
+        }
+
+        // factory: buffer sync barrier
+        static RHI_Barrier buffer_sync(RHI_Buffer* buf, uint64_t off = 0, uint64_t sz = 0)
+        {
+            RHI_Barrier b;
+            b.type   = Type::BufferSync;
+            b.buffer = buf;
+            b.offset = off;
+            b.size   = sz;
+            return b;
+        }
+
+        // chainable scope modifiers
+        RHI_Barrier& from(RHI_Barrier_Scope scope) { scope_src = scope; return *this; }
+        RHI_Barrier& to(RHI_Barrier_Scope scope)   { scope_dst = scope; return *this; }
     };
 
     static uint64_t rhi_hash_combine(uint64_t a, uint64_t b)
@@ -448,6 +552,45 @@ namespace spartan
     static uint32_t rhi_format_to_index(const RHI_Format format)
     {
         return static_cast<uint32_t>(format);
+    }
+
+    // returns the size of a single pixel in bytes for the given format
+    static uint32_t rhi_format_to_bytes(const RHI_Format format)
+    {
+        switch (format)
+        {
+            case RHI_Format::R8_Unorm:              return 1;
+            case RHI_Format::R8_Uint:               return 1;
+            case RHI_Format::R16_Unorm:             return 2;
+            case RHI_Format::R16_Uint:              return 2;
+            case RHI_Format::R16_Float:             return 2;
+            case RHI_Format::R32_Uint:              return 4;
+            case RHI_Format::R32_Float:             return 4;
+            case RHI_Format::R8G8_Unorm:            return 2;
+            case RHI_Format::R16G16_Float:          return 4;
+            case RHI_Format::R32G32_Float:          return 8;
+            case RHI_Format::R11G11B10_Float:       return 4;  // packed 32-bit
+            case RHI_Format::R32G32B32_Float:       return 12;
+            case RHI_Format::R8G8B8A8_Unorm:        return 4;
+            case RHI_Format::R10G10B10A2_Unorm:     return 4;  // packed 32-bit
+            case RHI_Format::R16G16B16A16_Unorm:    return 8;
+            case RHI_Format::R16G16B16A16_Snorm:    return 8;
+            case RHI_Format::R16G16B16A16_Float:    return 8;
+            case RHI_Format::R32G32B32A32_Float:    return 16;
+            case RHI_Format::D16_Unorm:             return 2;
+            case RHI_Format::D32_Float:             return 4;
+            case RHI_Format::D32_Float_S8X24_Uint:  return 8;
+            case RHI_Format::BC1_Unorm:             return 1;  // ~0.5 bytes/pixel (8 bytes per 4x4 block)
+            case RHI_Format::BC3_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
+            case RHI_Format::BC5_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
+            case RHI_Format::BC7_Unorm:             return 1;  // ~1 byte/pixel (16 bytes per 4x4 block)
+            case RHI_Format::ASTC:                  return 1;  // varies, approximate
+            case RHI_Format::B8R8G8A8_Unorm:        return 4;
+            case RHI_Format::Max:                   break;
+        }
+    
+        assert(false && "unhandled rhi_format_to_bytes() case");
+        return 4; // default fallback
     }
 
     // shader register slot shifts (required to produce spirv from hlsl)

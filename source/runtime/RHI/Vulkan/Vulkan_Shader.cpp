@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,7 @@ namespace spartan
             // this only matters for textures
             RHI_Image_Layout layout = RHI_Image_Layout::Max;
             layout                  = descriptor_type == RHI_Descriptor_Type::TextureStorage ? RHI_Image_Layout::General     : layout;
-            layout                  = descriptor_type == RHI_Descriptor_Type::Image        ? RHI_Image_Layout::Shader_Read : layout;
+            layout                  = descriptor_type == RHI_Descriptor_Type::Image          ? RHI_Image_Layout::Shader_Read : layout;
 
             for (const Resource& resource : resources)
             {
@@ -116,11 +116,6 @@ namespace spartan
                 arguments.emplace_back("-fspv-preserve-bindings");  // preserves all bindings declared within the module, even when those bindings are unused
                 arguments.emplace_back("-fspv-preserve-interface"); // preserves all interface variables in the entry point, even when those variables are unused
 
-                if (m_shader_type == RHI_Shader_Type::RayTracing)
-                {
-                    arguments.emplace_back("-fspv-extension=SPV_KHR_ray_tracing");
-                }
-
                 // shift registers to avoid conflicts
                 arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_u)); arguments.emplace_back("all"); // binding number shift for u-type (read/write buffer) register
                 arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_register_shift_b)); arguments.emplace_back("all"); // binding number shift for b-type (buffer) register
@@ -133,7 +128,7 @@ namespace spartan
                 arguments.emplace_back("-fvk-use-dx-layout");     // use DirectX memory layout for Vulkan resources
                 arguments.emplace_back("-fvk-use-dx-position-w"); // reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
 
-                // negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
+                // negate SV_Position.y before writing to stage output in vs/ds/gs to accommodate vulkan's coordinate system
                 if (m_shader_type == RHI_Shader_Type::Vertex || m_shader_type == RHI_Shader_Type::Domain)
                 {
                     arguments.emplace_back("-fvk-invert-y");
@@ -222,10 +217,50 @@ namespace spartan
         const CompilerHLSL compiler = CompilerHLSL(ptr, size);
         ShaderResources resources   = compiler.get_shader_resources();
 
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_images,       RHI_Descriptor_Type::Image,              shader_stage); // srv
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_images,        RHI_Descriptor_Type::TextureStorage,     shader_stage); // uav
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_buffers,       RHI_Descriptor_Type::StructuredBuffer,   shader_stage);
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.uniform_buffers,       RHI_Descriptor_Type::ConstantBuffer,     shader_stage);
-        spirv_resources_to_descriptors(compiler, m_descriptors, resources.push_constant_buffers, RHI_Descriptor_Type::PushConstantBuffer, shader_stage);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_images,         RHI_Descriptor_Type::Image,                 shader_stage); // srv
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_images,          RHI_Descriptor_Type::TextureStorage,        shader_stage); // uav
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_buffers,         RHI_Descriptor_Type::StructuredBuffer,      shader_stage);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.uniform_buffers,         RHI_Descriptor_Type::ConstantBuffer,        shader_stage);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.push_constant_buffers,   RHI_Descriptor_Type::PushConstantBuffer,    shader_stage);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.acceleration_structures, RHI_Descriptor_Type::AccelerationStructure, shader_stage);
+    }
+
+    void RHI_Shader::CompileFromSpirv(const RHI_Shader_Type type, const void* spirv_bytecode, uint64_t spirv_size, const string& name)
+    {
+        if (!spirv_bytecode || spirv_size == 0)
+        {
+            m_compilation_state = RHI_ShaderCompilationState::Failed;
+            return;
+        }
+
+        m_shader_type = type;
+        m_object_name = name;
+
+        // create shader module from spirv bytecode
+        VkShaderModule shader_module         = nullptr;
+        VkShaderModuleCreateInfo create_info = {};
+        create_info.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        create_info.codeSize                 = static_cast<size_t>(spirv_size);
+        create_info.pCode                    = reinterpret_cast<const uint32_t*>(spirv_bytecode);
+
+        VkResult result = vkCreateShaderModule(RHI_Context::device, &create_info, nullptr, &shader_module);
+        if (result != VK_SUCCESS)
+        {
+            m_compilation_state = RHI_ShaderCompilationState::Failed;
+            return;
+        }
+
+        // name the shader module
+        RHI_Device::SetResourceName(static_cast<void*>(shader_module), RHI_Resource_Type::Shader, m_object_name.c_str());
+
+        // reflect shader resources
+        Reflect(
+            m_shader_type,
+            reinterpret_cast<const uint32_t*>(spirv_bytecode),
+            static_cast<uint32_t>(spirv_size / sizeof(uint32_t))
+        );
+
+        m_rhi_resource      = static_cast<void*>(shader_module);
+        m_compilation_state = RHI_ShaderCompilationState::Succeeded;
     }
 }

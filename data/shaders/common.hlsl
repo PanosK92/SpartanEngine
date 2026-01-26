@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -202,19 +202,6 @@ float2 uv_to_ndc(float2 uv)
     return float2(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f); // flip y for dx style
 }
 
-float3 project_onto_paraboloid(float3 light_to_vertex_view, float near_plane, float far_plane)
-{
-    // normalize light to vertex
-    float d = length(light_to_vertex_view);
-    light_to_vertex_view /= d;
-
-    float3 ndc = 0.0f;
-    ndc.xy     = light_to_vertex_view.xy / (light_to_vertex_view.z + 1.0f); // project
-    ndc.z      = (far_plane - d) / (far_plane - near_plane);                // reverse-z
-    ndc.z      *= sign(light_to_vertex_view.z); // handle negative z - behind near plane
-
-    return ndc;
-}
 
 /*------------------------------------------------------------------------------
     NORMAL

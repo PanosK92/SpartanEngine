@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,17 +38,25 @@ namespace spartan
     class Entity;
     class FileStream;
 
+    // X-Macro: single source of truth for all components
+    // Format: X(ClassName, string_name)
+    // To add a new component, just add a line here
+    #define SP_COMPONENT_LIST       \
+        X(AudioSource, audio_source) \
+        X(Camera,      camera)       \
+        X(Light,       light)        \
+        X(Physics,     physics)      \
+        X(Renderable,  renderable)   \
+        X(Terrain,     terrain)      \
+        X(Volume,      volume)
+
     enum class ComponentType : uint32_t
     {
-        AudioSource,
-        Camera,
-        Light,
-        Physics,
-        Renderable,
-        Terrain,
+        #define X(type, str) type,
+        SP_COMPONENT_LIST
+        #undef X
         Max
     };
-    // after re-ordering the above, ensure .world save/load works
 
     struct Attribute
     {
@@ -93,12 +101,9 @@ namespace spartan
         {
             switch (type)
             {
-                case ComponentType::AudioSource: return "audio_source";
-                case ComponentType::Camera:      return "camera";
-                case ComponentType::Light:       return "light";
-                case ComponentType::Physics:     return "physics";
-                case ComponentType::Renderable:  return "renderable";
-                case ComponentType::Terrain:     return "terrain";
+                #define X(type, str) case ComponentType::type: return #str;
+                SP_COMPONENT_LIST
+                #undef X
                 default:
                     assert(false && "TypeToString: Unknown ComponentType");
                     return {};
@@ -107,12 +112,9 @@ namespace spartan
         
         static ComponentType StringToType(const std::string& name)
         {
-            if (name == "audio_source") return ComponentType::AudioSource;
-            if (name == "camera")       return ComponentType::Camera;
-            if (name == "light")        return ComponentType::Light;
-            if (name == "physics")      return ComponentType::Physics;
-            if (name == "renderable")   return ComponentType::Renderable;
-            if (name == "terrain")      return ComponentType::Terrain;
+            #define X(type, str) if (name == #str) return ComponentType::type;
+            SP_COMPONENT_LIST
+            #undef X
         
             assert(false && "StringToType: Unknown component name");
             return ComponentType::Max;
