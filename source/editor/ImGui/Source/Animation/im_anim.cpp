@@ -1,10 +1,10 @@
 // im_anim.cpp — Dear ImGui animation helpers implementation.
 // Author: Soufiane KHIAT
 // License: MIT
-
-#include "im_anim.h"
-#include "imgui.h"
-#include "imgui_internal.h"
+#include "pch.h"
+#include "../../Source/Animation/im_anim.h"
+#include "../../Source/imgui.h"
+#include "../../Source/imgui_internal.h"
 #include <stdio.h>
 #include <string.h>
 #ifdef _WIN32
@@ -13,7 +13,7 @@
 
 #ifdef IM_ANIM_PRE_19200_COMPATIBILITY
 	// ImGuiStoragePair is nested in ImGuiStorage in Pre-1.92.0 versions
-#define IMGUI_STORAGE_PAIR ImGuiStorage::ImGuiStoragePair
+#define IMGUI_STORAGE_PAIR ImGuiStoragePair
 typedef ImFont FontType;
 #else
 	// ImGuiStoragePair is in the global namespace since ImGui version 1.92.0 (19200)
@@ -64,9 +64,9 @@ static float const SPRING_DAMPING = 20.0f;    // Default damping (c)
 static float const EASE_EPSILON = 1e-6f;
 
 struct ease_lut {
-	iam_ease_desc		desc;
+	iam_ease_desc		desc = {};
 	ImVector<float>		samples;
-	int					count;
+	int			count = 0;
 	ease_lut() { count = 0; }
 };
 
@@ -721,18 +721,17 @@ struct profiler_section {
 };
 
 struct profiler_state {
-	bool enabled;
-	double frame_start_time;
-	double frame_total_time;
-	float frame_history[PROFILER_HISTORY_SIZE];
-	int frame_history_idx;
-	profiler_section sections[PROFILER_MAX_SECTIONS];
-	int section_count;
-	int stack[PROFILER_MAX_STACK];  // Stack of section indices
-	int stack_depth;
+	bool enabled = false;
+	double frame_start_time = 0;
+	double frame_total_time = 0;
+	float frame_history[PROFILER_HISTORY_SIZE] = {};
+	int frame_history_idx = 0;
+	profiler_section sections[PROFILER_MAX_SECTIONS] = {};
+	int section_count = 0;
+	int stack[PROFILER_MAX_STACK] = {};
+	int stack_depth = 0;
 
-	profiler_state() : enabled(false), frame_start_time(0), frame_total_time(0),
-		frame_history_idx(0), section_count(0), stack_depth(0) {
+	profiler_state() {
 		for (int i = 0; i < PROFILER_HISTORY_SIZE; i++) frame_history[i] = 0.0f;
 	}
 
@@ -744,7 +743,7 @@ struct profiler_state {
 		// Create new section
 		if (section_count >= PROFILER_MAX_SECTIONS) return -1;
 		int idx = section_count++;
-		strncpy(sections[idx].name, name, 63);
+                strncpy_s(sections[idx].name, sizeof(sections[idx].name), name, _TRUNCATE);
 		sections[idx].name[63] = '\0';
 		sections[idx].active = true;
 		return idx;
@@ -1513,12 +1512,12 @@ struct iam_instance_data {
 	ImGuiStorage	values_float;
 	ImGuiStorage	values_int;
 	// vec2/vec4/color stored as float pairs/quads in separate arrays
-	struct vec2_entry { ImGuiID ch; ImVec2 v; };
-	struct vec4_entry { ImGuiID ch; ImVec4 v; };
-	struct color_entry { ImGuiID ch; ImVec4 v; int color_space; };
+	struct vec2_entry { ImGuiID ch = 0; ImVec2 v = {}; };
+	struct vec4_entry { ImGuiID ch = 0; ImVec4 v = {}; };
+	struct color_entry { ImGuiID ch = 0; ImVec4 v = {}; int color_space = 0; };
 	// Relative types need 8 floats: percent(4) + px_bias(4)
-	struct vec4_rel_entry { ImGuiID ch; ImVec4 percent; ImVec4 px_bias; };
-	struct color_rel_entry { ImGuiID ch; ImVec4 percent; ImVec4 px_bias; int color_space; };
+	struct vec4_rel_entry { ImGuiID ch = 0; ImVec4 percent = {}; ImVec4 px_bias = {}; };
+	struct color_rel_entry { ImGuiID ch = 0; ImVec4 percent = {}; ImVec4 px_bias = {}; int color_space = 0; };
 	ImVector<vec2_entry> values_vec2;
 	ImVector<vec4_entry> values_vec4;
 	ImVector<color_entry> values_color;
@@ -3704,8 +3703,8 @@ iam_result iam_clip_save(ImGuiID clip_id, char const* path) {
 	if (!clip) return iam_err_not_found;
 	if (!path) return iam_err_bad_arg;
 
-	FILE* f = fopen(path, "wb");
-	if (!f) return iam_err_bad_arg;
+	FILE* f = nullptr;
+        if (fopen_s(&f, path, "wb") != 0 || !f) return iam_err_bad_arg;
 
 	// Write header
 	fwrite(IAM_CLIP_MAGIC, 1, 4, f);
@@ -3762,8 +3761,8 @@ iam_result iam_clip_load(char const* path, ImGuiID* out_clip_id) {
 	using namespace iam_clip_detail;
 	if (!path || !out_clip_id) return iam_err_bad_arg;
 
-	FILE* f = fopen(path, "rb");
-	if (!f) return iam_err_not_found;
+	FILE* f = nullptr;
+        if (fopen_s(&f, path, "rb") != 0 || !f) return iam_err_not_found;
 
 	// Read and verify header
 	char magic[4];
@@ -7425,7 +7424,7 @@ void iam_show_debug_timeline(ImGuiID instance_id) {
 						ImGui::Text("Value: (%.3f, %.3f, %.3f, %.3f)", key.value[0], key.value[1], key.value[2], key.value[3]);
 						{
 							ImVec4 col(key.value[0], key.value[1], key.value[2], key.value[3]);
-							ImGui::ColorButton("##val", col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_AlphaPreview, ImVec2(16, 16));
+							ImGui::ColorButton("##val", col, ImGuiColorEditFlags_NoTooltip, ImVec2(16, 16));
 						}
 						break;
 					case iam_chan_int:
@@ -7435,7 +7434,7 @@ void iam_show_debug_timeline(ImGuiID instance_id) {
 						ImGui::Text("Color: (%.3f, %.3f, %.3f, %.3f)", key.value[0], key.value[1], key.value[2], key.value[3]);
 						{
 							ImVec4 col(key.value[0], key.value[1], key.value[2], key.value[3]);
-							ImGui::ColorButton("##val", col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_AlphaPreview, ImVec2(16, 16));
+							ImGui::ColorButton("##val", col, ImGuiColorEditFlags_NoTooltip, ImVec2(16, 16));
 							char const* space_names[] = { "sRGB", "Linear", "HSV", "OKLAB", "OKLCH" };
 							if (key.color_space >= 0 && key.color_space < 5) {
 								ImGui::SameLine();

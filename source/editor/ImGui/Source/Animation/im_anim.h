@@ -16,7 +16,7 @@
 #define IMANIM_VERSION_MAJOR    1
 #define IMANIM_VERSION_MINOR    0
 #define IMANIM_VERSION_PATCH    0
-#include "imgui.h"
+#include "../../Source/imgui.h"
 #include <stdint.h>
 #include <math.h>
 #include <limits.h>
