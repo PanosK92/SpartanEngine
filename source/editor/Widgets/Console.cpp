@@ -72,6 +72,7 @@ void Console::OnTickVisible()
     // lambda for info, warning, error filter buttons
     const auto button_log_type_visibility_toggle = [this](uint32_t index)
     {
+        ImGui::PushID(static_cast<int>(index));
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
         if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Console), 15.0f * spartan::Window::GetDpiScale(), false, m_log_type_color[index]))
@@ -82,6 +83,7 @@ void Console::OnTickVisible()
         ImGui::SameLine();
         ImGui::Text("%u", m_log_type_count[index]);
         ImGui::SameLine();
+        ImGui::PopID();
     };
 
     // log category visibility buttons

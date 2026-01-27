@@ -20,7 +20,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-
 #include "pch.h"
 #include "MenuBar.h"
 #include "GeneralWindows.h"
@@ -39,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
+#include "Core/Definitions.h"
 //================================
 
 //= NAMESPACES =====
@@ -476,33 +476,36 @@ void MenuBar::Tick()
             spartan::Window::SetTitleBarHeight(menubar_height);
             spartan::Window::SetTitleBarButtonWidth(buttons_titlebar::get_total_width());
 
-            // engine logo on the left side of the title bar
-            float dpi       = spartan::Window::GetDpiScale();
-            float icon_size = 16.0f * dpi;
-            float padding_x = 6.0f * dpi;
-            {
-                float vertical_padding = (menubar_height - icon_size) * 0.5f;
-                
-                ImGui::SetCursorPosX(padding_x);
-                ImGui::SetCursorPosY(vertical_padding);
-                
-                spartan::RHI_Texture* logo = spartan::ResourceCache::GetIcon(spartan::IconType::Logo);
-                if (logo)
-                {
-                    ImGui::Image(
-                        reinterpret_cast<ImTextureID>(logo),
-                        ImVec2(icon_size, icon_size)
-                    );
-                }
-                
-                ImGui::SameLine(0, padding_x);
-            }
-
-            // vertically center menu items - account for frame padding in menu item height
+            // layout values
+            float dpi              = spartan::Window::GetDpiScale();
+            float icon_size        = 16.0f * dpi;
+            float padding_x        = 6.0f * dpi;
             float frame_padding_y  = ImGui::GetStyle().FramePadding.y;
             float text_height      = ImGui::GetTextLineHeight();
             float menu_item_height = text_height + frame_padding_y * 2.0f;
             float menu_y           = (menubar_height - menu_item_height) * 0.5f;
+            float icon_y           = (menubar_height - icon_size) * 0.5f;
+
+            // logo
+            ImGui::SetCursorPosX(padding_x);
+            ImGui::SetCursorPosY(icon_y);
+            spartan::RHI_Texture* logo = spartan::ResourceCache::GetIcon(spartan::IconType::Logo);
+            if (logo)
+            {
+                ImGui::Image(reinterpret_cast<ImTextureID>(logo), ImVec2(icon_size, icon_size));
+            }
+            ImGui::SameLine(0, padding_x * 0.5f);
+
+            // title with version
+            static char title[64] = {};
+            if (title[0] == '\0')
+            {
+                snprintf(title, sizeof(title), "Spartan Engine v%d.%d.%d",
+                    spartan::version::major, spartan::version::minor, spartan::version::patch);
+            }
+            ImGui::SetCursorPosY(menu_y);
+            ImGui::MenuItem(title, nullptr, false, false);
+            ImGui::SameLine(0, padding_x * 2.0f);
             
             ImGui::SetCursorPosY(menu_y);
             buttons_menu::world();

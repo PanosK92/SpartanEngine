@@ -184,8 +184,8 @@ void Editor::Tick()
 
 void Editor::BeginWindow()
 {
+    // note: don't use ImGuiWindowFlags_MenuBar here since we use BeginMainMenuBar() separately
     const auto window_flags =
-        ImGuiWindowFlags_MenuBar               |
         ImGuiWindowFlags_NoDocking             |
         ImGuiWindowFlags_NoTitleBar            |
         ImGuiWindowFlags_NoCollapse            |
@@ -194,17 +194,17 @@ void Editor::BeginWindow()
         ImGuiWindowFlags_NoBringToFrontOnFocus |
         ImGuiWindowFlags_NoNavFocus;
     
-    // set window position and size - this keeps the MenuBar in the right place and at the right size
+    // set window position and size to the work area (excludes main menu bar)
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y));
-    ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y));
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
     
-    // draw window border for borderless window
+    // draw window border for borderless window (use full viewport for border around entire window)
     {
         ImDrawList* draw_list = ImGui::GetForegroundDrawList();
         ImVec2 min = viewport->Pos;
         ImVec2 max = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
-        ImU32 border_color = IM_COL32(60, 60, 60, 255);
+        ImU32 border_color = IM_COL32(40, 40, 42, 255);
         draw_list->AddRect(min, max, border_color, 0.0f, 0, 1.0f);
     }
 
