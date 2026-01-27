@@ -33,6 +33,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <physx/PxPhysicsAPI.h>
 #include <vector>
 #include "../Logging/Log.h"
+#include "../Core/Engine.h"
+#include "../../editor/ImGui/Source/imgui.h"
 //=============================
 
 namespace car
@@ -95,7 +97,7 @@ namespace car
         constexpr float min_slip_speed      = 0.5f;
         constexpr float load_sensitivity    = 0.92f;
         constexpr float load_reference      = 4000.0f;
-        constexpr float rear_grip_ratio     = 1.02f;
+        constexpr float rear_grip_ratio     = 1.10f;  // increased for more rear stability
         constexpr float slip_angle_deadband = 0.01f;
         constexpr float min_lateral_grip    = 0.4f;
         constexpr float camber_thrust_coeff = 0.015f;
@@ -198,7 +200,7 @@ namespace car
         
         // body damping
         constexpr float linear_damping  = 0.001f;
-        constexpr float angular_damping = 0.35f;
+        constexpr float angular_damping = 0.50f;  // increased for yaw stability
         
         // abs
         inline bool     abs_enabled         = false;
@@ -1095,6 +1097,15 @@ namespace car
                 w.longitudinal_force = long_f;
                 PxRigidBodyExt::addForceAtPos(*body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos, PxForceMode::eFORCE);
                 
+                // tire cooling at rest (no airflow, only ambient)
+                float temp_above_ambient = w.temperature - tuning::tire_ambient_temp;
+                if (temp_above_ambient > 0.0f)
+                {
+                    float cooling_rate = tuning::tire_cooling_rate * (temp_above_ambient / 50.0f);
+                    w.temperature -= cooling_rate * dt;
+                    w.temperature = PxMax(w.temperature, tuning::tire_ambient_temp);
+                }
+                
                 if (tuning::log_pacejka)
                     SP_LOG_INFO("[%s] at rest: vx=%.3f, vy=%.3f, friction long_f=%.1f, lat_f=%.1f", wheel_name, vx, vy, long_f, lat_f);
                 continue;
@@ -1875,4 +1886,126 @@ namespace car
     }
     
     inline int get_debug_rays_per_wheel() { return debug_rays_per_wheel; }
+
+    // debug window - call this during tick to display car telemetry
+    inline void debug_window(bool* visible = nullptr)
+    {
+        // only render when the editor is visible (imgui context is active)
+        if (!spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible))
+            return;
+
+        if (visible && !*visible)
+            return;
+
+        if (!body)
+            return;
+
+        ImGui::SetNextWindowSize(ImVec2(450, 600), ImGuiCond_FirstUseEver);
+        if (!ImGui::Begin("Car Telemetry", visible))
+        {
+            ImGui::End();
+            return;
+        }
+
+        // general info
+        float speed = get_speed_kmh();
+        ImGui::Text("Speed: %.1f km/h", speed);
+        ImGui::Text("Gear: %s %s", get_gear_string(), is_shifting ? "(shifting)" : "");
+        ImGui::Text("RPM: %.0f / %.0f", engine_rpm, tuning::engine_redline_rpm);
+
+        // rpm bar
+        float rpm_fraction = engine_rpm / tuning::engine_max_rpm;
+        ImVec4 rpm_color = (engine_rpm > tuning::engine_redline_rpm) ? ImVec4(1, 0, 0, 1) : ImVec4(0.2f, 0.8f, 0.2f, 1);
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, rpm_color);
+        ImGui::ProgressBar(rpm_fraction, ImVec2(-1, 0), "");
+        ImGui::PopStyleColor();
+
+        ImGui::Text("Throttle: %.0f%%  Brake: %.0f%%  Clutch: %.0f%%", input.throttle * 100, input.brake * 100, clutch * 100);
+
+        // driver aids
+        ImGui::Separator();
+        ImGui::Text("Driver Aids:");
+        ImGui::Text("  ABS: %s %s", tuning::abs_enabled ? "ON" : "OFF", is_abs_active_any() ? "(active)" : "");
+        ImGui::Text("  TC:  %s %s", tuning::tc_enabled ? "ON" : "OFF", tc_active ? "(active)" : "");
+        if (tuning::turbo_enabled)
+            ImGui::Text("  Boost: %.2f bar", boost_pressure);
+
+        // wheel data table
+        ImGui::Separator();
+        if (ImGui::BeginTable("wheels", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+        {
+            ImGui::TableSetupColumn("Wheel");
+            ImGui::TableSetupColumn("Grounded");
+            ImGui::TableSetupColumn("Load (N)");
+            ImGui::TableSetupColumn("Slip Ratio");
+            ImGui::TableSetupColumn("Slip Angle");
+            ImGui::TableSetupColumn("Tire Temp");
+            ImGui::TableSetupColumn("Brake Temp");
+            ImGui::TableHeadersRow();
+
+            const char* names[] = { "FL", "FR", "RL", "RR" };
+            for (int i = 0; i < wheel_count; i++)
+            {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("%s", names[i]);
+                ImGui::TableNextColumn(); ImGui::Text("%s", wheels[i].grounded ? "yes" : "no");
+                ImGui::TableNextColumn(); ImGui::Text("%.0f", wheels[i].tire_load);
+                ImGui::TableNextColumn(); ImGui::Text("%.3f", wheels[i].slip_ratio);
+                ImGui::TableNextColumn(); ImGui::Text("%.2f", wheels[i].slip_angle * 57.2958f); // to degrees
+                ImGui::TableNextColumn();
+                {
+                    float temp = wheels[i].temperature;
+                    ImVec4 color = (temp > tuning::tire_optimal_temp + 20) ? ImVec4(1, 0.5f, 0, 1) :
+                                   (temp < tuning::tire_optimal_temp - 20) ? ImVec4(0.5f, 0.5f, 1, 1) :
+                                   ImVec4(0.2f, 1, 0.2f, 1);
+                    ImGui::TextColored(color, "%.0f C", temp);
+                }
+                ImGui::TableNextColumn();
+                {
+                    float temp = wheels[i].brake_temp;
+                    ImVec4 color = (temp > tuning::brake_fade_temp) ? ImVec4(1, 0, 0, 1) :
+                                   (temp > tuning::brake_optimal_temp) ? ImVec4(1, 0.5f, 0, 1) :
+                                   ImVec4(0.8f, 0.8f, 0.8f, 1);
+                    ImGui::TextColored(color, "%.0f C", temp);
+                }
+            }
+            ImGui::EndTable();
+        }
+
+        // forces table
+        ImGui::Separator();
+        if (ImGui::BeginTable("forces", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+        {
+            ImGui::TableSetupColumn("Wheel");
+            ImGui::TableSetupColumn("Lateral (N)");
+            ImGui::TableSetupColumn("Longitudinal (N)");
+            ImGui::TableSetupColumn("Suspension (N)");
+            ImGui::TableHeadersRow();
+
+            const char* names[] = { "FL", "FR", "RL", "RR" };
+            for (int i = 0; i < wheel_count; i++)
+            {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn(); ImGui::Text("%s", names[i]);
+                ImGui::TableNextColumn(); ImGui::Text("%.0f", wheels[i].lateral_force);
+                ImGui::TableNextColumn(); ImGui::Text("%.0f", wheels[i].longitudinal_force);
+                ImGui::TableNextColumn(); ImGui::Text("%.0f", get_wheel_suspension_force(i));
+            }
+            ImGui::EndTable();
+        }
+
+        // aero
+        if (aero_debug.valid)
+        {
+            ImGui::Separator();
+            ImGui::Text("Aerodynamics:");
+            ImGui::Text("  Ride Height: %.3f m", aero_debug.ride_height);
+            ImGui::Text("  Yaw Angle: %.1f deg", aero_debug.yaw_angle * 57.2958f);
+            ImGui::Text("  Ground Effect: %.2fx", aero_debug.ground_effect_factor);
+            ImGui::Text("  Drag: %.0f N", aero_debug.drag_force.magnitude());
+            ImGui::Text("  Downforce F/R: %.0f / %.0f N", aero_debug.front_downforce.magnitude(), aero_debug.rear_downforce.magnitude());
+        }
+
+        ImGui::End();
+    }
 }
