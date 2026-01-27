@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-static const uint INITIAL_CANDIDATE_SAMPLES   = 6;
+static const uint INITIAL_CANDIDATE_SAMPLES   = 10;
 static const float RUSSIAN_ROULETTE_PROB      = 0.85f;
 static const uint RUSSIAN_ROULETTE_START      = 3;
 static const uint VERTEX_STRIDE               = 44;
@@ -58,24 +58,16 @@ uint64_t make_address(uint2 addr)
     return uint64_t(addr.x) | (uint64_t(addr.y) << 32);
 }
 
-// compute specular sampling probability based on material properties
 float compute_spec_probability(float roughness, float metallic, float n_dot_v)
 {
-    // fresnel at grazing angles increases specular contribution
-    float fresnel_factor = pow(1.0f - n_dot_v, 5.0f);
-    float base_spec      = lerp(0.04f, 1.0f, metallic);
-    float spec_response  = lerp(base_spec, 1.0f, fresnel_factor);
-    
-    // smoother surfaces need more specular samples for the narrow lobe
-    // rough surfaces benefit more from diffuse (cosine) sampling
+    float fresnel_factor   = pow(1.0f - n_dot_v, 5.0f);
+    float base_spec        = lerp(0.04f, 1.0f, metallic);
+    float spec_response    = lerp(base_spec, 1.0f, fresnel_factor);
     float roughness_factor = 1.0f - roughness * roughness;
-    
-    // blend based on how specular the surface appears
-    float spec_prob = lerp(0.1f, 0.9f, spec_response * roughness_factor + metallic * 0.5f);
+    float spec_prob        = lerp(0.1f, 0.9f, spec_response * roughness_factor + metallic * 0.5f);
     return clamp(spec_prob, 0.1f, 0.9f);
 }
 
-// cook-torrance brdf evaluation
 float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf)
 {
     float3 h_unnorm = v + l;
@@ -127,7 +119,6 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     return brdf * n_dot_l;
 }
 
-// importance sample brdf direction
 float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float2 xi, out float pdf)
 {
     float3 t, b;
@@ -179,7 +170,6 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     return l;
 }
 
-// shadow ray for direct lighting occlusion
 bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
 {
     RayDesc ray;
@@ -188,14 +178,13 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
     ray.TMin      = RESTIR_RAY_T_MIN;
     ray.TMax      = max_dist - RESTIR_RAY_T_MIN;
 
-    PathPayload payload;
-    payload.hit = false;
+    RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+    query.Proceed();
 
-    TraceRay(tlas, RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH, 0xFF, 0, 1, 0, ray, payload);
-    return !payload.hit;
+    return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-// trace full path with nee and mis
 PathSample trace_path(float3 origin, float3 direction, inout uint seed)
 {
     PathSample sample;
@@ -225,7 +214,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
 
         TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
 
-        // environment contribution on miss
+        // sky
         if (!payload.hit)
         {
             float2 sky_uv       = direction_sphere_uv(ray_dir);
@@ -234,7 +223,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             break;
         }
 
-        // store first hit info for reservoir
+        // first hit
         if (first_hit)
         {
             sample.hit_position = payload.hit_position;
@@ -246,7 +235,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         sample.path_length = bounce + 1;
         float3 view_dir = -ray_dir;
 
-        // emissive hit with mis
+        // emissive
         if (any(payload.emission > 0.0f))
         {
             if (bounce == 0 || prev_specular)
@@ -255,7 +244,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             }
             else
             {
-                static const float NOMINAL_EMISSIVE_AREA = 1.0f;
+                static const float NOMINAL_EMISSIVE_AREA = 0.1f;
                 float3 to_light     = payload.hit_position - ray_origin;
                 float light_dist_sq = dot(to_light, to_light);
                 float cos_light     = abs(dot(payload.hit_normal, -ray_dir));
@@ -265,7 +254,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             }
         }
 
-        // next event estimation for direct lights
+        // direct lighting
         float3 shading_pos = payload.hit_position + payload.hit_normal * RESTIR_RAY_NORMAL_OFFSET;
 
         for (uint light_idx = 0; light_idx < 4u; light_idx++)
@@ -364,7 +353,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             sample.radiance += throughput * brdf * Li * mis_weight / max(light_pdf, 1e-6f);
         }
 
-        // russian roulette termination
+        // russian roulette
         if (bounce >= RUSSIAN_ROULETTE_START)
         {
             float continuation_prob = min(luminance(throughput), RUSSIAN_ROULETTE_PROB);
@@ -373,33 +362,30 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             throughput /= continuation_prob;
         }
 
-        // sample next bounce direction
+        // next bounce
         float2 xi = random_float2(seed);
         float pdf;
         float3 new_dir = sample_brdf(payload.albedo, payload.roughness, payload.metallic,
                                       payload.hit_normal, view_dir, xi, pdf);
 
-        new_dir = normalize(new_dir);
         if (pdf < 1e-6f || dot(new_dir, payload.hit_normal) <= 0 || any(isnan(new_dir)))
             break;
 
-        float brdf_pdf;
+        float unused_pdf;
         float3 brdf = evaluate_brdf(payload.albedo, payload.roughness, payload.metallic,
-                                     payload.hit_normal, view_dir, new_dir, brdf_pdf);
+                                     payload.hit_normal, view_dir, new_dir, unused_pdf);
 
-        if (brdf_pdf < 1e-6f)
-            break;
-
-        throughput *= brdf / brdf_pdf;
+        throughput *= brdf / pdf;
         sample.pdf *= pdf;
 
         prev_brdf_pdf = pdf;
         prev_specular = (payload.roughness < 0.1f && payload.metallic > 0.5f);
 
-        // clamp throughput to prevent fireflies from extreme brdf/pdf ratios
+        // firefly suppression
+        float clamp_limit = lerp(50.0f, 5.0f, float(bounce) / float(RESTIR_MAX_PATH_LENGTH));
         float max_throughput = max(max(throughput.r, throughput.g), throughput.b);
-        if (max_throughput > 10.0f)
-            throughput *= 10.0f / max_throughput;
+        if (max_throughput > clamp_limit)
+            throughput *= clamp_limit / max_throughput;
 
         ray_origin = payload.hit_position + payload.hit_normal * RESTIR_RAY_NORMAL_OFFSET;
         ray_dir    = new_dir;
@@ -444,12 +430,19 @@ void ray_gen()
     float roughness = max(material.r, 0.04f);
     float metallic  = material.g;
 
-    // generate initial candidates via ris
+    // ris
     Reservoir reservoir = create_empty_reservoir();
 
     for (uint i = 0; i < INITIAL_CANDIDATE_SAMPLES; i++)
     {
-        float2 xi = random_float2(seed);
+        // stratified jitter
+        float stratum = float(i) / float(INITIAL_CANDIDATE_SAMPLES);
+        float2 jitter = random_float2(seed);
+        float2 xi = float2(
+            frac(stratum + jitter.x / float(INITIAL_CANDIDATE_SAMPLES)),
+            jitter.y
+        );
+        
         float pdf;
         float3 ray_dir = sample_brdf(albedo, roughness, metallic, normal_ws, view_dir, xi, pdf);
 
@@ -482,9 +475,15 @@ void ray_gen()
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0.0f, 0.0f, 0.0f);
 
+    // clamp
     float lum = luminance(gi);
-    if (lum > 20.0f)
-        gi *= 20.0f / lum;
+    static const float soft_clamp = 20.0f;
+    if (lum > soft_clamp)
+    {
+        float excess = lum - soft_clamp;
+        float scale  = soft_clamp + excess / (1.0f + excess / soft_clamp);
+        gi *= scale / lum;
+    }
 
     tex_uav[launch_id] = float4(gi, 1.0f);
 }
@@ -500,7 +499,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     uint instance_index = InstanceIndex();
     GeometryInfo geo    = geometry_infos[instance_index];
 
-    // load triangle indices
+    // indices
     uint64_t index_addr  = make_address(geo.index_buffer_address);
     uint primitive_index = PrimitiveIndex();
     uint index_offset    = (geo.index_offset + primitive_index * 3) * 4;
@@ -509,7 +508,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     uint i1 = vk::RawBufferLoad<uint>(index_addr + index_offset + 4);
     uint i2 = vk::RawBufferLoad<uint>(index_addr + index_offset + 8);
 
-    // load vertex attributes
+    // vertices
     uint64_t vertex_addr = make_address(geo.vertex_buffer_address);
     uint v0_offset = (geo.vertex_offset + i0) * VERTEX_STRIDE;
     uint v1_offset = (geo.vertex_offset + i1) * VERTEX_STRIDE;
@@ -527,7 +526,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     float2 uv1 = vk::RawBufferLoad<float2>(vertex_addr + v1_offset + 12);
     float2 uv2 = vk::RawBufferLoad<float2>(vertex_addr + v2_offset + 12);
 
-    // barycentric interpolation
+    // interpolation
     float3 bary = float3(1.0f - attribs.barycentrics.x - attribs.barycentrics.y,
                          attribs.barycentrics.x, attribs.barycentrics.y);
 
@@ -544,7 +543,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     float dist      = RayTCurrent();
     float mip_level = clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
 
-    // sample material textures
+    // material
     float3 albedo = mat.color.rgb;
     if (mat.has_texture_albedo())
     {
@@ -572,7 +571,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).r;
     }
 
-    // normal mapping
+    // normal map
     if (mat.has_texture_normal())
     {
         uint normal_texture_index = material_index + material_texture_index_normal;

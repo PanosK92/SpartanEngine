@@ -22,10 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_RESTIR_RESERVOIR
 #define SPARTAN_RESTIR_RESERVOIR
 
-// configuration
 static const uint RESTIR_MAX_PATH_LENGTH     = 3;
-static const uint RESTIR_M_CAP               = 16;
-static const uint RESTIR_SPATIAL_SAMPLES     = 6;
+static const uint RESTIR_M_CAP               = 32;
+static const uint RESTIR_SPATIAL_SAMPLES     = 8;
 static const float RESTIR_SPATIAL_RADIUS     = 16.0f;
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
@@ -33,7 +32,6 @@ static const float RESTIR_TEMPORAL_DECAY     = 0.9f;
 static const float RESTIR_RAY_NORMAL_OFFSET  = 0.01f;
 static const float RESTIR_RAY_T_MIN          = 0.001f;
 
-// path sample data
 struct PathSample
 {
     float3 hit_position;
@@ -45,7 +43,6 @@ struct PathSample
     float  pdf;
 };
 
-// reservoir for weighted sample storage
 struct Reservoir
 {
     PathSample sample;
@@ -60,7 +57,6 @@ static const uint PATH_FLAG_DIFFUSE  = 1 << 1;
 static const uint PATH_FLAG_CAUSTIC  = 1 << 2;
 static const uint PATH_FLAG_DELTA    = 1 << 3;
 
-// octahedral encoding for compact normal storage
 float2 octahedral_encode(float3 n)
 {
     n /= (abs(n.x) + abs(n.y) + abs(n.z));
@@ -83,7 +79,6 @@ float3 octahedral_decode(float2 e)
     return normalize(n);
 }
 
-// reservoir packing into 5 float4 textures
 uint pack_path_info(uint path_length, uint flags)
 {
     return (path_length & 0xFFFF) | ((flags & 0xFFFF) << 16);
@@ -163,19 +158,14 @@ Reservoir create_empty_reservoir()
     return r;
 }
 
-// luminance-based target pdf with reinhard compression
 float calculate_target_pdf(float3 radiance)
 {
     float lum = dot(radiance, float3(0.299, 0.587, 0.114));
     lum = clamp(lum, 0.0f, 65504.0f);
-    
-    // use reinhard compression without sqrt to avoid over-weighting dim samples
-    // sqrt was causing W to amplify excessively when target_pdf was small
-    float compressed = lum / (1.0f + lum * 0.1f);
+    float compressed = log(1.0f + lum) / (1.0f + log(1.0f + lum) * 0.5f);
     return max(compressed, 1e-6f);
 }
 
-// weighted reservoir sampling update
 bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float weight, float random_value)
 {
     reservoir.weight_sum += weight;
@@ -189,7 +179,6 @@ bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float we
     return false;
 }
 
-// merge source reservoir into destination
 bool merge_reservoir(inout Reservoir dst, Reservoir src, float target_pdf_at_dst, float random_value)
 {
     float weight = target_pdf_at_dst * src.W * src.M;
@@ -206,7 +195,6 @@ bool merge_reservoir(inout Reservoir dst, Reservoir src, float target_pdf_at_dst
     return false;
 }
 
-// compute final reservoir weight
 void finalize_reservoir(inout Reservoir reservoir)
 {
     float target_pdf = calculate_target_pdf(reservoir.sample.radiance);
@@ -217,11 +205,9 @@ void finalize_reservoir(inout Reservoir reservoir)
     else
         reservoir.W = 0;
 
-    // tighter clamp to prevent energy amplification
     reservoir.W = min(reservoir.W, 5.0f);
 }
 
-// cap M to prevent unbounded temporal accumulation
 void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
 {
     if (reservoir.M > max_M)
@@ -235,7 +221,6 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
     }
 }
 
-// pcg hash for random number generation
 uint pcg_hash(uint seed)
 {
     uint state = seed * 747796405u + 2891336453u;
@@ -264,14 +249,12 @@ uint create_seed(uint2 pixel, uint frame)
     return pcg_hash(pixel.x ^ pcg_hash(pixel.y ^ pcg_hash(frame)));
 }
 
-// decorrelated seed per pass to avoid sampling artifacts
 uint create_seed_for_pass(uint2 pixel, uint frame, uint pass_id)
 {
     uint pass_salt = pcg_hash(pass_id * 0x9E3779B9u);
     return pcg_hash(pixel.x ^ pcg_hash(pixel.y ^ pcg_hash(frame ^ pass_salt)));
 }
 
-// cosine-weighted hemisphere sampling
 float3 sample_cosine_hemisphere(float2 xi, out float pdf)
 {
     float phi       = 2.0f * 3.14159265f * xi.x;
@@ -282,7 +265,6 @@ float3 sample_cosine_hemisphere(float2 xi, out float pdf)
     return float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
-// ggx importance sampling
 float3 sample_ggx(float2 xi, float roughness, out float pdf)
 {
     float a  = roughness * roughness;
@@ -300,7 +282,6 @@ float3 sample_ggx(float2 xi, float roughness, out float pdf)
     return h;
 }
 
-// frisvad's method for orthonormal basis
 void build_orthonormal_basis_fast(float3 n, out float3 t, out float3 b)
 {
     if (n.z < -0.9999999f)
@@ -324,7 +305,6 @@ float3 local_to_world(float3 local_dir, float3 n)
     return normalize(t * local_dir.x + b * local_dir.y + n * local_dir.z);
 }
 
-// surface similarity for neighbor validation
 bool surface_similarity_check(float3 pos1, float3 normal1, float depth1, float3 pos2, float3 normal2, float depth2)
 {
     if (dot(normal1, normal2) < RESTIR_NORMAL_THRESHOLD)
@@ -337,7 +317,6 @@ bool surface_similarity_check(float3 pos1, float3 normal1, float depth1, float3 
     return true;
 }
 
-// jacobian for solid angle measure conversion during reuse
 float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 new_shading_pos, float3 sample_normal)
 {
     float3 dir_original = sample_pos - original_shading_pos;
@@ -355,23 +334,16 @@ float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 ne
     dir_original /= dist_original;
     dir_new      /= dist_new;
 
-    float cos_original = abs(dot(sample_normal, -dir_original));
-    float cos_new      = abs(dot(sample_normal, -dir_new));
+    float cos_original = dot(sample_normal, -dir_original);
+    float cos_new      = dot(sample_normal, -dir_new);
 
-    if (cos_original < 0.1f || cos_new < 0.1f)
+    if (cos_original < 0.05f || cos_new < 0.05f)
         return 0.0f;
 
     float jacobian = (cos_new * dist_original_sq) / (cos_original * dist_new_sq + 1e-6f);
-    
-    // tight clamp and smooth falloff to prevent splotchy artifacts
-    // jacobians far from 1.0 indicate the sample is being stretched significantly
-    float deviation = abs(jacobian - 1.0f);
-    float falloff   = 1.0f / (1.0f + deviation * 2.0f);
-    
-    return clamp(jacobian * falloff, 0.0f, 2.0f);
+    return clamp(jacobian, 0.0f, 10.0f);
 }
 
-// balance heuristic for mis
 float power_heuristic(float pdf_a, float pdf_b)
 {
     float a2 = pdf_a * pdf_a;
