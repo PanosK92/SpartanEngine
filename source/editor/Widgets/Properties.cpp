@@ -49,13 +49,62 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace
 {
+    // color pickers
     std::unique_ptr<ButtonColorPicker> m_material_color_picker;
     std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
     std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
-    #define column_pos_x 180.0f * spartan::Window::GetDpiScale()
-    #define item_width   120.0f * spartan::Window::GetDpiScale()
+
+    // context menu state
     string context_menu_id;
     Component* copied_component = nullptr;
+
+    // component content tracking
+    bool component_content_active = false;
+
+    //----------------------------------------------------------
+    // layout helpers
+    //----------------------------------------------------------
+    
+    namespace layout
+    {
+        // layout constants
+        constexpr float label_ratio     = 0.35f;  // labels take 35% of width
+        constexpr float content_padding = 8.0f;   // padding inside component content area
+        constexpr float min_value_width = 40.0f;  // minimum width for value widgets
+        
+        // get the x position where values should start (after label)
+        float value_offset()
+        {
+            return ImGui::GetContentRegionAvail().x * label_ratio;
+        }
+        
+        // get width for a single value widget (fills remaining space)
+        float value_width()
+        {
+            float w = ImGui::GetContentRegionAvail().x * (1.0f - label_ratio) - ImGui::GetStyle().ItemSpacing.x;
+            return ImMax(w, min_value_width);
+        }
+        
+        // get width for each of N value widgets on the same row
+        float value_width_split(int count)
+        {
+            float total    = value_width();
+            float label_w  = ImGui::CalcTextSize("X").x + ImGui::GetStyle().ItemSpacing.x;
+            float spacing  = ImGui::GetStyle().ItemSpacing.x * (count - 1);
+            float w        = (total - label_w * count - spacing) / static_cast<float>(count);
+            return ImMax(w, min_value_width);
+        }
+        
+        // position cursor at value column
+        void move_to_value_column()
+        {
+            ImGui::SameLine(value_offset());
+        }
+    }
+
+    //----------------------------------------------------------
+    // selection helpers
+    //----------------------------------------------------------
 
     Entity* get_selected_entity()
     {
@@ -63,7 +112,6 @@ namespace
         {
             return camera->GetSelectedEntity();
         }
-
         return nullptr;
     }
     
@@ -85,6 +133,10 @@ namespace
         }
         return empty;
     }
+
+    //----------------------------------------------------------
+    // component context menu
+    //----------------------------------------------------------
 
     void component_context_menu_options(const string& id, Component* component, const bool removable)
     {
@@ -121,30 +173,28 @@ namespace
         }
     }
 
+    //----------------------------------------------------------
+    // component begin/end - wraps component content with styling
+    //----------------------------------------------------------
+
     bool component_begin(const char* name, Component* component_instance, bool options = true, const bool removable = true)
     {
-        // draw header first so we get its screen rect
+        // draw collapsing header
         ImGui::PushFont(Editor::font_bold);
-        const bool collapsed = ImGuiSp::collapsing_header(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
+        const bool is_expanded = ImGuiSp::collapsing_header(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::PopFont();
     
+        // gear icon for context menu
         if (options)
         {
-            // gear icon constants
-            const float icon_size = 24.0f; // square icon size
-            const float offset_x  = 43.0f; // distance from right edge
-            const float offset_y  = 2.0f;  // distance from top edge
+            const float icon_size = 24.0f;
+            const float offset_x  = 43.0f;
+            const float offset_y  = 2.0f;
     
-            // get top-right of last item (the header)
             const ImVec2 header_min = ImGui::GetItemRectMin();
             const ImVec2 header_max = ImGui::GetItemRectMax();
     
-            // place gear icon in top-right of header with padding
-            ImVec2 icon_pos;
-            icon_pos.x = header_max.x - offset_x;
-            icon_pos.y = header_min.y + offset_y;
-    
-            ImGui::SetCursorScreenPos(icon_pos);
+            ImGui::SetCursorScreenPos(ImVec2(header_max.x - offset_x, header_min.y + offset_y));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
             if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Gear), icon_size, false))
             {
@@ -158,12 +208,41 @@ namespace
                 component_context_menu_options(context_menu_id, component_instance, removable);
             }
         }
+
+        // wrap expanded content in styled child window
+        if (is_expanded)
+        {
+            component_content_active = true;
+            
+            // background color: subtle blend between window bg and header
+            const ImVec4& bg1 = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+            const ImVec4& bg2 = ImGui::GetStyle().Colors[ImGuiCol_Header];
+            ImVec4 content_bg = ImVec4(
+                bg1.x + (bg2.x - bg1.x) * 0.15f,
+                bg1.y + (bg2.y - bg1.y) * 0.15f,
+                bg1.z + (bg2.z - bg1.z) * 0.15f,
+                1.0f
+            );
+            
+            ImGui::PushStyleColor(ImGuiCol_ChildBg, content_bg);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(layout::content_padding, layout::content_padding));
+            ImGui::BeginChild(("##content_" + string(name)).c_str(), ImVec2(0, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
+            ImGui::PushItemWidth(-FLT_MIN);
+        }
     
-        return collapsed;
+        return is_expanded;
     }
 
     void component_end()
     {
+        if (component_content_active)
+        {
+            ImGui::PopItemWidth();
+            ImGui::EndChild();
+            ImGui::PopStyleVar();
+            ImGui::PopStyleColor();
+            component_content_active = false;
+        }
         ImGui::Separator();
     }
 }
@@ -183,7 +262,6 @@ void Properties::OnTickVisible()
     bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     ImGui::BeginDisabled(is_in_game_mode);
     {
-        ImGui::PushItemWidth(item_width);
         {
             uint32_t selected_count = get_selected_entity_count();
             
@@ -224,8 +302,6 @@ void Properties::OnTickVisible()
             {
                 ShowMaterial(m_inspected_material.lock().get());
             }
-
-            ImGui::PopItemWidth();
         }
     }
     ImGui::EndDisabled();
@@ -347,7 +423,7 @@ void Properties::ShowLight(spartan::Light* light) const
 
         // type
         ImGui::Text("Type");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         uint32_t selection_index = static_cast<uint32_t>(light->GetLightType());
         if (ImGuiSp::combo_box("##LightType", types, &selection_index))
         {
@@ -359,7 +435,7 @@ void Properties::ShowLight(spartan::Light* light) const
             ImGui::Text("Temperature");
 
             // color
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
             m_colorPicker_light->Update();
 
             // kelvin
@@ -383,7 +459,7 @@ void Properties::ShowLight(spartan::Light* light) const
             };
 
             ImGui::Text("Intensity");
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
 
             // light types
             bool is_directional = light->GetLightType() == LightType::Directional;
@@ -410,18 +486,18 @@ void Properties::ShowLight(spartan::Light* light) const
         // shadows
         {
             ImGui::Text("Shadows");
-            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows", &shadows);
+            layout::move_to_value_column(); ImGui::Checkbox("##light_shadows", &shadows);
 
             if (shadows)
             {
                 // transparent shadows
                 ImGui::Text("Screen Space Shadows");
-                ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
+                layout::move_to_value_column(); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
                 ImGuiSp::tooltip("Screen space shadows from Days Gone - PS4");
 
                 // volumetric
                 ImGui::Text("Volumetric");
-                ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_volumetric", &volumetric);
+                layout::move_to_value_column(); ImGui::Checkbox("##light_volumetric", &volumetric);
                 ImGuiSp::tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
             }
         }
@@ -444,7 +520,7 @@ void Properties::ShowLight(spartan::Light* light) const
         if (light->GetLightType() != LightType::Directional)
         {
             ImGui::Text("Range");
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
             ImGuiSp::draw_float_wrap("##lightRange", &range, 0.01f, 0.0f, 1000.0f);
         }
 
@@ -452,7 +528,7 @@ void Properties::ShowLight(spartan::Light* light) const
         if (light->GetLightType() == LightType::Spot)
         {
             ImGui::Text("Angle");
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
             ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f);
         }
 
@@ -460,11 +536,11 @@ void Properties::ShowLight(spartan::Light* light) const
         if (light->GetLightType() == LightType::Area)
         {
             ImGui::Text("Width");
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
             ImGuiSp::draw_float_wrap("##lightAreaWidth", &area_width, 0.01f, 0.01f, 100.0f);
 
             ImGui::Text("Height");
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
             ImGuiSp::draw_float_wrap("##lightAreaHeight", &area_height, 0.01f, 0.01f, 100.0f);
         }
 
@@ -503,13 +579,13 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
 
         // mesh
         ImGui::Text("Mesh");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         ImGui::InputText("##renderable_mesh_name", &name_mesh, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
         // geometry
         {
-            // move to column_pos_x before starting the table
-            ImGui::SetCursorPosX(column_pos_x);
+            // move to value column before starting the table
+            ImGui::SetCursorPosX(layout::value_offset());
             
             int lod_count = renderable->GetLodCount();
             if (ImGui::BeginTable("##geometry_table", lod_count + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit))
@@ -562,7 +638,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             if (!renderable->HasInstancing())
             {
                 ImGui::Text("Lod Index");
-                ImGui::SameLine(column_pos_x);
+                layout::move_to_value_column();
                 char lod_buf[16];
                 std::snprintf(lod_buf, sizeof(lod_buf), "%u", renderable->GetLodIndex());
                 ImGui::LabelText("##renderable_lod_index", lod_buf, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
@@ -573,7 +649,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
         {
             // count
             ImGui::Text("Instances");
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
             char buf[16];
             std::snprintf(buf, sizeof(buf), "%u", instance_count);
             ImGui::LabelText("##renderable_instance_count", buf, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
@@ -624,14 +700,14 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
 
         // draw distance
         ImGui::Text("Draw Distance");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         float draw_distance = renderable->GetMaxRenderDistance();
         ImGui::InputFloat("##renderable_draw_distance", &draw_distance, 1.0f, 10.0f, "%.0f");
         renderable->SetMaxRenderDistance(draw_distance);
 
         // material
         ImGui::Text("Material");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         ImGui::InputText("##renderable_material", &name_material, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
         {
@@ -639,11 +715,11 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
         }
 
         ImGui::Text("Cast shadows");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         ImGui::Checkbox("##renderable_cast_shadows", &cast_shadows);
 
         ImGui::Text("Visible");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         ImGui::LabelText("##renderable_visible", is_visible ? "true" : "false", ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
         //= MAP =========================================================
@@ -682,23 +758,23 @@ void Properties::ShowPhysics(Physics* body) const
 
         // mass
         ImGui::Text("Mass (kg)");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_mass", &mass, step, step_fast, precision, input_text_flags);
+        layout::move_to_value_column(); ImGui::InputFloat("##physics_body_mass", &mass, step, step_fast, precision, input_text_flags);
 
         // friction
         ImGui::Text("Friction");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_friction", &friction, step, step_fast, precision, input_text_flags);
+        layout::move_to_value_column(); ImGui::InputFloat("##physics_body_friction", &friction, step, step_fast, precision, input_text_flags);
 
         // rolling friction
         ImGui::Text("Rolling Friction");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_rolling_friction", &friction_rolling, step, step_fast, precision, input_text_flags);
+        layout::move_to_value_column(); ImGui::InputFloat("##physics_body_rolling_friction", &friction_rolling, step, step_fast, precision, input_text_flags);
 
         // restitution
         ImGui::Text("Restitution");
-        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##physics_body_restitution", &restitution, step, step_fast, precision, input_text_flags);
+        layout::move_to_value_column(); ImGui::InputFloat("##physics_body_restitution", &restitution, step, step_fast, precision, input_text_flags);
 
         // freeze position
         ImGui::Text("Freeze Position");
-        ImGui::SameLine(column_pos_x); ImGui::Text("X");
+        layout::move_to_value_column(); ImGui::Text("X");
         ImGui::SameLine(); ImGui::Checkbox("##physics_body_pos_x", &freeze_pos_x);
         ImGui::SameLine(); ImGui::Text("Y");
         ImGui::SameLine(); ImGui::Checkbox("##physics_body_pos_y", &freeze_pos_y);
@@ -707,7 +783,7 @@ void Properties::ShowPhysics(Physics* body) const
 
         // freeze rotation
         ImGui::Text("Freeze Rotation");
-        ImGui::SameLine(column_pos_x); ImGui::Text("X");
+        layout::move_to_value_column(); ImGui::Text("X");
         ImGui::SameLine(); ImGui::Checkbox("##physics_body_rot_x", &freeze_rot_x);
         ImGui::SameLine(); ImGui::Text("Y");
         ImGui::SameLine(); ImGui::Checkbox("##physics_body_rot_y", &freeze_rot_y);
@@ -730,7 +806,7 @@ void Properties::ShowPhysics(Physics* body) const
             };
 
             ImGui::Text("Body Type");
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
             uint32_t selection_index = static_cast<uint32_t>(body->GetBodyType());
             if (ImGuiSp::combo_box("##physics_body_shape", body_types, &selection_index))
             {
@@ -740,17 +816,21 @@ void Properties::ShowPhysics(Physics* body) const
 
         // static checkbox
         ImGui::Text("Static");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_static", &is_static);
+        layout::move_to_value_column(); ImGui::Checkbox("##physics_body_static", &is_static);
 
         // kinematic checkbox
         ImGui::Text("Kinematic");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##physics_body_kinematic", &is_kinematic);
+        layout::move_to_value_column(); ImGui::Checkbox("##physics_body_kinematic", &is_kinematic);
 
         // center
-        ImGui::Text("Shape Center");
-        ImGui::SameLine(column_pos_x); ImGui::PushID("physics_body_shape_center_x"); ImGui::InputFloat("X", &center_of_mass.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_y"); ImGui::InputFloat("Y", &center_of_mass.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();             ImGui::PushID("physics_body_shape_center_z"); ImGui::InputFloat("Z", &center_of_mass.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        {
+            float input_w = layout::value_width_split(3);
+            
+            ImGui::Text("Shape Center");
+            layout::move_to_value_column(); ImGui::PushID("physics_body_shape_center_x"); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("X", &center_of_mass.x, 0.0f, 0.0f, precision, input_text_flags); ImGui::PopID();
+            ImGui::SameLine();              ImGui::PushID("physics_body_shape_center_y"); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("Y", &center_of_mass.y, 0.0f, 0.0f, precision, input_text_flags); ImGui::PopID();
+            ImGui::SameLine();              ImGui::PushID("physics_body_shape_center_z"); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("Z", &center_of_mass.z, 0.0f, 0.0f, precision, input_text_flags); ImGui::PopID();
+        }
 
         // map
         if (mass != body->GetMass())                                      body->SetMass(mass);
@@ -805,7 +885,7 @@ void Properties::ShowMaterial(Material* material) const
         // name
         ImGui::NewLine();
         ImGui::Text("Name");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         ImGui::Text(material->GetObjectName().c_str());
 
         // texture slots
@@ -827,7 +907,7 @@ void Properties::ShowMaterial(Material* material) const
         
                     if (show_texture || show_modifier)
                     {
-                        ImGui::SameLine(column_pos_x);
+                        layout::move_to_value_column();
                     }
                 }
         
@@ -914,25 +994,27 @@ void Properties::ShowMaterial(Material* material) const
         
         // uv
         {
+            float input_w = layout::value_width_split(2);
+
             // tiling
             ImGui::Text("Tiling");
-            ImGui::SameLine(column_pos_x); ImGui::Text("X");
-            ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+            layout::move_to_value_column(); ImGui::Text("X");
+            ImGui::SameLine(); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("##matTilingX", &tiling.x, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             ImGui::SameLine(); ImGui::Text("Y");
-            ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+            ImGui::SameLine(); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("##matTilingY", &tiling.y, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
         
             // offset
             ImGui::Text("Offset");
-            ImGui::SameLine(column_pos_x); ImGui::Text("X");
-            ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+            layout::move_to_value_column(); ImGui::Text("X");
+            ImGui::SameLine(); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("##matOffsetX", &offset.x, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             ImGui::SameLine(); ImGui::Text("Y");
-            ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
+            ImGui::SameLine(); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("##matOffsetY", &offset.y, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
         
             // inversion
             bool invert_x = material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
             bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
             ImGui::Text("Invert");
-            ImGui::SameLine(column_pos_x);
+            layout::move_to_value_column();
             ImGui::Checkbox("X##matInvertX", &invert_x);
             ImGui::SameLine();
             ImGui::Checkbox("Y##matInvertY", &invert_y);
@@ -952,7 +1034,7 @@ void Properties::ShowMaterial(Material* material) const
                 };
         
                 ImGui::Text("Culling");
-                ImGui::SameLine(column_pos_x);
+                layout::move_to_value_column();
                 uint32_t cull_mode_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::CullMode));
                 if (ImGuiSp::combo_box("##mat_cull_mode", cull_modes, &cull_mode_index))
                 {
@@ -1016,11 +1098,11 @@ void Properties::ShowCamera(Camera* camera) const
 
         // Background
         ImGui::Text("Background");
-        ImGui::SameLine(column_pos_x); m_colorPicker_camera->Update();
+        layout::move_to_value_column(); m_colorPicker_camera->Update();
 
         // Projection
         ImGui::Text("Projection");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         uint32_t selection_index = static_cast<uint32_t>(camera->GetProjectionType());
         if (ImGuiSp::combo_box("##cameraProjection", projection_types, &selection_index))
         {
@@ -1028,27 +1110,27 @@ void Properties::ShowCamera(Camera* camera) const
         }
 
         // Aperture
-        ImGui::SetCursorPosX(column_pos_x);
+        ImGui::SetCursorPosX(layout::value_offset());
         ImGuiSp::draw_float_wrap("Aperture (f-stop)", &aperture, 0.01f, 0.01f, 150.0f);
         ImGuiSp::tooltip("Aperture value in f-stop, controls the amount of light, depth of field and chromatic aberration");
 
         // Shutter speed
-        ImGui::SetCursorPosX(column_pos_x);
+        ImGui::SetCursorPosX(layout::value_offset());
         ImGuiSp::draw_float_wrap("Shutter Speed (sec)", &shutter_speed, 0.0001f, 0.0f, 1.0f, "%.4f");
         ImGuiSp::tooltip("Length of time for which the camera shutter is open, controls the amount of motion blur");
 
         // ISO
-        ImGui::SetCursorPosX(column_pos_x);
+        ImGui::SetCursorPosX(layout::value_offset());
         ImGuiSp::draw_float_wrap("ISO", &iso, 0.1f, 0.0f, 2000.0f);
         ImGuiSp::tooltip("Sensitivity to light, controls camera noise");
 
         // Field of View
-        ImGui::SetCursorPosX(column_pos_x);
+        ImGui::SetCursorPosX(layout::value_offset());
         ImGuiSp::draw_float_wrap("Field of View", &fov, 0.1f, 1.0f, 179.0f);
 
         // FPS Control
         ImGui::Text("First Person Control");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
+        layout::move_to_value_column(); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
  
         //= MAP =======================================================================================================================================================
@@ -1144,7 +1226,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 
         // audio clip
         ImGui::Text("Audio Clip");
-        ImGui::SameLine(column_pos_x);
+        layout::move_to_value_column();
         ImGui::InputText("##audioSourceAudioClip", &audio_clip_name, ImGuiInputTextFlags_ReadOnly);
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Audio))
         {
@@ -1153,31 +1235,31 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 
         // play on start
         ImGui::Text("Play on Start");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourcePlayOnStart", &play_on_start);
+        layout::move_to_value_column(); ImGui::Checkbox("##audioSourcePlayOnStart", &play_on_start);
 
         // mute
         ImGui::Text("Mute");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceMute", &mute);
+        layout::move_to_value_column(); ImGui::Checkbox("##audioSourceMute", &mute);
 
         // loop
         ImGui::Text("Loop");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceLoop", &loop);
+        layout::move_to_value_column(); ImGui::Checkbox("##audioSourceLoop", &loop);
 
         // Pitch
         ImGui::Text("Pitch");
-        ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.01f, 5.0f);
+        layout::move_to_value_column(); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.01f, 5.0f);
 
         // loop
         ImGui::Text("3D");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceIs3D", &is_3d);
+        layout::move_to_value_column(); ImGui::Checkbox("##audioSourceIs3D", &is_3d);
 
         // volume
         ImGui::Text("Volume");
-        ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
+        layout::move_to_value_column(); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
 
         ImGui::Separator();
         ImGui::Text("Progress");
-        ImGui::SameLine(column_pos_x); ImGui::ProgressBar(audio_source->GetProgress());
+        layout::move_to_value_column(); ImGui::ProgressBar(audio_source->GetProgress());
 
         //= MAP =========================================================================================
         if (mute != audio_source->GetMute())                 audio_source->SetMute(mute);
@@ -1253,8 +1335,8 @@ void Properties::ShowVolume(spartan::Volume* volume) const
                 {
                     ImGui::SameLine();
                     
-                    // ux: set a fixed width for the slider so they align nicely
-                    ImGui::PushItemWidth(100.0f);
+                    // fill remaining width for the slider
+                    ImGui::PushItemWidth(-FLT_MIN);
                     
                     float value = volume->GetOption(name.c_str());
                     // use ## to hide the label since the checkbox already shows it

@@ -41,17 +41,16 @@ RWTexture2D<float4> tex_reservoir3 : register(u24);
 RWTexture2D<float4> tex_reservoir4 : register(u25);
 
 static const float2 SPATIAL_OFFSETS[16] = {
-    float2(-0.9423, -0.3993), float2( 0.9457,  0.2908),
-    float2(-0.0675, -0.9920), float2(-0.8116,  0.5841),
-    float2( 0.3890, -0.9213), float2( 0.7854,  0.6189),
-    float2(-0.3066,  0.9518), float2( 0.5576, -0.8302),
-    float2(-0.8765,  0.0183), float2( 0.1105,  0.9939),
-    float2( 0.9824, -0.1869), float2(-0.4680, -0.8837),
-    float2(-0.6205,  0.7841), float2( 0.2673, -0.9636),
-    float2( 0.8420,  0.5394), float2(-0.9987,  0.0502)
+    float2(-0.7071, -0.7071), float2( 0.9239,  0.3827),
+    float2(-0.3827,  0.9239), float2( 0.7071, -0.7071),
+    float2(-0.9239,  0.3827), float2( 0.3827, -0.9239),
+    float2( 0.0000,  1.0000), float2(-0.3827, -0.9239),
+    float2( 0.9239, -0.3827), float2(-0.7071,  0.7071),
+    float2( 0.3827,  0.9239), float2(-0.9239, -0.3827),
+    float2( 0.7071,  0.7071), float2(-1.0000,  0.0000),
+    float2( 0.0000, -1.0000), float2( 1.0000,  0.0000)
 };
 
-// visibility check for spatial sample reuse
 bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sample_hit_pos, float3 sample_hit_normal, float linear_depth)
 {
     float3 dir = sample_hit_pos - center_pos;
@@ -62,25 +61,29 @@ bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sa
 
     dir /= dist;
 
-    // grazing angle check - reject samples nearly parallel to surface
+    // angle checks
     float cos_theta = dot(dir, center_normal);
     if (cos_theta <= 0.1f)
         return false;
 
-    // back-face check - reject if sample surface faces away
     float cos_back = dot(sample_hit_normal, -dir);
-    if (cos_back <= 0.05f)
+    if (cos_back <= 0.15f)
         return false;
 
-    // skip ray trace for very short distances
-    if (dist < 0.05f)
+    // planarity
+    float plane_dist = dot(sample_hit_pos - center_pos, center_normal);
+    if (plane_dist < 0.001f)
+        return false;
+
+    if (dist < 0.02f)
         return true;
 
+    // trace
     RayDesc ray;
     ray.Origin    = center_pos + center_normal * RESTIR_RAY_NORMAL_OFFSET;
     ray.Direction = dir;
     ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET * 2.0f;
+    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET;
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -89,7 +92,6 @@ bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sa
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-// neighbor pixel validation based on depth and normal similarity
 bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_normal, float center_linear_depth, float2 resolution)
 {
     if (neighbor_pixel.x < 0 || neighbor_pixel.x >= (int)resolution.x ||
@@ -114,27 +116,25 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
     return true;
 }
 
-// jacobian for solid angle measure conversion
 float evaluate_jacobian_for_reuse(PathSample sample, float3 center_pos, float3 center_normal, float3 neighbor_pos)
 {
     float3 dir_to_sample = sample.hit_position - center_pos;
     float dist_sq = dot(dir_to_sample, dir_to_sample);
     if (dist_sq < 1e-6f)
         return 0.0f;
-    
+
     dir_to_sample = dir_to_sample * rsqrt(dist_sq);
     float cos_theta = dot(center_normal, dir_to_sample);
-    if (cos_theta <= 0.1f)
+    if (cos_theta <= 0.2f)
         return 0.0f;
-    
+
     float jacobian = compute_jacobian(sample.hit_position, neighbor_pos, center_pos, sample.hit_normal);
     return max(jacobian, 0.0f);
 }
 
-// depth-adaptive sampling radius
 float compute_adaptive_radius(float linear_depth, float center_roughness)
 {
-    float depth_factor = saturate(linear_depth * SPATIAL_DEPTH_SCALE / 100.0f);
+    float depth_factor = saturate(sqrt(linear_depth * SPATIAL_DEPTH_SCALE / 100.0f));
     float base_radius = lerp(SPATIAL_RADIUS_MIN, SPATIAL_RADIUS_MAX, depth_factor);
     float roughness_factor = lerp(0.7f, 1.0f, center_roughness);
     return base_radius * roughness_factor;
@@ -177,7 +177,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float adaptive_radius = compute_adaptive_radius(linear_depth, roughness);
 
-    // init combined reservoir with center sample
     Reservoir combined = create_empty_reservoir();
     float target_pdf_center = calculate_target_pdf(center.sample.radiance);
     
@@ -187,21 +186,23 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample     = center.sample;
     combined.target_pdf = target_pdf_center;
 
-    // random rotation for stratified sampling
-    float rotation_angle = random_float(seed) * 2.0f * PI;
-    float cos_rot = cos(rotation_angle);
-    float sin_rot = sin(rotation_angle);
+    // spatial reuse
+    float base_angle = random_float(seed) * 2.0f * PI;
 
-    // spatial reuse from neighbors
     for (uint i = 0; i < RESTIR_SPATIAL_SAMPLES; i++)
     {
+        float rotation_angle = base_angle + float(i) * 2.39996323f;
+        float cos_rot = cos(rotation_angle);
+        float sin_rot = sin(rotation_angle);
+
         float2 offset = SPATIAL_OFFSETS[i % 16];
         float2 rotated_offset = float2(
             offset.x * cos_rot - offset.y * sin_rot,
             offset.x * sin_rot + offset.y * cos_rot
         );
 
-        float radius_scale  = adaptive_radius * (0.5f + 0.5f * random_float(seed));
+        float radius_jitter = 0.6f + 0.4f * random_float(seed);
+        float radius_scale  = adaptive_radius * radius_jitter;
         int2 neighbor_pixel = int2(pixel) + int2(rotated_offset * radius_scale);
 
         if (!is_neighbor_valid(neighbor_pixel, pos_ws, normal_ws, linear_depth, resolution))
@@ -239,13 +240,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (target_pdf_at_center <= 0.0f)
             continue;
 
-        // clamp neighbor's effective M to prevent any single neighbor from dominating
-        float effective_M = min(neighbor.M, 4.0f);
+        float effective_M = min(neighbor.M, max(center.M * 2.0f, 4.0f));
         float weight = target_pdf_at_center * neighbor.W * effective_M * jacobian;
-        
-        // also clamp maximum weight relative to center to prevent splotchy artifacts
-        float max_weight = weight_center * 4.0f + 0.1f;
-        weight = min(weight, max_weight);
 
         combined.weight_sum += weight;
         combined.M += effective_M;
@@ -279,9 +275,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0.0f, 0.0f, 0.0f);
 
+    // clamp
     float lum = luminance(gi);
-    if (lum > 20.0f)
-        gi *= 20.0f / lum;
+    static const float soft_clamp = 20.0f;
+    if (lum > soft_clamp)
+    {
+        float excess = lum - soft_clamp;
+        float scale  = soft_clamp + excess / (1.0f + excess / soft_clamp);
+        gi *= scale / lum;
+    }
 
     tex_uav[pixel] = float4(gi, 1.0f);
 }

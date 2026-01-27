@@ -430,8 +430,8 @@ static const float cloud_scale       = 0.00003;
 static const float detail_scale      = 0.0003;
 static const float cloud_absorption  = 0.3;
 static const float cloud_wind_speed  = 10.0;
-static const int cloud_steps         = 64;
-static const int light_steps         = 8;   // slightly more samples for better self-shadowing
+static const int cloud_steps         = 96;
+static const int light_steps         = 10;
 
 struct cloud_result
 {
@@ -517,8 +517,8 @@ struct clouds
         
         // distance fade and lod factor
         float dist = length(pos.xz);
-        float dist_fade = 1.0 - smoothstep(25000.0, 40000.0, dist);
-        float detail_lod = 1.0 - smoothstep(12000.0, 25000.0, dist); // preserve detail at medium distance
+        float dist_fade = 1.0 - smoothstep(30000.0, 50000.0, dist);
+        float detail_lod = 1.0 - smoothstep(18000.0, 35000.0, dist); // preserve detail at greater distance
         
         // shape noise
         float4 shape = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), warped * cloud_scale, 0);
@@ -528,14 +528,15 @@ struct clouds
         float density = saturate(remap(noise, 1.0 - coverage, 1.0, 0.0, 1.0)) * dist_fade;
         if (density < 0.01) return 0.0;
         
-        // detail erosion - skip for distant clouds (not visible anyway)
-        if (detail_lod > 0.01)
+        // detail erosion - always apply some detail, fade with distance
+        float detail_amount = lerp(0.15, 0.4, detail_lod);
+        if (detail_amount > 0.01)
         {
             float3 detail_uvw = domain_warp(seed_pos * 1.1, seed) * detail_scale;
             detail_uvw.y += time * 0.01;
             float4 detail = tex3d_cloud_detail.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), detail_uvw, 0);
             float detail_noise = detail.r * 0.625 + detail.g * 0.25 + detail.b * 0.125;
-            density = saturate(density - detail_noise * (1.0 - density) * 0.35 * detail_lod);
+            density = saturate(density - detail_noise * (1.0 - density) * detail_amount);
         }
         
         return density;
@@ -703,8 +704,8 @@ struct clouds
         
         // adaptive stepping with distance-based lod
         // closer clouds get more samples, distant clouds get fewer
-        float dist_lod = 1.0 - smoothstep(5000.0, 25000.0, t_enter);
-        int num_steps = int(clamp(float(cloud_steps) * ray_len / 3000.0 * (0.7 + dist_lod * 0.3), 48.0, 96.0));
+        float dist_lod = 1.0 - smoothstep(8000.0, 30000.0, t_enter);
+        int num_steps = int(clamp(float(cloud_steps) * ray_len / 3000.0 * (0.75 + dist_lod * 0.25), 64.0, 128.0));
         float step_size = ray_len / float(num_steps);
         
         // temporal jitter - blue noise style with golden ratio temporal offset
@@ -988,19 +989,25 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float4 prev = tex_uav[tid.xy];
     float3 blended = final_color;
     
+    // helper to wrap x coordinate for equirectangular seamless sampling
+    uint wrap_x = uint(res.x);
+    
     if (!compute_clouds && has_clouds_coverage && prev.a > 0.5)
     {
         // checkerboard reconstruction: blend neighboring computed pixels with temporal history
-        // avoid edges where neighbor sampling would wrap incorrectly
-        bool at_edge = tid.x < 2 || tid.x >= uint(res.x) - 2 || tid.y < 2 || tid.y >= uint(res.y) - 2;
+        // properly wrap x coordinate for seamless equirectangular texture
+        bool at_y_edge = tid.y < 2 || tid.y >= uint(res.y) - 2;
         
-        if (!at_edge)
+        if (!at_y_edge)
         {
-            // read 4 diagonal neighbors (these were computed this frame due to checkerboard pattern)
-            float3 n0 = tex_uav[tid.xy + int2(-1, -1)].rgb;
-            float3 n1 = tex_uav[tid.xy + int2( 1, -1)].rgb;
-            float3 n2 = tex_uav[tid.xy + int2(-1,  1)].rgb;
-            float3 n3 = tex_uav[tid.xy + int2( 1,  1)].rgb;
+            // read 4 diagonal neighbors with proper x wrapping for equirectangular seam
+            uint x_left  = (tid.x == 0) ? (wrap_x - 1) : (tid.x - 1);
+            uint x_right = (tid.x >= wrap_x - 1) ? 0 : (tid.x + 1);
+            
+            float3 n0 = tex_uav[uint2(x_left,  tid.y - 1)].rgb;
+            float3 n1 = tex_uav[uint2(x_right, tid.y - 1)].rgb;
+            float3 n2 = tex_uav[uint2(x_left,  tid.y + 1)].rgb;
+            float3 n3 = tex_uav[uint2(x_right, tid.y + 1)].rgb;
             
             // use box filter of neighbors for spatial reconstruction
             float3 spatial = (n0 + n1 + n2 + n3) * 0.25;
@@ -1010,25 +1017,25 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         }
         else
         {
-            // at edges, fall back to temporal-only with faster blend
+            // at y edges (poles), fall back to temporal-only with faster blend
             blended = lerp(prev.rgb, final_color, 0.25);
         }
     }
     else if (cloud_alpha > 0.0 && prev.a > 0.5)
     {
         // computed pixel with clouds - temporal blend with variance-aware weight
-        float blend = 0.25;
+        float blend = 0.2;
         
         // increase blend when colors differ significantly (reduces ghosting during movement)
         float color_diff = dot(abs(final_color - prev.rgb), float3(0.299, 0.587, 0.114));
-        blend = lerp(blend, 0.5, saturate(color_diff * 3.0));
+        blend = lerp(blend, 0.4, saturate(color_diff * 3.0));
         
         blended = lerp(prev.rgb, final_color, blend);
     }
     else if (prev.a > 0.5)
     {
         // no clouds this frame but have history - blend slowly for smooth transitions
-        blended = lerp(prev.rgb, final_color, 0.3);
+        blended = lerp(prev.rgb, final_color, 0.25);
     }
     
     tex_uav[tid.xy] = float4(blended, 1.0);

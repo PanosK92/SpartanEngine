@@ -82,14 +82,16 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 
 ### Car Simulation
 
-- **Tires**: Pacejka model with combined slip, load sensitivity, thermodynamics, and surface types
-- **Suspension**: Multi-ray contact patch, spring-damper dynamics, anti-roll bars, camber/toe alignment
-- **Drivetrain**: Engine torque curve, automatic/manual gearbox, LSD with preload, turbo/boost
-- **Assists**: ABS, traction control, handbrake-induced rear slip
-- **Aerodynamics**: Drag, downforce (front/rear), ground effect, yaw/pitch-dependent forces
-- **Brakes**: Thermal model with fade and cold efficiency
+- **Tires**: Pacejka magic formula with combined slip, load sensitivity, temperature model, camber thrust, relaxation length, and multiple surface types (asphalt, concrete, wet, gravel, grass, ice)
+- **Suspension**: 7-ray contact patch per wheel, spring-damper with bump/rebound split, anti-roll bars, camber/toe alignment, bump steer
+- **Drivetrain**: Piecewise engine torque curve, 7-speed gearbox with auto/manual modes, rev-match on downshift, LSD with preload, turbo with wastegate, engine braking
+- **Brakes**: Thermal model with cold/optimal/fade zones, front/rear bias, ABS with configurable slip threshold
+- **Aerodynamics**: Drag with frontal/side area, front/rear downforce, ground effect, yaw-dependent drag and side force, pitch-dependent balance, rolling resistance
+- **Steering**: Ackermann geometry, high-speed reduction, non-linear response curve, self-aligning torque
+- **Assists**: ABS, traction control, handbrake lock
 - **Input**: Controllers with analog throttle/brake/steering, haptic feedback (tire slip, ABS, drifting)
 - **Camera**: GT7-inspired chase camera with speed-based dynamics and orbit controls
+- **Debug**: Raycast, suspension, and aero force visualization with telemetry logging
 - **Physics**: Runs at 200Hz for precise tire/suspension response
 
 ### General

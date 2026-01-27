@@ -38,7 +38,6 @@ Texture2D<float4> tex_reservoir_prev2 : register(t23);
 Texture2D<float4> tex_reservoir_prev3 : register(t24);
 Texture2D<float4> tex_reservoir_prev4 : register(t25);
 
-// visibility check for temporal sample reuse
 bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3 sample_hit_pos, float3 sample_hit_normal)
 {
     float3 dir  = sample_hit_pos - shading_pos;
@@ -49,24 +48,29 @@ bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3
 
     dir /= dist;
 
-    // grazing angle check
+    // angle checks
     float cos_theta = dot(dir, shading_normal);
     if (cos_theta <= 0.1f)
         return false;
 
-    // back-face check
     float cos_back = dot(sample_hit_normal, -dir);
-    if (cos_back <= 0.05f)
+    if (cos_back <= 0.15f)
         return false;
 
-    if (dist < 0.05f)
+    // planarity
+    float plane_dist = dot(sample_hit_pos - shading_pos, shading_normal);
+    if (plane_dist < 0.001f)
+        return false;
+
+    if (dist < 0.02f)
         return true;
 
+    // trace
     RayDesc ray;
     ray.Origin    = shading_pos + shading_normal * RESTIR_RAY_NORMAL_OFFSET;
     ray.Direction = dir;
     ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET * 2.0f;
+    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET;
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -75,14 +79,12 @@ bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-// velocity-based reprojection to previous frame
 float2 reproject_to_previous_frame(float2 current_uv)
 {
     float2 velocity = tex_velocity.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv, 0).xy;
     return current_uv - velocity;
 }
 
-// validate temporal sample and compute confidence
 bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_pos, float3 current_normal, float current_depth, out float confidence)
 {
     confidence = 0.0f;
@@ -90,7 +92,7 @@ bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_
     if (!is_valid_uv(prev_uv))
         return false;
 
-    // verify reprojection matches velocity
+    // reprojection check
     float4 prev_clip  = mul(float4(current_pos, 1.0f), buffer_frame.view_projection_previous);
     float3 prev_ndc   = prev_clip.xyz / prev_clip.w;
     float2 expected_prev_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
@@ -100,14 +102,14 @@ bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_
     if (reproj_dist > 2.0f)
         return false;
 
-    // normal consistency
+    // normal check
     float3 prev_uv_normal   = get_normal(prev_uv);
     float normal_similarity = dot(current_normal, prev_uv_normal);
 
     if (normal_similarity < 0.8f)
         return false;
 
-    // disocclusion detection
+    // disocclusion
     float2 motion       = (current_uv - prev_uv) * buffer_frame.resolution_render;
     float motion_length = length(motion);
 
@@ -119,7 +121,7 @@ bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_
 
     float edge_penalty = is_depth_edge ? saturate(1.0f - motion_length * 0.1f) : 1.0f;
 
-    // compute aggregate confidence
+    // confidence
     float reproj_confidence = saturate(1.0f - reproj_dist / 2.0f);
     float normal_confidence = saturate((normal_similarity - 0.8f) / 0.15f);
     float motion_confidence = saturate(1.0f - motion_length * 0.01f);
@@ -163,7 +165,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 1);
 
-    // init combined reservoir with current sample
     Reservoir combined = create_empty_reservoir();
 
     float target_pdf_current = calculate_target_pdf(current.sample.radiance);
@@ -173,7 +174,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample          = current.sample;
     combined.target_pdf      = target_pdf_current;
 
-    // temporal reuse
+    // reproject
     float2 prev_uv = reproject_to_previous_frame(uv);
     float temporal_confidence;
     float linear_depth = linearize_depth(depth);
@@ -204,16 +205,23 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
             if (temporal_visible)
             {
-                float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
-                float weight_temporal = target_pdf_temporal * temporal.W;
-
-                combined.weight_sum += weight_temporal;
-                combined.M += 1.0f;
-
-                if (random_float(seed) * combined.weight_sum < weight_temporal)
+                // jacobian
+                float3 prev_pos_ws = get_position(prev_uv);
+                float jacobian = compute_jacobian(temporal.sample.hit_position, prev_pos_ws, pos_ws, temporal.sample.hit_normal);
+                
+                if (jacobian > 0.0f)
                 {
-                    combined.sample     = temporal.sample;
-                    combined.target_pdf = target_pdf_temporal;
+                    float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
+                    float weight_temporal = target_pdf_temporal * temporal.W * temporal.M * jacobian;
+
+                    combined.weight_sum += weight_temporal;
+                    combined.M += temporal.M;
+
+                    if (random_float(seed) * combined.weight_sum < weight_temporal)
+                    {
+                        combined.sample     = temporal.sample;
+                        combined.target_pdf = target_pdf_temporal;
+                    }
                 }
             }
         }
@@ -241,9 +249,15 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0.0f, 0.0f, 0.0f);
 
+    // clamp
     float lum = luminance(gi);
-    if (lum > 20.0f)
-        gi *= 20.0f / lum;
+    static const float soft_clamp = 20.0f;
+    if (lum > soft_clamp)
+    {
+        float excess = lum - soft_clamp;
+        float scale  = soft_clamp + excess / (1.0f + excess / soft_clamp);
+        gi *= scale / lum;
+    }
 
     tex_uav[pixel] = float4(gi, 1.0f);
 }
