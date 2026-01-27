@@ -44,7 +44,7 @@ function solution_configuration()
         location ".."
         language "C++"
         configurations { "debug", "release" }
-        flags { "FatalWarnings" }
+        fatalwarnings { "All" }
 
         filter { "configurations:debug" }
             defines { "DEBUG" }
@@ -54,7 +54,8 @@ function solution_configuration()
             debugformat "c7"
 
         filter { "configurations:release" }
-            flags { "MultiProcessorCompile", "linktimeoptimization" }
+            flags { "MultiProcessorCompile" }
+            linktimeoptimization "On"
             optimize "Speed"
             symbols "Off"
 
@@ -95,7 +96,7 @@ function spartan_project_configuration()
         end
 
         pchheader "pch.h"
-        pchsource SOURCE_DIR .. "/runtime/Core/pch.cpp"
+        pchsource(SOURCE_DIR .. "/runtime/Core/pch.cpp")
 
         -- Windows includes for all builds
         filter { "system:windows" }
