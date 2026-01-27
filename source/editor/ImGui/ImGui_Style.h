@@ -85,6 +85,8 @@ namespace ImGui::Style
         style.ScrollbarSize        = 12.0f;
         style.GrabMinSize          = 8.0f;
         style.TabMinWidthForCloseButton = 0.0f;
+        style.TabBarBorderSize          = 1.0f;  // line under tab bar that connects tabs as a group
+        style.TabBarOverlineSize        = 2.0f;  // overline on selected tab
     }
 
     inline void StyleDark()
@@ -134,6 +136,8 @@ namespace ImGui::Style
         style.PopupBorderSize           = 1.0f;
         style.FrameBorderSize           = 0.0f;
         style.TabBorderSize             = 0.0f;
+        style.TabBarBorderSize          = 1.0f;
+        style.TabBarOverlineSize        = 2.0f;
         style.WindowRounding            = 2.0f;
         style.ChildRounding             = 2.0f;
         style.FrameRounding             = 2.0f;
@@ -181,8 +185,12 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_Tab]                   = frame;
         style.Colors[ImGuiCol_TabDimmed]             = frame;
         style.Colors[ImGuiCol_TabHovered]            = frame_active;
-        style.Colors[ImGuiCol_TabSelected]           = content;
-        style.Colors[ImGuiCol_TabDimmedSelected]     = content;
+
+        // selected tabs are slightly lighter than content so the tab bar separator line is visible
+        // this creates a visual connection between tabs while distinguishing them from buttons
+        ImVec4 tab_selected = lerp(content, frame, 0.2f);
+        style.Colors[ImGuiCol_TabSelected]           = tab_selected;
+        style.Colors[ImGuiCol_TabDimmedSelected]     = tab_selected;
         style.Colors[ImGuiCol_TabSelectedOverline]   = color_accent_1;
         style.Colors[ImGuiCol_TabDimmedSelectedOverline] = color_accent_1;
 
