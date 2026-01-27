@@ -368,35 +368,30 @@ namespace spartan
 
             // fps and frames
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "FPS:\t\t\t%.1f\n", m_fps);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Time:\t\t%.2f ms\n", time_frame_avg);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Frame:\t%llu\n\n", Renderer::GetFrameNumber());
+                "FPS:\t\t%.1f\n"
+                "Time:\t\t%.2f ms\n"
+                "Frame:\t\t%llu\n\n",
+                m_fps, time_frame_avg, Renderer::GetFrameNumber());
             SP_ASSERT(offset < sizeof(metrics_buffer));
 
             // timings
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "\t\t\t\tavg\t\tmin\t\tmax\tlast\n");
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Total:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n",
-                time_frame_avg, time_frame_min, time_frame_max, time_frame_last);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "CPU:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n",
-                time_cpu_avg, time_cpu_min, time_cpu_max, time_cpu_last);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "GPU:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n\n",
+                "\t\tavg\tmin\tmax\tlast\n"
+                "Total:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n"
+                "CPU:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n"
+                "GPU:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n\n",
+                time_frame_avg, time_frame_min, time_frame_max, time_frame_last,
+                time_cpu_avg, time_cpu_min, time_cpu_max, time_cpu_last,
                 time_gpu_avg, time_gpu_min, time_gpu_max, time_gpu_last);
             SP_ASSERT(offset < sizeof(metrics_buffer));
 
             // gpu
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "GPU\nName:\t\t%s\nMemory:\t%u/%u MB\nAPI:\t\t\t\t%s %s\nDriver:\t\t%s %s\n\n",
+                "GPU\n"
+                "Name:\t\t%s\n"
+                "Memory:\t\t%u/%u MB\n"
+                "API:\t\t%s %s\n"
+                "Driver:\t\t%s %s\n\n",
                 RHI_Device::GetPrimaryPhysicalDevice()->GetName(),
                 static_cast<unsigned int>(RHI_Device::MemoryGetAllocatedMb()),
                 static_cast<unsigned int>(RHI_Device::MemoryGetAvailableMb()),
@@ -408,29 +403,28 @@ namespace spartan
 
             // cpu
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "CPU\nName:\t\t\t\t\t%s\nWorker threads:\t%u/%u\nAVX2:\t\t%s\n\n",
+                "CPU\n"
+                "Name:\t\t%s\n"
+                "Threads:\t\t%u/%u\n"
+                "AVX2:\t\t%s\n\n",
                 cpu_name,
                 static_cast<unsigned int>(ThreadPool::GetWorkingThreadCount()),
                 static_cast<unsigned int>(ThreadPool::GetThreadCount()),
 #ifdef __AVX2__
-                "\t\t\t\tYes"
+                "Yes"
 #else
-                "\t\t\t\tNo"
+                "No"
 #endif
             );
             SP_ASSERT(offset < sizeof(metrics_buffer));
 
             // memory
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Memory\n");
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Allocated:\t%.2f MB | Peak: %.2f MB\n",
+                "Memory\n"
+                "Allocated:\t%.2f MB (Peak: %.2f MB)\n"
+                "Process:\t\t%.2f MB (Avail: %.2f MB, Total: %.2f MB)\n\n",
                 Allocator::GetMemoryAllocatedMb(),
-                Allocator::GetMemoryAllocatedPeakMb());
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Process:\t\t%.2f MB | Available: %.2f MB | Total: %.2f MB\n\n",
+                Allocator::GetMemoryAllocatedPeakMb(),
                 Allocator::GetMemoryProcessUsedMb(),
                 Allocator::GetMemoryAvailableMb(),
                 Allocator::GetMemoryTotalMb());
@@ -441,8 +435,14 @@ namespace spartan
             const auto& res_output = Renderer::GetResolutionOutput();
             const auto& vp = Renderer::GetViewport();
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Display\nName:\t\t%s\nHz:\t\t\t\t%d\nHDR:\t\t\t%s\nMax nits:\t%u\n"
-                "Render:\t\t%u x %u - %.0f%%\nOutput:\t\t%u x %u\nViewport:\t%u x %u\n\n",
+                "Display\n"
+                "Name:\t\t%s\n"
+                "Hz:\t\t%d\n"
+                "HDR:\t\t%s\n"
+                "Max nits:\t\t%u\n"
+                "Render:\t\t%u x %u (%.0f%%)\n"
+                "Output:\t\t%u x %u\n"
+                "Viewport:\t\t%u x %u\n\n",
                 Display::GetName(),
                 static_cast<int>(Display::GetRefreshRate()),
                 Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
@@ -458,9 +458,14 @@ namespace spartan
 
             // graphics api
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Graphics API\nDraw:\t\t\t\t\t\t\t\t\t\t%u\nInstances:\t\t\t\t\t\t\t\t%u\nIndex buffer bindings:\t\t%u\n"
-                "Vertex buffer bindings:\t\t%u\nBarriers:\t\t\t\t\t\t\t\t\t%u\nBindings from pipelines:\t%u/%u\n"
-                "Descriptor set capacity:\t%u/%u",
+                "Graphics API\n"
+                "Draw:\t\t%u\n"
+                "Instances:\t%u\n"
+                "Index bindings:\t%u\n"
+                "Vertex bindings:\t%u\n"
+                "Barriers:\t\t%u\n"
+                "Pipeline bindings:\t%u/%u\n"
+                "Descriptor sets:\t%u/%u",
                 static_cast<uint32_t>(m_rhi_draw),
                 static_cast<uint32_t>(m_rhi_instance_count),
                 static_cast<uint32_t>(m_rhi_bindings_buffer_index),

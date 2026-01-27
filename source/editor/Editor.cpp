@@ -48,9 +48,8 @@ using namespace std;
 
 namespace
 {
-    float font_size      = 18.0f;
-    float font_scale     = 1.0f;
-    Widget* widget_world = nullptr;
+    float font_size  = 18.0f;
+    float font_scale = 1.0f;
 
     void process_event(spartan::sp_variant data)
     {
@@ -99,7 +98,6 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<AssetBrowser>(this));
     m_widgets.emplace_back(make_shared<Properties>(this));
     m_widgets.emplace_back(make_shared<WorldViewer>(this));
-    widget_world = m_widgets.back().get();
     MenuBar::Initialize(this);
 
     // allow imgui to get event's from the engine's event processing loop

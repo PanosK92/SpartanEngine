@@ -23,10 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Style.h"
 #include "../ImGui/ImGui_Style.h"
-#include "../Logging/Log.h"
-#include "FileSystem/FileSystem.h"
 #include <Window.h>
-#include <fstream>
 //================================
 
 //= NAMESPACES ==============
