@@ -407,6 +407,23 @@ namespace spartan
             uint32_t last_visible_frame = 0;
         };
         static unordered_map<uint64_t, VisibilityState> visibility_states;
+
+        // periodically clean up stale visibility states to prevent memory growth
+        // remove entries that haven't been visible for a significant number of frames
+        static uint32_t cleanup_frame = 0;
+        const uint32_t cleanup_interval = 300; // cleanup every ~5 seconds at 60fps
+        const uint32_t stale_threshold  = 600; // consider stale after ~10 seconds
+        if (m_cb_frame_cpu.frame - cleanup_frame > cleanup_interval)
+        {
+            cleanup_frame = m_cb_frame_cpu.frame;
+            for (auto it = visibility_states.begin(); it != visibility_states.end();)
+            {
+                if (m_cb_frame_cpu.frame - it->second.last_visible_frame > stale_threshold && !it->second.pending_query)
+                    it = visibility_states.erase(it);
+                else
+                    ++it;
+            }
+        }
     
         // check pending queries from previous frame and update visibility
         for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
@@ -417,18 +434,22 @@ namespace spartan
     
             if (state.pending_query)
             {
+                bool was_visible = draw_call.renderable->IsVisible();
+
                 if (cmd_list->GetOcclusionQueryResult(entity_id)) // occluded
                 {
                     // set invisible
                     draw_call.camera_visible = false;
-                    draw_call.renderable->SetVisible(false);
+                    if (was_visible)
+                        draw_call.renderable->SetVisible(false);
                 }
                 else // visible or not ready
                 {
                     // stay/set visible
                     draw_call.camera_visible = true;
                     state.last_visible_frame = m_cb_frame_cpu.frame;
-                    draw_call.renderable->SetVisible(true);
+                    if (!was_visible)
+                        draw_call.renderable->SetVisible(true);
                 }
     
                 state.pending_query = false;
@@ -510,77 +531,134 @@ namespace spartan
             // set the visibility buffer (where the occlusion results will be written)
             cmd_list->SetBuffer(Renderer_BindingsUav::visibility, GetBuffer(Renderer_Buffer::Visibility));
     
-            // clearing and hi-jacking the diffuse texture - just for debugging purposes
-            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::light_diffuse), Color::standard_black);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::light_diffuse));
+            // debug visualization output
+            cmd_list->ClearTexture(GetRenderTarget(Renderer_RenderTarget::debug_output), Color::standard_black);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::debug_output));
     
             // dispatch: ceil(aabb_count / 256) thread groups
             uint32_t thread_group_count = (m_draw_calls_prepass_count + 255) / 256; // ceiling division
             cmd_list->Dispatch(thread_group_count, 1, 1);
         }
     
-        // update the draw calls with the previous frame's visibility results
-        uint32_t* visibility_data = static_cast<uint32_t*>(GetBuffer(Renderer_Buffer::VisibilityPrevious)->GetMappedData());
+        // update the draw calls with visibility results from 2 frames ago (guaranteed GPU complete)
+        RHI_Buffer* readback_buffer = GetBuffer(Renderer_Buffer::VisibilityReadback);
+        uint32_t* visibility_data = readback_buffer ? static_cast<uint32_t*>(readback_buffer->GetMappedData()) : nullptr;
+
+        // the visibility buffer uses draw call indices at WRITE time, but those indices are stale
+        // when we read 2 frames later. store entity_id -> index mapping at write time.
+        static unordered_map<uint64_t, uint32_t> entity_to_index_frame0;
+        static unordered_map<uint64_t, uint32_t> entity_to_index_frame1;
+        static unordered_map<uint64_t, uint32_t> entity_to_index_frame2;
+        static uint32_t mapping_frame = 0;
+
+        // rotate index mappings each frame
+        if (m_cb_frame_cpu.frame != mapping_frame)
+        {
+            mapping_frame = m_cb_frame_cpu.frame;
+            entity_to_index_frame2 = move(entity_to_index_frame1);
+            entity_to_index_frame1 = move(entity_to_index_frame0);
+            entity_to_index_frame0.clear();
+        }
+
+        // store current frame's entity_id -> index mapping (matches what shader writes)
+        for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
+        {
+            uint64_t entity_id = m_draw_calls_prepass[i].renderable->GetEntity()->GetObjectId();
+            entity_to_index_frame0[entity_id] = i;
+        }
+
+        const uint32_t grace_frames = 2;
+        struct QueryRequest
+        {
+            uint32_t draw_call_index;
+            uint64_t entity_id;
+        };
+        vector<QueryRequest> query_requests;
+
         for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
             Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
             uint64_t entity_id           = draw_call.renderable->GetEntity()->GetObjectId();
-            auto& state                  = visibility_states[entity_id]; // creates if missing
+            auto& state                  = visibility_states[entity_id];
     
             if (!draw_call.is_occluder && draw_call.camera_visible)
             {
-                bool hi_z_visible = visibility_data[i];
+                // look up the index this entity had 2 frames ago (when the buffer was written)
+                auto it = entity_to_index_frame2.find(entity_id);
+                bool hi_z_visible = true; // default visible if no mapping exists
+                bool had_mapping = false;
+                if (it != entity_to_index_frame2.end() && visibility_data)
+                {
+                    uint32_t old_index = it->second;
+                    hi_z_visible = visibility_data[old_index] != 0;
+                    had_mapping = true;
+                }
+                bool was_visible = draw_call.renderable->IsVisible();
 
                 if (hi_z_visible)
                 {
                     draw_call.camera_visible = true;
                     state.last_visible_frame = m_cb_frame_cpu.frame;
                 }
-                else if (state.last_visible_frame >= m_cb_frame_cpu.frame - 1)
+                else if (state.last_visible_frame >= m_cb_frame_cpu.frame - grace_frames)
                 {
-                    // conservative: draw and query, but don't update last_visible_frame (wait for confirmation)
+                    // conservative: draw and query
                     draw_call.camera_visible = true;
-                
-                    // issue query
-                    RHI_PipelineState query_pso;
-                    query_pso.name                             = "occlusion_query";
-                    query_pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v); // reuse for mesh
-                    query_pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-                    query_pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
-                    query_pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual); // default read func
-                    query_pso.render_target_depth_texture      = tex_occluders; // test against current occluders
-                    cmd_list->SetPipelineState(query_pso);
-                
-                    // culling (match occluder logic)
-                    Renderable* renderable = draw_call.renderable;
-                    RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
-                    cull_mode              = (query_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
-                    cmd_list->SetCullMode(cull_mode);
-                
-                    // set pass constants
-                    m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
-                    cmd_list->PushConstants(m_pcb_pass_cpu);
-                
-                    // draw mesh with occlusion query
-                    cmd_list->BeginOcclusionQuery(entity_id);
-                    cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
-                    cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
-                    cmd_list->DrawIndexed(
-                        renderable->GetIndexCount(draw_call.lod_index),
-                        renderable->GetIndexOffset(draw_call.lod_index),
-                        renderable->GetVertexOffset(draw_call.lod_index)
-                    );
-                    cmd_list->EndOcclusionQuery();
-                
+                    query_requests.push_back({i, entity_id});
                     state.pending_query = true;
                 }
                 else
                 {
-                    // safe to cull: Hi-Z occluded and not recently visible
+                    // safe to cull
                     draw_call.camera_visible = false;
+                    SP_LOG_INFO("CULLING entity %llu (last_visible: %u, current: %u)", entity_id, state.last_visible_frame, m_cb_frame_cpu.frame);
                 }
-                
-                draw_call.renderable->SetVisible(draw_call.camera_visible);
+
+                if (draw_call.camera_visible != was_visible)
+                {
+                    draw_call.renderable->SetVisible(draw_call.camera_visible);
+                    SP_LOG_INFO("Visibility changed for entity %llu: %s (had_mapping=%d, hi_z=%d)", 
+                        entity_id, draw_call.camera_visible ? "visible" : "hidden", had_mapping, hi_z_visible);
+                }
+            }
+        }
+
+        // second pass: batch all occlusion queries with a single PSO switch
+        if (!query_requests.empty())
+        {
+            RHI_PipelineState query_pso;
+            query_pso.name                             = "occlusion_query";
+            query_pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_prepass_v);
+            query_pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            query_pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
+            query_pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+            query_pso.render_target_depth_texture      = tex_occluders;
+            cmd_list->SetPipelineState(query_pso);
+
+            for (const QueryRequest& request : query_requests)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls_prepass[request.draw_call_index];
+                Renderable* renderable             = draw_call.renderable;
+
+                // culling
+                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
+                cull_mode              = (query_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
+                cmd_list->SetCullMode(cull_mode);
+
+                // set pass constants
+                m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                // draw mesh with occlusion query
+                cmd_list->BeginOcclusionQuery(request.entity_id);
+                cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
+                cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+                cmd_list->DrawIndexed(
+                    renderable->GetIndexCount(draw_call.lod_index),
+                    renderable->GetIndexOffset(draw_call.lod_index),
+                    renderable->GetVertexOffset(draw_call.lod_index)
+                );
+                cmd_list->EndOcclusionQuery();
             }
         }
 

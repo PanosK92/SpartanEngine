@@ -1140,24 +1140,23 @@ namespace spartan
     {
         // clear
         m_bindless_aabbs.fill(Sb_Aabb());
-        uint32_t count = 0;
 
-        // cpu
-        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        // upload aabbs from prepass draw calls (used by occlusion culling)
+        // this must match the indexing used in Pass_Occlusion
+        for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
-            const Renderer_DrawCall& draw_call   = m_draw_calls[i];
-            Renderable* renderable               = draw_call.renderable;
-            const BoundingBox& aabb              = renderable->GetBoundingBox();
-            m_bindless_aabbs[count].min          = aabb.GetMin();
-            m_bindless_aabbs[count].max          = aabb.GetMax();
-            m_bindless_aabbs[count].is_occluder  = draw_call.is_occluder;
-            count++;
+            const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
+            Renderable* renderable             = draw_call.renderable;
+            const BoundingBox& aabb            = renderable->GetBoundingBox();
+            m_bindless_aabbs[i].min            = aabb.GetMin();
+            m_bindless_aabbs[i].max            = aabb.GetMax();
+            m_bindless_aabbs[i].is_occluder    = draw_call.is_occluder;
         }
 
         // gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::AABBs);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &m_bindless_aabbs[0], buffer->GetStride() * count);
+        buffer->Update(cmd_list, &m_bindless_aabbs[0], buffer->GetStride() * m_draw_calls_prepass_count);
     }
 
     void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)

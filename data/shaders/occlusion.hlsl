@@ -16,11 +16,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#define DRAW_EDGES 1
-
 //= INCLUDES =========
 #include "common.hlsl"
 //====================
+
+#define DEBUG_OCCLUSION 1
 
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
@@ -127,16 +127,19 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         if (dims.x <= 2 && dims.y <= 2)
             mip = level_lower;
         
-        // sample hi-z texture
-        box_uvs *= buffer_frame.resolution_scale;
+        // sample hi-z texture at corners and center (5-tap pattern)
+        float4 scaled_uvs = box_uvs * buffer_frame.resolution_scale;
+        float2 center_uv  = (scaled_uvs.xy + scaled_uvs.zw) * 0.5f;
         float4 depth = float4(
-            tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xy, mip).r,
-            tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zy, mip).r,
-            tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.xw, mip).r,
-            tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), box_uvs.zw, mip).r
+            tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xy, mip).r,
+            tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zy, mip).r,
+            tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xw, mip).r,
+            tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zw, mip).r
         );
-        // find the farthest depth from the four samples - reverse z
-        float furthest_z = min(min(min(depth.x, depth.y), depth.z), depth.w);
+        float depth_center = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), center_uv, mip).r;
+
+        // find the farthest depth from all five samples - reverse z
+        float furthest_z = min(min(min(min(depth.x, depth.y), depth.z), depth.w), depth_center);
         
         // visibility test - reverse z
         is_visible = closest_box_z > furthest_z;
@@ -144,8 +147,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // write visibility flag
     visibility[aabb_index] = is_visible ? 1 : 0;
     
-#if DRAW_EDGES
-    // debug draw corners as dots
+#if DEBUG_OCCLUSION
+    // debug draw corners as dots (green = visible, red = occluded)
     {
         float2 tex_size;
         tex.GetDimensions(tex_size.x, tex_size.y);
