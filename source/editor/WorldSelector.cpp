@@ -85,14 +85,22 @@ namespace
 
     void scan_directory_recursive(const string& directory)
     {
+        // make sure the directory exists before trying to iterate
+        if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
+            return;
+
         // scan files in this directory
         vector<string> files = spartan::FileSystem::GetFilesInDirectory(directory);
         for (const string& file : files)
         {
             if (spartan::FileSystem::IsEngineWorldFile(file))
             {
+                // normalize path to use forward slashes consistently
+                string normalized_path = file;
+                replace(normalized_path.begin(), normalized_path.end(), '\\', '/');
+
                 spartan::WorldMetadata metadata;
-                if (spartan::World::ReadMetadata(file, metadata))
+                if (spartan::World::ReadMetadata(normalized_path, metadata))
                 {
                     world_files.push_back(metadata);
                 }
@@ -111,9 +119,21 @@ namespace
     {
         world_files.clear();
 
-        // recursively scan the project directory and all subdirectories for .world files
+        // scan the project directory recursively (for exported/imported worlds with assets)
         string project_dir = spartan::ResourceCache::GetProjectDirectory();
         scan_directory_recursive(project_dir);
+
+        // scan the worlds folder for git-tracked world files
+        // check multiple possible locations since working directory may vary
+        vector<string> worlds_dirs = { "worlds", "../worlds" };
+        for (const string& worlds_dir : worlds_dirs)
+        {
+            if (spartan::FileSystem::Exists(worlds_dir))
+            {
+                scan_directory_recursive(worlds_dir);
+                break; // only scan from one location to avoid duplicates
+            }
+        }
     }
 
     void check_assets_outdated_async()
