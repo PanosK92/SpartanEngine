@@ -19,11 +19,7 @@ Spartan Engine is a research-focused game engine developed over 10+ years, desig
 
 # The Plan
 
-Something is waking up here. The path tracing, the car physics, the massive grass fields - it's all asking for something to happen. People are starting to approach, PRs are coming in, conversations are starting. We're approaching a threshold.
-
-So we're shooting for it: a cinematic night city, cars cutting through rain-soaked streets, neon reflections, atmosphere you can feel - all running in real-time. Inspired by [this video](https://youtu.be/R3QvniaZ5qM?t=53) that captured millions. This is our MVP. This is what proves Spartan is real.
-
-**[Read the full plan](https://github.com/PanosK92/SpartanEngine/blob/master/plan.md)** - see where we're headed and find your place in it.
+There's a vision taking shape - a destination that gives all this tech a purpose. Curious? **[Read the plan](https://github.com/PanosK92/SpartanEngine/blob/master/plan.md)**.
 
 # Worlds
 
