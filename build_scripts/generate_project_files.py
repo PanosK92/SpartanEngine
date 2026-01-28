@@ -64,14 +64,17 @@ def generate_project_files():
     print("Running command:", cmd)
     
     try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         print(result.stdout)
-    except subprocess.CalledProcessError as e:
-        print(f"Error occurred while generating project files: {e}")
-        print(f"Error output: {e.stderr}")
-        sys.exit(1)
+        if result.stderr:
+            print(result.stderr)
+        if result.returncode != 0:
+            print(f"\nPremake failed with exit code {result.returncode}")
+            input("\nPress Enter to exit...")
+            sys.exit(1)
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+        input("\nPress Enter to exit...")
         sys.exit(1)
 
 def main():

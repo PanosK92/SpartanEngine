@@ -74,3 +74,11 @@ if (condition)
 ```
 ## Const correctness
 Try to use const for function parameters, if needed. But don't worry too much about const correctness.
+
+# The Bigger Picture
+
+Everything above will make you a solid contributor. But if you want to do exceptional work - the kind you're proud of - there's a bigger vision waiting.
+
+We're building something inspired by [this video](https://youtu.be/R3QvniaZ5qM?t=53) that captured millions: a cinematic night city running in real-time on Spartan. Watch it. Then look at the engine. The delta between them is your roadmap. You don't need anyone to assign you tasks. Your taste tells you what's not good enough. Your skills tell you what you can fix.
+
+**[Read the full plan](https://github.com/PanosK92/SpartanEngine/blob/master/plan.md)** - and see how far we can go together.

@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
 #include "Core/Definitions.h"
+#include "Core/ThreadPool.h"
 //================================
 
 //= NAMESPACES =====
@@ -80,6 +81,41 @@ namespace
         {
             file_dialog->SetOperation(FileDialog_Op_Load);
             show_file_dialog = true;
+        }
+
+        void ExportWorld()
+        {
+            const std::string& world_file_path = spartan::World::GetFilePath();
+            if (world_file_path.empty())
+            {
+                SP_LOG_WARNING("No world is currently loaded. Save the world first before exporting.");
+                return;
+            }
+
+            spartan::ThreadPool::AddTask([world_file_path]()
+            {
+                // get the world name and construct paths
+                std::string world_name     = spartan::FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path);
+                std::string world_dir      = spartan::FileSystem::GetDirectoryFromFilePath(world_file_path);
+                std::string resources_dir  = world_dir + world_name + "_resources";
+                std::string archive_path   = world_dir + world_name + ".7z";
+
+                // collect paths to include in the archive
+                std::vector<std::string> paths_to_include;
+                paths_to_include.push_back(world_file_path);
+
+                // add resources directory if it exists
+                if (spartan::FileSystem::Exists(resources_dir))
+                {
+                    paths_to_include.push_back(resources_dir);
+                }
+
+                // create the archive
+                if (spartan::FileSystem::CreateArchive(archive_path, paths_to_include))
+                {
+                    SP_LOG_INFO("World exported to: %s", archive_path.c_str());
+                }
+            });
         }
 
         void DrawFileDialog()
@@ -150,6 +186,13 @@ namespace
                 if (ImGui::MenuItem("Save As...", "Ctrl+S"))
                 {
                     windows::ShowWorldSaveDialog();
+                }
+
+                ImGui::Separator();
+
+                if (ImGui::MenuItem("Export"))
+                {
+                    windows::ExportWorld();
                 }
 
                 ImGui::EndMenu();

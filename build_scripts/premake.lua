@@ -20,8 +20,7 @@
 CPP_VERSION      = "C++20"
 SOLUTION_NAME    = "spartan"
 EXECUTABLE_NAME  = "spartan"
-EDITOR_DIR       = "../source/editor"
-RUNTIME_DIR      = "../source/runtime"
+SOURCE_DIR       = "../source"
 LIBRARY_DIR      = "../third_party/libraries"
 OBJ_DIR          = "../binaries/obj"
 TARGET_DIR       = "../binaries"
@@ -45,7 +44,7 @@ function solution_configuration()
         location ".."
         language "C++"
         configurations { "debug", "release" }
-        flags { "FatalWarnings" }
+        fatalwarnings { "All" }
 
         filter { "configurations:debug" }
             defines { "DEBUG" }
@@ -55,7 +54,8 @@ function solution_configuration()
             debugformat "c7"
 
         filter { "configurations:release" }
-            flags { "MultiProcessorCompile", "linktimeoptimization" }
+            flags { "MultiProcessorCompile" }
+            linktimeoptimization "On"
             optimize "Speed"
             symbols "Off"
 
@@ -84,26 +84,24 @@ function spartan_project_configuration()
         libdirs { LIBRARY_DIR }
 
         files {
-            RUNTIME_DIR .. "/**.h",   RUNTIME_DIR .. "/**.cpp",
-            RUNTIME_DIR .. "/**.hpp", RUNTIME_DIR .. "/**.inl",
-            EDITOR_DIR .. "/**.h",    EDITOR_DIR .. "/**.cpp",
-            EDITOR_DIR .. "/**.hpp",  EDITOR_DIR .. "/**.inl",
-            RUNTIME_DIR .. "/**.rc"
+            SOURCE_DIR .. "/**.h",   SOURCE_DIR .. "/**.cpp",
+            SOURCE_DIR .. "/**.hpp", SOURCE_DIR .. "/**.inl",
+            SOURCE_DIR .. "/**.rc"
         }
 
         if ARG_API_GRAPHICS == "d3d12" then
-            removefiles { RUNTIME_DIR .. "/RHI/Vulkan/**" }
+            removefiles { SOURCE_DIR .. "/runtime/RHI/Vulkan/**" }
         elseif ARG_API_GRAPHICS == "vulkan" then
-            removefiles { RUNTIME_DIR .. "/RHI/D3D12/**" }
+            removefiles { SOURCE_DIR .. "/runtime/RHI/D3D12/**" }
         end
 
         pchheader "pch.h"
-        pchsource "../source/runtime/Core/pch.cpp"
+        pchsource(SOURCE_DIR .. "/runtime/Core/pch.cpp")
 
         -- Windows includes for all builds
         filter { "system:windows" }
             includedirs {
-                RUNTIME_DIR, RUNTIME_DIR .. "/Core",
+                SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/nrd"
@@ -134,7 +132,7 @@ function spartan_project_configuration()
         -- Linux includes
         filter { "system:linux" }
             includedirs {
-                RUNTIME_DIR, RUNTIME_DIR .. "/Core",
+                SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
                 "/usr/include/SDL3", "/usr/include/assimp", "/usr/include/physx",
                 "/usr/include/freetype2", "/usr/include/renderdoc"
             }
