@@ -1118,6 +1118,64 @@ namespace spartan
         return true;
     }
 
+    bool FileSystem::CreateArchive(const string& archive_path, const vector<string>& paths_to_include)
+    {
+        if (paths_to_include.empty())
+        {
+            SP_LOG_ERROR("No paths provided to archive");
+            return false;
+        }
+
+        // find 7z executable - check all possible locations and names at runtime
+        string seven_zip_exe;
+        vector<string> candidates = {"7z.exe", "build_scripts/7z.exe", "7z", "7za"};
+
+        for (const auto& candidate : candidates)
+        {
+            if (Exists(candidate) || IsExecutableInPath(candidate))
+            {
+                seven_zip_exe = candidate;
+                break;
+            }
+        }
+
+        if (seven_zip_exe.empty())
+        {
+            SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, build_scripts/, or PATH.");
+            return false;
+        }
+
+        // delete existing archive if it exists
+        if (Exists(archive_path))
+        {
+            Delete(archive_path);
+        }
+
+        SP_LOG_INFO("Creating archive: %s", archive_path.c_str());
+
+        // build command arguments: 7z a archive.7z file1 file2 dir1 ...
+        vector<string> args = { seven_zip_exe, "a", archive_path };
+        for (const string& path : paths_to_include)
+        {
+            args.push_back(path);
+        }
+        // add silent flags
+        args.push_back("-bso0");
+        args.push_back("-bsp0");
+
+        run_silent_process(args);
+
+        // verify archive was created
+        if (!Exists(archive_path))
+        {
+            SP_LOG_ERROR("Failed to create archive: %s", archive_path.c_str());
+            return false;
+        }
+
+        SP_LOG_INFO("Archive created: %s", archive_path.c_str());
+        return true;
+    }
+
     string FileSystem::ComputeFileSha256(const string& path)
     {
         namespace fs = filesystem;
