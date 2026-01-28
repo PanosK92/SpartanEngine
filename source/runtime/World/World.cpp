@@ -123,10 +123,42 @@ namespace spartan
             }
         }
 
+        bool is_world_in_project_directory(const string& world_file_path)
+        {
+            // check if the world is in the project directory (has local assets alongside it)
+            string normalized_path = world_file_path;
+            replace(normalized_path.begin(), normalized_path.end(), '\\', '/');
+            
+            string project_dir = ResourceCache::GetProjectDirectory();
+            replace(project_dir.begin(), project_dir.end(), '\\', '/');
+            
+            // world is in project if path starts with project directory or contains /project/
+            return normalized_path.find(project_dir) != string::npos || 
+                   normalized_path.find("/project/") != string::npos ||
+                   normalized_path.rfind("project/", 0) == 0;
+        }
+
         string world_file_path_to_resource_directory(const string& world_file_path)
         {
             const string world_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path);
-            return FileSystem::GetDirectoryFromFilePath(world_file_path) + "\\" + world_name + "_resources\\";
+            string result;
+
+            // if the world is in the project directory, resources are alongside the world file
+            if (is_world_in_project_directory(world_file_path))
+            {
+                result = FileSystem::GetDirectoryFromFilePath(world_file_path) + "/" + world_name + "_resources/";
+            }
+            else
+            {
+                // otherwise (worlds/, repo root, etc.), resources go to ./project/
+                result = "./" + string(ResourceCache::GetProjectDirectory()) + world_name + "_resources/";
+            }
+
+            // normalize to forward slashes
+            replace(result.begin(), result.end(), '\\', '/');
+            
+            SP_LOG_INFO("World resource directory: %s (from world: %s)", result.c_str(), world_file_path.c_str());
+            return result;
         }
     }
 
@@ -512,25 +544,30 @@ namespace spartan
         // deserialize the resources before loading the world (XML), as it references them
         {
             string directory = world_file_path_to_resource_directory(file_path);
-            vector<string> files = FileSystem::GetFilesInDirectory(directory);
-
-            // Combined loop for loading, filtered by extension
-            for (string& path : files)
+            
+            // only load resources if the directory exists (worlds in "worlds/" folder may not have local resources yet)
+            if (FileSystem::Exists(directory) && FileSystem::IsDirectory(directory))
             {
-                if (FileSystem::IsEngineTextureFile(path))
+                vector<string> files = FileSystem::GetFilesInDirectory(directory);
+
+                // combined loop for loading, filtered by extension
+                for (string& path : files)
                 {
-                    if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                    if (FileSystem::IsEngineTextureFile(path))
                     {
-                        texture->PrepareForGpu();
+                        if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                        {
+                            texture->PrepareForGpu();
+                        }
                     }
-                }
-                else if (FileSystem::IsEngineMaterialFile(path))
-                {
-                    ResourceCache::Load<Material>(path);
-                }
-                else if (FileSystem::IsEngineMeshFile(path))
-                {
-                    ResourceCache::Load<Mesh>(path);
+                    else if (FileSystem::IsEngineMaterialFile(path))
+                    {
+                        ResourceCache::Load<Material>(path);
+                    }
+                    else if (FileSystem::IsEngineMeshFile(path))
+                    {
+                        ResourceCache::Load<Mesh>(path);
+                    }
                 }
             }
         }

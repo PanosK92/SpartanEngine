@@ -1,22 +1,27 @@
 <?xml version="1.0"?>
-<World name="Plan" title="Plan" description="A living, breathing city running at 60fps, neon reflections on wet streets, the rumble of tuned engines. A city that feels alive. And you can actually drive through it, feel the physics, and experience it firsthand.">
+<World name="plan" title="" description="">
  <Entities>
-  <Entity name="Quad" id="10278987920257035576" active="true" position="0 0 0" rotation="0 0 0 1" scale="100 1000 100">
+  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="0 2 -10" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" />
+   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
+    <camera aperture="11" shutter_speed="0.00800000038" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="17" />
+    <Entity name="flashlight" id="8103683318037622436" active="false" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <light flags="1" light_type="2" color_r="1" color_g="1" color_b="1" temperature="2700" intensity="8" intensity_lum="0" range="100" angle="0.52359879" index="0" preset="5" area_width="1" area_height="1" />
+    </Entity>
+   </Entity>
+  </Entity>
+  <Entity name="floor" id="17522025712625852117" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" />
    <renderable mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </renderable>
   </Entity>
-  <Entity name="Camera" id="4820657626964778503" active="true" position="-6.39839 4.34332 5.52056" rotation="0.0418657 0.895416 -0.0862192 0.43479" scale="1 1 1">
-   <camera aperture="5.5999999" shutter_speed="0.00800000038" iso="200" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="17" />
-   <Entity name="flashlight" id="5113680984323909339" active="false" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-    <light flags="1" light_type="2" color_r="1" color_g="1" color_b="1" temperature="2700" intensity="8" intensity_lum="0" range="100" angle="0.52359879" index="0" preset="5" area_width="1" area_height="1" />
-   </Entity>
+  <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="0.982287 0 0 0.187381" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="1" color_g="0.72007829" color_b="0.482821107" temperature="3200" intensity="8" intensity_lum="10000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" />
   </Entity>
-  <Entity name="Directional" id="92466069202342915" active="true" position="0 1.7 0" rotation="0.000167215 -0.286525 5.0008e-05 0.958073" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="0.726031601" color_g="0.814623833" color_b="1" temperature="13611.5996" intensity="8" intensity_lum="4160" range="3.40282347e+38" angle="0.52359879" index="0" preset="5" area_width="1" area_height="1" />
-  </Entity>
-  <Entity name="Cube" id="16778102053357456920" active="true" position="0 0.6 0" rotation="0 0 0 1" scale="1 1 1">
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+  <Entity name="material_ball" id="18044179086284415992" active="true" position="0 2 0" rotation="0 0 0 1" scale="0.0933793 0.0933793 0.0933793">
+   <physics mass="100" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" />
+   <renderable mesh_name="scene" sub_mesh_index="0" material_name="lambert3SG" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </renderable>
   </Entity>
