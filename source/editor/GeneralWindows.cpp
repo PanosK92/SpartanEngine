@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Settings.h"
 #include "Widgets/Viewport.h"
+#include "Widgets/Shadows.h"
+#include "Widgets/WorldSelection.h"
 #include "Input/Input.h"
 #include "Game/Game.h"
 #include "Core/ProgressTracker.h"
@@ -539,17 +541,47 @@ namespace
             uint32_t vram;           // min vram requirement in megabytes
         };
 
-        const WorldEntry worlds[] =
-        {
-            { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech",                                                                  "Complete" ,  "Light",          2100 },
-            { "Car Playground",    "Highly realistic vehicle physics with proper tire slip, thermals, aero, LSD, multi ray tire, and speed dependent steering geometry.", "Prototype",  "Light",          2100 },
-            { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                                                                                       "Prototype",  "Very demanding", 5600 },
-            { "Liminal Space",     "Shifts your frequency to a nearby reality",                                                                                           "Prototype",  "Light",          2100 },
-            { "Sponza 4K",         "High-resolution textures & meshes",                                                                                                   "Complete" ,  "Demanding",      2600 },
-            { "Subway",            "GI test. No lights, only emissive textures",                                                                                          "Prototype" , "Moderate",       2600 },
-            { "Minecraft",         "Blocky aesthetic",                                                                                                                    "Complete" ,  "Light",          2100 },
-            { "Basic",             "Light, camera, floor",                                                                                                                "Complete" ,  "Light",          2100 }
-        };
+        /**
+         * TODO: Ideally this should be loaded from a remote JSON file to allow adding new worlds without updating the source code and making 
+         * the code easier to read and cleaner.
+         */
+        const WorldEntry worlds[] = {
+            {.name        = "Car Showroom",
+             .description = "Showcase world for YouTubers/Press. Does not use experimental tech",
+             .status      = "Complete",
+             .performance = "Light",
+             .vram        = 2100},
+            {.name        = "Car Playground",
+             .description = "Highly realistic vehicle physics with proper tire slip, thermals, aero, LSD, multi ray tire, and "
+                            "speed dependent steering geometry.",
+             .status      = "Prototype",
+             .performance = "Light",
+             .vram        = 2100},
+            {.name        = "Open World Forest",
+             .description = "256 million of Ghost of Tsushima grass blades",
+             .status      = "Prototype",
+             .performance = "Very demanding",
+             .vram        = 5600},
+            {.name        = "Liminal Space",
+             .description = "Shifts your frequency to a nearby reality",
+             .status      = "Prototype",
+             .performance = "Light",
+             .vram        = 2100},
+            {.name        = "Sponza 4K",
+             .description = "High-resolution textures & meshes",
+             .status      = "Complete",
+             .performance = "Demanding",
+             .vram        = 2600},
+            {.name        = "Subway",
+             .description = "GI test. No lights, only emissive textures",
+             .status      = "Prototype",
+             .performance = "Moderate",
+             .vram        = 2600},
+            {.name = "Minecraft", .description = "Blocky aesthetic", .status = "Complete", .performance = "Light", .vram = 2100},
+            {.name = "Basic", .description = "Light, camera, floor", .status = "Complete", .performance = "Light", .vram = 2100}};
+
+        // ------------------------------------------
+
         int world_index = 0;
 
         bool downloaded_and_extracted = false;
@@ -695,6 +727,60 @@ namespace
                 ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
                 if (ImGui::Begin("World Selection", &visible_world_list, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
                 {
+                    static spartan::DynamicShadowSpec shadow_spec;
+                    static bool show_shadow_debug = false;
+
+                    // Initialize defaults once
+                    static bool initialized = false;
+                    if (!initialized)
+                    {
+                        shadow_spec.radius          = 27.0f;
+                        shadow_spec.offset_x        = 0.0f;
+                        shadow_spec.offset_y        = 0.8f;
+                        shadow_spec.alpha           = 0.352f;
+                        shadow_spec.corner_rounding = ImGui::GetStyle().WindowRounding;
+                        initialized                 = true;
+
+                    }
+
+                    // Debug toggle (Ctrl+D or via menu)
+                    if (ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsKeyPressed(ImGuiKey_D))
+                    {
+                        show_shadow_debug = !show_shadow_debug;
+                    }
+
+                    // Shadow Debug panel
+                    if (show_shadow_debug)
+                    {
+                        ImGui::Begin("Shadow Debug", &show_shadow_debug);
+                        ImGui::SliderFloat("Radius", &shadow_spec.radius, 0.0f, 100.0f);
+                        ImGui::SliderFloat("Offset X", &shadow_spec.offset_x, -20.0f, 20.0f);
+                        ImGui::SliderFloat("Offset Y", &shadow_spec.offset_y, -20.0f, 20.0f);
+                        ImGui::SliderFloat("Alpha", &shadow_spec.alpha, 0.0f, 1.0f);
+                        ImGui::SliderFloat("Corner Rounding", &shadow_spec.corner_rounding, 0.0f, 20.0f);
+                        ImGui::Separator();
+                        ImGui::Checkbox("Show Foreground Draw List", &spartan::Shadow::draw_foreground);
+
+                        // Color picker for shadow color
+                        float color[4] = {
+                            ((shadow_spec.color >> 0) & 0xFF) / 255.0f, ((shadow_spec.color >> 8) & 0xFF) / 255.0f,
+                            ((shadow_spec.color >> 16) & 0xFF) / 255.0f, ((shadow_spec.color >> 24) & 0xFF) / 255.0f};
+
+                        if (ImGui::ColorEdit4("Color", color))
+                        {
+                            shadow_spec.color = IM_COL32(
+                                static_cast<int>(color[0] * 255), static_cast<int>(color[1] * 255),
+                                static_cast<int>(color[2] * 255), static_cast<int>(color[3] * 255));
+                        }
+                        ImGui::End();
+                    }
+
+                    spartan::Shadow::DrawWindowShadow(shadow_spec);
+
+                    // TODO: Currently not working as intended (clipped by ImGui window?)
+                    // Queue shadow with current window rect (will be rendered in background pass)
+                    //spartan::ui::Shadow::QueueWindowShadow(shadow_spec,spartan::ui::RectOption(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y)));
+
                     if (spartan::FileSystem::IsDirectoryEmpty("Project"))
                     {
                         visible_world_list = false;

@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/ResourceViewer.h"
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
+#include "Widgets/Shadows.h"
 //===============================================
 
 //= NAMESPACES =====
@@ -160,6 +161,10 @@ void Editor::Tick()
 
                 // various windows that don't belong to a certain widget
                 GeneralWindows::Tick();
+
+                // Draw all pending shadows AFTER widgets queue them, but BEFORE ImGui::Render()
+                // This draws to the background draw list so shadows appear behind windows
+                spartan::Shadow::FlushPendingShadows();
             }
         }
 
