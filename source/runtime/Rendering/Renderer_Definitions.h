@@ -319,6 +319,8 @@ namespace spartan
         nrd_spec_radiance_hitdist,
         nrd_out_diff_radiance_hitdist,
         nrd_out_spec_radiance_hitdist,
+        // debug
+        debug_output,
         max
     };
 
@@ -345,7 +347,8 @@ namespace spartan
         DummyInstance,
         AABBs,
         Visibility,
-        VisibilityPrevious,
+        VisibilityPrev,
+        VisibilityReadback,
         GeometryInfo,
         Max
     };

@@ -415,6 +415,32 @@ namespace spartan
             void reset(void* cmd_list, void*& query_pool)
             {
                 vkCmdResetQueryPool(static_cast<VkCommandBuffer>(cmd_list), static_cast<VkQueryPool>(query_pool), 0, query_count);
+
+                // reset index counter and clear mappings to prevent overflow
+                // this is safe because the query pool is reset, so all previous results are invalidated
+                index = 0;
+                id_to_index.clear();
+                data.fill(0);
+            }
+
+            uint32_t allocate_index(uint64_t entity_id)
+            {
+                // check if entity already has an index
+                auto it = id_to_index.find(entity_id);
+                if (it != id_to_index.end())
+                    return it->second;
+
+                // allocate new index with bounds checking
+                if (index >= query_count - 1)
+                {
+                    // pool is full - return invalid index (0 is reserved)
+                    SP_LOG_WARNING("Occlusion query pool exhausted, some objects may not be queried");
+                    return 0;
+                }
+
+                uint32_t new_index = ++index;
+                id_to_index[entity_id] = new_index;
+                return new_index;
             }
         }
 
@@ -1666,11 +1692,11 @@ namespace spartan
     {
         SP_ASSERT_MSG(m_pso.IsGraphics(), "Occlusion queries are only supported in graphics pipelines");
 
-        queries::occlusion::index_active = queries::occlusion::id_to_index[entity_id];
+        queries::occlusion::index_active = queries::occlusion::allocate_index(entity_id);
         if (queries::occlusion::index_active == 0)
         {
-            queries::occlusion::index_active           = ++queries::occlusion::index;
-            queries::occlusion::id_to_index[entity_id] = queries::occlusion::index;
+            // pool exhausted, skip this query
+            return;
         }
 
         if (!m_render_pass_active)

@@ -40,9 +40,9 @@ The most advanced and demanding world featuring **256 million** procedurally gen
 |:-:|:-:|
 | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_minecraft.jpg"/><br>A classic Minecraft world | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_liminal.jpg"/><br>Shifts your frequency to a nearby reality |
 
-| Showroom |
-|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_showroom.png"/><br>Car showroom - ideal for YouTubers/press as it doesn't use experimental tech |
+| Showroom | Car Playground |
+|:-:|:-:|
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_showroom.png"/><br>Car showroom - ideal for YouTubers/press as it doesn't use experimental tech | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_car_playground.png"/><br>One of the most realistic out-of-the-box car simulations - featuring tire thermals, Pacejka physics, suspension dynamics, and full telemetry |
 
 # Features
 

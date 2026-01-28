@@ -84,7 +84,8 @@ namespace spartan
         buffer(Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                     nullptr,            true, "lights");
         buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Instance),                           static_cast<uint32_t>(identity.size()), &identity,          true, "dummy_instance_buffer");
         buffer(Renderer_Buffer::Visibility)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                     nullptr,            true, "visibility");
-        buffer(Renderer_Buffer::VisibilityPrevious) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                     nullptr,            true, "visibility_previous");
+        buffer(Renderer_Buffer::VisibilityPrev)     = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                     nullptr,            true, "visibility_prev");
+        buffer(Renderer_Buffer::VisibilityReadback) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                     nullptr,            true, "visibility_readback");
         buffer(Renderer_Buffer::AABBs)              = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Aabb)),         rhi_max_array_size,                     nullptr,            true, "aabbs");
         buffer(Renderer_Buffer::GeometryInfo)       = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_GeometryInfo)), rhi_max_array_size,                     nullptr,            true, "geometry_info");
     }
@@ -362,6 +363,7 @@ namespace spartan
             uint32_t mip_count = compute_mip_count(width_output, height_output, 16);
             render_target(Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews, "frame_output");
             render_target(Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
+            render_target(Renderer_RenderTarget::debug_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "debug_output");
 
             // misc
             render_target(Renderer_RenderTarget::bloom)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
@@ -924,7 +926,12 @@ namespace spartan
 
     void Renderer::SwapVisibilityBuffers()
     {
-        swap(buffers[static_cast<uint8_t>(Renderer_Buffer::Visibility)], buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityPrevious)]);
+        // triple-buffer rotation: Readback <- Prev <- Visibility <- Readback
+        // this ensures we read from 2 frames ago (guaranteed GPU complete with double-buffered cmd lists)
+        auto temp = buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityReadback)];
+        buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityReadback)] = buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityPrev)];
+        buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityPrev)]     = buffers[static_cast<uint8_t>(Renderer_Buffer::Visibility)];
+        buffers[static_cast<uint8_t>(Renderer_Buffer::Visibility)]         = temp;
     }
 
     RHI_Texture* Renderer::GetStandardTexture(const Renderer_StandardTexture type)
