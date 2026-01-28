@@ -620,6 +620,19 @@ namespace spartan
                 audio_source->SetLoop(false);
                 audio_source->SetPlayOnStart(false);
             }
+
+            // tire squeal - plays when tires lose grip
+            {
+                Entity* sound = World::CreateEntity();
+                sound->SetObjectName("sound_tire_squeal");
+                sound->SetParent(car_entity);
+
+                AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\tire_squeal.wav");
+                audio_source->SetLoop(true);
+                audio_source->SetPlayOnStart(false);
+                audio_source->SetVolume(0.0f);  // start silent, volume controlled by slip
+            }
         }
 
         // helper: creates wheels and attaches to vehicle
@@ -1635,13 +1648,15 @@ namespace spartan
                 return;
 
             // cached references
-            bool inside_the_car             = is_in_vehicle;
-            Entity* sound_door_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_door")  : nullptr;
-            Entity* sound_start_entity      = vehicle_entity ? vehicle_entity->GetChildByName("sound_start") : nullptr;
-            Entity* sound_idle_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_idle")  : nullptr;
-            AudioSource* audio_source_door  = sound_door_entity  ? sound_door_entity->GetComponent<AudioSource>()  : nullptr;
-            AudioSource* audio_source_start = sound_start_entity ? sound_start_entity->GetComponent<AudioSource>() : nullptr;
-            AudioSource* audio_source_idle  = sound_idle_entity  ? sound_idle_entity->GetComponent<AudioSource>()  : nullptr;
+            bool inside_the_car                  = is_in_vehicle;
+            Entity* sound_door_entity            = vehicle_entity ? vehicle_entity->GetChildByName("sound_door")        : nullptr;
+            Entity* sound_start_entity           = vehicle_entity ? vehicle_entity->GetChildByName("sound_start")       : nullptr;
+            Entity* sound_idle_entity            = vehicle_entity ? vehicle_entity->GetChildByName("sound_idle")        : nullptr;
+            Entity* sound_tire_squeal_entity     = vehicle_entity ? vehicle_entity->GetChildByName("sound_tire_squeal") : nullptr;
+            AudioSource* audio_source_door       = sound_door_entity       ? sound_door_entity->GetComponent<AudioSource>()       : nullptr;
+            AudioSource* audio_source_start      = sound_start_entity      ? sound_start_entity->GetComponent<AudioSource>()      : nullptr;
+            AudioSource* audio_source_idle       = sound_idle_entity       ? sound_idle_entity->GetComponent<AudioSource>()       : nullptr;
+            AudioSource* audio_source_tire       = sound_tire_squeal_entity ? sound_tire_squeal_entity->GetComponent<AudioSource>() : nullptr;
             if (!vehicle_entity || !audio_source_door || !audio_source_start || !audio_source_idle)
                 return;
 
@@ -1676,6 +1691,81 @@ namespace spartan
             else if (!inside_the_car && audio_source_idle->IsPlaying())
             {
                 audio_source_idle->StopClip();
+            }
+
+            // tire squeal sound: only during real slides (drifting, hard braking, wheelspin)
+            if (audio_source_tire && vehicle_entity)
+            {
+                Physics* physics = vehicle_entity->GetComponent<Physics>();
+                if (physics)
+                {
+                    float speed_kmh = physics->GetLinearVelocity().Length() * 3.6f;
+                    
+                    // collect max slip from all wheels (both lateral and longitudinal)
+                    float max_slip_angle = 0.0f;
+                    float max_slip_ratio = 0.0f;
+                    int grounded_count = 0;
+                    
+                    for (int i = 0; i < 4; i++)
+                    {
+                        WheelIndex wheel = static_cast<WheelIndex>(i);
+                        if (physics->IsWheelGrounded(wheel))
+                        {
+                            grounded_count++;
+                            max_slip_angle = std::max(max_slip_angle, fabsf(physics->GetWheelSlipAngle(wheel)));
+                            max_slip_ratio = std::max(max_slip_ratio, fabsf(physics->GetWheelSlipRatio(wheel)));
+                        }
+                    }
+                    
+                    // tuned thresholds - triggers on real slides but not too late
+                    // slip angle ~0.35 rad = ~20 degrees (starting to slide)
+                    // slip ratio ~0.28 = 28% wheelspin/lockup (noticeable loss of traction)
+                    const float slip_angle_threshold = 0.35f;
+                    const float slip_ratio_threshold = 0.28f;
+                    const float min_speed_for_squeal = 20.0f;  // km/h
+                    
+                    float target_intensity = 0.0f;
+                    if (speed_kmh > min_speed_for_squeal && grounded_count > 0)
+                    {
+                        float slip_angle_excess = max_slip_angle - slip_angle_threshold;
+                        float slip_ratio_excess = max_slip_ratio - slip_ratio_threshold;
+                        
+                        if (slip_angle_excess > 0.0f || slip_ratio_excess > 0.0f)
+                        {
+                            // gentle intensity curve - takes more slip to get louder
+                            float slip_angle_intensity = std::clamp(slip_angle_excess * 1.5f, 0.0f, 1.0f);
+                            float slip_ratio_intensity = std::clamp(slip_ratio_excess * 1.8f, 0.0f, 1.0f);
+                            target_intensity = std::max(slip_angle_intensity, slip_ratio_intensity);
+                        }
+                    }
+                    
+                    // smooth volume transitions
+                    static float smoothed_volume = 0.0f;
+                    float fade_in_rate  = 0.04f;
+                    float fade_out_rate = 0.025f;
+                    float rate = (target_intensity > smoothed_volume) ? fade_in_rate : fade_out_rate;
+                    smoothed_volume = smoothed_volume + (target_intensity - smoothed_volume) * rate;
+                    
+                    // low max volume
+                    const float max_volume = 0.25f;
+                    float volume = smoothed_volume * max_volume;
+                    
+                    // only play when there's actual slip
+                    if (smoothed_volume > 0.02f)
+                    {
+                        if (!audio_source_tire->IsPlaying())
+                            audio_source_tire->PlayClip();
+                        
+                        audio_source_tire->SetVolume(volume);
+                        audio_source_tire->SetPitch(0.95f + smoothed_volume * 0.15f);
+                    }
+                    else
+                    {
+                        smoothed_volume = 0.0f;  // reset to zero when below threshold
+                        if (audio_source_tire->IsPlaying())
+                            audio_source_tire->StopClip();
+                    }
+                }
             }
 
             // gt7-style chase camera
@@ -2536,7 +2626,7 @@ namespace spartan
 
             void create()
             {
-                entities::music("project\\music\\gran_turismo.wav");
+                entities::music("project\\music\\gran_turismo_4.wav");
 
                 // textures
                 texture_brand_logo = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");

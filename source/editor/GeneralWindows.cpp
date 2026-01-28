@@ -558,10 +558,10 @@ namespace
         bool visible_world_list       = false;
 
         // asset download configuration
-        const char* assets_url          = "https://www.dropbox.com/scl/fi/2dsh84c9hokjxv5xmmv4t/assets.7z?rlkey=a88etud443hqddsnkjzbvlwpu&st=rg4ptyos&dl=1";
+        const char* assets_url          = "https://www.dropbox.com/scl/fi/v78hpy6vb0kgu5ik5gqh5/assets.7z?rlkey=c53z3iblelyp2j0qcyumejday&st=m2itkz74&dl=1";
         const char* assets_destination  = "project/assets.7z";
         const char* assets_extract_dir  = "project/";
-        const char* assets_expected_sha = "a11dd5ae80d9bc85541646670f3e69f1ab7e48e4b4430712038f8f4fb1300637";
+        const char* assets_expected_sha = "94f9e1ebe6ded2280e3bd56bcdfe87ed2f351260ea2495c96f4319333194226d";
         
         void check_assets_outdated_async()
         {
