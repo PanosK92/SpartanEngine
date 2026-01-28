@@ -1140,11 +1140,14 @@ namespace spartan
 
     void RHI_VendorTechnology::ResetHistory()
     {
+    #ifdef _WIN32
         common::reset_history = true;
+    #endif
     }
 
     void RHI_VendorTechnology::XeSS_GenerateJitterSample(float* x, float* y)
     {
+    #ifdef _WIN32
         // generate a single halton value for a given base and index
         auto get_corput = [](uint32_t index, uint32_t base) -> float
         {
@@ -1197,6 +1200,7 @@ namespace spartan
         // advance to the next sample, cycling back to 0
         uint32_t sample_count_at_current_quality_level = intel::get_sample_count();
         halton_index = (halton_index + 1) % sample_count_at_current_quality_level;
+    #endif
     }
 
     void RHI_VendorTechnology::XeSS_Dispatch(
