@@ -61,7 +61,7 @@ namespace spartan
     Pcb_Pass Renderer::m_pcb_pass_cpu;
 
     // line and icon rendering
-    shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
+    Ref<RHI_Buffer> Renderer::m_lines_vertex_buffer;
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
     vector<PersistentLine> Renderer::m_persistent_lines;
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
@@ -807,7 +807,7 @@ namespace spartan
 
     void Renderer::DrawString(const char* text, const Vector2& position_screen_percentage)
     {
-        if (shared_ptr<Font>& font = GetFont())
+        if (Ref<Font>& font = GetFont())
         {
             font->AddText(text, position_screen_percentage);
         }

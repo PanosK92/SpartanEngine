@@ -432,10 +432,10 @@ namespace spartan
             string directory = world_file_path_to_resource_directory(file_path);
             FileSystem::CreateDirectory_(directory);
 
-            vector<shared_ptr<IResource>> resources = ResourceCache::GetResources();
+            vector<Ref<IResource>> resources = ResourceCache::GetResources();
 
             // save resources filtered by type
-            for (shared_ptr<IResource>& resource : resources)
+            for (Ref<IResource>& resource : resources)
             {
                 string ext;
                 switch (resource->GetResourceType())
@@ -444,7 +444,7 @@ namespace spartan
                     {
                         // only save textures that can be saved (compressed with data)
                         // others will be re-imported from source path when material loads
-                        RHI_Texture* texture = static_cast<RHI_Texture*>(resource.get());
+                        RHI_Texture* texture = static_cast<RHI_Texture*>(resource.Get());
                         if (!texture->CanSaveToFile())
                             continue;
                         ext = EXTENSION_TEXTURE;
@@ -519,7 +519,7 @@ namespace spartan
             {
                 if (FileSystem::IsEngineTextureFile(path))
                 {
-                    if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                    if (Ref<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
                     {
                         texture->PrepareForGpu();
                     }

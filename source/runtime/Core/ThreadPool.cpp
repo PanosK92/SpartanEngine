@@ -126,7 +126,7 @@ namespace spartan
 
     future<void> ThreadPool::AddTask(Task&& task)
     {
-        auto packaged = make_shared<packaged_task<void()>>(std::forward<Task>(task));
+        auto packaged       = make_shared<packaged_task<void()>>(std::forward<Task>(task));
         future<void> result = packaged->get_future();
 
         {

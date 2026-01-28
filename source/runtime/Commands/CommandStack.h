@@ -31,7 +31,8 @@ namespace spartan {
 // @todo make editor setting instead of compile time constant expression
 constexpr uint64_t max_undo_steps = 128;
 
-class CommandStack {
+class CommandStack 
+{
 public:
     template<typename CommandType, typename... Args>
     static void Add(Args&&... args) {
@@ -43,7 +44,7 @@ public:
         // CircularStack author: not sure I fully made optimal solution
         // I suppose we can store it all in single stack, I will look into it
 
-        std::shared_ptr<Command> new_command = std::make_shared<CommandType>(std::forward<Args>(args)...);
+        Ref<Command> new_command = CreateRef<CommandType>(std::forward<Args>(args)...);
         m_undo_buffer.Push(new_command);
 
         // Make sure to clear the redo buffer if you apply a new command, to preserve the time continuum.
@@ -57,7 +58,7 @@ public:
     static void Redo();
 
 protected:
-    static spartan::CircularStack<std::shared_ptr<Command>> m_undo_buffer;
-    static spartan::CircularStack<std::shared_ptr<Command>> m_redo_buffer;
+    static spartan::CircularStack<Ref<Command>> m_undo_buffer;
+    static spartan::CircularStack<Ref<Command>> m_redo_buffer;
 };
 }

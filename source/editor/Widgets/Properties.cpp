@@ -45,7 +45,7 @@ using namespace spartan;
 using namespace math;
 //======================
 
-weak_ptr<Material> Properties::m_inspected_material;
+WeakRef<Material> Properties::m_inspected_material;
 
 namespace
 {
@@ -298,9 +298,9 @@ void Properties::OnTickVisible()
 
                 ShowAddComponentButton();
             }
-            else if (!m_inspected_material.expired())
+            else if (!m_inspected_material.Expired())
             {
-                ShowMaterial(m_inspected_material.lock().get());
+                ShowMaterial(m_inspected_material.Lock().Get());
             }
         }
     }
@@ -310,14 +310,14 @@ void Properties::OnTickVisible()
 void Properties::Inspect(spartan::Entity* entity)
 {
     // If we were previously inspecting a material, save the changes
-    if (!m_inspected_material.expired())
+    if (!m_inspected_material.Expired())
     {
-        m_inspected_material.lock()->SaveToFile(m_inspected_material.lock()->GetResourceFilePath());
+        m_inspected_material.Lock()->SaveToFile(m_inspected_material.Lock()->GetResourceFilePath());
     }
-    m_inspected_material.reset();
+    m_inspected_material.Reset();
 }
 
-void Properties::Inspect(const shared_ptr<Material> material)
+void Properties::Inspect(const Ref<Material> material)
 {
     m_inspected_material = material;
 }

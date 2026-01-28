@@ -138,10 +138,10 @@ void ResourceViewer::OnTickVisible()
             }
         }
 
-        ranges::sort(resources, [](const shared_ptr<IResource>& a, const shared_ptr<IResource>& b)
+        ranges::sort(resources, [](const Ref<IResource>& a, const Ref<IResource>& b)
         {
-            const SpartanObject* object_A = dynamic_cast<SpartanObject*>(a.get());
-            const SpartanObject* object_B = dynamic_cast<SpartanObject*>(b.get());
+            const SpartanObject* object_A = dynamic_cast<SpartanObject*>(a.Get());
+            const SpartanObject* object_B = dynamic_cast<SpartanObject*>(b.Get());
             if (!object_A || !object_B) return false;
 
             switch (sorted_column)
@@ -166,13 +166,13 @@ void ResourceViewer::OnTickVisible()
         });
 
         // --- Draw Row Data ---
-        for (const shared_ptr<IResource>& resource : resources)
+        for (const Ref<IResource>& resource : resources)
         {
-            if (const SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
+            if (const SpartanObject* object = dynamic_cast<SpartanObject*>(resource.Get()))
             {
                 if (search_buffer[0] != '\0')
                 {
-                    if (!is_resource_searched(resource.get(), search_buffer))
+                    if (!is_resource_searched(resource.Get(), search_buffer))
                         continue;
 
                     resource_search_count++;

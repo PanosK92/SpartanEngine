@@ -1022,7 +1022,7 @@ namespace spartan
 
     Terrain::Terrain(Entity* entity) : Component(entity)
     {
-        m_material = make_shared<Material>();
+        m_material = CreateRef<Material>();
         m_material->SetObjectName("terrain");
     }
 
@@ -1056,9 +1056,9 @@ namespace spartan
         string height_map_path = node.attribute("height_map_path").as_string("");
         if (!height_map_path.empty())
         {
-            if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(height_map_path))
+            if (Ref<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(height_map_path))
             {
-                m_height_map_seed = texture.get();
+                m_height_map_seed = texture.Get();
             }
         }
 
@@ -1425,7 +1425,7 @@ namespace spartan
             };
             ThreadPool::ParallelLoop(copy_heights, m_dense_width * m_dense_height);
         
-            m_height_map_final = make_shared<RHI_Texture>(
+            m_height_map_final = CreateRef<RHI_Texture>(
                 RHI_Texture_Type::Type2D,
                 m_dense_width, m_dense_height, 1, 1,
                 RHI_Format::R32_Float, RHI_Texture_Srv,
@@ -1442,7 +1442,7 @@ namespace spartan
 
         // 9. create tile entities and gpu buffers
         ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
-        m_mesh = make_shared<Mesh>();
+        m_mesh = CreateRef<Mesh>();
         m_mesh->SetObjectName("terrain_mesh");
         m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
         m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
@@ -1459,7 +1459,7 @@ namespace spartan
 
             if (Renderable* renderable = entity->AddComponent<Renderable>())
             {
-                renderable->SetMesh(m_mesh.get(), sub_mesh_index);
+                renderable->SetMesh(m_mesh.Get(), sub_mesh_index);
                 renderable->SetMaterial(m_material);
             }
         }

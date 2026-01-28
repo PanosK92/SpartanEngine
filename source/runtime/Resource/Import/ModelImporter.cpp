@@ -185,7 +185,7 @@ namespace spartan
         // load texture synchronously (original working behavior)
         bool load_material_texture(
             const string& model_directory,
-            shared_ptr<Material> material,
+            Ref<Material> material,
             const aiMaterial* material_assimp,
             const MaterialTextureType texture_type,
             const aiTextureType texture_type_assimp_pbr,
@@ -214,7 +214,7 @@ namespace spartan
             // load the texture and set it to the material
             {
                 const string tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(resolved_path);
-                shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
+                Ref<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
 
                 if (texture)
                 {
@@ -255,10 +255,10 @@ namespace spartan
             return true;
         }
 
-        shared_ptr<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp)
+        Ref<Material> load_material(ImportContext& ctx, const aiMaterial* material_assimp)
         {
             SP_ASSERT(material_assimp != nullptr);
-            shared_ptr<Material> material = make_shared<Material>();
+            Ref<Material> material = CreateRef<Material>();
 
             // synchronous texture loading (async was causing race conditions with texture packing)
             // note: gltf uses aiTextureType_GLTF_METALLIC_ROUGHNESS for combined metallic-roughness texture
@@ -746,7 +746,7 @@ namespace spartan
         if (ctx.scene->HasMaterials())
         {
             const aiMaterial* assimp_material = ctx.scene->mMaterials[assimp_mesh->mMaterialIndex];
-            shared_ptr<Material> material = load_material(ctx, assimp_material);
+            Ref<Material> material = load_material(ctx, assimp_material);
 
             // create a file path for this material
             const string spartan_asset_path = ctx.model_directory + material->GetObjectName() + EXTENSION_MATERIAL;

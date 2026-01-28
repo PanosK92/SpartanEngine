@@ -2807,7 +2807,7 @@ namespace spartan
             RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_lines_vertex_buffer->GetMappedData());
             memset(buffer, 0, m_lines_vertex_buffer->GetObjectSize());
             copy(m_lines_vertices.begin(), m_lines_vertices.end(), buffer);
-            cmd_list->SetBufferVertex(m_lines_vertex_buffer.get());
+            cmd_list->SetBufferVertex(m_lines_vertex_buffer.Get());
 
             cmd_list->SetCullMode(RHI_CullMode::None);
             cmd_list->Draw(static_cast<uint32_t>(m_lines_vertices.size()));
@@ -2917,7 +2917,7 @@ namespace spartan
         const bool draw       = cvar_performance_metrics.GetValueAs<bool>();
         const auto& shader_v  = GetShader(Renderer_Shader::font_v);
         const auto& shader_p  = GetShader(Renderer_Shader::font_p);
-        shared_ptr<Font> font = GetFont();
+        Ref<Font> font = GetFont();
 
         if (!font->HasText())
             return;

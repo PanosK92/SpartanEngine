@@ -83,7 +83,7 @@ namespace spartan
         Max
     };
 
-    class ResourceCache
+    class ResourceCache : public RefCounted
     {
     public:
         static void Initialize();
@@ -94,31 +94,31 @@ namespace spartan
          static void UnloadDefaultResources();
 
         // get by name
-        static std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
+        static Ref<IResource>& GetByName(const std::string& name, ResourceType type);
         template <class T>
-        static std::shared_ptr<T> GetByName(const std::string& name)
+        static Ref<T> GetByName(const std::string& name)
         {
-            return std::static_pointer_cast<T>(GetByName(name, IResource::TypeToEnum<T>()));
+            return GetByName(name, IResource::TypeToEnum<T>()).As<T>();
         }
 
         // get by type
-        static std::vector<std::shared_ptr<IResource>> GetByType(ResourceType type = ResourceType::Max);
+        static std::vector<Ref<IResource>> GetByType(ResourceType type = ResourceType::Max);
 
         // get by path
         template <class T>
-        static std::shared_ptr<T> GetByPath(const std::string& path)
+        static Ref<T> GetByPath(const std::string& path)
         {
-            for (std::shared_ptr<IResource>& resource : GetResources())
+            for (Ref<IResource>& resource : GetResources())
             {
                 if (path == resource->GetResourceFilePath())
-                    return std::static_pointer_cast<T>(resource);
+                    return resource.As<T>();
             }
             return nullptr;
         }
 
         // caches resource, or replaces with existing cached resource
         template <class T>
-        static std::shared_ptr<T> Cache(const std::shared_ptr<T> resource)
+        static Ref<T> Cache(const Ref<T> resource)
         {
             if (!resource)
                 return nullptr;
@@ -130,18 +130,18 @@ namespace spartan
             }
 
             // return cached resource if it already exists
-            std::shared_ptr<T> existing = GetByPath<T>(resource->GetResourceFilePath());
-            if (existing.get() != nullptr)
+            Ref<T> existing = GetByPath<T>(resource->GetResourceFilePath());
+            if (existing.Get() != nullptr)
                 return existing;
 
             // if not, cache it and return the cached resource
             std::lock_guard<std::mutex> guard(GetMutex());
-            return std::static_pointer_cast<T>(GetResources().emplace_back(resource));
+            return GetResources().emplace_back(resource).template As<T>();
         }
 
         // loads a resource and adds it to the resource cache
         template <class T>
-        static std::shared_ptr<T> Load(const std::string& file_path, uint32_t flags = 0)
+        static Ref<T> Load(const std::string& file_path, uint32_t flags = 0)
         {
             if (!FileSystem::Exists(file_path))
             {
@@ -151,12 +151,12 @@ namespace spartan
 
             // return cached resource if it already exists
             const std::string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-            std::shared_ptr<T> existing = GetByPath<T>(file_path);
-            if (existing.get() != nullptr)
+            Ref<T> existing = GetByPath<T>(file_path);
+            if (existing.Get() != nullptr)
                 return existing;
 
             // create new resource
-            std::shared_ptr<T> resource = std::make_shared<T>();
+            Ref<T> resource = CreateRef<T>();
             if (flags != 0)
             {
                 resource->SetFlags(flags);
@@ -167,7 +167,7 @@ namespace spartan
         }
 
         template <class T>
-        static void Remove(std::shared_ptr<T>& resource)
+        static void Remove(Ref<T>& resource)
         {
             if (!resource)
                 return;
@@ -177,7 +177,7 @@ namespace spartan
                 (
                     GetResources().begin(),
                     GetResources().end(),
-                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<SpartanObject*>(resource.get())->GetObjectId() == resource->GetObjectId(); }
+                    [](Ref<IResource> resource) { return dynamic_cast<SpartanObject*>(resource.Get())->GetObjectId() == resource->GetObjectId(); }
                 ),
                 GetResources().end()
             );
@@ -196,7 +196,7 @@ namespace spartan
         static const char* GetDataDirectory();
 
         // misc
-        static std::vector<std::shared_ptr<IResource>>& GetResources();
+        static std::vector<Ref<IResource>>& GetResources();
         static std::mutex& GetMutex();
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);

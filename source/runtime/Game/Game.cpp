@@ -80,7 +80,7 @@ namespace spartan
         Entity* default_light_directional = nullptr;
         Entity* default_metal_cube        = nullptr;
         Entity* default_water             = nullptr;
-        vector<shared_ptr<Mesh>> meshes;
+        vector<Ref<Mesh>> meshes;
         //==========================================
 
         //= WORLD DISPATCH TABLES =====================================================================================================
@@ -216,7 +216,7 @@ namespace spartan
                 default_metal_cube->SetPosition(position);
 
                 // pbr material
-                shared_ptr<Material> material = make_shared<Material>();
+                Ref<Material> material = CreateRef<Material>();
                 material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
                 material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
                 material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
@@ -238,7 +238,7 @@ namespace spartan
             // flight helmet model
             void flight_helmet(const Vector3& position)
             {
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("flight_helmet");
@@ -254,7 +254,7 @@ namespace spartan
             // damaged helmet model
             void damaged_helmet(const Vector3& position)
             {
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("damaged_helmet");
@@ -271,7 +271,7 @@ namespace spartan
             void material_ball(const Vector3& position)
             {
                 uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf", flags))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf", flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("material_ball");
@@ -293,7 +293,7 @@ namespace spartan
                 water->SetPosition(position);
 
                 // water material
-                shared_ptr<Material> material = make_shared<Material>();
+                Ref<Material> material = CreateRef<Material>();
                 {
                     material->SetResourceName("water" + string(EXTENSION_MATERIAL));
                     material->SetColor(color);
@@ -328,7 +328,7 @@ namespace spartan
                     {
                         string name = "tile_" + to_string(tile_index);
 
-                        shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                        Ref<Mesh> mesh = meshes.emplace_back(CreateRef<Mesh>());
                         mesh->SetObjectName(name);
                         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                         mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
@@ -341,7 +341,7 @@ namespace spartan
 
                         if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
                         {
-                            renderable->SetMesh(mesh.get());
+                            renderable->SetMesh(mesh.Get());
                             renderable->SetMaterial(material);
                             renderable->SetFlag(RenderableFlags::CastsShadows, false);
                         }
@@ -443,7 +443,7 @@ namespace spartan
             mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
             mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
 
-            shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags);
+            Ref<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags);
             if (!mesh_car)
                 return nullptr;
 
@@ -642,7 +642,7 @@ namespace spartan
             mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
             mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
 
-            shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend", mesh_flags);
+            Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend", mesh_flags);
             if (!mesh)
                 return;
 
@@ -2014,7 +2014,7 @@ namespace spartan
 
                 // main building
                 uint32_t mesh_flags = Mesh::GetDefaultFlags();
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf", mesh_flags))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf", mesh_flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza");
@@ -2040,7 +2040,7 @@ namespace spartan
                 }
 
                 // curtains
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza_curtains");
@@ -2059,7 +2059,7 @@ namespace spartan
                 }
 
                 // ivy
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza_ivy");
@@ -2103,7 +2103,7 @@ namespace spartan
                 uint32_t mesh_flags  = Mesh::GetDefaultFlags();
                 mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
                 mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", mesh_flags))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", mesh_flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("minecraft");
@@ -2133,7 +2133,7 @@ namespace spartan
                 entities::camera(true);
                 entities::floor();
 
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("subway");
@@ -2241,7 +2241,7 @@ namespace spartan
                 {
                     // terrain material
                     {
-                        shared_ptr<Material> material = terrain->GetMaterial();
+                        Ref<Material> material = terrain->GetMaterial();
                         material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
                         material->SetProperty(MaterialProperty::TextureTilingX, 2000.0f);
@@ -2269,12 +2269,12 @@ namespace spartan
                     }
 
                     // height map generation
-                    shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
+                    Ref<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
                     if (height_map)
                     {
                         height_map->PrepareForGpu();
                     }
-                    terrain->SetHeightMapSeed(height_map.get());
+                    terrain->SetHeightMapSeed(height_map.Get());
                     terrain->Generate();
 
                     // terrain physics
@@ -2295,11 +2295,11 @@ namespace spartan
                 {
                     // load meshes
                     uint32_t flags             = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                    shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags);
-                    shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj");
+                    Ref<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags);
+                    Ref<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj");
 
                     // procedural grass mesh with lods
-                    shared_ptr<Mesh> mesh_grass_blade = meshes.emplace_back(make_shared<Mesh>());
+                    Ref<Mesh> mesh_grass_blade = meshes.emplace_back(CreateRef<Mesh>());
                     {
                         mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                         uint32_t sub_mesh_index = 0;
@@ -2333,7 +2333,7 @@ namespace spartan
                     }
 
                     // procedural flower mesh with lods
-                    shared_ptr<Mesh> mesh_flower = meshes.emplace_back(make_shared<Mesh>());
+                    Ref<Mesh> mesh_flower = meshes.emplace_back(CreateRef<Mesh>());
                     {
                         mesh_flower->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                         uint32_t sub_mesh_index = 0;
@@ -2367,14 +2367,14 @@ namespace spartan
                     }
 
                     // materials
-                    shared_ptr<Material> material_leaf;
-                    shared_ptr<Material> material_body;
-                    shared_ptr<Material> material_rock;
-                    shared_ptr<Material> material_grass_blade;
-                    shared_ptr<Material> material_flower;
+                    Ref<Material> material_leaf;
+                    Ref<Material> material_body;
+                    Ref<Material> material_rock;
+                    Ref<Material> material_grass_blade;
+                    Ref<Material> material_flower;
                     {
                         // tree leaves
-                        material_leaf = make_shared<Material>();
+                        material_leaf = CreateRef<Material>();
                         material_leaf->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\Twig_Base_Material_2.png");
                         material_leaf->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\Twig_Normal.png");
                         material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project\\models\\tree\\Twig_Opacity_Map.jpg");
@@ -2384,14 +2384,14 @@ namespace spartan
                         material_leaf->SetResourceName("tree_leaf" + string(EXTENSION_MATERIAL));
 
                         // tree bark
-                        material_body = make_shared<Material>();
+                        material_body = CreateRef<Material>();
                         material_body->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\tree_bark_diffuse.png");
                         material_body->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\tree_bark_normal.png");
                         material_body->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
                         material_body->SetResourceName("tree_body" + string(EXTENSION_MATERIAL));
 
                         // rocks
-                        material_rock = make_shared<Material>();
+                        material_rock = CreateRef<Material>();
                         material_rock->SetTexture(MaterialTextureType::Color, "project\\models\\rock_2\\albedo.png");
                         material_rock->SetTexture(MaterialTextureType::Normal, "project\\models\\rock_2\\normal.png");
                         material_rock->SetTexture(MaterialTextureType::Roughness, "project\\models\\rock_2\\roughness.png");
@@ -2399,7 +2399,7 @@ namespace spartan
                         material_rock->SetResourceName("rock" + string(EXTENSION_MATERIAL));
 
                         // grass blades
-                        material_grass_blade = make_shared<Material>();
+                        material_grass_blade = CreateRef<Material>();
                         material_grass_blade->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::Roughness, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 1.0f);
@@ -2410,7 +2410,7 @@ namespace spartan
                         material_grass_blade->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
 
                         // flowers
-                        material_flower = make_shared<Material>();
+                        material_flower = CreateRef<Material>();
                         material_flower->SetProperty(MaterialProperty::IsFlower, 1.0f);
                         material_flower->SetProperty(MaterialProperty::Roughness, 1.0f);
                         material_flower->SetProperty(MaterialProperty::Clearcoat, 1.0f);
@@ -2521,7 +2521,7 @@ namespace spartan
                                         vector<Matrix> far_transforms(all_transforms.begin(), all_transforms.begin() + split_1);
 
                                         Renderable* renderable = entity->AddComponent<Renderable>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
+                                        renderable->SetMesh(mesh_grass_blade.Get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(far_transforms);
                                         renderable->SetMaterial(material_grass_blade);
@@ -2537,7 +2537,7 @@ namespace spartan
                                         vector<Matrix> mid_transforms(all_transforms.begin() + split_1, all_transforms.begin() + split_2);
 
                                         Renderable* renderable = entity->AddComponent<Renderable>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
+                                        renderable->SetMesh(mesh_grass_blade.Get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(mid_transforms);
                                         renderable->SetMaterial(material_grass_blade);
@@ -2553,7 +2553,7 @@ namespace spartan
                                         vector<Matrix> near_transforms(all_transforms.begin() + split_2, all_transforms.end());
 
                                         Renderable* renderable = entity->AddComponent<Renderable>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
+                                        renderable->SetMesh(mesh_grass_blade.Get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(near_transforms);
                                         renderable->SetMaterial(material_grass_blade);
@@ -2572,7 +2572,7 @@ namespace spartan
                                 terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 0.64f, transforms);
 
                                 Renderable* renderable = entity->AddComponent<Renderable>();
-                                renderable->SetMesh(mesh_flower.get());
+                                renderable->SetMesh(mesh_flower.Get());
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                 renderable->SetInstances(transforms);
                                 renderable->SetMaterial(material_flower);
@@ -2635,7 +2635,7 @@ namespace spartan
         //= SHOWROOM =========================================================================
         namespace showroom
         {
-            shared_ptr<RHI_Texture> texture_brand_logo;
+            Ref<RHI_Texture> texture_brand_logo;
             Entity* turn_table = nullptr;
 
             void create()
@@ -2643,7 +2643,7 @@ namespace spartan
                 entities::music("project\\music\\gran_turismo_4.wav");
 
                 // textures
-                texture_brand_logo = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
+                texture_brand_logo = CreateRef<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
 
                 // create display car (non-drivable)
                 car::Config car_config;
@@ -2668,7 +2668,7 @@ namespace spartan
                     mesh_flags          &= static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\SpartanLaFerrariV2\\LaFerrariV2.gltf", mesh_flags))
+                    if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\SpartanLaFerrariV2\\LaFerrariV2.gltf", mesh_flags))
                     {
                         Entity* floor_tube_lights = mesh->GetRootEntity();
                         floor_tube_lights->SetObjectName("tube_lights_and_floor");
@@ -2824,7 +2824,7 @@ namespace spartan
                     ImGui::End();
                 }
 
-                Renderer::DrawIcon(texture_brand_logo.get(), Vector2(400.0f, 300.0f));
+                Renderer::DrawIcon(texture_brand_logo.Get(), Vector2(400.0f, 300.0f));
             }
         }
         //====================================================================================
@@ -2835,7 +2835,7 @@ namespace spartan
             void create()
             {
                 // shared tile material
-                shared_ptr<Material> tile_material = make_shared<Material>();
+                Ref<Material> tile_material = CreateRef<Material>();
                 tile_material->SetResourceName("floor_tile" + string(EXTENSION_MATERIAL));
                 tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
                 tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
@@ -2850,7 +2850,7 @@ namespace spartan
                 Entity* entity_pool_light = nullptr;
                 uint32_t flags  = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                 flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\pool_light\\pool_light.blend", flags))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\pool_light\\pool_light.blend", flags))
                 {
                     entity_pool_light = mesh->GetRootEntity();
                     entity_pool_light->SetObjectName("pool_light");
@@ -2860,14 +2860,14 @@ namespace spartan
                     entity_pool_light->GetChildByIndex(3)->SetActive(false);
 
                     // outer metallic ring
-                    shared_ptr<Material> material_metal = make_shared<Material>();
+                    Ref<Material> material_metal = CreateRef<Material>();
                     material_metal->SetResourceName("material_metal" + string(EXTENSION_MATERIAL));
                     material_metal->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_metal->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle")->GetComponent<Renderable>()->SetMaterial(material_metal);
 
                     // inner light paraboloid
-                    shared_ptr<Material> material_paraboloid = make_shared<Material>();
+                    Ref<Material> material_paraboloid = CreateRef<Material>();
                     material_paraboloid->SetResourceName("material_paraboloid" + string(EXTENSION_MATERIAL));
                     material_paraboloid->SetTexture(MaterialTextureType::Emission, "project\\models\\pool_light\\emissive.png");
                     material_paraboloid->SetProperty(MaterialProperty::Roughness, 0.5f);

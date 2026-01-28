@@ -221,11 +221,11 @@ void ShaderEditor::GetShaderInstances()
 {
     auto shaders = Renderer::GetShaders();
     m_shaders.clear();
-    for (const shared_ptr<RHI_Shader>& shader : shaders)
+    for (const Ref<RHI_Shader>& shader : shaders)
     {
         if (shader && shader->IsCompiled())
         {
-            m_shaders.emplace_back(shader.get());
+            m_shaders.emplace_back(shader.Get());
         }
     }
 

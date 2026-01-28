@@ -252,7 +252,7 @@ namespace ImGuiSp
         {
             try
             {
-                if (const auto tex = spartan::ResourceCache::Load<spartan::RHI_Texture>(std::get<const char*>(payload->data)).get())
+                if (const auto tex = spartan::ResourceCache::Load<spartan::RHI_Texture>(std::get<const char*>(payload->data)).Get())
                 {
                     setter(tex);
                 }

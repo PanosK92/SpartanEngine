@@ -351,11 +351,11 @@ namespace spartan
                 string normal_name = "normal_from_" + texture_color->GetObjectName() + "_slot" + to_string(slot);
         
                 // check if normal map already exists
-                shared_ptr<RHI_Texture> texture_normal_new = ResourceCache::GetByName<RHI_Texture>(normal_name);
+                Ref<RHI_Texture> texture_normal_new = ResourceCache::GetByName<RHI_Texture>(normal_name);
                 if (!texture_normal_new)
                 {
                     // create new normal texture - don't compress to keep raw bytes for repacking
-                    texture_normal_new = make_shared<RHI_Texture>(
+                    texture_normal_new = CreateRef<RHI_Texture>(
                         RHI_Texture_Type::Type2D,
                         width,
                         height,
@@ -389,7 +389,7 @@ namespace spartan
         
                 // set the new normal texture
                 material->SetTexture(MaterialTextureType::Normal, texture_normal_new, slot);
-                texture_normal = texture_normal_new.get();
+                texture_normal = texture_normal_new.Get();
             }
         
             // helper to check if texture is valid for packing
@@ -479,7 +479,7 @@ namespace spartan
                     string tex_name = material->GetObjectName() + "_packed_slot" + to_string(slot);
                     
                     // for repacking, remove the old packed texture from cache so we create a fresh one
-                    shared_ptr<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
+                    Ref<RHI_Texture> texture_packed = ResourceCache::GetByName<RHI_Texture>(tex_name);
                     if (texture_packed)
                     {
                         ResourceCache::Remove(texture_packed);
@@ -489,7 +489,7 @@ namespace spartan
                     // always create packed texture - use material properties as fallback when texture data is unavailable
                     {
                         // create packed texture
-                        texture_packed = make_shared<RHI_Texture>
+                        texture_packed = CreateRef<RHI_Texture>
                         (
                             RHI_Texture_Type::Type2D,
                             max_width,
@@ -626,7 +626,7 @@ namespace spartan
     
                 if (texture)
                 {
-                    SetTexture(static_cast<MaterialTextureType>(type), texture.get(), slot, false);
+                    SetTexture(static_cast<MaterialTextureType>(type), texture.Get(), slot, false);
                 }
             }
         }
@@ -716,9 +716,9 @@ namespace spartan
         SaveToFile(GetResourceFilePath());
     }
 
-    void Material::SetTexture(const MaterialTextureType texture_type, shared_ptr<RHI_Texture> texture, const uint8_t slot)
+    void Material::SetTexture(const MaterialTextureType texture_type, Ref<RHI_Texture> texture, const uint8_t slot)
     {
-        SetTexture(texture_type, texture.get(), slot);
+        SetTexture(texture_type, texture.Get(), slot);
     }
 
     void Material::SetTexture(const MaterialTextureType texture_type, const string& file_path, const uint8_t slot)

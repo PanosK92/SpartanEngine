@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    class SpartanObject
+    class SpartanObject : public RefCounted 
     {
     public:
         SpartanObject()
