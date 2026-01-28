@@ -51,6 +51,7 @@ namespace car
         constexpr float engine_peak_torque_rpm  = 6750.0f;
         constexpr float engine_inertia          = 0.25f;
         constexpr float engine_friction         = 0.02f;
+        constexpr float engine_rpm_smoothing    = 6.0f;   // rpm response rate - lower = smoother spool, higher = snappier
         constexpr float downshift_blip_amount   = 0.35f;
         constexpr float downshift_blip_duration = 0.15f;
 
@@ -1284,12 +1285,18 @@ namespace car
         float effective_throttle_for_rpm = PxMax(input.throttle, blip);
         float free_rev_rpm = tuning::engine_idle_rpm + effective_throttle_for_rpm * (tuning::engine_redline_rpm - tuning::engine_idle_rpm) * 0.7f;
         
+        // calculate target rpm based on clutch state
+        float target_rpm;
         if (current_gear == 1)
-            engine_rpm = lerp(engine_rpm, free_rev_rpm, exp_decay(8.0f, dt));
+            target_rpm = free_rev_rpm;
         else if (clutch < 0.9f)
-            engine_rpm = lerp(engine_rpm, lerp(free_rev_rpm, PxMax(wheel_driven_rpm, tuning::engine_idle_rpm), clutch), exp_decay(10.0f, dt));
+            target_rpm = lerp(free_rev_rpm, PxMax(wheel_driven_rpm, tuning::engine_idle_rpm), clutch);
         else
-            engine_rpm = PxMax(wheel_driven_rpm, tuning::engine_idle_rpm);
+            target_rpm = PxMax(wheel_driven_rpm, tuning::engine_idle_rpm);
+        
+        // smooth rpm changes - simulates engine inertia for natural spool-up feel
+        // prevents jitter from wheel velocity fluctuations
+        engine_rpm = lerp(engine_rpm, target_rpm, exp_decay(tuning::engine_rpm_smoothing, dt));
         engine_rpm = PxClamp(engine_rpm, tuning::engine_idle_rpm, tuning::engine_max_rpm);
 
         // engine braking

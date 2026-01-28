@@ -1078,29 +1078,47 @@ namespace spartan
 
                 ImGui::Separator();
 
-                // assists
+                // driver assists - toggleable switches
                 bool abs_enabled = physics->GetAbsEnabled();
                 bool tc_enabled  = physics->GetTcEnabled();
+                bool manual_trans = physics->GetManualTransmission();
                 bool abs_active  = physics->IsAbsActiveAny();
                 bool tc_active   = physics->IsTcActive();
 
-                ImGui::Text("ABS");
-                ImGui::SameLine();
-                if (abs_enabled)
-                    ImGui::TextColored(abs_active ? ImVec4(1, 1, 0, 1) : ImVec4(0, 1, 0, 1), abs_active ? "ACTIVE" : "ON");
-                else
-                    ImGui::TextDisabled("OFF");
+                // abs toggle with activity indicator
+                if (ImGui::Checkbox("ABS", &abs_enabled))
+                    physics->SetAbsEnabled(abs_enabled);
+                if (abs_enabled && abs_active)
+                {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "(active)");
+                }
 
-                ImGui::SameLine(100);
-                ImGui::Text("TC");
-                ImGui::SameLine();
-                if (tc_enabled)
-                    ImGui::TextColored(tc_active ? ImVec4(1, 1, 0, 1) : ImVec4(0, 1, 0, 1), tc_active ? "ACTIVE" : "ON");
-                else
-                    ImGui::TextDisabled("OFF");
+                // tcs toggle with activity indicator
+                ImGui::SameLine(140);
+                if (ImGui::Checkbox("TCS", &tc_enabled))
+                    physics->SetTcEnabled(tc_enabled);
+                if (tc_enabled && tc_active)
+                {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "(active)");
+                }
 
-                ImGui::SameLine(200);
-                ImGui::Text(physics->GetManualTransmission() ? "MANUAL" : "AUTO");
+                // transmission mode toggle
+                if (ImGui::Checkbox("Manual", &manual_trans))
+                    physics->SetManualTransmission(manual_trans);
+
+                // turbo toggle with boost pressure display
+                bool turbo_enabled = physics->GetTurboEnabled();
+                ImGui::SameLine(140);
+                if (ImGui::Checkbox("Turbo", &turbo_enabled))
+                    physics->SetTurboEnabled(turbo_enabled);
+                if (turbo_enabled)
+                {
+                    float boost = physics->GetBoostPressure();
+                    ImGui::SameLine();
+                    ImGui::TextColored(boost > 0.5f ? ImVec4(0.3f, 1, 0.3f, 1) : ImVec4(0.7f, 0.7f, 0.7f, 1), "%.2f bar", boost);
+                }
 
                 // handbrake
                 if (physics->GetVehicleHandbrake() > 0.1f)
@@ -1115,36 +1133,98 @@ namespace spartan
             ImGui::SetNextWindowSize(ImVec2(440, 550), ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Telemetry", nullptr, ImGuiWindowFlags_NoCollapse))
             {
-                // tire data table
+                // tire forces - visual representation with arrows
                 if (ImGui::CollapsingHeader("Tires", ImGuiTreeNodeFlags_DefaultOpen))
                 {
-                    if (ImGui::BeginTable("tires", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
-                    {
-                        ImGui::TableSetupColumn("Wheel");
-                        ImGui::TableSetupColumn("Ground");
-                        ImGui::TableSetupColumn("Slip Angle");
-                        ImGui::TableSetupColumn("Slip Ratio");
-                        ImGui::TableSetupColumn("Lat kN");
-                        ImGui::TableSetupColumn("Lon kN");
-                        ImGui::TableHeadersRow();
+                    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                    const float tire_width   = 30.0f;
+                    const float tire_height  = 50.0f;
+                    const float spacing_x    = 120.0f;
+                    const float spacing_y    = 90.0f;
+                    const float force_scale  = 0.003f;  // scale force to arrow length (pixels per newton)
+                    const float max_arrow    = 40.0f;   // max arrow length in pixels
 
-                        for (int i = 0; i < 4; i++)
+                    // helper: draw an arrow from center in a direction
+                    auto draw_arrow = [&](ImVec2 center, float dx, float dy, ImU32 color, float thickness = 2.0f)
+                    {
+                        if (fabsf(dx) < 1.0f && fabsf(dy) < 1.0f)
+                            return;
+
+                        ImVec2 tip = ImVec2(center.x + dx, center.y + dy);
+                        draw_list->AddLine(center, tip, color, thickness);
+
+                        // arrowhead
+                        float len = sqrtf(dx * dx + dy * dy);
+                        if (len > 5.0f)
                         {
-                            WheelIndex wheel = static_cast<WheelIndex>(i);
-                            ImGui::TableNextRow();
-                            ImGui::TableNextColumn(); ImGui::Text("%s", wheel_names[i]);
-                            ImGui::TableNextColumn();
-                            if (physics->IsWheelGrounded(wheel))
-                                ImGui::TextColored(ImVec4(0, 1, 0, 1), "Y");
-                            else
-                                ImGui::TextDisabled("-");
-                            ImGui::TableNextColumn(); ImGui::Text("%+.1f", physics->GetWheelSlipAngle(wheel) * 57.2958f);
-                            ImGui::TableNextColumn(); ImGui::Text("%+.2f", physics->GetWheelSlipRatio(wheel));
-                            ImGui::TableNextColumn(); ImGui::Text("%+.1f", physics->GetWheelLateralForce(wheel) / 1000.0f);
-                            ImGui::TableNextColumn(); ImGui::Text("%+.1f", physics->GetWheelLongitudinalForce(wheel) / 1000.0f);
+                            float nx = dx / len;
+                            float ny = dy / len;
+                            float head_size = std::min(len * 0.3f, 8.0f);
+                            ImVec2 left  = ImVec2(tip.x - head_size * (nx + ny * 0.5f), tip.y - head_size * (ny - nx * 0.5f));
+                            ImVec2 right = ImVec2(tip.x - head_size * (nx - ny * 0.5f), tip.y - head_size * (ny + nx * 0.5f));
+                            draw_list->AddTriangleFilled(tip, left, right, color);
                         }
-                        ImGui::EndTable();
-                    }
+                    };
+
+                    // helper: draw a tire with force arrows
+                    auto draw_tire = [&](const char* label, WheelIndex wheel, float offset_x, float offset_y)
+                    {
+                        ImVec2 base = ImGui::GetCursorScreenPos();
+                        ImVec2 center = ImVec2(base.x + offset_x + tire_width * 0.5f, base.y + offset_y + tire_height * 0.5f);
+                        ImVec2 top_left = ImVec2(base.x + offset_x, base.y + offset_y);
+                        ImVec2 bot_right = ImVec2(top_left.x + tire_width, top_left.y + tire_height);
+
+                        // tire shape - color based on grounded state
+                        bool grounded = physics->IsWheelGrounded(wheel);
+                        ImU32 tire_fill = grounded ? IM_COL32(60, 60, 60, 255) : IM_COL32(80, 40, 40, 255);
+                        ImU32 tire_border = grounded ? IM_COL32(120, 120, 120, 255) : IM_COL32(150, 80, 80, 255);
+                        draw_list->AddRectFilled(top_left, bot_right, tire_fill, 6.0f);
+                        draw_list->AddRect(top_left, bot_right, tire_border, 6.0f, 0, 2.0f);
+
+                        // get forces
+                        float lat_force  = physics->GetWheelLateralForce(wheel);
+                        float long_force = physics->GetWheelLongitudinalForce(wheel);
+
+                        // lateral force arrow (left/right) - blue
+                        float lat_arrow = std::clamp(lat_force * force_scale, -max_arrow, max_arrow);
+                        if (fabsf(lat_arrow) > 2.0f)
+                            draw_arrow(center, lat_arrow, 0.0f, IM_COL32(100, 150, 255, 255), 3.0f);
+
+                        // longitudinal force arrow (up = forward, down = backward) - green/red
+                        float long_arrow = std::clamp(-long_force * force_scale, -max_arrow, max_arrow);  // negative because screen Y is down
+                        if (fabsf(long_arrow) > 2.0f)
+                        {
+                            ImU32 long_color = (long_force > 0) ? IM_COL32(100, 255, 100, 255) : IM_COL32(255, 100, 100, 255);
+                            draw_arrow(center, 0.0f, long_arrow, long_color, 3.0f);
+                        }
+
+                        // label above tire
+                        draw_list->AddText(ImVec2(top_left.x + 8, top_left.y - 16), IM_COL32(255, 255, 255, 255), label);
+
+                        // slip info below tire (compact)
+                        char slip_text[32];
+                        float slip_angle = physics->GetWheelSlipAngle(wheel) * 57.2958f;
+                        float slip_ratio = physics->GetWheelSlipRatio(wheel);
+                        snprintf(slip_text, sizeof(slip_text), "%.0f° %.0f%%", slip_angle, slip_ratio * 100.0f);
+                        draw_list->AddText(ImVec2(top_left.x - 4, bot_right.y + 2), IM_COL32(180, 180, 180, 255), slip_text);
+                    };
+
+                    // draw in car layout (front at top, viewed from above)
+                    //   FL    FR
+                    //   RL    RR
+                    draw_tire("FL", WheelIndex::FrontLeft,  30.0f, 25.0f);
+                    draw_tire("FR", WheelIndex::FrontRight, 30.0f + spacing_x, 25.0f);
+                    draw_tire("RL", WheelIndex::RearLeft,   30.0f, 25.0f + spacing_y);
+                    draw_tire("RR", WheelIndex::RearRight,  30.0f + spacing_x, 25.0f + spacing_y);
+
+                    // legend
+                    ImVec2 legend_pos = ImVec2(ImGui::GetCursorScreenPos().x + spacing_x * 2 + 30.0f, ImGui::GetCursorScreenPos().y + 40.0f);
+                    draw_list->AddText(legend_pos, IM_COL32(100, 150, 255, 255), "- Lateral");
+                    draw_list->AddText(ImVec2(legend_pos.x, legend_pos.y + 16), IM_COL32(100, 255, 100, 255), "- Accel");
+                    draw_list->AddText(ImVec2(legend_pos.x, legend_pos.y + 32), IM_COL32(255, 100, 100, 255), "- Brake");
+
+                    // reserve space for the layout
+                    ImGui::Dummy(ImVec2(spacing_x + tire_width + 120, spacing_y + tire_height + 50));
                 }
 
                 // temperature table
@@ -1190,48 +1270,101 @@ namespace spartan
                     }
                 }
 
-                // suspension - vertical bars in car wheel layout
+                // suspension - coil springs in car wheel layout
                 if (ImGui::CollapsingHeader("Suspension", ImGuiTreeNodeFlags_DefaultOpen))
                 {
                     ImDrawList* draw_list = ImGui::GetWindowDrawList();
-                    const float bar_width  = 35.0f;
-                    const float bar_height = 60.0f;
-                    const float spacing_x  = 100.0f;
-                    const float spacing_y  = 100.0f;  // enough room for label + bar + percentage
+                    const float coil_width    = 30.0f;
+                    const float max_height    = 70.0f;
+                    const float min_height    = 25.0f;
+                    const int   coil_segments = 6;       // number of coil loops
+                    const float spacing_x     = 90.0f;
+                    const float spacing_y     = 110.0f;
 
-                    // helper lambda for drawing a vertical suspension bar
-                    auto draw_suspension_bar = [&](const char* label, float compression, float offset_x, float offset_y)
+                    // helper lambda for drawing a coil spring
+                    auto draw_coil_spring = [&](const char* label, float compression, float offset_x, float offset_y)
                     {
                         ImVec2 base = ImGui::GetCursorScreenPos();
-                        ImVec2 pos  = ImVec2(base.x + offset_x, base.y + offset_y);
+                        float center_x = base.x + offset_x + coil_width * 0.5f;
+                        float top_y = base.y + offset_y;
 
-                        // bar background
-                        draw_list->AddRectFilled(pos, ImVec2(pos.x + bar_width, pos.y + bar_height), IM_COL32(40, 40, 40, 255));
+                        // spring height based on compression (compressed = shorter)
+                        float extension = 1.0f - compression;
+                        float spring_height = min_height + (max_height - min_height) * extension;
 
-                        // fill color based on compression (green = relaxed, yellow = mid, red = compressed)
-                        ImU32 fill_color;
+                        // coil color based on compression (green = relaxed, yellow = mid, red = compressed)
+                        ImU32 coil_color;
                         if (compression > 0.8f)
-                            fill_color = IM_COL32(220, 50, 50, 255);
+                            coil_color = IM_COL32(220, 50, 50, 255);
                         else if (compression > 0.5f)
-                            fill_color = IM_COL32(220, 180, 50, 255);
+                            coil_color = IM_COL32(220, 180, 50, 255);
                         else
-                            fill_color = IM_COL32(50, 180, 50, 255);
+                            coil_color = IM_COL32(50, 200, 50, 255);
 
-                        // fill from bottom up
-                        float fill_height = bar_height * compression;
+                        // draw top mount (chassis attachment)
                         draw_list->AddRectFilled(
-                            ImVec2(pos.x, pos.y + bar_height - fill_height),
-                            ImVec2(pos.x + bar_width, pos.y + bar_height),
-                            fill_color);
-                        draw_list->AddRect(pos, ImVec2(pos.x + bar_width, pos.y + bar_height), IM_COL32(100, 100, 100, 255));
+                            ImVec2(center_x - 12, top_y),
+                            ImVec2(center_x + 12, top_y + 4),
+                            IM_COL32(100, 100, 100, 255));
 
-                        // label above bar
-                        draw_list->AddText(ImVec2(pos.x + 6, pos.y - 16), IM_COL32(255, 255, 255, 255), label);
+                        // draw coil spring as zigzag
+                        float segment_height = spring_height / coil_segments;
+                        float half_width = coil_width * 0.4f;
+                        float coil_top = top_y + 6;
 
-                        // percentage below bar
+                        for (int i = 0; i < coil_segments; i++)
+                        {
+                            float y1 = coil_top + i * segment_height;
+                            float y2 = coil_top + (i + 0.5f) * segment_height;
+                            float y3 = coil_top + (i + 1) * segment_height;
+
+                            // left side going down
+                            float x_left = center_x - half_width;
+                            float x_right = center_x + half_width;
+
+                            // draw the coil loop as connected lines
+                            if (i == 0)
+                            {
+                                // first segment starts from center
+                                draw_list->AddLine(ImVec2(center_x, y1), ImVec2(x_right, y2), coil_color, 3.0f);
+                                draw_list->AddLine(ImVec2(x_right, y2), ImVec2(x_left, y3), coil_color, 3.0f);
+                            }
+                            else
+                            {
+                                // alternating zigzag
+                                if (i % 2 == 1)
+                                {
+                                    draw_list->AddLine(ImVec2(x_left, y1), ImVec2(x_right, y2), coil_color, 3.0f);
+                                    draw_list->AddLine(ImVec2(x_right, y2), ImVec2(x_left, y3), coil_color, 3.0f);
+                                }
+                                else
+                                {
+                                    draw_list->AddLine(ImVec2(x_right, y1), ImVec2(x_left, y2), coil_color, 3.0f);
+                                    draw_list->AddLine(ImVec2(x_left, y2), ImVec2(x_right, y3), coil_color, 3.0f);
+                                }
+                            }
+                        }
+
+                        // draw bottom mount (wheel attachment)
+                        float bottom_y = coil_top + spring_height;
+                        draw_list->AddRectFilled(
+                            ImVec2(center_x - 12, bottom_y),
+                            ImVec2(center_x + 12, bottom_y + 4),
+                            IM_COL32(100, 100, 100, 255));
+
+                        // damper shaft (center line through spring)
+                        draw_list->AddLine(
+                            ImVec2(center_x, top_y + 4),
+                            ImVec2(center_x, bottom_y),
+                            IM_COL32(80, 80, 80, 255), 2.0f);
+
+                        // label above spring
+                        draw_list->AddText(ImVec2(center_x - 8, top_y - 16), IM_COL32(255, 255, 255, 255), label);
+
+                        // percentage below spring
                         char pct[16];
                         snprintf(pct, sizeof(pct), "%.0f%%", compression * 100.0f);
-                        draw_list->AddText(ImVec2(pos.x + 4, pos.y + bar_height + 2), IM_COL32(200, 200, 200, 255), pct);
+                        draw_list->AddText(ImVec2(center_x - 14, bottom_y + 8), IM_COL32(200, 200, 200, 255), pct);
                     };
 
                     // get compression values
@@ -1243,13 +1376,13 @@ namespace spartan
                     // draw in car layout (front at top)
                     //   FL    FR
                     //   RL    RR
-                    draw_suspension_bar("FL", comp_fl, 20.0f, 20.0f);
-                    draw_suspension_bar("FR", comp_fr, 20.0f + spacing_x, 20.0f);
-                    draw_suspension_bar("RL", comp_rl, 20.0f, 20.0f + spacing_y);
-                    draw_suspension_bar("RR", comp_rr, 20.0f + spacing_x, 20.0f + spacing_y);
+                    draw_coil_spring("FL", comp_fl, 25.0f, 20.0f);
+                    draw_coil_spring("FR", comp_fr, 25.0f + spacing_x, 20.0f);
+                    draw_coil_spring("RL", comp_rl, 25.0f, 20.0f + spacing_y);
+                    draw_coil_spring("RR", comp_rr, 25.0f + spacing_x, 20.0f + spacing_y);
 
                     // reserve space for the full layout
-                    ImGui::Dummy(ImVec2(spacing_x + bar_width + 40, spacing_y + bar_height + 45));
+                    ImGui::Dummy(ImVec2(spacing_x + coil_width + 50, spacing_y + max_height + 50));
                 }
 
                 // debug toggles
