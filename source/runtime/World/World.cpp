@@ -51,7 +51,6 @@ namespace spartan
         vector<Entity*> entities;
         vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
-        string world_title;
         string world_description;
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
@@ -272,7 +271,6 @@ namespace spartan
         camera = nullptr;
         light  = nullptr;
         file_path.clear();
-        world_title.clear();
         world_description.clear();
 
         // clear change tracking
@@ -494,7 +492,6 @@ namespace spartan
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name")        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
-        world_node.append_attribute("title")       = world_title.c_str();
         world_node.append_attribute("description") = world_description.c_str();
 
         // entities
@@ -590,7 +587,6 @@ namespace spartan
         }
 
         // read metadata
-        world_title       = world_node.attribute("title").as_string();
         world_description = world_node.attribute("description").as_string();
 
         // entities
@@ -821,16 +817,6 @@ namespace spartan
         world_time::time_of_day = time_of_day;
     }
 
-    const string& World::GetTitle()
-    {
-        return world_title;
-    }
-
-    void World::SetTitle(const string& title)
-    {
-        world_title = title;
-    }
-
     const string& World::GetDescription()
     {
         return world_description;
@@ -863,14 +849,7 @@ namespace spartan
         // read metadata
         metadata.file_path   = world_file_path;
         metadata.name        = world_node.attribute("name").as_string();
-        metadata.title       = world_node.attribute("title").as_string();
         metadata.description = world_node.attribute("description").as_string();
-
-        // if title is empty, use the name as fallback
-        if (metadata.title.empty())
-        {
-            metadata.title = metadata.name;
-        }
 
         return true;
     }

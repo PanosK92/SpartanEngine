@@ -196,16 +196,16 @@ namespace
         if (ImGui::Begin("Default worlds", &visible_download_prompt,
             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::TextWrapped("No default worlds are present. Would you like to download them?");
+            ImGui::TextWrapped("No default worlds are present. Would you like to download some out of the box projects?");
             ImGui::Separator();
 
-            float button_width = ImGui::CalcTextSize("Download Worlds").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
+            float button_width = ImGui::CalcTextSize("Download Projects").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
             float offset_x     = (ImGui::GetContentRegionAvail().x - button_width) * 0.5f;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
             ImGui::BeginGroup();
             {
-                if (ImGui::Button("Download Worlds"))
+                if (ImGui::Button("Download Projects"))
                 {
                     download_and_extract();
                 }
@@ -324,8 +324,7 @@ namespace
                     for (int i = 0; i < static_cast<int>(world_files.size()); i++)
                     {
                         bool is_selected = !is_default_world_selected && (selected_index == i);
-                        const char* display_name = world_files[i].title.empty() ? world_files[i].name.c_str() : world_files[i].title.c_str();
-                        if (ImGui::Selectable(display_name, is_selected))
+                        if (ImGui::Selectable(world_files[i].name.c_str(), is_selected))
                         {
                             selected_index = i;
                             is_default_world_selected = false;
@@ -371,7 +370,7 @@ namespace
                     // show world file details
                     const spartan::WorldMetadata& w = world_files[selected_index];
 
-                    ImGui::TextWrapped("Title: %s", w.title.empty() ? w.name.c_str() : w.title.c_str());
+                    ImGui::TextWrapped("Name: %s", w.name.c_str());
                     ImGui::Separator();
 
                     if (!w.description.empty())

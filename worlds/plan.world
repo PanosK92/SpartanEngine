@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<World name="plan" title="" description="">
+<World name="plan" description="Neon-lit city inspired by NFS Underground 2, with rain-soaked streets and drivable cars running in real-time">
  <Entities>
   <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="0 2 -10" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" />
