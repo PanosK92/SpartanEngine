@@ -711,7 +711,7 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
                             texture->PrepareForGpu();
                         }
                         lock_guard<mutex> lock(m_mutex_items);
-                        m_items.emplace_back(file_path, texture.get());
+                        m_items.emplace_back(file_path, texture.Get());
                     });
             }
             else if (FileSystem::IsSupportedAudioFile(file_path))

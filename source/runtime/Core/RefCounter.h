@@ -537,7 +537,15 @@ namespace spartan
     	 *
     	 * @param weak The WeakRef to convert from.
     	 */
-    	explicit Ref(const WeakRef<T>& weak) noexcept;
+    	explicit Ref(const WeakRef<T>& weak) noexcept : m_Ptr(nullptr)
+    	{
+    	    if (!weak.Expired())
+    	    {
+    	        auto locked = weak.Lock();
+    	        m_Ptr = locked.Get();
+    	        InternalAddRef();
+    	    }
+    	}
     
     	/**
     	 * @brief Destructor. Decrements the reference count of the object.
@@ -1824,6 +1832,42 @@ namespace spartan
         }
 
         return 0;
+    }
+
+    /**
+     * @brief Member equality comparison operator for WeakRef objects.
+     *
+     * This operator determines if two WeakRef objects reference the same underlying object.
+     *
+     * @param other The WeakRef to compare with
+     * @return true if both WeakRef objects reference the same object or are both empty
+     * @return false if the WeakRef objects reference different objects or one is empty and one is not
+     */
+    template <typename T>
+    bool WeakRef<T>::operator==(const WeakRef& other) const noexcept
+    {
+        if (Expired() || other.Expired())
+            return false;
+
+        auto lhsLocked = Lock();
+        auto rhsLocked = other.Lock();
+
+        return lhsLocked == rhsLocked;
+    }
+
+    /**
+     * @brief Member inequality comparison operator for WeakRef objects.
+     *
+     * This operator determines if two WeakRef objects reference different underlying objects.
+     * It is implemented by negating the result of the equality operator.
+     *
+     * @param other The WeakRef to compare with
+     * @return True if the WeakRefs manage different objects, false if they manage equal objects
+     */
+    template <typename T>
+    bool WeakRef<T>::operator!=(const WeakRef& other) const noexcept
+    {
+        return !(*this == other);
     }
 
     /**

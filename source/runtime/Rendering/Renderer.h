@@ -161,10 +161,10 @@ namespace spartan
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
 
         // get all
-        static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
-        static std::array<std::shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>& GetStructuredBuffers();
-        static std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>& GetSamplers();
+        static std::array<Ref<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
+        static std::array<Ref<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
+        static std::array<Ref<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>& GetStructuredBuffers();
+        static std::array<Ref<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>& GetSamplers();
 
         // get individual
         static RHI_RasterizerState* GetRasterizerState(const Renderer_RasterizerState type);
@@ -176,9 +176,9 @@ namespace spartan
         static RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
         static RHI_AccelerationStructure* GetTopLevelAccelerationStructure();
         static void DestroyAccelerationStructures();
-        static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
-        static std::shared_ptr<Font>& GetFont();
-        static std::shared_ptr<Material>& GetStandardMaterial();
+        static Ref<Mesh>& GetStandardMesh(const MeshType type);
+        static Ref<Font>& GetFont();
+        static Ref<Material>& GetStandardMaterial();
         static void ClearMaterialTextureReferences();
         static void SwapVisibilityBuffers();
 
@@ -281,7 +281,7 @@ namespace spartan
         // misc
         static Cb_Frame m_cb_frame_cpu;
         static Pcb_Pass m_pcb_pass_cpu;
-        static std::shared_ptr<RHI_Buffer> m_lines_vertex_buffer;
+        static Ref<RHI_Buffer> m_lines_vertex_buffer;
         static std::vector<RHI_Vertex_PosCol> m_lines_vertices;
         static std::vector<PersistentLine> m_persistent_lines;
         static std::vector<std::tuple<RHI_Texture*, math::Vector3>> m_icons;
@@ -291,9 +291,9 @@ namespace spartan
         static bool m_transparents_present;
         static RHI_CommandList* m_cmd_list_present;
         static std::vector<ShadowSlice> m_shadow_slices;
-        static std::unique_ptr<RHI_Buffer> m_std_reflections; // it temporarily lives here
-        static std::unique_ptr<RHI_Buffer> m_std_shadows;     // shader binding table for ray traced shadows
-        static std::unique_ptr<RHI_Buffer> m_std_restir;      // shader binding table for restir path tracing
+        static Scope<RHI_Buffer> m_std_reflections; // it temporarily lives here
+        static Scope<RHI_Buffer> m_std_shadows;     // shader binding table for ray traced shadows
+        static Scope<RHI_Buffer> m_std_restir;      // shader binding table for restir path tracing
         static uint32_t m_count_active_lights;
     };
 }

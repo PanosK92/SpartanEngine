@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include "../../RHI/RHI_Definitions.h"
 #include "../../Math/Quaternion.h"
+#include "../../Rendering/Material.h"
 //====================================
 
 namespace spartan
 {
     class Mesh;
-    class Material;
     namespace math
     {
         class Vector3;
@@ -84,7 +84,7 @@ namespace spartan
         // height map
         RHI_Texture* GetHeightMapSeed() const          { return m_height_map_seed; }
         void SetHeightMapSeed(RHI_Texture* height_map) { m_height_map_seed = height_map;}
-        RHI_Texture* GetHeightMapFinal() const         { return m_height_map_final.get(); }
+        RHI_Texture* GetHeightMapFinal() const         { return m_height_map_final.Get(); }
 
         // dimensions
         uint32_t GetWidth() const  { return m_width; }
@@ -118,7 +118,7 @@ namespace spartan
         uint32_t GetIndexCount() const          { return m_index_count; }
         uint64_t GetHeightSampleCount() const   { return m_height_samples; }
         float* GetHeightData()                  { return !m_height_data.empty() ? &m_height_data[0] : nullptr; }
-        std::shared_ptr<Material> GetMaterial() { return m_material; }
+        Ref<Material> GetMaterial() { return m_material; }
 
         // generation
         void Generate();
@@ -147,8 +147,8 @@ namespace spartan
         uint64_t ComputeCacheHash() const;
 
         // textures
-        RHI_Texture* m_height_map_seed                  = nullptr;
-        std::shared_ptr<RHI_Texture> m_height_map_final = nullptr;
+        RHI_Texture* m_height_map_seed      = nullptr;
+        Ref<RHI_Texture> m_height_map_final = nullptr;
 
         // configurable parameters
         float m_min_y          = -64.0f;
@@ -178,8 +178,8 @@ namespace spartan
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
         std::vector<uint32_t> m_indices;
         std::vector<std::vector<uint32_t>> m_tile_indices;
-        std::shared_ptr<Mesh> m_mesh;
-        std::shared_ptr<Material> m_material;
+        Ref<Mesh> m_mesh;
+        Ref<Material> m_material;
         std::vector<math::Vector3> m_tile_offsets;
         std::vector<math::Vector3> m_positions;
 

@@ -73,7 +73,7 @@ namespace spartan
         const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}
 
         // material
-        void SetMaterial(const std::shared_ptr<Material>& material);
+        void SetMaterial(const Ref<Material>& material);
         void SetMaterial(const std::string& file_path);
         void SetDefaultMaterial();
         std::string GetMaterialName() const;
@@ -81,7 +81,7 @@ namespace spartan
 
         // instancing
         bool HasInstancing() const            { return !m_instances.empty(); }
-        RHI_Buffer* GetInstanceBuffer() const { return m_instance_buffer.get(); }
+        RHI_Buffer* GetInstanceBuffer() const { return m_instance_buffer.Get(); }
         uint32_t GetInstanceCount()  const    { return m_instances.empty() ? 1 : static_cast<uint32_t>(m_instances.size()); }
         math::Matrix GetInstance(const uint32_t index, const bool to_world);
         void SetInstances(const std::vector<Instance>& instances);
@@ -126,7 +126,7 @@ namespace spartan
 
         // instancing
         std::vector<Instance> m_instances;
-        std::shared_ptr<RHI_Buffer> m_instance_buffer;
+        Ref<RHI_Buffer> m_instance_buffer;
 
         // misc
         math::Matrix m_transform_previous = math::Matrix::Identity;
