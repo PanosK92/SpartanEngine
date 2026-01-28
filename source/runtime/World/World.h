@@ -23,12 +23,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "../Math/BoundingBox.h"
+#include <string>
 //==============================
 
 namespace spartan
 {
     class Camera;
     class Light;
+
+    // metadata structure for reading world info without fully loading
+    struct WorldMetadata
+    {
+        std::string file_path;
+        std::string name;
+        std::string title;
+        std::string description;
+    };
 
     class World
     {
@@ -65,6 +75,15 @@ namespace spartan
         // world time: 0.0 = midnight, 0.5 = noon, 1.0 = next midnight
         static float GetTimeOfDay(bool use_real_world_time = false);
         static void SetTimeOfDay(float time_of_day);
+
+        // world metadata
+        static const std::string& GetTitle();
+        static void SetTitle(const std::string& title);
+        static const std::string& GetDescription();
+        static void SetDescription(const std::string& description);
+
+        // read metadata from a world file without fully loading it
+        static bool ReadMetadata(const std::string& world_file_path, WorldMetadata& metadata);
 
     private:
         static void ProcessPendingRemovals();

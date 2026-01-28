@@ -17,6 +17,10 @@ Spartan Engine is a research-focused game engine developed over 10+ years, desig
   <a href="https://github.com/PanosK92/SpartanEngine/issues">Issues</a>
 </p>
 
+# The Plan
+
+There's a vision taking shape - a destination that gives all this tech a purpose. Curious? **[Read the plan](https://github.com/PanosK92/SpartanEngine/blob/master/plan.md)**.
+
 # Worlds
 
 <img align="left" width="450" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_selection_4.png"/>

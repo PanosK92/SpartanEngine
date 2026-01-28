@@ -51,6 +51,8 @@ namespace spartan
         vector<Entity*> entities;
         vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
+        string world_title;
+        string world_description;
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
@@ -238,6 +240,8 @@ namespace spartan
         camera = nullptr;
         light  = nullptr;
         file_path.clear();
+        world_title.clear();
+        world_description.clear();
 
         // clear change tracking
         entity_states.clear();
@@ -457,7 +461,9 @@ namespace spartan
         // create document
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
-        world_node.append_attribute("name") = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
+        world_node.append_attribute("name")        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
+        world_node.append_attribute("title")       = world_title.c_str();
+        world_node.append_attribute("description") = world_description.c_str();
 
         // entities
         {
@@ -545,6 +551,10 @@ namespace spartan
             SP_LOG_ERROR("No 'World' node found.");
             return false;
         }
+
+        // read metadata
+        world_title       = world_node.attribute("title").as_string();
+        world_description = world_node.attribute("description").as_string();
 
         // entities
         {
@@ -772,5 +782,59 @@ namespace spartan
         else if (time_of_day > 1.0f)
             time_of_day = 1.0f;
         world_time::time_of_day = time_of_day;
+    }
+
+    const string& World::GetTitle()
+    {
+        return world_title;
+    }
+
+    void World::SetTitle(const string& title)
+    {
+        world_title = title;
+    }
+
+    const string& World::GetDescription()
+    {
+        return world_description;
+    }
+
+    void World::SetDescription(const string& description)
+    {
+        world_description = description;
+    }
+
+    bool World::ReadMetadata(const string& world_file_path, WorldMetadata& metadata)
+    {
+        // load xml document
+        pugi::xml_document doc;
+        pugi::xml_parse_result result = doc.load_file(world_file_path.c_str());
+        if (!result)
+        {
+            SP_LOG_ERROR("Failed to load world file for metadata: %s", result.description());
+            return false;
+        }
+
+        // get world node
+        pugi::xml_node world_node = doc.child("World");
+        if (!world_node)
+        {
+            SP_LOG_ERROR("No 'World' node found in: %s", world_file_path.c_str());
+            return false;
+        }
+
+        // read metadata
+        metadata.file_path   = world_file_path;
+        metadata.name        = world_node.attribute("name").as_string();
+        metadata.title       = world_node.attribute("title").as_string();
+        metadata.description = world_node.attribute("description").as_string();
+
+        // if title is empty, use the name as fallback
+        if (metadata.title.empty())
+        {
+            metadata.title = metadata.name;
+        }
+
+        return true;
     }
 }

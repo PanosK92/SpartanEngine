@@ -1907,8 +1907,7 @@ namespace car
         if (!body)
             return;
 
-        ImGui::SetNextWindowSize(ImVec2(450, 600), ImGuiCond_FirstUseEver);
-        if (!ImGui::Begin("Car Telemetry", visible))
+        if (!ImGui::Begin("Car Telemetry", visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize))
         {
             ImGui::End();
             return;
