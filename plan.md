@@ -1,6 +1,8 @@
 # The Plan
 
-There's a fan-made CGI video of cars racing through the Need for Speed Underground 2 city that has captured the imagination of millions: [watch it here](https://youtu.be/R3QvniaZ5qM?t=53). It's cinematic, atmospheric, and evokes a feeling that's hard to put into words - the glow of neon signs reflecting off wet asphalt, the roar of tuned engines echoing through tunnels, the energy of a city that never sleeps.
+[![The Inspiration](https://img.youtube.com/vi/R3QvniaZ5qM/maxresdefault.jpg)](https://youtu.be/R3QvniaZ5qM?t=53)
+
+There's a fan-made CGI video of cars racing through the Need for Speed Underground 2 city that has captured the imagination of millions. It's cinematic, atmospheric, and evokes a feeling that's hard to put into words - the glow of neon signs reflecting off wet asphalt, the roar of tuned engines echoing through tunnels, the energy of a city that never sleeps.
 
 **We're going to capture that feeling - in real-time.**
 
