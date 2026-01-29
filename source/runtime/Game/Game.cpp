@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Game.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
+#include "../World/Prefab.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Physics.h"
@@ -822,8 +823,16 @@ namespace spartan
             // draw debug visualization
             physics->DrawDebugVisualization();
 
+            // get safe viewport dimensions
+            ImVec2 display_size = ImGui::GetIO().DisplaySize;
+            if (display_size.x < 100.0f || display_size.y < 100.0f)
+                return; // viewport not ready
+
             // dashboard window (bottom right)
-            ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 500, ImGui::GetIO().DisplaySize.y - 380), ImGuiCond_FirstUseEver);
+            float dashboard_x = std::max(10.0f, display_size.x - 500.0f);
+            float dashboard_y = std::max(10.0f, display_size.y - 380.0f);
+            ImGui::SetNextWindowPos(ImVec2(dashboard_x, dashboard_y), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(480.0f, 360.0f), ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Dashboard", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize))
             {
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -1141,7 +1150,9 @@ namespace spartan
             ImGui::End();
 
             // telemetry window (left side)
-            ImGui::SetNextWindowPos(ImVec2(10, ImGui::GetIO().DisplaySize.y - 560), ImGuiCond_FirstUseEver);
+            float telemetry_y = std::max(10.0f, display_size.y - 560.0f);
+            ImGui::SetNextWindowPos(ImVec2(10.0f, telemetry_y), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(600.0f, 540.0f), ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Telemetry", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize))
             {
                 // wheels - tire forces (left) and suspension (right) side by side
@@ -1991,8 +2002,34 @@ namespace spartan
             // stop any vibration
             Input::GamepadVibrate(0.0f, 0.0f);
         }
+
+        // prefab factory function for world file loading
+        Entity* create_prefab(pugi::xml_node& node, Entity* parent)
+        {
+            Config config;
+            config.position       = parent->GetPosition();
+            config.drivable       = node.attribute("drivable").as_bool(false);
+            config.static_physics = node.attribute("static_physics").as_bool(false);
+            config.show_telemetry = node.attribute("telemetry").as_bool(false);
+            config.camera_follows = node.attribute("camera_follows").as_bool(false);
+
+            Entity* car_entity = create(config);
+            if (car_entity)
+            {
+                car_entity->SetParent(parent);
+                car_entity->SetPositionLocal(Vector3::Zero);
+            }
+
+            return car_entity;
+        }
     }
     //========================================================================================
+
+    // register prefabs (called once before any world file is loaded)
+    namespace
+    {
+        bool prefabs_registered = false;
+    }
 
     //= WORLDS ===============================================================================
     namespace worlds
@@ -3445,6 +3482,15 @@ namespace spartan
         });
 
         loaded_world = default_world;
+    }
+
+    void Game::RegisterPrefabs()
+    {
+        if (prefabs_registered)
+            return;
+
+        Prefab::Register("car", car::create_prefab);
+        prefabs_registered = true;
     }
     //========================================================================================
 }

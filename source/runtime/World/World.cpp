@@ -23,10 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "World.h"
 #include "Entity.h"
+#include "Prefab.h"
 #include "../Game/Game.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/ProgressTracker.h"
-//#include "../Core/ThreadPool.h" // Take a look at later
+#include "../Core/ThreadPool.h"
 #include "Components/Renderable.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
@@ -532,94 +533,141 @@ namespace spartan
 
     bool World::LoadFromFile(const string& file_path_)
     {
-        Shutdown(); // clear existing world
-        file_path = file_path_;
+        // ensure prefabs are registered before loading
+        Game::RegisterPrefabs();
 
-        // start timing
-        const Stopwatch timer;
+        // shutdown synchronously before async loading
+        Shutdown();
 
-        // deserialize the resources before loading the world (XML), as it references them
+        // copy path for the lambda capture
+        string path_copy = file_path_;
+
+        // load asynchronously
+        ThreadPool::AddTask([path_copy]()
         {
-            string directory = world_file_path_to_resource_directory(file_path);
-            
-            // only load resources if the directory exists (worlds in "worlds/" folder may not have local resources yet)
-            if (FileSystem::Exists(directory) && FileSystem::IsDirectory(directory))
-            {
-                vector<string> files = FileSystem::GetFilesInDirectory(directory);
+            ProgressTracker::SetGlobalLoadingState(true);
 
-                // combined loop for loading, filtered by extension
-                for (string& path : files)
+            file_path = path_copy;
+
+            // start timing
+            const Stopwatch timer;
+
+            // deserialize the resources before loading the world (XML), as it references them
+            {
+                string directory = world_file_path_to_resource_directory(file_path);
+                
+                // only load resources if the directory exists (worlds in "worlds/" folder may not have local resources yet)
+                if (FileSystem::Exists(directory) && FileSystem::IsDirectory(directory))
                 {
-                    if (FileSystem::IsEngineTextureFile(path))
+                    vector<string> files = FileSystem::GetFilesInDirectory(directory);
+
+                    // progress for resource loading
+                    uint32_t resource_count = static_cast<uint32_t>(files.size());
+                    if (resource_count > 0)
                     {
-                        if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                        ProgressTracker::GetProgress(ProgressType::World).Start(resource_count, "Loading resources...");
+                    }
+
+                    // load resources in dependency order: textures and meshes first, then materials
+                    // this ensures materials can find their textures when loading
+                    for (string& path : files)
+                    {
+                        if (FileSystem::IsEngineTextureFile(path))
                         {
-                            texture->PrepareForGpu();
+                            if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                            {
+                                texture->PrepareForGpu();
+                            }
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
+                        }
+                        else if (FileSystem::IsEngineMeshFile(path))
+                        {
+                            ResourceCache::Load<Mesh>(path);
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
                         }
                     }
-                    else if (FileSystem::IsEngineMaterialFile(path))
+
+                    // second pass: load materials after textures are available
+                    for (string& path : files)
                     {
-                        ResourceCache::Load<Material>(path);
-                    }
-                    else if (FileSystem::IsEngineMeshFile(path))
-                    {
-                        ResourceCache::Load<Mesh>(path);
+                        if (FileSystem::IsEngineMaterialFile(path))
+                        {
+                            ResourceCache::Load<Material>(path);
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        // load xml document
-        pugi::xml_document doc;
-        pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-        if (!result)
-        {
-            SP_LOG_ERROR("Failed to load XML file: %s", result.description());
-            return false;
-        }
-
-        // get world node
-        pugi::xml_node world_node = doc.child("World");
-        if (!world_node)
-        {
-            SP_LOG_ERROR("No 'World' node found.");
-            return false;
-        }
-
-        // read metadata
-        world_description = world_node.attribute("description").as_string();
-
-        // entities
-        {
-            // get node
-            pugi::xml_node entities_node = world_node.child("Entities");
-            if (!entities_node)
+            // load xml document
+            pugi::xml_document doc;
+            pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+            if (!result)
             {
-                SP_LOG_ERROR("No 'Entities' node found.");
-                return false;
+                SP_LOG_ERROR("Failed to load XML file: %s", result.description());
+                ProgressTracker::SetGlobalLoadingState(false);
+                return;
             }
 
-            // count root entities for progress tracking
-            uint32_t root_entity_count = 0;
-            for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+            // get world node
+            pugi::xml_node world_node = doc.child("World");
+            if (!world_node)
             {
-                ++root_entity_count;
+                SP_LOG_ERROR("No 'World' node found.");
+                ProgressTracker::SetGlobalLoadingState(false);
+                return;
             }
 
-            // progress tracking
-            ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
+            // read metadata
+            world_description = world_node.attribute("description").as_string();
 
-            // load root entities (they will load their descendants recursively)
-            for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+            // entities
             {
-                Entity* entity = World::CreateEntity();
-                entity->Load(entity_node);
-                ProgressTracker::GetProgress(ProgressType::World).JobDone();
-            }
-        }
+                // get node
+                pugi::xml_node entities_node = world_node.child("Entities");
+                if (!entities_node)
+                {
+                    SP_LOG_ERROR("No 'Entities' node found.");
+                    ProgressTracker::SetGlobalLoadingState(false);
+                    return;
+                }
 
-        // report time
-        SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
+                // count root entities for progress tracking
+                uint32_t root_entity_count = 0;
+                for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+                {
+                    ++root_entity_count;
+                }
+
+                // progress tracking
+                ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading entities...");
+
+                // load root entities (they will load their descendants recursively)
+                for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+                {
+                    Entity* entity = World::CreateEntity();
+                    entity->Load(entity_node);
+                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                }
+            }
+
+            // report time
+            SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
+
+            ProgressTracker::SetGlobalLoadingState(false);
+        });
 
         return true;
     }

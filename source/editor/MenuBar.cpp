@@ -132,11 +132,7 @@ namespace
                 {
                     if (spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
                     {
-                        spartan::ThreadPool::AddTask([]()
-                        {
-                            spartan::World::LoadFromFile(file_dialog_selection_path);
-                        });
-
+                        spartan::World::LoadFromFile(file_dialog_selection_path);
                         show_file_dialog = false;
                     }
                 }
