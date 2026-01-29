@@ -156,21 +156,22 @@ namespace
 
        const vector<Contributor> contributors =
         {
-            { "Spartan", "Iker Galardi",        "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                                        "N/A" },
-            { "Spartan", "Jesse Guerrero",      "United States",  "LinkedIn",  "https://www.linkedin.com/in/jguer",                       "UX updates",                                                              "N/A" },
-            { "Spartan", "Konstantinos Benos",  "Greece",         "X",         "https://x.com/deg3x",                                     "Bug fixes & editor theme v2",                                             "N/A" },
-            { "Spartan", "Nick Polyderopoulos", "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nick-polyderopoulos-21742397","UX updates",                                                              "N/A" },
-            { "Spartan", "Panos Kolyvakis",     "Greece",         "LinkedIn",  "https://www.linkedin.com/in/panos-kolyvakis-66863421a/",  "Water buoyancy improvements",                                             "N/A" },
-            { "Spartan", "Tri Tran",            "Belgium",        "LinkedIn",  "https://www.linkedin.com/in/mtrantr/",                    "Screen space shadows (Days Gone)",                                        "Starfield" },
-            { "Spartan", "Ege",                 "Turkey",         "X",         "https://x.com/egedq",                                     "Editor theme v3 + save/load themes",                                      "N/A" },
-            { "Spartan", "Sandro Mtchedlidze",  "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Tonemapper, perf/lighting finds, tubes lights in the car showroom world", "N/A" },
-            { "Spartan", "Dimitris Kalyvas",    "Greece",         "X",         "https://x.com/punctuator_",                               "Volumetric clouds, entity multi-select, grass performance improvement",   "BeamNG.drive" },
-            { "Spartan", "Bryan Casagrande ",   "United States",  "X",         "https://x.com/mrdrelliot",                                "Implement console variable support",                                      "N/A" },
-            { "Hoplite", "Apostolos Bouzalas",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                               "N/A" },
-            { "Hoplite", "Nikolas Pattakos",    "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                               "N/A" },
-            { "Hoplite", "Roman Koshchei",      "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                              "N/A" },
-            { "Hoplite", "Kristi Kercyku",      "Albania",        "GitHub",    "https://github.com/kristiker",                            "G-buffer depth issue fix",                                                "N/A" },
-            { "Hoplite", "Kinjal Kishor",       "India",          "X",         "https://x.com/kinjalkishor",                              "A few testing reports",                                                   "N/A" },
+            { "Spartan", "Iker Galardi",         "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                                        "N/A" },
+            { "Spartan", "Jesse Guerrero",       "United States",  "LinkedIn",  "https://www.linkedin.com/in/jguer",                       "UX updates",                                                              "N/A" },
+            { "Spartan", "Konstantinos Benos",   "Greece",         "X",         "https://x.com/deg3x",                                     "Bug fixes & editor theme v2",                                             "N/A" },
+            { "Spartan", "Nick Polyderopoulos",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nick-polyderopoulos-21742397","UX updates",                                                              "N/A" },
+            { "Spartan", "Panos Kolyvakis",      "Greece",         "LinkedIn",  "https://www.linkedin.com/in/panos-kolyvakis-66863421a/",  "Water buoyancy improvements",                                             "N/A" },
+            { "Spartan", "Tri Tran",             "Belgium",        "LinkedIn",  "https://www.linkedin.com/in/mtrantr/",                    "Screen space shadows (Days Gone)",                                        "Starfield" },
+            { "Spartan", "Ege",                  "Turkey",         "X",         "https://x.com/egedq",                                     "Editor theme v3 + save/load themes",                                      "N/A" },
+            { "Spartan", "Sandro Mtchedlidze",   "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Tonemapper, perf/lighting finds, tubes lights in the car showroom world", "N/A" },
+            { "Spartan", "Dimitris Kalyvas",     "Greece",         "X",         "https://x.com/punctuator_",                               "Volumetric clouds, entity multi-select, grass performance improvement",   "BeamNG.drive" },
+            { "Spartan", "Bryan Casagrande ",    "United States",  "X",         "https://x.com/mrdrelliot",                                "Implement console variable support",                                      "N/A" },
+            { "Hoplite", "Apostolos Bouzalas",   "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                               "N/A" },
+            { "Hoplite", "Nikolas Pattakos",     "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                               "N/A" },
+            { "Hoplite", "Roman Koshchei",       "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                              "N/A" },
+            { "Hoplite", "Kristi Kercyku",       "Albania",        "GitHub",    "https://github.com/kristiker",                            "G-buffer depth issue fix",                                                "N/A" },
+            { "Hoplite", "Kinjal Kishor",        "India",          "X",         "https://x.com/kinjalkishor",                              "A few testing reports",                                                   "N/A" },
+            { "Hoplite", "Jose  Jiménez López ", "Spain",           "X",        "https://x.com/kerbehee",                                  "Smoke tests proof of concept",                                            "N/A" },
         };
 
         void personal_details()

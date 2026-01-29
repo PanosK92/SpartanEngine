@@ -26,11 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 #include <chrono>
+#include <memory>
 //=============================
 
 namespace spartan
 {
     class Entity;
+    class RHI_Buffer;
+    class RHI_Texture;
     class SmokeTest
     {
     public:
