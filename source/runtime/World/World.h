@@ -36,7 +36,6 @@ namespace spartan
     {
         std::string file_path;
         std::string name;
-        std::string title;
         std::string description;
     };
 
@@ -62,7 +61,7 @@ namespace spartan
         static const std::vector<Entity*>& GetEntitiesLights();
 
         // misc
-        static std::string GetName();
+        static const std::string& GetName();
         static const std::string& GetFilePath();
         static math::BoundingBox& GetBoundingBox();
         static Camera* GetCamera();
@@ -77,8 +76,6 @@ namespace spartan
         static void SetTimeOfDay(float time_of_day);
 
         // world metadata
-        static const std::string& GetTitle();
-        static void SetTitle(const std::string& title);
         static const std::string& GetDescription();
         static void SetDescription(const std::string& description);
 

@@ -66,6 +66,8 @@ First, we build the city.
 
 Then, we see how far we can go.
 
+*The first blockout of this vision already exists in `worlds/plan.world`.*
+
 ---
 
 *If this resonates with you, pick up something and start building. The vision is shared. The work is open. Let's make it real.*

@@ -22,25 +22,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Game.h"
-#include "../World/World.h"
+#include "../Physics/Car/Car.h"
+#include "../Physics/Car/CarSimulation.h"
 #include "../World/Entity.h"
+#include "../World/Prefab.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Physics.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/Terrain.h"
-#include "../Core/ThreadPool.h"
 #include "../Core/ProgressTracker.h"
-#include "../Geometry/Mesh.h"
 #include "../Rendering/Renderer.h"
-#include "../Rendering/Material.h"
 #include "../Resource/ResourceCache.h"
-#include "../Input/Input.h"
 #include "../Geometry/GeometryGeneration.h"
 #include "../Geometry/GeometryProcessing.h"
-#include "../Physics/Car.h"
-#include "../Logging/Log.h"
-#include "../../editor/ImGui/Source/imgui.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -64,6 +59,11 @@ namespace spartan
     }
     //===========================================================
 
+    // entities shared with other files (external linkage required)
+    Entity* default_car               = nullptr;
+    Entity* default_car_window        = nullptr;
+    Entity* default_camera            = nullptr;
+
     namespace
     {
         //= STATE ====================================
@@ -73,9 +73,6 @@ namespace spartan
         //= SHARED ENTITIES ========================
         Entity* default_floor             = nullptr;
         Entity* default_terrain           = nullptr;
-        Entity* default_car               = nullptr;
-        Entity* default_car_window        = nullptr;
-        Entity* default_camera            = nullptr;
         Entity* default_environment       = nullptr;
         Entity* default_light_directional = nullptr;
         Entity* default_metal_cube        = nullptr;
@@ -362,9 +359,10 @@ namespace spartan
             ConsoleRegistry::Get().SetValueFromString("r.vhs",                  "0");
         }
     }
+    //========================================================================================
 
-    //= CAR ==================================================================================
-    namespace car
+    // register prefabs (called once before any world file is loaded)
+    namespace
     {
         // configuration for car creation
         struct Config
@@ -1991,8 +1989,8 @@ namespace spartan
             // stop any vibration
             Input::GamepadVibrate(0.0f, 0.0f);
         }
+        bool prefabs_registered = false;
     }
-    //========================================================================================
 
     //= WORLDS ===============================================================================
     namespace worlds
@@ -2179,11 +2177,11 @@ namespace spartan
 
                 // drivable car near the player
                 {
-                    //car::Config car_config;
+                    //Car::Config car_config;
                     //car_config.position       = Vector3(-1470.0f, 20.0f, 1490.0f); // slightly in front of camera
                     //car_config.drivable       = true;
                     //car_config.show_telemetry = true;
-                    //car::create(car_config);
+                    //Car::Create(car_config);
                 }
 
                 // terrain root
@@ -2646,11 +2644,11 @@ namespace spartan
                 texture_brand_logo = CreateRef<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
 
                 // create display car (non-drivable)
-                car::Config car_config;
+                Car::Config car_config;
                 car_config.position       = Vector3(0.0f, 0.08f, 0.0f);
                 car_config.drivable       = false;
                 car_config.static_physics = false;
-                car::create(car_config);
+                Car::Create(car_config);
 
                 // camera looking at car
                 {
@@ -3185,12 +3183,12 @@ namespace spartan
                 entities::floor();
 
                 // create drivable car with telemetry
-                car::Config car_config;
+                Car::Config car_config;
                 car_config.position       = Vector3(0.0f, 0.5f, 0.0f);
                 car_config.drivable       = true;
                 car_config.show_telemetry = true;
                 car_config.camera_follows = true;
-                car::create(car_config);
+                Car::Create(car_config);
 
                 //==================================================================================
                 // zone 1: main jump ramp area (in front of spawn)
@@ -3409,15 +3407,12 @@ namespace spartan
 
         // reset world-specific state
         worlds::showroom::texture_brand_logo = nullptr;
-        car::shutdown();
+        Car::ShutdownAll();
         meshes.clear();
     }
 
     void Game::Tick()
     {
-        // car tick (always)
-        car::tick();
-
         // world-specific tick
         if (loaded_world != DefaultWorld::Max)
         {
@@ -3445,6 +3440,15 @@ namespace spartan
         });
 
         loaded_world = default_world;
+    }
+
+    void Game::RegisterPrefabs()
+    {
+        if (prefabs_registered)
+            return;
+
+        Prefab::Register("car", Car::CreatePrefab);
+        prefabs_registered = true;
     }
     //========================================================================================
 }

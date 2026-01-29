@@ -106,16 +106,17 @@ void Console::OnTickVisible()
 
     // log output section with custom text selection support
     {
-        // build list of visible logs for rendering
-        std::vector<std::pair<uint32_t, const LogPackage*>> visible_logs;
+        // build list of visible logs for rendering (reuses member vector to avoid per-frame allocation)
+        m_visible_logs.clear();
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_logs.size()); i++)
         {
             const LogPackage& log = m_logs[i];
             if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
             {
-                visible_logs.push_back({i, &log});
+                m_visible_logs.push_back({i, &log});
             }
         }
+        const auto& visible_logs = m_visible_logs;
 
         const ImVec2 log_size = ImVec2(-1.0f, log_height);
         const float line_height = ImGui::GetTextLineHeightWithSpacing();
@@ -639,6 +640,9 @@ void Console::Clear()
 {
     m_logs.clear();
     m_logs.shrink_to_fit();
+
+    m_visible_logs.clear();
+    m_visible_logs.shrink_to_fit();
 
     m_log_type_count[0] = 0;
     m_log_type_count[1] = 0;

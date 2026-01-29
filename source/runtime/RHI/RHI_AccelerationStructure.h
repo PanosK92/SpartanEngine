@@ -88,5 +88,7 @@ namespace spartan
         uint64_t m_scratch_buffer_size  = 0;
         void* m_instance_buffer         = nullptr;
         uint64_t m_instance_buffer_size = 0;
+        void* m_staging_buffer          = nullptr;
+        uint64_t m_staging_buffer_size  = 0;
     };
 }

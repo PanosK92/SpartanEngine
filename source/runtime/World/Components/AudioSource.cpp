@@ -395,7 +395,7 @@ namespace spartan
 
         uint32_t num_samples = bytes_to_add / sizeof(float);
         float* mono_samples  = reinterpret_cast<float*>(m_clip->buffer + m_position);
-        vector<float> stereo_chunk(num_samples * 2);
+        m_stereo_chunk.resize(num_samples * 2); // reuses capacity, no allocation if size fits
         float gain           = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
 
         // constant power panning
@@ -406,11 +406,11 @@ namespace spartan
         for (uint32_t i = 0; i < num_samples; ++i)
         {
             float sample = mono_samples[i];
-            stereo_chunk[2 * i] = sample * left_gain;
-            stereo_chunk[2 * i + 1]= sample * right_gain;
+            m_stereo_chunk[2 * i] = sample * left_gain;
+            m_stereo_chunk[2 * i + 1]= sample * right_gain;
         }
 
-        if (!SDL_PutAudioStreamData(m_stream, stereo_chunk.data(), static_cast<int>(stereo_chunk.size() * sizeof(float))))
+        if (!SDL_PutAudioStreamData(m_stream, m_stereo_chunk.data(), static_cast<int>(m_stereo_chunk.size() * sizeof(float))))
         {
             SP_LOG_ERROR("%s", SDL_GetError());
         }

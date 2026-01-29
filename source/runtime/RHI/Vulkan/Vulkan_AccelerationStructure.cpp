@@ -89,6 +89,13 @@ namespace spartan
             m_instance_buffer_size = 0;
         }
 
+        if (m_staging_buffer)
+        {
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer);
+            m_staging_buffer      = nullptr;
+            m_staging_buffer_size = 0;
+        }
+
         m_size = 0;
     }
 
@@ -208,8 +215,9 @@ namespace spartan
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Top);
         SP_ASSERT(!instances.empty());
     
-        // define instances
-        vector<VkAccelerationStructureInstanceKHR> vk_instances(instances.size());
+        // define instances (static to avoid per-frame heap allocation - resize keeps capacity)
+        static vector<VkAccelerationStructureInstanceKHR> vk_instances;
+        vk_instances.resize(instances.size());
         for (size_t i = 0; i < instances.size(); ++i)
         {
             const RHI_AccelerationStructureInstance& instance = instances[i];
@@ -222,12 +230,23 @@ namespace spartan
             memcpy(&vk_inst.transform.matrix, instance.transform.data(), sizeof(float) * 12);
         }
     
-        // create staging buffer
-        void* staging_buffer                     = nullptr;
-        const size_t data_size                   = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size();
-        VkBufferUsageFlags staging_usage         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        VkMemoryPropertyFlags staging_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        RHI_Device::MemoryBufferCreate(staging_buffer, data_size, staging_usage, staging_properties, vk_instances.data(), (m_object_name + "_staging").c_str());
+        // reuse or create staging buffer
+        const size_t data_size = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size();
+        if (!m_staging_buffer || data_size > m_staging_buffer_size)
+        {
+            if (m_staging_buffer)
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer);
+            }
+            VkBufferUsageFlags staging_usage         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            VkMemoryPropertyFlags staging_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            RHI_Device::MemoryBufferCreate(m_staging_buffer, data_size, staging_usage, staging_properties, nullptr, (m_object_name + "_staging").c_str());
+            m_staging_buffer_size = data_size;
+        }
+
+        // copy data to staging buffer
+        void* mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_staging_buffer);
+        memcpy(mapped_data, vk_instances.data(), data_size);
     
         // reuse or create instance buffer
         const uint64_t alignment = max(static_cast<uint64_t>(16), RHI_Device::PropertyGetMinStorageBufferOffsetAlignment());
@@ -253,7 +272,7 @@ namespace spartan
         VkBufferCopy region = {};
         region.size         = data_size;
         region.dstOffset    = dst_offset;
-        vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(staging_buffer), static_cast<VkBuffer>(m_instance_buffer), 1, &region);
+        vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(m_staging_buffer), static_cast<VkBuffer>(m_instance_buffer), 1, &region);
     
         // barrier: make copy available for build
         VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
@@ -356,9 +375,6 @@ namespace spartan
             VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_TRANSFER_BIT,
             0, 1, &barrier, 0, nullptr, 0, nullptr
         );
-    
-        // destroy temp buffer
-        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
     }
 
     uint64_t RHI_AccelerationStructure::GetDeviceAddress()
