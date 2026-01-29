@@ -401,7 +401,7 @@ namespace spartan
     void Renderer::CreateShaders()
     {
         const bool async        = true;
-        const string shader_dir = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
+        const string shader_dir = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "/";
         #define shader(x) shaders[static_cast<uint8_t>(x)]
 
         // debug
@@ -534,47 +534,47 @@ namespace spartan
         {
             // cas - contrast adaptive sharpening
             shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
+            shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx/cas.hlsl", async);
 
             // spd - single pass downsample - compile synchronously as they are needed everywhere
             {
                 shader(Renderer_Shader::ffx_spd_average_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_average_c)->AddDefine("AVERAGE");
-                shader(Renderer_Shader::ffx_spd_average_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_average_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx/spd.hlsl", false);
 
                 shader(Renderer_Shader::ffx_spd_min_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_min_c)->AddDefine("MIN");
-                shader(Renderer_Shader::ffx_spd_min_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_min_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx/spd.hlsl", false);
 
                 shader(Renderer_Shader::ffx_spd_max_c) = make_shared<RHI_Shader>();
                 shader(Renderer_Shader::ffx_spd_max_c)->AddDefine("MAX");
-                shader(Renderer_Shader::ffx_spd_max_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+                shader(Renderer_Shader::ffx_spd_max_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "amd_fidelity_fx/spd.hlsl", false);
             }
         }
 
         // sky
         {
             shader(Renderer_Shader::skysphere_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\skysphere.hlsl", async);
+            shader(Renderer_Shader::skysphere_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky/skysphere.hlsl", async);
 
             shader(Renderer_Shader::skysphere_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::skysphere_lut_c)->AddDefine("LUT");
-            shader(Renderer_Shader::skysphere_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\skysphere.hlsl", async);
+            shader(Renderer_Shader::skysphere_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky/skysphere.hlsl", async);
 
             // transmittance lut - precomputes optical depth to atmosphere top
             shader(Renderer_Shader::skysphere_transmittance_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::skysphere_transmittance_lut_c)->AddDefine("TRANSMITTANCE_LUT");
-            shader(Renderer_Shader::skysphere_transmittance_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\skysphere.hlsl", false); // sync - needed by multiscatter
+            shader(Renderer_Shader::skysphere_transmittance_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky/skysphere.hlsl", false); // sync - needed by multiscatter
 
             // multi-scatter lut - approximates infinite bounce scattering
             shader(Renderer_Shader::skysphere_multiscatter_lut_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::skysphere_multiscatter_lut_c)->AddDefine("MULTISCATTER_LUT");
-            shader(Renderer_Shader::skysphere_multiscatter_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\skysphere.hlsl", false); // sync - needed by main pass
+            shader(Renderer_Shader::skysphere_multiscatter_lut_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky/skysphere.hlsl", false); // sync - needed by main pass
         }
 
         // fxaa
         shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "fxaa\\fxaa.hlsl", async);
+        shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "fxaa/fxaa.hlsl", async);
 
         // font
         shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();
@@ -608,7 +608,7 @@ namespace spartan
 
         // screen space shadows
         shader(Renderer_Shader::sss_c_bend) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::sss_c_bend)->Compile(RHI_Shader_Type::Compute, shader_dir + "screen_space_shadows\\bend_sss.hlsl", async);
+        shader(Renderer_Shader::sss_c_bend)->Compile(RHI_Shader_Type::Compute, shader_dir + "screen_space_shadows/bend_sss.hlsl", async);
 
         // depth of field
         shader(Renderer_Shader::depth_of_field_c) = make_shared<RHI_Shader>();
@@ -699,14 +699,14 @@ namespace spartan
         {
             shader(Renderer_Shader::cloud_noise_shape_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::cloud_noise_shape_c)->AddDefine("SHAPE_NOISE");
-            shader(Renderer_Shader::cloud_noise_shape_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\cloud_noise.hlsl", async);
+            shader(Renderer_Shader::cloud_noise_shape_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky/cloud_noise.hlsl", async);
 
             shader(Renderer_Shader::cloud_noise_detail_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::cloud_noise_detail_c)->AddDefine("DETAIL_NOISE");
-            shader(Renderer_Shader::cloud_noise_detail_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\cloud_noise.hlsl", async);
+            shader(Renderer_Shader::cloud_noise_detail_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky/cloud_noise.hlsl", async);
 
             shader(Renderer_Shader::cloud_shadow_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::cloud_shadow_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky\\cloud_shadow.hlsl", async);
+            shader(Renderer_Shader::cloud_shadow_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky/cloud_shadow.hlsl", async);
 
         }
 
@@ -715,7 +715,7 @@ namespace spartan
     void Renderer::CreateFonts()
     {
         // get standard font directory
-        const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "\\";
+        const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "/";
 
         // load a font
         uint32_t size = static_cast<uint32_t>(10 * Window::GetDpiScale());
@@ -779,8 +779,8 @@ namespace spartan
 
     void Renderer::CreateStandardTextures()
     {
-        const string dir_texture   = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
-        const string dir_materials = "project\\materials\\";
+        const string dir_texture   = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "/";
+        const string dir_materials = "project/materials/";
 
         #define standard_texture(x) standard_textures[static_cast<uint32_t>(x)]
 
@@ -847,7 +847,7 @@ namespace spartan
 
     void Renderer::CreateStandardMaterials()
     {
-        const string data_dir = string(ResourceCache::GetDataDirectory()) + "\\";
+        const string data_dir = string(ResourceCache::GetDataDirectory()) + "/";
         FileSystem::CreateDirectory_(data_dir);
 
         standard_material = make_shared<Material>();
