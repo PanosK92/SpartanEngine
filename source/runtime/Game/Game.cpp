@@ -1014,7 +1014,7 @@ namespace spartan
 
             void create()
             {
-                entities::music("project/music/gran_turismo.wav");
+                entities::music("project/music/gran_turismo_4.wav");
 
                 // textures
                 texture_brand_logo = make_shared<RHI_Texture>("project/models/ferrari_laferrari/logo.png");

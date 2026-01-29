@@ -329,6 +329,7 @@ namespace ImGui::RHI
                                 float array_level          = 0.0f;
                                 bool is_texture_visualised = false;
                                 bool is_frame_texture      = false;
+                                bool texture_bound         = false;
                                 
                                 if (spartan::RHI_Texture* texture = reinterpret_cast<spartan::RHI_Texture*>(pcmd->TextureId))
                                 {
@@ -346,7 +347,14 @@ namespace ImGui::RHI
                                         }
 
                                         cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
+                                        texture_bound = true;
                                     }
+                                }
+                                
+                                // always bind a texture to avoid uninitialized descriptor errors
+                                if (!texture_bound)
+                                {
+                                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, g_font_atlas.get());
                                 }
                                 
                                 // pack booleans into uint bitfield

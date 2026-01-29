@@ -275,9 +275,10 @@ namespace spartan
         vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(m_staging_buffer), static_cast<VkBuffer>(m_instance_buffer), 1, &region);
     
         // barrier: make copy available for build
+        // the as build stage reads instance data via shader read, not acceleration structure read
         VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
         barrier.srcAccessMask   = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        barrier.dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
         vkCmdPipelineBarrier(
             static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
             VK_PIPELINE_STAGE_TRANSFER_BIT,
