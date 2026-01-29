@@ -64,6 +64,7 @@ namespace spartan
         // custom title bar
         static void SetTitleBarHeight(float height);
         static void SetTitleBarButtonWidth(float width);
+        static void SetStatusBar(float height);
         static void SetTitleBarHovered(bool hovered);
 
     private:

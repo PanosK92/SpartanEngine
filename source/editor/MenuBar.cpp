@@ -40,6 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Debugging.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
+
+#include <ImGui/Source/Animation/im_anim.h>
 //================================
 
 //= NAMESPACES =====

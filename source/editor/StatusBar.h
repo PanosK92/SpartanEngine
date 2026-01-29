@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2026 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas & Thomas Ray
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,40 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include <vector>
-#include <memory>
-#include "Modal.h"
-#include "Widgets/Widget.h"
-//=========================
+// FWD DECLARATIONS =
+class Editor;
+//===================
 
-class Editor
+/*
+class StatusBar
 {
 public:
-    Editor(const std::vector<std::string>& args);
-    ~Editor();
+    static void Initialize(Editor* editor);
+    static void Tick();
 
-    void Tick();
-
-    template<typename T>
-    T* GetWidget()
-    {
-        for (const auto& widget : m_widgets)
-        {
-            if (T* widget_t = dynamic_cast<T*>(widget.get()))
-            {
-                return widget_t;
-            }
-        }
-
-        return nullptr;
-    }
-
-    inline static ImFont* font_normal = nullptr;
-    inline static ImFont* font_bold   = nullptr;
-
-private:
-    void BeginWindow();
-
-    std::vector<std::shared_ptr<Widget>> m_widgets;
+    static float GetPaddingX() { return 14.0f; }
+    static float GetPaddingY() { return 8.0f; }
 };
+*/

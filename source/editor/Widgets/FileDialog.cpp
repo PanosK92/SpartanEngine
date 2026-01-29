@@ -588,7 +588,7 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
         {
             m_drag_drop_payload.type = type;
             m_drag_drop_payload.data = path.c_str();
-            ImGuiSp::create_drag_drop_paylod(m_drag_drop_payload);
+            ImGuiSp::create_drag_drop_payload(m_drag_drop_payload);
         };
 
         if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Model,    item->GetPath()); }

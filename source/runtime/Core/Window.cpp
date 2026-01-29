@@ -554,6 +554,11 @@ namespace spartan
         titlebar_button_width = width;
     }
 
+    void Window::SetStatusBar(float height)
+    {
+        
+    }
+
     bool Window::IsMaximized()
     {
         return SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED;

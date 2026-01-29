@@ -109,6 +109,7 @@ Editor::Editor(const vector<string>& args)
     spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
     GeneralWindows::Initialize(this);
+    Modal::Initialize(this);
 }
 
 Editor::~Editor()
@@ -161,6 +162,9 @@ void Editor::Tick()
 
                 // various windows that don't belong to a certain widget
                 GeneralWindows::Tick();
+
+                // Modal popup system (draws on top of everything when shown)
+                Modal::Tick();
 
                 // Draw all pending shadows AFTER widgets queue them, but BEFORE ImGui::Render()
                 // This draws to the background draw list so shadows appear behind windows

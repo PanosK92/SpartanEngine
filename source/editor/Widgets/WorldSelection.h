@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2026 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas & Thomas Ray
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -18,43 +18,23 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-
 #pragma once
 
-//= INCLUDES ==============
-#include <vector>
-#include <memory>
-#include "Modal.h"
-#include "Widgets/Widget.h"
-//=========================
+// FWD DECLARATIONS =
 
-class Editor
+//===================
+
+/*
+class WorldSelection
 {
 public:
-    Editor(const std::vector<std::string>& args);
-    ~Editor();
-
+    void Init();
+    void Shutdown();
     void Tick();
 
-    template<typename T>
-    T* GetWidget()
-    {
-        for (const auto& widget : m_widgets)
-        {
-            if (T* widget_t = dynamic_cast<T*>(widget.get()))
-            {
-                return widget_t;
-            }
-        }
+    void LoadWorld(const char* world_name);
+    void UnloadWorld();
 
-        return nullptr;
-    }
-
-    inline static ImFont* font_normal = nullptr;
-    inline static ImFont* font_bold   = nullptr;
-
-private:
-    void BeginWindow();
-
-    std::vector<std::shared_ptr<Widget>> m_widgets;
 };
+*/
+
