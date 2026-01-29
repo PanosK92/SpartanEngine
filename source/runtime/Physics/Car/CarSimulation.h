@@ -234,7 +234,6 @@ namespace car
         // debug
         inline bool draw_raycasts   = true;
         inline bool draw_suspension = true;
-        inline bool draw_aero       = true;
         inline bool log_pacejka     = false;
         inline bool log_telemetry   = false;
     }
@@ -255,6 +254,18 @@ namespace car
         bool   valid            = false;
     };
     inline static aero_debug_data aero_debug;
+
+    // stored shape data for visualization (2D projections of convex hull)
+    struct shape_2d
+    {
+        std::vector<std::pair<float, float>> side_profile;   // (z, y) points for side view
+        std::vector<std::pair<float, float>> front_profile;  // (x, y) points for front view
+        float min_x = 0, max_x = 0;
+        float min_y = 0, max_y = 0;
+        float min_z = 0, max_z = 0;
+        bool valid = false;
+    };
+    inline static shape_2d shape_data;
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
     enum surface_type { surface_asphalt = 0, surface_concrete, surface_wet_asphalt, surface_gravel, surface_grass, surface_ice, surface_count };
@@ -715,6 +726,67 @@ namespace car
             tuning::aero_center_height, tuning::aero_center_front_z, tuning::aero_center_rear_z);
         SP_LOG_INFO("aero: front/rear bias=%.0f%%/%.0f%%, lift F/R=%.2f/%.2f",
             front_bias * 100.0f, (1.0f - front_bias) * 100.0f, tuning::lift_coeff_front, tuning::lift_coeff_rear);
+
+        // compute 2D hull profiles for visualization
+        shape_data.min_x = min_pt.x; shape_data.max_x = max_pt.x;
+        shape_data.min_y = min_pt.y; shape_data.max_y = max_pt.y;
+        shape_data.min_z = min_pt.z; shape_data.max_z = max_pt.z;
+        
+        // helper: compute 2D convex hull from projected points using gift wrapping
+        auto compute_hull_2d = [](std::vector<std::pair<float, float>>& points) -> std::vector<std::pair<float, float>>
+        {
+            if (points.size() < 3)
+                return points;
+            
+            // find leftmost point
+            size_t start = 0;
+            for (size_t i = 1; i < points.size(); i++)
+                if (points[i].first < points[start].first)
+                    start = i;
+            
+            std::vector<std::pair<float, float>> hull;
+            size_t current = start;
+            
+            do {
+                hull.push_back(points[current]);
+                size_t next = 0;
+                
+                for (size_t i = 0; i < points.size(); i++)
+                {
+                    if (i == current) continue;
+                    
+                    // cross product to determine left turn
+                    float ax = points[next].first - points[current].first;
+                    float ay = points[next].second - points[current].second;
+                    float bx = points[i].first - points[current].first;
+                    float by = points[i].second - points[current].second;
+                    float cross = ax * by - ay * bx;
+                    
+                    if (next == current || cross < 0 || (cross == 0 && bx*bx + by*by > ax*ax + ay*ay))
+                        next = i;
+                }
+                
+                current = next;
+            } while (current != start && hull.size() < points.size());
+            
+            return hull;
+        };
+        
+        // project vertices to side view (z, y) and compute hull
+        std::vector<std::pair<float, float>> side_points;
+        for (const PxVec3& v : vertices)
+            side_points.push_back({v.z, v.y});
+        shape_data.side_profile = compute_hull_2d(side_points);
+        
+        // project vertices to front view (x, y) and compute hull
+        std::vector<std::pair<float, float>> front_points;
+        for (const PxVec3& v : vertices)
+            front_points.push_back({v.x, v.y});
+        shape_data.front_profile = compute_hull_2d(front_points);
+        
+        shape_data.valid = !shape_data.side_profile.empty() && !shape_data.front_profile.empty();
+        SP_LOG_INFO("aero: shape profiles computed (side: %zu pts, front: %zu pts)", 
+            shape_data.side_profile.size(), shape_data.front_profile.size());
     }
 
     struct setup_params
@@ -1918,12 +1990,11 @@ namespace car
     inline bool get_draw_raycasts()               { return tuning::draw_raycasts; }
     inline void set_draw_suspension(bool enabled) { tuning::draw_suspension = enabled; }
     inline bool get_draw_suspension()             { return tuning::draw_suspension; }
-    inline void set_draw_aero(bool enabled)       { tuning::draw_aero = enabled; }
-    inline bool get_draw_aero()                   { return tuning::draw_aero; }
     inline void set_log_pacejka(bool enabled)     { tuning::log_pacejka = enabled; }
     inline bool get_log_pacejka()                 { return tuning::log_pacejka; }
     
     inline const aero_debug_data& get_aero_debug() { return aero_debug; }
+    inline const shape_2d& get_shape_data() { return shape_data; }
     
     inline void get_debug_ray(int wheel, int ray, PxVec3& origin, PxVec3& hit_point, bool& hit)
     {

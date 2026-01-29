@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================================
+//= INCLUDES ==================================
 #include "pch.h"
 #include "Car.h"
 #include "CarSimulation.h"
@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../World/Components/Light.h"
 #include "../../World/Components/Physics.h"
 #include "../../IO/pugixml.hpp"
-//==================================================
+//=============================================
 
 namespace spartan
 {
@@ -1129,11 +1129,33 @@ namespace spartan
         if (display_size.x < 100.0f || display_size.y < 100.0f)
             return;
 
-        // dashboard window
-        float dashboard_x = std::max(10.0f, display_size.x - 500.0f);
-        float dashboard_y = std::max(10.0f, display_size.y - 380.0f);
-        ImGui::SetNextWindowPos(ImVec2(dashboard_x, dashboard_y), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(480.0f, 360.0f), ImGuiCond_FirstUseEver);
+        // window layout constants
+        const float margin = 10.0f;
+        const float group_spacing = 8.0f;
+        
+        // approximate window sizes
+        const float dashboard_width = 480.0f;
+        const float dashboard_height = 360.0f;
+        const float aero_width = 420.0f;
+        const float aero_height = 220.0f;
+        const float wheels_width = 560.0f;
+        const float wheels_height = 620.0f;
+        
+        // right group: dashboard + aerodynamics stacked vertically
+        float right_group_height = dashboard_height + group_spacing + aero_height;
+        float right_group_y = (display_size.y - right_group_height) * 0.5f;
+        right_group_y = std::clamp(right_group_y, margin, display_size.y - right_group_height - margin);
+        float right_group_x = display_size.x - dashboard_width - margin;
+        right_group_x = std::max(right_group_x, margin);
+        
+        // left group: wheels centered vertically
+        float left_group_y = (display_size.y - wheels_height) * 0.5f;
+        left_group_y = std::clamp(left_group_y, margin, display_size.y - wheels_height - margin);
+        float left_group_x = margin;
+        
+        // dashboard window (top of right group)
+        ImGui::SetNextWindowPos(ImVec2(right_group_x, right_group_y), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(dashboard_width, dashboard_height), ImGuiCond_FirstUseEver);
 
         if (ImGui::Begin("Dashboard", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize))
         {
@@ -1425,12 +1447,259 @@ namespace spartan
         }
         ImGui::End();
 
-        // telemetry window (tire forces and suspension)
-        float telemetry_x = 10.0f;
-        float telemetry_y = std::max(10.0f, display_size.y - 700.0f);
-        ImGui::SetNextWindowPos(ImVec2(telemetry_x, telemetry_y), ImGuiCond_FirstUseEver);
+        // aerodynamics window (below dashboard in right group)
+        float aero_window_y = right_group_y + dashboard_height + group_spacing;
+        ImGui::SetNextWindowPos(ImVec2(right_group_x, aero_window_y), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(aero_width, 0.0f), ImGuiCond_FirstUseEver);
 
-        if (ImGui::Begin("Telemetry", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize))
+        if (ImGui::Begin("Aerodynamics", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            ImVec2 section_start = ImGui::GetCursorScreenPos();
+            
+            // get aerodynamics data
+            const car::aero_debug_data& aero = car::get_aero_debug();
+            float frontal_area = car::get_frontal_area();
+            float side_area = car::get_side_area();
+            float drag_coeff = car::get_drag_coeff();
+            
+            // car dimensions for visualization
+            float car_length = car::cfg.length;
+            float car_width = car::cfg.width;
+            float car_height = car::cfg.height + car::cfg.wheel_radius * 2.0f;
+            
+            // get shape data for drawing (convex hull from actual mesh)
+            const car::shape_2d& shape = car::get_shape_data();
+            
+            // fixed width for this window
+            const float side_view_width = 220.0f;
+            const float front_view_width = 160.0f;
+            const float view_height = 100.0f;
+            const float view_spacing = 15.0f;
+            const float margin = 5.0f;
+            
+            // side view (left)
+            ImVec2 side_view_pos = ImVec2(section_start.x + margin, section_start.y + 20.0f);
+            
+            // draw car side profile
+            {
+                float x = side_view_pos.x;
+                float y = side_view_pos.y;
+                float w = side_view_width;
+                float h = view_height;
+                
+                if (shape.valid && shape.side_profile.size() >= 3)
+                {
+                    float shape_z_range = shape.max_z - shape.min_z;
+                    float shape_y_range = shape.max_y - shape.min_y;
+                    
+                    if (shape_z_range > 0.01f && shape_y_range > 0.01f)
+                    {
+                        std::vector<ImVec2> screen_pts;
+                        screen_pts.reserve(shape.side_profile.size());
+                        
+                        for (const auto& pt : shape.side_profile)
+                        {
+                            float norm_z = (pt.first - shape.min_z) / shape_z_range;
+                            float norm_y = (pt.second - shape.min_y) / shape_y_range;
+                            float screen_x = x + w * 0.02f + norm_z * w * 0.96f;
+                            float screen_y = y + h * 0.95f - norm_y * h * 0.90f;
+                            screen_pts.push_back(ImVec2(screen_x, screen_y));
+                        }
+                        
+                        if (screen_pts.size() >= 3)
+                        {
+                            draw_list->AddConvexPolyFilled(screen_pts.data(), (int)screen_pts.size(), IM_COL32(45, 50, 60, 255));
+                            draw_list->AddPolyline(screen_pts.data(), (int)screen_pts.size(), IM_COL32(80, 130, 180, 255), ImDrawFlags_Closed, 2.0f);
+                        }
+                    }
+                }
+                else
+                {
+                    // fallback: car-like silhouette
+                    ImVec2 fallback_pts[] = {
+                        ImVec2(x + w * 0.02f, y + h * 0.75f),
+                        ImVec2(x + w * 0.08f, y + h * 0.45f),
+                        ImVec2(x + w * 0.25f, y + h * 0.40f),
+                        ImVec2(x + w * 0.30f, y + h * 0.15f),
+                        ImVec2(x + w * 0.70f, y + h * 0.15f),
+                        ImVec2(x + w * 0.85f, y + h * 0.35f),
+                        ImVec2(x + w * 0.98f, y + h * 0.75f),
+                    };
+                    draw_list->AddConvexPolyFilled(fallback_pts, 7, IM_COL32(45, 50, 60, 255));
+                    draw_list->AddPolyline(fallback_pts, 7, IM_COL32(80, 130, 180, 255), ImDrawFlags_Closed, 2.0f);
+                }
+                
+                // wheels
+                float wheel_r = h * 0.10f;
+                draw_list->AddCircleFilled(ImVec2(x + w * 0.18f, y + h * 0.88f), wheel_r, IM_COL32(30, 30, 35, 255), 12);
+                draw_list->AddCircleFilled(ImVec2(x + w * 0.82f, y + h * 0.88f), wheel_r, IM_COL32(30, 30, 35, 255), 12);
+                
+                draw_list->AddText(ImVec2(x, y - 15), IM_COL32(150, 150, 150, 255), "Side");
+            }
+            
+            // front view (right)
+            ImVec2 front_view_pos = ImVec2(side_view_pos.x + side_view_width + view_spacing, section_start.y + 20.0f);
+            
+            {
+                float x = front_view_pos.x;
+                float y = front_view_pos.y;
+                float w = front_view_width;
+                float h = view_height;
+                
+                if (shape.valid && shape.front_profile.size() >= 3)
+                {
+                    float shape_x_range = shape.max_x - shape.min_x;
+                    float shape_y_range = shape.max_y - shape.min_y;
+                    
+                    if (shape_x_range > 0.01f && shape_y_range > 0.01f)
+                    {
+                        std::vector<ImVec2> screen_pts;
+                        screen_pts.reserve(shape.front_profile.size());
+                        
+                        for (const auto& pt : shape.front_profile)
+                        {
+                            float norm_x = (pt.first - shape.min_x) / shape_x_range;
+                            float norm_y = (pt.second - shape.min_y) / shape_y_range;
+                            float screen_x = x + w * 0.02f + norm_x * w * 0.96f;
+                            float screen_y = y + h * 0.95f - norm_y * h * 0.90f;
+                            screen_pts.push_back(ImVec2(screen_x, screen_y));
+                        }
+                        
+                        if (screen_pts.size() >= 3)
+                        {
+                            draw_list->AddConvexPolyFilled(screen_pts.data(), (int)screen_pts.size(), IM_COL32(45, 50, 60, 255));
+                            draw_list->AddPolyline(screen_pts.data(), (int)screen_pts.size(), IM_COL32(80, 130, 180, 255), ImDrawFlags_Closed, 2.0f);
+                        }
+                    }
+                }
+                else
+                {
+                    // fallback: car-like front silhouette
+                    ImVec2 fallback_pts[] = {
+                        ImVec2(x + w * 0.05f, y + h * 0.75f),
+                        ImVec2(x + w * 0.05f, y + h * 0.35f),
+                        ImVec2(x + w * 0.15f, y + h * 0.15f),
+                        ImVec2(x + w * 0.85f, y + h * 0.15f),
+                        ImVec2(x + w * 0.95f, y + h * 0.35f),
+                        ImVec2(x + w * 0.95f, y + h * 0.75f),
+                    };
+                    draw_list->AddConvexPolyFilled(fallback_pts, 6, IM_COL32(45, 50, 60, 255));
+                    draw_list->AddPolyline(fallback_pts, 6, IM_COL32(80, 130, 180, 255), ImDrawFlags_Closed, 2.0f);
+                }
+                
+                // wheels
+                float wheel_r = h * 0.10f;
+                float wheel_w_px = w * 0.08f;
+                draw_list->AddRectFilled(ImVec2(x + w * 0.08f - wheel_w_px * 0.5f, y + h * 0.78f), ImVec2(x + w * 0.08f + wheel_w_px * 0.5f, y + h * 0.98f), IM_COL32(30, 30, 35, 255), 2.0f);
+                draw_list->AddRectFilled(ImVec2(x + w * 0.92f - wheel_w_px * 0.5f, y + h * 0.78f), ImVec2(x + w * 0.92f + wheel_w_px * 0.5f, y + h * 0.98f), IM_COL32(30, 30, 35, 255), 2.0f);
+                
+                draw_list->AddText(ImVec2(x, y - 15), IM_COL32(150, 150, 150, 255), "Front");
+            }
+            
+            // compute forces
+            float aero_speed_ms = speed_kmh / 3.6f;
+            float drag_force_n = 0.0f;
+            float front_df_n = 0.0f;
+            float rear_df_n = 0.0f;
+            float side_force_n = 0.0f;
+            
+            if (aero.valid && aero.drag_force.magnitude() > 0.1f)
+            {
+                drag_force_n = aero.drag_force.magnitude();
+                front_df_n = aero.front_downforce.magnitude();
+                rear_df_n = aero.rear_downforce.magnitude();
+                side_force_n = aero.side_force.magnitude();
+            }
+            else if (aero_speed_ms > 0.5f)
+            {
+                const float air_density = 1.225f;
+                float dyn_pressure = 0.5f * air_density * aero_speed_ms * aero_speed_ms;
+                drag_force_n = dyn_pressure * drag_coeff * frontal_area;
+                front_df_n = fabsf(car::get_lift_coeff_front() * dyn_pressure * frontal_area);
+                rear_df_n = fabsf(car::get_lift_coeff_rear() * dyn_pressure * frontal_area);
+            }
+            
+            // draw force arrows on side view
+            auto draw_arrow = [&](ImVec2 start, float dx, float dy, ImU32 color, float force_n)
+            {
+                float len = sqrtf(dx * dx + dy * dy);
+                if (len < 5.0f) return;
+                
+                float nx = dx / len;
+                float ny = dy / len;
+                ImVec2 end = ImVec2(start.x + dx, start.y + dy);
+                
+                draw_list->AddLine(start, end, color, 3.0f);
+                float hs = std::min(len * 0.35f, 10.0f);
+                draw_list->AddTriangleFilled(end,
+                    ImVec2(end.x - hs * (nx + ny * 0.5f), end.y - hs * (ny - nx * 0.5f)),
+                    ImVec2(end.x - hs * (nx - ny * 0.5f), end.y - hs * (ny + nx * 0.5f)), color);
+                
+                char val[16];
+                if (force_n >= 1000.0f) snprintf(val, 16, "%.1fkN", force_n / 1000.0f);
+                else snprintf(val, 16, "%.0fN", force_n);
+                draw_list->AddText(ImVec2(end.x + (dy != 0 ? 4 : -18), end.y + (dx != 0 ? -14 : -4)), color, val);
+            };
+            
+            const float fs = 0.035f;
+            const float max_len = 50.0f;
+            
+            // side view arrows
+            {
+                float x = side_view_pos.x, y = side_view_pos.y, w = side_view_width, h = view_height;
+                if (drag_force_n > 10.0f)
+                    draw_arrow(ImVec2(x + w * 0.06f, y + h * 0.45f), -std::clamp(drag_force_n * fs, 10.0f, max_len), 0, IM_COL32(255, 140, 50, 255), drag_force_n);
+                if (front_df_n > 10.0f)
+                    draw_arrow(ImVec2(x + w * 0.20f, y + h * 0.08f), 0, std::clamp(front_df_n * fs, 10.0f, max_len), IM_COL32(80, 160, 255, 255), front_df_n);
+                if (rear_df_n > 10.0f)
+                    draw_arrow(ImVec2(x + w * 0.80f, y + h * 0.08f), 0, std::clamp(rear_df_n * fs, 10.0f, max_len), IM_COL32(80, 160, 255, 255), rear_df_n);
+            }
+            
+            // front view arrows
+            {
+                float x = front_view_pos.x, y = front_view_pos.y, w = front_view_width, h = view_height;
+                float total_df = front_df_n + rear_df_n;
+                if (total_df > 10.0f)
+                    draw_arrow(ImVec2(x + w * 0.5f, y + h * 0.02f), 0, std::clamp(total_df * fs * 0.5f, 10.0f, max_len), IM_COL32(80, 160, 255, 255), total_df);
+                if (side_force_n > 50.0f)
+                {
+                    float dir = (aero.valid && aero.side_force.x < 0) ? -1.0f : 1.0f;
+                    draw_arrow(ImVec2(x + w * 0.5f, y + h * 0.40f), dir * std::clamp(side_force_n * fs, 10.0f, max_len), 0, IM_COL32(255, 220, 80, 255), side_force_n);
+                }
+            }
+            
+            // reserve space
+            ImGui::Dummy(ImVec2(side_view_width + view_spacing + front_view_width + margin * 2, view_height + 25.0f));
+            
+            // compact stats
+            ImGui::Separator();
+            float total_df = front_df_n + rear_df_n;
+            
+            ImGui::Text("Frontal: %.2f m\xC2\xB2  Side: %.2f m\xC2\xB2  Cd: %.2f", frontal_area, side_area, drag_coeff);
+            
+            if (aero_speed_ms > 0.5f && total_df > 1.0f)
+            {
+                float balance = front_df_n / total_df * 100.0f;
+                ImGui::TextColored(ImVec4(0.4f, 0.6f, 1.0f, 1.0f), "Downforce: %.0fN (%.0f%%F/%.0f%%R)", total_df, balance, 100.0f - balance);
+                if (aero.valid && aero.ground_effect_factor > 1.01f)
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.6f, 1.0f), "GE:+%.0f%%", (aero.ground_effect_factor - 1.0f) * 100.0f);
+            }
+            
+            // legend
+            ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.2f, 1.0f), "Drag");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.3f, 0.6f, 1.0f, 1.0f), "Downforce");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "Side");
+        }
+        ImGui::End();
+
+        // wheels window (left group, centered vertically)
+        ImGui::SetNextWindowPos(ImVec2(left_group_x, left_group_y), ImGuiCond_FirstUseEver);
+
+        if (ImGui::Begin("Wheels", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize))
         {
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
@@ -1602,8 +1871,12 @@ namespace spartan
                 draw_coil("RL", comp_rl, susp_offset_x, start_y + susp_space_y + 40.0f);
                 draw_coil("RR", comp_rr, susp_offset_x + susp_space_x, start_y + susp_space_y + 40.0f);
 
-                // reserve space for the full layout (adjusted for 2x size)
-                ImGui::Dummy(ImVec2(susp_offset_x + susp_space_x + coil_width + 40, tire_space_y * 2 + tire_height + 80));
+                // reserve space for the full layout - calculate based on actual content
+                // rear row starts at: start_y + susp_space_y + 40 = 230
+                // suspension bottom: +8 (top plate) + max_height + 6 (bottom plate) = 124
+                // percentage text below: +25
+                float content_height = start_y + susp_space_y + 40.0f + max_height + 40.0f;
+                ImGui::Dummy(ImVec2(susp_offset_x + susp_space_x + coil_width + 40, content_height));
 
                 // force legend
                 ImGui::Separator();
