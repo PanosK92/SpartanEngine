@@ -1184,11 +1184,8 @@ namespace spartan
             return;
         }
         
-        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)", 
+        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)",
             renderable_entities.size(), entities_to_exclude.size());
-        
-        // clear existing chassis shapes
-        car::clear_chassis_shapes();
         
         // the chassis entity's local transform relative to the vehicle (physics body)
         Vector3 chassis_local_pos = chassis_entity->GetPositionLocal();
@@ -1297,26 +1294,17 @@ namespace spartan
             return;
         }
         
-        // attach the single convex shape at identity pose (vertices are already in body space)
-        PxTransform local_pose(PxIdentity);
         PxU32 hull_vert_count = convex_mesh->getNbVertices();
-        
-        if (!car::attach_chassis_convex_shape(convex_mesh, local_pose, physics))
+
+        if (!car::set_chassis(convex_mesh, all_vertices, physics))
         {
-            SP_LOG_ERROR("Failed to attach chassis convex shape");
+            SP_LOG_ERROR("Failed to set chassis");
             convex_mesh->release();
             return;
         }
-        
+
         convex_mesh->release();
-        
-        // update mass properties after adding the shape
-        car::update_mass_properties();
-        
-        // compute aerodynamic properties from the shape
-        car::compute_aero_from_shape(all_vertices);
-        
-        SP_LOG_INFO("BuildChassisConvexShapes: created single convex hull with %u vertices from %zu source vertices", 
+        SP_LOG_INFO("BuildChassisConvexShapes: created hull with %u verts from %zu source verts",
             hull_vert_count, all_vertices.size());
     }
 
@@ -2060,25 +2048,20 @@ namespace spartan
         }
         else if (m_body_type == BodyType::Vehicle)
         {
-            // create vehicle
-            if (car::create(physics, scene))
+            car::setup_params params;
+            params.physics = physics;
+            params.scene   = scene;
+
+            if (car::setup(params))
             {
-                // store the rigid body actor
                 m_actors.resize(1, nullptr);
                 m_actors[0] = car::body;
                 m_actors_active.resize(1, true);
-                
-                // set initial position - use physics-calculated height for proper ground contact
-                // car::create already set correct body height accounting for suspension sag
-                // we just use entity's X and Z, but keep the physics Y
+
                 Vector3 pos = GetEntity()->GetPosition();
                 PxTransform current_pose = car::body->getGlobalPose();
                 car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
-                
-                // store user data for raycasts
                 car::body->userData = reinterpret_cast<void*>(GetEntity());
-                
-                SP_LOG_INFO("vehicle physics body created successfully");
             }
             else
             {

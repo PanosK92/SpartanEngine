@@ -277,7 +277,7 @@ namespace spartan
         // barrier: make copy available for build
         VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
         barrier.srcAccessMask   = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+        barrier.dstAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
         vkCmdPipelineBarrier(
             static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
             VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -297,31 +297,23 @@ namespace spartan
         geom.geometry.instances.data.deviceAddress             = aligned_address;
         build_info.pGeometries                                 = &geom;
     
-        // determine mode
-        bool do_update                      = m_rhi_resource != nullptr;
+        // always use full build mode - tlas updates can produce degenerate bvh when transforms change significantly
         uint32_t primitive_count            = static_cast<uint32_t>(instances.size());
-        build_info.mode                     = do_update ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-        build_info.srcAccelerationStructure = do_update ? static_cast<VkAccelerationStructureKHR>(m_rhi_resource) : VK_NULL_HANDLE;
-        build_info.dstAccelerationStructure = do_update ? static_cast<VkAccelerationStructureKHR>(m_rhi_resource) : VK_NULL_HANDLE;
+        build_info.mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        build_info.srcAccelerationStructure = VK_NULL_HANDLE;
+        build_info.dstAccelerationStructure = VK_NULL_HANDLE;
     
         // get build sizes
         VkAccelerationStructureBuildSizesInfoKHR size_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
         as_get_build_sizes(RHI_Context::device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
     
-        // if update requires more space, fallback to rebuild
-        if (do_update && size_info.accelerationStructureSize > m_size)
+        // create or resize acceleration structure if needed
+        if (!m_rhi_resource || size_info.accelerationStructureSize > m_size)
         {
-            do_update = false;
-            Destroy();
-            build_info.mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-            build_info.srcAccelerationStructure = VK_NULL_HANDLE;
-            build_info.dstAccelerationStructure = VK_NULL_HANDLE;
-            as_get_build_sizes(RHI_Context::device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
-        }
-    
-        // create or reuse acceleration structure
-        if (!do_update)
-        {
+            // destroy old resources if they exist
+            if (m_rhi_resource)
+                Destroy();
+
             // create result buffer
             VkBufferUsageFlags usage         = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
             VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -343,7 +335,7 @@ namespace spartan
     
         // reuse or create scratch buffer
         const uint64_t scratch_alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-        uint64_t required_scratch_size   = do_update ? size_info.updateScratchSize : size_info.buildScratchSize;
+        uint64_t required_scratch_size   = size_info.buildScratchSize;
         required_scratch_size            = (required_scratch_size + scratch_alignment - 1) & ~(scratch_alignment - 1);
         if (!m_scratch_buffer || required_scratch_size > m_scratch_buffer_size)
         {
