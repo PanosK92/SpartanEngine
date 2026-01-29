@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../Physics/PhysicsWorld.h"
-#include "../../Physics/Car.h"
+#include "../../Physics/Car/Car.h"
+#include "../../Physics/Car/CarSimulation.h"
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Rendering/Renderer.h"
 SP_WARNINGS_OFF
@@ -345,6 +346,12 @@ namespace spartan
 
             // update wheel visuals
             UpdateWheelTransforms();
+            
+            // tick the car (input, camera, sounds, telemetry)
+            if (m_car)
+            {
+                m_car->Tick();
+            }
         }
         else
         {

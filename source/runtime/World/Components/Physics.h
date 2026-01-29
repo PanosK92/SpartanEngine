@@ -229,6 +229,10 @@ namespace spartan
         // sync physics wheel positions from wheel entity positions
         void SyncWheelOffsetsFromEntities();
         
+        // car owner - set this to have the car tick automatically through the entity system
+        void SetCar(class Car* car) { m_car = car; }
+        class Car* GetCar() const   { return m_car; }
+        
         // center of mass (for tuning handling characteristics)
         void SetCenterOfMassOffset(const math::Vector3& offset);
         void SetCenterOfMassOffset(float x, float y, float z);
@@ -291,5 +295,8 @@ namespace spartan
         math::Vector3 m_current_position  = math::Vector3::Zero; // position at current physics step
         math::Quaternion m_current_rotation;                     // rotation at current physics step
         bool m_interpolation_initialized  = false;               // flag to track first-frame initialization
+        
+        // car owner (ticked automatically through entity system)
+        class Car* m_car = nullptr;
     };
 }
