@@ -19,21 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES =====================
 #include "pch.h"
 #include "WorldSelector.h"
 #include "GeneralWindows.h"
-#include "ImGui/Source/imgui.h"
 #include "ImGui/ImGui_Extension.h"
-#include "FileSystem/FileSystem.h"
 #include "Widgets/Viewport.h"
 #include "Core/ProgressTracker.h"
-#include "Core/ThreadPool.h"
-#include "Resource/ResourceCache.h"
-#include "World/World.h"
 #include "Game/Game.h"
 #include "RHI/RHI_Device.h"
-//==================================
+//================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -78,10 +73,10 @@ namespace
     bool downloaded_and_extracted = false;
 
     // asset download configuration
-    const char* assets_url          = "https://www.dropbox.com/scl/fi/v78hpy6vb0kgu5ik5gqh5/assets.7z?rlkey=c53z3iblelyp2j0qcyumejday&st=m2itkz74&dl=1";
-    const char* assets_destination  = "project/assets.7z";
+    const char* assets_url          = "https://www.dropbox.com/scl/fi/bdqtye9r5i6lfrct8laoi/project.7z?rlkey=5esu6smc2hzjpnda3fjexrei4&st=l9tmcwz7&dl=1";
+    const char* assets_destination  = "project/project.7z";
     const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "94f9e1ebe6ded2280e3bd56bcdfe87ed2f351260ea2495c96f4319333194226d";
+    const char* assets_expected_sha = "f8a0b02c8fa7f31d9e0700dc89228b793c65afa175791ed9ab4a23732b87d88c";
 
     void scan_directory_recursive(const string& directory)
     {
@@ -161,7 +156,7 @@ namespace
         {
             // start progress tracking in continuous mode (job_count = 0)
             spartan::Progress& progress = spartan::ProgressTracker::GetProgress(spartan::ProgressType::Download);
-            progress.Start(0, "Downloading assets...");
+            progress.Start(0, "Downloading projects...");
             spartan::ProgressTracker::SetGlobalLoadingState(true);
 
             // download with real-time progress callback
@@ -177,7 +172,7 @@ namespace
 
             if (success)
             {
-                progress.SetText("Extracting assets...");
+                progress.SetText("Extracting projects...");
                 progress.SetFraction(0.9f);
                 success = spartan::FileSystem::ExtractArchive(assets_destination, assets_extract_dir);
                 progress.SetFraction(1.0f);
@@ -201,16 +196,16 @@ namespace
         if (ImGui::Begin("Default worlds", &visible_download_prompt,
             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::TextWrapped("No default worlds are present. Would you like to download them?");
+            ImGui::TextWrapped("No default worlds are present. Would you like to download some out of the box projects?");
             ImGui::Separator();
 
-            float button_width = ImGui::CalcTextSize("Download Worlds").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
+            float button_width = ImGui::CalcTextSize("Download Projects").x + ImGui::GetStyle().ItemSpacing.x * 3.0f;
             float offset_x     = (ImGui::GetContentRegionAvail().x - button_width) * 0.5f;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
             ImGui::BeginGroup();
             {
-                if (ImGui::Button("Download Worlds"))
+                if (ImGui::Button("Download Projects"))
                 {
                     download_and_extract();
                 }
@@ -238,7 +233,7 @@ namespace
         if (ImGui::Begin("Update available", &visible_update_prompt,
             ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
         {
-            ImGui::TextWrapped("A newer version of the assets is available. Would you like to update?");
+            ImGui::TextWrapped("A newer version of the projects is available. Would you like to update?");
             ImGui::Separator();
 
             ImGui::BeginGroup();
@@ -329,8 +324,7 @@ namespace
                     for (int i = 0; i < static_cast<int>(world_files.size()); i++)
                     {
                         bool is_selected = !is_default_world_selected && (selected_index == i);
-                        const char* display_name = world_files[i].title.empty() ? world_files[i].name.c_str() : world_files[i].title.c_str();
-                        if (ImGui::Selectable(display_name, is_selected))
+                        if (ImGui::Selectable(world_files[i].name.c_str(), is_selected))
                         {
                             selected_index = i;
                             is_default_world_selected = false;
@@ -376,7 +370,7 @@ namespace
                     // show world file details
                     const spartan::WorldMetadata& w = world_files[selected_index];
 
-                    ImGui::TextWrapped("Title: %s", w.title.empty() ? w.name.c_str() : w.title.c_str());
+                    ImGui::TextWrapped("Name: %s", w.name.c_str());
                     ImGui::Separator();
 
                     if (!w.description.empty())

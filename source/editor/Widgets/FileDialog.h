@@ -154,6 +154,7 @@ private:
     spartan::math::Vector2 m_item_size;
     ImGuiTextFilter m_search_filter;
     std::string m_current_path;
+    std::string m_root_path;
     std::mutex m_mutex_items;
 
     // navigation history

@@ -21,34 +21,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ==================
+#include <string>
+#include <unordered_map>
+#include <functional>
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
+//=============================
+
 namespace spartan
 {
-    enum class DefaultWorld
-    {
-        Showroom,
-        CarPlayground,
-        Forest,
-        LiminalSpace,
-        Sponza,
-        Subway,
-        Minecraft,
-        Basic,
-        Max
-    };
+    class Entity;
 
-    class Game
+    // prefab factory function signature
+    // takes the xml node with prefab attributes and parent entity
+    // returns the created entity (or nullptr on failure)
+    using PrefabCreateFn = std::function<Entity*(pugi::xml_node& node, Entity* parent)>;
+
+    class Prefab
     {
     public:
-        // called once on world shutdown
-        static void Shutdown();
+        // register a prefab type with its factory function
+        static void Register(const std::string& type_name, PrefabCreateFn create_fn);
 
-        // called every frame in play mode
-        static void Tick();
+        // create a prefab from xml node, returns the created entity
+        static Entity* Create(pugi::xml_node& node, Entity* parent);
 
-        // load a default world
-        static void Load(DefaultWorld default_world);
+        // check if a prefab type is registered
+        static bool IsRegistered(const std::string& type_name);
 
-        // register game prefabs (called automatically before world loading)
-        static void RegisterPrefabs();
+    private:
+        static std::unordered_map<std::string, PrefabCreateFn>& GetRegistry();
     };
 }

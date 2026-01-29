@@ -136,11 +136,7 @@ namespace
                 {
                     if (spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
                     {
-                        spartan::ThreadPool::AddTask([]()
-                        {
-                            spartan::World::LoadFromFile(file_dialog_selection_path);
-                        });
-
+                        spartan::World::LoadFromFile(file_dialog_selection_path);
                         show_file_dialog = false;
                     }
                 }
@@ -562,6 +558,21 @@ void MenuBar::Tick()
             buttons_menu::view();
             ImGui::SetCursorPosY(menu_y);
             buttons_menu::help();
+
+            // display current world name
+            {
+                const string& world_name = spartan::World::GetName();
+                if (!world_name.empty())
+                {
+                    ImGui::SameLine(0, padding_x * 2.0f);
+                    ImGui::SetCursorPosY(menu_y);
+                    ImGui::TextDisabled("|");
+                    ImGui::SameLine(0, padding_x);
+                    ImGui::SetCursorPosY(menu_y);
+                    ImGui::TextDisabled("%s", world_name.c_str());
+                }
+            }
+
             buttons_toolbar::tick();
 
             // render window control buttons (minimize, maximize, close)

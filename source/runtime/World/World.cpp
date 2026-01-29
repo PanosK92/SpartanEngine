@@ -23,10 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "World.h"
 #include "Entity.h"
+#include "Prefab.h"
 #include "../Game/Game.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/ProgressTracker.h"
-//#include "../Core/ThreadPool.h" // Take a look at later
+#include "../Core/ThreadPool.h"
 #include "Components/Renderable.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
@@ -51,7 +52,6 @@ namespace spartan
         vector<Entity*> entities;
         vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
-        string world_title;
         string world_description;
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
@@ -62,6 +62,16 @@ namespace spartan
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* light               = nullptr;
+
+        // snapshot for play/stop state restoration (like unity's play mode)
+        struct EntitySnapshot
+        {
+            Vector3 position;
+            Quaternion rotation;
+            Vector3 scale;
+        };
+        unordered_map<uint64_t, EntitySnapshot> play_mode_snapshot;
+        float play_mode_time_of_day = 0.0f;
 
         // entity state tracking - things that change the nature of the entity for rendering
         enum class EntityChange : uint8_t
@@ -123,10 +133,42 @@ namespace spartan
             }
         }
 
+        bool is_world_in_project_directory(const string& world_file_path)
+        {
+            // check if the world is in the project directory (has local assets alongside it)
+            string normalized_path = world_file_path;
+            replace(normalized_path.begin(), normalized_path.end(), '\\', '/');
+            
+            string project_dir = ResourceCache::GetProjectDirectory();
+            replace(project_dir.begin(), project_dir.end(), '\\', '/');
+            
+            // world is in project if path starts with project directory or contains /project/
+            return normalized_path.find(project_dir) != string::npos || 
+                   normalized_path.find("/project/") != string::npos ||
+                   normalized_path.rfind("project/", 0) == 0;
+        }
+
         string world_file_path_to_resource_directory(const string& world_file_path)
         {
             const string world_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path);
-            return FileSystem::GetDirectoryFromFilePath(world_file_path) + "\\" + world_name + "_resources\\";
+            string result;
+
+            // if the world is in the project directory, resources are alongside the world file
+            if (is_world_in_project_directory(world_file_path))
+            {
+                result = FileSystem::GetDirectoryFromFilePath(world_file_path) + "/" + world_name + "_resources/";
+            }
+            else
+            {
+                // otherwise (worlds/, repo root, etc.), resources go to ./project/
+                result = "./" + string(ResourceCache::GetProjectDirectory()) + world_name + "_resources/";
+            }
+
+            // normalize to forward slashes
+            replace(result.begin(), result.end(), '\\', '/');
+            
+            SP_LOG_INFO("World resource directory: %s (from world: %s)", result.c_str(), world_file_path.c_str());
+            return result;
         }
     }
 
@@ -240,7 +282,6 @@ namespace spartan
         camera = nullptr;
         light  = nullptr;
         file_path.clear();
-        world_title.clear();
         world_description.clear();
 
         // clear change tracking
@@ -267,6 +308,21 @@ namespace spartan
         // start
         if (started)
         {
+            // snapshot all entity transforms before simulation begins
+            play_mode_snapshot.clear();
+            for (Entity* entity : entities)
+            {
+                if (!entity->IsTransient())
+                {
+                    EntitySnapshot snapshot;
+                    snapshot.position = entity->GetPositionLocal();
+                    snapshot.rotation = entity->GetRotationLocal();
+                    snapshot.scale    = entity->GetScaleLocal();
+                    play_mode_snapshot[entity->GetObjectId()] = snapshot;
+                }
+            }
+            play_mode_time_of_day = world_time::time_of_day;
+
             for (Entity* entity : entities)
             {
                 entity->Start();
@@ -280,6 +336,21 @@ namespace spartan
             {
                 entity->Stop();
             }
+
+            // restore all entity transforms from snapshot
+            for (Entity* entity : entities)
+            {
+                auto it = play_mode_snapshot.find(entity->GetObjectId());
+                if (it != play_mode_snapshot.end())
+                {
+                    const EntitySnapshot& snapshot = it->second;
+                    entity->SetPositionLocal(snapshot.position);
+                    entity->SetRotationLocal(snapshot.rotation);
+                    entity->SetScaleLocal(snapshot.scale);
+                }
+            }
+            play_mode_snapshot.clear();
+            world_time::time_of_day = play_mode_time_of_day;
         }
 
         ProcessPendingRemovals();
@@ -462,7 +533,6 @@ namespace spartan
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
         world_node.append_attribute("name")        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
-        world_node.append_attribute("title")       = world_title.c_str();
         world_node.append_attribute("description") = world_description.c_str();
 
         // entities
@@ -503,90 +573,141 @@ namespace spartan
 
     bool World::LoadFromFile(const string& file_path_)
     {
-        Shutdown(); // clear existing world
-        file_path = file_path_;
+        // ensure prefabs are registered before loading
+        Game::RegisterPrefabs();
 
-        // start timing
-        const Stopwatch timer;
+        // shutdown synchronously before async loading
+        Shutdown();
 
-        // deserialize the resources before loading the world (XML), as it references them
+        // copy path for the lambda capture
+        string path_copy = file_path_;
+
+        // load asynchronously
+        ThreadPool::AddTask([path_copy]()
         {
-            string directory = world_file_path_to_resource_directory(file_path);
-            vector<string> files = FileSystem::GetFilesInDirectory(directory);
+            ProgressTracker::SetGlobalLoadingState(true);
 
-            // Combined loop for loading, filtered by extension
-            for (string& path : files)
+            file_path = path_copy;
+
+            // start timing
+            const Stopwatch timer;
+
+            // deserialize the resources before loading the world (XML), as it references them
             {
-                if (FileSystem::IsEngineTextureFile(path))
+                string directory = world_file_path_to_resource_directory(file_path);
+                
+                // only load resources if the directory exists (worlds in "worlds/" folder may not have local resources yet)
+                if (FileSystem::Exists(directory) && FileSystem::IsDirectory(directory))
                 {
-                    if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                    vector<string> files = FileSystem::GetFilesInDirectory(directory);
+
+                    // progress for resource loading
+                    uint32_t resource_count = static_cast<uint32_t>(files.size());
+                    if (resource_count > 0)
                     {
-                        texture->PrepareForGpu();
+                        ProgressTracker::GetProgress(ProgressType::World).Start(resource_count, "Loading resources...");
+                    }
+
+                    // load resources in dependency order: textures and meshes first, then materials
+                    // this ensures materials can find their textures when loading
+                    for (string& path : files)
+                    {
+                        if (FileSystem::IsEngineTextureFile(path))
+                        {
+                            if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                            {
+                                texture->PrepareForGpu();
+                            }
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
+                        }
+                        else if (FileSystem::IsEngineMeshFile(path))
+                        {
+                            ResourceCache::Load<Mesh>(path);
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
+                        }
+                    }
+
+                    // second pass: load materials after textures are available
+                    for (string& path : files)
+                    {
+                        if (FileSystem::IsEngineMaterialFile(path))
+                        {
+                            ResourceCache::Load<Material>(path);
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
+                        }
                     }
                 }
-                else if (FileSystem::IsEngineMaterialFile(path))
+            }
+
+            // load xml document
+            pugi::xml_document doc;
+            pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+            if (!result)
+            {
+                SP_LOG_ERROR("Failed to load XML file: %s", result.description());
+                ProgressTracker::SetGlobalLoadingState(false);
+                return;
+            }
+
+            // get world node
+            pugi::xml_node world_node = doc.child("World");
+            if (!world_node)
+            {
+                SP_LOG_ERROR("No 'World' node found.");
+                ProgressTracker::SetGlobalLoadingState(false);
+                return;
+            }
+
+            // read metadata
+            world_description = world_node.attribute("description").as_string();
+
+            // entities
+            {
+                // get node
+                pugi::xml_node entities_node = world_node.child("Entities");
+                if (!entities_node)
                 {
-                    ResourceCache::Load<Material>(path);
+                    SP_LOG_ERROR("No 'Entities' node found.");
+                    ProgressTracker::SetGlobalLoadingState(false);
+                    return;
                 }
-                else if (FileSystem::IsEngineMeshFile(path))
+
+                // count root entities for progress tracking
+                uint32_t root_entity_count = 0;
+                for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
                 {
-                    ResourceCache::Load<Mesh>(path);
+                    ++root_entity_count;
+                }
+
+                // progress tracking
+                ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading entities...");
+
+                // load root entities (they will load their descendants recursively)
+                for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+                {
+                    Entity* entity = World::CreateEntity();
+                    entity->Load(entity_node);
+                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
                 }
             }
-        }
 
-        // load xml document
-        pugi::xml_document doc;
-        pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-        if (!result)
-        {
-            SP_LOG_ERROR("Failed to load XML file: %s", result.description());
-            return false;
-        }
+            // report time
+            SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
-        // get world node
-        pugi::xml_node world_node = doc.child("World");
-        if (!world_node)
-        {
-            SP_LOG_ERROR("No 'World' node found.");
-            return false;
-        }
-
-        // read metadata
-        world_title       = world_node.attribute("title").as_string();
-        world_description = world_node.attribute("description").as_string();
-
-        // entities
-        {
-            // get node
-            pugi::xml_node entities_node = world_node.child("Entities");
-            if (!entities_node)
-            {
-                SP_LOG_ERROR("No 'Entities' node found.");
-                return false;
-            }
-
-            // count root entities for progress tracking
-            uint32_t root_entity_count = 0;
-            for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
-            {
-                ++root_entity_count;
-            }
-
-            // progress tracking
-            ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
-
-            // load root entities (they will load their descendants recursively)
-            for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
-            {
-                Entity* entity = World::CreateEntity();
-                entity->Load(entity_node);
-                ProgressTracker::GetProgress(ProgressType::World).JobDone();
-            }
-        }
-
-        // report time
-        SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
+            ProgressTracker::SetGlobalLoadingState(false);
+        });
 
         return true;
     }
@@ -653,8 +774,20 @@ namespace spartan
         lock_guard<mutex> lock(entity_access_mutex);
 
         entities_out.clear();
-        entities_out.reserve(entities.size());
+        entities_out.reserve(entities.size() + pending_add.size());
+        
+        // include committed entities
         for (Entity* entity : entities)
+        {
+            if (!entity->GetParent())
+            {
+                entities_out.emplace_back(entity);
+            }
+        }
+        
+        // also include pending entities (important during world loading when prefabs
+        // need to reference other entities that haven't been committed yet)
+        for (Entity* entity : pending_add)
         {
             if (!entity->GetParent())
             {
@@ -784,16 +917,6 @@ namespace spartan
         world_time::time_of_day = time_of_day;
     }
 
-    const string& World::GetTitle()
-    {
-        return world_title;
-    }
-
-    void World::SetTitle(const string& title)
-    {
-        world_title = title;
-    }
-
     const string& World::GetDescription()
     {
         return world_description;
@@ -826,14 +949,7 @@ namespace spartan
         // read metadata
         metadata.file_path   = world_file_path;
         metadata.name        = world_node.attribute("name").as_string();
-        metadata.title       = world_node.attribute("title").as_string();
         metadata.description = world_node.attribute("description").as_string();
-
-        // if title is empty, use the name as fallback
-        if (metadata.title.empty())
-        {
-            metadata.title = metadata.name;
-        }
 
         return true;
     }

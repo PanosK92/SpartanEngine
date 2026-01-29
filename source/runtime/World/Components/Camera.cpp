@@ -713,6 +713,7 @@ namespace spartan
                 // entity
                 m_flashlight = World::CreateEntity();
                 m_flashlight->SetObjectName("flashlight");
+                m_flashlight->SetTransient(true); // don't serialize - dynamically created
                 m_flashlight->SetParent(GetEntity());
                 m_flashlight->SetRotationLocal(Quaternion::Identity);
 

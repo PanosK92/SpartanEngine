@@ -489,6 +489,7 @@ namespace spartan
                     // always create packed texture - use material properties as fallback when texture data is unavailable
                     {
                         // create packed texture
+                        string packed_name = tex_name + ".tex_packed";
                         texture_packed = make_shared<RHI_Texture>
                         (
                             RHI_Texture_Type::Type2D,
@@ -500,7 +501,13 @@ namespace spartan
                             RHI_Texture_Srv | RHI_Texture_Compress,
                             tex_name.c_str()
                         );
-                        texture_packed->SetResourceName(tex_name + ".tex_packed");
+                        texture_packed->SetResourceName(packed_name);
+                        
+                        // set resource file path so the texture can be cached and properly referenced by materials
+                        // the path matches what World::SaveToFile uses when saving textures
+                        string packed_path = string(ResourceCache::GetProjectDirectory()) + packed_name + ".texture";
+                        texture_packed->SetResourceFilePath(packed_path);
+                        
                         texture_packed->AllocateMip();
         
                         const size_t packed_size = max_width * max_height * 4;

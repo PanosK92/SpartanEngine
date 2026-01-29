@@ -64,6 +64,7 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
     m_callback_on_item_clicked        = nullptr;
     m_callback_on_item_double_clicked = nullptr;
     m_current_path                    = ResourceCache::GetProjectDirectory();
+    m_root_path                       = ".."; // allow navigation to parent (repo root) for worlds folder access
     m_sort_column                     = Sort_Name;
     m_sort_ascending                  = true;
     m_view_mode                       = View_Grid;
@@ -119,7 +120,19 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
         }
         if (file_path)
         {
-            (*file_path) = FileSystem::GetDirectoryFromFilePath(m_current_path) + string(m_input_box);
+            // get the directory - if m_current_path is a file, get its parent directory
+            string dir = m_current_path;
+            if (FileSystem::IsFile(m_current_path))
+            {
+                dir = FileSystem::GetDirectoryFromFilePath(m_current_path);
+            }
+            
+            // ensure there's a separator between directory and filename
+            if (!dir.empty() && dir.back() != '/' && dir.back() != '\\')
+            {
+                dir += "/";
+            }
+            (*file_path) = dir + m_input_box;
         }
     }
 
@@ -170,7 +183,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         ImGui::SameLine();
 
         // breadcrumb navigation
-        const char* root_path = ResourceCache::GetProjectDirectory();
+        const char* root_path = m_root_path.c_str();
 
         char accumulated_path[1024];
         accumulated_path[0] = '\0';
@@ -181,11 +194,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         // show root directory button if not at root
         if (strcmp(m_current_path.c_str(), root_path) != 0)
         {
-            const char* root_label = FileSystem::GetFileNameFromFilePath(root_path).c_str();
-            if (!root_label || root_label[0] == '\0')
-                root_label = "Root";
-
-            if (ImGuiSp::button(root_label))
+            if (ImGuiSp::button(".."))
             {
                 m_current_path = root_path;
                 m_history.push_back(m_current_path);
@@ -205,6 +214,13 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
         while (token)
         {
+            // skip ".." tokens in path display
+            if (strcmp(token, "..") == 0)
+            {
+                token = strtok_s(nullptr, delimiters, &context);
+                continue;
+            }
+
             if (first)
             {
                 snprintf(accumulated_path, sizeof(accumulated_path), "%s/", token);

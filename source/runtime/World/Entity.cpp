@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "Entity.h"
+#include "Prefab.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/Physics.h"
@@ -187,6 +188,18 @@ namespace spartan
                 node.append_attribute("scale") = ss.str().c_str();
             }
 
+            // if this entity has prefab data, save the prefab reference instead of components/children
+            if (HasPrefabData())
+            {
+                pugi::xml_node prefab_node = node.append_child("prefab");
+                prefab_node.append_attribute("type") = m_prefab_type.c_str();
+                for (const auto& [key, value] : m_prefab_attributes)
+                {
+                    prefab_node.append_attribute(key.c_str()) = value.c_str();
+                }
+                return; // don't save components or children - prefab will recreate them
+            }
+
             // components
             for (shared_ptr<Component>& component : m_components)
             {
@@ -199,12 +212,21 @@ namespace spartan
             }
         }
 
-        // children
+        // children (skip transient entities - they are dynamically created and shouldn't be serialized)
         for (Entity* child : m_children)
         {
+            if (child->IsTransient())
+                continue;
+
             pugi::xml_node child_node = node.append_child("Entity");
             child->Save(child_node);
         }
+    }
+
+    void Entity::SetPrefabData(const string& type, const unordered_map<string, string>& attributes)
+    {
+        m_prefab_type       = type;
+        m_prefab_attributes = attributes;
     }
 
     void Entity::Load(pugi::xml_node& node)
@@ -233,12 +255,29 @@ namespace spartan
                 ss >> m_scale_local.x >> m_scale_local.y >> m_scale_local.z;
             }
 
-            // components
+            // components and prefabs
             for (pugi::xml_node component_node = node.first_child(); component_node; component_node = component_node.next_sibling())
             {
                 string type_name = component_node.name();
-                if (std::string(component_node.name()) == "Entity")
-                    continue; // skip children
+                if (type_name == "Entity")
+                    continue; // skip children, handled below
+
+                // check for prefab node - creates complex entity hierarchies
+                if (type_name == "prefab")
+                {
+                    // store prefab data for saving later
+                    string prefab_type = component_node.attribute("type").as_string();
+                    unordered_map<string, string> prefab_attributes;
+                    for (pugi::xml_attribute attr = component_node.first_attribute(); attr; attr = attr.next_attribute())
+                    {
+                        prefab_attributes[attr.name()] = attr.value();
+                    }
+                    SetPrefabData(prefab_type, prefab_attributes);
+
+                    // create the prefab
+                    Prefab::Create(component_node, this);
+                    continue;
+                }
 
                 ComponentType type = Component::StringToType(type_name);
                 if (type != ComponentType::Max)
