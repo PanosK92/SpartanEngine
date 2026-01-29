@@ -1616,6 +1616,49 @@ namespace spartan
                 draw_legend_item(color_slip_ratio, "slip ratio - wheel spin vs vehicle speed");
             }
 
+            // temperature table
+            if (ImGui::CollapsingHeader("Temperature", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                if (ImGui::BeginTable("temps", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+                {
+                    ImGui::TableSetupColumn("Wheel");
+                    ImGui::TableSetupColumn("Tire C");
+                    ImGui::TableSetupColumn("Grip %");
+                    ImGui::TableSetupColumn("Brake C");
+                    ImGui::TableSetupColumn("Brake Eff %");
+                    ImGui::TableHeadersRow();
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        WheelIndex wheel = static_cast<WheelIndex>(i);
+                        float tire_temp  = physics->GetWheelTemperature(wheel);
+                        float grip       = physics->GetWheelTempGripFactor(wheel);
+                        float brake_temp = physics->GetWheelBrakeTemp(wheel);
+                        float brake_eff  = physics->GetWheelBrakeEfficiency(wheel);
+
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn(); ImGui::Text("%s", wheel_names[i]);
+                        ImGui::TableNextColumn();
+                        {
+                            ImVec4 col = (tire_temp > 110) ? ImVec4(1, 0.5f, 0, 1) :
+                                         (tire_temp < 70)  ? ImVec4(0.5f, 0.5f, 1, 1) :
+                                         ImVec4(0.2f, 1, 0.2f, 1);
+                            ImGui::TextColored(col, "%.0f", tire_temp);
+                        }
+                        ImGui::TableNextColumn(); ImGui::Text("%.0f", grip * 100.0f);
+                        ImGui::TableNextColumn();
+                        {
+                            ImVec4 col = (brake_temp > 700) ? ImVec4(1, 0, 0, 1) :
+                                         (brake_temp > 400) ? ImVec4(1, 0.5f, 0, 1) :
+                                         ImVec4(0.8f, 0.8f, 0.8f, 1);
+                            ImGui::TextColored(col, "%.0f", brake_temp);
+                        }
+                        ImGui::TableNextColumn(); ImGui::Text("%.0f", brake_eff * 100.0f);
+                    }
+                    ImGui::EndTable();
+                }
+            }
+
             // debug toggles
             if (ImGui::CollapsingHeader("Debug"))
             {
