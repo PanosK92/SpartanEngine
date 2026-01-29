@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Display/Display.h"
 #include "../Game/Game.h"
 #include "../Memory/Allocator.h"
+#include "../Testing/SmokeTest.h"
 #include "../RHI/RHI_Device.h"
 #include "../Commands/Console/ConsoleCommands.h"
 #include "Settings.h"
@@ -51,19 +52,6 @@ namespace spartan
     {
         vector<string> arguments;
         uint32_t flags = 0;
-
-        void write_ci_test_file(const uint32_t value)
-        {
-            if (Engine::HasArgument("-ci_test"))
-            {
-                ofstream file("ci_test.txt"); 
-                if (file.is_open())
-                {
-                    file << value;
-                    file.close();
-                }
-            }
-        }
     }
 
     void Engine::Initialize(const vector<string>& args)
@@ -91,6 +79,7 @@ namespace spartan
             Renderer::Initialize();
             World::Initialize();
             Settings::Initialize();
+            SmokeTest::Initialize();
         }
 
         // post-initialize
@@ -108,7 +97,6 @@ namespace spartan
         }
 
         SP_LOG_INFO("%s has been initialized. Duration %.1f sec", version::c_str(), timer_initialize.GetElapsedTimeSec());
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION_STATIC(write_ci_test_file(0);));
     }
 
     void Engine::Shutdown()
@@ -145,6 +133,7 @@ namespace spartan
         World::Tick();
         Renderer::Tick();
         Allocator::Tick();
+        SmokeTest::Tick();
 
         // post-tick
         Timer::PostTick();
