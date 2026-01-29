@@ -82,18 +82,22 @@ namespace spartan
             m_scratch_buffer_size = 0;
         }
 
-        if (m_instance_buffer)
+        // destroy double-buffered instance and staging buffers
+        for (uint32_t i = 0; i < buffer_count; i++)
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_instance_buffer);
-            m_instance_buffer      = nullptr;
-            m_instance_buffer_size = 0;
-        }
+            if (m_instance_buffer[i])
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_instance_buffer[i]);
+                m_instance_buffer[i]      = nullptr;
+                m_instance_buffer_size[i] = 0;
+            }
 
-        if (m_staging_buffer)
-        {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer);
-            m_staging_buffer      = nullptr;
-            m_staging_buffer_size = 0;
+            if (m_staging_buffer[i])
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer[i]);
+                m_staging_buffer[i]      = nullptr;
+                m_staging_buffer_size[i] = 0;
+            }
         }
 
         m_size = 0;
@@ -214,6 +218,11 @@ namespace spartan
     {
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Top);
         SP_ASSERT(!instances.empty());
+
+        // use double buffering to avoid frame-to-frame synchronization issues
+        // while frame N's GPU is reading from buffer set 0, frame N+1's CPU writes to buffer set 1
+        uint32_t buf_idx = m_buffer_index;
+        m_buffer_index   = (m_buffer_index + 1) % buffer_count;
     
         // define instances (static to avoid per-frame heap allocation - resize keeps capacity)
         static vector<VkAccelerationStructureInstanceKHR> vk_instances;
@@ -230,41 +239,41 @@ namespace spartan
             memcpy(&vk_inst.transform.matrix, instance.transform.data(), sizeof(float) * 12);
         }
     
-        // reuse or create staging buffer
+        // reuse or create staging buffer for current frame
         const size_t data_size = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size();
-        if (!m_staging_buffer || data_size > m_staging_buffer_size)
+        if (!m_staging_buffer[buf_idx] || data_size > m_staging_buffer_size[buf_idx])
         {
-            if (m_staging_buffer)
+            if (m_staging_buffer[buf_idx])
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer[buf_idx]);
             }
             VkBufferUsageFlags staging_usage         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
             VkMemoryPropertyFlags staging_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-            RHI_Device::MemoryBufferCreate(m_staging_buffer, data_size, staging_usage, staging_properties, nullptr, (m_object_name + "_staging").c_str());
-            m_staging_buffer_size = data_size;
+            RHI_Device::MemoryBufferCreate(m_staging_buffer[buf_idx], data_size, staging_usage, staging_properties, nullptr, (m_object_name + "_staging_" + to_string(buf_idx)).c_str());
+            m_staging_buffer_size[buf_idx] = data_size;
         }
 
         // copy data to staging buffer
-        void* mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_staging_buffer);
+        void* mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_staging_buffer[buf_idx]);
         memcpy(mapped_data, vk_instances.data(), data_size);
     
-        // reuse or create instance buffer
+        // reuse or create instance buffer for current frame
         const uint64_t alignment = max(static_cast<uint64_t>(16), RHI_Device::PropertyGetMinStorageBufferOffsetAlignment());
         const size_t required_instance_size = data_size + alignment - 1; // pad for alignment
-        if (!m_instance_buffer || required_instance_size > m_instance_buffer_size)
+        if (!m_instance_buffer[buf_idx] || required_instance_size > m_instance_buffer_size[buf_idx])
         {
-            if (m_instance_buffer)
+            if (m_instance_buffer[buf_idx])
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_instance_buffer);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_instance_buffer[buf_idx]);
             }
             VkBufferUsageFlags instance_usage         = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
             VkMemoryPropertyFlags instance_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-            RHI_Device::MemoryBufferCreate(m_instance_buffer, required_instance_size, instance_usage, instance_properties, nullptr, (m_object_name + "_instances").c_str());
-            m_instance_buffer_size = required_instance_size;
+            RHI_Device::MemoryBufferCreate(m_instance_buffer[buf_idx], required_instance_size, instance_usage, instance_properties, nullptr, (m_object_name + "_instances_" + to_string(buf_idx)).c_str());
+            m_instance_buffer_size[buf_idx] = required_instance_size;
         }
     
         // compute aligned offset
-        VkDeviceAddress base_address    = RHI_Device::GetBufferDeviceAddress(m_instance_buffer);
+        VkDeviceAddress base_address    = RHI_Device::GetBufferDeviceAddress(m_instance_buffer[buf_idx]);
         VkDeviceAddress aligned_address = (base_address + alignment - 1) & ~(alignment - 1);
         uint64_t dst_offset             = aligned_address - base_address;
     
@@ -272,7 +281,7 @@ namespace spartan
         VkBufferCopy region = {};
         region.size         = data_size;
         region.dstOffset    = dst_offset;
-        vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(m_staging_buffer), static_cast<VkBuffer>(m_instance_buffer), 1, &region);
+        vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(m_staging_buffer[buf_idx]), static_cast<VkBuffer>(m_instance_buffer[buf_idx]), 1, &region);
     
         // barrier: make copy available for build
         // the as build stage reads instance data via shader read, not acceleration structure read
