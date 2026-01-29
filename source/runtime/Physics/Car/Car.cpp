@@ -380,7 +380,9 @@ namespace spartan
             return;
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
-            physics->SetBodyTransform(m_spawn_position, math::Quaternion::Identity);
+            // lift the car above ground to prevent collision issues on reset
+            math::Vector3 reset_position = m_spawn_position + math::Vector3(0.0f, 0.5f, 0.0f);
+            physics->SetBodyTransform(reset_position, math::Quaternion::Identity);
             m_chase_camera.initialized = false;
         }
     }
@@ -754,7 +756,7 @@ namespace spartan
         // osd hint
         if (m_is_occupied)
         {
-            Renderer::DrawString("WASD/Gamepad: Move | E: Enter/Exit | V/RB: Change View | R/B: Reset | RS: Look Around", 
+            Renderer::DrawString("R2: Gas | L2: Brake | O: Handbrake | Triangle: View | L1/R1: Shift | X: Reset", 
                                math::Vector2(0.005f, 0.98f));
         }
     }
@@ -795,7 +797,7 @@ namespace spartan
             steering = 1.0f;
 
         // handbrake
-        float handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_South)) ? 1.0f : 0.0f;
+        float handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_East)) ? 1.0f : 0.0f;
 
         physics->SetVehicleThrottle(throttle);
         physics->SetVehicleBrake(brake);
@@ -829,9 +831,19 @@ namespace spartan
         }
 
         // reset to spawn
-        if (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_East))
+        if (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_South))
         {
             ResetToSpawn();
+        }
+
+        // manual gear shifting (gran turismo style: L1 down, R1 up)
+        if (Input::GetKeyDown(KeyCode::Left_Shoulder))
+        {
+            physics->ShiftDown();
+        }
+        if (Input::GetKeyDown(KeyCode::Right_Shoulder))
+        {
+            physics->ShiftUp();
         }
 
         // haptic feedback
@@ -1086,7 +1098,8 @@ namespace spartan
         if (!m_is_occupied)
             return;
 
-        if (Input::GetKeyDown(KeyCode::V) || Input::GetKeyDown(KeyCode::Right_Shoulder))
+        // triangle for view change (gran turismo style)
+        if (Input::GetKeyDown(KeyCode::V) || Input::GetKeyDown(KeyCode::Button_North))
         {
             CycleView();
         }
