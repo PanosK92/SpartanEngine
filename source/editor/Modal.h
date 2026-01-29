@@ -77,9 +77,9 @@ public:
     /**
      * @brief Renders a modal header with optional indentation control.
      * @param text The header text to display.
-     * @param indentAfter Whether to indent after the header.
-     * @param unindend_Before Whether to unindent before the header.
+     * @param indent_After Whether to indent after the header.
+     * @param unindent_Before Whether to unindent before the header.
      */
-    static void ModalHeader(const std::string& text, bool indentAfter = true, bool unindend_Before = false);
+    static void ModalHeader(const std::string& text, bool indent_After = true, bool unindent_Before = false);
 
 };

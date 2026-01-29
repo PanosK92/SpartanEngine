@@ -90,7 +90,7 @@ namespace
         float target_scale = is_active ? 1.0f : 0.0f;
         popup_animation    = ImLerp(popup_animation, target_scale, ImGui::GetIO().DeltaTime * animation_speed);
     
-        if (popup_animation < 0.001f)
+        if (popup_animation < 0.006f)
         {
             return;
         }
@@ -146,13 +146,18 @@ namespace
             float avail_width = ImGui::GetContentRegionAvail().x;
             float offset      = (avail_width - total_width) * 0.5f;
             if (offset > 0.0f) { ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset); }
-    
+
             // Confirm button
             if (ImGuiSp::button(current_spec.confirm_text.c_str(), ImVec2(button_width, 0)))
             {
                 last_result = Modal::Result::Confirmed;
                 is_active   = false;
-    
+
+                // Immediately clear active id and reset animations to restore editor UI instantly
+                ImGui::ClearActiveID();
+                dim_animation   = 0.0f;
+                popup_animation = 0.0f;
+
                 if (on_confirm_callback)
                 {
                     on_confirm_callback();
@@ -167,36 +172,40 @@ namespace
                 {
                     last_result = Modal::Result::Cancelled;
                     is_active   = false;
-    
-                    if (on_cancel_callback)
-                    {
-                        on_cancel_callback();
-                    }
+
+                    // Immediately clear active id and reset animations to restore editor UI instantly
+                    ImGui::ClearActiveID();
+                    dim_animation   = 0.0f;
+                    popup_animation = 0.0f;
+
+                    if (on_cancel_callback) { on_cancel_callback(); }
                 }
             }
     
-            // Handle Escape key to cancel
+            // Handle Escape key to cancel (fallback inside window)
             if (ImGui::IsKeyPressed(ImGuiKey_Escape) && current_spec.show_cancel_button)
             {
                 last_result = Modal::Result::Cancelled;
                 is_active   = false;
-    
-                if (on_cancel_callback)
-                {
-                    on_cancel_callback();
-                }
+
+                ImGui::ClearActiveID();
+                dim_animation   = 0.0f;
+                popup_animation = 0.0f;
+
+                if (on_cancel_callback) { on_cancel_callback(); }
             }
-    
+
             // Handle Enter key to confirm
             if (ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter))
             {
                 last_result = Modal::Result::Confirmed;
                 is_active   = false;
-    
-                if (on_confirm_callback)
-                {
-                    on_confirm_callback();
-                }
+
+                ImGui::ClearActiveID();
+                dim_animation   = 0.0f;
+                popup_animation = 0.0f;
+
+                if (on_confirm_callback) { on_confirm_callback(); }
             }
         }
 
@@ -218,12 +227,13 @@ void Modal::Initialize(Editor* editor_in)
 
 void Modal::Show(const ModalPanel& spec)
 {
-    current_spec        = spec;
-    is_active           = true;
-    should_open         = true;
-    last_result         = Result::None;
-    on_confirm_callback = nullptr;
-    on_cancel_callback  = nullptr;
+    current_spec = spec;
+    is_active    = true;
+    should_open  = true;
+    last_result  = Result::None;
+    // Do NOT clear callbacks here: ShowConfirmation sets them before calling Show.
+    // on_confirm_callback = nullptr;
+    // on_cancel_callback  = nullptr;
 }
 
 void Modal::ShowMessage(const string& title, const string& message)
@@ -259,11 +269,13 @@ void Modal::Tick()
         last_result = Result::Cancelled;
         is_active   = false;
 
-        if (on_cancel_callback)
-        {
-            on_cancel_callback();
-        }
-        }
+        // Immediately clear active id and reset animations to restore editor UI instantly
+        ImGui::ClearActiveID();
+        dim_animation   = 0.0f;
+        popup_animation = 0.0f;
+
+        if (on_cancel_callback) { on_cancel_callback(); }
+    }
 
     // Draw the dimmed background first (behind everything except the popup)
     DrawDimmedBackground();
@@ -283,16 +295,19 @@ bool Modal::IsActive() { return is_active || dim_animation > 0.001f; }
 
 Modal::Result Modal::GetLastResult() { return last_result; }
 
-void Modal::ModalHeader(const std::string& text, bool indentAfter, bool unindend_Before)
+void Modal::ModalHeader(const std::string& text, bool indent_After, bool unindent_Before)
 {
-    if (unindend_Before) ImGui::Unindent();
+    if (unindent_Before) ImGui::Unindent();
     ImGui::TextColored(ImColor(170, 170, 170).Value, text.c_str());
     ImGui::Separator();
-    if (indentAfter) ImGui::Indent();
+    if (indent_After) ImGui::Indent();
 }
 
 void Modal::Close()
 {
     is_active   = false;
     last_result = Result::Cancelled;
+    ImGui::ClearActiveID();
+    dim_animation   = 0.0f;
+    popup_animation = 0.0f;
 }
