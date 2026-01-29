@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2026 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas & Thomas Ray
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,18 +23,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // FWD DECLARATIONS =
 class Editor;
-extern void ImAnimDemoWindow();
 //===================
 
-class MenuBar
+/*
+class StatusBar
 {
 public:
     static void Initialize(Editor* editor);
     static void Tick();
 
-    static void ShowWorldSaveDialog();
-    static void ShowWorldLoadDialog();
-
     static float GetPaddingX() { return 14.0f; }
     static float GetPaddingY() { return 8.0f; }
 };
+*/

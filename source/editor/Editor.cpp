@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/ImGui_Extension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl3.h"
+#include "ImGui/Source/Animation/im_anim.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
 #include "Widgets/Style.h"
@@ -40,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/ResourceViewer.h"
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
+#include "Widgets/Shadows.h"
 //===============================================
 
 //= NAMESPACES =====
@@ -107,6 +109,7 @@ Editor::Editor(const vector<string>& args)
     spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
     GeneralWindows::Initialize(this);
+    Modal::Initialize(this);
 }
 
 Editor::~Editor()
@@ -135,6 +138,10 @@ void Editor::Tick()
             {
                 ImGui_ImplSDL3_NewFrame();
                 ImGui::NewFrame();
+
+                // iam animation
+                iam_update_begin_frame(); 
+                iam_clip_update(ImGui::GetIO().DeltaTime);
             }
 
             // engine
@@ -155,6 +162,13 @@ void Editor::Tick()
 
                 // various windows that don't belong to a certain widget
                 GeneralWindows::Tick();
+
+                // Modal popup system (draws on top of everything when shown)
+                Modal::Tick();
+
+                // Draw all pending shadows AFTER widgets queue them, but BEFORE ImGui::Render()
+                // This draws to the background draw list so shadows appear behind windows
+                spartan::Shadow::FlushPendingShadows();
             }
         }
 
