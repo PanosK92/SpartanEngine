@@ -41,10 +41,10 @@ namespace spartan
     {
         array<string, 6> m_standard_resource_directories;
         char m_project_directory[256] = {};
-        vector<shared_ptr<IResource>> m_resources;
+        vector<Ref<IResource>> m_resources;
         mutex m_mutex;
         bool use_root_shader_directory = false;
-        unordered_map<IconType, shared_ptr<RHI_Texture>> m_default_icons;
+        unordered_map<IconType, Ref<RHI_Texture>> m_default_icons;
     }
 
     void ResourceCache::Initialize()
@@ -130,23 +130,23 @@ namespace spartan
         m_default_icons.clear();
     }
 
-    shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
+    Ref<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
     {
         lock_guard<mutex> guard(m_mutex);
-        for (shared_ptr<IResource>& resource : m_resources)
+        for (Ref<IResource>& resource : m_resources)
         {
             if (name == resource->GetObjectName())
                 return resource;
         }
-        static shared_ptr<IResource> empty;
+        static Ref<IResource> empty;
         return empty;
     }
 
-    vector<shared_ptr<IResource>> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
+    vector<Ref<IResource>> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
     {
         lock_guard<mutex> guard(m_mutex);
-        vector<shared_ptr<IResource>> resources;
-        for (shared_ptr<IResource>& resource : m_resources)
+        vector<Ref<IResource>> resources;
+        for (Ref<IResource>& resource : m_resources)
         {
             if (resource->GetResourceType() == type || type == ResourceType::Max)
             {
@@ -160,11 +160,11 @@ namespace spartan
     {
         lock_guard<mutex> guard(m_mutex);
         uint64_t size = 0;
-        for (shared_ptr<IResource>& resource : m_resources)
+        for (Ref<IResource>& resource : m_resources)
         {
             if (resource->GetResourceType() == type || type == ResourceType::Max)
             {
-                if (SpartanObject* object = dynamic_cast<SpartanObject*>(resource.get()))
+                if (SpartanObject* object = dynamic_cast<SpartanObject*>(resource.Get()))
                 {
                     size += object->GetObjectSize();
                 }
@@ -222,7 +222,7 @@ namespace spartan
         return "Data";
     }
 
-    vector<shared_ptr<IResource>>& ResourceCache::GetResources()
+    vector<Ref<IResource>>& ResourceCache::GetResources()
     {
         return m_resources;
     }
@@ -247,8 +247,8 @@ namespace spartan
         auto it = m_default_icons.find(type);
 
         if (it != m_default_icons.end())
-            return it->second.get();
+            return it->second.Get();
     
-        return m_default_icons[IconType::File].get();
+        return m_default_icons[IconType::File].Get();
     }
 }

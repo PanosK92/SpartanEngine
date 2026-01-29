@@ -77,7 +77,7 @@ namespace spartan
         Entity* default_light_directional = nullptr;
         Entity* default_metal_cube        = nullptr;
         Entity* default_water             = nullptr;
-        std::vector<std::shared_ptr<Mesh>> meshes;
+        vector<Ref<Mesh>> meshes;
         //==========================================
 
         //= WORLD DISPATCH TABLES =====================================================================================================
@@ -213,7 +213,7 @@ namespace spartan
                 default_metal_cube->SetPosition(position);
 
                 // pbr material
-                shared_ptr<Material> material = make_shared<Material>();
+                Ref<Material> material = CreateRef<Material>();
                 material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
                 material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
                 material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
@@ -235,7 +235,7 @@ namespace spartan
             // flight helmet model
             void flight_helmet(const Vector3& position)
             {
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("flight_helmet");
@@ -251,7 +251,7 @@ namespace spartan
             // damaged helmet model
             void damaged_helmet(const Vector3& position)
             {
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("damaged_helmet");
@@ -268,7 +268,7 @@ namespace spartan
             void material_ball(const Vector3& position)
             {
                 uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf", flags))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf", flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("material_ball");
@@ -290,7 +290,7 @@ namespace spartan
                 water->SetPosition(position);
 
                 // water material
-                shared_ptr<Material> material = make_shared<Material>();
+                Ref<Material> material = CreateRef<Material>();
                 {
                     material->SetResourceName("water" + string(EXTENSION_MATERIAL));
                     material->SetColor(color);
@@ -325,7 +325,7 @@ namespace spartan
                     {
                         string name = "tile_" + to_string(tile_index);
 
-                        shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                        Ref<Mesh> mesh = meshes.emplace_back(CreateRef<Mesh>());
                         mesh->SetObjectName(name);
                         mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                         mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
@@ -338,7 +338,7 @@ namespace spartan
 
                         if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
                         {
-                            renderable->SetMesh(mesh.get());
+                            renderable->SetMesh(mesh.Get());
                             renderable->SetMaterial(material);
                             renderable->SetFlag(RenderableFlags::CastsShadows, false);
                         }
@@ -364,6 +364,1631 @@ namespace spartan
     // register prefabs (called once before any world file is loaded)
     namespace
     {
+        // configuration for car creation
+        struct Config
+        {
+            Vector3 position        = Vector3::Zero;
+            bool    drivable        = false;  // creates vehicle physics with wheels
+            bool    static_physics  = false;  // kinematic physics on the body (for display)
+            bool    show_telemetry  = false;  // shows vehicle telemetry hud
+            bool    camera_follows  = false;  // attach camera to follow the car
+        };
+
+        // state for drivable cars
+        Entity* vehicle_entity = nullptr;
+        bool    show_telemetry = false;
+
+        // chase camera state - gran turismo 7 style
+        namespace chase_camera
+        {
+            Vector3 position     = Vector3::Zero;  // smoothed camera world position
+            Vector3 velocity     = Vector3::Zero;  // velocity for smooth damping
+            float   yaw          = 0.0f;           // smoothed yaw angle (radians)
+            float   yaw_bias     = 0.0f;           // manual horizontal camera rotation from right stick (radians)
+            float   pitch_bias   = 0.0f;           // manual vertical camera rotation from right stick (radians)
+            float   speed_factor = 0.0f;           // smoothed speed factor for dynamic adjustments
+            bool    initialized  = false;          // first frame initialization flag
+            
+            // base tuning parameters
+            constexpr float distance_base      = 5.0f;   // base distance behind the car
+            constexpr float distance_min       = 4.0f;   // minimum distance at high speed (camera pulls in)
+            constexpr float height_base        = 1.5f;   // base height above the car
+            constexpr float height_min         = 1.2f;   // minimum height at high speed (camera drops)
+            constexpr float position_smoothing = 0.15f;  // position smooth time (lower = faster, snappier)
+            constexpr float rotation_smoothing = 4.0f;   // rotation catch-up speed (higher = faster)
+            constexpr float speed_smoothing    = 2.0f;   // how fast speed factor changes
+            constexpr float look_offset_up     = 0.6f;   // look slightly above car center
+            constexpr float look_ahead_amount  = 2.5f;   // how far ahead to look based on velocity
+            constexpr float speed_reference    = 50.0f;  // speed (m/s) at which effects are maxed (~180 km/h)
+            
+            // right stick orbit parameters  
+            constexpr float orbit_bias_speed   = 1.5f;   // how fast the right stick rotates the camera (radians/sec)
+            constexpr float orbit_bias_decay   = 4.0f;   // how fast the camera returns to center when stick released
+            constexpr float yaw_bias_max       = math::pi; // maximum yaw angle (180 degrees, can look behind)
+            constexpr float pitch_bias_max     = 1.2f;   // maximum pitch angle (~70 degrees)
+
+            // smooth damp - critically damped spring for smooth following
+            Vector3 smooth_damp(const Vector3& current, const Vector3& target, Vector3& velocity, float smooth_time, float dt)
+            {
+                float omega = 2.0f / std::max(smooth_time, 0.0001f);
+                float x = omega * dt;
+                float exp_factor = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
+                Vector3 delta = current - target;
+                Vector3 temp = (velocity + omega * delta) * dt;
+                velocity = (velocity - omega * temp) * exp_factor;
+                return target + (delta + temp) * exp_factor;
+            }
+
+            float lerp_angle(float a, float b, float t)
+            {
+                // handle wrap-around for angles
+                float diff = fmodf(b - a + math::pi * 3.0f, math::pi * 2.0f) - math::pi;
+                return a + diff * t;
+            }
+        }
+
+        // track whether player is currently operating the car (independent of camera parenting)
+        bool is_in_vehicle = false;
+
+        // spawn position for reset functionality
+        Vector3 spawn_position = Vector3::Zero;
+
+        // helper: loads car body mesh with material tweaks
+        // out_excluded_entities: if remove_wheels is true, returns entities that were disabled (for collision exclusion)
+        Entity* create_body(bool remove_wheels, vector<Entity*>* out_excluded_entities = nullptr)
+        {
+            uint32_t mesh_flags  = Mesh::GetDefaultFlags();
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
+
+            Ref<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags);
+            if (!mesh_car)
+                return nullptr;
+
+            Entity* car_entity = mesh_car->GetRootEntity();
+            car_entity->SetObjectName("ferrari_laferrari");
+            car_entity->SetScale(2.0f);
+
+            if (remove_wheels)
+            {
+                auto to_lower = [](string s)
+                {
+                    transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return tolower(c); });
+                    return s;
+                };
+
+                vector<Entity*> descendants;
+                car_entity->GetDescendants(&descendants);
+
+                for (Entity* descendant : descendants)
+                {
+                     string entity_name = to_lower(descendant->GetObjectName());
+            
+                     if (entity_name.find("tire 1")    != string::npos ||
+                         entity_name.find("tire 2")    != string::npos ||
+                         entity_name.find("tire 3")    != string::npos ||
+                         entity_name.find("tire 4")    != string::npos ||
+                         entity_name.find("brakerear") != string::npos) // all four have this prefix
+                     {
+                         descendant->SetActive(false);
+                         
+                         // collect excluded entities for collision shape building
+                         if (out_excluded_entities)
+                         {
+                             out_excluded_entities->push_back(descendant);
+                         }
+                     }
+                }
+            }
+            
+            // material tweaks
+            {
+                // body main - red clearcoat paint
+                if (Material* material = car_entity->GetDescendantByName("Object_12")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetResourceName("car_paint" + string(EXTENSION_MATERIAL));
+                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
+                    material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
+                    material->SetProperty(MaterialProperty::Normal, 0.03f);
+                    material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
+                    material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
+                    //material->SetTexture(MaterialTextureType::Normal, "project\\models\\ferrari_laferrari\\paint_normal.png"); fix: it doesn't tile wile
+                }
+
+                // body metallic/carbon parts
+                if (Material* material = car_entity->GetDescendantByName("Object_10")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                }
+
+                // tires - rubber
+                {
+                    const char* tire_parts[] = {"Object_127", "Object_142", "Object_157", "Object_172"};
+                    for (const char* part : tire_parts)
+                    {
+                        if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
+                        }
+                    }
+                }
+
+                // rims - polished metal
+                if (Material* material = car_entity->GetDescendantByName("Object_180")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                    material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                }
+                if (Material* material = car_entity->GetDescendantByName("Object_150")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                    material->SetProperty(MaterialProperty::Roughness, 0.3f);
+                }
+
+                // headlight and taillight glass
+                if (Material* material = car_entity->GetDescendantByName("Object_38")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.5f);
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                }
+
+                // windshield and engine glass
+                if (Material* material = car_entity->GetDescendantByName("Object_58")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                    material->SetProperty(MaterialProperty::Metalness, 0.0f);
+                }
+
+                // side mirror glass
+                if (Material* material = car_entity->GetDescendantByName("Object_98")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                }
+
+                // engine block
+                if (Material* material = car_entity->GetDescendantByName("Object_14")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.4f);
+                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                }
+
+                // brake discs - anisotropic metal
+                {
+                    const char* brake_parts[] = {"Object_129", "Object_144", "Object_174", "Object_159"};
+                    for (const char* part : brake_parts)
+                    {
+                        if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
+                            material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                            material->SetProperty(MaterialProperty::AnisotropicRotation, 0.2f);
+                        }
+                    }
+                }
+
+                // interior leather
+                if (Material* material = car_entity->GetDescendantByName("Object_90")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetProperty(MaterialProperty::Roughness, 0.75f);
+                }
+            }
+
+            return car_entity;
+        }
+
+        // helper: adds audio sources to car
+        void add_audio_sources(Entity* car_entity)
+        {
+            // engine start
+            {
+                Entity* sound = World::CreateEntity();
+                sound->SetObjectName("sound_start");
+                sound->SetParent(car_entity);
+
+                AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\car_start.wav");
+                audio_source->SetLoop(false);
+                audio_source->SetPlayOnStart(false);
+            }
+
+            // engine idle
+            {
+                Entity* sound = World::CreateEntity();
+                sound->SetObjectName("sound_idle");
+                sound->SetParent(car_entity);
+
+                AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\car_idle.wav");
+                audio_source->SetLoop(true);
+                audio_source->SetPlayOnStart(false);
+            }
+
+            // door open/close
+            {
+                Entity* sound = World::CreateEntity();
+                sound->SetObjectName("sound_door");
+                sound->SetParent(car_entity);
+
+                AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\car_door.wav");
+                audio_source->SetLoop(false);
+                audio_source->SetPlayOnStart(false);
+            }
+
+            // tire squeal - plays when tires lose grip
+            {
+                Entity* sound = World::CreateEntity();
+                sound->SetObjectName("sound_tire_squeal");
+                sound->SetParent(car_entity);
+
+                AudioSource* audio_source = sound->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\tire_squeal.wav");
+                audio_source->SetLoop(true);
+                audio_source->SetPlayOnStart(false);
+                audio_source->SetVolume(0.0f);  // start silent, volume controlled by slip
+            }
+        }
+
+        // helper: creates wheels and attaches to vehicle
+        void create_wheels(Entity* vehicle_ent, Physics* physics)
+        {
+            uint32_t mesh_flags  = Mesh::GetDefaultFlags();
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
+            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
+
+            Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend", mesh_flags);
+            if (!mesh)
+                return;
+
+            Entity* wheel_root = mesh->GetRootEntity();
+            Entity* wheel_base = wheel_root->GetChildByIndex(0);
+            if (!wheel_base)
+                return;
+
+            // remove and delete parent - makes all math simpler down the line
+            wheel_base->SetParent(nullptr);
+            World::RemoveEntity(wheel_root);
+            
+            // scale to fit the car
+            wheel_base->SetScale(0.2f);
+
+            // set material
+            if (Renderable* renderable = wheel_base->GetComponent<Renderable>())
+            {
+                Material* material = renderable->GetMaterial();
+                material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
+                material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
+                material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
+                material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
+            }
+
+            // compute wheel radius from the now-standalone entity
+            physics->ComputeWheelRadiusFromEntity(wheel_base);
+            const float wheel_radius = physics->GetWheelRadius();
+
+            // wheel positions relative to vehicle body center (laferrari dimensions)
+            // physics wheel shapes are at y = -suspension_height relative to body center
+            // the visual wheel mesh has its origin at the center of the rim, matching the physics shape center
+            const float suspension_height = physics->GetSuspensionHeight();
+            const float wheel_x           = 0.95f;
+            const float wheel_y           = -suspension_height;
+            const float front_z           = 1.45f;
+            const float rear_z            = -1.35f;
+
+            // front left wheel (use the base)
+            Entity* wheel_fl = wheel_base;
+            wheel_fl->SetObjectName("wheel_front_left");
+            wheel_fl->SetParent(vehicle_ent);
+            wheel_fl->SetPositionLocal(Vector3(-wheel_x, wheel_y, front_z));
+
+            // front right wheel (clone and mirror)
+            Entity* wheel_fr = wheel_base->Clone();
+            wheel_fr->SetObjectName("wheel_front_right");
+            wheel_fr->SetParent(vehicle_ent);
+            wheel_fr->SetPositionLocal(Vector3(wheel_x, wheel_y, front_z));
+            wheel_fr->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Up, math::pi));
+
+            // rear left wheel (clone)
+            Entity* wheel_rl = wheel_base->Clone();
+            wheel_rl->SetObjectName("wheel_rear_left");
+            wheel_rl->SetParent(vehicle_ent);
+            wheel_rl->SetPositionLocal(Vector3(-wheel_x, wheel_y, rear_z));
+
+            // rear right wheel (clone and mirror)
+            Entity* wheel_rr = wheel_base->Clone();
+            wheel_rr->SetObjectName("wheel_rear_right");
+            wheel_rr->SetParent(vehicle_ent);
+            wheel_rr->SetPositionLocal(Vector3(wheel_x, wheel_y, rear_z));
+            wheel_rr->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Up, math::pi));
+
+            // hook up wheel entities to the physics component
+            physics->SetWheelEntity(WheelIndex::FrontLeft,  wheel_fl);
+            physics->SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
+            physics->SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
+            physics->SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
+        }
+
+        // main car creation function - returns the root entity (vehicle_entity if drivable, car body otherwise)
+        Entity* create(const Config& config)
+        {
+            show_telemetry = config.show_telemetry;
+            spawn_position = config.position;
+
+            if (config.drivable)
+            {
+                // create vehicle entity with physics
+                vehicle_entity = World::CreateEntity();
+                vehicle_entity->SetObjectName("vehicle");
+                vehicle_entity->SetPosition(config.position);
+
+                Physics* physics = vehicle_entity->AddComponent<Physics>();
+                physics->SetStatic(false);
+                physics->SetMass(1500.0f);
+                physics->SetBodyType(BodyType::Vehicle);
+
+                // create car body (without its original wheels)
+                // collect excluded wheel entities for collision shape building
+                vector<Entity*> excluded_wheel_entities;
+                default_car = create_body(true, &excluded_wheel_entities);
+                if (default_car)
+                {
+                    // the wheel distances are based on laferrari dimensions
+                    // if you scale the body by 1.1, it seems to match them
+                    // same goes for the 0.07f z offset
+                    default_car->SetParent(vehicle_entity);
+                    default_car->SetPositionLocal(Vector3(0.0f, ::car::get_chassis_visual_offset_y(), 0.07f));
+                    default_car->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f));
+                    default_car->SetScaleLocal(1.1f);
+
+                    // hook up chassis entity (the ferrari body that bounces on the suspension)
+                    // pass excluded wheel entities so they're not included in the collision shape
+                    physics->SetChassisEntity(default_car, excluded_wheel_entities);
+                }
+
+                add_audio_sources(vehicle_entity);
+                create_wheels(vehicle_entity, physics);
+
+                // setup camera to follow if requested
+                if (config.camera_follows && default_camera)
+                {
+                    if (Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>())
+                    {
+                        camera->SetFlag(CameraFlags::CanBeControlled, false);
+                    }
+
+                    // start already inside the car (default chase view)
+                    is_in_vehicle             = true;
+                    chase_camera::initialized = false;
+                }
+
+                return vehicle_entity;
+            }
+            else
+            {
+                // non-drivable display car
+                default_car = create_body(false);
+                if (default_car)
+                {
+                    default_car->SetPosition(config.position);
+
+                    // add kinematic physics if requested
+                    if (config.static_physics)
+                    {
+                        vector<Entity*> car_parts;
+                        default_car->GetDescendants(&car_parts);
+                        for (Entity* car_part : car_parts)
+                        {
+                            if (car_part->GetComponent<Renderable>())
+                            {
+                                Physics* physics_body = car_part->AddComponent<Physics>();
+                                physics_body->SetKinematic(true);
+                                physics_body->SetBodyType(BodyType::Mesh);
+                            }
+                        }
+                    }
+                }
+
+                add_audio_sources(default_car);
+                return default_car;
+            }
+        }
+
+        // helper: draws vehicle telemetry hud using imgui
+        void draw_telemetry()
+        {
+            if (!Engine::IsFlagSet(EngineMode::EditorVisible))
+                return;
+
+            if (!vehicle_entity)
+                return;
+
+            Physics* physics = vehicle_entity->GetComponent<Physics>();
+            if (!physics)
+                return;
+
+            const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
+            Vector3 velocity = physics->GetLinearVelocity();
+            float speed_kmh  = velocity.Length() * 3.6f;
+            float engine_rpm = physics->GetEngineRPM();
+            float redline    = physics->GetRedlineRPM();
+            float max_rpm    = redline * 1.03f; // slightly above redline
+
+            // draw debug visualization
+            physics->DrawDebugVisualization();
+
+            // dashboard window (bottom right)
+            ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 500, ImGui::GetIO().DisplaySize.y - 380), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Dashboard", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize))
+            {
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                ImVec2 base_pos = ImGui::GetCursorScreenPos();
+                
+                // common gauge parameters
+                const float pi = 3.14159f;
+                const float start_angle = pi * 0.75f;
+                const float end_angle   = pi * 2.25f;
+                const float angle_range = end_angle - start_angle;
+                
+                // speedometer (left gauge)
+                {
+                    const float gauge_radius = 90.0f;
+                    const float max_speed    = 350.0f;
+                    
+                    ImVec2 gauge_center = ImVec2(base_pos.x + gauge_radius + 20, base_pos.y + gauge_radius + 15);
+                    
+                    // outer ring and background
+                    draw_list->AddCircle(gauge_center, gauge_radius + 4, IM_COL32(80, 80, 80, 255), 64, 2.5f);
+                    draw_list->AddCircleFilled(gauge_center, gauge_radius, IM_COL32(25, 25, 30, 255), 64);
+                    
+                    // colored arc
+                    const int arc_segments = 64;
+                    for (int i = 0; i < arc_segments; i++)
+                    {
+                        float a1 = start_angle + (angle_range * i / arc_segments);
+                        float a2 = start_angle + (angle_range * (i + 1) / arc_segments);
+                        float speed_at_segment = (float)i / arc_segments * max_speed;
+                        
+                        ImU32 arc_color;
+                        if (speed_at_segment < 150.0f)
+                            arc_color = IM_COL32(50, 100, 50, 255);
+                        else if (speed_at_segment < 250.0f)
+                            arc_color = IM_COL32(100, 100, 40, 255);
+                        else
+                            arc_color = IM_COL32(120, 40, 40, 255);
+                        
+                        ImVec2 p1(gauge_center.x + cosf(a1) * (gauge_radius - 12), gauge_center.y + sinf(a1) * (gauge_radius - 12));
+                        ImVec2 p2(gauge_center.x + cosf(a1) * (gauge_radius - 4),  gauge_center.y + sinf(a1) * (gauge_radius - 4));
+                        ImVec2 p3(gauge_center.x + cosf(a2) * (gauge_radius - 4),  gauge_center.y + sinf(a2) * (gauge_radius - 4));
+                        ImVec2 p4(gauge_center.x + cosf(a2) * (gauge_radius - 12), gauge_center.y + sinf(a2) * (gauge_radius - 12));
+                        draw_list->AddQuadFilled(p1, p2, p3, p4, arc_color);
+                    }
+                    
+                    // tick marks and numbers
+                    for (int speed = 0; speed <= (int)max_speed; speed += 10)
+                    {
+                        float fraction = (float)speed / max_speed;
+                        float angle = start_angle + fraction * angle_range;
+                        bool is_major = (speed % 50 == 0);
+                        float inner_r = is_major ? gauge_radius - 22 : gauge_radius - 17;
+                        float outer_r = gauge_radius - 4;
+                        
+                        ImVec2 inner_pt(gauge_center.x + cosf(angle) * inner_r, gauge_center.y + sinf(angle) * inner_r);
+                        ImVec2 outer_pt(gauge_center.x + cosf(angle) * outer_r, gauge_center.y + sinf(angle) * outer_r);
+                        draw_list->AddLine(inner_pt, outer_pt, is_major ? IM_COL32(255, 255, 255, 255) : IM_COL32(150, 150, 150, 255), is_major ? 2.0f : 1.0f);
+                        
+                        if (is_major)
+                        {
+                            char num_str[8];
+                            snprintf(num_str, sizeof(num_str), "%d", speed);
+                            float text_r = gauge_radius - 34;
+                            ImVec2 text_pos(gauge_center.x + cosf(angle) * text_r - 8, gauge_center.y + sinf(angle) * text_r - 6);
+                            draw_list->AddText(text_pos, IM_COL32(200, 200, 200, 255), num_str);
+                        }
+                    }
+                    
+                    // needle
+                    float clamped_speed = (speed_kmh < max_speed) ? speed_kmh : max_speed;
+                    float needle_angle = start_angle + (clamped_speed / max_speed) * angle_range;
+                    float needle_length = gauge_radius - 22;
+                    
+                    ImVec2 needle_tip(gauge_center.x + cosf(needle_angle) * needle_length, gauge_center.y + sinf(needle_angle) * needle_length);
+                    ImVec2 needle_base_l(gauge_center.x + cosf(needle_angle + 1.57f) * 3, gauge_center.y + sinf(needle_angle + 1.57f) * 3);
+                    ImVec2 needle_base_r(gauge_center.x + cosf(needle_angle - 1.57f) * 3, gauge_center.y + sinf(needle_angle - 1.57f) * 3);
+                    ImVec2 needle_back(gauge_center.x + cosf(needle_angle + pi) * 12, gauge_center.y + sinf(needle_angle + pi) * 12);
+                    
+                    draw_list->AddTriangleFilled(needle_tip, needle_base_l, needle_base_r, IM_COL32(220, 60, 60, 255));
+                    draw_list->AddTriangleFilled(needle_base_l, needle_base_r, needle_back, IM_COL32(180, 40, 40, 255));
+                    
+                    // center hub
+                    draw_list->AddCircleFilled(gauge_center, 10, IM_COL32(60, 60, 65, 255), 24);
+                    draw_list->AddCircle(gauge_center, 10, IM_COL32(100, 100, 100, 255), 24, 2.0f);
+                    
+                    // digital speed
+                    char speed_str[16];
+                    snprintf(speed_str, sizeof(speed_str), "%.0f", speed_kmh);
+                    ImVec2 speed_text_size = ImGui::CalcTextSize(speed_str);
+                    draw_list->AddText(ImVec2(gauge_center.x - speed_text_size.x * 0.5f, gauge_center.y + 20), IM_COL32(255, 255, 255, 255), speed_str);
+                    draw_list->AddText(ImVec2(gauge_center.x - 15, gauge_center.y + 34), IM_COL32(150, 150, 150, 255), "km/h");
+                }
+                
+                // tachometer (right gauge)
+                {
+                    const float gauge_radius = 90.0f;
+                    const float max_rpm_display = 10000.0f;
+                    
+                    ImVec2 gauge_center = ImVec2(base_pos.x + gauge_radius * 2 + 60 + gauge_radius + 20, base_pos.y + gauge_radius + 15);
+                    
+                    // outer ring and background
+                    draw_list->AddCircle(gauge_center, gauge_radius + 4, IM_COL32(80, 80, 80, 255), 64, 2.5f);
+                    draw_list->AddCircleFilled(gauge_center, gauge_radius, IM_COL32(25, 25, 30, 255), 64);
+                    
+                    // colored arc with redline zone
+                    const int arc_segments = 64;
+                    for (int i = 0; i < arc_segments; i++)
+                    {
+                        float a1 = start_angle + (angle_range * i / arc_segments);
+                        float a2 = start_angle + (angle_range * (i + 1) / arc_segments);
+                        float rpm_at_segment = (float)i / arc_segments * max_rpm_display;
+                        
+                        ImU32 arc_color;
+                        if (rpm_at_segment < 6000.0f)
+                            arc_color = IM_COL32(50, 80, 50, 255);
+                        else if (rpm_at_segment < redline)
+                            arc_color = IM_COL32(100, 100, 40, 255);
+                        else
+                            arc_color = IM_COL32(180, 40, 40, 255);  // redline zone
+                        
+                        ImVec2 p1(gauge_center.x + cosf(a1) * (gauge_radius - 12), gauge_center.y + sinf(a1) * (gauge_radius - 12));
+                        ImVec2 p2(gauge_center.x + cosf(a1) * (gauge_radius - 4),  gauge_center.y + sinf(a1) * (gauge_radius - 4));
+                        ImVec2 p3(gauge_center.x + cosf(a2) * (gauge_radius - 4),  gauge_center.y + sinf(a2) * (gauge_radius - 4));
+                        ImVec2 p4(gauge_center.x + cosf(a2) * (gauge_radius - 12), gauge_center.y + sinf(a2) * (gauge_radius - 12));
+                        draw_list->AddQuadFilled(p1, p2, p3, p4, arc_color);
+                    }
+                    
+                    // tick marks and numbers (in thousands)
+                    for (int rpm = 0; rpm <= (int)max_rpm_display; rpm += 500)
+                    {
+                        float fraction = (float)rpm / max_rpm_display;
+                        float angle = start_angle + fraction * angle_range;
+                        bool is_major = (rpm % 1000 == 0);
+                        float inner_r = is_major ? gauge_radius - 22 : gauge_radius - 17;
+                        float outer_r = gauge_radius - 4;
+                        
+                        // highlight redline ticks
+                        ImU32 tick_color;
+                        if (rpm >= (int)redline)
+                            tick_color = IM_COL32(255, 80, 80, 255);
+                        else
+                            tick_color = is_major ? IM_COL32(255, 255, 255, 255) : IM_COL32(150, 150, 150, 255);
+                        
+                        ImVec2 inner_pt(gauge_center.x + cosf(angle) * inner_r, gauge_center.y + sinf(angle) * inner_r);
+                        ImVec2 outer_pt(gauge_center.x + cosf(angle) * outer_r, gauge_center.y + sinf(angle) * outer_r);
+                        draw_list->AddLine(inner_pt, outer_pt, tick_color, is_major ? 2.0f : 1.0f);
+                        
+                        if (is_major)
+                        {
+                            char num_str[8];
+                            snprintf(num_str, sizeof(num_str), "%d", rpm / 1000);
+                            float text_r = gauge_radius - 34;
+                            ImVec2 text_pos(gauge_center.x + cosf(angle) * text_r - 4, gauge_center.y + sinf(angle) * text_r - 6);
+                            ImU32 text_color = (rpm >= (int)redline) ? IM_COL32(255, 100, 100, 255) : IM_COL32(200, 200, 200, 255);
+                            draw_list->AddText(text_pos, text_color, num_str);
+                        }
+                    }
+                    
+                    // needle
+                    float clamped_rpm = (engine_rpm < max_rpm_display) ? engine_rpm : max_rpm_display;
+                    float needle_angle = start_angle + (clamped_rpm / max_rpm_display) * angle_range;
+                    float needle_length = gauge_radius - 22;
+                    
+                    // needle color changes when over redline
+                    ImU32 needle_color = (engine_rpm > redline) ? IM_COL32(255, 100, 100, 255) : IM_COL32(220, 60, 60, 255);
+                    ImU32 needle_back_color = (engine_rpm > redline) ? IM_COL32(200, 60, 60, 255) : IM_COL32(180, 40, 40, 255);
+                    
+                    ImVec2 needle_tip(gauge_center.x + cosf(needle_angle) * needle_length, gauge_center.y + sinf(needle_angle) * needle_length);
+                    ImVec2 needle_base_l(gauge_center.x + cosf(needle_angle + 1.57f) * 3, gauge_center.y + sinf(needle_angle + 1.57f) * 3);
+                    ImVec2 needle_base_r(gauge_center.x + cosf(needle_angle - 1.57f) * 3, gauge_center.y + sinf(needle_angle - 1.57f) * 3);
+                    ImVec2 needle_back(gauge_center.x + cosf(needle_angle + pi) * 12, gauge_center.y + sinf(needle_angle + pi) * 12);
+                    
+                    draw_list->AddTriangleFilled(needle_tip, needle_base_l, needle_base_r, needle_color);
+                    draw_list->AddTriangleFilled(needle_base_l, needle_base_r, needle_back, needle_back_color);
+                    
+                    // center hub
+                    draw_list->AddCircleFilled(gauge_center, 10, IM_COL32(60, 60, 65, 255), 24);
+                    draw_list->AddCircle(gauge_center, 10, IM_COL32(100, 100, 100, 255), 24, 2.0f);
+                    
+                    // digital rpm
+                    char rpm_str[16];
+                    snprintf(rpm_str, sizeof(rpm_str), "%.0f", engine_rpm);
+                    ImVec2 rpm_text_size = ImGui::CalcTextSize(rpm_str);
+                    ImU32 rpm_text_color = (engine_rpm > redline) ? IM_COL32(255, 100, 100, 255) : IM_COL32(255, 255, 255, 255);
+                    draw_list->AddText(ImVec2(gauge_center.x - rpm_text_size.x * 0.5f, gauge_center.y + 20), rpm_text_color, rpm_str);
+                    draw_list->AddText(ImVec2(gauge_center.x - 10, gauge_center.y + 34), IM_COL32(150, 150, 150, 255), "RPM");
+                    
+                    // gear indicator between gauges
+                    const char* gear_str = physics->GetCurrentGearString();
+                    bool is_shifting = physics->IsShifting();
+                    ImU32 gear_color = is_shifting ? IM_COL32(255, 255, 0, 255) : IM_COL32(255, 255, 255, 255);
+                    ImVec2 gear_pos = ImVec2(base_pos.x + gauge_radius * 2 + 45, base_pos.y + gauge_radius - 10);
+                    draw_list->AddText(nullptr, 24.0f, gear_pos, gear_color, gear_str);
+                }
+                
+                // reserve space for both gauges
+                ImGui::Dummy(ImVec2(90 * 4 + 80, 90 * 2 + 35));
+                
+                ImGui::Separator();
+
+                // throttle/brake as vertical bars with steering
+                {
+                    float throttle_val = physics->GetVehicleThrottle();
+                    float brake_val    = physics->GetVehicleBrake();
+                    float steer_val    = physics->GetVehicleSteering();
+
+                    const float bar_width  = 30.0f;
+                    const float bar_height = 80.0f;
+                    ImDrawList* draw_list  = ImGui::GetWindowDrawList();
+
+                    // throttle bar
+                    ImGui::BeginGroup();
+                    ImGui::Text("THR");
+                    ImVec2 throttle_pos = ImGui::GetCursorScreenPos();
+                    draw_list->AddRectFilled(throttle_pos, ImVec2(throttle_pos.x + bar_width, throttle_pos.y + bar_height), IM_COL32(40, 40, 40, 255));
+                    float throttle_fill = bar_height * throttle_val;
+                    draw_list->AddRectFilled(
+                        ImVec2(throttle_pos.x, throttle_pos.y + bar_height - throttle_fill),
+                        ImVec2(throttle_pos.x + bar_width, throttle_pos.y + bar_height),
+                        IM_COL32(50, 200, 50, 255));
+                    draw_list->AddRect(throttle_pos, ImVec2(throttle_pos.x + bar_width, throttle_pos.y + bar_height), IM_COL32(100, 100, 100, 255));
+                    ImGui::Dummy(ImVec2(bar_width, bar_height));
+                    ImGui::Text("%.0f%%", throttle_val * 100.0f);
+                    ImGui::EndGroup();
+
+                    ImGui::SameLine(60);
+
+                    // brake bar
+                    ImGui::BeginGroup();
+                    ImGui::Text("BRK");
+                    ImVec2 brake_pos = ImGui::GetCursorScreenPos();
+                    draw_list->AddRectFilled(brake_pos, ImVec2(brake_pos.x + bar_width, brake_pos.y + bar_height), IM_COL32(40, 40, 40, 255));
+                    float brake_fill = bar_height * brake_val;
+                    draw_list->AddRectFilled(
+                        ImVec2(brake_pos.x, brake_pos.y + bar_height - brake_fill),
+                        ImVec2(brake_pos.x + bar_width, brake_pos.y + bar_height),
+                        IM_COL32(220, 50, 50, 255));
+                    draw_list->AddRect(brake_pos, ImVec2(brake_pos.x + bar_width, brake_pos.y + bar_height), IM_COL32(100, 100, 100, 255));
+                    ImGui::Dummy(ImVec2(bar_width, bar_height));
+                    ImGui::Text("%.0f%%", brake_val * 100.0f);
+                    ImGui::EndGroup();
+
+                    ImGui::SameLine(140);
+
+                    // steering indicator
+                    ImGui::BeginGroup();
+                    ImGui::Text("STEER");
+                    ImVec2 steer_pos = ImGui::GetCursorScreenPos();
+                    const float steer_width  = 120.0f;
+                    const float steer_height = 20.0f;
+                    draw_list->AddRectFilled(steer_pos, ImVec2(steer_pos.x + steer_width, steer_pos.y + steer_height), IM_COL32(40, 40, 40, 255));
+                    float center_x = steer_pos.x + steer_width * 0.5f;
+                    float indicator_x = center_x + (steer_val * steer_width * 0.5f);
+                    draw_list->AddLine(ImVec2(center_x, steer_pos.y), ImVec2(center_x, steer_pos.y + steer_height), IM_COL32(100, 100, 100, 255));
+                    draw_list->AddRectFilled(
+                        ImVec2(indicator_x - 4, steer_pos.y + 2),
+                        ImVec2(indicator_x + 4, steer_pos.y + steer_height - 2),
+                        IM_COL32(255, 200, 50, 255));
+                    draw_list->AddRect(steer_pos, ImVec2(steer_pos.x + steer_width, steer_pos.y + steer_height), IM_COL32(100, 100, 100, 255));
+                    ImGui::Dummy(ImVec2(steer_width, steer_height));
+                    ImGui::Text("%.0f%%", steer_val * 100.0f);
+                    ImGui::EndGroup();
+                }
+
+                ImGui::Separator();
+
+                // driver assists - toggleable switches
+                bool abs_enabled = physics->GetAbsEnabled();
+                bool tc_enabled  = physics->GetTcEnabled();
+                bool manual_trans = physics->GetManualTransmission();
+                bool abs_active  = physics->IsAbsActiveAny();
+                bool tc_active   = physics->IsTcActive();
+
+                // abs toggle with activity indicator
+                if (ImGui::Checkbox("ABS", &abs_enabled))
+                    physics->SetAbsEnabled(abs_enabled);
+                if (abs_enabled && abs_active)
+                {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "(active)");
+                }
+
+                // tcs toggle with activity indicator
+                ImGui::SameLine(140);
+                if (ImGui::Checkbox("TCS", &tc_enabled))
+                    physics->SetTcEnabled(tc_enabled);
+                if (tc_enabled && tc_active)
+                {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(1, 1, 0, 1), "(active)");
+                }
+
+                // transmission mode toggle
+                if (ImGui::Checkbox("Manual", &manual_trans))
+                    physics->SetManualTransmission(manual_trans);
+
+                // turbo toggle with boost pressure display
+                bool turbo_enabled = physics->GetTurboEnabled();
+                ImGui::SameLine(140);
+                if (ImGui::Checkbox("Turbo", &turbo_enabled))
+                    physics->SetTurboEnabled(turbo_enabled);
+                if (turbo_enabled)
+                {
+                    float boost = physics->GetBoostPressure();
+                    ImGui::SameLine();
+                    ImGui::TextColored(boost > 0.5f ? ImVec4(0.3f, 1, 0.3f, 1) : ImVec4(0.7f, 0.7f, 0.7f, 1), "%.2f bar", boost);
+                }
+
+                // handbrake
+                if (physics->GetVehicleHandbrake() > 0.1f)
+                {
+                    ImGui::TextColored(ImVec4(1, 0.3f, 0.3f, 1), "HANDBRAKE");
+                }
+            }
+            ImGui::End();
+
+            // telemetry window (left side)
+            ImGui::SetNextWindowPos(ImVec2(10, ImGui::GetIO().DisplaySize.y - 560), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Telemetry", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize))
+            {
+                // wheels - tire forces (left) and suspension (right) side by side
+                if (ImGui::CollapsingHeader("Wheels", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                    ImVec2 section_start = ImGui::GetCursorScreenPos();
+                    
+                    // tire constants (2x size)
+                    const float tire_width   = 48.0f;
+                    const float tire_height  = 80.0f;
+                    const float tire_space_x = 120.0f;
+                    const float tire_space_y = 140.0f;  // increased for more vertical separation
+                    const float force_scale  = 0.003f;  // slightly increased for larger arrows
+                    const float max_arrow    = 50.0f;
+                    
+                    // suspension constants (2x size)
+                    const float coil_width    = 48.0f;
+                    const float max_height    = 110.0f;
+                    const float min_height    = 40.0f;
+                    const int   coil_segments = 7;
+                    const float susp_space_x  = 100.0f;
+                    const float susp_space_y  = 160.0f;  // increased for more vertical separation
+                    const float susp_offset_x = 320.0f;  // adjusted for larger tires
+
+                    // helper: draw an arrow
+                    auto draw_arrow = [&](ImVec2 center, float dx, float dy, ImU32 color, float thickness = 3.0f)
+                    {
+                        if (fabsf(dx) < 1.0f && fabsf(dy) < 1.0f)
+                            return;
+                        ImVec2 tip = ImVec2(center.x + dx, center.y + dy);
+                        draw_list->AddLine(center, tip, color, thickness);
+                        float len = sqrtf(dx * dx + dy * dy);
+                        if (len > 5.0f)
+                        {
+                            float nx = dx / len, ny = dy / len;
+                            float hs = std::min(len * 0.3f, 10.0f);  // larger arrow heads
+                            draw_list->AddTriangleFilled(tip,
+                                ImVec2(tip.x - hs * (nx + ny * 0.5f), tip.y - hs * (ny - nx * 0.5f)),
+                                ImVec2(tip.x - hs * (nx - ny * 0.5f), tip.y - hs * (ny + nx * 0.5f)), color);
+                        }
+                    };
+
+                    // force arrow colors (used for legend too)
+                    const ImU32 color_lateral     = IM_COL32(100, 150, 255, 255);  // blue - lateral/cornering
+                    const ImU32 color_traction    = IM_COL32(100, 255, 100, 255);  // green - acceleration
+                    const ImU32 color_braking     = IM_COL32(255, 100, 100, 255);  // red - braking
+
+                    // slip colors (used for legend too)
+                    const ImU32 color_slip_angle  = IM_COL32(255, 200, 100, 255);  // orange - slip angle
+                    const ImU32 color_slip_ratio  = IM_COL32(200, 100, 255, 255);  // purple - slip ratio
+
+                    // helper: draw a tire with force arrows
+                    auto draw_tire = [&](const char* label, WheelIndex wheel, float offset_x, float offset_y)
+                    {
+                        ImVec2 center = ImVec2(section_start.x + offset_x + tire_width * 0.5f, section_start.y + offset_y + tire_height * 0.5f);
+                        ImVec2 tl = ImVec2(section_start.x + offset_x, section_start.y + offset_y);
+                        ImVec2 br = ImVec2(tl.x + tire_width, tl.y + tire_height);
+
+                        bool grounded = physics->IsWheelGrounded(wheel);
+                        draw_list->AddRectFilled(tl, br, grounded ? IM_COL32(60, 60, 60, 255) : IM_COL32(80, 40, 40, 255), 8.0f);
+                        draw_list->AddRect(tl, br, grounded ? IM_COL32(120, 120, 120, 255) : IM_COL32(150, 80, 80, 255), 8.0f, 0, 3.0f);
+
+                        float lat_f = physics->GetWheelLateralForce(wheel);
+                        float lon_f = physics->GetWheelLongitudinalForce(wheel);
+                        float lat_arrow = std::clamp(lat_f * force_scale, -max_arrow, max_arrow);
+                        float lon_arrow = std::clamp(-lon_f * force_scale, -max_arrow, max_arrow);
+                        
+                        if (fabsf(lat_arrow) > 2.0f)
+                            draw_arrow(center, lat_arrow, 0.0f, color_lateral, 3.5f);
+                        if (fabsf(lon_arrow) > 2.0f)
+                            draw_arrow(center, 0.0f, lon_arrow, (lon_f > 0) ? color_traction : color_braking, 3.5f);
+
+                        // label centered above tire with proper text width calculation
+                        ImVec2 label_size = ImGui::CalcTextSize(label);
+                        float label_x = tl.x + (tire_width - label_size.x) * 0.5f;
+                        draw_list->AddText(ImVec2(label_x, tl.y - label_size.y - 6), IM_COL32(255, 255, 255, 255), label);
+                        
+                        // slip info below tire - side by side, centered
+                        float slip_angle = physics->GetWheelSlipAngle(wheel) * 57.2958f;
+                        float slip_ratio = physics->GetWheelSlipRatio(wheel);
+                        
+                        // build both texts to calculate total width
+                        char angle_text[16];
+                        snprintf(angle_text, sizeof(angle_text), "%.0f\xC2\xB0", slip_angle);  // degree symbol
+                        char ratio_text[16];
+                        snprintf(ratio_text, sizeof(ratio_text), "%.0f%%", slip_ratio * 100.0f);
+                        
+                        ImVec2 angle_size = ImGui::CalcTextSize(angle_text);
+                        ImVec2 ratio_size = ImGui::CalcTextSize(ratio_text);
+                        const float spacing = 8.0f;  // space between the two values
+                        float total_width = angle_size.x + spacing + ratio_size.x;
+                        float start_x = tl.x + (tire_width - total_width) * 0.5f;
+                        
+                        // slip angle (orange) on left
+                        draw_list->AddText(ImVec2(start_x, br.y + 6), color_slip_angle, angle_text);
+                        // slip ratio (purple) on right
+                        draw_list->AddText(ImVec2(start_x + angle_size.x + spacing, br.y + 6), color_slip_ratio, ratio_text);
+                    };
+
+                    // helper: draw a coil spring
+                    auto draw_coil = [&](const char* label, float compression, float offset_x, float offset_y)
+                    {
+                        float cx = section_start.x + offset_x + coil_width * 0.5f;
+                        float top_y = section_start.y + offset_y;
+                        float ext = 1.0f - compression;
+                        float spring_h = min_height + (max_height - min_height) * ext;
+
+                        ImU32 color = (compression > 0.8f) ? IM_COL32(220, 50, 50, 255) :
+                                      (compression > 0.5f) ? IM_COL32(220, 180, 50, 255) : IM_COL32(50, 200, 50, 255);
+
+                        // top mount plate (scaled)
+                        draw_list->AddRectFilled(ImVec2(cx - 18, top_y), ImVec2(cx + 18, top_y + 6), IM_COL32(100, 100, 100, 255));
+                        
+                        float seg_h = spring_h / coil_segments;
+                        float hw = coil_width * 0.4f;
+                        float coil_top = top_y + 8;
+                        
+                        for (int i = 0; i < coil_segments; i++)
+                        {
+                            float y1 = coil_top + i * seg_h;
+                            float y2 = coil_top + (i + 0.5f) * seg_h;
+                            float y3 = coil_top + (i + 1) * seg_h;
+                            float xl = cx - hw, xr = cx + hw;
+                            
+                            if (i % 2 == 0)
+                            {
+                                draw_list->AddLine(ImVec2(xl, y1), ImVec2(xr, y2), color, 4.0f);
+                                draw_list->AddLine(ImVec2(xr, y2), ImVec2(xl, y3), color, 4.0f);
+                            }
+                            else
+                            {
+                                draw_list->AddLine(ImVec2(xr, y1), ImVec2(xl, y2), color, 4.0f);
+                                draw_list->AddLine(ImVec2(xl, y2), ImVec2(xr, y3), color, 4.0f);
+                            }
+                        }
+                        
+                        // bottom mount plate (scaled)
+                        float bot_y = coil_top + spring_h;
+                        draw_list->AddRectFilled(ImVec2(cx - 18, bot_y), ImVec2(cx + 18, bot_y + 6), IM_COL32(100, 100, 100, 255));
+                        draw_list->AddLine(ImVec2(cx, top_y + 6), ImVec2(cx, bot_y), IM_COL32(70, 70, 70, 255), 2.5f);
+                        
+                        // label centered above spring with proper text width calculation
+                        ImVec2 label_size = ImGui::CalcTextSize(label);
+                        float label_x = cx - label_size.x * 0.5f;
+                        draw_list->AddText(ImVec2(label_x, top_y - label_size.y - 6), IM_COL32(255, 255, 255, 255), label);
+                        
+                        // percentage below spring
+                        char pct[16];
+                        snprintf(pct, sizeof(pct), "%.0f%%", compression * 100.0f);
+                        ImVec2 pct_size = ImGui::CalcTextSize(pct);
+                        draw_list->AddText(ImVec2(cx - pct_size.x * 0.5f, bot_y + 10), IM_COL32(180, 180, 180, 255), pct);
+                    };
+
+                    // draw tires (left side) - offset down to make room for labels
+                    const float start_y = 30.0f;
+                    draw_tire("FL", WheelIndex::FrontLeft,  20.0f, start_y);
+                    draw_tire("FR", WheelIndex::FrontRight, 20.0f + tire_space_x, start_y);
+                    draw_tire("RL", WheelIndex::RearLeft,   20.0f, start_y + tire_space_y + 40.0f);  // extra space for slip text
+                    draw_tire("RR", WheelIndex::RearRight,  20.0f + tire_space_x, start_y + tire_space_y + 40.0f);
+
+                    // draw suspension (right side)
+                    float comp_fl = physics->GetWheelCompression(WheelIndex::FrontLeft);
+                    float comp_fr = physics->GetWheelCompression(WheelIndex::FrontRight);
+                    float comp_rl = physics->GetWheelCompression(WheelIndex::RearLeft);
+                    float comp_rr = physics->GetWheelCompression(WheelIndex::RearRight);
+                    
+                    draw_coil("FL", comp_fl, susp_offset_x, start_y);
+                    draw_coil("FR", comp_fr, susp_offset_x + susp_space_x, start_y);
+                    draw_coil("RL", comp_rl, susp_offset_x, start_y + susp_space_y + 40.0f);
+                    draw_coil("RR", comp_rr, susp_offset_x + susp_space_x, start_y + susp_space_y + 40.0f);
+
+                    // reserve space for the full layout (adjusted for 2x size)
+                    ImGui::Dummy(ImVec2(susp_offset_x + susp_space_x + coil_width + 40, tire_space_y * 2 + tire_height + 80));
+
+                    // force legend
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Tire Forces:");
+                    
+                    // helper: draw legend item with colored square
+                    auto draw_legend_item = [&](ImU32 color, const char* text)
+                    {
+                        ImVec2 pos = ImGui::GetCursorScreenPos();
+                        draw_list->AddRectFilled(pos, ImVec2(pos.x + 12, pos.y + 12), color);
+                        ImGui::Dummy(ImVec2(16, 12));
+                        ImGui::SameLine();
+                        ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "%s", text);
+                    };
+
+                    draw_legend_item(color_lateral,  "lateral (cornering force)");
+                    draw_legend_item(color_traction, "longitudinal (acceleration)");
+                    draw_legend_item(color_braking,  "longitudinal (braking)");
+
+                    ImGui::Spacing();
+                    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "Slip Values (below tires):");
+                    draw_legend_item(color_slip_angle, "slip angle - tire direction vs travel");
+                    draw_legend_item(color_slip_ratio, "slip ratio - wheel spin vs vehicle speed");
+                }
+
+                // temperature table
+                if (ImGui::CollapsingHeader("Temperature", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    if (ImGui::BeginTable("temps", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+                    {
+                        ImGui::TableSetupColumn("Wheel");
+                        ImGui::TableSetupColumn("Tire C");
+                        ImGui::TableSetupColumn("Grip %");
+                        ImGui::TableSetupColumn("Brake C");
+                        ImGui::TableSetupColumn("Brake Eff %");
+                        ImGui::TableHeadersRow();
+
+                        for (int i = 0; i < 4; i++)
+                        {
+                            WheelIndex wheel = static_cast<WheelIndex>(i);
+                            float tire_temp = physics->GetWheelTemperature(wheel);
+                            float grip      = physics->GetWheelTempGripFactor(wheel);
+                            float brake_temp = physics->GetWheelBrakeTemp(wheel);
+                            float brake_eff  = physics->GetWheelBrakeEfficiency(wheel);
+
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn(); ImGui::Text("%s", wheel_names[i]);
+                            ImGui::TableNextColumn();
+                            {
+                                ImVec4 col = (tire_temp > 110) ? ImVec4(1, 0.5f, 0, 1) :
+                                             (tire_temp < 70)  ? ImVec4(0.5f, 0.5f, 1, 1) :
+                                             ImVec4(0.2f, 1, 0.2f, 1);
+                                ImGui::TextColored(col, "%.0f", tire_temp);
+                            }
+                            ImGui::TableNextColumn(); ImGui::Text("%.0f", grip * 100.0f);
+                            ImGui::TableNextColumn();
+                            {
+                                ImVec4 col = (brake_temp > 700) ? ImVec4(1, 0, 0, 1) :
+                                             (brake_temp > 400) ? ImVec4(1, 0.5f, 0, 1) :
+                                             ImVec4(0.8f, 0.8f, 0.8f, 1);
+                                ImGui::TextColored(col, "%.0f", brake_temp);
+                            }
+                            ImGui::TableNextColumn(); ImGui::Text("%.0f", brake_eff * 100.0f);
+                        }
+                        ImGui::EndTable();
+                    }
+                }
+
+                // debug toggles
+                if (ImGui::CollapsingHeader("Debug"))
+                {
+                    bool draw_rays = physics->GetDrawRaycasts();
+                    bool draw_susp = physics->GetDrawSuspension();
+                    if (ImGui::Checkbox("Draw Raycasts", &draw_rays))
+                        physics->SetDrawRaycasts(draw_rays);
+                    if (ImGui::Checkbox("Draw Suspension", &draw_susp))
+                        physics->SetDrawSuspension(draw_susp);
+
+                    // 3d debug visualization legend
+                    if (draw_rays || draw_susp)
+                    {
+                        ImGui::Spacing();
+                        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "3D Visualization Legend:");
+                        ImDrawList* debug_list = ImGui::GetWindowDrawList();
+                        
+                        auto draw_debug_legend = [&](float r, float g, float b, const char* text)
+                        {
+                            ImVec2 pos = ImGui::GetCursorScreenPos();
+                            debug_list->AddRectFilled(pos, ImVec2(pos.x + 10, pos.y + 10), IM_COL32((int)(r*255), (int)(g*255), (int)(b*255), 255));
+                            ImGui::Dummy(ImVec2(14, 10));
+                            ImGui::SameLine();
+                            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "%s", text);
+                        };
+
+                        if (draw_rays)
+                        {
+                            draw_debug_legend(0.0f, 1.0f, 0.0f, "raycast hit ground");
+                            draw_debug_legend(1.0f, 0.0f, 0.0f, "raycast missed");
+                        }
+                        if (draw_susp)
+                        {
+                            draw_debug_legend(1.0f, 1.0f, 0.0f, "suspension top mount");
+                            draw_debug_legend(0.0f, 0.5f, 1.0f, "suspension wheel contact");
+                        }
+                    }
+                }
+            }
+            ImGui::End();
+        }
+
+        void tick()
+        {
+            if (!default_car)
+                return;
+
+            // handle drivable car input
+            if (vehicle_entity)
+            {
+                Physics* physics = vehicle_entity->GetComponent<Physics>();
+                if (physics && Engine::IsFlagSet(EngineMode::Playing))
+                {
+                    // input mapping - keyboard and gamepad combined into analog values
+                    bool is_gamepad_connected = Input::IsGamepadConnected();
+
+                    // throttle: right trigger (analog) or arrow up (binary)
+                    float throttle = 0.0f;
+                    if (is_gamepad_connected)
+                    {
+                        throttle = Input::GetGamepadTriggerRight();
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Up))
+                    {
+                        throttle = 1.0f;
+                    }
+
+                    // brake: left trigger (analog) or arrow down (binary)
+                    float brake = 0.0f;
+                    if (is_gamepad_connected)
+                    {
+                        brake = Input::GetGamepadTriggerLeft();
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Down))
+                    {
+                        brake = 1.0f;
+                    }
+
+                    // steering: left stick x-axis (analog) or arrow keys (binary)
+                    float steering = 0.0f;
+                    if (is_gamepad_connected)
+                    {
+                        steering = Input::GetGamepadThumbStickLeft().x;
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Left))
+                    {
+                        steering = -1.0f;
+                    }
+                    if (Input::GetKey(KeyCode::Arrow_Right))
+                    {
+                        steering = 1.0f;
+                    }
+
+                    // handbrake: space or button south (A on Xbox, X on PlayStation)
+                    float handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_South)) ? 1.0f : 0.0f;
+
+                    // apply vehicle controls
+                    physics->SetVehicleThrottle(throttle);
+                    physics->SetVehicleBrake(brake);
+                    physics->SetVehicleSteering(steering);
+                    physics->SetVehicleHandbrake(handbrake);
+
+                    // camera orbit: right stick rotates camera around the car (horizontal and vertical)
+                    float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+                    if (is_gamepad_connected)
+                    {
+                        Vector2 right_stick = Input::GetGamepadThumbStickRight();
+
+                        // horizontal (yaw) - three zones:
+                        // - active (> 0.3): orbit the camera
+                        // - hold (0.1 - 0.3): camera stays in place (small stick offset to lock view)
+                        // - release (< 0.1): camera reverts back behind the car
+                        float stick_x = fabsf(right_stick.x);
+                        if (stick_x > 0.3f)
+                        {
+                            chase_camera::yaw_bias += right_stick.x * chase_camera::orbit_bias_speed * dt;
+                            chase_camera::yaw_bias  = std::clamp(chase_camera::yaw_bias, -chase_camera::yaw_bias_max, chase_camera::yaw_bias_max);
+                        }
+                        else if (stick_x < 0.1f && fabsf(chase_camera::yaw_bias) > 0.01f)
+                        {
+                            chase_camera::yaw_bias *= expf(-chase_camera::orbit_bias_decay * dt);
+                        }
+                        // hold zone (0.1 - 0.3): do nothing, camera stays where it is
+
+                        // vertical (pitch) - same three zones as horizontal
+                        float stick_y = fabsf(right_stick.y);
+                        if (stick_y > 0.3f)
+                        {
+                            chase_camera::pitch_bias += right_stick.y * chase_camera::orbit_bias_speed * dt;
+                            chase_camera::pitch_bias  = std::clamp(chase_camera::pitch_bias, -chase_camera::pitch_bias_max, chase_camera::pitch_bias_max);
+                        }
+                        else if (stick_y < 0.1f && fabsf(chase_camera::pitch_bias) > 0.01f)
+                        {
+                            chase_camera::pitch_bias *= expf(-chase_camera::orbit_bias_decay * dt);
+                        }
+                        // hold zone (0.1 - 0.3): do nothing, camera stays where it is
+                    }
+
+                    // reset car to spawn position: R key or button east (B on Xbox, O on PlayStation)
+                    if (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_East))
+                    {
+                        physics->SetBodyTransform(spawn_position, Quaternion::Identity);
+                        chase_camera::initialized = false; // reset camera to avoid jump
+                    }
+
+                    // haptic feedback - focused on meaningful events
+                    if (is_gamepad_connected)
+                    {
+                        float left_motor  = 0.0f;  // low-frequency rumble (heavy, tire slip)
+                        float right_motor = 0.0f;  // high-frequency rumble (light, abs/braking)
+
+                        // collect wheel slip data
+                        float max_slip_ratio = 0.0f;
+                        float max_slip_angle = 0.0f;
+                        for (int i = 0; i < 4; i++)
+                        {
+                            WheelIndex wheel = static_cast<WheelIndex>(i);
+                            max_slip_ratio   = std::max(max_slip_ratio, fabsf(physics->GetWheelSlipRatio(wheel)));
+                            max_slip_angle   = std::max(max_slip_angle, fabsf(physics->GetWheelSlipAngle(wheel)));
+                        }
+
+                        // wheelspin (acceleration) or lockup (braking) - strong feedback
+                        if (max_slip_ratio > 0.15f)
+                        {
+                            float slip_intensity = std::clamp((max_slip_ratio - 0.15f) * 1.5f, 0.0f, 1.0f);
+                            left_motor += slip_intensity * 0.5f;
+                        }
+
+                        // drifting/sliding - moderate feedback
+                        if (max_slip_angle > 0.15f)
+                        {
+                            float drift_intensity = std::clamp((max_slip_angle - 0.15f) * 2.0f, 0.0f, 1.0f);
+                            left_motor  += drift_intensity * 0.3f;
+                            right_motor += drift_intensity * 0.2f;
+                        }
+
+                        // abs activation - distinctive pulsing feedback
+                        if (physics->IsAbsActiveAny())
+                        {
+                            static float abs_pulse = 0.0f;
+                            abs_pulse += dt * 25.0f;  // 25hz pulse
+                            float pulse_value = (sinf(abs_pulse * math::pi * 2.0f) + 1.0f) * 0.5f;
+                            right_motor += pulse_value * 0.6f;
+                            left_motor  += pulse_value * 0.3f;
+                        }
+
+                        // heavy braking feedback (without abs)
+                        if (brake > 0.8f && !physics->IsAbsActiveAny())
+                        {
+                            right_motor += (brake - 0.8f) * 0.4f;
+                        }
+
+                        // clamp and apply
+                        left_motor  = std::clamp(left_motor, 0.0f, 1.0f);
+                        right_motor = std::clamp(right_motor, 0.0f, 1.0f);
+                        Input::GamepadVibrate(left_motor, right_motor);
+                    }
+                }
+
+                // draw telemetry if enabled
+                if (show_telemetry)
+                {
+                    draw_telemetry();
+                }
+            }
+
+            // view presets (chase is default like GT7)
+            enum class CarView { Chase, Hood, Dashboard };
+            static CarView current_view = CarView::Chase;
+
+            // compute car aabb from all renderables in the hierarchy
+            auto get_car_aabb = []() -> BoundingBox
+            {
+                if (!default_car)
+                    return BoundingBox::Unit;
+
+                BoundingBox combined(Vector3::Infinity, Vector3::InfinityNeg);
+                vector<Entity*> descendants;
+                default_car->GetDescendants(&descendants);
+                descendants.push_back(default_car);
+
+                for (Entity* entity : descendants)
+                {
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    {
+                        combined.Merge(renderable->GetBoundingBox());
+                    }
+                }
+
+                return combined;
+            };
+
+            // compute view positions and rotations based on car aabb
+            struct CarViewData
+            {
+                Vector3    position;
+                Quaternion rotation;
+            };
+
+            auto get_car_view_data = [&]() -> array<CarViewData, 3>
+            {
+                // the car body is rotated 90 degrees around X for physics alignment
+                // we need to counter-rotate the camera to look forward
+                Quaternion car_local_rot     = default_car->GetRotationLocal();
+                Quaternion camera_correction = car_local_rot.Inverse();
+
+                // use fixed positions that work well for typical car models
+                // note: car's 90-degree X rotation swaps Y and Z axes
+                // x = right/left, y = forward/back, z = down/up (negative = up)
+                // order matches enum: Chase, Hood, Dashboard
+                return
+                {
+                    CarViewData
+                    {
+                        // chase: behind and above the car (handled dynamically, this is just fallback)
+                        Vector3(0.0f, -5.0, -1.5f),
+                        camera_correction
+                    },
+                    CarViewData
+                    {
+                        // hood: above the hood, looking forward
+                        Vector3(0.0f, 0.8f, -1.0f),
+                        camera_correction
+                    },
+                    CarViewData
+                    {
+                        // dashboard: driver seat position
+                        Vector3(-0.3f, 0.05f, -0.85f),
+                        camera_correction
+                    }
+                };
+            };
+
+            // need camera for inside/outside detection
+            if (!default_camera)
+                return;
+
+            // cached references
+            bool inside_the_car                  = is_in_vehicle;
+            Entity* sound_door_entity            = vehicle_entity ? vehicle_entity->GetChildByName("sound_door")        : nullptr;
+            Entity* sound_start_entity           = vehicle_entity ? vehicle_entity->GetChildByName("sound_start")       : nullptr;
+            Entity* sound_idle_entity            = vehicle_entity ? vehicle_entity->GetChildByName("sound_idle")        : nullptr;
+            Entity* sound_tire_squeal_entity     = vehicle_entity ? vehicle_entity->GetChildByName("sound_tire_squeal") : nullptr;
+            AudioSource* audio_source_door       = sound_door_entity       ? sound_door_entity->GetComponent<AudioSource>()       : nullptr;
+            AudioSource* audio_source_start      = sound_start_entity      ? sound_start_entity->GetComponent<AudioSource>()      : nullptr;
+            AudioSource* audio_source_idle       = sound_idle_entity       ? sound_idle_entity->GetComponent<AudioSource>()       : nullptr;
+            AudioSource* audio_source_tire       = sound_tire_squeal_entity ? sound_tire_squeal_entity->GetComponent<AudioSource>() : nullptr;
+            if (!vehicle_entity || !audio_source_door || !audio_source_start || !audio_source_idle)
+                return;
+
+            // engine sound: pitch and volume based on rpm
+            if (vehicle_entity && inside_the_car)
+            {
+                Physics* physics = vehicle_entity->GetComponent<Physics>();
+                if (physics)
+                {
+                    if (!audio_source_idle->IsPlaying())
+                    {
+                        audio_source_idle->PlayClip();
+                    }
+                    
+                    float engine_rpm   = physics->GetEngineRPM();
+                    float idle_rpm     = physics->GetIdleRPM();
+                    float redline_rpm  = physics->GetRedlineRPM();
+                    
+                    float rpm_normalized = (engine_rpm - idle_rpm) / (redline_rpm - idle_rpm);
+                    rpm_normalized = std::max(0.0f, std::min(1.0f, rpm_normalized));
+                    
+                    // pitch curve: slight quadratic gives more response at higher rpm
+                    float pitch_curve = rpm_normalized * rpm_normalized * 0.3f + rpm_normalized * 0.7f;
+                    float pitch = 0.8f + pitch_curve * 1.5f;  // 0.8 at idle, up to 2.3 at redline
+                    audio_source_idle->SetPitch(pitch);
+                    
+                    // volume increases with rpm
+                    float volume = 0.6f + rpm_normalized * 0.4f;
+                    audio_source_idle->SetVolume(volume);
+                }
+            }
+            else if (!inside_the_car && audio_source_idle->IsPlaying())
+            {
+                audio_source_idle->StopClip();
+            }
+
+            // tire squeal sound: only during real slides (drifting, hard braking, wheelspin)
+            if (audio_source_tire && vehicle_entity)
+            {
+                Physics* physics = vehicle_entity->GetComponent<Physics>();
+                if (physics)
+                {
+                    float speed_kmh = physics->GetLinearVelocity().Length() * 3.6f;
+                    
+                    // collect max slip from all wheels (both lateral and longitudinal)
+                    float max_slip_angle = 0.0f;
+                    float max_slip_ratio = 0.0f;
+                    int grounded_count = 0;
+                    
+                    for (int i = 0; i < 4; i++)
+                    {
+                        WheelIndex wheel = static_cast<WheelIndex>(i);
+                        if (physics->IsWheelGrounded(wheel))
+                        {
+                            grounded_count++;
+                            max_slip_angle = std::max(max_slip_angle, fabsf(physics->GetWheelSlipAngle(wheel)));
+                            max_slip_ratio = std::max(max_slip_ratio, fabsf(physics->GetWheelSlipRatio(wheel)));
+                        }
+                    }
+                    
+                    // tuned thresholds - triggers on real slides but not too late
+                    // slip angle ~0.35 rad = ~20 degrees (starting to slide)
+                    // slip ratio ~0.28 = 28% wheelspin/lockup (noticeable loss of traction)
+                    const float slip_angle_threshold = 0.35f;
+                    const float slip_ratio_threshold = 0.28f;
+                    const float min_speed_for_squeal = 20.0f;  // km/h
+                    
+                    float target_intensity = 0.0f;
+                    if (speed_kmh > min_speed_for_squeal && grounded_count > 0)
+                    {
+                        float slip_angle_excess = max_slip_angle - slip_angle_threshold;
+                        float slip_ratio_excess = max_slip_ratio - slip_ratio_threshold;
+                        
+                        if (slip_angle_excess > 0.0f || slip_ratio_excess > 0.0f)
+                        {
+                            // gentle intensity curve - takes more slip to get louder
+                            float slip_angle_intensity = std::clamp(slip_angle_excess * 1.5f, 0.0f, 1.0f);
+                            float slip_ratio_intensity = std::clamp(slip_ratio_excess * 1.8f, 0.0f, 1.0f);
+                            target_intensity = std::max(slip_angle_intensity, slip_ratio_intensity);
+                        }
+                    }
+                    
+                    // smooth volume transitions
+                    static float smoothed_volume = 0.0f;
+                    float fade_in_rate  = 0.04f;
+                    float fade_out_rate = 0.025f;
+                    float rate = (target_intensity > smoothed_volume) ? fade_in_rate : fade_out_rate;
+                    smoothed_volume = smoothed_volume + (target_intensity - smoothed_volume) * rate;
+                    
+                    // low max volume
+                    const float max_volume = 0.25f;
+                    float volume = smoothed_volume * max_volume;
+                    
+                    // only play when there's actual slip
+                    if (smoothed_volume > 0.02f)
+                    {
+                        if (!audio_source_tire->IsPlaying())
+                            audio_source_tire->PlayClip();
+                        
+                        audio_source_tire->SetVolume(volume);
+                        audio_source_tire->SetPitch(0.95f + smoothed_volume * 0.15f);
+                    }
+                    else
+                    {
+                        smoothed_volume = 0.0f;  // reset to zero when below threshold
+                        if (audio_source_tire->IsPlaying())
+                            audio_source_tire->StopClip();
+                    }
+                }
+            }
+
+            // gt7-style chase camera
+            if (inside_the_car && current_view == CarView::Chase && vehicle_entity)
+            {
+                // chase camera must be parented to default_camera, not the car
+                Entity* camera = default_camera->GetChildByName("component_camera");
+                if (!camera)
+                {
+                    camera = vehicle_entity->GetChildByName("component_camera");
+                    if (!camera)
+                        camera = default_car->GetChildByName("component_camera");
+                    if (camera)
+                    {
+                        camera->SetParent(default_camera);
+                        chase_camera::initialized = false;
+                    }
+                }
+                
+                if (camera)
+                {
+                    Physics* car_physics = vehicle_entity->GetComponent<Physics>();
+                    float dt = static_cast<float>(Timer::GetDeltaTimeSec());
+                    
+                    // get car state (position is already smoothly interpolated by physics component)
+                    Vector3 car_position = vehicle_entity->GetPosition();
+                    Vector3 car_forward  = vehicle_entity->GetForward();
+                    Vector3 car_velocity = car_physics ? car_physics->GetLinearVelocity() : Vector3::Zero;
+                    float car_speed      = car_velocity.Length();
+                    
+                    // extract yaw from forward vector
+                    float target_yaw = atan2f(car_forward.x, car_forward.z);
+                    
+                    // gt7-style: smooth speed factor for gradual transitions
+                    float target_speed_factor = std::clamp(car_speed / chase_camera::speed_reference, 0.0f, 1.0f);
+                    chase_camera::speed_factor += (target_speed_factor - chase_camera::speed_factor) * 
+                        std::min(1.0f, chase_camera::speed_smoothing * dt);
+                    
+                    // gt7-style: dynamic distance and height based on speed
+                    float dynamic_distance = chase_camera::distance_base - 
+                        (chase_camera::distance_base - chase_camera::distance_min) * chase_camera::speed_factor;
+                    float dynamic_height = chase_camera::height_base - 
+                        (chase_camera::height_base - chase_camera::height_min) * chase_camera::speed_factor;
+                    
+                    // initialize chase camera state on first use
+                    if (!chase_camera::initialized)
+                    {
+                        chase_camera::yaw          = target_yaw;
+                        chase_camera::yaw_bias     = 0.0f;
+                        chase_camera::pitch_bias   = 0.0f;
+                        chase_camera::speed_factor = target_speed_factor;
+                        chase_camera::position     = car_position - Vector3(sinf(target_yaw), 0.0f, cosf(target_yaw)) * dynamic_distance
+                                                   + Vector3::Up * dynamic_height;
+                        chase_camera::velocity     = Vector3::Zero;
+                        chase_camera::initialized  = true;
+                    }
+                    
+                    // gt7-style: rotation follows car with slight lag (more lag = more dramatic swinging)
+                    float rotation_speed = chase_camera::rotation_smoothing * (1.0f + chase_camera::speed_factor * 0.5f);
+                    chase_camera::yaw = chase_camera::lerp_angle(chase_camera::yaw, target_yaw, 
+                        1.0f - expf(-rotation_speed * dt));
+                    
+                    // compute target camera position based on smoothed yaw/pitch + manual bias from right stick
+                    float effective_yaw   = chase_camera::yaw + chase_camera::yaw_bias;
+                    float effective_pitch = chase_camera::pitch_bias;
+
+                    // pitch affects the orbit: positive pitch = higher camera, negative = lower
+                    float horizontal_scale = cosf(effective_pitch);
+                    float vertical_offset  = sinf(effective_pitch) * dynamic_distance;
+
+                    Vector3 offset_direction = Vector3(sinf(effective_yaw), 0.0f, cosf(effective_yaw));
+                    Vector3 target_position  = car_position 
+                                             - offset_direction * dynamic_distance * horizontal_scale
+                                             + Vector3::Up * (dynamic_height + vertical_offset);
+                    
+                    // gt7-style: position smoothing gets snappier at higher speeds
+                    float position_smooth = chase_camera::position_smoothing * (1.0f - chase_camera::speed_factor * 0.3f);
+                    Vector3 prev_position = chase_camera::position;
+                    chase_camera::position = chase_camera::smooth_damp(
+                        chase_camera::position, target_position, chase_camera::velocity, 
+                        position_smooth, dt);
+                    
+                    // gt7-style: look-ahead based on velocity (camera looks where the car is going)
+                    Vector3 velocity_xz = Vector3(car_velocity.x, 0.0f, car_velocity.z);
+                    float velocity_xz_len = velocity_xz.Length();
+                    Vector3 look_ahead = Vector3::Zero;
+                    if (velocity_xz_len > 2.0f)
+                    {
+                        look_ahead = (velocity_xz / velocity_xz_len) * chase_camera::look_ahead_amount * chase_camera::speed_factor;
+                    }
+                    Vector3 look_at = car_position + Vector3::Up * chase_camera::look_offset_up + look_ahead;
+                    
+                    // update camera transform
+                    camera->SetPosition(chase_camera::position);
+                    Vector3 look_direction = (look_at - chase_camera::position).Normalized();
+                    camera->SetRotation(Quaternion::FromLookRotation(look_direction, Vector3::Up));
+                }
+            }
+
+            // enter/exit car
+            if (Input::GetKeyDown(KeyCode::E))
+            {
+                Entity* camera = nullptr;
+                if (!inside_the_car)
+                {
+                    // entering the car
+                    camera = default_camera->GetChildByName("component_camera");
+                    
+                    if (current_view == CarView::Chase)
+                    {
+                        // chase: stays under default_camera, world-space following
+                        chase_camera::initialized = false;
+                    }
+                    else
+                    {
+                        // hood: parent to car body
+                        camera->SetParent(default_car);
+                        array<CarViewData, 3> view_data = get_car_view_data();
+                        camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                        camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                    }
+                    
+                    audio_source_start->PlayClip();
+                    is_in_vehicle = true;
+                }
+                else
+                {
+                    // exiting the car
+                    camera = default_car->GetChildByName("component_camera");
+                    if (!camera)
+                        camera = default_camera->GetChildByName("component_camera");
+                    
+                    camera->SetParent(default_camera);
+                    camera->SetPositionLocal(default_camera->GetComponent<Physics>()->GetControllerTopLocal());
+                    camera->SetRotationLocal(Quaternion::Identity);
+                    
+                    BoundingBox car_aabb = get_car_aabb();
+                    Vector3 exit_offset  = default_car->GetLeft() * car_aabb.GetSize().x + Vector3::Up * car_aabb.GetSize().y * 0.5f;
+                    default_camera->SetPosition(default_car->GetPosition() + exit_offset);
+                    
+                    audio_source_idle->StopClip();
+                    chase_camera::initialized = false;
+                    is_in_vehicle = false;
+
+                    // stop vibration when exiting car
+                    Input::GamepadVibrate(0.0f, 0.0f);
+                }
+
+                camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !is_in_vehicle);
+                audio_source_door->PlayClip();
+
+                if (default_car_window)
+                {
+                    default_car_window->SetActive(!is_in_vehicle);
+                }
+            }
+
+            // cycle camera view: V key or Right Shoulder button (like GT7)
+            if (Input::GetKeyDown(KeyCode::V) || Input::GetKeyDown(KeyCode::Right_Shoulder))
+            {
+                if (inside_the_car)
+                {
+                    // find camera
+                    Entity* camera = default_car->GetChildByName("component_camera");
+                    if (!camera)
+                        camera = default_camera->GetChildByName("component_camera");
+
+                    if (camera)
+                    {
+                        CarView previous_view = current_view;
+                        current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 2); // chase and hood only
+                        
+                        if (current_view == CarView::Chase)
+                        {
+                            // switching to chase: unparent for world-space following
+                            camera->SetParent(default_camera);
+                            chase_camera::initialized = false;
+                        }
+                        else
+                        {
+                            // switching to hood: parent to car body
+                            camera->SetParent(default_car);
+                            array<CarViewData, 3> view_data = get_car_view_data();
+                            camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
+                            camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
+                        }
+                    }
+                }
+            }
+
+            // osd
+            Renderer::DrawString("WASD/Gamepad: Move | E: Enter/Exit | V/RB: Change View | R/B: Reset | RS: Look Around", Vector2(0.005f, 0.98f));
+        }
+
+        // reset state on shutdown
+        void shutdown()
+        {
+            vehicle_entity                 = nullptr;
+            show_telemetry                 = false;
+            is_in_vehicle                  = false;
+            chase_camera::initialized  = false;
+            chase_camera::position     = Vector3::Zero;
+            chase_camera::velocity     = Vector3::Zero;
+            chase_camera::yaw          = 0.0f;
+            chase_camera::yaw_bias     = 0.0f;
+            chase_camera::pitch_bias   = 0.0f;
+            chase_camera::speed_factor = 0.0f;
+
+            // stop any vibration
+            Input::GamepadVibrate(0.0f, 0.0f);
+        }
         bool prefabs_registered = false;
     }
 
@@ -387,7 +2012,7 @@ namespace spartan
 
                 // main building
                 uint32_t mesh_flags = Mesh::GetDefaultFlags();
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf", mesh_flags))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf", mesh_flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza");
@@ -413,7 +2038,7 @@ namespace spartan
                 }
 
                 // curtains
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza_curtains");
@@ -432,7 +2057,7 @@ namespace spartan
                 }
 
                 // ivy
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza_ivy");
@@ -476,7 +2101,7 @@ namespace spartan
                 uint32_t mesh_flags  = Mesh::GetDefaultFlags();
                 mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
                 mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", mesh_flags))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", mesh_flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("minecraft");
@@ -506,7 +2131,7 @@ namespace spartan
                 entities::camera(true);
                 entities::floor();
 
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("subway");
@@ -614,7 +2239,7 @@ namespace spartan
                 {
                     // terrain material
                     {
-                        shared_ptr<Material> material = terrain->GetMaterial();
+                        Ref<Material> material = terrain->GetMaterial();
                         material->SetResourceName("terrain" + string(EXTENSION_MATERIAL));
                         material->SetProperty(MaterialProperty::IsTerrain, 1.0f);
                         material->SetProperty(MaterialProperty::TextureTilingX, 2000.0f);
@@ -642,12 +2267,12 @@ namespace spartan
                     }
 
                     // height map generation
-                    shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
+                    Ref<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
                     if (height_map)
                     {
                         height_map->PrepareForGpu();
                     }
-                    terrain->SetHeightMapSeed(height_map.get());
+                    terrain->SetHeightMapSeed(height_map.Get());
                     terrain->Generate();
 
                     // terrain physics
@@ -668,11 +2293,11 @@ namespace spartan
                 {
                     // load meshes
                     uint32_t flags             = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                    shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags);
-                    shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj");
+                    Ref<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags);
+                    Ref<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj");
 
                     // procedural grass mesh with lods
-                    shared_ptr<Mesh> mesh_grass_blade = meshes.emplace_back(make_shared<Mesh>());
+                    Ref<Mesh> mesh_grass_blade = meshes.emplace_back(CreateRef<Mesh>());
                     {
                         mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                         uint32_t sub_mesh_index = 0;
@@ -706,7 +2331,7 @@ namespace spartan
                     }
 
                     // procedural flower mesh with lods
-                    shared_ptr<Mesh> mesh_flower = meshes.emplace_back(make_shared<Mesh>());
+                    Ref<Mesh> mesh_flower = meshes.emplace_back(CreateRef<Mesh>());
                     {
                         mesh_flower->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                         uint32_t sub_mesh_index = 0;
@@ -740,14 +2365,14 @@ namespace spartan
                     }
 
                     // materials
-                    shared_ptr<Material> material_leaf;
-                    shared_ptr<Material> material_body;
-                    shared_ptr<Material> material_rock;
-                    shared_ptr<Material> material_grass_blade;
-                    shared_ptr<Material> material_flower;
+                    Ref<Material> material_leaf;
+                    Ref<Material> material_body;
+                    Ref<Material> material_rock;
+                    Ref<Material> material_grass_blade;
+                    Ref<Material> material_flower;
                     {
                         // tree leaves
-                        material_leaf = make_shared<Material>();
+                        material_leaf = CreateRef<Material>();
                         material_leaf->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\Twig_Base_Material_2.png");
                         material_leaf->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\Twig_Normal.png");
                         material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project\\models\\tree\\Twig_Opacity_Map.jpg");
@@ -757,14 +2382,14 @@ namespace spartan
                         material_leaf->SetResourceName("tree_leaf" + string(EXTENSION_MATERIAL));
 
                         // tree bark
-                        material_body = make_shared<Material>();
+                        material_body = CreateRef<Material>();
                         material_body->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\tree_bark_diffuse.png");
                         material_body->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\tree_bark_normal.png");
                         material_body->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
                         material_body->SetResourceName("tree_body" + string(EXTENSION_MATERIAL));
 
                         // rocks
-                        material_rock = make_shared<Material>();
+                        material_rock = CreateRef<Material>();
                         material_rock->SetTexture(MaterialTextureType::Color, "project\\models\\rock_2\\albedo.png");
                         material_rock->SetTexture(MaterialTextureType::Normal, "project\\models\\rock_2\\normal.png");
                         material_rock->SetTexture(MaterialTextureType::Roughness, "project\\models\\rock_2\\roughness.png");
@@ -772,7 +2397,7 @@ namespace spartan
                         material_rock->SetResourceName("rock" + string(EXTENSION_MATERIAL));
 
                         // grass blades
-                        material_grass_blade = make_shared<Material>();
+                        material_grass_blade = CreateRef<Material>();
                         material_grass_blade->SetProperty(MaterialProperty::IsGrassBlade, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::Roughness, 1.0f);
                         material_grass_blade->SetProperty(MaterialProperty::Clearcoat, 1.0f);
@@ -783,7 +2408,7 @@ namespace spartan
                         material_grass_blade->SetResourceName("grass_blade" + string(EXTENSION_MATERIAL));
 
                         // flowers
-                        material_flower = make_shared<Material>();
+                        material_flower = CreateRef<Material>();
                         material_flower->SetProperty(MaterialProperty::IsFlower, 1.0f);
                         material_flower->SetProperty(MaterialProperty::Roughness, 1.0f);
                         material_flower->SetProperty(MaterialProperty::Clearcoat, 1.0f);
@@ -894,7 +2519,7 @@ namespace spartan
                                         vector<Matrix> far_transforms(all_transforms.begin(), all_transforms.begin() + split_1);
 
                                         Renderable* renderable = entity->AddComponent<Renderable>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
+                                        renderable->SetMesh(mesh_grass_blade.Get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(far_transforms);
                                         renderable->SetMaterial(material_grass_blade);
@@ -910,7 +2535,7 @@ namespace spartan
                                         vector<Matrix> mid_transforms(all_transforms.begin() + split_1, all_transforms.begin() + split_2);
 
                                         Renderable* renderable = entity->AddComponent<Renderable>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
+                                        renderable->SetMesh(mesh_grass_blade.Get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(mid_transforms);
                                         renderable->SetMaterial(material_grass_blade);
@@ -926,7 +2551,7 @@ namespace spartan
                                         vector<Matrix> near_transforms(all_transforms.begin() + split_2, all_transforms.end());
 
                                         Renderable* renderable = entity->AddComponent<Renderable>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
+                                        renderable->SetMesh(mesh_grass_blade.Get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(near_transforms);
                                         renderable->SetMaterial(material_grass_blade);
@@ -945,7 +2570,7 @@ namespace spartan
                                 terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 0.64f, transforms);
 
                                 Renderable* renderable = entity->AddComponent<Renderable>();
-                                renderable->SetMesh(mesh_flower.get());
+                                renderable->SetMesh(mesh_flower.Get());
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                 renderable->SetInstances(transforms);
                                 renderable->SetMaterial(material_flower);
@@ -1008,7 +2633,7 @@ namespace spartan
         //= SHOWROOM =========================================================================
         namespace showroom
         {
-            shared_ptr<RHI_Texture> texture_brand_logo;
+            Ref<RHI_Texture> texture_brand_logo;
             Entity* turn_table = nullptr;
 
             void create()
@@ -1016,7 +2641,7 @@ namespace spartan
                 entities::music("project\\music\\gran_turismo_4.wav");
 
                 // textures
-                texture_brand_logo = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
+                texture_brand_logo = CreateRef<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
 
                 // create display car (non-drivable)
                 Car::Config car_config;
@@ -1041,7 +2666,7 @@ namespace spartan
                     mesh_flags          &= static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\SpartanLaFerrariV2\\LaFerrariV2.gltf", mesh_flags))
+                    if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\SpartanLaFerrariV2\\LaFerrariV2.gltf", mesh_flags))
                     {
                         Entity* floor_tube_lights = mesh->GetRootEntity();
                         floor_tube_lights->SetObjectName("tube_lights_and_floor");
@@ -1197,7 +2822,7 @@ namespace spartan
                     ImGui::End();
                 }
 
-                Renderer::DrawIcon(texture_brand_logo.get(), Vector2(400.0f, 300.0f));
+                Renderer::DrawIcon(texture_brand_logo.Get(), Vector2(400.0f, 300.0f));
             }
         }
         //====================================================================================
@@ -1208,7 +2833,7 @@ namespace spartan
             void create()
             {
                 // shared tile material
-                shared_ptr<Material> tile_material = make_shared<Material>();
+                Ref<Material> tile_material = CreateRef<Material>();
                 tile_material->SetResourceName("floor_tile" + string(EXTENSION_MATERIAL));
                 tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
                 tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
@@ -1223,7 +2848,7 @@ namespace spartan
                 Entity* entity_pool_light = nullptr;
                 uint32_t flags  = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                 flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\pool_light\\pool_light.blend", flags))
+                if (Ref<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\pool_light\\pool_light.blend", flags))
                 {
                     entity_pool_light = mesh->GetRootEntity();
                     entity_pool_light->SetObjectName("pool_light");
@@ -1233,14 +2858,14 @@ namespace spartan
                     entity_pool_light->GetChildByIndex(3)->SetActive(false);
 
                     // outer metallic ring
-                    shared_ptr<Material> material_metal = make_shared<Material>();
+                    Ref<Material> material_metal = CreateRef<Material>();
                     material_metal->SetResourceName("material_metal" + string(EXTENSION_MATERIAL));
                     material_metal->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_metal->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle")->GetComponent<Renderable>()->SetMaterial(material_metal);
 
                     // inner light paraboloid
-                    shared_ptr<Material> material_paraboloid = make_shared<Material>();
+                    Ref<Material> material_paraboloid = CreateRef<Material>();
                     material_paraboloid->SetResourceName("material_paraboloid" + string(EXTENSION_MATERIAL));
                     material_paraboloid->SetTexture(MaterialTextureType::Emission, "project\\models\\pool_light\\emissive.png");
                     material_paraboloid->SetProperty(MaterialProperty::Roughness, 0.5f);

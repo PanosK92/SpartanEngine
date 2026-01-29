@@ -1094,7 +1094,7 @@ namespace spartan
                 vkUpdateDescriptorSets(RHI_Context::device, 1, &write, 0, nullptr);
             }
 
-            void update_samplers(RHI_Device_Bindless_Resource type, const shared_ptr<RHI_Sampler>* samplers, uint32_t count)
+            void update_samplers(RHI_Device_Bindless_Resource type, const array<Ref<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers, uint32_t offset, uint32_t count)
             {
                 const uint32_t index      = static_cast<uint32_t>(type);
                 const ResourceConfig& cfg = configs[index];
@@ -1102,7 +1102,7 @@ namespace spartan
                 vector<VkDescriptorImageInfo> image_infos(count);
                 for (uint32_t i = 0; i < count; ++i)
                 {
-                    image_infos[i].sampler = static_cast<VkSampler>(samplers[i]->GetRhiResource());
+                    image_infos[i].sampler = static_cast<VkSampler>((*samplers)[offset + i]->GetRhiResource());
                 }
 
                 VkWriteDescriptorSet write = {};
@@ -1904,15 +1904,15 @@ namespace spartan
         array<RHI_Texture*, rhi_max_array_size>* material_textures,
         RHI_Buffer* material_parameters,
         RHI_Buffer* light_parameters,
-        const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
+        const array<Ref<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
         RHI_Buffer* bindless_aabbs
     )
     {
         // samplers
         if (samplers)
         {
-            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersComparison, &(*samplers)[0], 1);
-            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersRegular, &(*samplers)[1], 8);
+            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersComparison, samplers, 0, 1);
+            descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersRegular, samplers, 1, 8);
         }
 
         // lights

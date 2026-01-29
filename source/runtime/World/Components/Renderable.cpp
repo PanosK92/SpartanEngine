@@ -53,7 +53,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sub_mesh_index, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box_dirty, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instances, vector<Instance>);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_buffer, shared_ptr<RHI_Buffer>);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_buffer, Ref<RHI_Buffer>);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_transform_previous, Matrix);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_render, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_distance_shadow, float);
@@ -110,31 +110,31 @@ namespace spartan
             // check for standard meshes first (owned by Renderer, not ResourceCache)
             if (mesh_name == "standard_cube")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Cube).get();
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cube).Get();
             }
             else if (mesh_name == "standard_quad")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Quad).get();
+                m_mesh = Renderer::GetStandardMesh(MeshType::Quad).Get();
             }
             else if (mesh_name == "standard_sphere")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Sphere).get();
+                m_mesh = Renderer::GetStandardMesh(MeshType::Sphere).Get();
             }
             else if (mesh_name == "standard_cylinder")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Cylinder).get();
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cylinder).Get();
             }
             else if (mesh_name == "standard_cone")
             {
-                m_mesh = Renderer::GetStandardMesh(MeshType::Cone).get();
+                m_mesh = Renderer::GetStandardMesh(MeshType::Cone).Get();
             }
             else
             {
                 // look up in ResourceCache for custom meshes
-                shared_ptr<Mesh> mesh = ResourceCache::GetByName<Mesh>(mesh_name);
+                Ref<Mesh> mesh = ResourceCache::GetByName<Mesh>(mesh_name);
                 if (mesh)
                 {
-                    m_mesh = mesh.get();
+                    m_mesh = mesh.Get();
                 }
                 else
                 {
@@ -148,7 +148,7 @@ namespace spartan
         const string material_name = node.attribute("material_name").as_string();
         if (!material_name.empty() && !m_material_default)
         {
-            shared_ptr<Material> material = ResourceCache::GetByName<Material>(material_name);
+            Ref<Material> material = ResourceCache::GetByName<Material>(material_name);
             if (material)
             {
                 SetMaterial(material);
@@ -258,7 +258,7 @@ namespace spartan
 
     void Renderable::SetMesh(const MeshType type)
     {
-        SetMesh(Renderer::GetStandardMesh(type).get());
+        SetMesh(Renderer::GetStandardMesh(type).Get());
     }
 
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
@@ -271,14 +271,14 @@ namespace spartan
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
     
-    void Renderable::SetMaterial(const shared_ptr<Material>& material)
+    void Renderable::SetMaterial(const Ref<Material>& material)
     {
         SP_ASSERT(material != nullptr);
 
         m_material_default = false;
 
         // cache it so it can be serialized/deserialized
-        m_material = ResourceCache::Cache(material).get();
+        m_material = ResourceCache::Cache(material).Get();
 
         // pack textures, generate mips, compress, upload to GPU
         if (m_material->GetResourceState() == ResourceState::Max)
@@ -315,7 +315,7 @@ namespace spartan
 
     void Renderable::SetMaterial(const string& file_path)
     {
-        auto material = make_shared<Material>();
+        auto material = CreateRef<Material>();
 
         material->LoadFromFile(file_path);
 
@@ -423,7 +423,7 @@ namespace spartan
 
         // store instance data
         m_instances = instances;
-        m_instance_buffer = make_shared<RHI_Buffer>(
+        m_instance_buffer = CreateRef<RHI_Buffer>(
             RHI_Buffer_Type::Instance,
             sizeof(Instance),
             static_cast<uint32_t>(instances.size()),

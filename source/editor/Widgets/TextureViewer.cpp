@@ -72,11 +72,11 @@ void TextureViewer::OnVisible()
 
     // get render targets
     vector<pair<string, spartan::RHI_Texture*>> sorted_targets;
-    for (const shared_ptr<spartan::RHI_Texture>& render_target : Renderer::GetRenderTargets())
+    for (const Ref<spartan::RHI_Texture>& render_target : Renderer::GetRenderTargets())
     {
         if (render_target)
         {
-            sorted_targets.emplace_back(render_target->GetObjectName(), render_target.get());
+            sorted_targets.emplace_back(render_target->GetObjectName(), render_target.Get());
         }
     }
 

@@ -74,16 +74,16 @@ namespace spartan
                 return component;
 
             // create a new component
-            std::shared_ptr<T> component = std::make_shared<T>(this);
+            Ref<T> component = CreateRef<T>(this);
 
             // save new component
-            m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
+            m_components[static_cast<uint32_t>(type)] = component.template As<Component>();
 
             // initialize component
             component->SetType(type);
             component->Initialize();
 
-            return component.get();
+            return component.Get();
         }
 
         // adds a component of ComponentType 
@@ -94,7 +94,7 @@ namespace spartan
         T* GetComponent()
         {
             const ComponentType component_type = Component::TypeToEnum<T>();
-            return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].get());
+            return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].Get());
         }
 
         // removes a component
@@ -180,7 +180,7 @@ namespace spartan
     private:
         std::atomic<bool> m_is_active = true;
         bool m_transient              = false; // transient entities are not serialized
-        std::array<std::shared_ptr<Component>, static_cast<uint32_t>(ComponentType::Max)> m_components;
+        std::array<Ref<Component>, static_cast<uint32_t>(ComponentType::Max)> m_components;
 
         void UpdateTransform();
         math::Matrix GetParentTransformMatrix();

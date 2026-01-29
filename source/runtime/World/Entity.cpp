@@ -55,7 +55,7 @@ namespace spartan
             clone->SetScale(entity->GetScaleLocal());
 
             // clone all the components
-            for (shared_ptr<Component> component_original : entity->GetAllComponents())
+            for (Ref<Component> component_original : entity->GetAllComponents())
             {
                 if (component_original != nullptr)
                 {
@@ -118,7 +118,7 @@ namespace spartan
 
     void Entity::Start()
     {
-        for (shared_ptr<Component> component : m_components)
+        for (Ref<Component> component : m_components)
         {
             if (component)
             {
@@ -129,7 +129,7 @@ namespace spartan
 
     void Entity::Stop()
     {
-        for (shared_ptr<Component> component : m_components)
+        for (Ref<Component> component : m_components)
         {
             if (component)
             {
@@ -140,7 +140,7 @@ namespace spartan
 
     void Entity::PreTick()
     {
-        for (shared_ptr<Component>& component : m_components)
+        for (Ref<Component>& component : m_components)
         {
             if (component)
             {
@@ -151,7 +151,7 @@ namespace spartan
 
     void Entity::Tick()
     {
-        for (shared_ptr<Component>& component : m_components)
+        for (Ref<Component>& component : m_components)
         {
             if (component)
             {
@@ -201,7 +201,7 @@ namespace spartan
             }
 
             // components
-            for (shared_ptr<Component>& component : m_components)
+            for (Ref<Component>& component : m_components)
             {
                 if (component)
                 {
@@ -339,7 +339,7 @@ namespace spartan
 
     void Entity::RemoveComponentById(const uint64_t id)
     {
-        for (shared_ptr<Component>& component : m_components)
+        for (Ref<Component>& component : m_components)
         {
             if (component)
             {
@@ -356,7 +356,7 @@ namespace spartan
     uint32_t Entity::GetComponentCount() const
     {
         uint32_t count = 0;
-        for (const shared_ptr<Component>& component : m_components)
+        for (const Ref<Component>& component : m_components)
         {
             if (component)
             {

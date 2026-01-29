@@ -60,6 +60,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // common
 #include "Definitions.h"
+#include "RefCounter.h"
 #include "Engine.h"
 #include "Event.h"
 #include "Settings.h"

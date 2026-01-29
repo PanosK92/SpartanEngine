@@ -124,9 +124,9 @@ namespace spartan
         std::vector<SubMesh> m_sub_meshes;               // tracks sub-meshes and lods within the above vectors
 
         // gpu buffers
-        std::unique_ptr<RHI_Buffer> m_vertex_buffer;
-        std::unique_ptr<RHI_Buffer> m_index_buffer;
-        std::vector<std::unique_ptr<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh
+        Scope<RHI_Buffer> m_vertex_buffer;
+        Scope<RHI_Buffer> m_index_buffer;
+        std::vector<Scope<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh
 
         // misc
         std::mutex m_mutex;

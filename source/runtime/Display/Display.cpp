@@ -31,6 +31,9 @@ SP_WARNINGS_OFF
 #include <wrl.h>
 #endif
 #include <SDL3/SDL_video.h>
+
+#include <algorithm>
+#include <utility>
 SP_WARNINGS_ON
 //==========================
 
@@ -66,7 +69,7 @@ namespace spartan
         display_modes.emplace_back(width, height, hz, display_index);
 
         // sort display modes based on width, descending order
-        sort(display_modes.begin(), display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
+        std::ranges::sort(display_modes, [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
         {
             return display_mode_a.width > display_mode_b.width;
         });
@@ -138,7 +141,7 @@ namespace spartan
 
         // during engine startup, the window doesn't exist yet, therefore it's not displayed by any monitor.
         // in this case the index can be -1, so we'll instead set the index to 0 (whatever the primary display is)
-        return index != -1 ? index : 0;
+        return std::cmp_not_equal(index, -1) ? index : 0;
     }
 
     bool Display::GetHdr()

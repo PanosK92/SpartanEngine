@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    class Command
+    class Command : public RefCounted
     {
     public:
         virtual void OnApply()  = 0;
