@@ -43,7 +43,7 @@ public:
     };
 
     // Specification for creating a modal popup
-    struct Spec
+    struct ModalPanel
     {
         std::string title                    = "Popup";
         std::string message;
@@ -58,9 +58,9 @@ public:
     };
 
     Modal() = default;
-    Modal(const Spec& spec);
+    Modal(const ModalPanel& spec);
     static void Initialize(Editor* editor);
-    static void Show(const Spec& spec);  // Show a modal popup with the given specification
+    static void Show(const ModalPanel& spec);  // Show a modal popup with the given specification
     static void Tick();
     static void Close();
 
@@ -78,8 +78,7 @@ public:
      * @brief Renders a modal header with optional indentation control.
      * @param text The header text to display.
      * @param indentAfter Whether to indent after the header.
-     * @param
-     * unindendBefore Whether to unindent before the header.
+     * @param unindend_Before Whether to unindent before the header.
      */
     static void ModalHeader(const std::string& text, bool indentAfter = true, bool unindend_Before = false);
 

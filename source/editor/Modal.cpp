@@ -40,7 +40,7 @@ namespace
     bool is_active     = false;
     bool should_open   = false;
     Modal::Result last_result = Modal::Result::None;
-    Modal::Spec current_spec;
+    Modal::ModalPanel current_spec;
     function<void()> on_confirm_callback = nullptr;
     function<void()> on_cancel_callback  = nullptr;
     
@@ -51,65 +51,56 @@ namespace
     
     void DrawDimmedBackground()
     {
-        // Get the main viewport to cover the entire window
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    
         // Calculate animated alpha
         float target_alpha = is_active ? current_spec.dim_alpha : 0.0f;
         dim_animation      = ImLerp(dim_animation, target_alpha, ImGui::GetIO().DeltaTime * animation_speed);
-    
-        if (dim_animation < 0.001f) return;
-    
-        // Draw fullscreen dim overlay on the foreground draw list
-        ImDrawList* draw_list = ImGui::GetForegroundDrawList();
-        ImU32 dim_color       = IM_COL32(0, 0, 0, static_cast<int>(dim_animation * 255.0f));
-    
-        draw_list->AddRectFilled(
-            viewport->Pos, ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y), dim_color);
-    }
-    
-    void DrawBlockingOverlay()
-    {
-        if (!is_active) return;
-    
-        // Create an invisible fullscreen window that captures all input
+
+        if (dim_animation < 0.001f && !is_active) return;
+
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    
+
         ImGui::SetNextWindowPos(viewport->Pos);
         ImGui::SetNextWindowSize(viewport->Size);
-    
+
+        // Window that both dims AND blocks input (no NoInputs flag)
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                                  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse |
-                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoFocusOnAppearing |
-                                 ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration |
+                                 ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration |
                                  ImGuiWindowFlags_NoDocking;
-    
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, dim_animation));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    
-        ImGui::Begin("##modal_blocking_overlay", nullptr, flags);
+
+        ImGui::Begin("##modal_dim_overlay", nullptr, flags);
         ImGui::End();
-    
+
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor();
     }
-        
+    
     void DrawPopupWindow()
     {
-        if (!is_active && popup_animation < 0.001f) return;
+        if (!is_active && popup_animation < 0.001f)
+        {
+            return;
+        }
     
         // Animate popup scale/alpha
         float target_scale = is_active ? 1.0f : 0.0f;
         popup_animation    = ImLerp(popup_animation, target_scale, ImGui::GetIO().DeltaTime * animation_speed);
     
-        if (popup_animation < 0.001f) return;
+        if (popup_animation < 0.001f)
+        {
+            return;
+        }
     
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2 center                 = ImVec2(viewport->Pos.x + viewport->Size.x * 0.5f, viewport->Pos.y + viewport->Size.y * 0.5f);
     
         ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowSizeConstraints(current_spec.min_size, current_spec.max_size);
+        ImGui::SetNextWindowFocus(); // Ensure modal gets focus
     
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoDocking |
                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
@@ -126,9 +117,6 @@ namespace
     
         if (ImGui::Begin(window_title.c_str(), nullptr, flags))
         {
-            // Ensure this window is always on top and focused
-            ImGui::SetWindowFocus();
-    
             // Message text with wrapping
             if (!current_spec.message.empty())
             {
@@ -165,7 +153,10 @@ namespace
                 last_result = Modal::Result::Confirmed;
                 is_active   = false;
     
-                if (on_confirm_callback) { on_confirm_callback(); }
+                if (on_confirm_callback)
+                {
+                    on_confirm_callback();
+                }
             }
     
             // Cancel button
@@ -177,7 +168,10 @@ namespace
                     last_result = Modal::Result::Cancelled;
                     is_active   = false;
     
-                    if (on_cancel_callback) { on_cancel_callback(); }
+                    if (on_cancel_callback)
+                    {
+                        on_cancel_callback();
+                    }
                 }
             }
     
@@ -187,7 +181,10 @@ namespace
                 last_result = Modal::Result::Cancelled;
                 is_active   = false;
     
-                if (on_cancel_callback) { on_cancel_callback(); }
+                if (on_cancel_callback)
+                {
+                    on_cancel_callback();
+                }
             }
     
             // Handle Enter key to confirm
@@ -196,17 +193,20 @@ namespace
                 last_result = Modal::Result::Confirmed;
                 is_active   = false;
     
-                if (on_confirm_callback) { on_confirm_callback(); }
+                if (on_confirm_callback)
+                {
+                    on_confirm_callback();
+                }
             }
         }
+
         ImGui::End();
-    
         ImGui::PopStyleVar(3);
     }
 
 }  // namespace
 
-Modal::Modal(const Spec& spec)
+Modal::Modal(const ModalPanel& spec)
 {
     current_spec = spec;
 }
@@ -216,7 +216,7 @@ void Modal::Initialize(Editor* editor_in)
     editor = editor_in;
 }
 
-void Modal::Show(const Spec& spec)
+void Modal::Show(const ModalPanel& spec)
 {
     current_spec        = spec;
     is_active           = true;
@@ -228,7 +228,7 @@ void Modal::Show(const Spec& spec)
 
 void Modal::ShowMessage(const string& title, const string& message)
 {
-    Spec spec;
+    ModalPanel spec;
     spec.title              = title;
     spec.message            = message;
     spec.confirm_text       = "OK";
@@ -238,7 +238,7 @@ void Modal::ShowMessage(const string& title, const string& message)
 
 void Modal::ShowConfirmation(const string& title, const string& message, function<void()> on_confirm, function<void()> on_cancel)
 {
-    Spec spec;
+    ModalPanel spec;
     spec.title              = title;
     spec.message            = message;
     spec.confirm_text       = "Yes";
@@ -253,16 +253,25 @@ void Modal::ShowConfirmation(const string& title, const string& message, functio
 
 void Modal::Tick()
 {
+    // Handle Escape key globally - always works regardless of focus
+    if (is_active && ImGui::IsKeyPressed(ImGuiKey_Escape))
+    {
+        last_result = Result::Cancelled;
+        is_active   = false;
+
+        if (on_cancel_callback)
+        {
+            on_cancel_callback();
+        }
+        }
+
     // Draw the dimmed background first (behind everything except the popup)
     DrawDimmedBackground();
-
-    // Draw invisible blocking overlay to capture clicks
-    DrawBlockingOverlay();
 
     // Draw the actual popup window on top
     DrawPopupWindow();
 
-    // Reset animation when fully closed
+    // Reset callbacks when fully closed
     if (!is_active && dim_animation < 0.001f && popup_animation < 0.001f)
     {
         on_confirm_callback = nullptr;
