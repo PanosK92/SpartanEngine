@@ -63,6 +63,16 @@ namespace spartan
         Entity* camera              = nullptr;
         Entity* light               = nullptr;
 
+        // snapshot for play/stop state restoration (like unity's play mode)
+        struct EntitySnapshot
+        {
+            Vector3 position;
+            Quaternion rotation;
+            Vector3 scale;
+        };
+        unordered_map<uint64_t, EntitySnapshot> play_mode_snapshot;
+        float play_mode_time_of_day = 0.0f;
+
         // entity state tracking - things that change the nature of the entity for rendering
         enum class EntityChange : uint8_t
         {
@@ -298,6 +308,21 @@ namespace spartan
         // start
         if (started)
         {
+            // snapshot all entity transforms before simulation begins
+            play_mode_snapshot.clear();
+            for (Entity* entity : entities)
+            {
+                if (!entity->IsTransient())
+                {
+                    EntitySnapshot snapshot;
+                    snapshot.position = entity->GetPositionLocal();
+                    snapshot.rotation = entity->GetRotationLocal();
+                    snapshot.scale    = entity->GetScaleLocal();
+                    play_mode_snapshot[entity->GetObjectId()] = snapshot;
+                }
+            }
+            play_mode_time_of_day = world_time::time_of_day;
+
             for (Entity* entity : entities)
             {
                 entity->Start();
@@ -311,6 +336,21 @@ namespace spartan
             {
                 entity->Stop();
             }
+
+            // restore all entity transforms from snapshot
+            for (Entity* entity : entities)
+            {
+                auto it = play_mode_snapshot.find(entity->GetObjectId());
+                if (it != play_mode_snapshot.end())
+                {
+                    const EntitySnapshot& snapshot = it->second;
+                    entity->SetPositionLocal(snapshot.position);
+                    entity->SetRotationLocal(snapshot.rotation);
+                    entity->SetScaleLocal(snapshot.scale);
+                }
+            }
+            play_mode_snapshot.clear();
+            world_time::time_of_day = play_mode_time_of_day;
         }
 
         ProcessPendingRemovals();
