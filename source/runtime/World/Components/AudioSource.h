@@ -24,6 +24,7 @@ connection with the software or the use or other dealings in the software.
 //= includes =========
 #include "Component.h"
 #include <string>
+#include <vector>
 //====================
 
 struct SDL_AudioStream;
@@ -79,6 +80,7 @@ namespace spartan
     private:
         void FeedAudioChunk();
 
+        std::vector<float> m_stereo_chunk; // reused to avoid per-call allocation
         std::string m_name                             = "N/A";
         bool m_is_3d                                   = false;
         bool m_mute                                    = false;

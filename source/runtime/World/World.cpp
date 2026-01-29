@@ -52,6 +52,7 @@ namespace spartan
         vector<Entity*> entities;
         vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
+        string world_name; // cached to avoid per-frame allocation
         string world_description;
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
@@ -282,6 +283,7 @@ namespace spartan
         camera = nullptr;
         light  = nullptr;
         file_path.clear();
+        world_name.clear();
         world_description.clear();
 
         // clear change tracking
@@ -587,7 +589,8 @@ namespace spartan
         {
             ProgressTracker::SetGlobalLoadingState(true);
 
-            file_path = path_copy;
+            file_path  = path_copy;
+            world_name = FileSystem::GetFileNameFromFilePath(file_path);
 
             // start timing
             const Stopwatch timer;
@@ -819,9 +822,9 @@ namespace spartan
         return entities_lights;
     }
 
-    string World::GetName()
+    const string& World::GetName()
     {
-        return FileSystem::GetFileNameFromFilePath(file_path);
+        return world_name;
     }
 
     const string& World::GetFilePath()

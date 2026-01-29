@@ -1371,8 +1371,12 @@ namespace spartan
             // temp till we make rhi enum
             constexpr uint32_t RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT = 0x00000002; // matches VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR
 
-            vector<RHI_AccelerationStructureInstance> instances;
-            vector<Sb_GeometryInfo> geometry_infos;
+            // static to avoid per-frame heap allocation - clear() keeps capacity
+            static vector<RHI_AccelerationStructureInstance> instances;
+            static vector<Sb_GeometryInfo> geometry_infos;
+            instances.clear();
+            geometry_infos.clear();
+
             for (Entity* entity : World::GetEntities())
             {
                 if (!entity->GetActive())
