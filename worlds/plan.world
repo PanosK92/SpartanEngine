@@ -17,7 +17,7 @@
    <light flags="3" light_type="0" color_r="1" color_g="0.72007829" color_b="0.482821107" temperature="3200" intensity="8" intensity_lum="10000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" />
   </Entity>
   <Entity name="player_car" id="2411005043703651744" active="true" position="0 0.5 0" rotation="0 0 0 1" scale="1 1 1">
-   <prefab type="car" type="car" drivable="true" telemetry="true" camera_follows="true" />
+   <prefab type="car" drivable="true" telemetry="true" camera_follows="true" />
   </Entity>
   <Entity name="model" id="11379842912508043661" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
   <Entity name="airport_terminal" id="15352894423597569001" active="true" position="0 8 -35" rotation="0 0 0 1" scale="80 16 20">

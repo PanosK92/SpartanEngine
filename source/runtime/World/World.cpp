@@ -774,8 +774,20 @@ namespace spartan
         lock_guard<mutex> lock(entity_access_mutex);
 
         entities_out.clear();
-        entities_out.reserve(entities.size());
+        entities_out.reserve(entities.size() + pending_add.size());
+        
+        // include committed entities
         for (Entity* entity : entities)
+        {
+            if (!entity->GetParent())
+            {
+                entities_out.emplace_back(entity);
+            }
+        }
+        
+        // also include pending entities (important during world loading when prefabs
+        // need to reference other entities that haven't been committed yet)
+        for (Entity* entity : pending_add)
         {
             if (!entity->GetParent())
             {
