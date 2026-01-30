@@ -24,9 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Xr.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Device.h"
-#define XR_USE_GRAPHICS_API_VULKAN
-#include <openxr/openxr.h>
-#include <openxr/openxr_platform.h>
+#if defined(API_GRAPHICS_VULKAN)
+    #define XR_USE_GRAPHICS_API_VULKAN
+    #include <openxr/openxr.h>
+    #include <openxr/openxr_platform.h>
+#endif
 //======================================
 
 //= NAMESPACES =====
@@ -49,7 +51,8 @@ namespace spartan
     math::Vector3 Xr::m_head_position         = math::Vector3::Zero;
     math::Quaternion Xr::m_head_orientation   = math::Quaternion::Identity;
 
-    // openxr state
+#if defined(API_GRAPHICS_VULKAN)
+    // openxr state (vulkan implementation)
     namespace
     {
         XrInstance xr_instance                 = XR_NULL_HANDLE;
@@ -140,6 +143,9 @@ namespace spartan
             return projection;
         }
     }
+#endif // API_GRAPHICS_VULKAN
+
+#if defined(API_GRAPHICS_VULKAN)
 
     void Xr::Initialize()
     {
@@ -810,12 +816,147 @@ namespace spartan
         xr_check(xrReleaseSwapchainImage(xr_swapchain, &release_info), "release swapchain image");
     }
 
-    // accessor implementations
     bool Xr::IsAvailable()
     {
         return m_initialized && xr_instance != XR_NULL_HANDLE;
     }
 
+    void* Xr::GetSwapchainImage()
+    {
+        if (swapchain_images.empty() || swapchain_image_index >= swapchain_images.size())
+            return nullptr;
+        return swapchain_images[swapchain_image_index].image;
+    }
+
+    void* Xr::GetSwapchainImageView()
+    {
+        if (swapchain_image_views.empty() || swapchain_image_index >= swapchain_image_views.size())
+            return nullptr;
+        return swapchain_image_views[swapchain_image_index];
+    }
+
+    uint32_t Xr::GetSwapchainImageIndex()
+    {
+        return swapchain_image_index;
+    }
+
+    uint32_t Xr::GetSwapchainLength()
+    {
+        return swapchain_length;
+    }
+
+    bool Xr::IsMultiviewSupported()
+    {
+        // multiview is supported if we successfully created an array swapchain
+        return xr_swapchain != XR_NULL_HANDLE && swapchain_length > 0;
+    }
+
+#else // d3d12 or other - xr not yet implemented
+
+    void Xr::Initialize()
+    {
+        // xr not implemented for this graphics api
+        m_initialized = true;
+    }
+
+    void Xr::Shutdown()
+    {
+        m_initialized = false;
+    }
+
+    void Xr::Tick()
+    {
+        // no-op
+    }
+
+    bool Xr::CreateSession()
+    {
+        return false;
+    }
+
+    void Xr::DestroySession()
+    {
+        // no-op
+    }
+
+    bool Xr::CreateSwapchain()
+    {
+        return false;
+    }
+
+    void Xr::DestroySwapchain()
+    {
+        // no-op
+    }
+
+    bool Xr::CreateReferenceSpace()
+    {
+        return false;
+    }
+
+    void Xr::ProcessEvents()
+    {
+        // no-op
+    }
+
+    void Xr::UpdateViews()
+    {
+        // no-op
+    }
+
+    bool Xr::BeginFrame()
+    {
+        return false;
+    }
+
+    void Xr::EndFrame()
+    {
+        // no-op
+    }
+
+    bool Xr::AcquireSwapchainImage()
+    {
+        return false;
+    }
+
+    void Xr::ReleaseSwapchainImage()
+    {
+        // no-op
+    }
+
+    bool Xr::IsAvailable()
+    {
+        return false;
+    }
+
+    void* Xr::GetSwapchainImage()
+    {
+        return nullptr;
+    }
+
+    void* Xr::GetSwapchainImageView()
+    {
+        return nullptr;
+    }
+
+    uint32_t Xr::GetSwapchainImageIndex()
+    {
+        return 0;
+    }
+
+    uint32_t Xr::GetSwapchainLength()
+    {
+        return 0;
+    }
+
+    bool Xr::IsMultiviewSupported()
+    {
+        return false;
+    }
+
+#endif // API_GRAPHICS_VULKAN
+
+    // api-agnostic accessor implementations (these don't touch any vulkan types)
     bool Xr::IsHmdConnected()
     {
         return m_hmd_connected;
@@ -877,35 +1018,5 @@ namespace spartan
     const math::Quaternion& Xr::GetHeadOrientation()
     {
         return m_head_orientation;
-    }
-
-    void* Xr::GetSwapchainImage()
-    {
-        if (swapchain_images.empty() || swapchain_image_index >= swapchain_images.size())
-            return nullptr;
-        return swapchain_images[swapchain_image_index].image;
-    }
-
-    void* Xr::GetSwapchainImageView()
-    {
-        if (swapchain_image_views.empty() || swapchain_image_index >= swapchain_image_views.size())
-            return nullptr;
-        return swapchain_image_views[swapchain_image_index];
-    }
-
-    uint32_t Xr::GetSwapchainImageIndex()
-    {
-        return swapchain_image_index;
-    }
-
-    uint32_t Xr::GetSwapchainLength()
-    {
-        return swapchain_length;
-    }
-
-    bool Xr::IsMultiviewSupported()
-    {
-        // multiview is supported if we successfully created an array swapchain
-        return xr_swapchain != XR_NULL_HANDLE && swapchain_length > 0;
     }
 }
