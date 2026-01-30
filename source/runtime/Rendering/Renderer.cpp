@@ -47,6 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/ImageImporter.h"
 #include "../Commands/Console/ConsoleCommands.h"
 #include "../Core/Breadcrumbs.h"
+#include "../XR/Xr.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -532,12 +533,31 @@ namespace spartan
             AddLinesToBeRendered();
         }
 
+        // xr: begin frame if session is running
+        bool xr_should_render = false;
+        if (Xr::IsSessionRunning())
+        {
+            xr_should_render = Xr::BeginFrame();
+        }
+
         // produce the frame if window is not minimized and resolution is valid
         {
             if (can_render)
             {
                 ProduceFrame(m_cmd_list_present, nullptr);
             }
+        }
+
+        // xr: submit rendered frame to headset
+        if (xr_should_render && can_render)
+        {
+            BlitToXrSwapchain(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
+        }
+
+        // xr: end frame (must be called even if we didn't render)
+        if (Xr::IsSessionRunning())
+        {
+            Xr::EndFrame();
         }
     
         // blit to back buffer when standalone
@@ -832,6 +852,13 @@ namespace spartan
     {
         cmd_list->BeginMarker("blit_to_back_buffer");
         cmd_list->Blit(texture, swapchain.get());
+        cmd_list->EndMarker();
+    }
+
+    void Renderer::BlitToXrSwapchain(RHI_CommandList* cmd_list, RHI_Texture* texture)
+    {
+        cmd_list->BeginMarker("blit_to_xr_swapchain");
+        cmd_list->BlitToXrSwapchain(texture);
         cmd_list->EndMarker();
     }
 

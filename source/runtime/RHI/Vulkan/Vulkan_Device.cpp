@@ -241,7 +241,15 @@ namespace spartan
     {
         // hardware capability viewer: https://vulkan.gpuinfo.org/
 
-        vector<const char*> extensions_instance = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace", };
+        vector<const char*> extensions_instance = {
+            "VK_KHR_surface",
+            "VK_KHR_win32_surface",
+            "VK_EXT_swapchain_colorspace",
+            // openxr requirements
+            "VK_KHR_external_memory_capabilities",
+            "VK_KHR_external_fence_capabilities",
+            "VK_KHR_get_physical_device_properties2",
+        };
         vector<const char*> extensions_device   = {
             "VK_KHR_swapchain",
             "VK_EXT_memory_budget",          // to obtain precise memory usage information from Vulkan Memory Allocator
@@ -254,6 +262,13 @@ namespace spartan
             "VK_KHR_synchronization2",
             "VK_KHR_get_memory_requirements2",
             "VK_EXT_mutable_descriptor_type", // added for XeSS mutable descriptor support
+            // openxr requirements
+            "VK_KHR_external_memory",
+            "VK_KHR_external_semaphore",
+            "VK_KHR_external_memory_win32",
+            "VK_KHR_win32_keyed_mutex",
+            "VK_KHR_timeline_semaphore",
+            "VK_KHR_dedicated_allocation",
             // ray tracing
             "VK_KHR_acceleration_structure",
             "VK_KHR_ray_tracing_pipeline",

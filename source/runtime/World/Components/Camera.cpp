@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Input/Input.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
+#include "../../XR/Xr.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -75,7 +76,29 @@ namespace spartan
             SetFlag(CameraFlags::IsDirty, true);
         }
 
-        ProcessInput();
+        // xr head tracking - apply hmd position and orientation to camera
+        if (Xr::IsSessionRunning())
+        {
+            // get xr head tracking data
+            const Vector3& xr_position    = Xr::GetHeadPosition();
+            const Quaternion& xr_rotation = Xr::GetHeadOrientation();
+
+            // convert from openxr (right-handed: +x right, +y up, -z forward)
+            // to engine (left-handed: +x right, +y up, +z forward)
+            // negate z for position, and negate z and w for quaternion to flip handedness
+            Vector3 position = Vector3(xr_position.x, xr_position.y, -xr_position.z);
+            Quaternion rotation = Quaternion(xr_rotation.x, xr_rotation.y, -xr_rotation.z, -xr_rotation.w);
+
+            GetEntity()->SetPositionLocal(position);
+            GetEntity()->SetRotationLocal(rotation);
+
+            SetFlag(CameraFlags::IsDirty, true);
+        }
+        else
+        {
+            ProcessInput();
+        }
+
         ComputeMatrices();
     }
 

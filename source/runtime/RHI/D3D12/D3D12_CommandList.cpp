@@ -378,6 +378,11 @@ namespace spartan
         // todo: implement blit to swapchain
     }
 
+    void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source)
+    {
+        // todo: implement xr swapchain blit for d3d12
+    }
+
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
     {
         // todo: implement copy

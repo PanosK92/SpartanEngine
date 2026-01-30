@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Memory/Allocator.h"
 #include "../Testing/SmokeTest.h"
 #include "../RHI/RHI_Device.h"
+#include "../XR/Xr.h"
 #include "../Commands/Console/ConsoleCommands.h"
 #include "Settings.h"
 //===========================================
@@ -77,6 +78,7 @@ namespace spartan
             Profiler::Initialize();
             PhysicsWorld::Initialize();
             Renderer::Initialize();
+            Xr::Initialize();
             World::Initialize();
             Settings::Initialize();
             SmokeTest::Initialize();
@@ -112,6 +114,7 @@ namespace spartan
 
         World::Shutdown();
         PhysicsWorld::Shutdown();
+        Xr::Shutdown();
         Renderer::Shutdown();
    
         Event::Shutdown();
@@ -131,6 +134,7 @@ namespace spartan
         Input::Tick();
         PhysicsWorld::Tick();
         World::Tick();
+        Xr::Tick();
         Renderer::Tick();
         Allocator::Tick();
         SmokeTest::Tick();
