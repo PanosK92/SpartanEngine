@@ -38,18 +38,18 @@ using namespace std;
 namespace spartan
 {
     // static member definitions
-    bool Xr::m_initialized          = false;
-    bool Xr::m_hmd_connected        = false;
-    bool Xr::m_session_running      = false;
-    bool Xr::m_session_focused      = false;
-    bool Xr::m_frame_began          = false;
-    string Xr::m_runtime_name       = "N/A";
-    string Xr::m_device_name        = "N/A";
-    uint32_t Xr::m_recommended_width  = 0;
-    uint32_t Xr::m_recommended_height = 0;
+    bool Xr::m_initialized                  = false;
+    bool Xr::m_hmd_connected                = false;
+    bool Xr::m_session_running              = false;
+    bool Xr::m_session_focused              = false;
+    bool Xr::m_frame_began                  = false;
+    string Xr::m_runtime_name               = "N/A";
+    string Xr::m_device_name                = "N/A";
+    uint32_t Xr::m_recommended_width        = 0;
+    uint32_t Xr::m_recommended_height       = 0;
+    math::Vector3 Xr::m_head_position       = math::Vector3::Zero;
+    math::Quaternion Xr::m_head_orientation = math::Quaternion::Identity;
     array<XrEyeView, Xr::eye_count> Xr::m_eye_views;
-    math::Vector3 Xr::m_head_position         = math::Vector3::Zero;
-    math::Quaternion Xr::m_head_orientation   = math::Quaternion::Identity;
 
 #if defined(API_GRAPHICS_VULKAN)
     // openxr state (vulkan implementation)
@@ -70,6 +70,7 @@ namespace spartan
         uint32_t swapchain_height              = 0;
         uint32_t swapchain_length              = 0;
         uint32_t swapchain_image_index         = 0;
+        VkFormat swapchain_format              = VK_FORMAT_R8G8B8A8_SRGB;
         vector<XrSwapchainImageVulkanKHR> swapchain_images;
         vector<VkImageView> swapchain_image_views;
 
@@ -481,10 +482,11 @@ namespace spartan
 
         swapchain_width  = m_recommended_width;
         swapchain_height = m_recommended_height;
+        swapchain_format = static_cast<VkFormat>(selected_format);
 
         // create swapchain as array texture for multiview (2 layers = 2 eyes)
         XrSwapchainCreateInfo swapchain_info = { XR_TYPE_SWAPCHAIN_CREATE_INFO };
-        swapchain_info.usageFlags  = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+        swapchain_info.usageFlags  = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT | XR_SWAPCHAIN_USAGE_TRANSFER_DST_BIT;
         swapchain_info.format      = selected_format;
         swapchain_info.sampleCount = 1;
         swapchain_info.width       = swapchain_width;
@@ -549,7 +551,10 @@ namespace spartan
             xr_swapchain = XR_NULL_HANDLE;
         }
 
+        swapchain_width  = 0;
+        swapchain_height = 0;
         swapchain_length = 0;
+        swapchain_format = VK_FORMAT_R8G8B8A8_SRGB;
     }
 
     bool Xr::CreateReferenceSpace()
@@ -762,15 +767,22 @@ namespace spartan
 
         // prepare projection views for submission
         array<XrCompositionLayerProjectionView, eye_count> projection_views;
+
         for (uint32_t i = 0; i < eye_count; i++)
         {
+            // swap left/right fov angles to fix horizontal inversion
+            XrFovf corrected_fov = xr_views[i].fov;
+            float temp = corrected_fov.angleLeft;
+            corrected_fov.angleLeft = -corrected_fov.angleRight;
+            corrected_fov.angleRight = -temp;
+            
             projection_views[i] = { XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW };
             projection_views[i].pose = xr_views[i].pose;
-            projection_views[i].fov  = xr_views[i].fov;
+            projection_views[i].fov  = corrected_fov;
             projection_views[i].subImage.swapchain = xr_swapchain;
             projection_views[i].subImage.imageRect.offset = { 0, 0 };
             projection_views[i].subImage.imageRect.extent = { static_cast<int32_t>(swapchain_width), static_cast<int32_t>(swapchain_height) };
-            projection_views[i].subImage.imageArrayIndex = i; // layer 0 = left eye, layer 1 = right eye
+            projection_views[i].subImage.imageArrayIndex = i;
         }
 
         XrCompositionLayerProjection projection_layer = { XR_TYPE_COMPOSITION_LAYER_PROJECTION };

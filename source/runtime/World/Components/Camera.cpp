@@ -76,7 +76,10 @@ namespace spartan
             SetFlag(CameraFlags::IsDirty, true);
         }
 
-        // xr head tracking - apply hmd position and orientation to camera
+        // always process input for movement (gamepad, keyboard, physics body control)
+        ProcessInput();
+
+        // xr head tracking - apply hmd orientation to camera (position is relative to body)
         if (Xr::IsSessionRunning())
         {
             // get xr head tracking data
@@ -93,10 +96,6 @@ namespace spartan
             GetEntity()->SetRotationLocal(rotation);
 
             SetFlag(CameraFlags::IsDirty, true);
-        }
-        else
-        {
-            ProcessInput();
         }
 
         ComputeMatrices();
@@ -532,10 +531,11 @@ namespace spartan
     
         // behavior: mouse look and movement direction calculation
         Vector3 movement_direction = Vector3::Zero;
+        bool is_xr_active = Xr::IsSessionRunning();
         if (is_controlled || is_gamepad_connected)
         {
-            // cursor edge wrapping
-            if (is_controlled)
+            // cursor edge wrapping (skip in xr mode - head tracking handles rotation)
+            if (is_controlled && !is_xr_active)
             {
                 Vector2 mouse_pos = Input::GetMousePosition();
                 uint32_t edge = 5;
@@ -549,30 +549,33 @@ namespace spartan
                 }
             }
     
-        // mouse and gamepad look - use local rotation to avoid unstable matrix decomposition
-        Quaternion current_rotation = GetEntity()->GetRotationLocal();
-        Vector2 input_delta = Vector2::Zero;
-        if (is_controlled)
-        {
-            input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
-        }
-        else if (is_gamepad_connected)
-        {
-            // gamepad stick is a rate (rotation speed), not accumulated movement like mouse
-            // scale by delta_time and a base rotation speed for framerate-independent behavior
-            const float gamepad_rotation_speed = 120.0f; // degrees per second at full stick deflection
-            input_delta = Input::GetGamepadThumbStickRight() * gamepad_rotation_speed * delta_time;
-        }
-            Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
-            Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
-            Quaternion new_rotation    = yaw_increment * current_rotation * pitch_increment;
-            Vector3 forward            = new_rotation * Vector3::Forward;
-            float pitch_angle          = asin(-forward.y) * rad_to_deg;
-            if (pitch_angle > 80.0f || pitch_angle < -80.0f)
+            // mouse and gamepad look - skip in xr mode since head tracking handles rotation
+            if (!is_xr_active)
             {
-                new_rotation = yaw_increment * current_rotation;
+                Quaternion current_rotation = GetEntity()->GetRotationLocal();
+                Vector2 input_delta = Vector2::Zero;
+                if (is_controlled)
+                {
+                    input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
+                }
+                else if (is_gamepad_connected)
+                {
+                    // gamepad stick is a rate (rotation speed), not accumulated movement like mouse
+                    // scale by delta_time and a base rotation speed for framerate-independent behavior
+                    const float gamepad_rotation_speed = 120.0f; // degrees per second at full stick deflection
+                    input_delta = Input::GetGamepadThumbStickRight() * gamepad_rotation_speed * delta_time;
+                }
+                Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
+                Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
+                Quaternion new_rotation    = yaw_increment * current_rotation * pitch_increment;
+                Vector3 forward            = new_rotation * Vector3::Forward;
+                float pitch_angle          = asin(-forward.y) * rad_to_deg;
+                if (pitch_angle > 80.0f || pitch_angle < -80.0f)
+                {
+                    new_rotation = yaw_increment * current_rotation;
+                }
+                GetEntity()->SetRotationLocal(new_rotation.Normalized());
             }
-            GetEntity()->SetRotationLocal(new_rotation.Normalized());
     
             // Keyboard and gamepad movement direction
             if (is_controlled)
