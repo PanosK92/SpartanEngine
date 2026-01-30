@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Settings.h"
 #include "Widgets/Viewport.h"
+#include "Widgets/Shadows.h"
+#include "Widgets/WorldSelection.h"
 #include "Input/Input.h"
 //================================
 

@@ -74,6 +74,7 @@ protected:
     // properties
     bool m_is_window                      = true;
     bool m_visible                        = true;
+    bool m_can_dock                       = true;  // Note: Evaluate if this should be a property to define if a widget can dock in the main dockspace
     int m_flags                           = ImGuiWindowFlags_NoCollapse;
     float m_height                        = 0;
     float m_alpha                         = -1.0f;

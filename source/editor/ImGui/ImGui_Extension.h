@@ -184,6 +184,54 @@ namespace ImGuiSp
         );
     }
 
+    //= Rectangle =============================================================================
+
+    inline ImRect get_item_rect()
+    {
+        return {
+            ImGui::GetItemRectMin(), 
+            ImGui::GetItemRectMax()
+        };
+    }
+
+    inline ImRect rectangle_expanded(const ImRect& rect, float x, float y)
+    {
+        ImRect result = rect;
+        result.Min.x -= x;
+        result.Min.y -= y;
+        result.Max.x += x;
+        result.Max.y += y;
+        return result;
+    }
+
+    inline ImRect rectangle_offset(const ImRect& rect, float x, float y)
+    {
+        ImRect result = rect;
+        result.Min.x += x;
+        result.Min.y += y;
+        result.Max.x += x;
+        result.Max.y += y;
+        return result;
+    }
+
+    inline ImRect rectangle_offset(const ImRect& rect, ImVec2 xy)
+    {
+        return rectangle_offset(rect, xy.x, xy.y);
+    }
+
+    static bool hyper_link(const char* label, ImU32 lineColor = IM_COL32(186, 66, 30, 255), float lineThickness = GImGui->Style.FrameBorderSize)
+    {
+        ImGui::Text(label);
+        const ImRect rect = rectangle_expanded(get_item_rect(), lineThickness, lineThickness);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::GetWindowDrawList()->AddLine({rect.Min.x, rect.Max.y}, rect.Max, lineColor, lineThickness);
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            return ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+        }
+        return false;
+    }
+
     struct DragDropPayload
     {
         using DataVariant = std::variant<const char*, uint64_t>;
@@ -196,7 +244,7 @@ namespace ImGuiSp
         DataVariant data;
     };
 
-    static void create_drag_drop_paylod(const DragDropPayload& payload)
+    static void create_drag_drop_payload(const DragDropPayload& payload)
     {
         ImGui::SetDragDropPayload(reinterpret_cast<const char*>(&payload.type), reinterpret_cast<const void*>(&payload), sizeof(payload), ImGuiCond_Once);
     }
