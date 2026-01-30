@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Profiler.h"
 #include "../ImGui/ImGui_Extension.h"
+#include "Profiling/CsvExporter.h"
 #include "Profiling/Profiler.h"
 #include "../RHI/RHI_Device.h"
 #include "../Memory/Allocator.h"
@@ -177,6 +178,21 @@ void Profiler::OnTickVisible()
         ImGui::SetNextItemWidth(-1); // use all available horizontal space
         ImGui::SliderFloat("##update_interval", &interval, 0.0f, 0.5f, "Update Interval = %.2f");
         spartan::Profiler::SetUpdateInterval(interval);
+
+        ImGui::Text("CSV:");
+        ImGui::SameLine();
+        if (ImGui::Button("Start"))
+        {
+            spartan::CsvExporter::StartRecording();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Stop"))
+        {
+            spartan::CsvExporter::StopRecording();
+        }
+        ImGui::SameLine();
+        bool isCSVExporterRecording = spartan::CsvExporter::IsRecording();
+        ImGui::TextColored(isCSVExporterRecording ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 0.0f, 1.0f), isCSVExporterRecording ? "Recording" : "Not Recording");
 
         ImGui::Separator();
     }
