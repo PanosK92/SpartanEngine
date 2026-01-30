@@ -279,6 +279,18 @@ namespace spartan
         m_is_occupied = false;
         m_chase_camera.initialized = false;
 
+        // stop the car: clear all inputs and apply handbrake
+        if (m_vehicle_entity)
+        {
+            if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+            {
+                physics->SetVehicleThrottle(0.0f);
+                physics->SetVehicleBrake(0.0f);
+                physics->SetVehicleSteering(0.0f);
+                physics->SetVehicleHandbrake(1.0f);
+            }
+        }
+
         Entity* camera = m_body_entity ? m_body_entity->GetChildByName("component_camera") : nullptr;
         if (!camera && default_camera)
         {
@@ -288,22 +300,48 @@ namespace spartan
         if (camera && default_camera)
         {
             camera->SetParent(default_camera);
-            if (Physics* controller = default_camera->GetComponent<Physics>())
-            {
-                camera->SetPositionLocal(controller->GetControllerTopLocal());
-            }
             camera->SetRotationLocal(math::Quaternion::Identity);
-
-            // position player outside car
-            if (m_body_entity)
-            {
-                math::BoundingBox car_aabb = GetCarAABB();
-                math::Vector3 exit_offset = m_body_entity->GetLeft() * car_aabb.GetSize().x + 
-                                           math::Vector3::Up * car_aabb.GetSize().y * 0.5f;
-                default_camera->SetPosition(m_body_entity->GetPosition() + exit_offset);
-            }
-
             camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, true);
+        }
+
+        // position player at the driver's door (left side of car) as if they were riding all along
+        if (default_camera)
+        {
+            // use vehicle entity for position, fall back to body entity
+            Entity* car_ref = m_vehicle_entity ? m_vehicle_entity : m_body_entity;
+            if (car_ref)
+            {
+                // get car's world transform for proper orientation
+                math::Vector3 car_position = car_ref->GetPosition();
+                math::Vector3 car_left     = car_ref->GetLeft();
+                math::Vector3 car_forward  = car_ref->GetForward();
+
+                // offset to driver's door: slightly left and forward (door is roughly at front half of car)
+                const float door_side_offset    = 1.8f; // distance from car center to door
+                const float door_forward_offset = 0.3f; // slightly forward toward front seat area
+                const float ground_offset       = 0.1f; // small offset above ground
+
+                math::Vector3 exit_position = car_position 
+                                            + car_left * door_side_offset 
+                                            + car_forward * door_forward_offset
+                                            + math::Vector3::Up * ground_offset;
+
+                // teleport the physics body first (this is the authoritative position)
+                Physics* controller = default_camera->GetComponent<Physics>();
+                if (controller)
+                {
+                    controller->SetBodyTransform(exit_position, math::Quaternion::Identity);
+                }
+
+                // also set entity position directly as fallback
+                default_camera->SetPosition(exit_position);
+
+                // reset camera local position to top of controller
+                if (camera && controller)
+                {
+                    camera->SetPositionLocal(controller->GetControllerTopLocal());
+                }
+            }
         }
 
         // stop engine sound
@@ -1080,10 +1118,23 @@ namespace spartan
         if (!m_is_drivable)
             return;
 
-        if (Input::GetKeyDown(KeyCode::E))
+        // keyboard: E, gamepad: west button (X on xbox, square on playstation)
+        if (Input::GetKeyDown(KeyCode::E) || Input::GetKeyDown(KeyCode::Button_West))
         {
             if (m_is_occupied)
             {
+                // don't allow exit if car is moving too fast
+                const float max_exit_speed_kmh = 5.0f;
+                if (m_vehicle_entity)
+                {
+                    if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+                    {
+                        float speed_kmh = physics->GetLinearVelocity().Length() * 3.6f;
+                        if (speed_kmh > max_exit_speed_kmh)
+                            return;
+                    }
+                }
+
                 Exit();
             }
             else
@@ -1481,6 +1532,57 @@ namespace spartan
             // side view (left)
             ImVec2 side_view_pos = ImVec2(section_start.x + margin, section_start.y + 20.0f);
             
+            // calculate a common pixels-per-meter scale based on the largest dimension (car length)
+            // this ensures both views use the same scale for proper proportions
+            float shape_length = shape.max_z - shape.min_z;  // side view range
+            float shape_width = shape.max_x - shape.min_x;   // front view range
+            float max_horizontal = std::max(shape_length, shape_width);
+            float pixels_per_meter = (side_view_width * 0.90f) / max_horizontal;
+            
+            // helper: draw convex hull profile (single closed loop of points)
+            auto draw_convex_profile = [&](const std::vector<std::pair<float, float>>& profile,
+                                           float min_axis, float max_axis, float min_y, float max_y,
+                                           float draw_x, float draw_y, float draw_w, float draw_h,
+                                           ImU32 fill_color, ImU32 outline_color)
+            {
+                if (profile.size() < 3)
+                    return;
+                
+                float axis_range = max_axis - min_axis;
+                float y_range = max_y - min_y;
+                
+                if (axis_range < 0.01f || y_range < 0.01f)
+                    return;
+                
+                // use common scale for proper proportions between views
+                float scale_x = axis_range * pixels_per_meter;
+                float scale_y = y_range * pixels_per_meter;
+                
+                // center horizontally in draw area
+                float offset_x = draw_x + (draw_w - scale_x) * 0.5f;
+                float offset_y = draw_y + draw_h * 0.80f;  // position near bottom for wheels
+                
+                // convert hull points to screen coordinates
+                std::vector<ImVec2> screen_pts;
+                screen_pts.reserve(profile.size());
+                
+                for (const auto& pt : profile)
+                {
+                    float norm_axis = (pt.first - min_axis) / axis_range;
+                    float norm_y = (pt.second - min_y) / y_range;
+                    float screen_x = offset_x + norm_axis * scale_x;
+                    float screen_y = offset_y - norm_y * scale_y;
+                    screen_pts.push_back(ImVec2(screen_x, screen_y));
+                }
+                
+                // draw filled convex polygon and outline
+                if (screen_pts.size() >= 3)
+                {
+                    draw_list->AddConvexPolyFilled(screen_pts.data(), (int)screen_pts.size(), fill_color);
+                    draw_list->AddPolyline(screen_pts.data(), (int)screen_pts.size(), outline_color, ImDrawFlags_Closed, 2.0f);
+                }
+            };
+            
             // draw car side profile
             {
                 float x = side_view_pos.x;
@@ -1490,29 +1592,8 @@ namespace spartan
                 
                 if (shape.valid && shape.side_profile.size() >= 3)
                 {
-                    float shape_z_range = shape.max_z - shape.min_z;
-                    float shape_y_range = shape.max_y - shape.min_y;
-                    
-                    if (shape_z_range > 0.01f && shape_y_range > 0.01f)
-                    {
-                        std::vector<ImVec2> screen_pts;
-                        screen_pts.reserve(shape.side_profile.size());
-                        
-                        for (const auto& pt : shape.side_profile)
-                        {
-                            float norm_z = (pt.first - shape.min_z) / shape_z_range;
-                            float norm_y = (pt.second - shape.min_y) / shape_y_range;
-                            float screen_x = x + w * 0.02f + norm_z * w * 0.96f;
-                            float screen_y = y + h * 0.95f - norm_y * h * 0.90f;
-                            screen_pts.push_back(ImVec2(screen_x, screen_y));
-                        }
-                        
-                        if (screen_pts.size() >= 3)
-                        {
-                            draw_list->AddConvexPolyFilled(screen_pts.data(), (int)screen_pts.size(), IM_COL32(45, 50, 60, 255));
-                            draw_list->AddPolyline(screen_pts.data(), (int)screen_pts.size(), IM_COL32(80, 130, 180, 255), ImDrawFlags_Closed, 2.0f);
-                        }
-                    }
+                    draw_convex_profile(shape.side_profile, shape.min_z, shape.max_z, shape.min_y, shape.max_y,
+                                        x, y, w, h, IM_COL32(45, 50, 60, 255), IM_COL32(80, 130, 180, 255));
                 }
                 else
                 {
@@ -1531,9 +1612,9 @@ namespace spartan
                 }
                 
                 // wheels
-                float wheel_r = h * 0.10f;
-                draw_list->AddCircleFilled(ImVec2(x + w * 0.18f, y + h * 0.88f), wheel_r, IM_COL32(30, 30, 35, 255), 12);
-                draw_list->AddCircleFilled(ImVec2(x + w * 0.82f, y + h * 0.88f), wheel_r, IM_COL32(30, 30, 35, 255), 12);
+                float wheel_r = h * 0.20f;
+                draw_list->AddCircleFilled(ImVec2(x + w * 0.18f, y + h * 0.85f), wheel_r, IM_COL32(30, 30, 35, 255), 16);
+                draw_list->AddCircleFilled(ImVec2(x + w * 0.82f, y + h * 0.85f), wheel_r, IM_COL32(30, 30, 35, 255), 16);
                 
                 draw_list->AddText(ImVec2(x, y - 15), IM_COL32(150, 150, 150, 255), "Side");
             }
@@ -1549,29 +1630,8 @@ namespace spartan
                 
                 if (shape.valid && shape.front_profile.size() >= 3)
                 {
-                    float shape_x_range = shape.max_x - shape.min_x;
-                    float shape_y_range = shape.max_y - shape.min_y;
-                    
-                    if (shape_x_range > 0.01f && shape_y_range > 0.01f)
-                    {
-                        std::vector<ImVec2> screen_pts;
-                        screen_pts.reserve(shape.front_profile.size());
-                        
-                        for (const auto& pt : shape.front_profile)
-                        {
-                            float norm_x = (pt.first - shape.min_x) / shape_x_range;
-                            float norm_y = (pt.second - shape.min_y) / shape_y_range;
-                            float screen_x = x + w * 0.02f + norm_x * w * 0.96f;
-                            float screen_y = y + h * 0.95f - norm_y * h * 0.90f;
-                            screen_pts.push_back(ImVec2(screen_x, screen_y));
-                        }
-                        
-                        if (screen_pts.size() >= 3)
-                        {
-                            draw_list->AddConvexPolyFilled(screen_pts.data(), (int)screen_pts.size(), IM_COL32(45, 50, 60, 255));
-                            draw_list->AddPolyline(screen_pts.data(), (int)screen_pts.size(), IM_COL32(80, 130, 180, 255), ImDrawFlags_Closed, 2.0f);
-                        }
-                    }
+                    draw_convex_profile(shape.front_profile, shape.min_x, shape.max_x, shape.min_y, shape.max_y,
+                                        x, y, w, h, IM_COL32(45, 50, 60, 255), IM_COL32(80, 130, 180, 255));
                 }
                 else
                 {
@@ -1589,10 +1649,10 @@ namespace spartan
                 }
                 
                 // wheels
-                float wheel_r = h * 0.10f;
-                float wheel_w_px = w * 0.08f;
-                draw_list->AddRectFilled(ImVec2(x + w * 0.08f - wheel_w_px * 0.5f, y + h * 0.78f), ImVec2(x + w * 0.08f + wheel_w_px * 0.5f, y + h * 0.98f), IM_COL32(30, 30, 35, 255), 2.0f);
-                draw_list->AddRectFilled(ImVec2(x + w * 0.92f - wheel_w_px * 0.5f, y + h * 0.78f), ImVec2(x + w * 0.92f + wheel_w_px * 0.5f, y + h * 0.98f), IM_COL32(30, 30, 35, 255), 2.0f);
+                float wheel_w_px = w * 0.12f;
+                float wheel_h_px = h * 0.35f;
+                draw_list->AddRectFilled(ImVec2(x + w * 0.06f - wheel_w_px * 0.5f, y + h * 0.70f), ImVec2(x + w * 0.06f + wheel_w_px * 0.5f, y + h * 0.70f + wheel_h_px), IM_COL32(30, 30, 35, 255), 3.0f);
+                draw_list->AddRectFilled(ImVec2(x + w * 0.94f - wheel_w_px * 0.5f, y + h * 0.70f), ImVec2(x + w * 0.94f + wheel_w_px * 0.5f, y + h * 0.70f + wheel_h_px), IM_COL32(30, 30, 35, 255), 3.0f);
                 
                 draw_list->AddText(ImVec2(x, y - 15), IM_COL32(150, 150, 150, 255), "Front");
             }

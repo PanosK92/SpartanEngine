@@ -410,6 +410,13 @@ namespace
             { "F",            "Focus on entity"          }
         };
 
+        struct ControlBinding
+        {
+            const char* keyboard;
+            const char* gamepad;
+            const char* description;
+        };
+
         static const Shortcut camera_controls[] =
         {
             { "Hold R-Click", "Enable First Person"      },
@@ -419,6 +426,33 @@ namespace
             { "Shift",        "Sprint / Fast Move"       },
             { "F",            "Toggle Flashlight"        },
             { "L-Click",      "Shoot physics cube"       }
+        };
+
+        static const ControlBinding camera_controls_full[] =
+        {
+            { "Hold R-Click",    "Always On",        "Enable First Person"       },
+            { "W, A, S, D",      "Left Stick",       "Movement"                  },
+            { "Mouse",           "Right Stick",      "Look Around"               },
+            { "Q, E",            "L2, R2",           "Elevation (Down/Up)"       },
+            { "Ctrl",            "O / Circle",       "Crouch"                    },
+            { "Shift",           "L1",               "Sprint / Fast Move"        },
+            { "Space",           "X / Cross",        "Jump"                      },
+            { "F",               "Triangle / Y",     "Toggle Flashlight"         },
+            { "L-Click + R-Click", "-",              "Shoot Physics Cube"        }
+        };
+
+        static const ControlBinding car_controls[] =
+        {
+            { "E",               "Square / X",       "Enter / Exit Vehicle"      },
+            { "Arrow Up",        "R2",               "Throttle (Gas)"            },
+            { "Arrow Down",      "L2",               "Brake"                     },
+            { "Arrow Left/Right","Left Stick X",    "Steering"                  },
+            { "Space",           "O / Circle",       "Handbrake"                 },
+            { "R",               "X / Cross",        "Reset to Spawn"            },
+            { "V",               "Triangle / Y",     "Cycle Camera View"         },
+            { "-",               "L1",               "Shift Down (Manual)"       },
+            { "-",               "R1",               "Shift Up (Manual)"         },
+            { "-",               "Right Stick",      "Camera Orbit (Chase View)" }
         };
 
         // helper to render "Ctrl" + "S" as distinct visual styling elements
@@ -490,16 +524,52 @@ namespace
                 ImGui::EndTable();
             }
         }
+
+        void show_control_binding_table(const char* str_id, const ControlBinding* bindings, size_t count)
+        {
+            ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY;
+
+            if (ImGui::BeginTable(str_id, 3, flags, ImVec2(0.0f, -FLT_MIN)))
+            {
+                ImGui::TableSetupColumn("Action", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("Keyboard", ImGuiTableColumnFlags_WidthFixed, 140.0f * spartan::Window::GetDpiScale());
+                ImGui::TableSetupColumn("Gamepad", ImGuiTableColumnFlags_WidthFixed, 140.0f * spartan::Window::GetDpiScale());
+                ImGui::TableHeadersRow();
+
+                for (size_t i = 0; i < count; i++)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::PushID((int)i);
+
+                    // column 0: description
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::TextUnformatted(bindings[i].description);
+
+                    // column 1: keyboard
+                    ImGui::TableSetColumnIndex(1);
+                    render_key_combo(bindings[i].keyboard);
+
+                    // column 2: gamepad
+                    ImGui::TableSetColumnIndex(2);
+                    render_key_combo(bindings[i].gamepad);
+
+                    ImGui::PopID();
+                }
+
+                ImGui::EndTable();
+            }
+        }
         void window()
         {
             if (!visible)
                 return;
 
-            // Center the window on first use, but let user move it freely afterwards
+            // center the window on first use, but let user move it freely afterwards
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 
-            // Set a reasonable default size
-            ImGui::SetNextWindowSize(ImVec2(500.0f * spartan::Window::GetDpiScale(), 350.0f * spartan::Window::GetDpiScale()), ImGuiCond_FirstUseEver);
+            // set a reasonable default size (wider for the three-column layout)
+            ImGui::SetNextWindowSize(ImVec2(600.0f * spartan::Window::GetDpiScale(), 400.0f * spartan::Window::GetDpiScale()), ImGuiCond_FirstUseEver);
 
             if (ImGui::Begin("Controls & Shortcuts", &visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking))
             {
@@ -512,10 +582,17 @@ namespace
                         ImGui::EndTabItem();
                     }
 
-                    if (ImGui::BeginTabItem("Camera Controls"))
+                    if (ImGui::BeginTabItem("Camera"))
                     {
                         ImGui::Spacing();
-                        show_shortcut_table("##camera_controls_table", camera_controls, std::size(camera_controls));
+                        show_control_binding_table("##camera_controls_table", camera_controls_full, std::size(camera_controls_full));
+                        ImGui::EndTabItem();
+                    }
+
+                    if (ImGui::BeginTabItem("Car"))
+                    {
+                        ImGui::Spacing();
+                        show_control_binding_table("##car_controls_table", car_controls, std::size(car_controls));
                         ImGui::EndTabItem();
                     }
 

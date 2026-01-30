@@ -265,7 +265,14 @@ namespace car
         float min_z = 0, max_z = 0;
         bool valid = false;
     };
-    inline static shape_2d shape_data;
+    
+    // use function-local static to guarantee single instance across all translation units
+    // this avoids ODR violations with inline static variables
+    inline shape_2d& shape_data_ref()
+    {
+        static shape_2d instance;
+        return instance;
+    }
 
     enum wheel_id { front_left = 0, front_right = 1, rear_left = 2, rear_right = 3, wheel_count = 4 };
     enum surface_type { surface_asphalt = 0, surface_concrete, surface_wet_asphalt, surface_gravel, surface_grass, surface_ice, surface_count };
@@ -727,66 +734,80 @@ namespace car
         SP_LOG_INFO("aero: front/rear bias=%.0f%%/%.0f%%, lift F/R=%.2f/%.2f",
             front_bias * 100.0f, (1.0f - front_bias) * 100.0f, tuning::lift_coeff_front, tuning::lift_coeff_rear);
 
-        // compute 2D hull profiles for visualization
-        shape_data.min_x = min_pt.x; shape_data.max_x = max_pt.x;
-        shape_data.min_y = min_pt.y; shape_data.max_y = max_pt.y;
-        shape_data.min_z = min_pt.z; shape_data.max_z = max_pt.z;
+        // compute 2D silhouette profiles for visualization
+        // this preserves concave regions like the cabin dip between hood and roof
+        shape_2d& sd = shape_data_ref();
+        sd.min_x = min_pt.x; sd.max_x = max_pt.x;
+        sd.min_y = min_pt.y; sd.max_y = max_pt.y;
+        sd.min_z = min_pt.z; sd.max_z = max_pt.z;
         
-        // helper: compute 2D convex hull from projected points using gift wrapping
-        auto compute_hull_2d = [](std::vector<std::pair<float, float>>& points) -> std::vector<std::pair<float, float>>
+        // compute 2D convex hull using graham scan algorithm
+        // projects 3D convex hull vertices to 2D and computes proper convex outline
+        auto compute_hull_2d = [](std::vector<std::pair<float, float>> points) -> std::vector<std::pair<float, float>>
         {
             if (points.size() < 3)
                 return points;
             
-            // find leftmost point
-            size_t start = 0;
+            // find the bottom-most point (lowest y, then leftmost x as tiebreaker)
+            size_t pivot_idx = 0;
             for (size_t i = 1; i < points.size(); i++)
-                if (points[i].first < points[start].first)
-                    start = i;
-            
-            std::vector<std::pair<float, float>> hull;
-            size_t current = start;
-            
-            do {
-                hull.push_back(points[current]);
-                size_t next = 0;
-                
-                for (size_t i = 0; i < points.size(); i++)
+            {
+                if (points[i].second < points[pivot_idx].second ||
+                    (points[i].second == points[pivot_idx].second && points[i].first < points[pivot_idx].first))
                 {
-                    if (i == current) continue;
-                    
-                    // cross product to determine left turn
-                    float ax = points[next].first - points[current].first;
-                    float ay = points[next].second - points[current].second;
-                    float bx = points[i].first - points[current].first;
-                    float by = points[i].second - points[current].second;
-                    float cross = ax * by - ay * bx;
-                    
-                    if (next == current || cross < 0 || (cross == 0 && bx*bx + by*by > ax*ax + ay*ay))
-                        next = i;
+                    pivot_idx = i;
                 }
-                
-                current = next;
-            } while (current != start && hull.size() < points.size());
+            }
+            std::swap(points[0], points[pivot_idx]);
+            auto pivot = points[0];
+            
+            // cross product for orientation
+            auto cross = [](const std::pair<float,float>& o, const std::pair<float,float>& a, const std::pair<float,float>& b) -> float
+            {
+                return (a.first - o.first) * (b.second - o.second) - (a.second - o.second) * (b.first - o.first);
+            };
+            
+            // sort by polar angle relative to pivot
+            std::sort(points.begin() + 1, points.end(), [&](const auto& a, const auto& b)
+            {
+                float c = cross(pivot, a, b);
+                if (fabsf(c) < 1e-9f)
+                {
+                    // collinear: keep the farther point
+                    float da = (a.first - pivot.first) * (a.first - pivot.first) + (a.second - pivot.second) * (a.second - pivot.second);
+                    float db = (b.first - pivot.first) * (b.first - pivot.first) + (b.second - pivot.second) * (b.second - pivot.second);
+                    return da < db;
+                }
+                return c > 0;
+            });
+            
+            // graham scan - build convex hull
+            std::vector<std::pair<float, float>> hull;
+            for (const auto& pt : points)
+            {
+                while (hull.size() > 1 && cross(hull[hull.size()-2], hull[hull.size()-1], pt) <= 0)
+                    hull.pop_back();
+                hull.push_back(pt);
+            }
             
             return hull;
         };
         
-        // project vertices to side view (z, y) and compute hull
+        // side view: project convex hull vertices to (z, y) plane
         std::vector<std::pair<float, float>> side_points;
+        side_points.reserve(vertices.size());
         for (const PxVec3& v : vertices)
             side_points.push_back({v.z, v.y});
-        shape_data.side_profile = compute_hull_2d(side_points);
+        sd.side_profile = compute_hull_2d(std::move(side_points));
         
-        // project vertices to front view (x, y) and compute hull
+        // front view: project convex hull vertices to (x, y) plane
         std::vector<std::pair<float, float>> front_points;
+        front_points.reserve(vertices.size());
         for (const PxVec3& v : vertices)
             front_points.push_back({v.x, v.y});
-        shape_data.front_profile = compute_hull_2d(front_points);
+        sd.front_profile = compute_hull_2d(std::move(front_points));
         
-        shape_data.valid = !shape_data.side_profile.empty() && !shape_data.front_profile.empty();
-        SP_LOG_INFO("aero: shape profiles computed (side: %zu pts, front: %zu pts)", 
-            shape_data.side_profile.size(), shape_data.front_profile.size());
+        sd.valid = sd.side_profile.size() >= 3 && sd.front_profile.size() >= 3;
     }
 
     struct setup_params
@@ -1994,7 +2015,7 @@ namespace car
     inline bool get_log_pacejka()                 { return tuning::log_pacejka; }
     
     inline const aero_debug_data& get_aero_debug() { return aero_debug; }
-    inline const shape_2d& get_shape_data() { return shape_data; }
+    inline const shape_2d& get_shape_data() { return shape_data_ref(); }
     
     inline void get_debug_ray(int wheel, int ray, PxVec3& origin, PxVec3& hit_point, bool& hit)
     {

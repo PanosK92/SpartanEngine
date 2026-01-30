@@ -988,6 +988,15 @@ namespace spartan
         m_prev_rotation             = rotation;
         m_current_position          = position;
         m_current_rotation          = rotation;
+
+        // for character controllers, use setPosition to teleport
+        if (m_body_type == BodyType::Controller && m_controller)
+        {
+            PxController* controller = static_cast<PxController*>(m_controller);
+            controller->setPosition(PxExtendedVec3(position.x, position.y, position.z));
+            m_velocity = Vector3::Zero; // reset movement velocity
+            return;
+        }
         
         // for vehicles, use the car body directly
         if (m_body_type == BodyType::Vehicle && car::body)
@@ -1294,9 +1303,12 @@ namespace spartan
             return;
         }
         
+        // extract the actual convex hull vertices from physx for visualization
         PxU32 hull_vert_count = convex_mesh->getNbVertices();
+        const PxVec3* hull_verts = convex_mesh->getVertices();
+        std::vector<PxVec3> convex_hull_vertices(hull_verts, hull_verts + hull_vert_count);
 
-        if (!car::set_chassis(convex_mesh, all_vertices, physics))
+        if (!car::set_chassis(convex_mesh, convex_hull_vertices, physics))
         {
             SP_LOG_ERROR("Failed to set chassis");
             convex_mesh->release();
