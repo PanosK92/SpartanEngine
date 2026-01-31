@@ -122,6 +122,39 @@ void Viewport::OnTickVisible()
         m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
     }
 
+    // Ctrl+D to duplicate selected entities
+    if (camera && ImGui::IsWindowFocused() && Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::D))
+    {
+        const std::vector<Entity*>& selected_entities = camera->GetSelectedEntities();
+        if (!selected_entities.empty())
+        {
+            // clone all selected entities
+            std::vector<Entity*> cloned_entities;
+            for (Entity* entity : selected_entities)
+            {
+                if (entity)
+                {
+                    Entity* cloned = entity->Clone();
+                    if (cloned)
+                    {
+                        cloned_entities.push_back(cloned);
+                    }
+                }
+            }
+
+            // select the cloned entities instead
+            if (!cloned_entities.empty())
+            {
+                camera->ClearSelection();
+                for (Entity* cloned : cloned_entities)
+                {
+                    camera->AddToSelection(cloned);
+                }
+                m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(cloned_entities[0]);
+            }
+        }
+    }
+
     // entity transform gizmo (will only show if entities have been picked)
     if (cvar_transform_handle.GetValueAs<bool>())
     {

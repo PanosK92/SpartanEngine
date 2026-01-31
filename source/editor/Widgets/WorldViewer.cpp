@@ -52,6 +52,74 @@ namespace
     ImRect selected_entity_rect;
     uint64_t last_selected_entity_id = 0;
     bool selection_from_click        = false; // track if selection came from user click (no scroll needed)
+    spartan::Entity* entity_shift_anchor = nullptr; // anchor entity for shift-click range selection
+    vector<spartan::Entity*> entities_in_tree_order; // cached list of entities in display order
+
+    // helper function to collect all active entities in tree display order (depth-first)
+    void CollectEntitiesInTreeOrder(spartan::Entity* entity, vector<spartan::Entity*>& out_entities)
+    {
+        if (!entity || !entity->GetActive())
+            return;
+
+        out_entities.push_back(entity);
+
+        const vector<spartan::Entity*>& children = entity->GetChildren();
+        for (spartan::Entity* child : children)
+        {
+            CollectEntitiesInTreeOrder(child, out_entities);
+        }
+    }
+
+    void RefreshEntitiesInTreeOrder()
+    {
+        entities_in_tree_order.clear();
+
+        static vector<spartan::Entity*> root_entities;
+        spartan::World::GetRootEntities(root_entities);
+
+        for (spartan::Entity* entity : root_entities)
+        {
+            CollectEntitiesInTreeOrder(entity, entities_in_tree_order);
+        }
+    }
+
+    // select all entities between two entities in tree order (inclusive)
+    void SelectEntitiesInRange(spartan::Entity* entity_a, spartan::Entity* entity_b)
+    {
+        if (!entity_a || !entity_b)
+            return;
+
+        spartan::Camera* camera = spartan::World::GetCamera();
+        if (!camera)
+            return;
+
+        RefreshEntitiesInTreeOrder();
+
+        // find indices of both entities
+        int index_a = -1;
+        int index_b = -1;
+        for (int i = 0; i < static_cast<int>(entities_in_tree_order.size()); ++i)
+        {
+            if (entities_in_tree_order[i]->GetObjectId() == entity_a->GetObjectId())
+                index_a = i;
+            if (entities_in_tree_order[i]->GetObjectId() == entity_b->GetObjectId())
+                index_b = i;
+        }
+
+        if (index_a == -1 || index_b == -1)
+            return;
+
+        // ensure index_a <= index_b
+        if (index_a > index_b)
+            std::swap(index_a, index_b);
+
+        // clear current selection and select range
+        camera->ClearSelection();
+        for (int i = index_a; i <= index_b; ++i)
+        {
+            camera->AddToSelection(entities_in_tree_order[i]);
+        }
+    }
 
     spartan::RHI_Texture* component_to_image(spartan::Entity* entity)
     {
@@ -125,10 +193,17 @@ void WorldViewer::OnTickVisible()
                     // mark that selection came from user click (no scroll needed)
                     selection_from_click = true;
 
-                    // support Ctrl+Click for multi-select
-                    bool ctrl_held = spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) || spartan::Input::GetKey(spartan::KeyCode::Ctrl_Right);
-                    if (ctrl_held)
+                    bool ctrl_held  = spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) || spartan::Input::GetKey(spartan::KeyCode::Ctrl_Right);
+                    bool shift_held = spartan::Input::GetKey(spartan::KeyCode::Shift_Left) || spartan::Input::GetKey(spartan::KeyCode::Shift_Right);
+
+                    if (shift_held && entity_shift_anchor)
                     {
+                        // shift+click: select range between anchor and clicked entity
+                        SelectEntitiesInRange(entity_shift_anchor, entity_clicked_raw);
+                    }
+                    else if (ctrl_held)
+                    {
+                        // ctrl+click: toggle selection
                         if (spartan::Camera* camera = spartan::World::GetCamera())
                         {
                             camera->ToggleSelection(entity_clicked_raw);
@@ -137,6 +212,7 @@ void WorldViewer::OnTickVisible()
                     else
                     {
                         SetSelectedEntity(entity_clicked_raw);
+                        entity_shift_anchor = entity_clicked_raw;
                     }
                 }
 
@@ -386,6 +462,7 @@ void WorldViewer::HandleClicking()
     {
         selection_from_click = true;
         SetSelectedEntity(entity_hovered);
+        entity_shift_anchor = entity_hovered;
         if (spartan::Camera* camera = spartan::World::GetCamera())
         {
             camera->FocusOnSelectedEntity();
@@ -412,6 +489,7 @@ void WorldViewer::HandleClicking()
                 {
                     selection_from_click = true;
                     SetSelectedEntity(entity_hovered);
+                    entity_shift_anchor = entity_hovered;
                 }
             }
         }
@@ -426,6 +504,7 @@ void WorldViewer::HandleClicking()
         if (!ctrl_held)
         {
             SetSelectedEntity(nullptr);
+            entity_shift_anchor = nullptr;
         }
     }
 }
