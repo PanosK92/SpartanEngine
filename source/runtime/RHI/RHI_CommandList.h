@@ -94,6 +94,7 @@ namespace spartan
         // blit
         void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
         void Blit(RHI_Texture* source, RHI_SwapChain* destination);
+        void BlitToXrSwapchain(RHI_Texture* source); // blit to openxr swapchain with aspect ratio preservation
 
         // copy
         void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);

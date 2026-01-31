@@ -83,10 +83,15 @@ namespace spartan
         void* m_rhi_resource         = nullptr;
         void* m_rhi_resource_results = nullptr;
 
-        // reusable buffers
-        void* m_scratch_buffer          = nullptr;
-        uint64_t m_scratch_buffer_size  = 0;
-        void* m_instance_buffer         = nullptr;
-        uint64_t m_instance_buffer_size = 0;
+        // reusable buffers - double buffered to avoid frame-to-frame synchronization issues
+        // when frame N is being processed by the GPU while frame N+1 updates the buffers
+        static const uint32_t buffer_count = 2;
+        uint32_t m_buffer_index            = 0;
+        void* m_scratch_buffer                                    = nullptr;
+        uint64_t m_scratch_buffer_size                            = 0;
+        std::array<void*, buffer_count> m_instance_buffer         = {};
+        std::array<uint64_t, buffer_count> m_instance_buffer_size = {};
+        std::array<void*, buffer_count> m_staging_buffer          = {};
+        std::array<uint64_t, buffer_count> m_staging_buffer_size  = {};
     };
 }

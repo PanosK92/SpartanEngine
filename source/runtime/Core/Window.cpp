@@ -481,7 +481,7 @@ namespace spartan
     void Window::CreateAndShowSplashScreen()
     {
         // load splash screen image
-        SDL_Surface* image = SDL_LoadBMP("data\\textures\\banner.bmp");
+        SDL_Surface* image = SDL_LoadBMP("data/textures/banner.bmp");
         if (!image)
         {
             SP_LOG_ERROR("Failed to load splash screen image: %s", SDL_GetError());

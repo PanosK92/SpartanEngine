@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
 #include "../Core/Breadcrumbs.h"
+#include "../../XR/Xr.h"
 //=====================================
 
 //= NAMESPACES ===============
@@ -1242,6 +1243,164 @@ namespace spartan
         // transition to the initial layouts
         source->SetLayout(source_layout_initial, this);
         InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
+    }
+
+    void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source)
+    {
+        if (!Xr::IsSessionRunning())
+            return;
+
+        if (!Xr::AcquireSwapchainImage())
+            return;
+
+        VkImage xr_image = static_cast<VkImage>(Xr::GetSwapchainImage());
+        if (!xr_image)
+        {
+            Xr::ReleaseSwapchainImage();
+            return;
+        }
+
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+
+        uint32_t src_width  = source->GetWidth();
+        uint32_t src_height = source->GetHeight();
+        uint32_t dst_width  = Xr::GetRecommendedWidth();
+        uint32_t dst_height = Xr::GetRecommendedHeight();
+
+        // save the initial layout
+        RHI_Image_Layout source_layout_initial = source->GetLayout(0);
+
+        // transition source to transfer source
+        source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
+
+        // full pipeline barrier to sync with openxr runtime's previous frame read
+        {
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            memory_barrier.srcAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+            memory_barrier.dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            memory_barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+
+            VkDependencyInfo dependency_info = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
+        }
+
+        // transition xr image to transfer destination (both layers)
+        InsertBarrier(xr_image, RHI_Format::R8G8B8A8_Unorm, 0, 1, Xr::eye_count, RHI_Image_Layout::Transfer_Destination);
+
+        // clear the xr image to black first (for letterboxing)
+        {
+            VkClearColorValue clear_color = { 0.0f, 0.0f, 0.0f, 1.0f };
+            VkImageSubresourceRange range = {};
+            range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            range.baseMipLevel   = 0;
+            range.levelCount     = 1;
+            range.baseArrayLayer = 0;
+            range.layerCount     = Xr::eye_count;
+
+            vkCmdClearColorImage(
+                static_cast<VkCommandBuffer>(m_rhi_resource),
+                xr_image,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                &clear_color,
+                1, &range
+            );
+
+            // memory barrier: wait for clear to complete before blit
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask  = VK_PIPELINE_STAGE_2_CLEAR_BIT;
+            memory_barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            memory_barrier.dstStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT;
+            memory_barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+
+            VkDependencyInfo dependency_info = {};
+            dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount      = 1;
+            dependency_info.pMemoryBarriers         = &memory_barrier;
+
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
+        }
+
+        // calculate aspect-ratio-preserving blit region (letterbox/pillarbox)
+        float src_aspect = static_cast<float>(src_width) / static_cast<float>(src_height);
+        float dst_aspect = static_cast<float>(dst_width) / static_cast<float>(dst_height);
+
+        int32_t blit_width, blit_height, blit_x, blit_y;
+        if (src_aspect > dst_aspect)
+        {
+            // source is wider - letterbox (black bars top/bottom)
+            blit_width  = static_cast<int32_t>(dst_width);
+            blit_height = static_cast<int32_t>(dst_width / src_aspect);
+            blit_x      = 0;
+            blit_y      = (static_cast<int32_t>(dst_height) - blit_height) / 2;
+        }
+        else
+        {
+            // source is taller - pillarbox (black bars left/right)
+            blit_height = static_cast<int32_t>(dst_height);
+            blit_width  = static_cast<int32_t>(dst_height * src_aspect);
+            blit_x      = (static_cast<int32_t>(dst_width) - blit_width) / 2;
+            blit_y      = 0;
+        }
+
+        // blit to both layers (left and right eye get the same image for now)
+        for (uint32_t layer = 0; layer < Xr::eye_count; layer++)
+        {
+            VkImageBlit blit_region = {};
+            blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit_region.srcSubresource.mipLevel       = 0;
+            blit_region.srcSubresource.baseArrayLayer = 0;
+            blit_region.srcSubresource.layerCount     = 1;
+            blit_region.srcOffsets[0]                 = { 0, 0, 0 };
+            blit_region.srcOffsets[1]                 = { static_cast<int32_t>(src_width), static_cast<int32_t>(src_height), 1 };
+            blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit_region.dstSubresource.mipLevel       = 0;
+            blit_region.dstSubresource.baseArrayLayer = layer;
+            blit_region.dstSubresource.layerCount     = 1;
+            blit_region.dstOffsets[0]                 = { blit_x, blit_y, 0 };
+            blit_region.dstOffsets[1]                 = { blit_x + blit_width, blit_y + blit_height, 1 };
+
+            vkCmdBlitImage(
+                static_cast<VkCommandBuffer>(m_rhi_resource),
+                static_cast<VkImage>(source->GetRhiResource()),
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                xr_image,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1, &blit_region,
+                VK_FILTER_LINEAR
+            );
+        }
+
+        // transition xr image to transfer source (compositor will read from it)
+        InsertBarrier(xr_image, RHI_Format::R8G8B8A8_Unorm, 0, 1, Xr::eye_count, RHI_Image_Layout::Transfer_Source);
+
+        // ensure all our writes are complete before releasing to runtime
+        {
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask  = VK_PIPELINE_STAGE_2_BLIT_BIT | VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            memory_barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            memory_barrier.dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            memory_barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
+
+            VkDependencyInfo dependency_info = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
+        }
+
+        // restore source layout
+        source->SetLayout(source_layout_initial, this);
+
+        Xr::ReleaseSwapchainImage();
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)

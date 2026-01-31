@@ -988,6 +988,15 @@ namespace spartan
         m_prev_rotation             = rotation;
         m_current_position          = position;
         m_current_rotation          = rotation;
+
+        // for character controllers, use setPosition to teleport
+        if (m_body_type == BodyType::Controller && m_controller)
+        {
+            PxController* controller = static_cast<PxController*>(m_controller);
+            controller->setPosition(PxExtendedVec3(position.x, position.y, position.z));
+            m_velocity = Vector3::Zero; // reset movement velocity
+            return;
+        }
         
         // for vehicles, use the car body directly
         if (m_body_type == BodyType::Vehicle && car::body)
@@ -1184,11 +1193,8 @@ namespace spartan
             return;
         }
         
-        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)", 
+        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)",
             renderable_entities.size(), entities_to_exclude.size());
-        
-        // clear existing chassis shapes
-        car::clear_chassis_shapes();
         
         // the chassis entity's local transform relative to the vehicle (physics body)
         Vector3 chassis_local_pos = chassis_entity->GetPositionLocal();
@@ -1297,26 +1303,20 @@ namespace spartan
             return;
         }
         
-        // attach the single convex shape at identity pose (vertices are already in body space)
-        PxTransform local_pose(PxIdentity);
+        // extract the actual convex hull vertices from physx for visualization
         PxU32 hull_vert_count = convex_mesh->getNbVertices();
-        
-        if (!car::attach_chassis_convex_shape(convex_mesh, local_pose, physics))
+        const PxVec3* hull_verts = convex_mesh->getVertices();
+        std::vector<PxVec3> convex_hull_vertices(hull_verts, hull_verts + hull_vert_count);
+
+        if (!car::set_chassis(convex_mesh, convex_hull_vertices, physics))
         {
-            SP_LOG_ERROR("Failed to attach chassis convex shape");
+            SP_LOG_ERROR("Failed to set chassis");
             convex_mesh->release();
             return;
         }
-        
+
         convex_mesh->release();
-        
-        // update mass properties after adding the shape
-        car::update_mass_properties();
-        
-        // compute aerodynamic properties from the shape
-        car::compute_aero_from_shape(all_vertices);
-        
-        SP_LOG_INFO("BuildChassisConvexShapes: created single convex hull with %u vertices from %zu source vertices", 
+        SP_LOG_INFO("BuildChassisConvexShapes: created hull with %u verts from %zu source verts",
             hull_vert_count, all_vertices.size());
     }
 
@@ -1761,105 +1761,6 @@ namespace spartan
             }
         }
         
-        // draw aerodynamics
-        if (car::get_draw_aero())
-        {
-            const car::aero_debug_data& aero = car::get_aero_debug();
-            
-            // colors for aero visualization
-            const Color color_velocity   = Color(1.0f, 1.0f, 1.0f, 1.0f);   // white - velocity vector
-            const Color color_drag       = Color(1.0f, 0.3f, 0.0f, 1.0f);   // orange - drag force
-            const Color color_downforce  = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - downforce
-            const Color color_side       = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - side force
-            const Color color_ground_eff = Color(0.0f, 1.0f, 0.5f, 1.0f);   // cyan - ground effect
-            const Color color_aero_point = Color(1.0f, 0.0f, 1.0f, 1.0f);   // magenta - aero application points
-            
-            // scale factors for visualization
-            // forces in Newtons - a typical car has 500-2000N of aero forces at speed
-            const float force_scale = 0.002f;      // 1000N = 2 meter arrow
-            const float velocity_scale = 0.15f;    // 30 m/s = 4.5 meter arrow
-            
-            // always show aero application points even when stationary
-            // offset car_pos upward so arrows are visible above the car body
-            Vector3 car_pos(aero.position.x, aero.position.y + 0.8f, aero.position.z);
-            Vector3 front_pos(aero.front_aero_pos.x, aero.front_aero_pos.y, aero.front_aero_pos.z);
-            Vector3 rear_pos(aero.rear_aero_pos.x, aero.rear_aero_pos.y, aero.rear_aero_pos.z);
-            
-            // draw aero application points (always visible) - larger circles for visibility
-            Renderer::DrawCircle(front_pos, Vector3::Up, 0.35f, 16, color_aero_point);
-            Renderer::DrawCircle(rear_pos, Vector3::Up, 0.35f, 16, color_aero_point);
-            
-            // draw lines connecting front/rear to center for clarity
-            Renderer::DrawLine(front_pos, car_pos, color_aero_point, color_aero_point);
-            Renderer::DrawLine(rear_pos, car_pos, color_aero_point, color_aero_point);
-            
-            if (aero.valid)
-            {
-                // velocity vector (white arrow)
-                if (aero.velocity.magnitude() > 1.0f)
-                {
-                    Vector3 vel_end = car_pos + Vector3(aero.velocity.x, aero.velocity.y, aero.velocity.z) * velocity_scale;
-                    Renderer::DrawDirectionalArrow(car_pos, vel_end, 0.15f, color_velocity);
-                }
-                
-                // drag force (orange arrow, opposite to velocity)
-                float drag_mag = aero.drag_force.magnitude();
-                if (drag_mag > 10.0f) // low threshold to see it at low speeds too
-                {
-                    Vector3 drag_end = car_pos + Vector3(aero.drag_force.x, aero.drag_force.y, aero.drag_force.z) * force_scale;
-                    Renderer::DrawDirectionalArrow(car_pos, drag_end, 0.12f, color_drag);
-                }
-                
-                // front downforce (blue arrow pointing down)
-                float front_df_mag = aero.front_downforce.magnitude();
-                if (front_df_mag > 10.0f)
-                {
-                    Vector3 front_df_end = front_pos + Vector3(aero.front_downforce.x, aero.front_downforce.y, aero.front_downforce.z) * force_scale;
-                    Renderer::DrawDirectionalArrow(front_pos, front_df_end, 0.12f, color_downforce);
-                    
-                    // draw circle at front aero point
-                    Renderer::DrawCircle(front_pos, Vector3::Up, 0.2f, 12, color_downforce);
-                }
-                
-                // rear downforce (blue arrow pointing down)
-                float rear_df_mag = aero.rear_downforce.magnitude();
-                if (rear_df_mag > 10.0f)
-                {
-                    Vector3 rear_df_end = rear_pos + Vector3(aero.rear_downforce.x, aero.rear_downforce.y, aero.rear_downforce.z) * force_scale;
-                    Renderer::DrawDirectionalArrow(rear_pos, rear_df_end, 0.12f, color_downforce);
-                    
-                    // draw circle at rear aero point
-                    Renderer::DrawCircle(rear_pos, Vector3::Up, 0.2f, 12, color_downforce);
-                }
-                
-                // side force (yellow arrow)
-                float side_mag = aero.side_force.magnitude();
-                if (side_mag > 10.0f)
-                {
-                    Vector3 side_end = car_pos + Vector3(aero.side_force.x, aero.side_force.y, aero.side_force.z) * force_scale;
-                    Renderer::DrawDirectionalArrow(car_pos, side_end, 0.12f, color_side);
-                }
-                
-                // ground effect indicator (green circles at car position, size based on effect strength)
-                if (aero.ground_effect_factor > 1.02f)
-                {
-                    float effect_radius = 0.3f + (aero.ground_effect_factor - 1.0f) * 0.8f;
-                    Vector3 ground_pos = car_pos;
-                    ground_pos.y -= aero.ride_height; // at ground level
-                    Renderer::DrawCircle(ground_pos, Vector3::Up, effect_radius, 16, color_ground_eff);
-                }
-            }
-        }
-    }
-    
-    void Physics::SetDrawAero(bool enabled)
-    {
-        car::set_draw_aero(enabled);
-    }
-    
-    bool Physics::GetDrawAero() const
-    {
-        return car::get_draw_aero();
     }
     
     void Physics::SyncWheelOffsetsFromEntities()
@@ -2060,25 +1961,20 @@ namespace spartan
         }
         else if (m_body_type == BodyType::Vehicle)
         {
-            // create vehicle
-            if (car::create(physics, scene))
+            car::setup_params params;
+            params.physics = physics;
+            params.scene   = scene;
+
+            if (car::setup(params))
             {
-                // store the rigid body actor
                 m_actors.resize(1, nullptr);
                 m_actors[0] = car::body;
                 m_actors_active.resize(1, true);
-                
-                // set initial position - use physics-calculated height for proper ground contact
-                // car::create already set correct body height accounting for suspension sag
-                // we just use entity's X and Z, but keep the physics Y
+
                 Vector3 pos = GetEntity()->GetPosition();
                 PxTransform current_pose = car::body->getGlobalPose();
                 car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
-                
-                // store user data for raycasts
                 car::body->userData = reinterpret_cast<void*>(GetEntity());
-                
-                SP_LOG_INFO("vehicle physics body created successfully");
             }
             else
             {

@@ -222,8 +222,6 @@ namespace spartan
         bool GetDrawRaycasts() const;
         void SetDrawSuspension(bool enabled);
         bool GetDrawSuspension() const;
-        void SetDrawAero(bool enabled);
-        bool GetDrawAero() const;
         void DrawDebugVisualization();                          // call each frame to draw debug lines
         
         // sync physics wheel positions from wheel entity positions

@@ -135,6 +135,7 @@ namespace spartan
         // swapchain
         static RHI_SwapChain* GetSwapChain();
         static void BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture);
+        static void BlitToXrSwapchain(RHI_CommandList* cmd_list, RHI_Texture* texture);
         static void SubmitAndPresent();
 
         // misc
