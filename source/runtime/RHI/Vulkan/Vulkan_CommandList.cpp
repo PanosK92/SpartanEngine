@@ -1594,40 +1594,13 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(size <= RHI_Device::PropertyGetMaxPushConstantSize());
-    
-        uint32_t stages = 0;
-        if (m_pso.shaders[RHI_Shader_Type::Compute])
-        {
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT;
-        }
-        if (m_pso.shaders[RHI_Shader_Type::Vertex])
-        {
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT;
-        }
-        if (m_pso.shaders[RHI_Shader_Type::Hull])
-        {
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-        }
-        if (m_pso.shaders[RHI_Shader_Type::Domain])
-        {
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-        }
-        if (m_pso.shaders[RHI_Shader_Type::Pixel])
-        {
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
-        }
-        if (m_pso.shaders[RHI_Shader_Type::RayGeneration])
-        {
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-        }
-        if (m_pso.shaders[RHI_Shader_Type::RayMiss])
-        {
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_MISS_BIT_KHR;
-        }
-        if (m_pso.shaders[RHI_Shader_Type::RayHit])
-        {
-            stages |= VkShaderStageFlagBits::VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-        }
+        SP_ASSERT(m_pipeline != nullptr);
+
+        // use the stages that were actually defined in the pipeline layout's push constant range
+        // this avoids validation errors when a shader (e.g., vertex) doesn't use push constants
+        uint32_t stages = m_pipeline->GetPushConstantStages();
+        if (stages == 0)
+            return; // no push constants defined in pipeline
     
         vkCmdPushConstants(
             static_cast<VkCommandBuffer>(m_rhi_resource),
@@ -2157,37 +2130,66 @@ namespace spartan
                     ? barrier_helpers::scope_to_stages(barrier.scope_src)
                     : (VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT);
 
-                VkImageMemoryBarrier2 vk_barrier        = {};
-                vk_barrier.sType                        = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-                vk_barrier.srcStageMask                 = stages;
-                vk_barrier.dstStageMask                 = (barrier.scope_dst != RHI_Barrier_Scope::Auto)
-                    ? barrier_helpers::scope_to_stages(barrier.scope_dst) : stages;
-                vk_barrier.srcQueueFamilyIndex          = VK_QUEUE_FAMILY_IGNORED;
-                vk_barrier.dstQueueFamilyIndex          = VK_QUEUE_FAMILY_IGNORED;
-                vk_barrier.image                        = static_cast<VkImage>(barrier.texture->GetRhiResource());
-                vk_barrier.subresourceRange.aspectMask  = get_aspect_mask(barrier.texture->GetFormat());
+                VkImageMemoryBarrier2 vk_barrier           = {};
+                vk_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+                vk_barrier.srcStageMask                    = stages;
+                vk_barrier.dstStageMask                    = (barrier.scope_dst != RHI_Barrier_Scope::Auto)  ? barrier_helpers::scope_to_stages(barrier.scope_dst) : stages;
+                vk_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                vk_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                vk_barrier.image                           = static_cast<VkImage>(barrier.texture->GetRhiResource());
+                vk_barrier.subresourceRange.aspectMask     = get_aspect_mask(barrier.texture->GetFormat());
                 vk_barrier.subresourceRange.baseArrayLayer = 0;
-                vk_barrier.subresourceRange.layerCount  = barrier.texture->GetType() == RHI_Texture_Type::Type3D ? 1 : barrier.texture->GetDepth();
-
-                // set access masks based on sync type
-                switch (barrier.sync_type)
-                {
-                    case RHI_BarrierType::EnsureWriteThenRead:
-                        vk_barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-                        vk_barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
-                        break;
-                    case RHI_BarrierType::EnsureReadThenWrite:
-                        vk_barrier.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
-                        vk_barrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-                        break;
-                    case RHI_BarrierType::EnsureWriteThenWrite:
-                        vk_barrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-                        vk_barrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
-                        break;
-                }
+                vk_barrier.subresourceRange.layerCount     = barrier.texture->GetType() == RHI_Texture_Type::Type3D ? 1 : barrier.texture->GetDepth();
 
                 VkDependencyInfo dependency_info = {};
                 dependency_info.sType            = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+
+                // helper lambda to set access masks based on layout (read-only layouts can't have write access)
+                auto set_access_masks_for_layout = [&barrier](VkImageMemoryBarrier2& b, RHI_Image_Layout layout)
+                {
+                    bool is_read_only_layout = (layout == RHI_Image_Layout::Shader_Read);
+
+                    switch (barrier.sync_type)
+                    {
+                        case RHI_BarrierType::EnsureWriteThenRead:
+                            // if layout is read-only, the write already happened (now in read layout), use read-only masks
+                            if (is_read_only_layout)
+                            {
+                                b.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                                b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                            }
+                            else
+                            {
+                                b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                                b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                            }
+                            break;
+                        case RHI_BarrierType::EnsureReadThenWrite:
+                            if (is_read_only_layout)
+                            {
+                                b.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                                b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                            }
+                            else
+                            {
+                                b.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                                b.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                            }
+                            break;
+                        case RHI_BarrierType::EnsureWriteThenWrite:
+                            if (is_read_only_layout)
+                            {
+                                b.srcAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                                b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+                            }
+                            else
+                            {
+                                b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                                b.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+                            }
+                            break;
+                    }
+                };
 
                 VkImageMemoryBarrier2 barriers[rhi_max_mip_count];
                 if (barrier.texture->HasPerMipViews())
@@ -2195,6 +2197,7 @@ namespace spartan
                     for (uint32_t mip = 0; mip < barrier.texture->GetMipCount(); ++mip)
                     {
                         RHI_Image_Layout layout                   = barrier_helpers::get_layout(barrier.texture->GetRhiResource(), mip);
+                        set_access_masks_for_layout(vk_barrier, layout);
                         vk_barrier.oldLayout                      = vulkan_image_layout[static_cast<uint32_t>(layout)];
                         vk_barrier.newLayout                      = vulkan_image_layout[static_cast<uint32_t>(layout)]; // no transition
                         vk_barrier.subresourceRange.baseMipLevel  = mip;
@@ -2207,6 +2210,7 @@ namespace spartan
                 else
                 {
                     RHI_Image_Layout layout                  = barrier_helpers::get_layout(barrier.texture->GetRhiResource(), 0);
+                    set_access_masks_for_layout(vk_barrier, layout);
                     vk_barrier.oldLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)];
                     vk_barrier.newLayout                     = vulkan_image_layout[static_cast<uint32_t>(layout)]; // no transition
                     vk_barrier.subresourceRange.baseMipLevel = 0;

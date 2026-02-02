@@ -801,8 +801,9 @@ void Properties::ShowPhysics(Physics* body) const
                 "Plane",
                 "Capsule",
                 "Mesh",
+                "MeshConvex",
                 "Controller",
-                "Water"
+                "Vehicle"
             };
 
             ImGui::Text("Body Type");

@@ -141,6 +141,45 @@ namespace spartan
     void Physics::Initialize()
     {
         Component::Initialize();
+
+        // auto-detect appropriate body type if not already set
+        if (m_body_type == BodyType::Max)
+        {
+            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+            if (renderable)
+            {
+                // check if the mesh is a simple primitive shape (case-insensitive)
+                string mesh_name = renderable->GetMeshName();
+                transform(mesh_name.begin(), mesh_name.end(), mesh_name.begin(), ::tolower);
+                
+                if (mesh_name.find("cube") != string::npos || mesh_name.find("box") != string::npos)
+                {
+                    m_body_type = BodyType::Box;
+                }
+                else if (mesh_name.find("sphere") != string::npos)
+                {
+                    m_body_type = BodyType::Sphere;
+                }
+                else if (mesh_name.find("capsule") != string::npos || mesh_name.find("cylinder") != string::npos)
+                {
+                    m_body_type = BodyType::Capsule;
+                }
+                else if (mesh_name.find("plane") != string::npos || mesh_name.find("quad") != string::npos)
+                {
+                    m_body_type = BodyType::Plane;
+                }
+                else
+                {
+                    // default to mesh collision for complex shapes
+                    m_body_type = BodyType::Mesh;
+                }
+            }
+            else
+            {
+                // no renderable - default to box (common for invisible colliders/triggers)
+                m_body_type = BodyType::Box;
+            }
+        }
     }
 
     void Physics::Shutdown()
@@ -2293,19 +2332,15 @@ namespace spartan
         PxPhysics* physics      = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         Renderable* renderable  = GetEntity()->GetComponent<Renderable>();
         
-        if (!renderable)
-        {
-            SP_LOG_ERROR("No Renderable component found for physics body creation");
-            return;
-        }
+        // determine instance count - use renderable if available, otherwise single instance
+        const uint32_t instance_count = renderable ? renderable->GetInstanceCount() : 1;
 
         // create bodies and shapes
-        const uint32_t instance_count = renderable->GetInstanceCount();
         m_actors.resize(instance_count, nullptr);
         m_actors_active.resize(instance_count, true); // all actors start active
         for (uint32_t i = 0; i < instance_count; i++)
         {
-            math::Matrix transform = renderable->HasInstancing() ? renderable->GetInstance(i, true) : GetEntity()->GetMatrix();
+            math::Matrix transform = (renderable && renderable->HasInstancing()) ? renderable->GetInstance(i, true) : GetEntity()->GetMatrix();
             PxTransform pose(
                 PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
                 PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
