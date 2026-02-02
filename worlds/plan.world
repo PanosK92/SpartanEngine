@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <World name="plan" description="NFS Underground 2 starting area blockout - airport parking lot, highway exit, and city entrance">
  <Entities>
-  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="-97.8182 27.3517 64.41" rotation="0 0 0 1" scale="1 1 1">
+  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="-61.3919 7.29813 -7.97191" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" />
-   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 3 -5" rotation="0.0335956 0.867481 -0.0591391 0.492798" scale="1 1 1">
+   <Entity name="component_camera" id="17524583551347340245" active="true" position="0.58662 -3.53162 29.486" rotation="-0.0316596 -0.736245 0.0345257 -0.675092" scale="1 1 1">
     <camera aperture="11" shutter_speed="0.00800000038" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="17" />
    </Entity>
   </Entity>
-  <Entity name="floor" id="17522025712625852117" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
+  <Entity name="floor" id="17522025712625852117" active="true" position="0 0.1 0" rotation="0 0.707107 0 0.707107" scale="1000 1.2 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" />
    <renderable mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
@@ -16,166 +16,19 @@
   <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="0.982287 0 0 0.187381" scale="1 1 1">
    <light flags="3" light_type="0" color_r="1" color_g="0.72007829" color_b="0.482821107" temperature="3200" intensity="8" intensity_lum="10000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" />
   </Entity>
-  <Entity name="player_car" id="2411005043703651744" active="true" position="0 0.5 0" rotation="0 0 0 1" scale="1 1 1">
-   <prefab type="car" drivable="true" telemetry="true" camera_follows="true" />
+  <Entity name="player_car" id="2411005043703651744" active="true" position="-0.5 0.5 0" rotation="0 0 0 1" scale="1 1 1">
+   <prefab type="car" type="car" drivable="true" telemetry="true" camera_follows="true" />
   </Entity>
+  <Entity name="model" id="7579193985006245872" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
+  <Entity name="model" id="3383125357677288809" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
+  <Entity name="model" id="11569497907502923861" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
+  <Entity name="model" id="11922105595559765729" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
+  <Entity name="model" id="15189802443264932060" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
+  <Entity name="model" id="6300284389321206611" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
+  <Entity name="model" id="18364461478393771396" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
+  <Entity name="model" id="16543119828095844314" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
+  <Entity name="model" id="6670538603012553237" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
   <Entity name="model" id="11379842912508043661" active="true" position="0 0 0" rotation="0 0 0 1" scale="0.407415 0.407415 0.407415" />
-  <Entity name="airport_terminal" id="15352894423597569001" active="true" position="0 8 -35" rotation="0 0 0 1" scale="80 16 20">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="terminal_canopy" id="15352894423597569002" active="true" position="0 5 -22" rotation="0 0 0 1" scale="60 1 8">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="canopy_pillar_1" id="15352894423597569003" active="true" position="-25 2.5 -22" rotation="0 0 0 1" scale="1 5 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="canopy_pillar_2" id="15352894423597569004" active="true" position="25 2.5 -22" rotation="0 0 0 1" scale="1 5 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="canopy_pillar_3" id="15352894423597569005" active="true" position="0 2.5 -22" rotation="0 0 0 1" scale="1 5 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="parking_barrier_left" id="15352894423597569010" active="true" position="-35 0.6 0" rotation="0 0 0 1" scale="2 1.2 40">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="parking_barrier_right_back" id="15352894423597569011" active="true" position="35 0.6 -10" rotation="0 0 0 1" scale="2 1.2 20">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="parking_barrier_front" id="15352894423597569012" active="true" position="0 0.6 20" rotation="0 0 0 1" scale="72 1.2 2">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="parked_car_1" id="15352894423597569020" active="true" position="-20 0.7 5" rotation="0 0 0 1" scale="2 1.4 4">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="parked_car_2" id="15352894423597569021" active="true" position="-15 0.7 5" rotation="0 0 0 1" scale="2 1.4 4">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="parked_car_3" id="15352894423597569022" active="true" position="15 0.7 5" rotation="0 0 0 1" scale="2 1.4 4">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="parked_car_4" id="15352894423597569023" active="true" position="20 0.7 5" rotation="0 0 0 1" scale="2 1.4 4">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="ticket_booth" id="15352894423597569030" active="true" position="40 1.5 5" rotation="0 0 0 1" scale="3 3 3">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="exit_road_barrier_left" id="15352894423597569040" active="true" position="38 0.6 30" rotation="0 0 0 1" scale="2 1.2 40">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="exit_road_barrier_right" id="15352894423597569041" active="true" position="52 0.6 30" rotation="0 0 0 1" scale="2 1.2 40">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="control_tower_base" id="15352894423597569050" active="true" position="-60 10 -50" rotation="0 0 0 1" scale="8 20 8">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="control_tower_top" id="15352894423597569051" active="true" position="-60 25 -50" rotation="0 0 0 1" scale="12 6 12">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="onramp_barrier_1" id="15352894423597569060" active="true" position="55 0.6 55" rotation="0 0.382683 0 0.92388" scale="2 1.2 20">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="onramp_barrier_2" id="15352894423597569061" active="true" position="70 0.6 55" rotation="0 0.382683 0 0.92388" scale="2 1.2 20">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="highway_barrier_left" id="15352894423597569070" active="true" position="120 0.6 70" rotation="0 0.707107 0 0.707107" scale="2 1.2 200">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="highway_barrier_right" id="15352894423597569071" active="true" position="120 0.6 85" rotation="0 0.707107 0 0.707107" scale="2 1.2 200">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="highway_median" id="15352894423597569072" active="true" position="120 0.4 77.5" rotation="0 0.707107 0 0.707107" scale="1 0.8 200">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="overpass_column_1" id="15352894423597569080" active="true" position="150 3 77.5" rotation="0 0 0 1" scale="3 6 3">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="overpass_column_2" id="15352894423597569081" active="true" position="180 3 77.5" rotation="0 0 0 1" scale="3 6 3">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="city_exit_barrier_left" id="15352894423597569090" active="true" position="210 0.6 60" rotation="0 0.382683 0 0.92388" scale="2 1.2 30">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="city_exit_barrier_right" id="15352894423597569091" active="true" position="220 0.6 50" rotation="0 0.382683 0 0.92388" scale="2 1.2 30">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
   <Entity name="city_building_1" id="15352894423597569100" active="true" position="240 20 30" rotation="0 0 0 1" scale="15 40 15">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
@@ -260,35 +113,442 @@
     <Instances />
    </renderable>
   </Entity>
-  <Entity name="billboard_pole" id="15352894423597569130" active="true" position="100 6 90" rotation="0 0 0 1" scale="2 12 2">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
+  <Entity name="Airport Buildings" id="2744347511363361446" active="true" position="-20 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="airport_terminal" id="15352894423597569001" active="true" position="0 8 -35" rotation="0 0 0 1" scale="160 16 20">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="terminal_canopy" id="15352894423597569002" active="true" position="0 5 -22" rotation="0 0 0 1" scale="84 1 8">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="terminal_canopy" id="18371994556575196456" active="true" position="0 0.5 -18.5" rotation="0.707107 0 0 0.707107" scale="84 1.00002 8.00019">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="Car Park" id="8005737668544512267" active="true" position="0 0 28.9" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="parking_barrier_right_back" id="15352894423597569011" active="true" position="42 0.6 -10" rotation="0 0 0 1" scale="2 1.2 20">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+    </Entity>
+    <Entity name="parking_barrier_front" id="15352894423597569012" active="true" position="0 0.6 20" rotation="0 0 0 1" scale="72 1.2 2">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+    </Entity>
+    <Entity name="parking_barrier_left" id="15352894423597569010" active="true" position="-42.2 0.6 0" rotation="0 0 0 1" scale="2 1.2 40">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+    </Entity>
+    <Entity name="Pillars" id="7817783293540226120" active="true" position="-2 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <Entity name="Pillar" id="16469322988169517641" active="true" position="-23.5 0 4" rotation="0 0 0 1" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="15352894423597569020" active="true" position="0.000747681 0.7 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="16540942209152403935" active="true" position="0.000747681 2.2 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="13729879818801591248" active="true" position="-12.5 0 4.15878" rotation="0 0.707107 0 0.707107" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="13730245256060081055" active="true" position="0.84132 0.7 -0.000888824" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="13730909138835036692" active="true" position="0.84132 2.2 -0.000888824" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="10268568141358084890" active="true" position="-1.49998 0 4.15878" rotation="0 0.707107 0 0.707107" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="10268736504560469289" active="true" position="0.840782 0.7 5.34058e-05" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="10269502206866947836" active="true" position="0.840782 2.2 5.34058e-05" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="9872265630885157325" active="true" position="10.5 0 4.15878" rotation="0 0.707107 0 0.707107" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="9872610456342747576" active="true" position="0 0.7 0" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="9867482874911557143" active="true" position="0 2.2 0" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="3057908946023767747" active="true" position="21.5 0 4.15878" rotation="0 0.707107 0 0.707107" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="3057761019162162427" active="true" position="0 0.7 0" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="3058382859095340805" active="true" position="0 2.2 0" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="11937861770747360364" active="true" position="32.5 0 5" rotation="0 0 0 1" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="11937426588888911924" active="true" position="0 0.7 0" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="11938315942970909781" active="true" position="0 2.2 0" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="4399823676437935378" active="true" position="-23.5 0 -22.9" rotation="0 0 0 1" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="4399837123658729267" active="true" position="0 0.7 0" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="4399177915711504410" active="true" position="0 2.2 0" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="4399371147522940815" active="true" position="-12.5 0 -22.0952" rotation="0 0.707107 0 0.707107" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="4400891718230844595" active="true" position="-0.804681 0.7 -0.00115585" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="4401120275439022482" active="true" position="-0.804681 2.2 -0.00115585" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="4401320202654266274" active="true" position="-1.49986 0 -22.0952" rotation="0 0.707107 0 0.707107" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="4401176323614432037" active="true" position="-0.804728 0.7 0.0001297" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="4401408363319753009" active="true" position="-0.804728 2.2 0.0001297" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="4400180553427876980" active="true" position="10.5002 0 -22.0952" rotation="0 0.707107 0 0.707107" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="4400193222833658524" active="true" position="-0.804728 0.7 0.000205994" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="4400515362947564862" active="true" position="-0.804728 2.2 0.000205994" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="4400743252559397318" active="true" position="21.5001 0 -22.0952" rotation="0 0.707107 0 0.707107" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="4400727201540482332" active="true" position="-0.804838 0.7 0.00015223" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="4402392748049157128" active="true" position="-0.804838 2.2 0.00015223" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="4402481446652757860" active="true" position="32.5 0 -22.0952" rotation="0 0 0 1" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="4402499822328410409" active="true" position="0 0.7 0" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="4402605512030906333" active="true" position="0 2.2 0" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="6260349529507294707" active="true" position="-23.5 0 4.15878" rotation="0 0 0 1" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="6260414550007499958" active="true" position="0.000747681 0.7 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="6259783726720091229" active="true" position="0.000747681 2.2 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="1791549703709357491" active="true" position="-23.5 0 -8.5" rotation="0 0 0 1" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="1790377915979224747" active="true" position="0.000747681 0.7 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="1792435727588260053" active="true" position="0.000747681 2.2 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="18433346961675600914" active="true" position="-1.5 0 -8.5" rotation="0 0 0 1" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="18433451576353624443" active="true" position="0.000747681 0.7 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="18432584360543079478" active="true" position="0.000747681 2.2 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+     <Entity name="Pillar" id="11571866007860849183" active="true" position="32.5 0 -8.5" rotation="0 0 0 1" scale="1 1.2 1">
+      <Entity name="Pillar Base" id="11571964589088146143" active="true" position="0.000747681 0.7 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.4 3.2">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+      <Entity name="Pillar Top" id="11573471966073139817" active="true" position="0.000747681 2.2 -0.841217" rotation="0 0.707107 0 0.707107" scale="2 1.68 4.4">
+       <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+       <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+        <Instances />
+       </renderable>
+      </Entity>
+     </Entity>
+    </Entity>
+    <Entity name="parking_barrier_right_back" id="9281318951284505473" active="true" position="37 1.9 -8.7" rotation="-0.185134 0 0 0.982713" scale="8 1.2 12.8">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+     <Entity name="Entity" id="15364180902706166772" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1" />
+    </Entity>
+    <Entity name="parking_barrier_right_back" id="8850764540874609028" active="true" position="37 4.2 1.1" rotation="0 0 0 1" scale="8 1.2 8">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+    </Entity>
+    <Entity name="parking_barrier_right_back" id="273358737676136894" active="true" position="32.8 5.4 -13.9" rotation="0 0 0 1" scale="0.2 1.2 21">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+    </Entity>
+    <Entity name="parking_barrier_right_back" id="10446647045478878357" active="true" position="1.9 5.4 -24.3" rotation="0 0.707107 0 0.707107" scale="0.2 1.2 62">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+    </Entity>
+    <Entity name="parking_barrier_right_back" id="16098526961062653175" active="true" position="1.9 5.4 6.3" rotation="0 0.707107 0 0.707107" scale="0.2 1.2 62">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+    </Entity>
+    <Entity name="parking_barrier_right_back" id="12098004768679292185" active="true" position="-29 5.4 -9" rotation="0 0 0 1" scale="0.2 1.2 30.5">
+     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+      <Instances />
+     </renderable>
+    </Entity>
+   </Entity>
+   <Entity name="control_tower_base" id="15352894423597569050" active="true" position="-116.7 10 -50" rotation="0 0 0 1" scale="8 20 8">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="control_tower_top" id="15352894423597569051" active="true" position="-116.7 25 -50" rotation="0 0 0 1" scale="12 6 12">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="terminal_canopy" id="4051747873169887411" active="true" position="-46 5 -20" rotation="0 0.707107 0 0.707107" scale="10 1 8">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="terminal_canopy" id="3702906648223191835" active="true" position="-46 2.3 -4.4" rotation="0.0861746 0.701836 0.0861746 0.701836" scale="22 1 8">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="ticket_booth" id="15352894423597569030" active="true" position="40 1.5 0" rotation="0 0 0 1" scale="3 3 3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="parking_barrier_right_back" id="3149661535747157108" active="true" position="1.8 4.2 20" rotation="0 0 0 1" scale="62.5 1.2 32">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
   </Entity>
-  <Entity name="billboard_sign" id="15352894423597569131" active="true" position="100 14 90" rotation="0 0.707107 0 0.707107" scale="12 6 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="streetlight_1" id="15352894423597569140" active="true" position="90 5 72" rotation="0 0 0 1" scale="0.5 10 0.5">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="streetlight_2" id="15352894423597569141" active="true" position="130 5 72" rotation="0 0 0 1" scale="0.5 10 0.5">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="streetlight_3" id="15352894423597569142" active="true" position="170 5 72" rotation="0 0 0 1" scale="0.5 10 0.5">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
+  <Entity name="Highway" id="7850748446432689067" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <Entity name="billboard_pole" id="15352894423597569130" active="true" position="100 6 90" rotation="0 0 0 1" scale="2 12 2">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="streetlight_3" id="15352894423597569142" active="true" position="170 5 72" rotation="0 0 0 1" scale="0.5 10 0.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="streetlight_2" id="15352894423597569141" active="true" position="130 5 72" rotation="0 0 0 1" scale="0.5 10 0.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="streetlight_1" id="15352894423597569140" active="true" position="90 5 72" rotation="0 0 0 1" scale="0.5 10 0.5">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="billboard_sign" id="15352894423597569131" active="true" position="100 14 90" rotation="0 0.707107 0 0.707107" scale="12 6 1">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="city_exit_barrier_right" id="15352894423597569091" active="true" position="220 0.6 50" rotation="0 0.382683 0 0.92388" scale="2 1.2 30">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="highway_median" id="15352894423597569072" active="true" position="120 0.4 77.5" rotation="0 0.707107 0 0.707107" scale="1 0.8 200">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="overpass_column_2" id="15352894423597569081" active="true" position="180 3 77.5" rotation="0 0 0 1" scale="3 6 3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="city_exit_barrier_left" id="15352894423597569090" active="true" position="210 0.6 60" rotation="0 0.382683 0 0.92388" scale="2 1.2 30">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="overpass_column_1" id="15352894423597569080" active="true" position="150 3 77.5" rotation="0 0 0 1" scale="3 6 3">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="highway_barrier_right" id="15352894423597569071" active="true" position="120 0.6 85" rotation="0 0.707107 0 0.707107" scale="2 1.2 200">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="highway_barrier_left" id="15352894423597569070" active="true" position="120 0.6 70" rotation="0 0.707107 0 0.707107" scale="2 1.2 200">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="onramp_barrier_2" id="15352894423597569061" active="true" position="70 0.6 55" rotation="0 0.382683 0 0.92388" scale="2 1.2 20">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="onramp_barrier_1" id="15352894423597569060" active="true" position="55 0.6 55" rotation="0 0.382683 0 0.92388" scale="2 1.2 20">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="exit_road_barrier_right" id="15352894423597569041" active="true" position="52 0.6 30" rotation="0 0 0 1" scale="2 1.2 40">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
+   <Entity name="exit_road_barrier_left" id="15352894423597569040" active="true" position="38 0.6 30" rotation="0 0 0 1" scale="2 1.2 40">
+    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+     <Instances />
+    </renderable>
+   </Entity>
   </Entity>
  </Entities>
 </World>
