@@ -99,6 +99,7 @@ namespace car
         constexpr float slip_angle_deadband = 0.01f;
         constexpr float min_lateral_grip    = 0.4f;
         constexpr float camber_thrust_coeff = 0.015f;
+        constexpr float max_slip_angle      = 0.25f; // ~14 degrees - clamp to keep friction high at large angles
 
         // tire thermals
         constexpr float tire_ambient_temp      = 50.0f;
@@ -1289,7 +1290,9 @@ namespace car
                     effective_slip_angle *= factor * factor;
                 }
 
-                float lat_mu  = pacejka(effective_slip_angle, tuning::lat_B, tuning::lat_C, tuning::lat_D, tuning::lat_E);
+                // clamp slip angle for pacejka to prevent friction drop-off at large angles (sliding sideways)
+                float pacejka_slip_angle = PxClamp(effective_slip_angle, -tuning::max_slip_angle, tuning::max_slip_angle);
+                float lat_mu  = pacejka(pacejka_slip_angle, tuning::lat_B, tuning::lat_C, tuning::lat_D, tuning::lat_E);
                 float long_mu = pacejka(w.slip_ratio, tuning::long_B, tuning::long_C, tuning::long_D, tuning::long_E);
 
                 float combined_mu = sqrtf(lat_mu * lat_mu + long_mu * long_mu);

@@ -226,6 +226,15 @@ void WorldViewer::TreeShow()
 {
     OnTreeBegin();
 
+    // get window rect for window-level drop target (for unparenting)
+    ImVec2 window_pos = ImGui::GetWindowPos();
+    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+    ImVec2 content_avail = ImGui::GetContentRegionAvail();
+    ImRect window_rect = ImRect(
+        cursor_pos,
+        ImVec2(cursor_pos.x + content_avail.x, window_pos.y + ImGui::GetWindowSize().y)
+    );
+
     bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     ImGui::BeginDisabled(is_in_game_mode);
     {
@@ -242,6 +251,25 @@ void WorldViewer::TreeShow()
         }
     }
     ImGui::EndDisabled();
+
+    // window-level drop target for unparenting - catches drops on empty space (left, right, bottom)
+    // this has lower priority than entity drop targets, so it only triggers when not dropping on entity content
+    if (ImGui::BeginDragDropTargetCustom(window_rect, ImGui::GetID("##WorldViewerDropTarget")))
+    {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
+        {
+            if (payload->DataSize == sizeof(uint64_t))
+            {
+                const uint64_t entity_id = *(const uint64_t*)payload->Data;
+                if (spartan::Entity* dropped_entity = spartan::World::GetEntityById(entity_id))
+                {
+                    // unparent the entity (make it a root entity)
+                    dropped_entity->SetParent(nullptr);
+                }
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
 
     OnTreeEnd();
 }
@@ -264,8 +292,8 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
     if (!entity)
         return;
 
-    // set up tree node flags
-    ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow;
+    // set up tree node flags - we handle highlighting manually, so no SpanFullWidth or Selected
+    ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_OpenOnArrow;
     const vector<spartan::Entity*>& children = entity->GetChildren();
     bool has_children                        = !children.empty();
     if (!has_children)
@@ -278,10 +306,6 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
     const bool is_selected  = camera && camera->IsSelected(entity);
     spartan::Entity* primary_selected = camera ? camera->GetSelectedEntity() : nullptr;
     const bool first_time_selected = is_selected && primary_selected && primary_selected->GetObjectId() != last_selected_entity_id;
-    if (is_selected)
-    {
-        node_flags |= ImGuiTreeNodeFlags_Selected;
-    }
 
     // auto-expand for selected descendants
     if (primary_selected && primary_selected->IsDescendantOf(entity) && primary_selected->GetObjectId() != last_selected_entity_id)
@@ -289,15 +313,22 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         ImGui::SetNextItemOpen(true);
     }
 
-    // use draw list channels to draw hover highlight behind tree node content
-    // channel 0 = background (hover highlight), channel 1 = foreground (tree node, icon, text)
+    // use draw list channels to draw highlight behind tree node content
+    // channel 0 = background (highlight), channel 1 = foreground (tree node, icon, text)
     ImDrawList* dl = ImGui::GetWindowDrawList();
     dl->ChannelsSplit(2);
     dl->ChannelsSetCurrent(1); // draw tree node on foreground
 
+    // disable imgui's built-in tree node hover/selection colors - we draw our own
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
+
     // start tree node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "");
+
+    ImGui::PopStyleColor(3);
 
     // get the full tree node rect (including arrow) for hover detection
     ImVec2 tree_node_min = ImGui::GetItemRectMin();
@@ -314,35 +345,42 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         selection_from_click    = false; // reset after handling
     }
 
-    // set up row for interaction - extend to cover full row from tree node start
+    // set up row for interaction
     ImGui::SameLine();
-    const ImVec2 row_pos  = ImGui::GetCursorScreenPos();
+    const ImVec2 row_pos   = ImGui::GetCursorScreenPos();
     const float row_height = ImGui::GetTextLineHeightWithSpacing();
     
-    // calculate full row rect from tree node start to end of available space
-    ImVec2 full_row_min = ImVec2(tree_node_min.x, tree_node_min.y);
-    ImVec2 full_row_max = ImVec2(tree_node_min.x + ImGui::GetContentRegionAvail().x + (row_pos.x - tree_node_min.x), tree_node_min.y + row_height);
+    // calculate content width (icon + text only)
+    const float padding      = ImGui::GetStyle().FramePadding.y * 2.0f;
+    const float icon_size    = ImGui::GetTextLineHeightWithSpacing() - padding;
+    const float text_width   = ImGui::CalcTextSize(entity->GetObjectName().c_str()).x;
+    const float content_width = icon_size + ImGui::GetStyle().ItemSpacing.x + text_width;
     
-    // check hover on full row (including arrow area), clipped to window bounds
-    bool is_row_hovered = ImGui::IsMouseHoveringRect(full_row_min, full_row_max, true);
+    // calculate content rect (icon + text area only) for hover detection and highlighting
+    ImVec2 content_min = ImVec2(row_pos.x, tree_node_min.y);
+    ImVec2 content_max = ImVec2(row_pos.x + content_width, tree_node_min.y + row_height);
+    
+    // check hover on content area only
+    bool is_row_hovered = ImGui::IsMouseHoveringRect(content_min, content_max, true);
     if (is_row_hovered)
     {
         entity_hovered = entity;
-        
-        // draw hover highlight on background channel (behind arrow)
-        if (!is_selected)
-        {
-            dl->ChannelsSetCurrent(0); // background channel
-            ImU32 hover_color = ImGui::GetColorU32(ImGuiCol_HeaderHovered);
-            dl->AddRectFilled(full_row_min, full_row_max, hover_color);
-            dl->ChannelsSetCurrent(1); // back to foreground
-        }
+    }
+    
+    // draw selection or hover highlight on background channel (content area only)
+    if (is_selected || is_row_hovered)
+    {
+        dl->ChannelsSetCurrent(0); // background channel
+        ImU32 highlight_color = is_selected ? ImGui::GetColorU32(ImGuiCol_Header) : ImGui::GetColorU32(ImGuiCol_HeaderHovered);
+        dl->AddRectFilled(content_min, content_max, highlight_color);
+        dl->ChannelsSetCurrent(1); // back to foreground
     }
 
-    // handle clicking and drag-and-drop
+    // handle clicking and drag-and-drop - only cover content area
+    // drops outside this area will be caught by the window-level drop target for unparenting
     ImGui::PushID(node_id);
-    const ImVec2 row_size = ImVec2(ImGui::GetContentRegionAvail().x, row_height);
-    ImGui::InvisibleButton("row_btn", row_size);
+    const ImVec2 content_size = ImVec2(content_width, row_height);
+    ImGui::InvisibleButton("row_btn", content_size);
 
     // drag source
     if (!spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))

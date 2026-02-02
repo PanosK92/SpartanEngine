@@ -57,9 +57,9 @@ namespace spartan
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
-        uint32_t audio_source_count     = 0;
-        atomic<bool> resolve            = false;
-        bool was_in_editor_mode         = false;
+        uint32_t audio_source_count = 0;
+        atomic<bool> resolve        = false;
+        bool was_in_editor_mode     = false;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* light               = nullptr;

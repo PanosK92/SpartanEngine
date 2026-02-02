@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="https://discord.gg/TG5r2BS">Discord</a> •
-  <a href="https://x.com/panoskarabelas">X / Twitter</a> •
+  <a href="https://x.com/panoskarabelas">X</a> •
   <a href="https://github.com/PanosK92/SpartanEngine/wiki">Wiki</a> •
   <a href="https://github.com/PanosK92/SpartanEngine/issues">Issues</a>
 </p>
