@@ -91,6 +91,10 @@ namespace spartan
         static constexpr uint32_t eye_count = 2;
         static bool IsMultiviewSupported();
 
+        // stereo mode (2D uses center pose for both eyes, 3D uses per-eye poses)
+        static void SetStereoMode(bool enabled) { m_stereo_3d = enabled; }
+        static bool GetStereoMode()             { return m_stereo_3d; }
+
     private:
         static bool CreateSession();
         static void DestroySession();
@@ -117,5 +121,8 @@ namespace spartan
         static std::array<XrEyeView, eye_count> m_eye_views;
         static math::Vector3 m_head_position;
         static math::Quaternion m_head_orientation;
+
+        // stereo mode
+        static bool m_stereo_3d;
     };
 }

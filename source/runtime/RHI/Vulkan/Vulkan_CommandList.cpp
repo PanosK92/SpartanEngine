@@ -1327,29 +1327,7 @@ namespace spartan
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         }
 
-        // calculate aspect-ratio-preserving blit region (letterbox/pillarbox)
-        float src_aspect = static_cast<float>(src_width) / static_cast<float>(src_height);
-        float dst_aspect = static_cast<float>(dst_width) / static_cast<float>(dst_height);
-
-        int32_t blit_width, blit_height, blit_x, blit_y;
-        if (src_aspect > dst_aspect)
-        {
-            // source is wider - letterbox (black bars top/bottom)
-            blit_width  = static_cast<int32_t>(dst_width);
-            blit_height = static_cast<int32_t>(dst_width / src_aspect);
-            blit_x      = 0;
-            blit_y      = (static_cast<int32_t>(dst_height) - blit_height) / 2;
-        }
-        else
-        {
-            // source is taller - pillarbox (black bars left/right)
-            blit_height = static_cast<int32_t>(dst_height);
-            blit_width  = static_cast<int32_t>(dst_height * src_aspect);
-            blit_x      = (static_cast<int32_t>(dst_width) - blit_width) / 2;
-            blit_y      = 0;
-        }
-
-        // blit to both layers (left and right eye get the same image for now)
+        // blit to both layers, stretching to fill entire swapchain
         for (uint32_t layer = 0; layer < Xr::eye_count; layer++)
         {
             VkImageBlit blit_region = {};
@@ -1363,8 +1341,8 @@ namespace spartan
             blit_region.dstSubresource.mipLevel       = 0;
             blit_region.dstSubresource.baseArrayLayer = layer;
             blit_region.dstSubresource.layerCount     = 1;
-            blit_region.dstOffsets[0]                 = { blit_x, blit_y, 0 };
-            blit_region.dstOffsets[1]                 = { blit_x + blit_width, blit_y + blit_height, 1 };
+            blit_region.dstOffsets[0]                 = { 0, 0, 0 };
+            blit_region.dstOffsets[1]                 = { static_cast<int32_t>(dst_width), static_cast<int32_t>(dst_height), 1 };
 
             vkCmdBlitImage(
                 static_cast<VkCommandBuffer>(m_rhi_resource),
