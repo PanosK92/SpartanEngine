@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Viewport.h"
 #include "AssetBrowser.h"
 #include "WorldViewer.h"
+#include "Properties.h"
 #include "RHI/RHI_Device.h"
 #include "Rendering/Renderer.h"
 #include "../ImGui/ImGui_Extension.h"
@@ -118,8 +119,17 @@ void Viewport::OnTickVisible()
     else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
     {
         camera->Pick();
-        // update the world viewer to reflect selection (uses primary selected entity for Properties)
-        m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+
+        // when ctrl is held, Pick() already handled multi-selection via ToggleSelection(),
+        // so we only update the properties panel without overwriting the camera's selection
+        if (Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right))
+        {
+            Properties::Inspect(camera->GetSelectedEntity());
+        }
+        else
+        {
+            m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+        }
     }
 
     // Ctrl+D to duplicate selected entities
