@@ -78,7 +78,6 @@ namespace spartan
             Profiler::Initialize();
             PhysicsWorld::Initialize();
             Renderer::Initialize();
-            Xr::Initialize();
             World::Initialize();
             Settings::Initialize();
             SmokeTest::Initialize();
@@ -128,6 +127,19 @@ namespace spartan
     {
         // pre-tick
         Input::PreTick();
+
+        // ctrl+0 to toggle xr
+        if ((Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right)) && Input::GetKeyDown(KeyCode::Alpha0))
+        {
+            if (!Xr::IsAvailable())
+            {
+                Xr::Initialize();
+            }
+            else
+            {
+                Xr::Shutdown();
+            }
+        }
 
         // tick
         Window::Tick();
