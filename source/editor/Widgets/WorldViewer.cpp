@@ -55,6 +55,13 @@ namespace
     spartan::Entity* entity_shift_anchor = nullptr; // anchor entity for shift-click range selection
     vector<spartan::Entity*> entities_in_tree_order; // cached list of entities in display order
 
+    // reorder drag-drop state
+    spartan::Entity* reorder_target_entity = nullptr; // entity to insert before/after
+    bool reorder_insert_after              = false;   // true = insert after, false = insert before
+    float reorder_line_y                   = 0.0f;    // y position to draw the insertion line
+    float reorder_line_x_min               = 0.0f;    // x start of insertion line
+    float reorder_line_x_max               = 0.0f;    // x end of insertion line
+
     // helper function to collect all active entities in tree display order (depth-first)
     void CollectEntitiesInTreeOrder(spartan::Entity* entity, vector<spartan::Entity*>& out_entities)
     {
@@ -252,8 +259,7 @@ void WorldViewer::TreeShow()
     }
     ImGui::EndDisabled();
 
-    // window-level drop target for unparenting - catches drops on empty space (left, right, bottom)
-    // this has lower priority than entity drop targets, so it only triggers when not dropping on entity content
+    // window-level drop target for reordering (gaps between entities) or unparenting (empty space)
     if (ImGui::BeginDragDropTargetCustom(window_rect, ImGui::GetID("##WorldViewerDropTarget")))
     {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
@@ -263,12 +269,72 @@ void WorldViewer::TreeShow()
                 const uint64_t entity_id = *(const uint64_t*)payload->Data;
                 if (spartan::Entity* dropped_entity = spartan::World::GetEntityById(entity_id))
                 {
-                    // unparent the entity (make it a root entity)
-                    dropped_entity->SetParent(nullptr);
+                    if (reorder_target_entity && dropped_entity->GetObjectId() != reorder_target_entity->GetObjectId())
+                    {
+                        // reorder: move entity to new position
+                        spartan::Entity* target_parent = reorder_target_entity->GetParent();
+                        spartan::Entity* dropped_parent = dropped_entity->GetParent();
+                        
+                        if (target_parent == dropped_parent)
+                        {
+                            // same parent - just reorder
+                            if (target_parent)
+                            {
+                                std::vector<spartan::Entity*>& children = target_parent->GetChildren();
+                                uint32_t target_index = 0;
+                                for (uint32_t i = 0; i < children.size(); ++i)
+                                {
+                                    if (children[i] == reorder_target_entity)
+                                    {
+                                        target_index = reorder_insert_after ? i + 1 : i;
+                                        break;
+                                    }
+                                }
+                                target_parent->MoveChildToIndex(dropped_entity, target_index);
+                            }
+                            else
+                            {
+                                // root entities - use the target-relative function
+                                spartan::World::MoveRootEntityNear(dropped_entity, reorder_target_entity, reorder_insert_after);
+                            }
+                        }
+                        else
+                        {
+                            // different parents - change parent and reorder
+                            dropped_entity->SetParent(target_parent);
+                            if (target_parent)
+                            {
+                                std::vector<spartan::Entity*>& children = target_parent->GetChildren();
+                                uint32_t target_index = 0;
+                                for (uint32_t i = 0; i < children.size(); ++i)
+                                {
+                                    if (children[i] == reorder_target_entity)
+                                    {
+                                        target_index = reorder_insert_after ? i + 1 : i;
+                                        break;
+                                    }
+                                }
+                                target_parent->MoveChildToIndex(dropped_entity, target_index);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // no reorder target - unparent the entity
+                        dropped_entity->SetParent(nullptr);
+                    }
                 }
             }
         }
         ImGui::EndDragDropTarget();
+    }
+
+    // draw reorder insertion line indicator
+    if (reorder_target_entity && ImGui::GetDragDropPayload() && ImGui::GetDragDropPayload()->IsDataType("ENTITY"))
+    {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImU32 line_color = ImGui::GetColorU32(ImGuiCol_DragDropTarget);
+        dl->AddLine(ImVec2(reorder_line_x_min, reorder_line_y), ImVec2(reorder_line_x_max, reorder_line_y), line_color, 2.0f);
     }
 
     OnTreeEnd();
@@ -277,6 +343,7 @@ void WorldViewer::TreeShow()
 void WorldViewer::OnTreeBegin()
 {
     entity_hovered = nullptr;
+    reorder_target_entity = nullptr;
 }
 
 void WorldViewer::OnTreeEnd()
@@ -360,15 +427,52 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
     ImVec2 content_min = ImVec2(row_pos.x, tree_node_min.y);
     ImVec2 content_max = ImVec2(row_pos.x + content_width, tree_node_min.y + row_height);
     
-    // check hover on content area only
+    // check for reorder position when dragging (top/bottom edge of row)
+    bool is_in_reorder_zone = false;
+    const ImGuiPayload* active_payload = ImGui::GetDragDropPayload();
+    if (active_payload && active_payload->IsDataType("ENTITY"))
+    {
+        ImVec2 mouse_pos = ImGui::GetMousePos();
+        float row_top = tree_node_min.y;
+        float row_bottom = tree_node_min.y + row_height;
+        float reorder_zone = row_height * 0.35f; // top/bottom 35% of row for reordering
+        
+        // check if mouse is in this row's vertical range
+        if (mouse_pos.y >= row_top && mouse_pos.y <= row_bottom)
+        {
+            // check if mouse is in top zone (insert before) or bottom zone (insert after)
+            if (mouse_pos.y < row_top + reorder_zone)
+            {
+                reorder_target_entity = entity;
+                reorder_insert_after = false;
+                reorder_line_y = row_top;
+                reorder_line_x_min = tree_node_min.x;
+                reorder_line_x_max = tree_node_min.x + ImGui::GetContentRegionAvail().x + (row_pos.x - tree_node_min.x);
+                is_in_reorder_zone = true;
+            }
+            else if (mouse_pos.y > row_bottom - reorder_zone)
+            {
+                reorder_target_entity = entity;
+                reorder_insert_after = true;
+                reorder_line_y = row_bottom;
+                reorder_line_x_min = tree_node_min.x;
+                reorder_line_x_max = tree_node_min.x + ImGui::GetContentRegionAvail().x + (row_pos.x - tree_node_min.x);
+                is_in_reorder_zone = true;
+            }
+        }
+    }
+
+    // check hover on content area only (but not when in reorder zone during drag)
     bool is_row_hovered = ImGui::IsMouseHoveringRect(content_min, content_max, true);
-    if (is_row_hovered)
+    if (is_row_hovered && !is_in_reorder_zone)
     {
         entity_hovered = entity;
     }
     
     // draw selection or hover highlight on background channel (content area only)
-    if (is_selected || is_row_hovered)
+    // don't draw hover highlight when in reorder zone - only show the line
+    bool show_hover_highlight = is_row_hovered && !is_in_reorder_zone;
+    if (is_selected || show_hover_highlight)
     {
         dl->ChannelsSetCurrent(0); // background channel
         ImU32 highlight_color = is_selected ? ImGui::GetColorU32(ImGuiCol_Header) : ImGui::GetColorU32(ImGuiCol_HeaderHovered);
@@ -376,11 +480,16 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         dl->ChannelsSetCurrent(1); // back to foreground
     }
 
-    // handle clicking and drag-and-drop - only cover content area
-    // drops outside this area will be caught by the window-level drop target for unparenting
+    // handle clicking and drag-and-drop
+    // use reduced height to leave gaps for reorder drop zones (handled by window-level target)
     ImGui::PushID(node_id);
-    const ImVec2 content_size = ImVec2(content_width, row_height);
-    ImGui::InvisibleButton("row_btn", content_size);
+    const float reorder_gap = row_height * 0.3f; // 30% gap at top/bottom for reordering
+    const float button_height = row_height - reorder_gap;
+    const float button_y_offset = reorder_gap * 0.5f;
+    
+    // add vertical offset for the button
+    ImGui::SetCursorScreenPos(ImVec2(row_pos.x, row_pos.y + button_y_offset));
+    ImGui::InvisibleButton("row_btn", ImVec2(content_width, button_height));
 
     // drag source
     if (!spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
@@ -394,7 +503,8 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         }
     }
 
-    // drop target
+    // drop target - only handles parenting (middle zone)
+    // reordering is handled by window-level drop target in the gaps
     if (ImGui::BeginDragDropTarget())
     {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
@@ -410,13 +520,12 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
                 {
                     if (dropped_entity->GetObjectId() != entity->GetObjectId())
                     {
-                        // reverse parent-child if dropped entity is a direct child
+                        // parent to this entity
                         if (entity->GetParent() == dropped_entity)
                         {
-                            entity->SetParent(nullptr); // temporarily unparent to avoid cycle
+                            entity->SetParent(nullptr);
                             dropped_entity->SetParent(entity);
                         }
-                        // reverse parent-child if dropped entity is a descendant
                         else if (entity->IsDescendantOf(dropped_entity))
                         {
                             spartan::Entity* old_parent = entity->GetParent();
@@ -429,7 +538,6 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
                                 SP_LOG_WARNING("cannot make %s a child of %s due to circular parenting.", entity->GetObjectName().c_str(), dropped_entity->GetObjectName().c_str());
                             }
                         }
-                        // normal case: make dropped entity a child of target
                         else
                         {
                             dropped_entity->SetParent(entity);

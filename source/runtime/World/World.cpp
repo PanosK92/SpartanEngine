@@ -799,6 +799,70 @@ namespace spartan
         }
     }
 
+    void World::MoveEntityToIndex(Entity* entity, uint32_t index)
+    {
+        if (!entity)
+            return;
+
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        // find the entity in the list
+        auto it = find(entities.begin(), entities.end(), entity);
+        if (it == entities.end())
+            return; // entity not found
+
+        // get current position before removing
+        uint32_t current_index = static_cast<uint32_t>(distance(entities.begin(), it));
+
+        // remove from current position
+        entities.erase(it);
+
+        // adjust target index if the entity was before the target position
+        // (removing it shifts all subsequent indices down by 1)
+        if (current_index < index && index > 0)
+            index--;
+
+        // clamp index to valid range
+        if (index > entities.size())
+            index = static_cast<uint32_t>(entities.size());
+
+        // insert at new position
+        entities.insert(entities.begin() + index, entity);
+    }
+
+    void World::MoveRootEntityNear(Entity* entity_to_move, Entity* target_entity, bool insert_after)
+    {
+        if (!entity_to_move || !target_entity)
+            return;
+
+        // both must be root entities (no parent)
+        if (entity_to_move->GetParent() || target_entity->GetParent())
+            return;
+
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        // find and remove the entity to move
+        auto move_it = find(entities.begin(), entities.end(), entity_to_move);
+        if (move_it == entities.end())
+            return;
+        entities.erase(move_it);
+
+        // find the target entity's position (after removal of entity_to_move)
+        auto target_it = find(entities.begin(), entities.end(), target_entity);
+        if (target_it == entities.end())
+        {
+            // target not found, put entity_to_move back at end
+            entities.push_back(entity_to_move);
+            return;
+        }
+
+        // insert before or after the target
+        if (insert_after)
+            ++target_it;
+        
+        entities.insert(target_it, entity_to_move);
+    }
+
     Entity* World::GetEntityById(const uint64_t id)
     {
         lock_guard<mutex> lock(entity_access_mutex);

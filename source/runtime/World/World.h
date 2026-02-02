@@ -56,6 +56,8 @@ namespace spartan
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(Entity* entity);
         static void GetRootEntities(std::vector<Entity*>& entities);
+        static void MoveEntityToIndex(Entity* entity, uint32_t index);
+        static void MoveRootEntityNear(Entity* entity_to_move, Entity* target_entity, bool insert_after);
         static Entity* GetEntityById(uint64_t id);
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
