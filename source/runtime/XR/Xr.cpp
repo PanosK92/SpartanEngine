@@ -50,27 +50,28 @@ namespace spartan
     math::Vector3 Xr::m_head_position       = math::Vector3::Zero;
     math::Quaternion Xr::m_head_orientation = math::Quaternion::Identity;
     array<XrEyeView, Xr::eye_count> Xr::m_eye_views;
+    bool Xr::m_stereo_3d                    = false;
 
 #if defined(API_GRAPHICS_VULKAN)
     // openxr state (vulkan implementation)
     namespace
     {
-        XrInstance xr_instance                 = XR_NULL_HANDLE;
-        XrSystemId xr_system_id                = XR_NULL_SYSTEM_ID;
-        XrSession xr_session                   = XR_NULL_HANDLE;
-        XrSpace xr_reference_space             = XR_NULL_HANDLE;
-        XrSwapchain xr_swapchain               = XR_NULL_HANDLE;
-        XrSessionState xr_session_state        = XR_SESSION_STATE_UNKNOWN;
-        XrFrameState xr_frame_state            = {};
-        XrTime xr_predicted_display_time       = 0;
-        bool xr_session_state_changed          = false;
+        XrInstance xr_instance           = XR_NULL_HANDLE;
+        XrSystemId xr_system_id          = XR_NULL_SYSTEM_ID;
+        XrSession xr_session             = XR_NULL_HANDLE;
+        XrSpace xr_reference_space       = XR_NULL_HANDLE;
+        XrSwapchain xr_swapchain         = XR_NULL_HANDLE;
+        XrSessionState xr_session_state  = XR_SESSION_STATE_UNKNOWN;
+        XrFrameState xr_frame_state      = {};
+        XrTime xr_predicted_display_time = 0;
+        bool xr_session_state_changed    = false;
 
         // swapchain state
-        uint32_t swapchain_width               = 0;
-        uint32_t swapchain_height              = 0;
-        uint32_t swapchain_length              = 0;
-        uint32_t swapchain_image_index         = 0;
-        VkFormat swapchain_format              = VK_FORMAT_R8G8B8A8_SRGB;
+        uint32_t swapchain_width       = 0;
+        uint32_t swapchain_height      = 0;
+        uint32_t swapchain_length      = 0;
+        uint32_t swapchain_image_index = 0;
+        VkFormat swapchain_format      = VK_FORMAT_R8G8B8A8_SRGB;
         vector<XrSwapchainImageVulkanKHR> swapchain_images;
         vector<VkImageView> swapchain_image_views;
 
@@ -768,21 +769,24 @@ namespace spartan
         // prepare projection views for submission
         array<XrCompositionLayerProjectionView, eye_count> projection_views;
 
+        // compute center pose (average of both eyes) for 2D content
+        XrPosef center_pose = xr_views[0].pose;
+        center_pose.position.x = (xr_views[0].pose.position.x + xr_views[1].pose.position.x) * 0.5f;
+        center_pose.position.y = (xr_views[0].pose.position.y + xr_views[1].pose.position.y) * 0.5f;
+        center_pose.position.z = (xr_views[0].pose.position.z + xr_views[1].pose.position.z) * 0.5f;
+
         for (uint32_t i = 0; i < eye_count; i++)
         {
-            // swap left/right fov angles to fix horizontal inversion
-            XrFovf corrected_fov = xr_views[i].fov;
-            float temp = corrected_fov.angleLeft;
-            corrected_fov.angleLeft = -corrected_fov.angleRight;
-            corrected_fov.angleRight = -temp;
-            
+            uint32_t other_eye = (i == 0) ? 1 : 0; // swap for PSVR2
             projection_views[i] = { XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW };
-            projection_views[i].pose = xr_views[i].pose;
-            projection_views[i].fov  = corrected_fov;
             projection_views[i].subImage.swapchain = xr_swapchain;
             projection_views[i].subImage.imageRect.offset = { 0, 0 };
             projection_views[i].subImage.imageRect.extent = { static_cast<int32_t>(swapchain_width), static_cast<int32_t>(swapchain_height) };
             projection_views[i].subImage.imageArrayIndex = i;
+
+            // swap pose and FOV for correct eye mapping (PSVR2 quirk)
+            projection_views[i].pose = xr_views[other_eye].pose;
+            projection_views[i].fov  = xr_views[other_eye].fov;
         }
 
         XrCompositionLayerProjection projection_layer = { XR_TYPE_COMPOSITION_LAYER_PROJECTION };

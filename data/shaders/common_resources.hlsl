@@ -215,21 +215,21 @@ StructuredBuffer<aabb> aabbs                             : register(t18, space4)
 SamplerComparisonState samplers_comparison[]             : register(s0,  space5);
 SamplerState samplers[]                                  : register(s1,  space6);
 
-// storage textures/buffers
-RWTexture2D<float4> tex_uav                                : register(u0);
-RWTexture2D<float4> tex_uav2                               : register(u1);
-RWTexture2D<float4> tex_uav3                               : register(u2);
-RWTexture2D<float4> tex_uav4                               : register(u3);
-RWTexture3D<float4> tex3d_uav                              : register(u4);
-RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
-RWStructuredBuffer<uint> visibility                        : register(u6);
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
-globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
+// storage textures/buffers (image_format unknown allows flexible format binding)
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav                                : register(u0);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav2                               : register(u1);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav3                               : register(u2);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4                               : register(u3);
+[[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav                              : register(u4);
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
+RWStructuredBuffer<uint> visibility                                                        : register(u6);
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter                                 : register(u7); // used by FidelityFX SPD
+[[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
 // nrd denoiser output bindings
-RWTexture2D<float4> tex_uav_nrd_viewz            : register(u26);
-RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
-RWTexture2D<float4> tex_uav_nrd_diff_radiance    : register(u28);
-RWTexture2D<float4> tex_uav_nrd_spec_radiance    : register(u29);
+[[vk::image_format("r16f")]]    RWTexture2D<float> tex_uav_nrd_viewz             : register(u26);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
+[[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_diff_radiance    : register(u28);
+[[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_spec_radiance    : register(u29);
 
 // integer format textures (vrs, etc)
 RWTexture2D<uint> tex_uav_uint : register(u30);

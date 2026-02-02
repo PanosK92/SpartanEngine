@@ -1394,8 +1394,7 @@ namespace spartan
 
     void Renderer::Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        return; // fix
-
+        return;
         // initialize nrd if not already done
         uint32_t width  = tex_in->GetWidth();
         uint32_t height = tex_in->GetHeight();
@@ -1480,6 +1479,7 @@ namespace spartan
         float jitter_prev_y = m_cb_frame_cpu.taa_jitter_previous.y;
 
         // run nrd denoiser
+        cmd_list->BeginTimeblock("nrd_denoise");
         RHI_VendorTechnology::NRD_Denoise(
             cmd_list,
             tex_in,
@@ -1495,6 +1495,17 @@ namespace spartan
             m_cb_frame_cpu.delta_time * 1000.0f, // convert to milliseconds
             static_cast<uint32_t>(GetFrameNumber())
         );
+        cmd_list->EndTimeblock();
+
+        // DEBUG: bypass NRD output and use nrd_prepare output directly
+        // this tests if the prepare pass is working
+        RHI_Texture* nrd_diff = GetRenderTarget(Renderer_RenderTarget::nrd_diff_radiance_hitdist);
+        if (nrd_diff && tex_out)
+        {
+            cmd_list->InsertBarrier(nrd_diff, RHI_Image_Layout::Transfer_Source);
+            cmd_list->InsertBarrier(tex_out, RHI_Image_Layout::Transfer_Destination);
+            cmd_list->Blit(nrd_diff, tex_out, false);
+        }
     }
 
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)

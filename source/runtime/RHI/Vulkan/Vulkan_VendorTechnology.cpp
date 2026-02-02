@@ -1704,29 +1704,34 @@ namespace spartan
 
                 VkDescriptorImageInfo img_info = {};
                 img_info.sampler     = VK_NULL_HANDLE;
-                img_info.imageView   = static_cast<VkImageView>(texture->GetRhiSrv());
                 img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-                image_infos.push_back(img_info);
 
                 VkWriteDescriptorSet write = {};
                 write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 write.dstSet          = descriptor_set;
                 write.descriptorCount = 1;
-                write.pImageInfo      = &image_infos.back();
+
+                // use the same image view for both SRV and UAV (Vulkan allows this)
+                // the difference is the descriptor type and layout (GENERAL for storage)
+                img_info.imageView = static_cast<VkImageView>(texture->GetRhiSrv());
 
                 if (res.descriptorType == nrd::DescriptorType::TEXTURE)
                 {
+                    // SRV - sampled image
                     write.dstBinding     = nvidia::nrd_binding_offsets.textureOffset + texture_index;
                     write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                     texture_index++;
                 }
                 else
                 {
+                    // UAV - storage image
                     write.dstBinding     = nvidia::nrd_binding_offsets.storageTextureAndBufferOffset + storage_index;
                     write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                     storage_index++;
                 }
+
+                image_infos.push_back(img_info);
+                write.pImageInfo = &image_infos.back();
 
                 writes.push_back(write);
             }
@@ -1752,13 +1757,17 @@ namespace spartan
             vkCmdPipelineBarrier(vk_cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
         }
 
-        // copy denoised diffuse result to output
-        RHI_Texture* denoised = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist);
-        if (denoised && tex_output)
+        // combine denoised diffuse + specular and copy to output
+        // for now, just copy diffuse (most energy for non-metals)
+        // TODO: add a combine pass that adds diffuse + specular
+        RHI_Texture* denoised_diff = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist);
+        RHI_Texture* denoised_spec = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_out_spec_radiance_hitdist);
+        if (denoised_diff && tex_output)
         {
-            // transition output texture for reading
-            cmd_list->InsertBarrier(denoised, RHI_Image_Layout::General);
-            cmd_list->Blit(denoised, tex_output, false);
+            // transition denoised textures for reading
+            cmd_list->InsertBarrier(denoised_diff, RHI_Image_Layout::Transfer_Source);
+            cmd_list->InsertBarrier(tex_output, RHI_Image_Layout::Transfer_Destination);
+            cmd_list->Blit(denoised_diff, tex_output, false);
         }
     #endif
     }

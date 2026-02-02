@@ -153,6 +153,7 @@ namespace spartan
         void AcquireChildren();
         void RemoveChild(Entity* child, bool update_child_with_null_parent = true);
         void AddChild(Entity* child);
+        void MoveChildToIndex(Entity* child, uint32_t index);
         bool IsDescendantOf(Entity* transform) const;
         void GetDescendants(std::vector<Entity*>* descendants);
         Entity* GetDescendantByName(const std::string& name);

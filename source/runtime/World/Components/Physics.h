@@ -120,6 +120,7 @@ namespace spartan
         // body type
         BodyType GetBodyType() const { return m_body_type; }
         void SetBodyType(BodyType type);
+        BodyType DetectBodyType();
 
         // ground
         bool IsGrounded() const;

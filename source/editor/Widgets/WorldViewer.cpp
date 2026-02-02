@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "Commands/CommandStack.h"
+#include "Commands/CommandEntityDelete.h"
 #include "Input/Input.h"
 #include "../ImGui/ImGui_Extension.h"
 SP_WARNINGS_OFF
@@ -52,6 +53,81 @@ namespace
     ImRect selected_entity_rect;
     uint64_t last_selected_entity_id = 0;
     bool selection_from_click        = false; // track if selection came from user click (no scroll needed)
+    spartan::Entity* entity_shift_anchor = nullptr; // anchor entity for shift-click range selection
+    vector<spartan::Entity*> entities_in_tree_order; // cached list of entities in display order
+
+    // reorder drag-drop state
+    spartan::Entity* reorder_target_entity = nullptr; // entity to insert before/after
+    bool reorder_insert_after              = false;   // true = insert after, false = insert before
+    float reorder_line_y                   = 0.0f;    // y position to draw the insertion line
+    float reorder_line_x_min               = 0.0f;    // x start of insertion line
+    float reorder_line_x_max               = 0.0f;    // x end of insertion line
+
+    // helper function to collect all active entities in tree display order (depth-first)
+    void CollectEntitiesInTreeOrder(spartan::Entity* entity, vector<spartan::Entity*>& out_entities)
+    {
+        if (!entity || !entity->GetActive())
+            return;
+
+        out_entities.push_back(entity);
+
+        const vector<spartan::Entity*>& children = entity->GetChildren();
+        for (spartan::Entity* child : children)
+        {
+            CollectEntitiesInTreeOrder(child, out_entities);
+        }
+    }
+
+    void RefreshEntitiesInTreeOrder()
+    {
+        entities_in_tree_order.clear();
+
+        static vector<spartan::Entity*> root_entities;
+        spartan::World::GetRootEntities(root_entities);
+
+        for (spartan::Entity* entity : root_entities)
+        {
+            CollectEntitiesInTreeOrder(entity, entities_in_tree_order);
+        }
+    }
+
+    // select all entities between two entities in tree order (inclusive)
+    void SelectEntitiesInRange(spartan::Entity* entity_a, spartan::Entity* entity_b)
+    {
+        if (!entity_a || !entity_b)
+            return;
+
+        spartan::Camera* camera = spartan::World::GetCamera();
+        if (!camera)
+            return;
+
+        RefreshEntitiesInTreeOrder();
+
+        // find indices of both entities
+        int index_a = -1;
+        int index_b = -1;
+        for (int i = 0; i < static_cast<int>(entities_in_tree_order.size()); ++i)
+        {
+            if (entities_in_tree_order[i]->GetObjectId() == entity_a->GetObjectId())
+                index_a = i;
+            if (entities_in_tree_order[i]->GetObjectId() == entity_b->GetObjectId())
+                index_b = i;
+        }
+
+        if (index_a == -1 || index_b == -1)
+            return;
+
+        // ensure index_a <= index_b
+        if (index_a > index_b)
+            std::swap(index_a, index_b);
+
+        // clear current selection and select range
+        camera->ClearSelection();
+        for (int i = index_a; i <= index_b; ++i)
+        {
+            camera->AddToSelection(entities_in_tree_order[i]);
+        }
+    }
 
     spartan::RHI_Texture* component_to_image(spartan::Entity* entity)
     {
@@ -125,10 +201,17 @@ void WorldViewer::OnTickVisible()
                     // mark that selection came from user click (no scroll needed)
                     selection_from_click = true;
 
-                    // support Ctrl+Click for multi-select
-                    bool ctrl_held = spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) || spartan::Input::GetKey(spartan::KeyCode::Ctrl_Right);
-                    if (ctrl_held)
+                    bool ctrl_held  = spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) || spartan::Input::GetKey(spartan::KeyCode::Ctrl_Right);
+                    bool shift_held = spartan::Input::GetKey(spartan::KeyCode::Shift_Left) || spartan::Input::GetKey(spartan::KeyCode::Shift_Right);
+
+                    if (shift_held && entity_shift_anchor)
                     {
+                        // shift+click: select range between anchor and clicked entity
+                        SelectEntitiesInRange(entity_shift_anchor, entity_clicked_raw);
+                    }
+                    else if (ctrl_held)
+                    {
+                        // ctrl+click: toggle selection
                         if (spartan::Camera* camera = spartan::World::GetCamera())
                         {
                             camera->ToggleSelection(entity_clicked_raw);
@@ -137,6 +220,7 @@ void WorldViewer::OnTickVisible()
                     else
                     {
                         SetSelectedEntity(entity_clicked_raw);
+                        entity_shift_anchor = entity_clicked_raw;
                     }
                 }
 
@@ -149,6 +233,15 @@ void WorldViewer::OnTickVisible()
 void WorldViewer::TreeShow()
 {
     OnTreeBegin();
+
+    // get window rect for window-level drop target (for unparenting)
+    ImVec2 window_pos = ImGui::GetWindowPos();
+    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+    ImVec2 content_avail = ImGui::GetContentRegionAvail();
+    ImRect window_rect = ImRect(
+        cursor_pos,
+        ImVec2(cursor_pos.x + content_avail.x, window_pos.y + ImGui::GetWindowSize().y)
+    );
 
     bool is_in_game_mode = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
     ImGui::BeginDisabled(is_in_game_mode);
@@ -167,12 +260,91 @@ void WorldViewer::TreeShow()
     }
     ImGui::EndDisabled();
 
+    // window-level drop target for reordering (gaps between entities) or unparenting (empty space)
+    if (ImGui::BeginDragDropTargetCustom(window_rect, ImGui::GetID("##WorldViewerDropTarget")))
+    {
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
+        {
+            if (payload->DataSize == sizeof(uint64_t))
+            {
+                const uint64_t entity_id = *(const uint64_t*)payload->Data;
+                if (spartan::Entity* dropped_entity = spartan::World::GetEntityById(entity_id))
+                {
+                    if (reorder_target_entity && dropped_entity->GetObjectId() != reorder_target_entity->GetObjectId())
+                    {
+                        // reorder: move entity to new position
+                        spartan::Entity* target_parent = reorder_target_entity->GetParent();
+                        spartan::Entity* dropped_parent = dropped_entity->GetParent();
+                        
+                        if (target_parent == dropped_parent)
+                        {
+                            // same parent - just reorder
+                            if (target_parent)
+                            {
+                                std::vector<spartan::Entity*>& children = target_parent->GetChildren();
+                                uint32_t target_index = 0;
+                                for (uint32_t i = 0; i < children.size(); ++i)
+                                {
+                                    if (children[i] == reorder_target_entity)
+                                    {
+                                        target_index = reorder_insert_after ? i + 1 : i;
+                                        break;
+                                    }
+                                }
+                                target_parent->MoveChildToIndex(dropped_entity, target_index);
+                            }
+                            else
+                            {
+                                // root entities - use the target-relative function
+                                spartan::World::MoveRootEntityNear(dropped_entity, reorder_target_entity, reorder_insert_after);
+                            }
+                        }
+                        else
+                        {
+                            // different parents - change parent and reorder
+                            dropped_entity->SetParent(target_parent);
+                            if (target_parent)
+                            {
+                                std::vector<spartan::Entity*>& children = target_parent->GetChildren();
+                                uint32_t target_index = 0;
+                                for (uint32_t i = 0; i < children.size(); ++i)
+                                {
+                                    if (children[i] == reorder_target_entity)
+                                    {
+                                        target_index = reorder_insert_after ? i + 1 : i;
+                                        break;
+                                    }
+                                }
+                                target_parent->MoveChildToIndex(dropped_entity, target_index);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // no reorder target - unparent the entity
+                        dropped_entity->SetParent(nullptr);
+                    }
+                }
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    // draw reorder insertion line indicator
+    if (reorder_target_entity && ImGui::GetDragDropPayload() && ImGui::GetDragDropPayload()->IsDataType("ENTITY"))
+    {
+        ImDrawList* dl = ImGui::GetWindowDrawList();
+        ImU32 line_color = ImGui::GetColorU32(ImGuiCol_DragDropTarget);
+        dl->AddLine(ImVec2(reorder_line_x_min, reorder_line_y), ImVec2(reorder_line_x_max, reorder_line_y), line_color, 2.0f);
+    }
+
     OnTreeEnd();
 }
 
 void WorldViewer::OnTreeBegin()
 {
     entity_hovered = nullptr;
+    reorder_target_entity = nullptr;
 }
 
 void WorldViewer::OnTreeEnd()
@@ -188,8 +360,8 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
     if (!entity)
         return;
 
-    // set up tree node flags
-    ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow;
+    // set up tree node flags - we handle highlighting manually, so no SpanFullWidth or Selected
+    ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_OpenOnArrow;
     const vector<spartan::Entity*>& children = entity->GetChildren();
     bool has_children                        = !children.empty();
     if (!has_children)
@@ -202,10 +374,6 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
     const bool is_selected  = camera && camera->IsSelected(entity);
     spartan::Entity* primary_selected = camera ? camera->GetSelectedEntity() : nullptr;
     const bool first_time_selected = is_selected && primary_selected && primary_selected->GetObjectId() != last_selected_entity_id;
-    if (is_selected)
-    {
-        node_flags |= ImGuiTreeNodeFlags_Selected;
-    }
 
     // auto-expand for selected descendants
     if (primary_selected && primary_selected->IsDescendantOf(entity) && primary_selected->GetObjectId() != last_selected_entity_id)
@@ -213,15 +381,22 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         ImGui::SetNextItemOpen(true);
     }
 
-    // use draw list channels to draw hover highlight behind tree node content
-    // channel 0 = background (hover highlight), channel 1 = foreground (tree node, icon, text)
+    // use draw list channels to draw highlight behind tree node content
+    // channel 0 = background (highlight), channel 1 = foreground (tree node, icon, text)
     ImDrawList* dl = ImGui::GetWindowDrawList();
     dl->ChannelsSplit(2);
     dl->ChannelsSetCurrent(1); // draw tree node on foreground
 
+    // disable imgui's built-in tree node hover/selection colors - we draw our own
+    ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0, 0, 0, 0));
+
     // start tree node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, "");
+
+    ImGui::PopStyleColor(3);
 
     // get the full tree node rect (including arrow) for hover detection
     ImVec2 tree_node_min = ImGui::GetItemRectMin();
@@ -238,35 +413,84 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         selection_from_click    = false; // reset after handling
     }
 
-    // set up row for interaction - extend to cover full row from tree node start
+    // set up row for interaction
     ImGui::SameLine();
-    const ImVec2 row_pos  = ImGui::GetCursorScreenPos();
+    const ImVec2 row_pos   = ImGui::GetCursorScreenPos();
     const float row_height = ImGui::GetTextLineHeightWithSpacing();
     
-    // calculate full row rect from tree node start to end of available space
-    ImVec2 full_row_min = ImVec2(tree_node_min.x, tree_node_min.y);
-    ImVec2 full_row_max = ImVec2(tree_node_min.x + ImGui::GetContentRegionAvail().x + (row_pos.x - tree_node_min.x), tree_node_min.y + row_height);
+    // calculate content width (icon + text only)
+    const float padding      = ImGui::GetStyle().FramePadding.y * 2.0f;
+    const float icon_size    = ImGui::GetTextLineHeightWithSpacing() - padding;
+    const float text_width   = ImGui::CalcTextSize(entity->GetObjectName().c_str()).x;
+    const float content_width = icon_size + ImGui::GetStyle().ItemSpacing.x + text_width;
     
-    // check hover on full row (including arrow area), clipped to window bounds
-    bool is_row_hovered = ImGui::IsMouseHoveringRect(full_row_min, full_row_max, true);
-    if (is_row_hovered)
+    // calculate content rect (icon + text area only) for hover detection and highlighting
+    ImVec2 content_min = ImVec2(row_pos.x, tree_node_min.y);
+    ImVec2 content_max = ImVec2(row_pos.x + content_width, tree_node_min.y + row_height);
+    
+    // check for reorder position when dragging (top/bottom edge of row)
+    bool is_in_reorder_zone = false;
+    const ImGuiPayload* active_payload = ImGui::GetDragDropPayload();
+    if (active_payload && active_payload->IsDataType("ENTITY"))
     {
-        entity_hovered = entity;
+        ImVec2 mouse_pos = ImGui::GetMousePos();
+        float row_top = tree_node_min.y;
+        float row_bottom = tree_node_min.y + row_height;
+        float reorder_zone = row_height * 0.35f; // top/bottom 35% of row for reordering
         
-        // draw hover highlight on background channel (behind arrow)
-        if (!is_selected)
+        // check if mouse is in this row's vertical range
+        if (mouse_pos.y >= row_top && mouse_pos.y <= row_bottom)
         {
-            dl->ChannelsSetCurrent(0); // background channel
-            ImU32 hover_color = ImGui::GetColorU32(ImGuiCol_HeaderHovered);
-            dl->AddRectFilled(full_row_min, full_row_max, hover_color);
-            dl->ChannelsSetCurrent(1); // back to foreground
+            // check if mouse is in top zone (insert before) or bottom zone (insert after)
+            if (mouse_pos.y < row_top + reorder_zone)
+            {
+                reorder_target_entity = entity;
+                reorder_insert_after = false;
+                reorder_line_y = row_top;
+                reorder_line_x_min = tree_node_min.x;
+                reorder_line_x_max = tree_node_min.x + ImGui::GetContentRegionAvail().x + (row_pos.x - tree_node_min.x);
+                is_in_reorder_zone = true;
+            }
+            else if (mouse_pos.y > row_bottom - reorder_zone)
+            {
+                reorder_target_entity = entity;
+                reorder_insert_after = true;
+                reorder_line_y = row_bottom;
+                reorder_line_x_min = tree_node_min.x;
+                reorder_line_x_max = tree_node_min.x + ImGui::GetContentRegionAvail().x + (row_pos.x - tree_node_min.x);
+                is_in_reorder_zone = true;
+            }
         }
     }
 
+    // check hover on content area only (but not when in reorder zone during drag)
+    bool is_row_hovered = ImGui::IsMouseHoveringRect(content_min, content_max, true);
+    if (is_row_hovered && !is_in_reorder_zone)
+    {
+        entity_hovered = entity;
+    }
+    
+    // draw selection or hover highlight on background channel (content area only)
+    // don't draw hover highlight when in reorder zone - only show the line
+    bool show_hover_highlight = is_row_hovered && !is_in_reorder_zone;
+    if (is_selected || show_hover_highlight)
+    {
+        dl->ChannelsSetCurrent(0); // background channel
+        ImU32 highlight_color = is_selected ? ImGui::GetColorU32(ImGuiCol_Header) : ImGui::GetColorU32(ImGuiCol_HeaderHovered);
+        dl->AddRectFilled(content_min, content_max, highlight_color);
+        dl->ChannelsSetCurrent(1); // back to foreground
+    }
+
     // handle clicking and drag-and-drop
+    // use reduced height to leave gaps for reorder drop zones (handled by window-level target)
     ImGui::PushID(node_id);
-    const ImVec2 row_size = ImVec2(ImGui::GetContentRegionAvail().x, row_height);
-    ImGui::InvisibleButton("row_btn", row_size);
+    const float reorder_gap = row_height * 0.3f; // 30% gap at top/bottom for reordering
+    const float button_height = row_height - reorder_gap;
+    const float button_y_offset = reorder_gap * 0.5f;
+    
+    // add vertical offset for the button
+    ImGui::SetCursorScreenPos(ImVec2(row_pos.x, row_pos.y + button_y_offset));
+    ImGui::InvisibleButton("row_btn", ImVec2(content_width, button_height));
 
     // drag source
     if (!spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
@@ -280,7 +504,8 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
         }
     }
 
-    // drop target
+    // drop target - only handles parenting (middle zone)
+    // reordering is handled by window-level drop target in the gaps
     if (ImGui::BeginDragDropTarget())
     {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY"))
@@ -296,13 +521,12 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
                 {
                     if (dropped_entity->GetObjectId() != entity->GetObjectId())
                     {
-                        // reverse parent-child if dropped entity is a direct child
+                        // parent to this entity
                         if (entity->GetParent() == dropped_entity)
                         {
-                            entity->SetParent(nullptr); // temporarily unparent to avoid cycle
+                            entity->SetParent(nullptr);
                             dropped_entity->SetParent(entity);
                         }
-                        // reverse parent-child if dropped entity is a descendant
                         else if (entity->IsDescendantOf(dropped_entity))
                         {
                             spartan::Entity* old_parent = entity->GetParent();
@@ -315,7 +539,6 @@ void WorldViewer::TreeAddEntity(spartan::Entity* entity)
                                 SP_LOG_WARNING("cannot make %s a child of %s due to circular parenting.", entity->GetObjectName().c_str(), dropped_entity->GetObjectName().c_str());
                             }
                         }
-                        // normal case: make dropped entity a child of target
                         else
                         {
                             dropped_entity->SetParent(entity);
@@ -386,6 +609,7 @@ void WorldViewer::HandleClicking()
     {
         selection_from_click = true;
         SetSelectedEntity(entity_hovered);
+        entity_shift_anchor = entity_hovered;
         if (spartan::Camera* camera = spartan::World::GetCamera())
         {
             camera->FocusOnSelectedEntity();
@@ -412,6 +636,7 @@ void WorldViewer::HandleClicking()
                 {
                     selection_from_click = true;
                     SetSelectedEntity(entity_hovered);
+                    entity_shift_anchor = entity_hovered;
                 }
             }
         }
@@ -426,6 +651,7 @@ void WorldViewer::HandleClicking()
         if (!ctrl_held)
         {
             SetSelectedEntity(nullptr);
+            entity_shift_anchor = nullptr;
         }
     }
 }
@@ -703,7 +929,19 @@ void WorldViewer::HandleKeyShortcuts()
 void WorldViewer::ActionEntityDelete(spartan::Entity* entity)
 {
     SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-    spartan::World::RemoveEntity(entity);
+
+    // check if entity still exists (might have been deleted as a child of another entity)
+    if (!spartan::World::EntityExists(entity))
+        return;
+
+    // create undo command (stores entity state before deletion)
+    auto command = std::make_shared<spartan::CommandEntityDelete>(entity);
+
+    // delete the entity
+    command->OnApply();
+
+    // push to undo stack
+    spartan::CommandStack::Push(command);
 }
 
 spartan::Entity* WorldViewer::ActionEntityCreateEmpty()

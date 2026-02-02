@@ -591,6 +591,35 @@ namespace spartan
         }
     }
 
+    void Entity::MoveChildToIndex(Entity* child, uint32_t index)
+    {
+        SP_ASSERT(child != nullptr);
+        lock_guard lock(m_mutex_children);
+
+        // find the child in the list
+        auto it = find(m_children.begin(), m_children.end(), child);
+        if (it == m_children.end())
+            return; // child not found
+
+        // get current position before removing
+        uint32_t current_index = static_cast<uint32_t>(distance(m_children.begin(), it));
+
+        // remove from current position
+        m_children.erase(it);
+
+        // adjust target index if the child was before the target position
+        // (removing it shifts all subsequent indices down by 1)
+        if (current_index < index && index > 0)
+            index--;
+
+        // clamp index to valid range
+        if (index > m_children.size())
+            index = static_cast<uint32_t>(m_children.size());
+
+        // insert at new position
+        m_children.insert(m_children.begin() + index, child);
+    }
+
     void Entity::RemoveChild(Entity* child, bool update_child_with_null_parent)
     {
         SP_ASSERT(child != nullptr);
