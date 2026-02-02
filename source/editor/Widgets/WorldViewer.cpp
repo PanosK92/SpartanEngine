@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "Commands/CommandStack.h"
+#include "Commands/CommandEntityDelete.h"
 #include "Input/Input.h"
 #include "../ImGui/ImGui_Extension.h"
 SP_WARNINGS_OFF
@@ -928,7 +929,19 @@ void WorldViewer::HandleKeyShortcuts()
 void WorldViewer::ActionEntityDelete(spartan::Entity* entity)
 {
     SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-    spartan::World::RemoveEntity(entity);
+
+    // check if entity still exists (might have been deleted as a child of another entity)
+    if (!spartan::World::EntityExists(entity))
+        return;
+
+    // create undo command (stores entity state before deletion)
+    auto command = std::make_shared<spartan::CommandEntityDelete>(entity);
+
+    // delete the entity
+    command->OnApply();
+
+    // push to undo stack
+    spartan::CommandStack::Push(command);
 }
 
 spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
