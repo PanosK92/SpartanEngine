@@ -141,45 +141,42 @@ namespace spartan
     void Physics::Initialize()
     {
         Component::Initialize();
-
-        // auto-detect appropriate body type if not already set
-        if (m_body_type == BodyType::Max)
+    }
+    
+    BodyType Physics::DetectBodyType()
+    {
+        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        if (renderable)
         {
-            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
-            if (renderable)
+            // check if the mesh is a simple primitive shape (case-insensitive)
+            string mesh_name = renderable->GetMeshName();
+            transform(mesh_name.begin(), mesh_name.end(), mesh_name.begin(), ::tolower);
+            
+            if (mesh_name.find("cube") != string::npos || mesh_name.find("box") != string::npos)
             {
-                // check if the mesh is a simple primitive shape (case-insensitive)
-                string mesh_name = renderable->GetMeshName();
-                transform(mesh_name.begin(), mesh_name.end(), mesh_name.begin(), ::tolower);
-                
-                if (mesh_name.find("cube") != string::npos || mesh_name.find("box") != string::npos)
-                {
-                    m_body_type = BodyType::Box;
-                }
-                else if (mesh_name.find("sphere") != string::npos)
-                {
-                    m_body_type = BodyType::Sphere;
-                }
-                else if (mesh_name.find("capsule") != string::npos || mesh_name.find("cylinder") != string::npos)
-                {
-                    m_body_type = BodyType::Capsule;
-                }
-                else if (mesh_name.find("plane") != string::npos || mesh_name.find("quad") != string::npos)
-                {
-                    m_body_type = BodyType::Plane;
-                }
-                else
-                {
-                    // default to mesh collision for complex shapes
-                    m_body_type = BodyType::Mesh;
-                }
+                return BodyType::Box;
+            }
+            else if (mesh_name.find("sphere") != string::npos)
+            {
+                return BodyType::Sphere;
+            }
+            else if (mesh_name.find("capsule") != string::npos || mesh_name.find("cylinder") != string::npos)
+            {
+                return BodyType::Capsule;
+            }
+            else if (mesh_name.find("plane") != string::npos || mesh_name.find("quad") != string::npos)
+            {
+                return BodyType::Plane;
             }
             else
             {
-                // no renderable - default to box (common for invisible colliders/triggers)
-                m_body_type = BodyType::Box;
+                // default to mesh collision for complex shapes
+                return BodyType::Mesh;
             }
         }
+        
+        // no renderable - default to box (common for invisible colliders/triggers)
+        return BodyType::Box;
     }
 
     void Physics::Shutdown()
@@ -1944,6 +1941,12 @@ namespace spartan
     {
         // clear previous state
         Remove();
+
+        // auto-detect body type if not explicitly set
+        if (m_body_type == BodyType::Max)
+        {
+            m_body_type = DetectBodyType();
+        }
 
         PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         PxScene* scene     = static_cast<PxScene*>(PhysicsWorld::GetScene());
