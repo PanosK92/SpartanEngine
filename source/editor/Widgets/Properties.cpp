@@ -1215,13 +1215,17 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
     if (component_begin("Audio Source", audio_source))
     {
         //= REFLECT ==============================================
-        string audio_clip_name = audio_source->GetAudioClipName();
-        bool mute              = audio_source->GetMute();
-        bool play_on_start     = audio_source->GetPlayOnStart();
-        bool loop              = audio_source->GetLoop();
-        bool is_3d             = audio_source->GetIs3d();
-        float volume           = audio_source->GetVolume();
-        float pitch            = audio_source->GetPitch();
+        string audio_clip_name  = audio_source->GetAudioClipName();
+        bool mute               = audio_source->GetMute();
+        bool play_on_start      = audio_source->GetPlayOnStart();
+        bool loop               = audio_source->GetLoop();
+        bool is_3d              = audio_source->GetIs3d();
+        float volume            = audio_source->GetVolume();
+        float pitch             = audio_source->GetPitch();
+        bool reverb_enabled     = audio_source->GetReverbEnabled();
+        float reverb_room_size  = audio_source->GetReverbRoomSize();
+        float reverb_decay      = audio_source->GetReverbDecay();
+        float reverb_wet        = audio_source->GetReverbWet();
         //========================================================
 
         // audio clip
@@ -1261,13 +1265,35 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         ImGui::Text("Progress");
         layout::move_to_value_column(); ImGui::ProgressBar(audio_source->GetProgress());
 
+        // reverb section
+        ImGui::Separator();
+        ImGui::Text("Reverb");
+        layout::move_to_value_column(); ImGui::Checkbox("##audioSourceReverbEnabled", &reverb_enabled);
+
+        ImGui::BeginDisabled(!reverb_enabled);
+        {
+            ImGui::Text("Room Size");
+            layout::move_to_value_column(); ImGui::SliderFloat("##audioSourceReverbRoomSize", &reverb_room_size, 0.0f, 1.0f);
+
+            ImGui::Text("Decay");
+            layout::move_to_value_column(); ImGui::SliderFloat("##audioSourceReverbDecay", &reverb_decay, 0.0f, 0.99f);
+
+            ImGui::Text("Wet Mix");
+            layout::move_to_value_column(); ImGui::SliderFloat("##audioSourceReverbWet", &reverb_wet, 0.0f, 1.0f);
+        }
+        ImGui::EndDisabled();
+
         //= MAP =========================================================================================
-        if (mute != audio_source->GetMute())                 audio_source->SetMute(mute);
-        if (play_on_start != audio_source->GetPlayOnStart()) audio_source->SetPlayOnStart(play_on_start);
-        if (loop != audio_source->GetLoop())                 audio_source->SetLoop(loop);
-        if (is_3d != audio_source->GetIs3d())                audio_source->SetIs3d(is_3d);
-        if (volume != audio_source->GetVolume())             audio_source->SetVolume(volume);
-        if (pitch != audio_source->GetPitch())               audio_source->SetPitch(pitch);
+        if (mute != audio_source->GetMute())                       audio_source->SetMute(mute);
+        if (play_on_start != audio_source->GetPlayOnStart())       audio_source->SetPlayOnStart(play_on_start);
+        if (loop != audio_source->GetLoop())                       audio_source->SetLoop(loop);
+        if (is_3d != audio_source->GetIs3d())                      audio_source->SetIs3d(is_3d);
+        if (volume != audio_source->GetVolume())                   audio_source->SetVolume(volume);
+        if (pitch != audio_source->GetPitch())                     audio_source->SetPitch(pitch);
+        if (reverb_enabled != audio_source->GetReverbEnabled())    audio_source->SetReverbEnabled(reverb_enabled);
+        if (reverb_room_size != audio_source->GetReverbRoomSize()) audio_source->SetReverbRoomSize(reverb_room_size);
+        if (reverb_decay != audio_source->GetReverbDecay())        audio_source->SetReverbDecay(reverb_decay);
+        if (reverb_wet != audio_source->GetReverbWet())            audio_source->SetReverbWet(reverb_wet);
         //===============================================================================================
     }
     component_end();

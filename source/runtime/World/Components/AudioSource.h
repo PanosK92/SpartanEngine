@@ -77,6 +77,16 @@ namespace spartan
         float GetPitch() const { return m_pitch; }
         void SetPitch(const float pitch);
 
+        // reverb
+        bool GetReverbEnabled() const                     { return m_reverb_enabled; }
+        void SetReverbEnabled(const bool enabled)         { m_reverb_enabled = enabled; }
+        float GetReverbRoomSize() const                   { return m_reverb_room_size; }
+        void SetReverbRoomSize(const float room_size);
+        float GetReverbDecay() const                      { return m_reverb_decay; }
+        void SetReverbDecay(const float decay);
+        float GetReverbWet() const                        { return m_reverb_wet; }
+        void SetReverbWet(const float wet);
+
     private:
         void FeedAudioChunk();
 
@@ -97,5 +107,15 @@ namespace spartan
         math::Vector3 position_previous                = math::Vector3::Zero;
         std::shared_ptr<audio_clip_cache::AudioClip> m_clip = nullptr;
         std::string m_file_path;
+
+        // reverb state
+        bool m_reverb_enabled         = false;
+        float m_reverb_room_size      = 0.5f;  // 0.0 to 1.0, affects delay times
+        float m_reverb_decay          = 0.5f;  // 0.0 to 1.0, feedback factor
+        float m_reverb_wet            = 0.3f;  // 0.0 to 1.0, wet/dry mix
+        std::vector<float> m_reverb_buffer_l;  // circular buffer for left channel
+        std::vector<float> m_reverb_buffer_r;  // circular buffer for right channel
+        uint32_t m_reverb_write_pos   = 0;     // write position in reverb buffers
+        static constexpr uint32_t reverb_buffer_size = 48000; // ~1 second at 48khz
     };
 }
