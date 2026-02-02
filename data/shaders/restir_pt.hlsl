@@ -29,16 +29,18 @@ static const float RUSSIAN_ROULETTE_PROB      = 0.85f;
 static const uint RUSSIAN_ROULETTE_START      = 3;
 static const uint VERTEX_STRIDE               = 44;
 static const float MIN_AREA_LIGHT_SOLID_ANGLE = 1e-4f;
+static const float SKY_MIP_LEVEL              = 2.0f;
 
 struct [raypayload] PathPayload
 {
-    float3 hit_position : read(caller) : write(closesthit);
-    float3 hit_normal   : read(caller) : write(closesthit);
-    float3 albedo       : read(caller) : write(closesthit);
-    float3 emission     : read(caller) : write(closesthit, miss);
-    float  roughness    : read(caller) : write(closesthit);
-    float  metallic     : read(caller) : write(closesthit);
-    bool   hit          : read(caller) : write(closesthit, miss);
+    float3 hit_position   : read(caller) : write(closesthit);
+    float3 hit_normal     : read(caller) : write(closesthit);
+    float3 albedo         : read(caller) : write(closesthit);
+    float3 emission       : read(caller) : write(closesthit, miss);
+    float  roughness      : read(caller) : write(closesthit);
+    float  metallic       : read(caller) : write(closesthit);
+    float  triangle_area  : read(caller) : write(closesthit); // for emissive MIS
+    bool   hit            : read(caller) : write(closesthit, miss);
 };
 
 RWTexture2D<float4> tex_reservoir0 : register(u21);
@@ -93,12 +95,13 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
 
     float3 diffuse = albedo * (1.0f / PI);
 
-    float alpha  = max(roughness * roughness, 0.001f);
-    float alpha2 = alpha * alpha;
+    float alpha   = max(roughness * roughness, 0.001f);
+    float alpha2  = alpha * alpha;
     float d_denom = n_dot_h * n_dot_h * (alpha2 - 1.0f) + 1.0f;
-    float d = alpha2 / (PI * d_denom * d_denom + 1e-6f);
+    float d       = alpha2 / (PI * d_denom * d_denom + 1e-6f);
 
-    float k   = alpha * 0.5f;
+    float r_plus_1 = roughness + 1.0f;
+    float k   = (r_plus_1 * r_plus_1) / 8.0f;
     float g_v = n_dot_v / (n_dot_v * (1.0f - k) + k + 1e-6f);
     float g_l = n_dot_l / (n_dot_l * (1.0f - k) + k + 1e-6f);
     float g   = g_v * g_l;
@@ -107,6 +110,12 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     float3 f  = f0 + (1.0f - f0) * pow(1.0f - v_dot_h, 5.0f);
 
     float3 specular = (d * g * f) / (4.0f * n_dot_v * n_dot_l + 1e-6f);
+
+    // kulla-conty energy compensation
+    float3 f_avg       = f0 + (1.0f - f0) / 21.0f;
+    float energy_bias  = lerp(0.0f, 0.5f, roughness);
+    float3 energy_comp = 1.0f + f_avg * energy_bias;
+    specular *= energy_comp;
 
     float3 kd   = (1.0f - f) * (1.0f - metallic);
     float3 brdf = kd * diffuse + specular;
@@ -176,7 +185,7 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
     ray.Origin    = origin;
     ray.Direction = direction;
     ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = max_dist - RESTIR_RAY_T_MIN;
+    ray.TMax      = max(max_dist - RESTIR_RAY_T_MIN, RESTIR_RAY_T_MIN); // prevent negative TMax for close surfaces
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -200,6 +209,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
     bool first_hit      = true;
     float prev_brdf_pdf = 1.0f;
     bool prev_specular  = false;
+    bool did_env_sample = false; // track if we did explicit env sampling this bounce
 
     for (uint bounce = 0; bounce < RESTIR_MAX_PATH_LENGTH; bounce++)
     {
@@ -214,29 +224,46 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
 
         TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
 
-        // sky
         if (!payload.hit)
         {
             float2 sky_uv       = direction_sphere_uv(ray_dir);
-            float3 sky_radiance = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, 2).rgb;
-            sample.radiance += throughput * sky_radiance;
+            float3 sky_radiance = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, SKY_MIP_LEVEL).rgb;
+            sky_radiance = clamp_sky_radiance(sky_radiance);
+
+            if (bounce == 0 || prev_specular)
+            {
+                sample.radiance += throughput * sky_radiance;
+            }
+            else
+            {
+                // apply MIS when hitting sky via brdf sampling after explicit env sampling
+                float env_pdf    = compute_environment_pdf(ray_dir);
+                float mis_weight = did_env_sample ? power_heuristic(prev_brdf_pdf, env_pdf) : 1.0f;
+                sample.radiance += throughput * sky_radiance * mis_weight;
+            }
+
+            if (bounce == 0)
+            {
+                sample.flags |= PATH_FLAG_SKY;
+                sample.direction    = ray_dir;
+                sample.hit_position = float3(RESTIR_SKY_DISTANCE, RESTIR_SKY_DISTANCE, RESTIR_SKY_DISTANCE);
+                sample.hit_normal   = -ray_dir;
+            }
             break;
         }
 
-        // first hit
         if (first_hit)
         {
             sample.hit_position = payload.hit_position;
             sample.hit_normal   = payload.hit_normal;
-            sample.flags        = (payload.roughness < 0.3f) ? PATH_FLAG_SPECULAR : PATH_FLAG_DIFFUSE;
+            sample.flags        = (payload.roughness < RESTIR_SPECULAR_THRESHOLD) ? PATH_FLAG_SPECULAR : PATH_FLAG_DIFFUSE;
             first_hit = false;
         }
 
         sample.path_length = bounce + 1;
         float3 view_dir = -ray_dir;
 
-        // emissive
-        if (any(payload.emission > 0.0f))
+        if (luminance(payload.emission) > 0.0f)
         {
             if (bounce == 0 || prev_specular)
             {
@@ -244,17 +271,16 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             }
             else
             {
-                static const float NOMINAL_EMISSIVE_AREA = 0.1f;
+                float emissive_area = max(payload.triangle_area, 0.001f);
                 float3 to_light     = payload.hit_position - ray_origin;
                 float light_dist_sq = dot(to_light, to_light);
                 float cos_light     = abs(dot(payload.hit_normal, -ray_dir));
-                float light_pdf     = light_dist_sq / (max(cos_light, 0.001f) * NOMINAL_EMISSIVE_AREA);
+                float light_pdf     = light_dist_sq / (max(cos_light, 0.001f) * emissive_area);
                 float mis_weight    = power_heuristic(prev_brdf_pdf, light_pdf);
                 sample.radiance += throughput * payload.emission * mis_weight;
             }
         }
 
-        // direct lighting
         float3 shading_pos = payload.hit_position + payload.hit_normal * RESTIR_RAY_NORMAL_OFFSET;
 
         for (uint light_idx = 0; light_idx < 4u; light_idx++)
@@ -273,8 +299,8 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             float3 light_color = light.color.rgb;
             float3 light_dir;
             float  light_dist;
-            float  light_pdf = 1.0f;
-            float  attenuation = 1.0f;
+            float  light_pdf    = 1.0f;
+            float  attenuation  = 1.0f;
 
             if (is_directional)
             {
@@ -284,15 +310,44 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             }
             else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
             {
-                float2 xi = random_float2(seed);
-
                 float3 light_normal = light.direction;
                 float3 light_right, light_up;
                 build_orthonormal_basis_fast(light_normal, light_right, light_up);
 
                 float half_width  = light.area_width * 0.5f;
                 float half_height = light.area_height * 0.5f;
-                float3 light_sample_pos = light.position
+
+                float3 light_center = light.position;
+                float3 p0 = light_center - light_right * half_width - light_up * half_height;
+                float3 p1 = light_center + light_right * half_width - light_up * half_height;
+                float3 p2 = light_center + light_right * half_width + light_up * half_height;
+                float3 p3 = light_center - light_right * half_width + light_up * half_height;
+
+                float3 v0 = normalize(p0 - shading_pos);
+                float3 v1 = normalize(p1 - shading_pos);
+                float3 v2 = normalize(p2 - shading_pos);
+                float3 v3 = normalize(p3 - shading_pos);
+
+                // spherical excess solid angle approximation
+                float solid_angle_approx = 0.0f;
+                {
+                    float a1 = acos(clamp(dot(v0, v1), -1.0f, 1.0f));
+                    float a2 = acos(clamp(dot(v1, v2), -1.0f, 1.0f));
+                    float a3 = acos(clamp(dot(v2, v0), -1.0f, 1.0f));
+                    float s  = (a1 + a2 + a3) * 0.5f;
+                    float excess1 = 4.0f * atan(sqrt(max(0.0f, tan(s * 0.5f) * tan((s - a1) * 0.5f) * tan((s - a2) * 0.5f) * tan((s - a3) * 0.5f))));
+
+                    float b1 = acos(clamp(dot(v0, v2), -1.0f, 1.0f));
+                    float b2 = acos(clamp(dot(v2, v3), -1.0f, 1.0f));
+                    float b3 = acos(clamp(dot(v3, v0), -1.0f, 1.0f));
+                    float t  = (b1 + b2 + b3) * 0.5f;
+                    float excess2 = 4.0f * atan(sqrt(max(0.0f, tan(t * 0.5f) * tan((t - b1) * 0.5f) * tan((t - b2) * 0.5f) * tan((t - b3) * 0.5f))));
+
+                    solid_angle_approx = excess1 + excess2;
+                }
+
+                float2 xi = random_float2(seed);
+                float3 light_sample_pos = light_center
                     + light_right * (xi.x - 0.5f) * light.area_width
                     + light_up * (xi.y - 0.5f) * light.area_height;
 
@@ -304,10 +359,17 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
                 if (cos_light <= 0.0f)
                     continue;
 
-                float area         = light.area_width * light.area_height;
-                float solid_angle  = (area * cos_light) / (light_dist * light_dist);
-                solid_angle        = max(solid_angle, MIN_AREA_LIGHT_SOLID_ANGLE);
-                light_pdf          = 1.0f / solid_angle;
+                float area = light.area_width * light.area_height;
+                if (solid_angle_approx > MIN_AREA_LIGHT_SOLID_ANGLE)
+                {
+                    light_pdf = 1.0f / solid_angle_approx;
+                }
+                else
+                {
+                    float solid_angle = (area * cos_light) / (light_dist * light_dist);
+                    solid_angle       = max(solid_angle, MIN_AREA_LIGHT_SOLID_ANGLE);
+                    light_pdf         = 1.0f / solid_angle;
+                }
                 attenuation = 1.0f / (1.0f + light_dist * light_dist * 0.01f);
             }
             else if (is_point || is_spot)
@@ -315,8 +377,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
                 float3 to_light = light.position - shading_pos;
                 light_dist      = length(to_light);
                 light_dir       = to_light / light_dist;
-
-                light_pdf = light_dist * light_dist;
+                light_pdf       = 1.0f;
 
                 float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
                 attenuation = range_factor * range_factor / (1.0f + light_dist * light_dist * 0.1f);
@@ -345,15 +406,42 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             float3 brdf = evaluate_brdf(payload.albedo, payload.roughness, payload.metallic,
                                         payload.hit_normal, view_dir, light_dir, brdf_pdf);
 
-            float mis_weight = 1.0f;
-            if (is_area || is_point || is_spot)
-                mis_weight = power_heuristic(light_pdf, brdf_pdf);
+            float mis_weight = is_area ? power_heuristic(light_pdf, brdf_pdf) : 1.0f;
 
             float3 Li = light_color * light.intensity * attenuation;
             sample.radiance += throughput * brdf * Li * mis_weight / max(light_pdf, 1e-6f);
         }
 
-        // russian roulette
+        // explicit environment sampling for diffuse/rough surfaces
+        did_env_sample = false;
+        if (payload.roughness > RESTIR_SPECULAR_THRESHOLD || payload.metallic < 0.5f)
+        {
+            float2 env_xi = random_float2(seed);
+            float env_pdf;
+            float3 env_dir = sample_environment_direction(env_xi, env_pdf);
+
+            float env_n_dot_l = dot(payload.hit_normal, env_dir);
+            if (env_n_dot_l > 0.0f)
+            {
+                if (trace_shadow_ray(shading_pos, env_dir, 10000.0f))
+                {
+                    did_env_sample = true;
+
+                    float2 env_uv       = direction_sphere_uv(env_dir);
+                    float3 env_radiance = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), env_uv, SKY_MIP_LEVEL).rgb;
+                    env_radiance = clamp_sky_radiance(env_radiance);
+
+                    float brdf_pdf_env;
+                    float3 brdf_env = evaluate_brdf(payload.albedo, payload.roughness, payload.metallic,
+                                                    payload.hit_normal, view_dir, env_dir, brdf_pdf_env);
+
+                    float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
+
+                    sample.radiance += throughput * brdf_env * env_radiance * mis_weight_env / max(env_pdf, 1e-6f);
+                }
+            }
+        }
+
         if (bounce >= RUSSIAN_ROULETTE_START)
         {
             float continuation_prob = min(luminance(throughput), RUSSIAN_ROULETTE_PROB);
@@ -362,7 +450,6 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             throughput /= continuation_prob;
         }
 
-        // next bounce
         float2 xi = random_float2(seed);
         float pdf;
         float3 new_dir = sample_brdf(payload.albedo, payload.roughness, payload.metallic,
@@ -376,13 +463,10 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
                                      payload.hit_normal, view_dir, new_dir, unused_pdf);
 
         throughput *= brdf / pdf;
-        sample.pdf *= pdf;
-
         prev_brdf_pdf = pdf;
-        prev_specular = (payload.roughness < 0.1f && payload.metallic > 0.5f);
+        prev_specular = (payload.roughness < RESTIR_SPECULAR_THRESHOLD);
 
-        // firefly suppression
-        float clamp_limit = lerp(50.0f, 5.0f, float(bounce) / float(RESTIR_MAX_PATH_LENGTH));
+        float clamp_limit    = lerp(50.0f, 5.0f, float(bounce) / float(RESTIR_MAX_PATH_LENGTH));
         float max_throughput = max(max(throughput.r, throughput.g), throughput.b);
         if (max_throughput > clamp_limit)
             throughput *= clamp_limit / max_throughput;
@@ -430,12 +514,10 @@ void ray_gen()
     float roughness = max(material.r, 0.04f);
     float metallic  = material.g;
 
-    // ris
     Reservoir reservoir = create_empty_reservoir();
 
     for (uint i = 0; i < INITIAL_CANDIDATE_SAMPLES; i++)
     {
-        // stratified jitter
         float stratum = float(i) / float(INITIAL_CANDIDATE_SAMPLES);
         float2 jitter = random_float2(seed);
         float2 xi = float2(
@@ -462,6 +544,11 @@ void ray_gen()
 
     finalize_reservoir(reservoir);
 
+    float radiance_quality = saturate(luminance(reservoir.sample.radiance) / 10.0f);
+    float pdf_quality      = saturate(reservoir.sample.pdf * 10.0f);
+    reservoir.confidence   = radiance_quality * pdf_quality;
+    reservoir.age          = 0.0f;
+
     float4 t0, t1, t2, t3, t4;
     pack_reservoir(reservoir, t0, t1, t2, t3, t4);
     tex_reservoir0[launch_id] = t0;
@@ -471,19 +558,7 @@ void ray_gen()
     tex_reservoir4[launch_id] = t4;
 
     float3 gi = reservoir.sample.radiance * reservoir.W;
-
-    if (any(isnan(gi)) || any(isinf(gi)))
-        gi = float3(0.0f, 0.0f, 0.0f);
-
-    // clamp
-    float lum = luminance(gi);
-    static const float soft_clamp = 20.0f;
-    if (lum > soft_clamp)
-    {
-        float excess = lum - soft_clamp;
-        float scale  = soft_clamp + excess / (1.0f + excess / soft_clamp);
-        gi *= scale / lum;
-    }
+    gi = soft_clamp_gi(gi, reservoir.sample);
 
     tex_uav[launch_id] = float4(gi, 1.0f);
 }
@@ -499,7 +574,6 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     uint instance_index = InstanceIndex();
     GeometryInfo geo    = geometry_infos[instance_index];
 
-    // indices
     uint64_t index_addr  = make_address(geo.index_buffer_address);
     uint primitive_index = PrimitiveIndex();
     uint index_offset    = (geo.index_offset + primitive_index * 3) * 4;
@@ -508,11 +582,14 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     uint i1 = vk::RawBufferLoad<uint>(index_addr + index_offset + 4);
     uint i2 = vk::RawBufferLoad<uint>(index_addr + index_offset + 8);
 
-    // vertices
     uint64_t vertex_addr = make_address(geo.vertex_buffer_address);
     uint v0_offset = (geo.vertex_offset + i0) * VERTEX_STRIDE;
     uint v1_offset = (geo.vertex_offset + i1) * VERTEX_STRIDE;
     uint v2_offset = (geo.vertex_offset + i2) * VERTEX_STRIDE;
+
+    float3 p0 = vk::RawBufferLoad<float3>(vertex_addr + v0_offset + 0);
+    float3 p1 = vk::RawBufferLoad<float3>(vertex_addr + v1_offset + 0);
+    float3 p2 = vk::RawBufferLoad<float3>(vertex_addr + v2_offset + 0);
 
     float3 n0 = vk::RawBufferLoad<float3>(vertex_addr + v0_offset + 20);
     float3 n1 = vk::RawBufferLoad<float3>(vertex_addr + v1_offset + 20);
@@ -526,7 +603,6 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     float2 uv1 = vk::RawBufferLoad<float2>(vertex_addr + v1_offset + 12);
     float2 uv2 = vk::RawBufferLoad<float2>(vertex_addr + v2_offset + 12);
 
-    // interpolation
     float3 bary = float3(1.0f - attribs.barycentrics.x - attribs.barycentrics.y,
                          attribs.barycentrics.x, attribs.barycentrics.y);
 
@@ -543,7 +619,6 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     float dist      = RayTCurrent();
     float mip_level = clamp(log2(max(dist * 0.5f, 1.0f)), 0.0f, 4.0f);
 
-    // material
     float3 albedo = mat.color.rgb;
     if (mat.has_texture_albedo())
     {
@@ -571,7 +646,6 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).r;
     }
 
-    // normal map
     if (mat.has_texture_normal())
     {
         uint normal_texture_index = material_index + material_texture_index_normal;
@@ -599,12 +673,18 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
 
     float3 hit_position = WorldRayOrigin() + WorldRayDirection() * dist;
 
-    payload.hit_position = hit_position;
-    payload.hit_normal   = normal_world;
-    payload.albedo       = albedo;
-    payload.emission     = emission;
-    payload.roughness    = roughness;
-    payload.metallic     = metallic;
+    float3x3 obj_to_world_3x3 = (float3x3)ObjectToWorld4x3();
+    float3 edge1_world   = mul(p1 - p0, obj_to_world_3x3);
+    float3 edge2_world   = mul(p2 - p0, obj_to_world_3x3);
+    float triangle_area  = 0.5f * length(cross(edge1_world, edge2_world));
+
+    payload.hit_position  = hit_position;
+    payload.hit_normal    = normal_world;
+    payload.albedo        = albedo;
+    payload.emission      = emission;
+    payload.roughness     = roughness;
+    payload.metallic      = metallic;
+    payload.triangle_area = triangle_area;
 }
 
 [shader("miss")]
