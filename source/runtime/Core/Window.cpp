@@ -556,7 +556,7 @@ namespace spartan
 
     void Window::SetStatusBar(float height)
     {
-        
+        // TODO: Implement status bar height/visibility handling if a status bar is added.
     }
 
     bool Window::IsMaximized()
