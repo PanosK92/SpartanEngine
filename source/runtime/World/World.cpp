@@ -268,7 +268,7 @@ namespace spartan
     {
         Engine::SetFlag(EngineMode::Playing, false); // stop simulation
         Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
-        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
+        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)n
 
         // clear entities
         camera = nullptr;
@@ -687,23 +687,27 @@ namespace spartan
                     return;
                 }
 
-                // count root entities for progress tracking
-                uint32_t root_entity_count = 0;
+                // collect all root entity nodes
+                vector<pugi::xml_node> entity_nodes;
                 for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
                 {
-                    ++root_entity_count;
+                    entity_nodes.push_back(entity_node);
                 }
 
                 // progress tracking
-                ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading entities...");
+                uint32_t entity_count = static_cast<uint32_t>(entity_nodes.size());
+                ProgressTracker::GetProgress(ProgressType::World).Start(entity_count, "Loading entities...");
 
-                // load root entities (they will load their descendants recursively)
-                for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+                // load root entities in parallel
+                ThreadPool::ParallelLoop([&entity_nodes](uint32_t start, uint32_t end)
                 {
-                    Entity* entity = World::CreateEntity();
-                    entity->Load(entity_node);
-                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                }
+                    for (uint32_t i = start; i < end; i++)
+                    {
+                        Entity* entity = World::CreateEntity();
+                        entity->Load(entity_nodes[i]);
+                        ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                    }
+                }, entity_count);
             }
 
             // report time
