@@ -704,7 +704,11 @@ void WorldViewer::PopupContextMenu() const
 
     if (ImGui::MenuItem("Paste") && entity_copied)
     {
-        entity_copied->Clone();
+        spartan::Entity* cloned = entity_copied->Clone();
+        if (cloned)
+        {
+            cloned->SetParent(entity_copied->GetParent());
+        }
     }
 
     if (ImGui::MenuItem("Rename") && on_entity && !multiple_selected)
@@ -942,7 +946,11 @@ void WorldViewer::HandleKeyShortcuts()
     {
         if (entity_copied)
         {
-            entity_copied->Clone();
+            spartan::Entity* cloned = entity_copied->Clone();
+            if (cloned)
+            {
+                cloned->SetParent(entity_copied->GetParent());
+            }
         }
     }
 }
