@@ -132,33 +132,7 @@ namespace spartan
         config.show_telemetry = node.attribute("telemetry").as_bool(false);
         config.camera_follows = node.attribute("camera_follows").as_bool(false);
 
-        // when loading from world file, default_camera might not be set
-        // find camera entity from root entities if needed
-        if (config.camera_follows && !default_camera)
-        {
-            std::vector<Entity*> root_entities;
-            World::GetRootEntities(root_entities);
-            
-            for (Entity* root_entity : root_entities)
-            {
-                // look for entity with camera component in its children
-                std::vector<Entity*> descendants;
-                root_entity->GetDescendants(&descendants);
-                descendants.push_back(root_entity);
-                
-                for (Entity* entity : descendants)
-                {
-                    if (entity->GetComponent<Camera>())
-                    {
-                        // found camera, set its parent as default_camera (physics body with camera child)
-                        default_camera = entity->GetParent() ? entity->GetParent() : entity;
-                        break;
-                    }
-                }
-                if (default_camera)
-                    break;
-            }
-        }
+        // note: camera finding is now deferred to Tick() to support parallel entity loading
 
         Car* car = Create(config);
         if (car && parent)
@@ -795,6 +769,31 @@ namespace spartan
     {
         if (!m_body_entity)
             return;
+
+        // lazy camera finding - needed because parallel entity loading means camera might not exist during prefab creation
+        if (m_camera_follows && !default_camera)
+        {
+            std::vector<Entity*> root_entities;
+            World::GetRootEntities(root_entities);
+            
+            for (Entity* root_entity : root_entities)
+            {
+                std::vector<Entity*> descendants;
+                root_entity->GetDescendants(&descendants);
+                descendants.push_back(root_entity);
+                
+                for (Entity* entity : descendants)
+                {
+                    if (entity->GetComponent<Camera>())
+                    {
+                        default_camera = entity->GetParent() ? entity->GetParent() : entity;
+                        break;
+                    }
+                }
+                if (default_camera)
+                    break;
+            }
+        }
 
         // auto-enter car when play mode starts if camera_follows is enabled
         {
