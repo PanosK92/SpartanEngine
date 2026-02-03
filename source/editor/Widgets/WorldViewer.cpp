@@ -924,6 +924,27 @@ void WorldViewer::HandleKeyShortcuts()
             spartan::CommandStack::Undo();
         }
     }
+
+    // Copy: Ctrl + C
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::C))
+    {
+        if (spartan::Camera* camera = spartan::World::GetCamera())
+        {
+            if (spartan::Entity* selected_entity = camera->GetSelectedEntity())
+            {
+                entity_copied = selected_entity;
+            }
+        }
+    }
+
+    // Paste: Ctrl + V
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::V))
+    {
+        if (entity_copied)
+        {
+            entity_copied->Clone();
+        }
+    }
 }
 
 void WorldViewer::ActionEntityDelete(spartan::Entity* entity)
