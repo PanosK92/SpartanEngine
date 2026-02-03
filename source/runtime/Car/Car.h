@@ -167,6 +167,8 @@ namespace spartan
         bool              m_is_occupied     = false;
         bool              m_show_telemetry  = false;
         bool              m_is_drivable     = false;
+        bool              m_camera_follows  = false;    // auto-enter car when play mode starts
+        bool              m_was_playing     = false;    // tracks play mode state for auto-enter
         CarView           m_current_view    = CarView::Chase;
         ChaseCameraState  m_chase_camera;
 

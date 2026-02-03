@@ -481,7 +481,7 @@ namespace spartan
         bool mouse_click_right      = Input::GetKey(KeyCode::Click_Right);
         bool mouse_click_left_down  = Input::GetKeyDown(KeyCode::Click_Left);
 
-        // if the camera is paranted to an entity with a physics body, we will control that instead
+        // if the camera is parented to an entity with a physics body, we will control that instead
         Physics* physics_body = nullptr;
         if (Entity* parent = GetEntity()->GetParent())
         {
@@ -490,6 +490,10 @@ namespace spartan
                 physics_body = physics;
             }
         }
+
+        // skip fps control if the physics body is disabled (e.g. when in a vehicle)
+        if (physics_body && !physics_body->IsEnabled())
+            return;
 
         // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
         bool mouse_in_viewport    = Input::GetMouseIsInViewport();

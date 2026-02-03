@@ -111,6 +111,9 @@ public:
     auto GetOperation() const { return m_operation; }
     void SetOperation(FileDialog_Operation operation);
 
+    // path
+    void SetCurrentPath(const std::string& path);
+
     // shows the dialog and returns true if a selection was made
     bool Show(bool* is_visible, Editor* editor, std::string* directory = nullptr, std::string* file_path = nullptr);
     void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_clicked = callback; }

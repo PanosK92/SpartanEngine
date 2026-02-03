@@ -85,21 +85,8 @@ namespace spartan
             car->CreateAudioSources(car->m_vehicle_entity);
             car->CreateWheels(car->m_vehicle_entity, physics);
 
-            // setup camera to follow if requested
-            if (config.camera_follows)
-            {
-                // disable manual camera control if default_camera exists
-                if (default_camera)
-                {
-                    if (Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>())
-                    {
-                        camera->SetFlag(CameraFlags::CanBeControlled, false);
-                    }
-                }
-
-                car->m_is_occupied              = true;
-                car->m_chase_camera.initialized = false;
-            }
+            // store camera_follows flag - car will auto-enter when play mode starts
+            car->m_camera_follows = config.camera_follows;
 
             // set globals for backward compatibility
             default_car = car->m_body_entity;
@@ -234,6 +221,15 @@ namespace spartan
         m_is_occupied = true;
         m_chase_camera.initialized = false;
 
+        // disable player physics controller so it doesn't interfere with driving
+        if (default_camera)
+        {
+            if (Physics* controller = default_camera->GetComponent<Physics>())
+            {
+                controller->SetEnabled(false);
+            }
+        }
+
         Entity* camera = default_camera ? default_camera->GetChildByName("component_camera") : nullptr;
         if (camera)
         {
@@ -244,10 +240,7 @@ namespace spartan
             else
             {
                 camera->SetParent(m_body_entity);
-                // position based on view
             }
-
-            camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, false);
         }
 
         // play engine start sound
@@ -305,7 +298,15 @@ namespace spartan
         {
             camera->SetParent(default_camera);
             camera->SetRotationLocal(math::Quaternion::Identity);
-            camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, true);
+        }
+
+        // re-enable player physics controller
+        if (default_camera)
+        {
+            if (Physics* controller = default_camera->GetComponent<Physics>())
+            {
+                controller->SetEnabled(true);
+            }
         }
 
         // position player at the driver's door (left side of car) as if they were riding all along
@@ -790,6 +791,16 @@ namespace spartan
     {
         if (!m_body_entity)
             return;
+
+        // auto-enter car when play mode starts if camera_follows is enabled
+        {
+            bool is_playing = Engine::IsFlagSet(EngineMode::Playing);
+            if (m_camera_follows && !m_is_occupied && is_playing && !m_was_playing)
+            {
+                Enter();
+            }
+            m_was_playing = is_playing;
+        }
 
         TickInput();
         TickSounds();
