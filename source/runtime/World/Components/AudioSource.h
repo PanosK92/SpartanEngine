@@ -25,6 +25,7 @@ connection with the software or the use or other dealings in the software.
 #include "Component.h"
 #include <string>
 #include <vector>
+#include <functional>
 //====================
 
 struct SDL_AudioStream;
@@ -36,6 +37,10 @@ namespace audio_clip_cache
 
 namespace spartan
 {
+    // callback type for audio synthesis: generates stereo samples into buffer
+    // parameters: output buffer (stereo interleaved), number of sample frames
+    using SynthesisCallback = std::function<void(float*, int)>;
+
     class AudioSource : public Component
     {
     public:
@@ -53,6 +58,12 @@ namespace spartan
 
         void SetAudioClip(const std::string& file_path);
         const std::string& GetAudioClipName() const { return m_name; };
+
+        // synthesis mode - generates audio procedurally instead of playing a clip
+        void SetSynthesisMode(bool enabled, SynthesisCallback callback = nullptr);
+        bool IsSynthesisMode() const { return m_synthesis_mode; }
+        void StartSynthesis();  // start synthesis playback
+        void StopSynthesis();   // stop synthesis playback
 
         bool IsPlaying() { return m_is_playing; }
         void PlayClip();
@@ -89,6 +100,7 @@ namespace spartan
 
     private:
         void FeedAudioChunk();
+        void FeedSynthesizedChunk();
 
         std::vector<float> m_stereo_chunk; // reused to avoid per-call allocation
         std::string m_name                             = "N/A";
@@ -107,6 +119,10 @@ namespace spartan
         math::Vector3 position_previous                = math::Vector3::Zero;
         std::shared_ptr<audio_clip_cache::AudioClip> m_clip = nullptr;
         std::string m_file_path;
+
+        // synthesis mode
+        bool m_synthesis_mode                  = false;
+        SynthesisCallback m_synthesis_callback = nullptr;
 
         // reverb state
         bool m_reverb_enabled         = false;

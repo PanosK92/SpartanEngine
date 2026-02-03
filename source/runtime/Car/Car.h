@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES ===================
 #include <vector>
 #include <memory>
-#include "../../Math/Vector3.h"
-#include "../../Math/BoundingBox.h"
-//=================================
+#include "../Math/Vector3.h"
+#include "../Math/BoundingBox.h"
+//==============================
 
 namespace pugi
 {

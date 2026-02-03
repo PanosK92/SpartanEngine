@@ -51,7 +51,7 @@ static const float2 SPATIAL_OFFSETS[16] = {
     float2( 0.0000, -1.0000), float2( 1.0000,  0.0000)
 };
 
-bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sample_hit_pos, float3 sample_hit_normal)
+bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sample_hit_pos, float3 sample_hit_normal, float3 neighbor_pos)
 {
     float3 dir  = sample_hit_pos - center_pos;
     float dist  = length(dir);
@@ -61,7 +61,6 @@ bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sa
 
     dir /= dist;
 
-    // reject directions that are too grazing relative to receiver
     float cos_theta = dot(dir, center_normal);
     if (cos_theta <= 0.25f)
         return false;
@@ -72,6 +71,16 @@ bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sa
 
     float plane_dist = dot(sample_hit_pos - center_pos, center_normal);
     if (plane_dist < RESTIR_VIS_PLANE_MIN)
+        return false;
+
+    // direction similarity check prevents reusing interior samples on exterior surfaces
+    float3 dir_from_neighbor = normalize(sample_hit_pos - neighbor_pos);
+    float direction_similarity = dot(dir, dir_from_neighbor);
+    float3 neighbor_to_center = center_pos - neighbor_pos;
+    float neighbor_center_dist = length(neighbor_to_center);
+    float relative_shift = neighbor_center_dist / max(dist, 0.01f);
+    float min_similarity = lerp(0.9f, 0.99f, saturate(relative_shift * 2.0f));
+    if (direction_similarity < min_similarity)
         return false;
 
     if (dist < RESTIR_VIS_MIN_DIST)
@@ -103,13 +112,33 @@ bool is_neighbor_valid(int2 neighbor_pixel, float3 center_pos, float3 center_nor
         return false;
 
     float neighbor_linear_depth = linearize_depth(neighbor_depth);
+
+    // adaptive depth threshold relaxes at distance
+    float adaptive_depth_threshold = lerp(RESTIR_DEPTH_THRESHOLD, RESTIR_DEPTH_THRESHOLD * 2.0f,
+                                           saturate(center_linear_depth / 200.0f));
+
     float depth_ratio = center_linear_depth / max(neighbor_linear_depth, 1e-6f);
-    if (abs(depth_ratio - 1.0f) > RESTIR_DEPTH_THRESHOLD)
+    if (abs(depth_ratio - 1.0f) > adaptive_depth_threshold)
         return false;
 
     float3 neighbor_normal = get_normal(neighbor_uv);
-    if (dot(center_normal, neighbor_normal) < RESTIR_NORMAL_THRESHOLD)
+    float normal_similarity = dot(center_normal, neighbor_normal);
+
+    // tighter normal threshold at distance for flat surfaces
+    float adaptive_normal_threshold = lerp(RESTIR_NORMAL_THRESHOLD, 0.95f,
+                                            saturate(center_linear_depth / 150.0f));
+    if (normal_similarity < adaptive_normal_threshold)
         return false;
+
+    // world-space distance check for distant surfaces
+    if (center_linear_depth > 50.0f)
+    {
+        float3 neighbor_pos = get_position(neighbor_uv);
+        float world_dist = length(neighbor_pos - center_pos);
+        float max_world_dist = center_linear_depth * 0.05f;
+        if (world_dist > max_world_dist)
+            return false;
+    }
 
     return true;
 }
@@ -130,12 +159,19 @@ float evaluate_jacobian_for_reuse(PathSample sample, float3 center_pos, float3 c
     return max(jacobian, 0.0f);
 }
 
-float compute_adaptive_radius(float linear_depth, float center_roughness, float edge_factor)
+float compute_adaptive_radius(float linear_depth, float center_roughness, float edge_factor, float3 normal_ws, float3 view_dir)
 {
     float depth_factor     = saturate(sqrt(linear_depth * SPATIAL_DEPTH_SCALE / 100.0f));
     float base_radius      = lerp(SPATIAL_RADIUS_MIN, SPATIAL_RADIUS_MAX, depth_factor);
     float roughness_factor = lerp(0.7f, 1.0f, center_roughness);
-    return base_radius * roughness_factor * edge_factor;
+
+    // reduce radius for grazing angles to prevent world-space distance issues
+    float n_dot_v = abs(dot(normal_ws, view_dir));
+    float grazing_factor = lerp(0.3f, 1.0f, saturate(n_dot_v * 2.0f));
+
+    float distance_reduction = lerp(1.0f, 0.5f, saturate((linear_depth - 50.0f) / 100.0f));
+
+    return base_radius * roughness_factor * edge_factor * grazing_factor * distance_reduction;
 }
 
 float compute_edge_factor(float2 uv, float linear_depth, float2 resolution)
@@ -191,10 +227,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 2);
 
     float edge_factor     = compute_edge_factor(uv, linear_depth, resolution);
-    float adaptive_radius = compute_adaptive_radius(linear_depth, roughness, edge_factor);
+    float adaptive_radius = compute_adaptive_radius(linear_depth, roughness, edge_factor, normal_ws, view_dir);
 
     Reservoir combined = create_empty_reservoir();
 
+    // evaluate center sample
     float target_pdf_center = 0.0f;
     if (any(center.sample.radiance > 0.0f))
     {
@@ -221,6 +258,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float base_angle = random_float(seed) * 2.0f * PI;
 
+    // spatial reuse loop
     for (uint i = 0; i < RESTIR_SPATIAL_SAMPLES; i++)
     {
         float rotation_angle = base_angle + float(i) * 2.39996323f;
@@ -280,7 +318,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             if (neighbor.sample.path_length == 0)
                 continue;
 
-            bool visible = check_spatial_visibility(pos_ws, normal_ws, neighbor.sample.hit_position, neighbor.sample.hit_normal);
+            bool visible = check_spatial_visibility(pos_ws, normal_ws, neighbor.sample.hit_position, neighbor.sample.hit_normal, neighbor_pos_ws);
             if (!visible)
                 continue;
 

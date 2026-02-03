@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../Physics/PhysicsWorld.h"
-#include "../../Physics/Car/Car.h"
-#include "../../Physics/Car/CarSimulation.h"
+#include "../../Car/Car.h"
+#include "../../Car/CarSimulation.h"
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Rendering/Renderer.h"
 SP_WARNINGS_OFF

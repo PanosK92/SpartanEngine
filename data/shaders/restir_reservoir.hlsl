@@ -22,39 +22,39 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_RESTIR_RESERVOIR
 #define SPARTAN_RESTIR_RESERVOIR
 
-// core ReSTIR parameters
+// core parameters
 static const uint RESTIR_MAX_PATH_LENGTH     = 3;
-static const uint RESTIR_M_CAP               = 64;      // max history length for bias control
+static const uint RESTIR_M_CAP               = 32;
 static const uint RESTIR_SPATIAL_SAMPLES     = 8;
 static const float RESTIR_SPATIAL_RADIUS     = 16.0f;
-static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;   // max relative depth difference for reuse
-static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;    // min normal dot product for reuse (~25 degrees)
-static const float RESTIR_TEMPORAL_DECAY     = 0.95f;   // history decay factor per frame
-static const float RESTIR_RAY_NORMAL_OFFSET  = 0.01f;   // offset along normal to avoid self-intersection
-static const float RESTIR_RAY_T_MIN          = 0.001f;  // minimum ray t to avoid self-hits
+static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
+static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
+static const float RESTIR_TEMPORAL_DECAY     = 0.9f;
+static const float RESTIR_RAY_NORMAL_OFFSET  = 0.01f;
+static const float RESTIR_RAY_T_MIN          = 0.001f;
 
-// sky/environment sampling constants
-static const float RESTIR_SKY_RADIANCE_CLAMP = 10.0f;   // max luminance for sky samples
-static const float RESTIR_SKY_W_CLAMP        = 3.0f;    // max W for sky samples (prevents over-brightness)
-static const float RESTIR_SKY_DIR_THRESHOLD  = 0.95f;   // min direction similarity for sky reuse (~18 degrees)
-static const float RESTIR_ENV_SAMPLE_PROB    = 0.3f;    // probability of explicit environment sampling
-static const float RESTIR_SKY_DISTANCE       = 1e10f;   // sentinel distance for sky samples (effectively infinite)
+// sky/environment
+static const float RESTIR_SKY_RADIANCE_CLAMP = 5.0f;
+static const float RESTIR_SKY_W_CLAMP        = 1.5f;
+static const float RESTIR_SKY_DIR_THRESHOLD  = 0.95f;
+static const float RESTIR_ENV_SAMPLE_PROB    = 0.3f;
+static const float RESTIR_SKY_DISTANCE       = 1e10f;
 
-// visibility and geometry thresholds
-static const float RESTIR_VIS_COS_FRONT      = 0.1f;    // min cos(angle) for forward-facing check
-static const float RESTIR_VIS_COS_BACK       = 0.15f;   // min cos(angle) for back-facing check
-static const float RESTIR_VIS_MIN_DIST       = 0.02f;   // below this distance, skip visibility ray
-static const float RESTIR_VIS_PLANE_MIN      = 0.001f;  // min plane distance for valid sample
+// visibility/geometry
+static const float RESTIR_VIS_COS_FRONT      = 0.1f;
+static const float RESTIR_VIS_COS_BACK       = 0.15f;
+static const float RESTIR_VIS_MIN_DIST       = 0.02f;
+static const float RESTIR_VIS_PLANE_MIN      = 0.001f;
 
-// BRDF and sampling thresholds
-static const float RESTIR_MIN_ROUGHNESS      = 0.04f;   // minimum roughness to avoid singularities
-static const float RESTIR_MIN_PDF            = 1e-6f;   // minimum PDF to avoid division issues
-static const float RESTIR_W_CLAMP_DEFAULT    = 5.0f;    // default max W for non-sky samples
-static const float RESTIR_SPECULAR_THRESHOLD = 0.2f;    // roughness below this is considered specular for MIS
+// BRDF thresholds
+static const float RESTIR_MIN_ROUGHNESS      = 0.04f;
+static const float RESTIR_MIN_PDF            = 1e-6f;
+static const float RESTIR_W_CLAMP_DEFAULT    = 1.5f;
+static const float RESTIR_SPECULAR_THRESHOLD = 0.2f;
 
 // firefly suppression
-static const float RESTIR_SOFT_CLAMP_SKY     = 15.0f;   // soft luminance clamp for sky samples
-static const float RESTIR_SOFT_CLAMP_DEFAULT = 25.0f;   // soft luminance clamp for other samples
+static const float RESTIR_SOFT_CLAMP_SKY     = 10.0f;
+static const float RESTIR_SOFT_CLAMP_DEFAULT = 12.0f;
 
 struct PathSample
 {
@@ -74,15 +74,15 @@ struct Reservoir
     float      M;
     float      W;
     float      target_pdf;
-    float      age;        // frames since sample was generated (for staleness detection)
-    float      confidence; // quality metric for adaptive sampling
+    float      age;
+    float      confidence;
 };
 
 static const uint PATH_FLAG_SPECULAR = 1 << 0;
 static const uint PATH_FLAG_DIFFUSE  = 1 << 1;
 static const uint PATH_FLAG_CAUSTIC  = 1 << 2;
 static const uint PATH_FLAG_DELTA    = 1 << 3;
-static const uint PATH_FLAG_SKY      = 1 << 4; // sample hit the sky (infinite distance, direction-based)
+static const uint PATH_FLAG_SKY      = 1 << 4;
 
 float2 octahedral_encode(float3 n)
 {
@@ -126,7 +126,7 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     tex1 = float4(normal_oct.y, direction_oct.xy, r.sample.radiance.x);
     tex2 = float4(r.sample.radiance.yz, r.sample.pdf, r.weight_sum);
     tex3 = float4(r.M, r.W, r.target_pdf, asfloat(pack_path_info(r.sample.path_length, r.sample.flags)));
-    tex4 = float4(r.age, r.confidence, 0, 0); // additional metadata for adaptive sampling
+    tex4 = float4(r.age, r.confidence, 0, 0);
 }
 
 Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4)
@@ -261,7 +261,6 @@ float calculate_target_pdf_sky(float3 radiance, float3 sample_dir, float3 shadin
     return base_target * max(brdf_weight, 0.01f);
 }
 
-// target pdf with geometry term for finite-distance samples
 float calculate_target_pdf_with_geometry(float3 radiance, float3 shading_pos, float3 shading_normal, float3 view_dir,
                                           float3 sample_hit_pos, float3 sample_hit_normal,
                                           float3 albedo, float roughness, float metallic)
@@ -280,8 +279,13 @@ float calculate_target_pdf_with_geometry(float3 radiance, float3 shading_pos, fl
         return 0.0f;
 
     float cos_at_sample = max(dot(sample_hit_normal, -sample_dir), 0.0f);
-    float geometry_term = cos_at_sample / max(dist_sq, 0.01f);
-    geometry_term = min(geometry_term, 50.0f);
+
+    // distance-aware minimum prevents geometry term explosion in corners
+    float min_dist_sq = max(0.1f, dist * 0.01f);
+    float geometry_term = cos_at_sample / max(dist_sq, min_dist_sq);
+
+    float max_geometry = lerp(10.0f, 5.0f, saturate(dist / 50.0f));
+    geometry_term = min(geometry_term, max_geometry);
 
     return brdf_target * max(geometry_term, 0.01f);
 }
@@ -314,7 +318,7 @@ bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float we
     if (random_value * reservoir.weight_sum < weight)
     {
         reservoir.sample = new_sample;
-        reservoir.age    = 0.0f; // reset age when new sample is selected
+        reservoir.age    = 0.0f;
         return true;
     }
     return false;
@@ -331,7 +335,7 @@ bool merge_reservoir(inout Reservoir dst, Reservoir src, float target_pdf_at_dst
     {
         dst.sample     = src.sample;
         dst.target_pdf = target_pdf_at_dst;
-        dst.age        = src.age; // preserve age from source reservoir
+        dst.age        = src.age;
         return true;
     }
     return false;
@@ -347,7 +351,6 @@ void finalize_reservoir(inout Reservoir reservoir)
     else
         reservoir.W = 0;
 
-    // use tighter W clamp for sky samples to prevent over-brightness in open environments
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);
     reservoir.W = min(reservoir.W, w_clamp);
 }
@@ -501,7 +504,6 @@ float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 ne
     dir_original /= dist_original;
     dir_new      /= dist_new;
 
-    // reject if direction is grazing at the new receiver surface
     float cos_at_receiver = dot(new_receiver_normal, dir_new);
     if (cos_at_receiver < 0.2f)
         return 0.0f;
@@ -513,10 +515,22 @@ float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 ne
     if (cos_original < MIN_COS_ANGLE || cos_new < MIN_COS_ANGLE)
         return 0.0f;
 
+    // tighten similarity for large distances to prevent artifacts on flat surfaces
+    float avg_dist = (dist_original + dist_new) * 0.5f;
+    if (avg_dist > 50.0f)
+    {
+        float direction_similarity = dot(dir_original, dir_new);
+        float min_similarity = lerp(0.95f, 0.99f, saturate((avg_dist - 50.0f) / 150.0f));
+        if (direction_similarity < min_similarity)
+            return 0.0f;
+    }
+
     float jacobian = (cos_new * dist_original_sq) / max(cos_original * dist_new_sq, 1e-4f);
 
     float dist_ratio   = dist_original / dist_new;
-    float max_jacobian = lerp(2.0f, 4.0f, saturate(dist_ratio));
+    float base_max     = lerp(2.0f, 4.0f, saturate(dist_ratio));
+    float distance_factor = saturate(avg_dist / 100.0f);
+    float max_jacobian = lerp(base_max, min(base_max, 1.5f), distance_factor);
 
     return clamp(jacobian, 0.0f, max_jacobian);
 }
@@ -560,9 +574,7 @@ float3 clamp_sky_radiance(float3 radiance)
 {
     float lum = dot(radiance, float3(0.299f, 0.587f, 0.114f));
     if (lum > RESTIR_SKY_RADIANCE_CLAMP)
-    {
         radiance *= RESTIR_SKY_RADIANCE_CLAMP / lum;
-    }
     return radiance;
 }
 
@@ -571,8 +583,19 @@ float3 soft_clamp_gi(float3 gi, PathSample sample)
     if (any(isnan(gi)) || any(isinf(gi)))
         return float3(0.0f, 0.0f, 0.0f);
 
-    float lum        = dot(gi, float3(0.299f, 0.587f, 0.114f));
-    float soft_clamp = is_sky_sample(sample) ? RESTIR_SOFT_CLAMP_SKY : RESTIR_SOFT_CLAMP_DEFAULT;
+    float lum = dot(gi, float3(0.299f, 0.587f, 0.114f));
+
+    // soft clamp based on sample type
+    float soft_clamp;
+    if (is_sky_sample(sample))
+    {
+        soft_clamp = 4.0f;
+    }
+    else
+    {
+        float bounce_factor = saturate(float(sample.path_length - 1) / 2.0f);
+        soft_clamp = lerp(3.0f, 1.5f, bounce_factor);
+    }
 
     if (lum > soft_clamp)
     {
@@ -580,6 +603,12 @@ float3 soft_clamp_gi(float3 gi, PathSample sample)
         float scale  = soft_clamp + excess / (1.0f + excess / soft_clamp);
         gi *= scale / lum;
     }
+
+    // hard clamp
+    float max_lum = 5.0f;
+    float final_lum = dot(gi, float3(0.299f, 0.587f, 0.114f));
+    if (final_lum > max_lum)
+        gi *= max_lum / final_lum;
 
     return gi;
 }
