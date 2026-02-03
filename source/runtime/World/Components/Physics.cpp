@@ -192,16 +192,18 @@ namespace spartan
     void Physics::Remove()
     {
         // release controller if it exists
-        if (m_controller)
+        // skip if controller_manager was already released during shutdown
+        if (m_controller && controller_manager)
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
         }
 
         // release all actors
+        // skip if physics world was already shut down (scene is null)
         for (auto* body : m_actors)
         {
-            if (body)
+            if (body && PhysicsWorld::GetScene())
             {
                 PxRigidActor* actor = static_cast<PxRigidActor*>(body);
                 PhysicsWorld::RemoveActor(actor);
@@ -212,7 +214,8 @@ namespace spartan
         m_actors_active.clear();
 
         // release material (shared by both controller and regular bodies)
-        if (m_material)
+        // skip if physics world was already shut down
+        if (m_material && PhysicsWorld::GetPhysics())
         {
             static_cast<PxMaterial*>(m_material)->release();
             m_material = nullptr;
