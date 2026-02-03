@@ -673,12 +673,16 @@ namespace spartan
             return;
 
         Entity* wheel_root = mesh->GetRootEntity();
+        if (!wheel_root)
+            return;
+
         Entity* wheel_base = wheel_root->GetChildByIndex(0);
         if (!wheel_base)
             return;
 
         wheel_base->SetParent(nullptr);
-        World::RemoveEntity(wheel_root);
+        World::RemoveEntityImmediate(wheel_root);
+        mesh->SetRootEntity(nullptr);
         wheel_base->SetScale(0.2f);
 
         if (Renderable* renderable = wheel_base->GetComponent<Renderable>())

@@ -772,6 +772,58 @@ namespace spartan
         resolve = true;
     }
 
+    void World::RemoveEntityImmediate(Entity* entity_to_remove)
+    {
+        SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
+
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        // keep track of the local camera pointer so we don't have a dangling pointer
+        if (Camera* camera_ = entity_to_remove->GetComponent<Camera>())
+        {
+            camera = nullptr;
+        }
+
+        // get the entity and all of its descendants
+        vector<Entity*> entities_to_remove;
+        entities_to_remove.push_back(entity_to_remove);
+        entity_to_remove->GetDescendants(&entities_to_remove);
+
+        // if there was a parent, update it
+        if (Entity* parent = entity_to_remove->GetParent())
+        {
+            parent->AcquireChildren();
+        }
+
+        // remove and delete immediately
+        for (Entity* entity : entities_to_remove)
+        {
+            uint64_t id = entity->GetObjectId();
+
+            // remove from entities vector
+            auto it = find(entities.begin(), entities.end(), entity);
+            if (it != entities.end())
+            {
+                // clean up change tracking
+                entity_states.erase(id);
+                if (Material* mat = entity->GetComponent<Renderable>() ? entity->GetComponent<Renderable>()->GetMaterial() : nullptr)
+                {
+                    material_state_hashes.erase(mat->GetObjectId());
+                }
+                entities.erase(it);
+            }
+
+            // also remove from pending_add if it was just added
+            auto pending_it = find(pending_add.begin(), pending_add.end(), entity);
+            if (pending_it != pending_add.end())
+            {
+                pending_add.erase(pending_it);
+            }
+
+            delete entity;
+        }
+    }
+
     void World::GetRootEntities(vector<Entity*>& entities_out)
     {
         lock_guard<mutex> lock(entity_access_mutex);
