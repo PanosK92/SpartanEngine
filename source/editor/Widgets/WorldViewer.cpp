@@ -708,6 +708,26 @@ void WorldViewer::PopupContextMenu() const
         if (cloned)
         {
             cloned->SetParent(entity_copied->GetParent());
+
+            // find next available copy number
+            const std::string& base_name = entity_copied->GetObjectName();
+            uint32_t copy_number = 1;
+            bool found = true;
+            while (found)
+            {
+                found = false;
+                std::string test_name = base_name + "_" + std::to_string(copy_number);
+                for (spartan::Entity* entity : spartan::World::GetEntities())
+                {
+                    if (entity->GetObjectName() == test_name)
+                    {
+                        found = true;
+                        copy_number++;
+                        break;
+                    }
+                }
+            }
+            cloned->SetObjectName(base_name + "_" + std::to_string(copy_number));
         }
     }
 
@@ -950,6 +970,26 @@ void WorldViewer::HandleKeyShortcuts()
             if (cloned)
             {
                 cloned->SetParent(entity_copied->GetParent());
+
+                // find next available copy number
+                const std::string& base_name = entity_copied->GetObjectName();
+                uint32_t copy_number = 1;
+                bool found = true;
+                while (found)
+                {
+                    found = false;
+                    std::string test_name = base_name + "_" + std::to_string(copy_number);
+                    for (spartan::Entity* entity : spartan::World::GetEntities())
+                    {
+                        if (entity->GetObjectName() == test_name)
+                        {
+                            found = true;
+                            copy_number++;
+                            break;
+                        }
+                    }
+                }
+                cloned->SetObjectName(base_name + "_" + std::to_string(copy_number));
             }
         }
     }
