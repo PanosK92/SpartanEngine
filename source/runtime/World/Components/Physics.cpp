@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../Physics/PhysicsWorld.h"
-#include "../../Physics/Car/Car.h"
-#include "../../Physics/Car/CarSimulation.h"
+#include "../../Car/Car.h"
+#include "../../Car/CarSimulation.h"
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Rendering/Renderer.h"
 SP_WARNINGS_OFF
@@ -192,16 +192,18 @@ namespace spartan
     void Physics::Remove()
     {
         // release controller if it exists
-        if (m_controller)
+        // skip if controller_manager was already released during shutdown
+        if (m_controller && controller_manager)
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
         }
 
         // release all actors
+        // skip if physics world was already shut down (scene is null)
         for (auto* body : m_actors)
         {
-            if (body)
+            if (body && PhysicsWorld::GetScene())
             {
                 PxRigidActor* actor = static_cast<PxRigidActor*>(body);
                 PhysicsWorld::RemoveActor(actor);
@@ -212,7 +214,8 @@ namespace spartan
         m_actors_active.clear();
 
         // release material (shared by both controller and regular bodies)
-        if (m_material)
+        // skip if physics world was already shut down
+        if (m_material && PhysicsWorld::GetPhysics())
         {
             static_cast<PxMaterial*>(m_material)->release();
             m_material = nullptr;

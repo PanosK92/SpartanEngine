@@ -246,8 +246,146 @@ namespace spartan
                 position_previous        = sound_position;
             }
         }
-       
-        FeedAudioChunk();
+
+        // feed audio based on mode
+        if (m_synthesis_mode)
+            FeedSynthesizedChunk();
+        else
+            FeedAudioChunk();
+    }
+
+    void AudioSource::SetSynthesisMode(bool enabled, SynthesisCallback callback)
+    {
+        // stop any current playback when changing modes
+        if (m_is_playing && enabled != m_synthesis_mode)
+        {
+            if (m_synthesis_mode)
+                StopSynthesis();
+            else
+                StopClip();
+        }
+
+        m_synthesis_mode     = enabled;
+        m_synthesis_callback = callback;
+    }
+
+    void AudioSource::StartSynthesis()
+    {
+        if (!m_synthesis_mode || !m_synthesis_callback)
+        {
+            SP_LOG_ERROR("synthesis mode not enabled or no callback set");
+            return;
+        }
+
+        // create stream for synthesis: stereo float32 at 48khz
+        SDL_AudioSpec src_spec = {};
+        src_spec.freq          = 48000;
+        src_spec.format        = SDL_AUDIO_F32;
+        src_spec.channels      = 2;
+        m_stream = SDL_CreateAudioStream(&src_spec, &audio_device::spec);
+        if (!m_stream)
+        {
+            SP_LOG_ERROR("%s", SDL_GetError());
+            return;
+        }
+
+        CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
+
+        // initialize reverb buffers
+        m_reverb_buffer_l.assign(reverb_buffer_size, 0.0f);
+        m_reverb_buffer_r.assign(reverb_buffer_size, 0.0f);
+        m_reverb_write_pos = 0;
+
+        // start playing
+        CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
+        m_is_playing = true;
+    }
+
+    void AudioSource::StopSynthesis()
+    {
+        if (!m_is_playing)
+            return;
+
+        if (m_stream)
+        {
+            SDL_ClearAudioStream(m_stream);
+            SDL_DestroyAudioStream(m_stream);
+            m_stream = nullptr;
+        }
+        m_is_playing = false;
+    }
+
+    void AudioSource::FeedSynthesizedChunk()
+    {
+        if (!m_stream || !m_is_playing || !m_synthesis_callback)
+            return;
+
+        int queued               = SDL_GetAudioStreamQueued(m_stream);
+        const int low_water_mark = 16384;
+        if (queued >= low_water_mark)
+            return;
+
+        const uint32_t num_samples = 2048;
+        m_stereo_chunk.resize(num_samples * 2);
+
+        // call the synthesis callback to generate samples
+        m_synthesis_callback(m_stereo_chunk.data(), num_samples);
+
+        // apply volume and panning
+        float gain         = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
+        float left_factor  = sqrt(0.5f * (1.0f - m_pan));
+        float right_factor = sqrt(0.5f * (1.0f + m_pan));
+        float left_gain    = gain * left_factor;
+        float right_gain   = gain * right_factor;
+
+        for (uint32_t i = 0; i < num_samples; ++i)
+        {
+            m_stereo_chunk[2 * i]     *= left_gain;
+            m_stereo_chunk[2 * i + 1] *= right_gain;
+        }
+
+        // apply reverb effect if enabled
+        if (m_reverb_enabled && !m_reverb_buffer_l.empty())
+        {
+            const uint32_t base_delays[4] = { 1087, 1283, 1511, 1777 };
+            const float room_scale        = 0.3f + m_reverb_room_size * 0.7f;
+            uint32_t delays[4];
+            for (int d = 0; d < 4; ++d)
+                delays[d] = static_cast<uint32_t>(base_delays[d] * room_scale);
+
+            const float feedback = m_reverb_decay * 0.7f;
+            const float wet      = m_reverb_wet;
+            const float dry      = 1.0f - wet * 0.5f;
+
+            for (uint32_t i = 0; i < num_samples; ++i)
+            {
+                float dry_l = m_stereo_chunk[2 * i];
+                float dry_r = m_stereo_chunk[2 * i + 1];
+
+                float reverb_l = 0.0f;
+                float reverb_r = 0.0f;
+                for (int d = 0; d < 4; ++d)
+                {
+                    uint32_t read_pos_l = (m_reverb_write_pos + reverb_buffer_size - delays[d]) % reverb_buffer_size;
+                    uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 23) % reverb_buffer_size;
+                    reverb_l += m_reverb_buffer_l[read_pos_l] * 0.25f;
+                    reverb_r += m_reverb_buffer_r[read_pos_r] * 0.25f;
+                }
+
+                m_reverb_buffer_l[m_reverb_write_pos] = dry_l + reverb_l * feedback;
+                m_reverb_buffer_r[m_reverb_write_pos] = dry_r + reverb_r * feedback;
+
+                m_stereo_chunk[2 * i]     = dry_l * dry + reverb_l * wet;
+                m_stereo_chunk[2 * i + 1] = dry_r * dry + reverb_r * wet;
+
+                m_reverb_write_pos = (m_reverb_write_pos + 1) % reverb_buffer_size;
+            }
+        }
+
+        if (!SDL_PutAudioStreamData(m_stream, m_stereo_chunk.data(), static_cast<int>(m_stereo_chunk.size() * sizeof(float))))
+        {
+            SP_LOG_ERROR("%s", SDL_GetError());
+        }
     }
 
     void AudioSource::Save(pugi::xml_node& node)

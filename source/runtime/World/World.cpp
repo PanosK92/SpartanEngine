@@ -268,7 +268,7 @@ namespace spartan
     {
         Engine::SetFlag(EngineMode::Playing, false); // stop simulation
         Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
-        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
+        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)n
 
         // clear entities
         camera = nullptr;
@@ -687,23 +687,27 @@ namespace spartan
                     return;
                 }
 
-                // count root entities for progress tracking
-                uint32_t root_entity_count = 0;
+                // collect all root entity nodes
+                vector<pugi::xml_node> entity_nodes;
                 for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
                 {
-                    ++root_entity_count;
+                    entity_nodes.push_back(entity_node);
                 }
 
                 // progress tracking
-                ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading entities...");
+                uint32_t entity_count = static_cast<uint32_t>(entity_nodes.size());
+                ProgressTracker::GetProgress(ProgressType::World).Start(entity_count, "Loading entities...");
 
-                // load root entities (they will load their descendants recursively)
-                for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
+                // load root entities in parallel
+                ThreadPool::ParallelLoop([&entity_nodes](uint32_t start, uint32_t end)
                 {
-                    Entity* entity = World::CreateEntity();
-                    entity->Load(entity_node);
-                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                }
+                    for (uint32_t i = start; i < end; i++)
+                    {
+                        Entity* entity = World::CreateEntity();
+                        entity->Load(entity_nodes[i]);
+                        ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                    }
+                }, entity_count);
             }
 
             // report time
@@ -770,6 +774,58 @@ namespace spartan
         }
 
         resolve = true;
+    }
+
+    void World::RemoveEntityImmediate(Entity* entity_to_remove)
+    {
+        SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
+
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        // keep track of the local camera pointer so we don't have a dangling pointer
+        if (Camera* camera_ = entity_to_remove->GetComponent<Camera>())
+        {
+            camera = nullptr;
+        }
+
+        // get the entity and all of its descendants
+        vector<Entity*> entities_to_remove;
+        entities_to_remove.push_back(entity_to_remove);
+        entity_to_remove->GetDescendants(&entities_to_remove);
+
+        // if there was a parent, update it
+        if (Entity* parent = entity_to_remove->GetParent())
+        {
+            parent->AcquireChildren();
+        }
+
+        // remove and delete immediately
+        for (Entity* entity : entities_to_remove)
+        {
+            uint64_t id = entity->GetObjectId();
+
+            // remove from entities vector
+            auto it = find(entities.begin(), entities.end(), entity);
+            if (it != entities.end())
+            {
+                // clean up change tracking
+                entity_states.erase(id);
+                if (Material* mat = entity->GetComponent<Renderable>() ? entity->GetComponent<Renderable>()->GetMaterial() : nullptr)
+                {
+                    material_state_hashes.erase(mat->GetObjectId());
+                }
+                entities.erase(it);
+            }
+
+            // also remove from pending_add if it was just added
+            auto pending_it = find(pending_add.begin(), pending_add.end(), entity);
+            if (pending_it != pending_add.end())
+            {
+                pending_add.erase(pending_it);
+            }
+
+            delete entity;
+        }
     }
 
     void World::GetRootEntities(vector<Entity*>& entities_out)

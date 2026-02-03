@@ -704,7 +704,31 @@ void WorldViewer::PopupContextMenu() const
 
     if (ImGui::MenuItem("Paste") && entity_copied)
     {
-        entity_copied->Clone();
+        spartan::Entity* cloned = entity_copied->Clone();
+        if (cloned)
+        {
+            cloned->SetParent(entity_copied->GetParent());
+
+            // find next available copy number
+            const std::string& base_name = entity_copied->GetObjectName();
+            uint32_t copy_number = 1;
+            bool found = true;
+            while (found)
+            {
+                found = false;
+                std::string test_name = base_name + "_" + std::to_string(copy_number);
+                for (spartan::Entity* entity : spartan::World::GetEntities())
+                {
+                    if (entity->GetObjectName() == test_name)
+                    {
+                        found = true;
+                        copy_number++;
+                        break;
+                    }
+                }
+            }
+            cloned->SetObjectName(base_name + "_" + std::to_string(copy_number));
+        }
     }
 
     if (ImGui::MenuItem("Rename") && on_entity && !multiple_selected)
@@ -922,6 +946,51 @@ void WorldViewer::HandleKeyShortcuts()
         else
         {
             spartan::CommandStack::Undo();
+        }
+    }
+
+    // Copy: Ctrl + C
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::C))
+    {
+        if (spartan::Camera* camera = spartan::World::GetCamera())
+        {
+            if (spartan::Entity* selected_entity = camera->GetSelectedEntity())
+            {
+                entity_copied = selected_entity;
+            }
+        }
+    }
+
+    // Paste: Ctrl + V
+    if (spartan::Input::GetKey(spartan::KeyCode::Ctrl_Left) && spartan::Input::GetKeyDown(spartan::KeyCode::V))
+    {
+        if (entity_copied)
+        {
+            spartan::Entity* cloned = entity_copied->Clone();
+            if (cloned)
+            {
+                cloned->SetParent(entity_copied->GetParent());
+
+                // find next available copy number
+                const std::string& base_name = entity_copied->GetObjectName();
+                uint32_t copy_number = 1;
+                bool found = true;
+                while (found)
+                {
+                    found = false;
+                    std::string test_name = base_name + "_" + std::to_string(copy_number);
+                    for (spartan::Entity* entity : spartan::World::GetEntities())
+                    {
+                        if (entity->GetObjectName() == test_name)
+                        {
+                            found = true;
+                            copy_number++;
+                            break;
+                        }
+                    }
+                }
+                cloned->SetObjectName(base_name + "_" + std::to_string(copy_number));
+            }
         }
     }
 }

@@ -78,6 +78,26 @@ void FileDialog::SetOperation(const FileDialog_Operation operation)
     m_title     = OPERATION_NAME;
 }
 
+void FileDialog::SetCurrentPath(const string& path)
+{
+    // if the path is a file, get its parent directory
+    if (FileSystem::IsFile(path))
+    {
+        m_current_path = FileSystem::GetDirectoryFromFilePath(path);
+    }
+    else if (FileSystem::IsDirectory(path))
+    {
+        m_current_path = path;
+    }
+
+    if (!m_current_path.empty())
+    {
+        m_is_dirty = true;
+        m_history.push_back(m_current_path);
+        m_history_index = m_history.size() - 1;
+    }
+}
+
 bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nullptr*/, string* file_path /*= nullptr*/)
 {
     if (!(*is_visible))

@@ -78,6 +78,14 @@ namespace
         void ShowWorldSaveDialog()
         {
             file_dialog->SetOperation(FileDialog_Op_Save);
+
+            // navigate to the directory of the currently loaded world
+            const std::string& world_file_path = spartan::World::GetFilePath();
+            if (!world_file_path.empty())
+            {
+                file_dialog->SetCurrentPath(world_file_path);
+            }
+
             show_file_dialog = true;
         }
 
