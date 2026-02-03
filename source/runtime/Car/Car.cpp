@@ -42,7 +42,7 @@ namespace spartan
     std::vector<Car*> Car::s_cars;
 
     // engine sound toggle: false = audio recording, true = synthesis
-    static bool use_synthesized_engine_sound = false;
+    static bool use_synthesized_engine_sound = true;
 
     // external references from game state (defined in Game.cpp)
     extern Entity* default_camera;
@@ -1341,8 +1341,9 @@ namespace spartan
                 char speed_str[16];
                 snprintf(speed_str, sizeof(speed_str), "%.0f", speed_kmh);
                 ImVec2 speed_text_size = ImGui::CalcTextSize(speed_str);
+                ImVec2 kmh_label_size = ImGui::CalcTextSize("km/h");
                 draw_list->AddText(ImVec2(gauge_center.x - speed_text_size.x * 0.5f, gauge_center.y + 20), IM_COL32(255, 255, 255, 255), speed_str);
-                draw_list->AddText(ImVec2(gauge_center.x - 15, gauge_center.y + 34), IM_COL32(150, 150, 150, 255), "km/h");
+                draw_list->AddText(ImVec2(gauge_center.x - kmh_label_size.x * 0.5f, gauge_center.y + 34), IM_COL32(150, 150, 150, 255), "km/h");
             }
 
             // tachometer
@@ -1427,9 +1428,10 @@ namespace spartan
                 char rpm_str[16];
                 snprintf(rpm_str, sizeof(rpm_str), "%.0f", engine_rpm);
                 ImVec2 rpm_text_size = ImGui::CalcTextSize(rpm_str);
+                ImVec2 rpm_label_size = ImGui::CalcTextSize("RPM");
                 ImU32 rpm_text_color = (engine_rpm > redline) ? IM_COL32(255, 100, 100, 255) : IM_COL32(255, 255, 255, 255);
                 draw_list->AddText(ImVec2(gauge_center.x - rpm_text_size.x * 0.5f, gauge_center.y + 20), rpm_text_color, rpm_str);
-                draw_list->AddText(ImVec2(gauge_center.x - 10, gauge_center.y + 34), IM_COL32(150, 150, 150, 255), "RPM");
+                draw_list->AddText(ImVec2(gauge_center.x - rpm_label_size.x * 0.5f, gauge_center.y + 34), IM_COL32(150, 150, 150, 255), "RPM");
 
                 // gear indicator
                 const char* gear_str = physics->GetCurrentGearString();
@@ -1500,6 +1502,111 @@ namespace spartan
                 ImGui::Dummy(ImVec2(steer_width, steer_height));
                 ImGui::Text("%.0f%%", steer_val * 100.0f);
                 ImGui::EndGroup();
+
+                // turbo boost gauge (compact circular gauge when turbo is enabled)
+                if (physics->GetTurboEnabled())
+                {
+                    ImGui::SameLine(280);
+                    ImGui::BeginGroup();
+                    
+                    const float boost_radius   = 40.0f;
+                    const float max_boost      = 2.5f;  // max boost in bar
+                    float boost_val            = physics->GetBoostPressure();
+                    float boost_clamped        = std::min(boost_val, max_boost);
+                    
+                    // gauge uses a 270 degree sweep (from 135 to 405 degrees)
+                    const float boost_start_angle = pi * 0.75f;
+                    const float boost_end_angle   = pi * 2.25f;
+                    const float boost_angle_range = boost_end_angle - boost_start_angle;
+                    
+                    ImVec2 boost_gauge_pos = ImGui::GetCursorScreenPos();
+                    ImVec2 boost_center = ImVec2(boost_gauge_pos.x + boost_radius + 5, boost_gauge_pos.y + boost_radius + 5);
+                    
+                    // outer ring and background
+                    draw_list->AddCircle(boost_center, boost_radius + 2, IM_COL32(80, 80, 80, 255), 48, 2.0f);
+                    draw_list->AddCircleFilled(boost_center, boost_radius, IM_COL32(25, 25, 30, 255), 48);
+                    
+                    // colored arc segments (vacuum to boost)
+                    const int boost_arc_segments = 48;
+                    for (int i = 0; i < boost_arc_segments; i++)
+                    {
+                        float a1 = boost_start_angle + (boost_angle_range * i / boost_arc_segments);
+                        float a2 = boost_start_angle + (boost_angle_range * (i + 1) / boost_arc_segments);
+                        float boost_at_segment = (float)i / boost_arc_segments * max_boost;
+                        
+                        ImU32 arc_color;
+                        if (boost_at_segment < 0.8f)
+                            arc_color = IM_COL32(60, 60, 80, 255);  // low boost - dark blue/gray
+                        else if (boost_at_segment < 1.5f)
+                            arc_color = IM_COL32(40, 100, 120, 255);  // medium boost - cyan
+                        else if (boost_at_segment < 2.0f)
+                            arc_color = IM_COL32(40, 140, 80, 255);   // good boost - green
+                        else
+                            arc_color = IM_COL32(180, 60, 40, 255);   // high boost - red (danger zone)
+                        
+                        ImVec2 p1(boost_center.x + cosf(a1) * (boost_radius - 8), boost_center.y + sinf(a1) * (boost_radius - 8));
+                        ImVec2 p2(boost_center.x + cosf(a1) * (boost_radius - 2), boost_center.y + sinf(a1) * (boost_radius - 2));
+                        ImVec2 p3(boost_center.x + cosf(a2) * (boost_radius - 2), boost_center.y + sinf(a2) * (boost_radius - 2));
+                        ImVec2 p4(boost_center.x + cosf(a2) * (boost_radius - 8), boost_center.y + sinf(a2) * (boost_radius - 8));
+                        draw_list->AddQuadFilled(p1, p2, p3, p4, arc_color);
+                    }
+                    
+                    // tick marks (every 0.5 bar, major at 1.0 bar)
+                    for (int tick = 0; tick <= 25; tick += 5)  // 0 to 2.5 bar in 0.5 increments
+                    {
+                        float boost_tick = tick / 10.0f;
+                        float fraction = boost_tick / max_boost;
+                        float angle = boost_start_angle + fraction * boost_angle_range;
+                        bool is_major = (tick % 10 == 0);
+                        float inner_r = is_major ? boost_radius - 16 : boost_radius - 12;
+                        float outer_r = boost_radius - 2;
+                        
+                        ImVec2 inner_pt(boost_center.x + cosf(angle) * inner_r, boost_center.y + sinf(angle) * inner_r);
+                        ImVec2 outer_pt(boost_center.x + cosf(angle) * outer_r, boost_center.y + sinf(angle) * outer_r);
+                        draw_list->AddLine(inner_pt, outer_pt, is_major ? IM_COL32(255, 255, 255, 255) : IM_COL32(150, 150, 150, 255), is_major ? 1.5f : 1.0f);
+                        
+                        // labels for major ticks
+                        if (is_major && tick <= 20)
+                        {
+                            char num_str[8];
+                            snprintf(num_str, sizeof(num_str), "%d", tick / 10);
+                            float text_r = boost_radius - 24;
+                            ImVec2 text_pos(boost_center.x + cosf(angle) * text_r - 3, boost_center.y + sinf(angle) * text_r - 5);
+                            draw_list->AddText(text_pos, IM_COL32(200, 200, 200, 255), num_str);
+                        }
+                    }
+                    
+                    // needle
+                    float boost_needle_angle = boost_start_angle + (boost_clamped / max_boost) * boost_angle_range;
+                    float boost_needle_length = boost_radius - 16;
+                    
+                    // needle color changes with boost level
+                    ImU32 boost_needle_color = (boost_val > 2.0f) ? IM_COL32(255, 100, 100, 255) : IM_COL32(100, 200, 255, 255);
+                    
+                    ImVec2 boost_needle_tip(boost_center.x + cosf(boost_needle_angle) * boost_needle_length, boost_center.y + sinf(boost_needle_angle) * boost_needle_length);
+                    ImVec2 boost_needle_base_l(boost_center.x + cosf(boost_needle_angle + 1.57f) * 2, boost_center.y + sinf(boost_needle_angle + 1.57f) * 2);
+                    ImVec2 boost_needle_base_r(boost_center.x + cosf(boost_needle_angle - 1.57f) * 2, boost_center.y + sinf(boost_needle_angle - 1.57f) * 2);
+                    ImVec2 boost_needle_back(boost_center.x + cosf(boost_needle_angle + pi) * 8, boost_center.y + sinf(boost_needle_angle + pi) * 8);
+                    
+                    draw_list->AddTriangleFilled(boost_needle_tip, boost_needle_base_l, boost_needle_base_r, boost_needle_color);
+                    draw_list->AddTriangleFilled(boost_needle_base_l, boost_needle_base_r, boost_needle_back, IM_COL32(60, 60, 65, 255));
+                    
+                    // center cap
+                    draw_list->AddCircleFilled(boost_center, 6, IM_COL32(60, 60, 65, 255), 16);
+                    draw_list->AddCircle(boost_center, 6, IM_COL32(100, 100, 100, 255), 16, 1.5f);
+                    
+                    // digital readout and label
+                    char boost_str[16];
+                    snprintf(boost_str, sizeof(boost_str), "%.1f", boost_val);
+                    ImVec2 boost_text_size = ImGui::CalcTextSize(boost_str);
+                    ImVec2 bar_label_size = ImGui::CalcTextSize("bar");
+                    ImU32 boost_text_color = (boost_val > 2.0f) ? IM_COL32(255, 100, 100, 255) : IM_COL32(100, 200, 255, 255);
+                    draw_list->AddText(ImVec2(boost_center.x - boost_text_size.x * 0.5f, boost_center.y + 10), boost_text_color, boost_str);
+                    draw_list->AddText(ImVec2(boost_center.x - bar_label_size.x * 0.5f, boost_center.y + 22), IM_COL32(150, 150, 150, 255), "bar");
+                    
+                    ImGui::Dummy(ImVec2(boost_radius * 2 + 10, boost_radius * 2 + 20));
+                    ImGui::EndGroup();
+                }
             }
 
             ImGui::Separator();

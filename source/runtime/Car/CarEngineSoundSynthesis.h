@@ -29,288 +29,362 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace engine_sound
 {
-    // synthesis parameters - visceral v12 with bite
+    constexpr float PI = 3.14159265358979f;
+    constexpr float TWO_PI = 6.28318530717959f;
+
+    // v12 engine parameters
     namespace tuning
     {
-        constexpr int   cylinder_count       = 12;
-        constexpr int   sample_rate          = 48000;
-        constexpr float idle_rpm             = 1000.0f;
-        constexpr float redline_rpm          = 9250.0f;
-        constexpr float max_rpm              = 9500.0f;
+        constexpr int   cylinder_count    = 12;
+        constexpr int   sample_rate       = 48000;
+        constexpr float idle_rpm          = 1000.0f;
+        constexpr float redline_rpm       = 9250.0f;
+        constexpr float max_rpm           = 9500.0f;
 
-        // frequency range - maps rpm to fundamental frequency
-        constexpr float idle_base_freq       = 40.0f;   // idle rumble
-        constexpr float redline_base_freq    = 220.0f;  // redline scream
+        // combustion envelope (fraction of cycle)
+        constexpr float combustion_attack  = 0.08f;
+        constexpr float combustion_hold    = 0.12f;
+        constexpr float combustion_decay   = 0.35f;
 
-        // harmonic gains - more upper harmonics for presence
-        constexpr float harmonic_1_gain      = 1.0f;    // fundamental
-        constexpr float harmonic_2_gain      = 0.8f;    // octave
-        constexpr float harmonic_3_gain      = 0.55f;   // character
-        constexpr float harmonic_4_gain      = 0.4f;    // bite
-        constexpr float harmonic_5_gain      = 0.25f;   // presence
-        constexpr float harmonic_6_gain      = 0.15f;   // air
+        // exhaust resonance peaks (hz), shift with rpm
+        constexpr float exhaust_res_1_idle = 120.0f;
+        constexpr float exhaust_res_1_high = 280.0f;
+        constexpr float exhaust_res_2_idle = 350.0f;
+        constexpr float exhaust_res_2_high = 800.0f;
+        constexpr float exhaust_res_3_idle = 1200.0f;
+        constexpr float exhaust_res_3_high = 2800.0f;
 
-        // waveform character - how much sawtooth vs sine (0 = pure sine, 1 = pure saw)
-        constexpr float saw_amount_idle      = 0.15f;   // slight grit at idle
-        constexpr float saw_amount_redline   = 0.4f;    // aggressive at high rpm
+        // layer mix levels
+        constexpr float combustion_level   = 0.55f;
+        constexpr float exhaust_level      = 0.35f;
+        constexpr float mechanical_level   = 0.12f;
+        constexpr float induction_level    = 0.05f;
 
-        // exhaust crackle and pop
-        constexpr float exhaust_noise        = 0.08f;   // broadband exhaust texture
-        constexpr float crackle_amount       = 0.12f;   // pops on decel
+        // overrun crackle
+        constexpr float crackle_threshold  = 0.15f;
+        constexpr float crackle_intensity  = 0.4f;
+        constexpr float throttle_response  = 12.0f;
 
-        // volume
-        constexpr float idle_volume          = 0.5f;
-        constexpr float redline_volume       = 1.0f;
-        constexpr float throttle_response    = 10.0f;
+        // turbocharger
+        constexpr float turbo_spool_up     = 2.5f;
+        constexpr float turbo_spool_down   = 1.8f;
+        constexpr float turbo_min_rpm      = 2500.0f;
+        constexpr float turbo_full_rpm     = 6000.0f;
+
+        // compressor whine (hz)
+        constexpr float turbo_whine_min    = 4000.0f;
+        constexpr float turbo_whine_max    = 14000.0f;
+
+        // flutter/surge
+        constexpr float flutter_freq       = 22.0f;
+        constexpr float flutter_decay      = 3.0f;
+
+        // wastegate
+        constexpr float wastegate_freq     = 800.0f;
+        constexpr float wastegate_decay    = 3.0f;
+
+        // turbo mix levels
+        constexpr float turbo_whine_level   = 0.06f;
+        constexpr float turbo_rumble_level  = 0.03f;
+        constexpr float turbo_flutter_level = 0.25f;
+        constexpr float wastegate_level     = 0.15f;
     }
 
-    // debug data for visualization
     struct debug_data
     {
-        // current state
-        float rpm             = 0.0f;
-        float throttle        = 0.0f;
-        float load            = 0.0f;
-        float boost           = 0.0f;
-        float firing_freq     = 0.0f;
+        float rpm              = 0.0f;
+        float throttle         = 0.0f;
+        float load             = 0.0f;
+        float boost            = 0.0f;
+        float firing_freq      = 0.0f;
 
-        // component levels (rms over last chunk)
         float combustion_level = 0.0f;
         float exhaust_level    = 0.0f;
         float induction_level  = 0.0f;
         float mechanical_level = 0.0f;
         float turbo_level      = 0.0f;
         float output_level     = 0.0f;
-
-        // peak values
         float output_peak      = 0.0f;
 
-        // waveform buffer for visualization
         static constexpr int waveform_size = 512;
         float waveform[waveform_size]      = {};
         int   waveform_write_pos           = 0;
 
-        // call counter
-        uint64_t generate_calls = 0;
+        uint64_t generate_calls    = 0;
         uint64_t samples_generated = 0;
-
-        bool initialized = false;
+        bool initialized           = false;
     };
 
-    // biquad filter using direct form 1 for resonance shaping
-    struct biquad_filter
+    // state variable filter
+    struct svf_filter
     {
-        float b0 = 1, b1 = 0, b2 = 0;
-        float a1 = 0, a2 = 0;
-        // input history
-        float x1 = 0, x2 = 0;
-        // output history
-        float y1 = 0, y2 = 0;
+        float ic1eq = 0.0f;
+        float ic2eq = 0.0f;
+        float g     = 0.0f;
+        float k     = 0.0f;
+        float a1    = 0.0f;
+        float a2    = 0.0f;
+        float a3    = 0.0f;
 
-        void set_bandpass(float freq, float q, float sample_rate)
+        void set_params(float freq, float q, float sample_rate)
         {
-            // clamp frequency to valid range
             freq = std::clamp(freq, 20.0f, sample_rate * 0.45f);
-            q = std::max(q, 0.1f);
+            q = std::max(q, 0.5f);
 
-            float omega = 2.0f * 3.14159265f * freq / sample_rate;
-            float sin_omega = sinf(omega);
-            float cos_omega = cosf(omega);
-            float alpha = sin_omega / (2.0f * q);
-
-            float a0 = 1.0f + alpha;
-            b0 = (alpha) / a0;
-            b1 = 0.0f;
-            b2 = (-alpha) / a0;
-            a1 = (-2.0f * cos_omega) / a0;
-            a2 = (1.0f - alpha) / a0;
+            g = tanf(PI * freq / sample_rate);
+            k = 1.0f / q;
+            a1 = 1.0f / (1.0f + g * (g + k));
+            a2 = g * a1;
+            a3 = g * a2;
         }
 
-        void set_lowpass(float freq, float q, float sample_rate)
+        void process(float input, float& lp, float& bp, float& hp)
         {
-            freq = std::clamp(freq, 20.0f, sample_rate * 0.45f);
-            q = std::max(q, 0.1f);
+            float v3 = input - ic2eq;
+            float v1 = a1 * ic1eq + a2 * v3;
+            float v2 = ic2eq + a2 * ic1eq + a3 * v3;
 
-            float omega = 2.0f * 3.14159265f * freq / sample_rate;
-            float sin_omega = sinf(omega);
-            float cos_omega = cosf(omega);
-            float alpha = sin_omega / (2.0f * q);
+            ic1eq = 2.0f * v1 - ic1eq;
+            ic2eq = 2.0f * v2 - ic2eq;
 
-            float a0 = 1.0f + alpha;
-            b0 = ((1.0f - cos_omega) / 2.0f) / a0;
-            b1 = (1.0f - cos_omega) / a0;
-            b2 = ((1.0f - cos_omega) / 2.0f) / a0;
-            a1 = (-2.0f * cos_omega) / a0;
-            a2 = (1.0f - alpha) / a0;
+            lp = v2;
+            bp = v1;
+            hp = input - k * v1 - v2;
+
+            if (fabsf(ic1eq) < 1e-15f) ic1eq = 0.0f;
+            if (fabsf(ic2eq) < 1e-15f) ic2eq = 0.0f;
         }
 
-        void set_highpass(float freq, float q, float sample_rate)
+        float lowpass(float input)
         {
-            freq = std::clamp(freq, 20.0f, sample_rate * 0.45f);
-            q = std::max(q, 0.1f);
+            float lp, bp, hp;
+            process(input, lp, bp, hp);
+            return lp;
+        }
 
-            float omega = 2.0f * 3.14159265f * freq / sample_rate;
-            float sin_omega = sinf(omega);
-            float cos_omega = cosf(omega);
-            float alpha = sin_omega / (2.0f * q);
+        float bandpass(float input)
+        {
+            float lp, bp, hp;
+            process(input, lp, bp, hp);
+            return bp;
+        }
 
-            float a0 = 1.0f + alpha;
-            b0 = ((1.0f + cos_omega) / 2.0f) / a0;
-            b1 = -(1.0f + cos_omega) / a0;
-            b2 = ((1.0f + cos_omega) / 2.0f) / a0;
-            a1 = (-2.0f * cos_omega) / a0;
-            a2 = (1.0f - alpha) / a0;
+        float highpass(float input)
+        {
+            float lp, bp, hp;
+            process(input, lp, bp, hp);
+            return hp;
+        }
+
+        void reset()
+        {
+            ic1eq = ic2eq = 0.0f;
+        }
+    };
+
+    // one-pole lowpass filter
+    struct one_pole
+    {
+        float z1 = 0.0f;
+        float a0 = 0.0f;
+        float b1 = 0.0f;
+
+        void set_cutoff(float freq, float sample_rate)
+        {
+            b1 = expf(-TWO_PI * freq / sample_rate);
+            a0 = 1.0f - b1;
         }
 
         float process(float input)
         {
-            // direct form 1: y[n] = b0*x[n] + b1*x[n-1] + b2*x[n-2] - a1*y[n-1] - a2*y[n-2]
-            float output = b0 * input + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+            z1 = input * a0 + z1 * b1;
+            return z1;
+        }
 
-            // update history
-            x2 = x1;
+        void reset() { z1 = 0.0f; }
+    };
+
+    // dc blocker
+    struct dc_blocker
+    {
+        float x1 = 0.0f;
+        float y1 = 0.0f;
+        float r  = 0.995f;
+
+        float process(float input)
+        {
+            float y = input - x1 + r * y1;
             x1 = input;
-            y2 = y1;
-            y1 = output;
-
-            // prevent denormals and clamp to prevent runaway
-            if (fabsf(y1) < 1e-15f) y1 = 0.0f;
-            if (fabsf(y2) < 1e-15f) y2 = 0.0f;
-            if (fabsf(y1) > 10.0f) y1 = (y1 > 0) ? 10.0f : -10.0f;
-            if (fabsf(y2) > 10.0f) y2 = (y2 > 0) ? 10.0f : -10.0f;
-
-            return output;
+            y1 = y;
+            return y;
         }
 
-        void reset()
-        {
-            x1 = x2 = y1 = y2 = 0.0f;
-        }
+        void reset() { x1 = y1 = 0.0f; }
     };
 
-    // oscillator with phase accumulator
-    struct oscillator
+    // noise generator
+    struct noise_gen
     {
-        float phase      = 0.0f;
-        float phase_inc  = 0.0f;
-        float frequency  = 0.0f;
-
-        void set_frequency(float freq, float sample_rate)
-        {
-            frequency = freq;
-            phase_inc = freq / sample_rate;
-        }
-
-        // sine wave
-        float sine()
-        {
-            float value = sinf(phase * 2.0f * 3.14159265f);
-            advance();
-            return value;
-        }
-
-        // pulse wave with variable duty cycle
-        float pulse(float duty = 0.5f)
-        {
-            float value = (phase < duty) ? 1.0f : -1.0f;
-            advance();
-            return value;
-        }
-
-        // sawtooth wave
-        float saw()
-        {
-            float value = 2.0f * phase - 1.0f;
-            advance();
-            return value;
-        }
-
-        // combustion pulse - shaped impulse for engine firing
-        float combustion_pulse(float attack, float decay)
-        {
-            float value;
-            if (phase < attack)
-            {
-                // attack phase - quick rise
-                value = phase / attack;
-            }
-            else if (phase < attack + decay)
-            {
-                // decay phase - exponential falloff
-                float t = (phase - attack) / decay;
-                value = expf(-3.0f * t);
-            }
-            else
-            {
-                value = 0.0f;
-            }
-            advance();
-            return value;
-        }
-
-        void advance()
-        {
-            phase += phase_inc;
-            while (phase >= 1.0f) phase -= 1.0f;
-        }
-
-        void reset()
-        {
-            phase = 0.0f;
-        }
-    };
-
-    // simple pseudo-random noise generator
-    struct noise_generator
-    {
-        uint32_t seed = 12345;
+        uint32_t state = 12345;
 
         float white()
         {
-            // xorshift32
-            seed ^= seed << 13;
-            seed ^= seed >> 17;
-            seed ^= seed << 5;
-            return (static_cast<float>(seed) / static_cast<float>(0xFFFFFFFF)) * 2.0f - 1.0f;
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            return (float)state / (float)0xFFFFFFFF * 2.0f - 1.0f;
         }
 
-        // pink noise approximation using filtered white noise
-        float z0 = 0, z1 = 0, z2 = 0;
+        // pink noise (paul kellet approximation)
+        float b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
         float pink()
         {
             float w = white();
-            z0 = 0.99886f * z0 + w * 0.0555179f;
-            z1 = 0.99332f * z1 + w * 0.0750759f;
-            z2 = 0.96900f * z2 + w * 0.1538520f;
-            return (z0 + z1 + z2 + w * 0.5362f) * 0.2f;
+            b0 = 0.99886f * b0 + w * 0.0555179f;
+            b1 = 0.99332f * b1 + w * 0.0750759f;
+            b2 = 0.96900f * b2 + w * 0.1538520f;
+            b3 = 0.86650f * b3 + w * 0.3104856f;
+            b4 = 0.55000f * b4 + w * 0.5329522f;
+            b5 = -0.7616f * b5 - w * 0.0168980f;
+            float out = b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362f;
+            b6 = w * 0.115926f;
+            return out * 0.11f;
         }
     };
 
-    // main synthesis engine
+    // cylinder combustion model
+    struct cylinder
+    {
+        float phase         = 0.0f;
+        float phase_inc     = 0.0f;
+        float firing_offset = 0.0f;
+        float pressure      = 0.0f;
+        float prev_pressure = 0.0f;
+        bool  is_firing     = false;
+        float fire_phase    = 0.0f;
+        float timing_jitter = 0.0f;
+        float intensity_var = 1.0f;
+
+        void init(int index, int total_cylinders)
+        {
+            // v12 firing order (60-degree intervals)
+            static const int firing_order_12[] = {0, 6, 4, 10, 2, 8, 5, 11, 1, 7, 3, 9};
+            int order_pos = firing_order_12[index % 12];
+            firing_offset = (float)order_pos / (float)total_cylinders;
+
+            // per-cylinder variation
+            timing_jitter = ((index * 7 + 3) % 17) / 170.0f - 0.05f;
+            intensity_var = 0.95f + ((index * 13 + 5) % 11) / 110.0f;
+        }
+
+        void set_rpm(float rpm, float sample_rate)
+        {
+            float cycles_per_second = rpm / 60.0f / 2.0f;
+            phase_inc = cycles_per_second / sample_rate;
+        }
+
+        float tick(float load, float rpm_norm)
+        {
+            phase += phase_inc;
+            if (phase >= 1.0f)
+            {
+                phase -= 1.0f;
+                is_firing = false;
+            }
+
+            float effective_phase = fmodf(phase + firing_offset + timing_jitter * (1.0f - load * 0.5f), 1.0f);
+            float window_end = tuning::combustion_attack + tuning::combustion_hold + tuning::combustion_decay;
+
+            if (effective_phase < window_end)
+            {
+                is_firing = true;
+                fire_phase = effective_phase / window_end;
+
+                // pressure envelope
+                float env = 0.0f;
+                float t = effective_phase;
+
+                if (t < tuning::combustion_attack)
+                {
+                    float attack_t = t / tuning::combustion_attack;
+                    env = attack_t * attack_t * (3.0f - 2.0f * attack_t);
+                }
+                else if (t < tuning::combustion_attack + tuning::combustion_hold)
+                {
+                    float hold_t = (t - tuning::combustion_attack) / tuning::combustion_hold;
+                    env = 1.0f - hold_t * 0.1f;
+                }
+                else
+                {
+                    float decay_t = (t - tuning::combustion_attack - tuning::combustion_hold) / tuning::combustion_decay;
+                    env = expf(-4.0f * decay_t) * (1.0f - decay_t * 0.2f);
+                }
+
+                float load_factor = 0.3f + load * 0.7f;
+                float rpm_sharpness = 1.0f + rpm_norm * 0.5f;
+                env = powf(env, 1.0f / rpm_sharpness);
+
+                prev_pressure = pressure;
+                pressure = env * load_factor * intensity_var;
+            }
+            else
+            {
+                is_firing = false;
+                prev_pressure = pressure;
+                pressure *= 0.95f;
+            }
+
+            return pressure;
+        }
+
+        void reset()
+        {
+            phase = firing_offset;
+            pressure = prev_pressure = 0.0f;
+            is_firing = false;
+            fire_phase = 0.0f;
+        }
+    };
+
     class synthesizer
     {
     public:
         void initialize(int sample_rate = tuning::sample_rate)
         {
-            m_sample_rate = static_cast<float>(sample_rate);
+            m_sample_rate = (float)sample_rate;
 
-            // initialize oscillators for each cylinder pair (v12 = 6 firing events per revolution)
-            m_firing_oscillators.resize(tuning::cylinder_count / 2);
-            for (auto& osc : m_firing_oscillators)
-                osc.reset();
+            m_cylinders.resize(tuning::cylinder_count);
+            for (int i = 0; i < tuning::cylinder_count; i++)
+                m_cylinders[i].init(i, tuning::cylinder_count);
 
-            // harmonic oscillators
-            m_harmonic_oscillators.resize(8); // 4 main + 4 for detuning
-            for (auto& osc : m_harmonic_oscillators)
-                osc.reset();
+            // exhaust filters
+            m_exhaust_res1.set_params(200.0f, 2.0f, m_sample_rate);
+            m_exhaust_res2.set_params(500.0f, 1.5f, m_sample_rate);
+            m_exhaust_res3.set_params(1500.0f, 1.2f, m_sample_rate);
+            m_exhaust_body.set_params(300.0f, 0.7f, m_sample_rate);
 
-            // exhaust filter - let more through for presence
-            m_exhaust_filter_1.set_lowpass(800.0f, 0.6f, m_sample_rate);
-            m_exhaust_filter_2.set_bandpass(200.0f, 0.8f, m_sample_rate);  // low-mid body
-            m_exhaust_filter_3.set_bandpass(1200.0f, 1.0f, m_sample_rate); // presence/bark
+            // induction filters
+            m_induction_res.set_params(400.0f, 3.0f, m_sample_rate);
+            m_induction_body.set_params(150.0f, 0.8f, m_sample_rate);
 
-            // output - gentle rolloff, keep the bite
-            m_output_lowpass.set_lowpass(8000.0f, 0.707f, m_sample_rate);
+            // mechanical filters
+            m_mechanical_hp.set_params(2000.0f, 0.7f, m_sample_rate);
+            m_mechanical_lp.set_params(6000.0f, 0.7f, m_sample_rate);
+
+            // turbo filters
+            m_turbo_whine_bp.set_params(8000.0f, 6.0f, m_sample_rate);
+            m_turbo_rumble_lp.set_params(300.0f, 0.8f, m_sample_rate);
+            m_turbo_flutter_bp.set_params(100.0f, 2.0f, m_sample_rate);
+            m_wastegate_bp.set_params(tuning::wastegate_freq, 1.2f, m_sample_rate);
+
+            // output filters
+            m_output_hp.set_params(35.0f, 0.7f, m_sample_rate);
+            m_output_lp.set_params(12000.0f, 0.7f, m_sample_rate);
+
+            // parameter smoothing
+            m_rpm_smooth.set_cutoff(8.0f, m_sample_rate);
+            m_throttle_smooth.set_cutoff(15.0f, m_sample_rate);
+            m_load_smooth.set_cutoff(10.0f, m_sample_rate);
 
             m_initialized = true;
             m_debug.initialized = true;
@@ -323,7 +397,6 @@ namespace engine_sound
             m_target_load     = std::clamp(load, 0.0f, 1.0f);
             m_boost_pressure  = std::clamp(boost_pressure, 0.0f, 2.0f);
 
-            // update debug data
             m_debug.rpm      = m_target_rpm;
             m_debug.throttle = m_target_throttle;
             m_debug.load     = m_target_load;
@@ -337,142 +410,318 @@ namespace engine_sound
 
             if (!m_initialized)
             {
-                // fill with silence
-                int total_samples = stereo ? num_samples * 2 : num_samples;
-                for (int i = 0; i < total_samples; i++)
+                int total = stereo ? num_samples * 2 : num_samples;
+                for (int i = 0; i < total; i++)
                     output_buffer[i] = 0.0f;
                 return;
             }
 
-            float dt = 1.0f / m_sample_rate;
-
-            // accumulators for debug levels
-            float combustion_sum = 0.0f;
-            float exhaust_sum    = 0.0f;
-            float turbo_sum      = 0.0f;
-            float output_sum     = 0.0f;
-            float output_peak    = 0.0f;
+            float combustion_sum = 0.0f, exhaust_sum = 0.0f;
+            float induction_sum = 0.0f, mechanical_sum = 0.0f;
+            float turbo_sum = 0.0f, output_sum = 0.0f;
+            float output_peak = 0.0f;
 
             for (int i = 0; i < num_samples; i++)
             {
-                // smooth parameter transitions
-                float smooth_factor = 1.0f - expf(-tuning::throttle_response * dt);
-                m_current_rpm      += (m_target_rpm - m_current_rpm) * smooth_factor;
-                m_current_throttle += (m_target_throttle - m_current_throttle) * smooth_factor;
-                m_current_load     += (m_target_load - m_current_load) * smooth_factor;
+                float rpm      = m_rpm_smooth.process(m_target_rpm);
+                float throttle = m_throttle_smooth.process(m_target_throttle);
+                float load     = m_load_smooth.process(m_target_load);
 
-                // rpm normalized 0-1
-                float rpm_normalized = std::clamp((m_current_rpm - tuning::idle_rpm) / (tuning::redline_rpm - tuning::idle_rpm), 0.0f, 1.0f);
+                float rpm_norm = (rpm - tuning::idle_rpm) / (tuning::redline_rpm - tuning::idle_rpm);
+                rpm_norm = std::clamp(rpm_norm, 0.0f, 1.0f);
 
-                // fundamental frequency scales with rpm
-                float fundamental = tuning::idle_base_freq + rpm_normalized * (tuning::redline_base_freq - tuning::idle_base_freq);
-                m_debug.firing_freq = fundamental;
+                for (auto& cyl : m_cylinders)
+                    cyl.set_rpm(rpm, m_sample_rate);
 
-                // how much sawtooth vs sine - more aggressive at high rpm
-                float saw_mix = tuning::saw_amount_idle + rpm_normalized * (tuning::saw_amount_redline - tuning::saw_amount_idle);
-                saw_mix *= (0.7f + m_current_throttle * 0.3f); // more grit with throttle
+                // combustion
+                float combustion_raw = 0.0f;
+                float combustion_derivative = 0.0f;
+                int firing_count = 0;
 
-                // === engine tone: 6 harmonics with character ===
-                float combustion = 0.0f;
-                float gains[] = {
-                    tuning::harmonic_1_gain,
-                    tuning::harmonic_2_gain,
-                    tuning::harmonic_3_gain,
-                    tuning::harmonic_4_gain,
-                    tuning::harmonic_5_gain,
-                    tuning::harmonic_6_gain
-                };
-
-                for (int h = 0; h < 6; h++)
+                for (auto& cyl : m_cylinders)
                 {
-                    float freq = fundamental * (h + 1);
-                    m_harmonic_oscillators[h].set_frequency(freq, m_sample_rate);
-
-                    // get phase and compute both waveforms without double-advancing
-                    float p = m_harmonic_oscillators[h].phase;
-                    float sine_part = sinf(p * 2.0f * 3.14159265f);
-                    float saw_part  = 2.0f * p - 1.0f;
-                    m_harmonic_oscillators[h].advance();
-
-                    // mix sine and sawtooth for character
-                    float harmonic = sine_part * (1.0f - saw_mix) + saw_part * saw_mix;
-
-                    // higher harmonics get boosted at high rpm for that scream
-                    float rpm_boost = 1.0f;
-                    if (h >= 3)
-                        rpm_boost = 1.0f + rpm_normalized * m_current_throttle * 0.6f;
-
-                    combustion += harmonic * gains[h] * rpm_boost;
+                    float pulse = cyl.tick(load, rpm_norm);
+                    combustion_raw += pulse;
+                    combustion_derivative += (pulse - cyl.prev_pressure);
+                    if (cyl.is_firing) firing_count++;
                 }
 
-                // normalize (6 harmonics can sum high)
-                combustion *= 0.3f;
+                combustion_raw /= 3.0f;
+                combustion_derivative *= 2.0f;
 
-                // === exhaust character ===
-                float exhaust = 0.0f;
+                float combustion = combustion_raw;
 
-                // filtered noise for body
-                float noise_raw = m_noise.pink() * tuning::exhaust_noise;
-                exhaust += m_exhaust_filter_1.process(noise_raw) * 0.5f;  // low rumble
-                exhaust += m_exhaust_filter_2.process(noise_raw) * 0.3f;  // mid body
-                exhaust += m_exhaust_filter_3.process(noise_raw) * (0.2f + rpm_normalized * 0.3f); // bark at high rpm
+                // asymmetric saturation
+                float asym = combustion + 0.3f * combustion * combustion;
+                combustion = asym / (1.0f + fabsf(asym) * 0.5f);
+                combustion += combustion_derivative * (0.3f + rpm_norm * 0.3f);
 
-                // crackle and pop on deceleration (low throttle, high rpm)
-                if (m_current_throttle < 0.2f && rpm_normalized > 0.3f)
+                // high rpm harmonics
+                if (rpm_norm > 0.5f)
                 {
-                    float crackle_chance = tuning::crackle_amount * rpm_normalized * (1.0f - m_current_throttle * 5.0f);
-                    if (m_noise.white() > (1.0f - crackle_chance * 0.1f))
+                    float high_rpm_factor = (rpm_norm - 0.5f) * 2.0f;
+                    float edge = combustion * combustion * (combustion > 0 ? 1.0f : -1.0f);
+                    combustion += edge * high_rpm_factor * 0.2f;
+                }
+
+                // exhaust
+                float res1_freq = tuning::exhaust_res_1_idle + rpm_norm * (tuning::exhaust_res_1_high - tuning::exhaust_res_1_idle);
+                float res2_freq = tuning::exhaust_res_2_idle + rpm_norm * (tuning::exhaust_res_2_high - tuning::exhaust_res_2_idle);
+                float res3_freq = tuning::exhaust_res_3_idle + rpm_norm * (tuning::exhaust_res_3_high - tuning::exhaust_res_3_idle);
+
+                float q_mod = 1.5f + rpm_norm * 2.5f;
+                m_exhaust_res1.set_params(res1_freq, q_mod * 0.8f, m_sample_rate);
+                m_exhaust_res2.set_params(res2_freq, q_mod * 0.6f, m_sample_rate);
+                m_exhaust_res3.set_params(res3_freq, q_mod * 0.5f, m_sample_rate);
+
+                float exhaust_noise = m_noise.pink() * (0.15f + throttle * 0.1f);
+                float exhaust_input = combustion * 0.8f + exhaust_noise;
+
+                float exhaust = 0.0f;
+                exhaust += m_exhaust_res1.bandpass(exhaust_input) * 0.5f;
+                exhaust += m_exhaust_res2.bandpass(exhaust_input) * 0.35f;
+                exhaust += m_exhaust_res3.bandpass(exhaust_input) * (0.2f + rpm_norm * 0.3f);
+
+                float body_freq = 150.0f + rpm_norm * 200.0f;
+                m_exhaust_body.set_params(body_freq, 0.7f, m_sample_rate);
+                exhaust += m_exhaust_body.lowpass(exhaust_input) * 0.4f;
+                exhaust = tanhf(exhaust * 2.0f);
+
+                // overrun crackle
+                float crackle = 0.0f;
+                if (throttle < tuning::crackle_threshold && rpm_norm > 0.25f)
+                {
+                    float crackle_intensity = (1.0f - throttle / tuning::crackle_threshold) * rpm_norm;
+
+                    if (m_noise.white() > (0.998f - crackle_intensity * 0.015f))
                     {
-                        exhaust += m_noise.white() * crackle_chance * 2.0f;
+                        m_crackle_env = 1.0f;
+                        m_crackle_freq = 80.0f + m_noise.white() * 60.0f;
+                    }
+
+                    if (m_crackle_env > 0.01f)
+                    {
+                        float pop = m_noise.white() * m_crackle_env;
+                        m_crackle_filter.set_params(m_crackle_freq, 1.5f, m_sample_rate);
+                        crackle = m_crackle_filter.bandpass(pop) * tuning::crackle_intensity;
+                        m_crackle_env *= 0.95f;
                     }
                 }
 
-                exhaust *= (0.6f + m_current_throttle * 0.4f);
-
-                // === turbo whine ===
-                float turbo = 0.0f;
-                if (m_boost_pressure > 0.1f)
+                // induction
+                float induction = 0.0f;
+                if (throttle > 0.05f)
                 {
-                    float turbo_freq = 2000.0f + m_boost_pressure * 3000.0f;
-                    m_turbo_oscillator.set_frequency(turbo_freq, m_sample_rate);
-                    turbo = m_turbo_oscillator.sine() * m_boost_pressure * 0.06f;
+                    float intake_pulse = combustion_raw * combustion_raw;
+
+                    m_induction_body.set_params(60.0f + rpm_norm * 80.0f, 0.5f, m_sample_rate);
+                    float intake_body = m_induction_body.lowpass(intake_pulse) * throttle;
+
+                    float turb = m_noise.pink() * 0.1f * throttle * (0.3f + combustion_raw * 0.7f);
+                    m_induction_res.set_params(100.0f + rpm_norm * 150.0f, 0.6f, m_sample_rate);
+                    turb = m_induction_res.lowpass(turb);
+
+                    induction = intake_body * 0.7f + turb * 0.3f;
+                    induction *= throttle * 0.5f;
                 }
 
-                // === final mix ===
-                float output = combustion * 0.75f + exhaust * 0.2f + turbo;
+                // mechanical noise
+                float mechanical = 0.0f;
+                {
+                    float valve_tick = combustion_derivative * combustion_derivative * 4.0f;
 
-                // volume envelope
-                float volume = tuning::idle_volume + rpm_normalized * (tuning::redline_volume - tuning::idle_volume);
-                volume *= (0.6f + m_current_throttle * 0.4f);
-                output *= volume;
+                    float chain_rattle = m_noise.white() * (0.3f + valve_tick * 0.7f);
+                    m_mechanical_hp.set_params(800.0f + rpm_norm * 600.0f, 1.2f, m_sample_rate);
+                    chain_rattle = m_mechanical_hp.bandpass(chain_rattle);
 
-                // gentle lowpass - don't over-filter
-                output = m_output_lowpass.process(output);
+                    float gear_freq = 200.0f + rpm * 0.05f;
+                    m_mechanical_lp.set_params(gear_freq, 3.0f, m_sample_rate);
+                    float gear_whine = m_mechanical_lp.bandpass(m_noise.pink() * 0.3f);
 
-                // saturation for warmth and punch
-                output = tanhf(output * 2.5f) * 0.75f;
+                    mechanical = valve_tick * 0.4f + chain_rattle * 0.4f + gear_whine * 0.2f;
+                    mechanical *= (0.3f + rpm_norm * 0.7f);
+                    mechanical *= (0.9f + m_noise.white() * 0.1f);
+                }
 
-                // accumulate debug info
+                // turbo
+                float turbo = 0.0f;
+                {
+                    float dt = 1.0f / m_sample_rate;
+                    float raw_throttle = m_target_throttle;
+
+                    float rpm_factor = std::clamp((rpm - tuning::turbo_min_rpm) / (tuning::turbo_full_rpm - tuning::turbo_min_rpm), 0.0f, 1.0f);
+                    float demand = rpm_factor * throttle * (0.5f + load * 0.5f);
+                    m_turbo_target_spool = demand * m_boost_pressure;
+
+                    float prev_spool = m_turbo_spool;
+
+                    // spool dynamics
+                    float spool_diff = m_turbo_target_spool - m_turbo_spool;
+                    if (spool_diff > 0)
+                        m_turbo_spool += spool_diff * tuning::turbo_spool_up * dt;
+                    else
+                        m_turbo_spool += spool_diff * tuning::turbo_spool_down * dt;
+                    m_turbo_spool = std::clamp(m_turbo_spool, 0.0f, 1.0f);
+
+                    float spool_rate = (m_turbo_spool - prev_spool) * m_sample_rate;
+
+                    // flutter on throttle lift
+                    float throttle_delta = raw_throttle - m_prev_throttle;
+                    if (throttle_delta < -0.08f && m_turbo_spool > 0.25f)
+                    {
+                        float flutter_strength = m_turbo_spool * fabsf(throttle_delta) * 6.0f;
+                        m_turbo_flutter_env = std::max(m_turbo_flutter_env, std::min(flutter_strength, 1.0f));
+                    }
+
+                    // wastegate on boost drop
+                    float boost_delta = m_boost_pressure - m_prev_boost;
+                    if (boost_delta < -0.08f && m_turbo_spool > 0.3f)
+                        m_wastegate_env = std::max(m_wastegate_env, fabsf(boost_delta) * 2.5f);
+
+                    m_prev_throttle = raw_throttle;
+                    m_prev_boost = m_boost_pressure;
+
+                    // spool whoosh
+                    if (m_turbo_spool > 0.02f)
+                    {
+                        float turbo_noise = m_noise.white() * 0.7f + m_noise.pink() * 0.3f;
+
+                        float whoosh_freq = 300.0f + m_turbo_spool * m_turbo_spool * 2500.0f;
+                        float whoosh_q = 0.8f + m_turbo_spool * 1.5f;
+
+                        m_turbo_whine_bp.set_params(whoosh_freq, whoosh_q, m_sample_rate);
+                        float whoosh = m_turbo_whine_bp.bandpass(turbo_noise);
+
+                        float air_freq = 1500.0f + m_turbo_spool * 3000.0f;
+                        m_turbo_filter.set_params(air_freq, 1.0f, m_sample_rate);
+                        float air = m_turbo_filter.bandpass(turbo_noise) * 0.3f;
+
+                        float spool_vol = m_turbo_spool * m_turbo_spool;
+                        turbo += (whoosh * 0.7f + air * 0.3f) * spool_vol * tuning::turbo_whine_level * 3.0f;
+                    }
+
+                    // spindown whistle
+                    if (spool_rate < -0.1f && m_turbo_spool > 0.05f)
+                    {
+                        float whistle_freq = 2000.0f + m_turbo_spool * 6000.0f;
+
+                        m_turbo_phase += whistle_freq / m_sample_rate;
+                        if (m_turbo_phase > 1.0f) m_turbo_phase -= 1.0f;
+
+                        float whistle = sinf(m_turbo_phase * TWO_PI) * 0.6f;
+                        whistle += sinf(m_turbo_phase * TWO_PI * 2.0f) * 0.2f;
+
+                        float spindown_intensity = std::min(fabsf(spool_rate) * 2.0f, 1.0f);
+                        spindown_intensity *= m_turbo_spool;
+                        whistle *= (0.85f + m_noise.white() * 0.15f);
+
+                        turbo += whistle * spindown_intensity * tuning::turbo_whine_level * 1.5f;
+                    }
+
+                    // compressor flutter
+                    if (m_turbo_flutter_env > 0.01f)
+                    {
+                        float flutter_freq = tuning::flutter_freq * (0.7f + (1.0f - m_turbo_flutter_env) * 0.8f);
+                        m_turbo_flutter_phase += flutter_freq / m_sample_rate;
+                        if (m_turbo_flutter_phase > 1.0f) m_turbo_flutter_phase -= 1.0f;
+
+                        float fp = m_turbo_flutter_phase;
+
+                        float pulse = 0.0f;
+                        if (fp < 0.12f)
+                        {
+                            pulse = fp / 0.12f;
+                            pulse = pulse * pulse;
+                        }
+                        else if (fp < 0.4f)
+                        {
+                            float t = (fp - 0.12f) / 0.28f;
+                            pulse = (1.0f - t) * expf(-t * 3.0f);
+                        }
+
+                        float flutter_noise = m_noise.white() * pulse;
+                        m_turbo_flutter_bp.set_params(250.0f + m_turbo_flutter_env * 200.0f, 1.2f, m_sample_rate);
+                        float flutter = m_turbo_flutter_bp.bandpass(flutter_noise);
+
+                        float thump = pulse * sinf(fp * TWO_PI * 1.5f) * 0.4f;
+                        flutter = (flutter + thump) * m_turbo_flutter_env;
+                        m_turbo_flutter_env *= (1.0f - tuning::flutter_decay * dt);
+
+                        turbo += flutter * tuning::turbo_flutter_level;
+                    }
+
+                    // wastegate
+                    if (m_wastegate_env > 0.01f)
+                    {
+                        float wg_noise = m_noise.white();
+                        m_wastegate_bp.set_params(600.0f + m_wastegate_env * 600.0f, 0.8f, m_sample_rate);
+                        float wastegate = m_wastegate_bp.bandpass(wg_noise);
+
+                        float whoosh = m_noise.pink() * 0.5f;
+                        wastegate = (wastegate * 0.6f + whoosh * 0.4f) * m_wastegate_env;
+                        m_wastegate_env *= (1.0f - tuning::wastegate_decay * dt);
+
+                        turbo += wastegate * tuning::wastegate_level;
+                    }
+
+                    turbo = tanhf(turbo * 1.5f);
+                }
+
+                // final mix
+                float output = 0.0f;
+                output += combustion * tuning::combustion_level;
+                output += exhaust * tuning::exhaust_level;
+                output += crackle;
+                output += induction * tuning::induction_level;
+                output += mechanical * tuning::mechanical_level;
+                output += turbo;
+
+                // output processing
+                output = m_dc_blocker.process(output);
+                output = m_output_hp.highpass(output);
+
+                // saturation stage 1
+                output = tanhf(output * 1.5f);
+
+                // saturation stage 2
+                float drive = 1.5f + throttle * 1.0f + rpm_norm * 0.5f;
+                output = output * drive;
+                output = output / (1.0f + fabsf(output) * 0.3f);
+
+                // limiter
+                output = tanhf(output * 1.2f) * 0.85f;
+                output = m_output_lp.lowpass(output);
+
+                float master = 0.7f + throttle * 0.2f + rpm_norm * 0.1f;
+                output *= master;
+
+                // debug accumulators
                 combustion_sum += combustion * combustion;
-                exhaust_sum    += exhaust * exhaust;
-                turbo_sum      += turbo * turbo;
-                output_sum     += output * output;
+                exhaust_sum += exhaust * exhaust;
+                induction_sum += induction * induction;
+                mechanical_sum += mechanical * mechanical;
+                turbo_sum += turbo * turbo;
+                output_sum += output * output;
                 if (fabsf(output) > output_peak) output_peak = fabsf(output);
 
-                // store in waveform buffer (decimated for visualization)
                 if ((i % 4) == 0)
                 {
                     m_debug.waveform[m_debug.waveform_write_pos] = output;
                     m_debug.waveform_write_pos = (m_debug.waveform_write_pos + 1) % debug_data::waveform_size;
                 }
 
-                // output
+                // stereo output
                 if (stereo)
                 {
-                    // slight stereo variation for width
-                    float stereo_var = m_noise.white() * 0.02f;
-                    output_buffer[i * 2]     = output * (1.0f + stereo_var);
-                    output_buffer[i * 2 + 1] = output * (1.0f - stereo_var);
+                    float stereo_diff = m_noise.white() * 0.015f;
+                    float left_bias = 1.0f + stereo_diff;
+                    float right_bias = 1.0f - stereo_diff;
+
+                    left_bias += exhaust * 0.05f;
+                    right_bias -= exhaust * 0.03f;
+
+                    output_buffer[i * 2]     = output * left_bias;
+                    output_buffer[i * 2 + 1] = output * right_bias;
                 }
                 else
                 {
@@ -480,77 +729,107 @@ namespace engine_sound
                 }
             }
 
-            // compute rms levels for debug display
-            float inv_n = 1.0f / static_cast<float>(num_samples);
+            float inv_n = 1.0f / (float)num_samples;
             m_debug.combustion_level = sqrtf(combustion_sum * inv_n);
             m_debug.exhaust_level    = sqrtf(exhaust_sum * inv_n);
-            m_debug.induction_level  = 0.0f; // removed from synthesis
-            m_debug.mechanical_level = 0.0f; // removed from synthesis
+            m_debug.induction_level  = sqrtf(induction_sum * inv_n);
+            m_debug.mechanical_level = sqrtf(mechanical_sum * inv_n);
             m_debug.turbo_level      = sqrtf(turbo_sum * inv_n);
             m_debug.output_level     = sqrtf(output_sum * inv_n);
             m_debug.output_peak      = output_peak;
+
+            m_debug.firing_freq = m_rpm_smooth.z1 / 60.0f * (tuning::cylinder_count / 2.0f);
         }
 
         void reset()
         {
-            m_current_rpm      = tuning::idle_rpm;
-            m_current_throttle = 0.0f;
-            m_current_load     = 0.0f;
+            for (auto& cyl : m_cylinders)
+                cyl.reset();
 
-            for (auto& osc : m_firing_oscillators)
-                osc.reset();
-            for (auto& osc : m_harmonic_oscillators)
-                osc.reset();
-
-            m_exhaust_filter_1.reset();
-            m_exhaust_filter_2.reset();
-            m_exhaust_filter_3.reset();
-            m_induction_filter.reset();
-            m_mechanical_filter.reset();
+            m_exhaust_res1.reset();
+            m_exhaust_res2.reset();
+            m_exhaust_res3.reset();
+            m_exhaust_body.reset();
+            m_induction_res.reset();
+            m_induction_body.reset();
+            m_mechanical_hp.reset();
+            m_mechanical_lp.reset();
+            m_crackle_filter.reset();
             m_turbo_filter.reset();
-            m_output_lowpass.reset();
+            m_output_hp.reset();
+            m_output_lp.reset();
+            m_dc_blocker.reset();
+            m_rpm_smooth.reset();
+            m_throttle_smooth.reset();
+            m_load_smooth.reset();
+
+            m_crackle_env = 0.0f;
+
+            m_turbo_spool = 0.0f;
+            m_turbo_target_spool = 0.0f;
+            m_turbo_phase = 0.0f;
+            m_turbo_flutter_phase = 0.0f;
+            m_turbo_flutter_env = 0.0f;
+            m_wastegate_env = 0.0f;
+            m_prev_throttle = 0.0f;
+            m_prev_boost = 0.0f;
+
+            m_turbo_whine_bp.reset();
+            m_turbo_rumble_lp.reset();
+            m_turbo_flutter_bp.reset();
+            m_wastegate_bp.reset();
         }
 
         bool is_initialized() const { return m_initialized; }
         const debug_data& get_debug() const { return m_debug; }
 
     private:
-        bool  m_initialized     = false;
-        float m_sample_rate     = tuning::sample_rate;
+        bool  m_initialized = false;
+        float m_sample_rate = tuning::sample_rate;
 
-        // target parameters (from car physics)
         float m_target_rpm      = tuning::idle_rpm;
         float m_target_throttle = 0.0f;
         float m_target_load     = 0.0f;
         float m_boost_pressure  = 0.0f;
 
-        // smoothed current values
-        float m_current_rpm      = tuning::idle_rpm;
-        float m_current_throttle = 0.0f;
-        float m_current_load     = 0.0f;
+        std::vector<cylinder> m_cylinders;
 
-        // oscillators
-        std::vector<oscillator> m_firing_oscillators;
-        std::vector<oscillator> m_harmonic_oscillators;
-        oscillator              m_turbo_oscillator;
+        svf_filter m_exhaust_res1, m_exhaust_res2, m_exhaust_res3;
+        svf_filter m_exhaust_body;
+        svf_filter m_induction_res, m_induction_body;
+        svf_filter m_mechanical_hp, m_mechanical_lp;
+        svf_filter m_crackle_filter;
+        svf_filter m_turbo_filter;
+        svf_filter m_output_hp, m_output_lp;
 
-        // filters
-        biquad_filter m_exhaust_filter_1;
-        biquad_filter m_exhaust_filter_2;
-        biquad_filter m_exhaust_filter_3;
-        biquad_filter m_induction_filter;
-        biquad_filter m_mechanical_filter;
-        biquad_filter m_turbo_filter;
-        biquad_filter m_output_lowpass;
+        one_pole m_rpm_smooth;
+        one_pole m_throttle_smooth;
+        one_pole m_load_smooth;
 
-        // noise
-        noise_generator m_noise;
+        dc_blocker m_dc_blocker;
+        noise_gen m_noise;
 
-        // debug
+        float m_crackle_env  = 0.0f;
+        float m_crackle_freq = 100.0f;
+
+        // turbo state
+        float m_turbo_spool          = 0.0f;
+        float m_turbo_target_spool   = 0.0f;
+        float m_turbo_phase          = 0.0f;
+        float m_turbo_flutter_phase  = 0.0f;
+        float m_turbo_flutter_env    = 0.0f;
+        float m_wastegate_env        = 0.0f;
+        float m_prev_throttle        = 0.0f;
+        float m_prev_boost           = 0.0f;
+
+        svf_filter m_turbo_whine_bp;
+        svf_filter m_turbo_rumble_lp;
+        svf_filter m_turbo_flutter_bp;
+        svf_filter m_wastegate_bp;
+
         debug_data m_debug;
     };
 
-    // global synthesizer instance
     inline synthesizer& get_synthesizer()
     {
         static synthesizer instance;
@@ -582,7 +861,6 @@ namespace engine_sound
         return get_synthesizer().get_debug();
     }
 
-    // debug visualization window
     inline void debug_window()
     {
         if (!ImGui::Begin("Engine Sound Synthesis", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -593,7 +871,6 @@ namespace engine_sound
 
         const debug_data& dbg = get_debug();
 
-        // status
         ImGui::TextColored(dbg.initialized ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : ImVec4(1.0f, 0.2f, 0.2f, 1.0f),
             "Status: %s", dbg.initialized ? "Initialized" : "NOT Initialized");
 
@@ -602,17 +879,15 @@ namespace engine_sound
 
         ImGui::Separator();
 
-        // input parameters
         ImGui::Text("Input Parameters:");
         ImGui::Text("  RPM: %.0f", dbg.rpm);
         ImGui::Text("  Throttle: %.1f%%", dbg.throttle * 100.0f);
         ImGui::Text("  Load: %.1f%%", dbg.load * 100.0f);
         ImGui::Text("  Boost: %.2f bar", dbg.boost);
-        ImGui::Text("  Fundamental: %.1f Hz", dbg.firing_freq);
+        ImGui::Text("  Firing freq: %.1f Hz", dbg.firing_freq);
 
         ImGui::Separator();
 
-        // component levels with bars
         ImGui::Text("Component Levels (RMS):");
 
         auto draw_level_bar = [](const char* label, float level, ImU32 color)
@@ -623,7 +898,7 @@ namespace engine_sound
             ImVec2 pos = ImGui::GetCursorScreenPos();
             float bar_width = 200.0f;
             float bar_height = 14.0f;
-            float fill = std::clamp(level * 5.0f, 0.0f, 1.0f); // scale for visibility
+            float fill = std::clamp(level * 5.0f, 0.0f, 1.0f);
 
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(pos, ImVec2(pos.x + bar_width, pos.y + bar_height), IM_COL32(40, 40, 40, 255));
@@ -643,14 +918,12 @@ namespace engine_sound
 
         ImGui::Separator();
 
-        // output levels
         ImGui::Text("Output:");
         draw_level_bar("RMS", dbg.output_level, IM_COL32(100, 255, 100, 255));
         draw_level_bar("Peak", dbg.output_peak, IM_COL32(255, 255, 100, 255));
 
         ImGui::Separator();
 
-        // waveform visualization
         ImGui::Text("Waveform:");
         {
             ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -660,15 +933,11 @@ namespace engine_sound
 
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-            // background
             draw_list->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(20, 20, 25, 255));
-
-            // center line
             draw_list->AddLine(ImVec2(pos.x, center_y), ImVec2(pos.x + width, center_y), IM_COL32(60, 60, 60, 255));
 
-            // waveform
             int start_idx = dbg.waveform_write_pos;
-            float x_step = width / static_cast<float>(debug_data::waveform_size);
+            float x_step = width / (float)debug_data::waveform_size;
 
             for (int i = 0; i < debug_data::waveform_size - 1; i++)
             {
@@ -683,13 +952,11 @@ namespace engine_sound
                 draw_list->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(100, 200, 100, 255), 1.5f);
             }
 
-            // border
             draw_list->AddRect(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(80, 80, 80, 255));
 
             ImGui::Dummy(ImVec2(width, height));
         }
 
-        // scale labels
         ImGui::Text("Scale: +/- 1.0 (vertical)  |  ~%d samples (horizontal)", debug_data::waveform_size * 4);
 
         ImGui::End();
