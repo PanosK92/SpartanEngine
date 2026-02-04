@@ -79,7 +79,7 @@ namespace
         option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
         bool value = ConsoleRegistry::Get().GetAs<float>(render_option) != 0.0f;
-        ImGui::Checkbox("", &value);
+        ImGuiSp::toggle_switch("", &value);
         ConsoleRegistry::Get().SetValueFromString(render_option, value ? "1" : "0");
         ImGui::PopID();
     }
@@ -95,7 +95,7 @@ namespace
 
         option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        ImGui::Checkbox("", &value);
+        ImGuiSp::toggle_switch("", &value);
         ImGui::PopID();
     }
 
@@ -379,22 +379,8 @@ void RenderOptions::OnTickVisible()
 
                 if (option_header("Volumetric Clouds"))
                 {
-                    option_check_box("Enable", "r.clouds_enabled", "Enable volumetric clouds");
-                    
-                    ImGui::BeginDisabled(!cvar_clouds_enabled.GetValueAs<bool>());
-                    option_value("Coverage", "r.cloud_coverage", "Sky coverage (0=no clouds, 1=overcast)", 0.05f, 0.0f, 1.0f, "%.2f");
-                    option_value("Cloud Type", "r.cloud_type", "0=stratus (flat), 0.5=stratocumulus, 1=cumulus (billowy)", 0.05f, 0.0f, 1.0f, "%.2f");
-                    option_check_box("Enable Animation", "r.cloud_animation", "Animate clouds with wind (performance cost)");
-                    option_value("Seed", "r.cloud_seed", "Change to regenerate clouds", 1.0f, 1.0f, 100.0f, "%.0f");
-                    
-                    ImGui::BeginDisabled(cvar_cloud_coverage.GetValue() <= 0.0f);
+                    option_value("Coverage", "r.cloud_coverage", "Sky coverage (0=clear, 1=overcast)", 0.05f, 0.0f, 1.0f, "%.2f");
                     option_value("Shadow Intensity", "r.cloud_shadows", "Cloud shadow intensity on ground", 0.1f, 0.0f, 2.0f, "%.2f");
-                    option_value("Darkness", "r.cloud_darkness", "Self-shadowing darkness blend", 0.05f, 0.0f, 1.0f, "%.2f");
-                    option_value("Color R", "r.cloud_color_r", "Cloud base color red", 0.05f, 0.0f, 1.0f, "%.2f");
-                    option_value("Color G", "r.cloud_color_g", "Cloud base color green", 0.05f, 0.0f, 1.0f, "%.2f");
-                    option_value("Color B", "r.cloud_color_b", "Cloud base color blue", 0.05f, 0.0f, 1.0f, "%.2f");
-                    ImGui::EndDisabled();
-                    ImGui::EndDisabled();
                 }
 
                 if (option_header("Wind"))

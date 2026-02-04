@@ -73,14 +73,11 @@ struct FrameBufferData
     float3 camera_right;
     float camera_exposure;
 
-    // weather/clouds
+    // clouds
     float cloud_coverage;
-    float cloud_type;
     float cloud_shadows;
-    float cloud_darkness;
-
-    float3 cloud_color;
-    float cloud_seed;
+    float padding3;
+    float padding4;
 };
 
 // 128 byte push constant buffer used by every pass

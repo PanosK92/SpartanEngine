@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include <string>
 #include <variant>
+#include <unordered_map>
 #include "Definitions.h"
 #include "Logging/Log.h"
 #include "Window.h"
@@ -478,6 +479,98 @@ namespace ImGuiSp
     
         ImGui::EndGroup();
         ImGui::PopID();
+    }
+
+    // toggle switch - ios style toggle that replaces checkbox
+    static bool toggle_switch(const char* label, bool* v)
+    {
+        ImGuiWindow* window = ImGui::GetCurrentWindow();
+        if (window->SkipItems)
+            return false;
+
+        ImGuiContext& g         = *GImGui;
+        const ImGuiStyle& style = g.Style;
+        const ImGuiID id        = window->GetID(label);
+        const ImVec2 label_size = ImGui::CalcTextSize(label, nullptr, true);
+
+        // switch dimensions
+        const float height       = ImGui::GetFrameHeight();
+        const float width        = height * 1.75f;
+        const float radius       = height * 0.5f;
+        const float knob_radius  = radius * 0.8f;
+        const float knob_padding = radius - knob_radius;
+
+        // layout: switch on the left, label on the right
+        const ImVec2 pos          = window->DC.CursorPos;
+        const ImRect switch_bb    = ImRect(pos, ImVec2(pos.x + width, pos.y + height));
+        const ImRect total_bb     = ImRect(pos, ImVec2(pos.x + width + (label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f), pos.y + height));
+
+        ImGui::ItemSize(total_bb, style.FramePadding.y);
+        if (!ImGui::ItemAdd(total_bb, id))
+            return false;
+
+        // input handling
+        bool hovered, held;
+        bool pressed = ImGui::ButtonBehavior(switch_bb, id, &hovered, &held);
+        if (pressed)
+        {
+            *v = !(*v);
+            ImGui::MarkItemEdited(id);
+        }
+
+        // animation state (stored per widget id)
+        static std::unordered_map<ImGuiID, float> animation_state;
+        float& t = animation_state[id];
+
+        // target position: 0.0 = off (left), 1.0 = on (right)
+        float target = *v ? 1.0f : 0.0f;
+
+        // smooth interpolation
+        float animation_speed = 12.0f;
+        if (t < target)
+            t = ImMin(t + g.IO.DeltaTime * animation_speed, target);
+        else if (t > target)
+            t = ImMax(t - g.IO.DeltaTime * animation_speed, target);
+
+        // colors - use imgui style for the active color
+        ImU32 col_bg_off      = ImGui::GetColorU32(ImGuiCol_FrameBg);
+        ImU32 col_bg_on       = ImGui::GetColorU32(ImGuiCol_CheckMark);
+        ImU32 col_knob        = IM_COL32(255, 255, 255, 255);
+        ImU32 col_knob_shadow = IM_COL32(0, 0, 0, 40);
+
+        // interpolate background color
+        ImVec4 bg_off = ImGui::ColorConvertU32ToFloat4(col_bg_off);
+        ImVec4 bg_on  = ImGui::ColorConvertU32ToFloat4(col_bg_on);
+        ImVec4 bg_lerp;
+        bg_lerp.x = bg_off.x + (bg_on.x - bg_off.x) * t;
+        bg_lerp.y = bg_off.y + (bg_on.y - bg_off.y) * t;
+        bg_lerp.z = bg_off.z + (bg_on.z - bg_off.z) * t;
+        bg_lerp.w = bg_off.w + (bg_on.w - bg_off.w) * t;
+        ImU32 col_bg = ImGui::ColorConvertFloat4ToU32(bg_lerp);
+
+        // draw track (pill shape as a single rounded rectangle)
+        ImDrawList* draw_list = window->DrawList;
+        draw_list->AddRectFilled(switch_bb.Min, switch_bb.Max, col_bg, radius);
+
+        // knob position (interpolated)
+        float knob_x_off = switch_bb.Min.x + radius;
+        float knob_x_on  = switch_bb.Max.x - radius;
+        float knob_x     = knob_x_off + (knob_x_on - knob_x_off) * t;
+        float knob_y     = switch_bb.Min.y + radius;
+
+        // draw knob shadow (offset slightly down and right)
+        draw_list->AddCircleFilled(ImVec2(knob_x + 1.0f, knob_y + 2.0f), knob_radius, col_knob_shadow, 24);
+
+        // draw knob
+        draw_list->AddCircleFilled(ImVec2(knob_x, knob_y), knob_radius, col_knob, 24);
+
+        // draw label
+        if (label_size.x > 0.0f)
+        {
+            ImGui::RenderText(ImVec2(switch_bb.Max.x + style.ItemInnerSpacing.x, switch_bb.Min.y + style.FramePadding.y), label);
+        }
+
+        return pressed;
     }
 
     inline ButtonPress window_yes_no(const char* title, const char* text)

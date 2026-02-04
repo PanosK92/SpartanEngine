@@ -81,14 +81,11 @@ namespace spartan
         math::Vector3 camera_right;
         float camera_exposure;
 
-        // weather/clouds
+        // clouds
         float cloud_coverage;
-        float cloud_type;
         float cloud_shadows;
-        float cloud_darkness;
-
-        math::Vector3 cloud_color;
-        float cloud_seed;
+        float padding3;
+        float padding4;
 
         void set_bit(const bool set, const uint32_t bit)
         {

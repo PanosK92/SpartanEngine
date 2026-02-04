@@ -328,7 +328,7 @@ void Properties::ShowEntity(Entity* entity) const
     {
         // toggle for active state
         bool is_active = entity->GetActive();
-        if (ImGui::Checkbox("Active", &is_active))
+        if (ImGuiSp::toggle_switch("Active", &is_active))
         {
             entity->SetActive(is_active);
         }
@@ -486,18 +486,18 @@ void Properties::ShowLight(spartan::Light* light) const
         // shadows
         {
             ImGui::Text("Shadows");
-            layout::move_to_value_column(); ImGui::Checkbox("##light_shadows", &shadows);
+            layout::move_to_value_column(); ImGuiSp::toggle_switch("##light_shadows", &shadows);
 
             if (shadows)
             {
                 // transparent shadows
                 ImGui::Text("Screen Space Shadows");
-                layout::move_to_value_column(); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
+                layout::move_to_value_column(); ImGuiSp::toggle_switch("##light_shadows_screen_space", &shadows_screen_space);
                 ImGuiSp::tooltip("Screen space shadows from Days Gone - PS4");
 
                 // volumetric
                 ImGui::Text("Volumetric");
-                layout::move_to_value_column(); ImGui::Checkbox("##light_volumetric", &volumetric);
+                layout::move_to_value_column(); ImGuiSp::toggle_switch("##light_volumetric", &volumetric);
                 ImGuiSp::tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
             }
         }
@@ -505,13 +505,13 @@ void Properties::ShowLight(spartan::Light* light) const
         if (light->GetLightType() == LightType::Directional)
         {
             bool day_night_cycle = light->GetFlag(spartan::LightFlags::DayNightCycle);
-            ImGui::Checkbox("Day/Night Cycle", &day_night_cycle);
+            ImGuiSp::toggle_switch("Day/Night Cycle", &day_night_cycle);
             light->SetFlag(spartan::LightFlags::DayNightCycle, day_night_cycle);
 
             
             bool real_time_cycle = light->GetFlag(spartan::LightFlags::RealTimeCycle);
             ImGui::BeginDisabled(!day_night_cycle);
-            ImGui::Checkbox("Real Time Cycle", &real_time_cycle);
+            ImGuiSp::toggle_switch("Real Time Cycle", &real_time_cycle);
             light->SetFlag(spartan::LightFlags::RealTimeCycle, real_time_cycle);
             ImGui::EndDisabled();
         }
@@ -716,7 +716,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
 
         ImGui::Text("Cast shadows");
         layout::move_to_value_column();
-        ImGui::Checkbox("##renderable_cast_shadows", &cast_shadows);
+        ImGuiSp::toggle_switch("##renderable_cast_shadows", &cast_shadows);
 
         ImGui::Text("Visible");
         layout::move_to_value_column();
@@ -775,20 +775,20 @@ void Properties::ShowPhysics(Physics* body) const
         // freeze position
         ImGui::Text("Freeze Position");
         layout::move_to_value_column(); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::Checkbox("##physics_body_pos_x", &freeze_pos_x);
+        ImGui::SameLine(); ImGuiSp::toggle_switch("##physics_body_pos_x", &freeze_pos_x);
         ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::Checkbox("##physics_body_pos_y", &freeze_pos_y);
+        ImGui::SameLine(); ImGuiSp::toggle_switch("##physics_body_pos_y", &freeze_pos_y);
         ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::Checkbox("##physics_body_pos_z", &freeze_pos_z);
+        ImGui::SameLine(); ImGuiSp::toggle_switch("##physics_body_pos_z", &freeze_pos_z);
 
         // freeze rotation
         ImGui::Text("Freeze Rotation");
         layout::move_to_value_column(); ImGui::Text("X");
-        ImGui::SameLine(); ImGui::Checkbox("##physics_body_rot_x", &freeze_rot_x);
+        ImGui::SameLine(); ImGuiSp::toggle_switch("##physics_body_rot_x", &freeze_rot_x);
         ImGui::SameLine(); ImGui::Text("Y");
-        ImGui::SameLine(); ImGui::Checkbox("##physics_body_rot_y", &freeze_rot_y);
+        ImGui::SameLine(); ImGuiSp::toggle_switch("##physics_body_rot_y", &freeze_rot_y);
         ImGui::SameLine(); ImGui::Text("Z");
-        ImGui::SameLine(); ImGui::Checkbox("##physics_body_rot_z", &freeze_rot_z);
+        ImGui::SameLine(); ImGuiSp::toggle_switch("##physics_body_rot_z", &freeze_rot_z);
 
         ImGui::Separator();
 
@@ -817,11 +817,11 @@ void Properties::ShowPhysics(Physics* body) const
 
         // static checkbox
         ImGui::Text("Static");
-        layout::move_to_value_column(); ImGui::Checkbox("##physics_body_static", &is_static);
+        layout::move_to_value_column(); ImGuiSp::toggle_switch("##physics_body_static", &is_static);
 
         // kinematic checkbox
         ImGui::Text("Kinematic");
-        layout::move_to_value_column(); ImGui::Checkbox("##physics_body_kinematic", &is_kinematic);
+        layout::move_to_value_column(); ImGuiSp::toggle_switch("##physics_body_kinematic", &is_kinematic);
 
         // center
         {
@@ -966,7 +966,7 @@ void Properties::ShowMaterial(Material* material) const
                         {
                             bool is_metallic = value != 0.0f;
                             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-                            ImGui::Checkbox("", &is_metallic);
+                            ImGuiSp::toggle_switch("", &is_metallic);
                             ImGui::PopID();
                             value = is_metallic ? 1.0f : 0.0f;
                         }
@@ -1016,9 +1016,9 @@ void Properties::ShowMaterial(Material* material) const
             bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
             ImGui::Text("Invert");
             layout::move_to_value_column();
-            ImGui::Checkbox("X##matInvertX", &invert_x);
+            ImGuiSp::toggle_switch("X##matInvertX", &invert_x);
             ImGui::SameLine();
-            ImGui::Checkbox("Y##matInvertY", &invert_y);
+            ImGuiSp::toggle_switch("Y##matInvertY", &invert_y);
             material->SetProperty(MaterialProperty::TextureInvertX, invert_x ? 1.0f : 0.0f);
             material->SetProperty(MaterialProperty::TextureInvertY, invert_y ? 1.0f : 0.0f);
         }
@@ -1045,22 +1045,22 @@ void Properties::ShowMaterial(Material* material) const
 
             // tessellation
             bool tessellation = material->GetProperty(MaterialProperty::Tessellation) != 0.0f;
-            ImGui::Checkbox("Tessellation", &tessellation);
+            ImGuiSp::toggle_switch("Tessellation", &tessellation);
             material->SetProperty(MaterialProperty::Tessellation, tessellation ? 1.0f : 0.0f);
 
             // wind animation
             bool wind_animation = material->GetProperty(MaterialProperty::WindAnimation) != 0.0f;
-            ImGui::Checkbox("Wind animation", &wind_animation);
+            ImGuiSp::toggle_switch("Wind animation", &wind_animation);
             material->SetProperty(MaterialProperty::WindAnimation, wind_animation ? 1.0f : 0.0f);
 
             // wind animation
             bool emissive_from_albedo = material->GetProperty(MaterialProperty::EmissiveFromAlbedo) != 0.0f;
-            ImGui::Checkbox("Emissive from albedo", &emissive_from_albedo);
+            ImGuiSp::toggle_switch("Emissive from albedo", &emissive_from_albedo);
             material->SetProperty(MaterialProperty::EmissiveFromAlbedo, emissive_from_albedo ? 1.0f : 0.0f);
 
             // world space uv
             bool world_space_uv = material->GetProperty(MaterialProperty::WorldSpaceUv) != 0.0f;
-            ImGui::Checkbox("World space uv", &world_space_uv);
+            ImGuiSp::toggle_switch("World space uv", &world_space_uv);
             material->SetProperty(MaterialProperty::WorldSpaceUv, world_space_uv ? 1.0f : 0.0f);
         }
 
@@ -1131,7 +1131,7 @@ void Properties::ShowCamera(Camera* camera) const
 
         // FPS Control
         ImGui::Text("First Person Control");
-        layout::move_to_value_column(); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
+        layout::move_to_value_column(); ImGuiSp::toggle_switch("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
  
         //= MAP =======================================================================================================================================================
@@ -1240,15 +1240,15 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 
         // play on start
         ImGui::Text("Play on Start");
-        layout::move_to_value_column(); ImGui::Checkbox("##audioSourcePlayOnStart", &play_on_start);
+        layout::move_to_value_column(); ImGuiSp::toggle_switch("##audioSourcePlayOnStart", &play_on_start);
 
         // mute
         ImGui::Text("Mute");
-        layout::move_to_value_column(); ImGui::Checkbox("##audioSourceMute", &mute);
+        layout::move_to_value_column(); ImGuiSp::toggle_switch("##audioSourceMute", &mute);
 
         // loop
         ImGui::Text("Loop");
-        layout::move_to_value_column(); ImGui::Checkbox("##audioSourceLoop", &loop);
+        layout::move_to_value_column(); ImGuiSp::toggle_switch("##audioSourceLoop", &loop);
 
         // Pitch
         ImGui::Text("Pitch");
@@ -1256,7 +1256,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 
         // loop
         ImGui::Text("3D");
-        layout::move_to_value_column(); ImGui::Checkbox("##audioSourceIs3D", &is_3d);
+        layout::move_to_value_column(); ImGuiSp::toggle_switch("##audioSourceIs3D", &is_3d);
 
         // volume
         ImGui::Text("Volume");
@@ -1269,7 +1269,7 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         // reverb section
         ImGui::Separator();
         ImGui::Text("Reverb");
-        layout::move_to_value_column(); ImGui::Checkbox("##audioSourceReverbEnabled", &reverb_enabled);
+        layout::move_to_value_column(); ImGuiSp::toggle_switch("##audioSourceReverbEnabled", &reverb_enabled);
 
         ImGui::BeginDisabled(!reverb_enabled);
         {
@@ -1345,7 +1345,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
                 bool is_active = volume->GetOptions().find(name) != volume->GetOptions().end();
 
                 // checkbox (enable/disable override)
-                if (ImGui::Checkbox(name.c_str(), &is_active))
+                if (ImGuiSp::toggle_switch(name.c_str(), &is_active))
                 {
                     if (is_active)
                     {
