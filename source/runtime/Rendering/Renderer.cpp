@@ -228,7 +228,7 @@ namespace spartan
     TConsoleVar<float> cvar_occlusion_culling              ("r.occlusion_culling",              0.0f,                                                    "occlusion culling (dev)");
     TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, negative disables");
     // volumetric clouds
-    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.4f,                                                    "sky coverage (0=clear, 1=overcast)");
+    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.5f,                                                    "sky coverage (0=clear, 1=overcast)");
     TConsoleVar<float> cvar_cloud_shadows                  ("r.cloud_shadows",                  1.0f,                                                    "cloud shadow intensity on ground");
 
     namespace

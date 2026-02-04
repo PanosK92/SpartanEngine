@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2015-2025 Panos Karabelas
+Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,238 +19,122 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// ============================================================================
-// Cloud Shadow Map Generation
-// Projects cloud density onto a 2D shadow map from the sun's perspective
-// ============================================================================
+// cloud shadow map - projects cloud density from sun's perspective
 
-//= INCLUDES =========
 #include "../common.hlsl"
-//====================
 
-// Cloud layer base constants - must match skysphere.hlsl
-static const float cloud_base_bottom = 1500.0;
-static const float cloud_base_top    = 4500.0;
-static const float cloud_scale       = 0.00003;
-static const float detail_scale      = 0.0003;
-static const float cloud_wind_speed  = 10.0;
+// constants (must match skysphere.hlsl)
+static const float cloud_scale      = 0.00003;
+static const float detail_scale     = 0.0003;
+static const float cloud_wind_speed = 10.0;
+static const float seed             = 1.0;
 
-// Hash function for seed-based generation - must match skysphere.hlsl
-float hash21(float2 p, float seed)
+float hash21(float2 p, float s)
 {
-    float3 p3 = frac(float3(p.xyx) * 0.1031 + seed * 0.1);
+    float3 p3 = frac(float3(p.xyx) * 0.1031 + s * 0.1);
     p3 += dot(p3, p3.yzx + 33.33);
     return frac((p3.x + p3.y) * p3.z);
 }
 
-float remap(float value, float low1, float high1, float low2, float high2)
+float smooth_noise(float2 p, float s)
 {
-    return low2 + (value - low1) * (high2 - low2) / max(high1 - low1, 0.0001);
-}
-
-float get_height_gradient(float h, float cloud_type)
-{
-    return smoothstep(0.0, 0.1, h) * smoothstep(0.4 + cloud_type * 0.6, 0.2 + cloud_type * 0.3, h);
-}
-
-// Smooth noise for height variation - must match skysphere.hlsl
-float smooth_noise(float2 p, float seed)
-{
-    float2 i = floor(p);
-    float2 f = frac(p);
+    float2 i = floor(p), f = frac(p);
     float2 u = f * f * (3.0 - 2.0 * f);
-    
-    float a = hash21(i + float2(0, 0), seed);
-    float b = hash21(i + float2(1, 0), seed);
-    float c = hash21(i + float2(0, 1), seed);
-    float d = hash21(i + float2(1, 1), seed);
-    
-    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+    return lerp(lerp(hash21(i, s), hash21(i + float2(1, 0), s), u.x),
+                lerp(hash21(i + float2(0, 1), s), hash21(i + float2(1, 1), s), u.x), u.y);
 }
 
-// Get local cloud height bounds - must match skysphere.hlsl
-void get_local_cloud_bounds(float3 pos, float seed, out float local_bottom, out float local_top)
+void get_cloud_bounds(float3 pos, out float bottom, out float top)
 {
     float2 coord = pos.xz * 0.00005;
-    
-    float height_noise1 = smooth_noise(coord, seed);
-    float height_noise2 = smooth_noise(coord * 1.7 + 100.0, seed * 2.3);
-    
-    local_bottom = lerp(1200.0, 2200.0, height_noise1);
-    local_top = lerp(3500.0, 4500.0, height_noise2);
-    local_top = max(local_top, local_bottom + 1500.0);
+    bottom = lerp(1200.0, 2200.0, smooth_noise(coord, seed));
+    top = max(lerp(3500.0, 4500.0, smooth_noise(coord * 1.7 + 100.0, seed * 2.3)), bottom + 1500.0);
 }
 
-// Seed-based coordinate transformation - must match skysphere.hlsl
-float3 seed_transform(float3 p, float seed)
-{
-    float3 offset = float3(seed * 50000.0, seed * 30000.0, seed * 70000.0);
-    return p + offset;
-}
-
-// domain warping - must match skysphere.hlsl
-float3 domain_warp(float3 p, float seed)
+float3 domain_warp(float3 p)
 {
     float sp = seed * 0.31415926;
-    
-    float3 warp;
-    warp.x = sin(p.z * 0.00008 + p.y * 0.00007 + sp) * 2000.0;
-    warp.y = sin(p.x * 0.00007 + p.z * 0.00008 + sp) * 500.0;
-    warp.z = sin(p.y * 0.00006 + p.x * 0.00009 + sp) * 2000.0;
-    
-    return p + warp;
+    return p + float3(sin(p.z * 0.00008 + p.y * 0.00007 + sp) * 2000.0,
+                      sin(p.x * 0.00007 + p.z * 0.00008 + sp) * 500.0,
+                      sin(p.y * 0.00006 + p.x * 0.00009 + sp) * 2000.0);
 }
 
-// Sample cloud density - must match skysphere.hlsl logic exactly
-float sample_cloud_density(float3 world_pos, float time, float seed)
+float sample_density(float3 pos, float time)
 {
-    // Get local cloud height bounds
-    float local_bottom, local_top;
-    get_local_cloud_bounds(world_pos, seed, local_bottom, local_top);
-    float local_thickness = local_top - local_bottom;
-    
-    if (world_pos.y < local_bottom || world_pos.y > local_top)
-        return 0.0;
-    
-    float h = (world_pos.y - local_bottom) / local_thickness;
-    
-    // Wind animation
-    float3 wind = buffer_frame.wind;
-    float wind_speed = length(wind) * cloud_wind_speed;
-    float3 wind_dir = wind_speed > 0.001 ? normalize(wind) : float3(1, 0, 0);
-    float3 anim_pos = world_pos + wind_dir * time * wind_speed;
-    
-    // Apply seed-based transformation
-    float3 seed_pos = seed_transform(anim_pos, seed);
-    
-    // Domain warp
-    float3 warped_pos = domain_warp(seed_pos, seed);
-    
-    // Sample shape noise
-    float3 shape_uvw = warped_pos * cloud_scale;
-    float4 shape = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), shape_uvw, 0);
-    
-    float noise = shape.r * 0.625 + shape.g * 0.25 + shape.b * 0.125;
-    
-    // derive cloud type from coverage: low coverage = wispy, high coverage = billowy
+    float bottom, top;
+    get_cloud_bounds(pos, bottom, top);
+    if (pos.y < bottom || pos.y > top) return 0.0;
+
+    float h = (pos.y - bottom) / (top - bottom);
     float coverage = buffer_frame.cloud_coverage;
-    float cloud_type = saturate(lerp(0.3, 0.85, coverage));
-    noise *= get_height_gradient(h, cloud_type);
-    float density = saturate(remap(noise, 1.0 - coverage, 1.0, 0.0, 1.0));
-    
-    if (density < 0.01)
-        return 0.0;
-    
-    // Detail erosion
-    float3 detail_uvw = domain_warp(seed_pos * 1.1, seed) * detail_scale;
-    float4 detail = tex3d_cloud_detail.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), detail_uvw, 0);
-    float detail_noise = detail.r * 0.625 + detail.g * 0.25 + detail.b * 0.125;
-    
-    density = saturate(density - detail_noise * (1.0 - density) * 0.35);
-    return density;
+    float ctype = saturate(lerp(0.3, 0.85, coverage));
+
+    // wind animation and domain warp
+    float3 wind = buffer_frame.wind;
+    float wspeed = length(wind) * cloud_wind_speed;
+    float3 anim_pos = pos + (wspeed > 0.001 ? normalize(wind) : float3(1, 0, 0)) * time * wspeed;
+    float3 seed_pos = anim_pos + float3(seed * 50000.0, seed * 30000.0, seed * 70000.0);
+    float3 warped = domain_warp(seed_pos);
+
+    // shape noise with height gradient
+    float4 shape = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), warped * cloud_scale, 0);
+    float noise = dot(shape.rgb, float3(0.625, 0.25, 0.125));
+    noise *= smoothstep(0.0, 0.1, h) * smoothstep(0.4 + ctype * 0.6, 0.2 + ctype * 0.3, h);
+
+    float density = saturate((noise - (1.0 - coverage)) / max(coverage, 0.0001));
+    if (density < 0.01) return 0.0;
+
+    // detail erosion
+    float4 detail = tex3d_cloud_detail.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap),
+                                                    domain_warp(seed_pos * 1.1) * detail_scale, 0);
+    return saturate(density - dot(detail.rgb, float3(0.625, 0.25, 0.125)) * (1.0 - density) * 0.35);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
-void main_cs(uint3 thread_id : SV_DispatchThreadID)
+void main_cs(uint3 tid : SV_DispatchThreadID)
 {
-    float2 shadow_dims;
-    tex_uav.GetDimensions(shadow_dims.x, shadow_dims.y);
-    
-    if (any(thread_id.xy >= shadow_dims))
-        return;
-    
-    // Get directional light direction (first light in the buffer)
+    float2 dims;
+    tex_uav.GetDimensions(dims.x, dims.y);
+    if (any(tid.xy >= dims)) return;
+
     float3 light_dir = -light_parameters[0].direction;
-    
-    // skip if clouds are disabled or no sun
-    if (buffer_frame.cloud_coverage <= 0.0 || buffer_frame.cloud_shadows <= 0.0)
+
+    // early out: no clouds, no shadows, or sun below horizon
+    if (buffer_frame.cloud_coverage <= 0.0 || buffer_frame.cloud_shadows <= 0.0 || light_dir.y <= 0.0)
     {
-        tex_uav[thread_id.xy] = 1.0;
+        tex_uav[tid.xy] = 1.0;
         return;
     }
-    
-    // constant seed for consistent cloud generation
-    static const float seed = 1.0;
-    
-    // Convert shadow map UV to world position
-    float shadow_map_size = 10000.0; // meters (10km x 10km area)
-    float2 uv = (float2(thread_id.xy) + 0.5) / shadow_dims;
-    float2 world_xz = (uv - 0.5) * shadow_map_size + buffer_frame.camera_position.xz;
-    
-    // March direction: towards sun
-    float3 march_dir = normalize(light_dir);
-    
-    // if sun is below horizon, no shadows
-    if (march_dir.y <= 0.0)
-    {
-        tex_uav[thread_id.xy] = 1.0;
-        return;
-    }
-    
-    // Time for wind animation
+
+    // shadow map uv to world position
+    float2 uv = (float2(tid.xy) + 0.5) / dims;
+    float2 world_xz = (uv - 0.5) * 10000.0 + buffer_frame.camera_position.xz;
+
+    // get cloud bounds at this position
+    float3 approx_pos = float3(world_xz.x, 3000.0, world_xz.y);
+    float bottom, top;
+    get_cloud_bounds(approx_pos, bottom, top);
+
+    // raymarch setup
     float time = (float)buffer_frame.time * 0.001;
-    
-    // raymarch through cloud layer
-    const int shadow_steps = 8;
-    
-    // use local cloud bounds at sample position for accurate shadow calculation
-    // approximate center position for bounds lookup
-    float3 approx_center = float3(world_xz.x, (cloud_base_bottom + cloud_base_top) * 0.5, world_xz.y);
-    float local_bottom, local_top;
-    get_local_cloud_bounds(approx_center, seed, local_bottom, local_top);
-    float cloud_thickness = local_top - local_bottom;
-    
-    // use temporal jitter
-    float2 screen_pos = float2(thread_id.xy);
-    float jitter = noise_interleaved_gradient(screen_pos, true);
-    
-    // calculate the slant distance through cloud layer
-    float slant_factor = 1.0 / max(march_dir.y, 0.1);
-    float ray_length = cloud_thickness * min(slant_factor, 3.0);
-    float step_size = ray_length / float(shadow_steps);
-    
-    // single sample for performance (temporal accumulation handles noise)
-    float total_shadow = 0.0;
-    const int num_samples = 1;
-    const float2 offsets[1] = { float2(0.0, 0.0) };
-    
-    float sample_spread = 0.0;
-    
-    [unroll]
-    for (int s = 0; s < num_samples; s++)
+    float slant = min(1.0 / max(light_dir.y, 0.1), 3.0);
+    float ray_len = (top - bottom) * slant;
+    float step_size = ray_len / 8.0;
+    float jitter = noise_interleaved_gradient(float2(tid.xy), true);
+
+    // trace from ground up to cloud layer
+    float3 ray_start = float3(world_xz.x, 0.0, world_xz.y) + light_dir * (bottom / max(light_dir.y, 0.001));
+    float optical_depth = 0.0;
+
+    [loop] for (int i = 0; i < 8; i++)
     {
-        float2 sample_xz = world_xz + offsets[s] * sample_spread;
-        
-        // start position: trace from ground to cloud layer using local bounds
-        float3 ground_pos = float3(sample_xz.x, 0.0, sample_xz.y);
-        float t_to_bottom = local_bottom / max(march_dir.y, 0.001);
-        float3 ray_start = ground_pos + march_dir * t_to_bottom;
-        
-        float optical_depth = 0.0;
-        
-        [loop]
-        for (int i = 0; i < shadow_steps; i++)
-        {
-            float sample_jitter = frac(jitter + float(s) * 0.25);
-            float t = (float(i) + sample_jitter) * step_size;
-            float3 sample_pos = ray_start + march_dir * t;
-            
-            // Sample with seed
-            float density = sample_cloud_density(sample_pos, time, seed);
-            optical_depth += density * step_size * 0.001;
-        }
-        
-        // Beer-Lambert attenuation
-        float shadow = exp(-optical_depth * buffer_frame.cloud_shadows * 2.5);
-        total_shadow += shadow;
+        float3 pos = ray_start + light_dir * (float(i) + jitter) * step_size;
+        optical_depth += sample_density(pos, time) * step_size * 0.001;
     }
-    
-    // Average samples
-    float shadow = total_shadow / float(num_samples);
-    
-    // soft contrast curve
+
+    // beer-lambert with smoothstep contrast
+    float shadow = exp(-optical_depth * buffer_frame.cloud_shadows * 2.5);
     shadow = saturate(shadow);
     shadow = shadow * shadow * (3.0 - 2.0 * shadow);
-    
-    tex_uav[thread_id.xy] = shadow;
+    tex_uav[tid.xy] = shadow;
 }
