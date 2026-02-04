@@ -79,7 +79,7 @@ namespace
         option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
         bool value = ConsoleRegistry::Get().GetAs<float>(render_option) != 0.0f;
-        ImGui::Checkbox("", &value);
+        ImGuiSp::toggle_switch("", &value);
         ConsoleRegistry::Get().SetValueFromString(render_option, value ? "1" : "0");
         ImGui::PopID();
     }
@@ -95,7 +95,7 @@ namespace
 
         option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        ImGui::Checkbox("", &value);
+        ImGuiSp::toggle_switch("", &value);
         ImGui::PopID();
     }
 

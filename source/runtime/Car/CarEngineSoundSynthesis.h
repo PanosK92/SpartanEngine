@@ -21,11 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ===============================
 #include <cmath>
 #include <vector>
 #include <algorithm>
 #include <cstdint>
 #include "../../editor/ImGui/Source/imgui.h"
+//==========================================
 
 namespace engine_sound
 {

@@ -61,9 +61,9 @@ namespace spartan
     //===========================================================
 
     // entities shared with other files (external linkage required)
-    Entity* default_car               = nullptr;
-    Entity* default_car_window        = nullptr;
-    Entity* default_camera            = nullptr;
+    Entity* default_car        = nullptr;
+    Entity* default_car_window = nullptr;
+    Entity* default_camera     = nullptr;
 
     namespace
     {
