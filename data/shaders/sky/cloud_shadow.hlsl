@@ -131,9 +131,11 @@ float sample_cloud_density(float3 world_pos, float time, float seed)
     float4 shape = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), shape_uvw, 0);
     
     float noise = shape.r * 0.625 + shape.g * 0.25 + shape.b * 0.125;
-    noise *= get_height_gradient(h, buffer_frame.cloud_type);
     
+    // derive cloud type from coverage: low coverage = wispy, high coverage = billowy
     float coverage = buffer_frame.cloud_coverage;
+    float cloud_type = saturate(lerp(0.3, 0.85, coverage));
+    noise *= get_height_gradient(h, cloud_type);
     float density = saturate(remap(noise, 1.0 - coverage, 1.0, 0.0, 1.0));
     
     if (density < 0.01)
@@ -167,8 +169,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
     
-    // Get seed for consistent cloud generation
-    float seed = buffer_frame.cloud_seed;
+    // constant seed for consistent cloud generation
+    static const float seed = 1.0;
     
     // Convert shadow map UV to world position
     float shadow_map_size = 10000.0; // meters (10km x 10km area)

@@ -68,15 +68,8 @@ namespace spartan
         OcclusionCulling,
         AutoExposureAdaptationSpeed,
         // volumetric clouds
-        CloudAnimation, // whether clouds animate (wind movement)
-        CloudCoverage,  // 0=no clouds, >0=clouds visible
-        CloudType,
-        CloudShadows,
-        CloudColorR,
-        CloudColorG,
-        CloudColorB,
-        CloudDarkness,
-        CloudSeed,      // seed for cloud generation
+        CloudCoverage, // 0=clear sky, 1=overcast
+        CloudShadows,  // shadow intensity on ground
         Max
     };
 

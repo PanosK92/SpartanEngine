@@ -227,17 +227,9 @@ namespace spartan
     // misc                                                                                                                                              
     TConsoleVar<float> cvar_occlusion_culling              ("r.occlusion_culling",              0.0f,                                                    "occlusion culling (dev)");
     TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, negative disables");
-    // volumetric clouds                                                                                                                                 
-    TConsoleVar<float> cvar_clouds_enabled                 ("r.clouds_enabled",                 1.0f,                                                    "enable volumetric clouds");
-    TConsoleVar<float> cvar_cloud_animation                ("r.cloud_animation",                0.0f,                                                    "whether clouds animate with wind");
-    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.4f,                                                    "sky coverage (0=no clouds, 1=overcast)");
-    TConsoleVar<float> cvar_cloud_type                     ("r.cloud_type",                     0.5f,                                                    "0=stratus, 0.5=stratocumulus, 1=cumulus");
+    // volumetric clouds
+    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.4f,                                                    "sky coverage (0=clear, 1=overcast)");
     TConsoleVar<float> cvar_cloud_shadows                  ("r.cloud_shadows",                  1.0f,                                                    "cloud shadow intensity on ground");
-    TConsoleVar<float> cvar_cloud_color_r                  ("r.cloud_color_r",                  0.7f,                                                    "cloud base color red");
-    TConsoleVar<float> cvar_cloud_color_g                  ("r.cloud_color_g",                  0.7f,                                                    "cloud base color green");
-    TConsoleVar<float> cvar_cloud_color_b                  ("r.cloud_color_b",                  0.7f,                                                    "cloud base color blue");
-    TConsoleVar<float> cvar_cloud_darkness                 ("r.cloud_darkness",                 0.5f,                                                    "self-shadowing darkness blend");
-    TConsoleVar<float> cvar_cloud_seed                     ("r.cloud_seed",                     1.0f,                                                    "seed for cloud generation");
 
     namespace
     {
@@ -766,16 +758,9 @@ namespace spartan
         m_cb_frame_cpu.gamma               = cvar_gamma.GetValue();
         m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
 
-        // cloud/weather parameters (set coverage to 0 when clouds disabled)
-        bool clouds_enabled           = cvar_clouds_enabled.GetValueAs<bool>();
-        m_cb_frame_cpu.cloud_coverage = clouds_enabled ? cvar_cloud_coverage.GetValue() : 0.0f;
-        m_cb_frame_cpu.cloud_type     = cvar_cloud_type.GetValue();
+        // cloud parameters
+        m_cb_frame_cpu.cloud_coverage = cvar_cloud_coverage.GetValue();
         m_cb_frame_cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
-        m_cb_frame_cpu.cloud_darkness = cvar_cloud_darkness.GetValue();
-        m_cb_frame_cpu.cloud_color    = Vector3(cvar_cloud_color_r.GetValue(),
-                                                cvar_cloud_color_g.GetValue(),
-                                                cvar_cloud_color_b.GetValue());
-        m_cb_frame_cpu.cloud_seed     = cvar_cloud_seed.GetValue();
         // these must match what common_resources.hlsl is reading
         m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(), 1 << 0);
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);

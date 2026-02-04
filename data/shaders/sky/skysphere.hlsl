@@ -673,8 +673,12 @@ struct clouds
         r.transmittance = float3(1, 1, 1);
         
         float coverage = buffer_frame.cloud_coverage;
-        float ctype = buffer_frame.cloud_type;
-        float seed = buffer_frame.cloud_seed;
+        
+        // derive cloud type from coverage: low coverage = wispy stratus, high coverage = billowy cumulus
+        float ctype = saturate(lerp(0.3, 0.85, coverage));
+        
+        // constant seed for consistent cloud generation
+        static const float seed = 1.0;
         
         // day_night_factor: 1.0 = full daylight, 0.03 = moonlight
         // this is independent of the preset's intensity setting
@@ -738,9 +742,11 @@ struct clouds
                 get_cloud_bounds(pos, seed, bottom, top);
                 float h = saturate((pos.y - bottom) / (top - bottom));
                 
-                // lighting
+                // lighting - use neutral gray for cloud base color, blend with direct light
+                static const float3 cloud_color = float3(0.7, 0.7, 0.7);
+                static const float cloud_darkness = 0.5;
                 float3 direct = sun_color * sun_int;
-                float3 light_col = lerp(direct, buffer_frame.cloud_color * sun_int, buffer_frame.cloud_darkness);
+                float3 light_col = lerp(direct, cloud_color * sun_int, cloud_darkness);
                 float3 rad = light_col * lm.attenuation * phase;
                 
                 // silver lining - scaled by ambient_scale so cloud edges don't glow at night

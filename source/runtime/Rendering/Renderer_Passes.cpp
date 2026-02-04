@@ -88,15 +88,12 @@ namespace spartan
         // generate cloud noise textures (once at startup, before skysphere needs them)
         Pass_CloudNoise(cmd_list_graphics_present);
 
-        // Skysphere update logic:
-        // - Always render once on startup (for initial clouds)
-        // - Re-render when light changes
-        // - Re-render every frame if cloud animation is enabled
-        // - Run for multiple frames after change for temporal accumulation to converge
+        // skysphere update logic:
+        // - always render once on startup (for initial clouds)
+        // - re-render when light changes
+        // - run for multiple frames after change for temporal accumulation to converge
         //   (checkerboard needs 2 frames, temporal blend ~0.2 needs ~5-8 frames = 8 total)
-        bool clouds_enabled = cvar_clouds_enabled.GetValueAs<bool>();
-        bool clouds_visible = clouds_enabled && cvar_cloud_coverage.GetValue() > 0.0f;
-        bool cloud_animation = clouds_enabled && cvar_cloud_animation.GetValue() > 0.0f;
+        bool clouds_visible = cvar_cloud_coverage.GetValue() > 0.0f;
         
         {
             bool update_skysphere = false;
@@ -105,33 +102,21 @@ namespace spartan
             {
                 static bool first_frame = true;
                 static bool had_directional_light = false;
-                static bool last_clouds_enabled = false;
                 static float last_coverage = -1.0f;
-                static float last_seed = -1.0f;
-                static float last_cloud_type = -1.0f;
-                static float last_darkness = -1.0f;
                 static uint32_t frames_remaining = 0; // temporal convergence counter
                 const uint32_t temporal_convergence_frames = 8; // frames needed for checkerboard + temporal blend
                 
                 bool has_directional_light = directional_light != nullptr;
                 float current_coverage = cvar_cloud_coverage.GetValue();
-                float current_seed = cvar_cloud_seed.GetValue();
-                float current_type = cvar_cloud_type.GetValue();
-                float current_darkness = cvar_cloud_darkness.GetValue();
                 
-                // Update skysphere when:
-                // 1. First frame (initial render)
-                // 2. Light changes
-                // 3. Cloud parameters changed (enabled, coverage, seed, type, darkness)
-                // 4. Cloud animation is enabled (for wind movement)
-                // 5. Temporal convergence still in progress
+                // update skysphere when:
+                // 1. first frame (initial render)
+                // 2. light changes
+                // 3. cloud coverage changed
+                // 4. temporal convergence still in progress
                 bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) || 
                                      (has_directional_light != had_directional_light);
-                bool cloud_params_changed = (clouds_enabled != last_clouds_enabled) ||
-                                            (current_coverage != last_coverage) ||
-                                            (current_seed != last_seed) ||
-                                            (current_type != last_cloud_type) ||
-                                            (current_darkness != last_darkness);
+                bool cloud_params_changed = current_coverage != last_coverage;
                 
                 // reset convergence counter when something changes
                 if (first_frame || light_changed || cloud_params_changed)
@@ -139,8 +124,8 @@ namespace spartan
                     frames_remaining = temporal_convergence_frames;
                 }
                 
-                // update if animating, converging, or something changed
-                update_skysphere = cloud_animation || (frames_remaining > 0);
+                // update if converging or something changed
+                update_skysphere = frames_remaining > 0;
                 
                 // decrement convergence counter
                 if (frames_remaining > 0)
@@ -150,11 +135,7 @@ namespace spartan
                 
                 first_frame = false;
                 had_directional_light = has_directional_light;
-                last_clouds_enabled = clouds_enabled;
                 last_coverage = current_coverage;
-                last_seed = current_seed;
-                last_cloud_type = current_type;
-                last_darkness = current_darkness;
             }
             
             if (update_skysphere)
@@ -1898,8 +1879,8 @@ namespace spartan
 
     void Renderer::Pass_CloudShadow(RHI_CommandList* cmd_list)
     {
-        // skip if clouds are disabled or cloud shadows are off
-        if (!cvar_clouds_enabled.GetValueAs<bool>() || cvar_cloud_coverage.GetValue() <= 0.0f || cvar_cloud_shadows.GetValue() <= 0.0f)
+        // skip if no clouds or cloud shadows are off
+        if (cvar_cloud_coverage.GetValue() <= 0.0f || cvar_cloud_shadows.GetValue() <= 0.0f)
             return;
 
         // Skip if no directional light
