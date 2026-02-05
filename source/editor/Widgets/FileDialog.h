@@ -106,7 +106,7 @@ class FileDialog
 public:
     FileDialog(bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
-    // type & fFilter
+    // type & filter
     auto GetType() const { return m_type; }
     auto GetFilter() const { return m_filter; }
 
@@ -126,6 +126,10 @@ private:
     void ShowTop(bool* is_visible, Editor* editor);
     void ShowMiddle();
     void ShowBottom(bool* is_visible);
+    
+    // view rendering
+    void RenderGridView();
+    void RenderListView();
     void RenderItem(FileDialogItem* item, const ImVec2& size, bool is_list_view);
 
     // item functionality handling
@@ -171,6 +175,10 @@ private:
     FileDialog_ViewMode m_view_mode;
     FileDialog_SortColumn m_sort_column;
     bool m_sort_ascending;
+
+    // selection
+    uint32_t m_selected_item_id;
+    float m_hover_animation;
 
     // renaming
     bool m_is_renaming;
