@@ -204,16 +204,17 @@ namespace ImGuiSp
 
     static DragDropPayload* receive_drag_drop_payload(DragPayloadType type)
     {
+        DragDropPayload* result = nullptr;
         if (ImGui::BeginDragDropTarget())
         {
             if (const auto payload_imgui = ImGui::AcceptDragDropPayload(reinterpret_cast<const char*>(&type)))
             {
-                return static_cast<DragDropPayload*>(payload_imgui->Data);
+                result = static_cast<DragDropPayload*>(payload_imgui->Data);
             }
             ImGui::EndDragDropTarget();
         }
 
-        return nullptr;
+        return result;
     }
 
     // image slot

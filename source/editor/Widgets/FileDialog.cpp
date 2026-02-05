@@ -498,6 +498,10 @@ void FileDialog::RenderItem(FileDialogItem* item, const ImVec2& size, bool is_li
         // list view: use selectable for click detection, spans the cell
         button_pressed = ImGui::Selectable("##selectable", false, ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick);
         button_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+
+        // drag source must be set up immediately after the item, before any other rendering
+        ItemDrag(item);
+
         // render icon if available
         if (RHI_Texture* texture = item->GetIcon())
         {
@@ -524,6 +528,10 @@ void FileDialog::RenderItem(FileDialogItem* item, const ImVec2& size, bool is_li
         // grid view: sized invisible button
         button_pressed = ImGui::InvisibleButton("##dummy", size);
         button_rect = ImRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax());
+
+        // drag source must be set up immediately after the item, before any other rendering
+        ItemDrag(item);
+
         // hover outline (grid view only)
         if (ImGui::IsItemHovered() && !is_list_view)
         {
@@ -607,7 +615,6 @@ void FileDialog::RenderItem(FileDialogItem* item, const ImVec2& size, bool is_li
     }
     ItemClick(item);
     ItemContextMenu(item);
-    ItemDrag(item);
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
     ImGui::PopID();
