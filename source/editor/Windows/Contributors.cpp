@@ -145,7 +145,7 @@ namespace Contributors
         // steam key info
         ImGui::Text("Steam key:");
         ImGui::SameLine();
-        ImGui::TextDisabled("Spartans who continuously deliver, or go above and beyond, are rewarded with a steam key.");
+        ImGui::TextDisabled("Spartans with high agency, high quality work, and a clean PRs, are rewarded with a steam key.");
 
         ImGui::Spacing();
 
