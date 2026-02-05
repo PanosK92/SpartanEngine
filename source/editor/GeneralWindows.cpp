@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "GeneralWindows.h"
 #include "WorldSelector.h"
+#include "Contributors.h"
 #include "ImGui/Source/imgui.h"
 #include "ImGui/ImGui_Extension.h"
 #include "FileSystem/FileSystem.h"
@@ -143,37 +144,6 @@ namespace
             "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, "
             "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
 
-        struct Contributor
-        {
-            string role;
-            string name;
-            string country;
-            string button_text;
-            string button_url;
-            string contribution;
-            string steam_key;
-        };
-
-       const vector<Contributor> contributors =
-        {
-            { "Spartan", "Iker Galardi",         "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                                        "N/A" },
-            { "Spartan", "Jesse Guerrero",       "United States",  "LinkedIn",  "https://www.linkedin.com/in/jguer",                       "UX updates",                                                              "N/A" },
-            { "Spartan", "Konstantinos Benos",   "Greece",         "X",         "https://x.com/deg3x",                                     "Bug fixes & editor theme v2",                                             "N/A" },
-            { "Spartan", "Nick Polyderopoulos",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nick-polyderopoulos-21742397","UX updates",                                                              "N/A" },
-            { "Spartan", "Panos Kolyvakis",      "Greece",         "LinkedIn",  "https://www.linkedin.com/in/panos-kolyvakis-66863421a/",  "Water buoyancy improvements",                                             "N/A" },
-            { "Spartan", "Tri Tran",             "Belgium",        "LinkedIn",  "https://www.linkedin.com/in/mtrantr/",                    "Screen space shadows (Days Gone)",                                        "Starfield" },
-            { "Spartan", "Ege",                  "Turkey",         "X",         "https://x.com/egedq",                                     "Editor theme v3 + save/load themes",                                      "N/A" },
-            { "Spartan", "Sandro Mtchedlidze",   "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Tonemapper, perf/lighting finds, tubes lights in the car showroom world", "N/A" },
-            { "Spartan", "Dimitris Kalyvas",     "Greece",         "X",         "https://x.com/punctuator_",                               "Volumetric clouds, entity multi-select, grass performance improvement",   "BeamNG.drive" },
-            { "Spartan", "Bryan Casagrande ",    "United States",  "X",         "https://x.com/mrdrelliot",                                "Implement console variable support",                                      "N/A" },
-            { "Hoplite", "Apostolos Bouzalas",   "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                               "N/A" },
-            { "Hoplite", "Nikolas Pattakos",     "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                               "N/A" },
-            { "Hoplite", "Roman Koshchei",       "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                              "N/A" },
-            { "Hoplite", "Kristi Kercyku",       "Albania",        "GitHub",    "https://github.com/kristiker",                            "G-buffer depth issue fix",                                                "N/A" },
-            { "Hoplite", "Kinjal Kishor",        "India",          "X",         "https://x.com/kinjalkishor",                              "A few testing reports",                                                   "N/A" },
-            { "Hoplite", "Jose  Jiménez López ", "Spain",           "X",        "https://x.com/kerbehee",                                  "Smoke tests proof of concept",                                            "N/A" },
-        };
-
         void personal_details()
         {
             ImGui::BeginGroup();
@@ -254,64 +224,7 @@ namespace
 
         void tab_contributors()
         {
-            // Use StretchProp so columns resize nicely with the window
-            ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp;
-
-            // Subtract a bit of height to account for tab bar
-            if (ImGui::BeginTable("##contributors_table", 6, flags, ImVec2(0.0f, -FLT_MIN)))
-            {
-                ImGui::TableSetupScrollFreeze(0, 1);
-
-                // Defining weights allows for better default sizing
-                ImGui::TableSetupColumn("Title", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-                ImGui::TableSetupColumn("Country");
-                ImGui::TableSetupColumn("Link", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-                ImGui::TableSetupColumn("Contribution", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Steam Key");
-                ImGui::TableHeadersRow();
-
-                for (const auto& c : contributors)
-                {
-                    ImGui::TableNextRow();
-
-                    // Column 0: Role
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::AlignTextToFramePadding(); // Fix vertical alignment
-                    ImGui::TextUnformatted(c.role.c_str());
-
-                    // Column 1: Name
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(c.name.c_str());
-
-                    // Column 2: Country
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(c.country.c_str());
-
-                    // Column 3: Button
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::PushID(&c);
-                    // Use small button style if available, or standard
-                    if (ImGui::Button(c.button_text.c_str()))
-                    {
-                        spartan::FileSystem::OpenUrl(c.button_url);
-                    }
-                    ImGui::PopID();
-
-                    // Column 4: Contribution
-                    ImGui::TableSetColumnIndex(4);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(c.contribution.c_str());
-
-                    // Column 5: Key
-                    ImGui::TableSetColumnIndex(5);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(c.steam_key.c_str());
-                }
-                ImGui::EndTable();
-            }
+            Contributors::RenderTable();
         }
 
         void tab_libraries()
