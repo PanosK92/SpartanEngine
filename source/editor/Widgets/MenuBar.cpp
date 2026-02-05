@@ -19,10 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ===================
 #include "pch.h"
 #include "MenuBar.h"
-#include "../GeneralWindows.h"
 #include "Profiler.h"
 #include "ShaderEditor.h"
 #include "RenderOptions.h"
@@ -37,10 +36,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Style.h"
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
-#include "../Debugging.h"
+#include "Debugging.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
-//================================
+#include "../GeneralWindows.h"
+//==============================
 
 //= NAMESPACES =====
 using namespace std;
