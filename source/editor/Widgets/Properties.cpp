@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Properties.h"
 #include "Window.h"
+#include "FileSelection.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../Widgets/ButtonColorPicker.h"
@@ -255,6 +256,8 @@ Properties::Properties(Editor* editor) : Widget(editor)
     m_colorPicker_light     = make_unique<ButtonColorPicker>("Light Color Picker");
     m_material_color_picker = make_unique<ButtonColorPicker>("Material Color Picker");
     m_colorPicker_camera    = make_unique<ButtonColorPicker>("Camera Color Picker");
+
+    file_selection::initialize(editor);
 }
 
 void Properties::OnTickVisible()
@@ -305,6 +308,9 @@ void Properties::OnTickVisible()
         }
     }
     ImGui::EndDisabled();
+
+    // handle file browser dialog (shown outside of disabled scope)
+    file_selection::tick();
 }
 
 void Properties::Inspect(spartan::Entity* entity)
@@ -708,10 +714,23 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
         // material
         ImGui::Text("Material");
         layout::move_to_value_column();
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 30.0f);
         ImGui::InputText("##renderable_material", &name_material, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
         {
             renderable->SetMaterial(std::get<const char*>(payload->data));
+        }
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        if (file_selection::browse_button("browse_material"))
+        {
+            file_selection::open([renderable](const std::string& path)
+            {
+                if (FileSystem::IsEngineMaterialFile(path))
+                {
+                    renderable->SetMaterial(path);
+                }
+            });
         }
 
         ImGui::Text("Cast shadows");
@@ -934,7 +953,20 @@ void Properties::ShowMaterial(Material* material) const
                 
                         // get the texture for this slot and show it in the UI
                         spartan::RHI_Texture* texture = material->GetTexture(texture_type, slot);
-                        ImGuiSp::image_slot(texture, setter);
+                        if (ImGuiSp::image_slot(texture, setter))
+                        {
+                            // clicked for browse - open file browser
+                            file_selection::open([setter](const std::string& path)
+                            {
+                                if (FileSystem::IsSupportedImageFile(path))
+                                {
+                                    if (const auto tex = ResourceCache::Load<RHI_Texture>(path).get())
+                                    {
+                                        setter(tex);
+                                    }
+                                }
+                            });
+                        }
                     }
                 
                     if (show_modifier)
@@ -1163,10 +1195,24 @@ void Properties::ShowTerrain(Terrain* terrain) const
         {
             ImGui::Text("Height Map");
 
-            ImGuiSp::image_slot(terrain->GetHeightMapSeed(), [&terrain](spartan::RHI_Texture* texture)
+            auto height_map_setter = [&terrain](spartan::RHI_Texture* texture)
             {
                 terrain->SetHeightMapSeed(texture);
-            });
+            };
+
+            if (ImGuiSp::image_slot(terrain->GetHeightMapSeed(), height_map_setter))
+            {
+                file_selection::open([terrain](const std::string& path)
+                {
+                    if (FileSystem::IsSupportedImageFile(path))
+                    {
+                        if (const auto tex = ResourceCache::Load<RHI_Texture>(path).get())
+                        {
+                            terrain->SetHeightMapSeed(tex);
+                        }
+                    }
+                });
+            }
 
             if (ImGuiSp::button("Generate", ImVec2(82.0f * spartan::Window::GetDpiScale(), 0)))
             {
@@ -1232,10 +1278,23 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         // audio clip
         ImGui::Text("Audio Clip");
         layout::move_to_value_column();
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 30.0f);
         ImGui::InputText("##audioSourceAudioClip", &audio_clip_name, ImGuiInputTextFlags_ReadOnly);
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Audio))
         {
             audio_source->SetAudioClip(std::get<const char*>(payload->data));
+        }
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        if (file_selection::browse_button("browse_audio"))
+        {
+            file_selection::open([audio_source](const std::string& path)
+            {
+                if (FileSystem::IsSupportedAudioFile(path))
+                {
+                    audio_source->SetAudioClip(path);
+                }
+            });
         }
 
         // play on start

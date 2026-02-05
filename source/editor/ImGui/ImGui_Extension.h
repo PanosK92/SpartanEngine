@@ -217,24 +217,40 @@ namespace ImGuiSp
         return result;
     }
 
-    // image slot
-    static void image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter)
+    // image slot - returns true if the user clicked on the slot (for browse functionality)
+    static bool image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter)
     {
         const ImVec2 slot_size  = ImVec2(80 * spartan::Window::GetDpiScale());
         const float button_size = 15.0f * spartan::Window::GetDpiScale();
+        bool clicked_for_browse = false;
 
-        // Image
+        // image
         ImGui::BeginGroup();
         {
             spartan::RHI_Texture* texture = texture_in;
             const ImVec2 pos_image        = ImGui::GetCursorPos();
             const ImVec2 pos_button       = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
 
-            // image
-            ImVec4 colro_tint   = (texture != nullptr) ? ImVec4(1, 1, 1, 1) : ImVec4(0, 0, 0, 0);
-            ImVec4 color_border = ImVec4(1, 1, 1, 0.5f);
+            // clickable area using invisible button
             ImGui::SetCursorPos(pos_image);
-            image(texture, slot_size, colro_tint, color_border);
+            ImGui::InvisibleButton("##slot_click", slot_size);
+            bool is_hovered = ImGui::IsItemHovered();
+            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+            {
+                clicked_for_browse = true;
+            }
+
+            // draw the image on top
+            ImVec4 color_tint   = (texture != nullptr) ? ImVec4(1, 1, 1, 1) : ImVec4(0, 0, 0, 0);
+            ImVec4 color_border = is_hovered ? ImVec4(0.4f, 0.6f, 1.0f, 1.0f) : ImVec4(1, 1, 1, 0.5f);
+            ImGui::SetCursorPos(pos_image);
+            image(texture, slot_size, color_tint, color_border);
+
+            // drag source must be set up immediately after the invisible button
+            if (texture != nullptr && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+            {
+                ImGui::EndDragDropSource();
+            }
 
             // x (remove) button
             if (texture != nullptr)
@@ -244,6 +260,7 @@ namespace ImGuiSp
                 {
                     texture = nullptr;
                     setter(nullptr);
+                    clicked_for_browse = false; // don't browse if removing
                 }
             }
         }
@@ -261,6 +278,8 @@ namespace ImGuiSp
             }
             catch (const std::bad_variant_access& e) { SP_LOG_ERROR("%s", e.what()); }
         }
+
+        return clicked_for_browse;
     }
 
     static void tooltip(const char* text)
