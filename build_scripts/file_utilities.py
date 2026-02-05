@@ -20,6 +20,7 @@
 import hashlib
 import importlib
 import os
+import platform
 import shutil
 import stat
 import subprocess
@@ -86,28 +87,29 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
         print(f"\nDownloading {destination} (Starting from: {current_size:,} bytes)...")
         
         response = None
+        t = None
         try:
             response = requests.get(url, stream=True, headers=headers, timeout=30)
             response.raise_for_status()  # Raise exception for bad status codes
-            
+
             # Determine total_size
             total_size = None
             if 'content-length' in response.headers:
                 remaining = int(response.headers['content-length'])
             else:
                 remaining = None
-            
+
             # Parse content-range if available
             if 'content-range' in response.headers:
                 cr = response.headers['content-range']
                 total_str = cr.rsplit('/', 1)[-1]
                 if total_str.isdigit():
                     total_size = int(total_str)
-            
+
             # If content-length available but no total from range, compute it
             if remaining is not None and total_size is None:
                 total_size = current_size + remaining
-            
+
             # Check if server supports range requests
             if current_size > 0 and response.status_code != 206:
                 print("Server does not support range requests. Restarting download from scratch...")
@@ -116,28 +118,29 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
                 open(destination, 'wb').close()
                 current_size = 0
                 raise requests.RequestException("Restarting due to lack of range support")  # Trigger retry to restart
-            
+
             # Print total size if known
             if total_size is not None:
                 print(f"Total size detected: {total_size:,} bytes")
-            
+
             # Now create tqdm with known total or None
             t = tqdm(total=total_size, initial=current_size, unit='iB', unit_scale=True)
-            
+
             # Open file and download
             with open(destination, mode) as f:
                 for chunk in response.iter_content(chunk_size):
                     if chunk:  # Filter out keep-alive chunks
                         f.write(chunk)
                         t.update(len(chunk))
-        
+
         except requests.RequestException as e:
             print(f"Download failed: {e}. Retrying...")
             raise
         finally:
             if response:
                 response.close()
-            t.close()
+            if t is not None:  # Check before closing to avoid scope issues
+                t.close()
         
         # Verify file size if known
         downloaded_size = os.path.getsize(destination)
@@ -162,22 +165,33 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
 
 def extract_archive(archive_path, destination_path):
     # Check if 7z.exe exists locally
-    current_dir_7z  = Path("7z.exe")
-    if current_dir_7z.exists():
-        seven_zip_exe = current_dir_7z
+    # Detect platform and use appropriate 7zip executable
+    if platform.system() == "Windows":
+        # Windows: look for 7z.exe
+        current_dir_7z = Path("7z.exe")
+        if current_dir_7z.exists():
+            seven_zip_exe = current_dir_7z
+        else:
+            seven_zip_exe = Path("build_scripts") / "7z.exe"
+            seven_zip_exe = seven_zip_exe.resolve()
     else:
-        # define the path where 7z.exe should be if not in the current directory
-        seven_zip_exe = Path("build_scripts") / "7z.exe"
-        seven_zip_exe = seven_zip_exe.resolve()
+        # Linux/macOS: use system 7z or 7zz
+        seven_zip_exe = "7z"  # Use system command, not a path
 
-    # check if the 7z executable exists
-    if not os.path.exists(seven_zip_exe):
+    # On Windows, check if the executable exists
+    if platform.system() == "Windows" and not os.path.exists(seven_zip_exe):
         raise FileNotFoundError(f"The 7z executable was not found at {seven_zip_exe}. Please check the path or installation.")
     
     archive_path_str = str(Path(archive_path).resolve())
     destination_path_str = str(Path(destination_path).resolve())
 
-    cmd = [str(seven_zip_exe), 'x', archive_path_str, '-o'+destination_path_str, '-aoa']
+    # Build command appropriately for platform
+    if isinstance(seven_zip_exe, str):
+        # Linux/macOS: system command
+        cmd = [seven_zip_exe, 'x', archive_path_str, '-o'+destination_path_str, '-aoa']
+    else:
+        # Windows: Path object
+        cmd = [str(seven_zip_exe), 'x', archive_path_str, '-o'+destination_path_str, '-aoa']
 
     print(f"Extracting {archive_path} to {destination_path} using: {seven_zip_exe}")
 
@@ -191,8 +205,12 @@ def extract_archive(archive_path, destination_path):
     
 def copy(source, destination):
     def on_rm_error(func, path, exc_info):
-        os.chmod(path, stat.S_IWRITE)
-        func(path)
+        try:
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+        except (PermissionError, OSError) as e:
+            # If we can't change permissions, raise the error to be caught by the caller
+            raise
 
     source_path = Path(source).resolve()
     dest_path = Path(destination).resolve()
@@ -202,7 +220,16 @@ def copy(source, destination):
         # if source is a directory, ensure destination is a directory too
         dest_path.mkdir(parents=True, exist_ok=True)  # Create the destination directory if it doesn't exist
         print(f"Copying directory \"{source_path}\" to directory \"{dest_path}\"...")
-        shutil.rmtree(str(dest_path), onerror=on_rm_error)
+        try:
+            shutil.rmtree(str(dest_path), onerror=on_rm_error)
+        except (PermissionError, OSError) as e:
+            # If we can't remove the destination, check if it already exists
+            if dest_path.exists():
+                print(f"Warning: Could not remove existing destination \"{dest_path}\" (permission denied).")
+                print(f"Skipping copy and using existing directory. If you experience issues, run:")
+                print(f"  sudo chown -R $USER:$USER {dest_path}")
+                return True
+            raise
         shutil.copytree(str(source_path), str(dest_path), dirs_exist_ok=True)
     elif source_path.is_file():
         # if source is a file, ensure the parent directory of the destination exists
