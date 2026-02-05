@@ -545,6 +545,7 @@ namespace spartan
 
                 // lighting
                 entities::sun(LightPreset::david_lynch, true);
+                default_light_directional->SetRotation(Quaternion::FromEulerAngles(9.07f, -122.84f, 180.0f));
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetFlag(LightFlags::Volumetric, true);
 
