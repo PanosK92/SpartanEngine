@@ -188,13 +188,15 @@ namespace ImGuiSp
     struct DragDropPayload
     {
         using DataVariant = std::variant<const char*, uint64_t>;
-        DragDropPayload(const DragPayloadType type = DragPayloadType::Undefined, const DataVariant data = nullptr)
+        DragDropPayload(const DragPayloadType type = DragPayloadType::Undefined, const DataVariant data = nullptr, const char* path_relative = nullptr)
         {
-            this->type = type;
-            this->data = data;
+            this->type          = type;
+            this->data          = data;
+            this->path_relative = path_relative;
         }
         DragPayloadType type;
-        DataVariant data;
+        DataVariant data;               // full/absolute path (for backward compatibility)
+        const char* path_relative;      // relative path
     };
 
     static void create_drag_drop_paylod(const DragDropPayload& payload)
@@ -224,44 +226,67 @@ namespace ImGuiSp
         const float button_size = 15.0f * spartan::Window::GetDpiScale();
         bool clicked_for_browse = false;
 
-        // image
         ImGui::BeginGroup();
         {
-            spartan::RHI_Texture* texture = texture_in;
-            const ImVec2 pos_image        = ImGui::GetCursorPos();
-            const ImVec2 pos_button       = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
+            spartan::RHI_Texture* texture   = texture_in;
+            const ImVec2 pos_image          = ImGui::GetCursorPos();
+            const ImVec2 screen_pos         = ImGui::GetCursorScreenPos();
 
-            // clickable area using invisible button
+            // x button position (top-right corner)
+            const float x_btn_offset_x = slot_size.x - button_size - 4.0f;
+            const float x_btn_offset_y = 4.0f;
+            ImVec2 x_btn_screen_min    = ImVec2(screen_pos.x + x_btn_offset_x, screen_pos.y + x_btn_offset_y);
+            ImVec2 x_btn_screen_max    = ImVec2(x_btn_screen_min.x + button_size, x_btn_screen_min.y + button_size);
+
+            // check x button click FIRST using manual hit test
+            bool x_clicked = false;
+            if (texture != nullptr)
+            {
+                bool x_hovered = ImGui::IsMouseHoveringRect(x_btn_screen_min, x_btn_screen_max);
+                if (x_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                {
+                    setter(nullptr);
+                    x_clicked = true;
+                }
+            }
+
+            // main slot interaction (only if x wasn't clicked)
             ImGui::SetCursorPos(pos_image);
             ImGui::InvisibleButton("##slot_click", slot_size);
             bool is_hovered = ImGui::IsItemHovered();
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+            
+            if (!x_clicked && ImGui::IsItemClicked(ImGuiMouseButton_Left))
             {
                 clicked_for_browse = true;
             }
 
-            // draw the image on top
+            // draw the image
             ImVec4 color_tint   = (texture != nullptr) ? ImVec4(1, 1, 1, 1) : ImVec4(0, 0, 0, 0);
             ImVec4 color_border = is_hovered ? ImVec4(0.4f, 0.6f, 1.0f, 1.0f) : ImVec4(1, 1, 1, 0.5f);
             ImGui::SetCursorPos(pos_image);
             image(texture, slot_size, color_tint, color_border);
 
-            // drag source must be set up immediately after the invisible button
+            // drag source
             if (texture != nullptr && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
             {
                 ImGui::EndDragDropSource();
             }
 
-            // x (remove) button
+            // draw x button (visual only - click handled above)
             if (texture != nullptr)
             {
+                ImVec2 pos_button = ImVec2(pos_image.x + x_btn_offset_x, pos_image.y + x_btn_offset_y);
                 ImGui::SetCursorPos(pos_button);
-                if (image_button(spartan::ResourceCache::GetIcon(spartan::IconType::X), button_size, true))
+                
+                // draw button background on hover
+                bool x_hovered = ImGui::IsMouseHoveringRect(x_btn_screen_min, x_btn_screen_max);
+                if (x_hovered)
                 {
-                    texture = nullptr;
-                    setter(nullptr);
-                    clicked_for_browse = false; // don't browse if removing
+                    ImGui::GetWindowDrawList()->AddRectFilled(x_btn_screen_min, x_btn_screen_max, IM_COL32(255, 80, 80, 180), 3.0f);
                 }
+                
+                // draw x icon
+                image(spartan::ResourceCache::GetIcon(spartan::IconType::X), ImVec2(button_size, button_size));
             }
         }
         ImGui::EndGroup();

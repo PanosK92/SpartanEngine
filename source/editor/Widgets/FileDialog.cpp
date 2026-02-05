@@ -627,17 +627,21 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
     {
-        const auto set_payload = [this](const ImGuiSp::DragPayloadType type, const string& path)
+        const auto set_payload = [this](const ImGuiSp::DragPayloadType type, const string& path_full, const string& path_relative)
         {
-            m_drag_drop_payload.type = type;
-            m_drag_drop_payload.data = path.c_str();
+            m_drag_drop_payload.type          = type;
+            m_drag_drop_payload.data          = path_full.c_str();
+            m_drag_drop_payload.path_relative = path_relative.c_str();
             ImGuiSp::create_drag_drop_paylod(m_drag_drop_payload);
         };
 
-        if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Model,    item->GetPath()); }
-        if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Texture,  item->GetPath()); }
-        if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Audio,    item->GetPath()); }
-        if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Material, item->GetPath()); }
+        const string& path_full     = item->GetPath();
+        const string& path_relative = item->GetPathRelative();
+
+        if (FileSystem::IsSupportedModelFile(path_full)) { set_payload(ImGuiSp::DragPayloadType::Model,    path_full, path_relative); }
+        if (FileSystem::IsSupportedImageFile(path_full)) { set_payload(ImGuiSp::DragPayloadType::Texture,  path_full, path_relative); }
+        if (FileSystem::IsSupportedAudioFile(path_full)) { set_payload(ImGuiSp::DragPayloadType::Audio,    path_full, path_relative); }
+        if (FileSystem::IsEngineMaterialFile(path_full)) { set_payload(ImGuiSp::DragPayloadType::Material, path_full, path_relative); }
 
         ImGuiSp::image(item->GetIcon(), ImVec2(50, 50));
         ImGui::EndDragDropSource();
