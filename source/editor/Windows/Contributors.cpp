@@ -66,7 +66,7 @@ namespace Contributors
     void RenderTable()
     {
         // reserve space for the legend at the bottom
-        float legend_height = ImGui::GetTextLineHeightWithSpacing() * 3.0f;
+        float legend_height = ImGui::GetTextLineHeightWithSpacing() * 5.5f;
         float table_height  = ImGui::GetContentRegionAvail().y - legend_height;
 
         // use SizingFixedFit so columns auto-size to fit their content
@@ -124,9 +124,46 @@ namespace Contributors
             ImGui::EndTable();
         }
 
-        // title legend
+        // legend
         ImGui::Spacing();
-        ImGui::TextDisabled("Spartan: considerable contributor | Hoplite: lightweight contributor");
-        ImGui::TextDisabled("These titles are also attributed in Discord.");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // roles - displayed inline with visual separation
+        ImGui::Text("Roles:");
+        ImGui::SameLine();
+        ImGui::TextDisabled("Spartan (considerable contributor)");
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::TextDisabled("Hoplite (lightweight contributor)");
+        ImGui::SameLine();
+        ImGui::TextDisabled("|");
+        ImGui::SameLine();
+        ImGui::TextDisabled("Also attributed in Discord");
+
+        // steam key info
+        ImGui::Text("Steam key:");
+        ImGui::SameLine();
+        ImGui::TextDisabled("Spartans who continuously deliver, or go above and beyond, are rewarded with a steam key.");
+
+        ImGui::Spacing();
+
+        // call to action links
+        if (ImGui::Button("Contribution Guide"))
+        {
+            spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Contributing");
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("Learn how to contribute");
+        ImGui::SameLine();
+        ImGui::Dummy(ImVec2(20.0f, 0.0f));
+        ImGui::SameLine();
+        if (ImGui::Button("Perks of a Contributor"))
+        {
+            spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor");
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("Details about rewards and recognition");
     }
 }
