@@ -68,20 +68,19 @@ namespace
 
     void update_colors()
     {
-        ImGuiStyle& style   = ImGui::GetStyle();
-        col_card_bg         = ImGui::ColorConvertFloat4ToU32(ImVec4(0.12f, 0.12f, 0.13f, 1.0f));
-        col_card_bg_hover   = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
-        col_card_bg_selected= ImGui::ColorConvertFloat4ToU32(ImVec4(0.15f, 0.25f, 0.35f, 1.0f));
-        col_card_border     = ImGui::ColorConvertFloat4ToU32(ImVec4(0.25f, 0.25f, 0.28f, 1.0f));
+        ImGuiStyle& style     = ImGui::GetStyle();
+        col_card_bg           = ImGui::ColorConvertFloat4ToU32(ImVec4(0.12f, 0.12f, 0.13f, 1.0f));
+        col_card_bg_hover     = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
+        col_card_bg_selected  = ImGui::ColorConvertFloat4ToU32(ImVec4(0.15f, 0.25f, 0.35f, 1.0f));
+        col_card_border       = ImGui::ColorConvertFloat4ToU32(ImVec4(0.25f, 0.25f, 0.28f, 1.0f));
         col_card_border_hover = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_CheckMark]);
-        col_shadow          = IM_COL32(0, 0, 0, 50);
-        col_accent          = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_CheckMark]);
-        col_text            = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Text]);
-        col_text_dim        = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_TextDisabled]);
-        col_toolbar_bg      = ImGui::ColorConvertFloat4ToU32(ImVec4(0.15f, 0.15f, 0.16f, 1.0f));
-        col_separator       = ImGui::ColorConvertFloat4ToU32(ImVec4(0.20f, 0.20f, 0.22f, 1.0f));
+        col_shadow            = IM_COL32(0, 0, 0, 50);
+        col_accent            = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_CheckMark]);
+        col_text              = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_Text]);
+        col_text_dim          = ImGui::ColorConvertFloat4ToU32(style.Colors[ImGuiCol_TextDisabled]);
+        col_toolbar_bg        = ImGui::ColorConvertFloat4ToU32(ImVec4(0.15f, 0.15f, 0.16f, 1.0f));
+        col_separator         = ImGui::ColorConvertFloat4ToU32(ImVec4(0.20f, 0.20f, 0.22f, 1.0f));
     }
-
 }
 
 FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type, const FileDialog_Operation operation, const FileDialog_Filter filter)
@@ -870,45 +869,52 @@ void FileDialog::ShowBottom(bool* is_visible)
     }
     else
     {
-        // action bar: filename input and buttons
+        // action bar: filename input, filter text, and buttons
+        // calculate layout: [input field] [filter text] [Cancel] [Action]
+        float frame_pad_x    = 16.0f;
+        float button_spacing = 8.0f;
+        float cancel_width   = ImGui::CalcTextSize("Cancel").x + frame_pad_x * 2;
+        float action_width   = ImGui::CalcTextSize(OPERATION_NAME).x + frame_pad_x * 2;
+        float buttons_total  = cancel_width + button_spacing + action_width + 12; // buttons + spacing + right margin
+        float filter_width   = ImGui::CalcTextSize(FILTER_NAME).x + 16;
+        float input_width    = window_size.x - buttons_total - filter_width - 24; // left margin + gaps
+        
         ImGui::SetCursorPos(ImVec2(12, bar_y + 8));
         
         // filename input
-        float input_width = window_size.x - 250.0f;
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8, 6));
         ImGui::SetNextItemWidth(input_width);
         ImGui::InputText("##filename", &m_input_box);
         ImGui::PopStyleVar(2);
         
-        ImGui::SameLine(0, 12);
+        ImGui::SameLine(0, 8);
         
         // filter display
+        ImGui::AlignTextToFramePadding();
         ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), FILTER_NAME);
         
-        // action buttons (right-aligned)
-        float button_width  = 80.0f;
-        float buttons_x     = window_size.x - button_width * 2 - 24;
-        ImGui::SetCursorPos(ImVec2(buttons_x, bar_y + 6));
+        ImGui::SameLine(0, 8);
         
+        // action buttons (auto-sized)
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(16, 6));
         
         // cancel button
-        if (ImGui::Button("Cancel", ImVec2(button_width, 0)))
+        if (ImGui::Button("Cancel"))
         {
             m_selection_made = false;
             (*is_visible)    = false;
         }
         
-        ImGui::SameLine(0, 8);
+        ImGui::SameLine(0, button_spacing);
         
         // primary action button (styled)
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_CheckMark]);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.7f, 0.9f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.6f, 0.8f, 1.0f));
         
-        if (ImGui::Button(OPERATION_NAME, ImVec2(button_width, 0)))
+        if (ImGui::Button(OPERATION_NAME))
         {
             m_selection_made = true;
         }
