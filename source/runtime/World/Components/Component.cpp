@@ -22,10 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========
 #include "pch.h"
 #include "Component.h"
+#include "AudioSource.h"
+#include "Camera.h"
 #include "Light.h"
 #include "Physics.h"
-#include "Camera.h"
-#include "AudioSource.h"
+#include "Script.h"
 #include "Terrain.h"
 #include "Volume.h"
 //======================

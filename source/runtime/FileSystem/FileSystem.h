@@ -51,6 +51,7 @@ namespace spartan
         static bool IsSupportedFontFile(const std::string& path);
         static bool IsEnginePrefabFile(const std::string& path);
         static bool IsEngineMaterialFile(const std::string& path);
+        static bool IsEngineLuaFile(const std::string& path);
         static bool IsEngineMeshFile(const std::string& path);
         static bool IsEngineSceneFile(const std::string& path);
         static bool IsEngineAudioFile(const std::string& path);
@@ -93,6 +94,8 @@ namespace spartan
         static bool Delete(const std::string& path);
         static bool CreateDirectory_(const std::string& path);
         static bool CopyFileFromTo(const std::string& source, const std::string& destination);
+        static bool WriteFile(std::string_view path, std::string_view data);
+        static bool ReadFile(std::string_view path, std::string& data);
 
         // internet & archives
         static bool DownloadFile(const std::string& url, const std::string& destination, std::function<void(float)> progress_callback);
@@ -105,6 +108,7 @@ namespace spartan
     static const char* EXTENSION_WORLD    = ".world";
     static const char* EXTENSION_MATERIAL = ".xml";
     static const char* EXTENSION_MESH     = ".mesh";
+    static const char* EXTENSION_LUA      = ".lua";
     static const char* EXTENSION_PREFAB   = ".prefab";
     static const char* EXTENSION_SHADER   = ".shader";
     static const char* EXTENSION_FONT     = ".font";

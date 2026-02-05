@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
 #include "Rendering/Renderer.h"
+#include "World/Components/Script.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -65,27 +66,27 @@ namespace
     //----------------------------------------------------------
     // layout helpers
     //----------------------------------------------------------
-    
+
     namespace layout
     {
         // layout constants
         constexpr float label_ratio     = 0.35f;  // labels take 35% of width
         constexpr float content_padding = 8.0f;   // padding inside component content area
         constexpr float min_value_width = 40.0f;  // minimum width for value widgets
-        
+
         // get the x position where values should start (after label)
         float value_offset()
         {
             return ImGui::GetContentRegionAvail().x * label_ratio;
         }
-        
+
         // get width for a single value widget (fills remaining space)
         float value_width()
         {
             float w = ImGui::GetContentRegionAvail().x * (1.0f - label_ratio) - ImGui::GetStyle().ItemSpacing.x;
             return ImMax(w, min_value_width);
         }
-        
+
         // get width for each of N value widgets on the same row
         float value_width_split(int count)
         {
@@ -95,7 +96,7 @@ namespace
             float w        = (total - label_w * count - spacing) / static_cast<float>(count);
             return ImMax(w, min_value_width);
         }
-        
+
         // position cursor at value column
         void move_to_value_column()
         {
@@ -115,7 +116,7 @@ namespace
         }
         return nullptr;
     }
-    
+
     uint32_t get_selected_entity_count()
     {
         if (Camera* camera = World::GetCamera())
@@ -124,7 +125,7 @@ namespace
         }
         return 0;
     }
-    
+
     const std::vector<Entity*>& get_selected_entities()
     {
         static std::vector<Entity*> empty;
@@ -180,21 +181,22 @@ namespace
 
     bool component_begin(const char* name, Component* component_instance, bool options = true, const bool removable = true)
     {
+        ImGui::PushID(component_instance);
         // draw collapsing header
         ImGui::PushFont(Editor::font_bold);
         const bool is_expanded = ImGuiSp::collapsing_header(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::PopFont();
-    
+
         // gear icon for context menu
         if (options)
         {
             const float icon_size = 24.0f;
             const float offset_x  = 43.0f;
             const float offset_y  = 2.0f;
-    
+
             const ImVec2 header_min = ImGui::GetItemRectMin();
             const ImVec2 header_max = ImGui::GetItemRectMax();
-    
+
             ImGui::SetCursorScreenPos(ImVec2(header_max.x - offset_x, header_min.y + offset_y));
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
             if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Gear), icon_size, false))
@@ -203,7 +205,7 @@ namespace
                 ImGui::OpenPopup(context_menu_id.c_str());
             }
             ImGui::PopStyleColor();
-    
+
             if (component_instance && context_menu_id == name)
             {
                 component_context_menu_options(context_menu_id, component_instance, removable);
@@ -214,7 +216,7 @@ namespace
         if (is_expanded)
         {
             component_content_active = true;
-            
+
             // background color: subtle blend between window bg and header
             const ImVec4& bg1 = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
             const ImVec4& bg2 = ImGui::GetStyle().Colors[ImGuiCol_Header];
@@ -224,13 +226,13 @@ namespace
                 bg1.z + (bg2.z - bg1.z) * 0.15f,
                 1.0f
             );
-            
+
             ImGui::PushStyleColor(ImGuiCol_ChildBg, content_bg);
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(layout::content_padding, layout::content_padding));
             ImGui::BeginChild(("##content_" + string(name)).c_str(), ImVec2(0, 0), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding);
             ImGui::PushItemWidth(-FLT_MIN);
         }
-    
+
         return is_expanded;
     }
 
@@ -245,6 +247,8 @@ namespace
             component_content_active = false;
         }
         ImGui::Separator();
+
+        ImGui::PopID();
     }
 }
 
@@ -267,13 +271,13 @@ void Properties::OnTickVisible()
     {
         {
             uint32_t selected_count = get_selected_entity_count();
-            
+
             if (selected_count > 1)
             {
                 // multiple entities selected
                 ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.2f, 1.0f), "%d entities selected", selected_count);
                 ImGui::Separator();
-                
+
                 // list the selected entities
                 const auto& selected = get_selected_entities();
                 for (Entity* entity : selected)
@@ -290,6 +294,7 @@ void Properties::OnTickVisible()
                 Material* material     = renderable ? renderable->GetMaterial() : nullptr;
 
                 ShowEntity(entity);
+                ShowScript(entity->GetComponent<Script>());
                 ShowLight(entity->GetComponent<Light>());
                 ShowCamera(entity->GetComponent<Camera>());
                 ShowTerrain(entity->GetComponent<Terrain>());
@@ -353,7 +358,7 @@ void Properties::ShowEntity(Entity* entity) const
         // get or initialize display euler
         auto euler_it = display_euler_map.find(entity_id);
         auto quat_it = last_quat_map.find(entity_id);
-        
+
         if (euler_it == display_euler_map.end())
         {
             display_euler_map[entity_id] = rotation.ToEulerAngles();
@@ -365,10 +370,10 @@ void Properties::ShowEntity(Entity* entity) const
             Quaternion last_quat = quat_it->second;
             Quaternion delta_quat = rotation * last_quat.Inverse();
             delta_quat.Normalize();
-            
+
             // convert delta to euler (will be small values for continuous rotation)
             Vector3 delta_euler = delta_quat.ToEulerAngles();
-            
+
             // only apply delta if rotation actually changed
             float dot_val = std::abs(rotation.Dot(last_quat));
             if (dot_val < 0.9999f)
@@ -399,9 +404,63 @@ void Properties::ShowEntity(Entity* entity) const
             entity->SetRotationLocal(new_rotation);
             last_quat_map[entity_id] = new_rotation;
         }
-        
+
         entity->SetPositionLocal(position);
         entity->SetScaleLocal(scale);
+    }
+    component_end();
+}
+
+void Properties::ShowScript(spartan::Script* script) const
+{
+    if (!script)
+    {
+        return;
+    }
+
+    if (component_begin("Script", script))
+    {
+
+        ImGui::Text("Script File");
+        layout::move_to_value_column();
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 60.0f);
+
+        ImGui::InputText("##ScriptPathName", &script->file_path, ImGuiInputTextFlags_ReadOnly, [](ImGuiInputTextCallbackData* data) -> int
+        {
+            auto* Comp = static_cast<Script*>(data->UserData);
+            Comp->file_path.resize(data->BufSize);
+            return (int)Comp->file_path.size();
+        }, script);
+
+        if (auto* payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Lua))
+        {
+            script->LoadScriptFile(std::get<const char*>(payload->data));
+        }
+        ImGui::PopItemWidth();
+
+        ImGui::SameLine();
+
+        if (ImGui::SmallButton("R"))
+        {
+            script->LoadScriptFile(script->file_path);
+        }
+
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("%s", "Reload the script.");
+        }
+
+        ImGui::SameLine();
+        if (file_selection::browse_button("browse_script"))
+        {
+            file_selection::open([script](const std::string& path)
+            {
+                if (FileSystem::IsEngineLuaFile(path))
+                {
+                    script->LoadScriptFile(path);
+                }
+            });
+        }
     }
     component_end();
 }
@@ -470,7 +529,7 @@ void Properties::ShowLight(spartan::Light* light) const
             // light types
             bool is_directional = light->GetLightType() == LightType::Directional;
             if (!is_directional)
-            { 
+            {
                 uint32_t intensity_type_index = static_cast<uint32_t>(light->GetIntensity());
                 if (ImGuiSp::combo_box("##light_intensity_type", intensity_types, &intensity_type_index))
                 {
@@ -482,7 +541,7 @@ void Properties::ShowLight(spartan::Light* light) const
 
             // intensity
             if (!is_directional)
-            { 
+            {
                 ImGui::SameLine();
             }
             ImGuiSp::draw_float_wrap(is_directional ? "lux" : "lm", &intensity, 10.0f, 0.0f, 120000.0f);
@@ -514,7 +573,7 @@ void Properties::ShowLight(spartan::Light* light) const
             ImGuiSp::toggle_switch("Day/Night Cycle", &day_night_cycle);
             light->SetFlag(spartan::LightFlags::DayNightCycle, day_night_cycle);
 
-            
+
             bool real_time_cycle = light->GetFlag(spartan::LightFlags::RealTimeCycle);
             ImGui::BeginDisabled(!day_night_cycle);
             ImGuiSp::toggle_switch("Real Time Cycle", &real_time_cycle);
@@ -592,7 +651,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
         {
             // move to value column before starting the table
             ImGui::SetCursorPosX(layout::value_offset());
-            
+
             int lod_count = renderable->GetLodCount();
             if (ImGui::BeginTable("##geometry_table", lod_count + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit))
             {
@@ -605,7 +664,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
                     std::snprintf(lod_name, sizeof(lod_name), "LOD %d", i + 1);
                     ImGui::TableSetupColumn(lod_name);
                 }
-                
+
                 // header row
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -626,7 +685,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
                     ImGui::TableSetColumnIndex(i + 1);
                     ImGui::Text("%d", renderable->GetVertexCount(i));
                 }
-        
+
                 // row 2: indices
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -636,7 +695,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
                     ImGui::TableSetColumnIndex(i + 1);
                     ImGui::Text("%d", renderable->GetIndexCount(i));
                 }
-        
+
                 ImGui::EndTable();
             }
 
@@ -845,7 +904,7 @@ void Properties::ShowPhysics(Physics* body) const
         // center
         {
             float input_w = layout::value_width_split(3);
-            
+
             ImGui::Text("Shape Center");
             layout::move_to_value_column(); ImGui::PushID("physics_body_shape_center_x"); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("X", &center_of_mass.x, 0.0f, 0.0f, precision, input_text_flags); ImGui::PopID();
             ImGui::SameLine();              ImGui::PushID("physics_body_shape_center_y"); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("Y", &center_of_mass.y, 0.0f, 0.0f, precision, input_text_flags); ImGui::PopID();
@@ -914,23 +973,23 @@ void Properties::ShowMaterial(Material* material) const
             {
                 bool show_texture  = mat_tex      != MaterialTextureType::Max;
                 bool show_modifier = mat_property != MaterialProperty::Max;
-        
+
                 // name
                 if (name)
                 {
                     ImGui::Text(name);
-        
+
                     if (tooltip)
                     {
                         ImGuiSp::tooltip(tooltip);
                     }
-        
+
                     if (show_texture || show_modifier)
                     {
                         layout::move_to_value_column();
                     }
                 }
-        
+
                 // texture
                 if (show_texture)
                 {
@@ -938,19 +997,19 @@ void Properties::ShowMaterial(Material* material) const
                     for (uint32_t slot = 0; slot < material->GetUsedSlotCount(); ++slot)
                     {
                         MaterialTextureType texture_type = static_cast<MaterialTextureType>(mat_tex);
-                        
+
                         // create a lambda that captures both the type and slot for the setter
-                        auto setter = [material, texture_type, slot](spartan::RHI_Texture* texture) 
-                        { 
+                        auto setter = [material, texture_type, slot](spartan::RHI_Texture* texture)
+                        {
                             material->SetTexture(texture_type, texture, slot);
                         };
-                
+
                         // slots are shown side by side for each type
                         if (slot > 0)
                         {
                             ImGui::SameLine();
                         }
-                
+
                         // get the texture for this slot and show it in the UI
                         spartan::RHI_Texture* texture = material->GetTexture(texture_type, slot);
                         if (ImGuiSp::image_slot(texture, setter))
@@ -968,13 +1027,13 @@ void Properties::ShowMaterial(Material* material) const
                             });
                         }
                     }
-                
+
                     if (show_modifier)
                     {
                         ImGui::SameLine();
                     }
                 }
-        
+
                 // modifier/multiplier
                 if (show_modifier)
                 {
@@ -983,7 +1042,7 @@ void Properties::ShowMaterial(Material* material) const
                         m_material_color_picker->Update();
                     }
                     else
-                    { 
+                    {
                         float value = material->GetProperty(mat_property);
 
                         if (mat_property != MaterialProperty::Metalness)
@@ -1007,7 +1066,7 @@ void Properties::ShowMaterial(Material* material) const
                     }
                 }
             };
-        
+
             // properties with textures
             show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorA);
             show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTextureType::Roughness, MaterialProperty::Roughness);
@@ -1024,7 +1083,7 @@ void Properties::ShowMaterial(Material* material) const
             show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
             show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
         }
-        
+
         // uv
         {
             float input_w = layout::value_width_split(2);
@@ -1035,14 +1094,14 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine(); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("##matTilingX", &tiling.x, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             ImGui::SameLine(); ImGui::Text("Y");
             ImGui::SameLine(); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("##matTilingY", &tiling.y, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-        
+
             // offset
             ImGui::Text("Offset");
             layout::move_to_value_column(); ImGui::Text("X");
             ImGui::SameLine(); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("##matOffsetX", &offset.x, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
             ImGui::SameLine(); ImGui::Text("Y");
             ImGui::SameLine(); ImGui::SetNextItemWidth(input_w); ImGui::InputFloat("##matOffsetY", &offset.y, 0.0f, 0.0f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-        
+
             // inversion
             bool invert_x = material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
             bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
@@ -1065,7 +1124,7 @@ void Properties::ShowMaterial(Material* material) const
                     "Front",
                     "None"
                 };
-        
+
                 ImGui::Text("Culling");
                 layout::move_to_value_column();
                 uint32_t cull_mode_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::CullMode));
@@ -1165,7 +1224,7 @@ void Properties::ShowCamera(Camera* camera) const
         ImGui::Text("First Person Control");
         layout::move_to_value_column(); ImGuiSp::toggle_switch("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
- 
+
         //= MAP =======================================================================================================================================================
         if (aperture != camera->GetAperture())          camera->SetAperture(aperture);
         if (shutter_speed != camera->GetShutterSpeed()) camera->SetShutterSpeed(shutter_speed);
@@ -1420,17 +1479,17 @@ void Properties::ShowVolume(spartan::Volume* volume) const
                 if (is_active)
                 {
                     ImGui::SameLine();
-                    
+
                     // fill remaining width for the slider
                     ImGui::PushItemWidth(-FLT_MIN);
-                    
+
                     float value = volume->GetOption(name.c_str());
                     // use ## to hide the label since the checkbox already shows it
-                    if (ImGuiSp::draw_float_wrap("##v", &value, 0.1f)) 
+                    if (ImGuiSp::draw_float_wrap("##v", &value, 0.1f))
                     {
                         volume->SetOption(name.c_str(), value);
                     }
-                    
+
                     ImGui::PopItemWidth();
                 }
 
@@ -1459,6 +1518,11 @@ void Properties::ComponentContextMenu_Add() const
     {
         if (Entity* entity = get_selected_entity())
         {
+            if (ImGui::MenuItem("Script"))
+            {
+                entity->AddComponent<Script>();
+            }
+
             if (ImGui::MenuItem("Camera"))
             {
                 entity->AddComponent<Camera>();

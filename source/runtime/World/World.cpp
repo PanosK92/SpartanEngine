@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "World.h"
+
+#include <sol/sol.hpp>
+
 #include "Entity.h"
 #include "Prefab.h"
 #include "../Game/Game.h"
@@ -35,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Renderer.h"
+#include "Components/Physics.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -49,6 +53,7 @@ namespace spartan
 {
     namespace
     {
+        sol::state lua_state;
         vector<Entity*> entities;
         vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
@@ -139,12 +144,12 @@ namespace spartan
             // check if the world is in the project directory (has local assets alongside it)
             string normalized_path = world_file_path;
             replace(normalized_path.begin(), normalized_path.end(), '\\', '/');
-            
+
             string project_dir = ResourceCache::GetProjectDirectory();
             replace(project_dir.begin(), project_dir.end(), '\\', '/');
-            
+
             // world is in project if path starts with project directory or contains /project/
-            return normalized_path.find(project_dir) != string::npos || 
+            return normalized_path.find(project_dir) != string::npos ||
                    normalized_path.find("/project/") != string::npos ||
                    normalized_path.rfind("project/", 0) == 0;
         }
@@ -167,10 +172,431 @@ namespace spartan
 
             // normalize to forward slashes
             replace(result.begin(), result.end(), '\\', '/');
-            
+
             SP_LOG_INFO("World resource directory: %s (from world: %s)", result.c_str(), world_file_path.c_str());
             return result;
         }
+
+
+        void InitializeCoreLua()
+        {
+            lua_state.collect_gc();
+
+            lua_state.open_libraries(
+                sol::lib::base,
+                sol::lib::package,
+                sol::lib::coroutine,
+                sol::lib::string,
+                sol::lib::math,
+                sol::lib::table,
+                sol::lib::io);
+
+            sol::state_view state_view(lua_state);
+
+            lua_state.set_function("print", [&](sol::this_state s, const sol::variadic_args& args)
+            {
+                sol::state_view lua(s);
+                sol::protected_function LuaStringFunc = lua["tostring"];
+
+                std::string Output;
+                Output.reserve(256);
+                for (size_t i = 0; i < args.size(); ++i)
+                {
+                    sol::object Obj = args[i];
+
+                    sol::protected_function_result Result = LuaStringFunc(Obj);
+
+                    if (Result.valid())
+                    {
+                        if (sol::optional<const char*> str = Result)
+                        {
+                            Output += *str;
+                        }
+                        else
+                        {
+                            Output += "[tostring error]";
+                        }
+                    }
+                    else
+                    {
+                        sol::error err = Result;
+                        Output += "[error: ";
+                        Output += err.what();
+                        Output += "]";
+                    }
+
+                    if (i < args.size() - 1)
+                    {
+                        Output += "\t";
+                    }
+                }
+
+                SP_LOG_INFO("[Lua] %s", Output.c_str())
+            });
+
+            sol::table Timer = lua_state.create_named_table("Timer");
+            Timer["SetFPSLimit"]                    = &Timer::SetFpsLimit;
+            Timer["GetFPSLimit"]                    = &Timer::GetFpsLimit;
+            Timer["GetTimeMs"]                      = &Timer::GetTimeMs;
+            Timer["GetTimeSec"]                     = &Timer::GetTimeSec;
+            Timer["GetDeltaTimeMs"]                 = &Timer::GetDeltaTimeMs;
+            Timer["GetDeltaTimeSec"]                = &Timer::GetDeltaTimeSec;
+            Timer["GetDeltaTimeSmoothedMs"]         = &Timer::GetDeltaTimeSmoothedMs;
+            Timer["GetDeltaTimeSmoothedSec"]        = &Timer::GetDeltaTimeSmoothedSec;
+
+            Entity          ::RegisterForScripting(state_view);
+            Mesh            ::RegisterForScripting(state_view);
+            AudioSource     ::RegisterForScripting(state_view);
+            Renderable      ::RegisterForScripting(state_view);
+            Physics         ::RegisterForScripting(state_view);
+            Light           ::RegisterForScripting(state_view);
+
+            lua_state.new_enum("ComponentType",
+                "AudioSource",              ComponentType::AudioSource,
+                "Camera",                   ComponentType::Camera,
+                "Light",                    ComponentType::Light,
+                "Physics",                  ComponentType::Physics,
+                "Renderable",               ComponentType::Renderable,
+                "Terrain",                  ComponentType::Terrain,
+                "Volume",                   ComponentType::Volume,
+                "Script",                   ComponentType::Script
+            );
+
+            lua_state.new_enum("Intersection",
+                "Outside", Intersection::Outside,
+                "Inside",       Intersection::Inside,
+                "Intersects",   Intersection::Intersects
+                );
+
+            lua_state.new_usertype<BoundingBox>("BoundingBox",
+                sol::call_constructor,      sol::constructors<BoundingBox(), BoundingBox(Vector3, Vector3)>(),
+
+                "Intersects",               sol::overload(
+                    [](const BoundingBox& Self, const Vector3& Point) { return Self.Intersects(Point); },
+                    [](const BoundingBox& Self, const BoundingBox& Other) { return Self.Intersects(Other); }),
+
+                "Contains",                 &BoundingBox::Contains,
+                "Merge",                    &BoundingBox::Merge,
+                "GetClosestPoint",          &BoundingBox::GetClosestPoint,
+                "GetCenter",                &BoundingBox::GetCenter,
+                "GetSize",                  &BoundingBox::GetSize,
+                "GetExtents",               &BoundingBox::GetExtents,
+                "GetVolume",                &BoundingBox::GetVolume,
+
+                "GetMin",                   &BoundingBox::GetMin,
+                "GetMax",                   &BoundingBox::GetMax
+
+                );
+
+            sol::table WorldTable = lua_state.create_named_table("World");
+            WorldTable["GetName"]                   = &World::GetName;
+            WorldTable["GetFilePath"]               = &World::GetFilePath;
+            WorldTable["GetBoundingBox"]            = &World::GetBoundingBox;
+            WorldTable["GetEntities"]               = &World::GetEntities;
+            WorldTable["GetEntitiesLights"]         = &World::GetEntitiesLights;
+            WorldTable["CreateEntity"]              = &World::CreateEntity;
+            WorldTable["RemoveEntity"]              = &World::RemoveEntity;
+            WorldTable["GetLightCount"]             = &World::GetLightCount;
+            WorldTable["GetAudioSourceCount"]       = &World::GetAudioSourceCount;
+            WorldTable["GetTimeOfDay"]              = &World::GetTimeOfDay;
+            WorldTable["SetTimeOfDay"]              = &World::SetTimeOfDay;
+            WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
+
+
+            lua_state.new_usertype<Vector2>("Vector2",
+                sol::call_constructor,
+                sol::constructors<Vector2(), Vector2(const Vector2&), Vector2(int, int), Vector2(float, float)>(),
+
+                "x", &Vector2::x,
+                "y", &Vector2::y,
+
+                // Addition
+                sol::meta_function::addition, sol::overload(
+                    [](const Vector2& LHS, const Vector2& RHS) { return LHS + RHS; },
+                    [](const Vector2& LHS, float RHS) { return LHS + RHS; }
+                ),
+
+                // Subtraction
+                sol::meta_function::subtraction, sol::overload(
+                    [](const Vector2& LHS, const Vector2& RHS) { return LHS - RHS; },
+                    [](const Vector2& LHS, float RHS) { return LHS - RHS; }
+                ),
+
+                // Multiplication
+                sol::meta_function::multiplication, sol::overload(
+                    [](const Vector2& LHS, const Vector2& RHS) { return LHS * RHS; },
+                    [](const Vector2& LHS, float RHS) { return LHS * RHS; }
+                ),
+
+                // Division
+                sol::meta_function::division, sol::overload(
+                    [](const Vector2& LHS, const Vector2& RHS) { return LHS / RHS; },
+                    [](const Vector2& LHS, float RHS) { return LHS / RHS; }
+                ),
+
+                // Unary minus
+                sol::meta_function::unary_minus, [](const Vector2& V) { return -V; },
+
+                // Equality
+                sol::meta_function::equal_to, [](const Vector2& LHS, const Vector2& RHS) { return LHS == RHS; },
+
+                // To string
+                sol::meta_function::to_string, [](const Vector2& V)
+                {
+                    return "Vector2(" + std::to_string(V.x) + ", " + std::to_string(V.y) + ")";
+                },
+
+                // Length
+                sol::meta_function::length, [](const Vector2& V) { return 2; },
+
+                // Index access
+                sol::meta_function::index, [](const Vector2& V, int index) -> float {
+                    if (index == 1)
+                    {
+                        return V.x;
+                    }
+                    if (index == 2)
+                    {
+                        return V.y;
+                    }
+                    throw std::out_of_range("Vector2 index out of range (1-2)");
+                },
+
+                sol::meta_function::new_index, [](Vector2& V, int index, float value) {
+                    if (index == 1)
+                    {
+                        V.x = value;
+                    }
+                    else if (index == 2)
+                    {
+                        V.y = value;
+                    }
+                    else
+                    {
+                        throw std::out_of_range("Vector2 index out of range (1-2)");
+                    }
+                },
+
+                // Utility methods
+                "Length", [](const Vector2& V) { return V.Length(); },
+                "LengthSquared", [](const Vector2& V) { return V.LengthSquared(); },
+                "Normalize", [](Vector2& V) { return V.Normalize(); },
+                "Normalized", [](const Vector2& V) { return V.Normalized(); },
+                "Distance", [](const Vector2& V, const Vector2& Other) { return Vector2::Distance(V, Other); },
+                "DistanceSquared", [](const Vector2& V, const Vector2& Other) { return Vector2::DistanceSquared(V, Other); }
+            );
+
+
+
+            lua_state.new_usertype<Vector3>("Vector3",
+                sol::call_constructor,
+                sol::constructors<Vector3(), Vector3(const Vector3&), Vector3(float, float, float)>(),
+
+                "x", &Vector3::x,
+                "y", &Vector3::y,
+                "z", &Vector3::z,
+
+                // Addition
+                sol::meta_function::addition, sol::overload(
+                    [](const Vector3& LHS, const Vector3& RHS) { return LHS + RHS; },
+                    [](const Vector3& LHS, float RHS) { return LHS + RHS; }
+                ),
+
+                // Subtraction
+                sol::meta_function::subtraction, sol::overload(
+                    [](const Vector3& LHS, const Vector3& RHS) { return LHS - RHS; },
+                    [](const Vector3& LHS, float RHS) { return LHS - RHS; }
+                ),
+
+                // Multiplication
+                sol::meta_function::multiplication, sol::overload(
+                    [](const Vector3& LHS, const Vector3& RHS) { return LHS * RHS; },
+                    [](const Vector3& LHS, float RHS) { return LHS * RHS; }
+                ),
+
+                // Division
+                sol::meta_function::division, sol::overload(
+                    [](const Vector3& LHS, const Vector3& RHS) { return LHS / RHS; },
+                    [](const Vector3& LHS, float RHS) { return LHS / RHS; }
+                ),
+
+                // Unary minus
+                sol::meta_function::unary_minus, [](const Vector3& V) { return -V; },
+
+                // Equality
+                sol::meta_function::equal_to, [](const Vector3& LHS, const Vector3& RHS) { return LHS == RHS; },
+
+                // To string
+                sol::meta_function::to_string, [](const Vector3& V)
+                {
+                    return "Vector3(" + std::to_string(V.x) + ", " + std::to_string(V.y) + ", " + std::to_string(V.z) + ")";
+                },
+
+                // Length
+                sol::meta_function::length, [](const Vector3& V) { return 2; },
+
+                // Index access
+                sol::meta_function::index, [](const Vector3& V, int index) -> float
+                {
+                    if (index == 1)
+                    {
+                        return V.x;
+                    }
+                    if (index == 2)
+                    {
+                        return V.y;
+                    }
+                    if (index == 3)
+                    {
+                        return V.z;
+                    }
+                    throw std::out_of_range("Vector2 index out of range (1-2)");
+                },
+
+                sol::meta_function::new_index, [](Vector3& V, int index, float value)
+                {
+                    if (index == 1)
+                    {
+                        V.x = value;
+                    }
+                    else if (index == 2)
+                    {
+                        V.y = value;
+                    }
+                    else if (index == 3)
+                    {
+                        V.z = value;
+                    }
+                    else
+                    {
+                        throw std::out_of_range("Vector3 index out of range (1-2)");
+                    }
+                },
+
+                // Utility methods
+                "Length", [](const Vector3& V) { return V.Length(); },
+                "LengthSquared", [](const Vector3& V) { return V.LengthSquared(); },
+                "Normalize", [](Vector3& V) { return V.Normalize(); },
+                "Normalized", [](const Vector3& V) { return V.Normalized(); },
+                "Distance", [](const Vector3& V, const Vector3& Other) { return Vector3::Distance(V, Other); },
+                "DistanceSquared", [](const Vector3& V, const Vector3& Other) { return Vector3::DistanceSquared(V, Other); }
+            );
+
+
+            lua_state.new_usertype<Vector4>("Vector4",
+                sol::call_constructor,
+                sol::constructors<Vector4(), Vector4(const Vector4&), Vector4(float, float, float, float)>(),
+
+                "x", &Vector4::x,
+                "y", &Vector4::y,
+                "z", &Vector4::z,
+                "w", &Vector4::w,
+
+                // Addition
+                sol::meta_function::addition, sol::overload(
+                    [](const Vector4& LHS, const Vector4& RHS) { return LHS + RHS; },
+                    [](const Vector4& LHS, float RHS) { return LHS + RHS; }
+                ),
+
+                // Subtraction
+                sol::meta_function::subtraction, sol::overload(
+                    [](const Vector4& LHS, const Vector4& RHS) { return LHS - RHS; },
+                    [](const Vector4& LHS, float RHS) { return LHS - RHS; }
+                ),
+
+                // Multiplication
+                sol::meta_function::multiplication, sol::overload(
+                    [](const Vector4& LHS, const Vector4& RHS) { return LHS * RHS; },
+                    [](const Vector4& LHS, float RHS) { return LHS * RHS; }
+                ),
+
+                // Division
+                sol::meta_function::division, sol::overload(
+                    [](const Vector4& LHS, const Vector4& RHS) { return LHS / RHS; },
+                    [](const Vector4& LHS, float RHS) { return LHS / RHS; }
+                ),
+
+                // Unary minus
+                //@TODO
+
+                // Equality
+                sol::meta_function::equal_to, [](const Vector4& LHS, const Vector4& RHS) { return LHS == RHS; },
+
+                // To string
+                sol::meta_function::to_string, [](const Vector4& V)
+                {
+                    return "Vector4(" + std::to_string(V.x) + ", " + std::to_string(V.y) + std::to_string(V.z) + ", " + std::to_string(V.w) + ")";
+                },
+
+                // Length
+                sol::meta_function::length, [](const Vector4& V) { return 4; },
+
+                // Index access
+                sol::meta_function::index, [](const Vector4& V, int index) -> float {
+                    if (index == 1)
+                    {
+                        return V.x;
+                    }
+                    if (index == 2)
+                    {
+                        return V.y;
+                    }
+                    if (index == 3)
+                    {
+                        return V.z;
+                    }
+                    if (index == 4)
+                    {
+                        return V.w;
+                    }
+                    throw std::out_of_range("Vector4 index out of range (1-2-3-4)");
+                },
+
+                sol::meta_function::new_index, [](Vector4& V, int index, float value) {
+                    if (index == 1)
+                    {
+                        V.x = value;
+                    }
+                    else if (index == 2)
+                    {
+                        V.y = value;
+                    }
+                    else if (index == 3)
+                    {
+                        V.z = value;
+                    }
+                    else if (index == 4)
+                    {
+                        V.w = value;
+                    }
+                    else
+                    {
+                        throw std::out_of_range("Vector3 index out of range (1-2)");
+                    }
+                },
+
+                // Utility methods
+                "Length", [](const Vector4& V) { return V.Length(); },
+                "LengthSquared", [](const Vector4& V) { return V.LengthSquared(); },
+                "Normalize", [](Vector4& V) { return V.Normalize(); },
+                "Normalized", [](const Vector4& V) { return V.Normalized(); },
+                "Distance", [](const Vector4& V, const Vector4& Other) { return Vector3::Distance(V, Other); },
+                "DistanceSquared", [](const Vector4& V, const Vector4& Other) { return Vector3::DistanceSquared(V, Other); }
+            );
+
+            lua_state.new_usertype<Quaternion>("Quaternion",
+                sol::call_constructor,
+                sol::constructors<Quaternion()>(),
+
+                "x", &Quaternion::x,
+                "y", &Quaternion::y,
+                "z", &Quaternion::z,
+                "w", &Quaternion::w
+            );
+
+
+        }
+
     }
 
     namespace world_time
@@ -261,7 +687,7 @@ namespace spartan
 
     void World::Initialize()
     {
-
+        InitializeCoreLua();
     }
 
     void World::Shutdown()
@@ -357,7 +783,7 @@ namespace spartan
 
         ProcessPendingRemovals();
 
-      
+
         for (Entity* entity : entities)
         {
             if (entity->GetActive())
@@ -598,7 +1024,7 @@ namespace spartan
             // deserialize the resources before loading the world (XML), as it references them
             {
                 string directory = world_file_path_to_resource_directory(file_path);
-                
+
                 // only load resources if the directory exists (worlds in "worlds/" folder may not have local resources yet)
                 if (FileSystem::Exists(directory) && FileSystem::IsDirectory(directory))
                 {
@@ -719,6 +1145,11 @@ namespace spartan
         return true;
     }
 
+    sol::state_view World::GetLuaState()
+    {
+        return sol::state_view(lua_state);
+    }
+
     Entity* World::CreateEntity()
     {
         lock_guard lock(entity_access_mutex);
@@ -834,7 +1265,7 @@ namespace spartan
 
         entities_out.clear();
         entities_out.reserve(entities.size() + pending_add.size());
-        
+
         // include committed entities
         for (Entity* entity : entities)
         {
@@ -843,7 +1274,7 @@ namespace spartan
                 entities_out.emplace_back(entity);
             }
         }
-        
+
         // also include pending entities (important during world loading when prefabs
         // need to reference other entities that haven't been committed yet)
         for (Entity* entity : pending_add)
@@ -915,7 +1346,7 @@ namespace spartan
         // insert before or after the target
         if (insert_after)
             ++target_it;
-        
+
         entities.insert(target_it, entity_to_move);
     }
 

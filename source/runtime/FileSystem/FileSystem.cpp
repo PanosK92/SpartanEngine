@@ -208,7 +208,7 @@ namespace spartan
                 }
                 if (data)
                     SDL_free(data);
-                    
+
                 SDL_DestroyProcess(process);
             }
         }
@@ -451,7 +451,7 @@ namespace spartan
         catch (system_error & e)
         {
             SP_LOG_WARNING("Failed. %s", e.what());
-            
+
         }
 
         return extension;
@@ -602,7 +602,7 @@ namespace spartan
             if (extension == format || extension == ConvertToUppercase(format))
                 return true;
         }
-        
+
         return false;
     }
 
@@ -653,6 +653,11 @@ namespace spartan
     bool FileSystem::IsEngineMaterialFile(const string& path)
     {
         return GetExtensionFromFilePath(path) == EXTENSION_MATERIAL;
+    }
+
+    bool FileSystem::IsEngineLuaFile(const std::string& path)
+    {
+        return GetExtensionFromFilePath(path) == EXTENSION_LUA;
     }
 
     bool FileSystem::IsEngineMeshFile(const string& path)
@@ -808,17 +813,17 @@ namespace spartan
         // find out where the two paths diverge
         filesystem::path::const_iterator itr_path = p.begin();
         filesystem::path::const_iterator itr_relative_to = r.begin();
-        while( *itr_path == *itr_relative_to && itr_path != p.end() && itr_relative_to != r.end() ) 
+        while( *itr_path == *itr_relative_to && itr_path != p.end() && itr_relative_to != r.end() )
         {
             ++itr_path;
             ++itr_relative_to;
         }
 
         // add "../" for each remaining token in relative_to
-        if( itr_relative_to != r.end() ) 
+        if( itr_relative_to != r.end() )
         {
             ++itr_relative_to;
-            while( itr_relative_to != r.end() ) 
+            while( itr_relative_to != r.end() )
             {
                 result /= "..";
                 ++itr_relative_to;
@@ -826,7 +831,7 @@ namespace spartan
         }
 
         // add remaining path
-        while( itr_path != p.end() ) 
+        while( itr_path != p.end() )
         {
             result /= *itr_path;
             ++itr_path;
@@ -877,7 +882,7 @@ namespace spartan
                 // unix: use sh
                 run_silent_process({"sh", "-c", command});
             }
-            
+
             if (callback)
             {
                 callback();
@@ -944,6 +949,45 @@ namespace spartan
             SP_LOG_ERROR("%s", e.what());
             return true;
         }
+    }
+
+    bool FileSystem::WriteFile(std::string_view path, std::string_view data)
+    {
+        std::ofstream File(path.data(), std::ios::binary | std::ios::trunc);
+        if (!File)
+        {
+            return false;
+        }
+
+        File.write(data.data(), static_cast<std::streamsize>(data.size()));
+        return File.good();
+    }
+
+    bool FileSystem::ReadFile(std::string_view path, std::string& data)
+    {
+        std::ifstream File(path.data(), std::ios::binary);
+        if (!File)
+        {
+            return false;
+        }
+
+        File.seekg(0, std::ios::end);
+        std::streamsize Size = File.tellg();
+        File.seekg(0, std::ios::beg);
+
+        if (Size < 0)
+        {
+            return false;
+        }
+
+        data.resize(static_cast<size_t>(Size));
+
+        if (!File.read(data.data(), Size))
+        {
+            return false;
+        }
+
+        return true;
     }
 
     bool FileSystem::DownloadFile(const string& url, const string& destination, function<void(float)> progress_callback)
@@ -1053,7 +1097,7 @@ namespace spartan
         // verify download succeeded by checking file size matches expected (if known)
         size_t final_size = fs::exists(destination, ec) ? fs::file_size(destination, ec) : 0;
         bool success = final_size > 0 && (expected_size == 0 || final_size >= expected_size);
-        
+
         if (success)
         {
             if (progress_callback)
@@ -1075,7 +1119,7 @@ namespace spartan
         // find 7z executable - check all possible locations and names at runtime
         string seven_zip_exe;
         vector<string> candidates = {"7z.exe", "build_scripts/7z.exe", "7z", "7za"};
-        
+
         for (const auto& candidate : candidates)
         {
             if (Exists(candidate) || IsExecutableInPath(candidate))
@@ -1084,7 +1128,7 @@ namespace spartan
                 break;
             }
         }
-        
+
         if (seven_zip_exe.empty())
         {
             SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, build_scripts/, or PATH.");
@@ -1098,13 +1142,13 @@ namespace spartan
         }
 
         SP_LOG_INFO("Extracting: %s", archive_path.c_str());
-        
+
         // run 7z silently
         run_silent_process({
             seven_zip_exe, "x", archive_path,
             "-o" + destination_path, "-aoa", "-bso0", "-bsp0"
         });
-        
+
         // verify extraction by checking destination has content
         int result = IsDirectoryEmpty(destination_path) ? 1 : 0;
 
@@ -1204,11 +1248,11 @@ namespace spartan
         istringstream stream(result);
         string line;
         int line_num = 0;
-        
+
         while (getline(stream, line))
         {
             line_num++;
-            
+
             // certutil outputs hash on the second line
             if (use_certutil && line_num == 2)
             {
@@ -1232,7 +1276,7 @@ namespace spartan
 
         // convert to lowercase for consistency
         transform(hash.begin(), hash.end(), hash.begin(), ::tolower);
-        
+
         return hash;
     }
 
@@ -1242,14 +1286,14 @@ namespace spartan
         const char* path_env = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "PATH");
         if (!path_env)
             return false;
-        
+
         string path_str = path_env;
-    
+
         // detect delimiter and suffix based on COMSPEC presence (runtime detection)
         const char* comspec = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "COMSPEC");
         char delimiter      = comspec ? ';' : ':';
         string exe_suffix   = comspec ? ".exe" : "";
-    
+
         // split PATH and search for executable
         vector<string> paths;
         size_t start = 0;
@@ -1260,7 +1304,7 @@ namespace spartan
             start = end + 1;
         }
         paths.emplace_back(path_str.substr(start));
-    
+
         for (const auto& dir : paths)
         {
             filesystem::path exe_path = filesystem::path(dir) / (executable + exe_suffix);
@@ -1268,7 +1312,7 @@ namespace spartan
             if (filesystem::exists(exe_path, ec) && filesystem::is_regular_file(exe_path, ec))
                 return true;
         }
-    
+
         return false;
     }
 }

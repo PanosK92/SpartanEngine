@@ -26,6 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../Widgets/Viewport.h"
 #include <Rendering/Material.h>
+
+#include "World/Entity.h"
+#include "World/Components/Script.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -146,7 +149,7 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
             {
                 dir = FileSystem::GetDirectoryFromFilePath(m_current_path);
             }
-            
+
             // ensure there's a separator between directory and filename
             if (!dir.empty() && dir.back() != '/' && dir.back() != '\\')
             {
@@ -631,13 +634,14 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
         {
             m_drag_drop_payload.type = type;
             m_drag_drop_payload.data = path.c_str();
-            ImGuiSp::create_drag_drop_paylod(m_drag_drop_payload);
+            ImGuiSp::create_drag_drop_payload(m_drag_drop_payload);
         };
 
         if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Model,    item->GetPath()); }
         if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Texture,  item->GetPath()); }
         if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Audio,    item->GetPath()); }
         if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Material, item->GetPath()); }
+        if (FileSystem::IsEngineLuaFile(item->GetPath()))      { set_payload(ImGuiSp::DragPayloadType::Lua,      item->GetPath()); }
 
         ImGuiSp::image(item->GetIcon(), ImVec2(50, 50));
         ImGui::EndDragDropSource();
@@ -670,6 +674,23 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
             m_rename_buffer  = item->GetLabel();
             m_rename_item_id = item->GetId();
             ImGui::OpenPopup("##RenameDialog"); // move OpenPopup here to ensure it's called in the same frame
+        }
+
+        if (FileSystem::IsEngineLuaFile(item->GetPath()))
+        {
+            if (ImGui::MenuItem("Reload Script"))
+            {
+                for (Entity* entity : World::GetEntities())
+                {
+                    if (Script* script = entity->GetComponent<Script>())
+                    {
+                        if (script->file_path == item->GetPath())
+                        {
+                            script->LoadScriptFile(item->GetPath());
+                        }
+                    }
+                }
+            }
         }
 
         if (ImGui::MenuItem("Delete"))
@@ -845,6 +866,12 @@ void FileDialog::EmptyAreaContextMenu()
     if (ImGui::MenuItem("Create folder"))
     {
         FileSystem::CreateDirectory_(m_current_path + "/New folder");
+        m_is_dirty = true;
+    }
+
+    if (ImGui::MenuItem("Create Lua Script"))
+    {
+        FileSystem::WriteFile(m_current_path + "/new_lua_script" + EXTENSION_LUA, {});
         m_is_dirty = true;
     }
 

@@ -26,7 +26,13 @@ connection with the software or the use or other dealings in the software.
 #include <string>
 #include <vector>
 #include <functional>
+#include <sol/sol.hpp>
 //====================
+
+namespace sol
+{
+    class state_view;
+}
 
 struct SDL_AudioStream;
 struct SDL_AudioSpec;
@@ -39,13 +45,17 @@ namespace spartan
 {
     // callback type for audio synthesis: generates stereo samples into buffer
     // parameters: output buffer (stereo interleaved), number of sample frames
-    using SynthesisCallback = std::function<void(float*, int)>;
+    using SynthesisCallback     = std::function<void(float*, int)>;
 
     class AudioSource : public Component
     {
     public:
         AudioSource(Entity* entity);
         ~AudioSource();
+
+
+        static void RegisterForScripting(sol::state_view State);
+
 
         // component interface
         void Initialize() override;
@@ -55,6 +65,9 @@ namespace spartan
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
+
+
+        sol::reference AsLua(sol::state_view state) override;
 
         void SetAudioClip(const std::string& file_path);
         const std::string& GetAudioClipName() const { return m_name; };
@@ -121,8 +134,8 @@ namespace spartan
         std::string m_file_path;
 
         // synthesis mode
-        bool m_synthesis_mode                  = false;
-        SynthesisCallback m_synthesis_callback = nullptr;
+        bool m_synthesis_mode                           = false;
+        SynthesisCallback m_synthesis_callback          = nullptr;
 
         // reverb state
         bool m_reverb_enabled         = false;

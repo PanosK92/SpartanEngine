@@ -36,6 +36,7 @@ namespace spartan
     class AudioSource;
     class Terrain;
     class Volume;
+    class Script;
     class Component;
 }
 
@@ -54,6 +55,7 @@ public:
 
 private:
     void ShowEntity(spartan::Entity* transform) const;
+    void ShowScript(spartan::Script* script) const;
     void ShowLight(spartan::Light* light) const;
     void ShowRenderable(spartan::Renderable* renderable) const;
     void ShowPhysics(spartan::Physics* rigid_body) const;
