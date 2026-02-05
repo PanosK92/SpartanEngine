@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "WorldViewer.h"
 #include "Properties.h"
-#include "../MenuBar.h"
+#include "MenuBar.h"
 #include "World/Entity.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"

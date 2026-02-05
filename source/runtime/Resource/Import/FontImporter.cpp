@@ -393,12 +393,6 @@ namespace spartan
         if (!ft_helper::handle_error(FT_Stroker_New(library, &stroker)))
             return;
 
-        // get version
-        FT_Int major;
-        FT_Int minor;
-        FT_Int rev;
-        FT_Library_Version(library, &major, &minor, &rev);
-        Settings::RegisterThirdPartyLib("FreeType", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://freetype.org/");
     }
 
     void FontImporter::Shutdown()

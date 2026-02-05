@@ -27,27 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    struct third_party_lib
-    {
-        third_party_lib(const std::string& name, const std::string& version, const std::string& url)
-        {
-            this->name    = name;
-            this->version = version;
-            this->url     = url;
-        }
-
-        std::string name;
-        std::string version;
-        std::string url;
-    };
-
     class Settings
     {
     public:
         static void Initialize();
         static void Shutdown();
-        static void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
-        static const std::vector<third_party_lib>& GetThirdPartyLibs();
         static bool HasLoadedUserSettingsFromFile();
     };
 }

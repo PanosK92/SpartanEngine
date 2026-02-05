@@ -741,7 +741,6 @@ namespace spartan
             }
 
             SP_ASSERT_VK(vmaCreateAllocator(&allocator_info, &allocator));
-            Settings::RegisterThirdPartyLib("AMD Vulkan Memory Allocator", "3.3.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator");
         }
 
         void destroy()
@@ -1657,10 +1656,6 @@ namespace spartan
         vulkan_memory_allocator::initialize();
         descriptors::create_pool();
         descriptors::bindless::initialize();
-
-        // register the vulkan sdk version, which can be higher than the version we are using which is driver dependent
-        string version_Sdlk = to_string(VK_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE)) + "." + to_string(VK_VERSION_PATCH(VK_HEADER_VERSION_COMPLETE));
-        Settings::RegisterThirdPartyLib("Vulkan", version_Sdlk, "https://vulkan.lunarg.com/");
     }
 
     void RHI_Device::Tick(const uint64_t frame_count)

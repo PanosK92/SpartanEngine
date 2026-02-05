@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Editor.h"
 #include "GeneralWindows.h"
-#include "MenuBar.h"
+#include "Widgets/MenuBar.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "ImGui/ImGui_Extension.h"
@@ -102,9 +102,6 @@ Editor::Editor(const vector<string>& args)
 
     // allow imgui to get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
-
-    // register imgui as a third party library (will show up in the about window)
-    spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
     GeneralWindows::Initialize(this);
 }

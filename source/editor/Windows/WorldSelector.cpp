@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "pch.h"
 #include "WorldSelector.h"
-#include "GeneralWindows.h"
-#include "ImGui/ImGui_Extension.h"
-#include "Widgets/Viewport.h"
+#include "../GeneralWindows.h"
+#include "../ImGui/ImGui_Extension.h"
+#include "../Widgets/Viewport.h"
 #include "Core/ProgressTracker.h"
 #include "Game/Game.h"
 #include "RHI/RHI_Device.h"
