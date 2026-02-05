@@ -52,6 +52,83 @@ namespace
     const float item_size_min         = 32.0f;
     const float item_size_max         = 256;
     const float item_background_alpha = 32.0f;
+
+
+constexpr std::string_view NewLuaScriptContents = R"(
+
+-- ================================================================
+-- Spartan Lua Script Prelude
+-- ================================================================
+-- Lua is a lightweight scripting language for game logic.
+-- The Lua API in Spartan mirrors the C++ API:
+--   - Functions called in Lua have the same names and return types as C++.
+--   - Component queries use enums, e.g.: self:GetComponent(ComponentTypes.Light)
+--   - Colon syntax (:) automatically passes 'self'.
+--   - Dot syntax (.) accesses fields or tables on self.
+--
+-- Lua reference: https://www.lua.org/manual/5.4/manual.html
+--
+-- This is a template script. All functions are empty.
+-- ================================================================
+
+-- Create the script table. Must be returned at the end.
+MyScript = {}
+
+-- ================================================================
+-- Simulation lifecycle callbacks
+-- ================================================================
+
+-- Called once when the simulation starts.
+function MyScript:Start()
+    -- Place initialization logic here
+end
+
+-- Called once when the simulation stops.
+function MyScript:Stop()
+    -- Place shutdown logic here
+end
+
+-- Called when the script component is removed from the entity.
+function MyScript:Remove()
+    -- Cleanup logic here
+end
+
+-- ================================================================
+-- Per-frame callbacks
+-- ================================================================
+
+-- Called every frame before Tick. Useful to reset temporary states.
+function MyScript:PreTick()
+    -- Pre-update logic here
+end
+
+-- Called every frame. Main update function.
+function MyScript:Tick()
+    -- Frame update logic here
+end
+
+-- ================================================================
+-- Serialization callbacks
+-- ================================================================
+
+-- Called when the entity is being saved.
+function MyScript:Save()
+    -- Return a table with any custom data to save
+end
+
+-- Called when the entity is being loaded.
+function MyScript:Load(data)
+    -- Restore data from the table returned by Save
+end
+
+-- ================================================================
+-- Return the script table to Spartan
+-- ================================================================
+return MyScript
+)";
+
+
+
 }
 
 FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type, const FileDialog_Operation operation, const FileDialog_Filter filter)
@@ -871,7 +948,7 @@ void FileDialog::EmptyAreaContextMenu()
 
     if (ImGui::MenuItem("Create Lua Script"))
     {
-        FileSystem::WriteFile(m_current_path + "/new_lua_script" + EXTENSION_LUA, {});
+        FileSystem::WriteFile(m_current_path + "/new_lua_script" + EXTENSION_LUA, NewLuaScriptContents);
         m_is_dirty = true;
     }
 

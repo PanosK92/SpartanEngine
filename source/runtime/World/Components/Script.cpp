@@ -123,10 +123,38 @@ void Script::Tick()
 void Script::Save(pugi::xml_node& node)
 {
     node.append_attribute("file_path") = file_path.c_str();
+
+    if (script.valid())
+    {
+        sol::protected_function TickFunction = script["Save"];
+        if (TickFunction.valid())
+        {
+            sol::protected_function_result Result = TickFunction(GetEntity());
+            if (!Result.valid())
+            {
+                sol::error Error = Result;
+                SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
+            }
+        }
+    }
 }
 
 void Script::Load(pugi::xml_node& node)
 {
     file_path        = node.attribute("file_path").as_string("N/A");
     LoadScriptFile(file_path);
+
+    if (script.valid())
+    {
+        sol::protected_function TickFunction = script["Load"];
+        if (TickFunction.valid())
+        {
+            sol::protected_function_result Result = TickFunction(GetEntity());
+            if (!Result.valid())
+            {
+                sol::error Error = Result;
+                SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
+            }
+        }
+    }
 }
