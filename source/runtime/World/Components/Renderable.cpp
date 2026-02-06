@@ -299,30 +299,31 @@ namespace spartan
             m_material->PrepareForGpu();
         }
 
-        // compute world dimensions
+        // compute world dimensions (skip if no mesh is available yet, e.g. procedural meshes like roads)
         {
-            // acquire vertices
             vector<RHI_Vertex_PosTexNorTan> vertices;
             GetGeometry(nullptr, &vertices);
-            SP_ASSERT(!vertices.empty());
 
-            float height_min = FLT_MAX;
-            float max_height = -FLT_MAX;
-            float min_width  = FLT_MAX;
-            float max_width  = -FLT_MAX;
-
-            Matrix transform = HasInstancing() ? GetInstance(0, true) : GetEntity()->GetMatrix();
-            for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
+            if (!vertices.empty())
             {
-                Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
-                height_min       = min(height_min, position.y);
-                max_height       = max(max_height, position.y);
-                min_width        = min(min_width, position.x);
-                max_width        = max(max_width, position.x);
-            }
+                float height_min = FLT_MAX;
+                float max_height = -FLT_MAX;
+                float min_width  = FLT_MAX;
+                float max_width  = -FLT_MAX;
 
-            material->SetProperty(MaterialProperty::WorldWidth,  max_width - min_width);
-            material->SetProperty(MaterialProperty::WorldHeight, max_height - height_min);
+                Matrix transform = HasInstancing() ? GetInstance(0, true) : GetEntity()->GetMatrix();
+                for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
+                {
+                    Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
+                    height_min       = min(height_min, position.y);
+                    max_height       = max(max_height, position.y);
+                    min_width        = min(min_width, position.x);
+                    max_width        = max(max_width, position.x);
+                }
+
+                material->SetProperty(MaterialProperty::WorldWidth,  max_width - min_width);
+                material->SetProperty(MaterialProperty::WorldHeight, max_height - height_min);
+            }
         }
     }
 

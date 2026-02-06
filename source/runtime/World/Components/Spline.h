@@ -99,6 +99,9 @@ namespace spartan
         float m_road_width             = 8.0f;
         bool m_needs_road_regeneration = false;
 
+        // material name to restore after road mesh regeneration
+        std::string m_saved_material_name;
+
         // generated road mesh
         std::shared_ptr<Mesh> m_mesh;
     };

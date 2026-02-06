@@ -667,6 +667,12 @@ void Properties::Inspect(spartan::Entity* entity)
 
 void Properties::Inspect(const shared_ptr<Material> material)
 {
+    // clear entity selection so the material is shown instead
+    if (Camera* camera = World::GetCamera())
+    {
+        camera->ClearSelection();
+    }
+
     m_inspected_material = material;
 }
 
@@ -1023,17 +1029,50 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
         }
 
         // material
-        property_resource("Material", &name_material, "assigned material", [renderable](const std::string& path) {
-            if (FileSystem::IsEngineMaterialFile(path))
-            {
-                renderable->SetMaterial(path);
-            }
-        });
-
-        // drag drop for material
-        if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
         {
-            renderable->SetMaterial(std::get<const char*>(payload->data));
+            layout::begin_property("Material", "assigned material");
+
+            float button_width = 28.0f;
+            float input_width  = layout::value_width() - button_width * 2 - design::spacing_sm * 2;
+
+            ImGui::PushItemWidth(input_width);
+            ImGui::InputText("##Material", &name_material, ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopItemWidth();
+
+            // drag drop for material
+            if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
+            {
+                renderable->SetMaterial(std::get<const char*>(payload->data));
+            }
+
+            // browse
+            ImGui::SameLine(0, design::spacing_sm);
+            if (file_selection::browse_button("browse_Material"))
+            {
+                file_selection::open([renderable](const std::string& path) {
+                    if (FileSystem::IsEngineMaterialFile(path))
+                    {
+                        renderable->SetMaterial(path);
+                    }
+                });
+            }
+
+            // clear - reset to default material
+            ImGui::SameLine(0, design::spacing_sm);
+            ImGui::PushID("clear_material");
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 2));
+            if (ImGuiSp::button("x"))
+            {
+                renderable->SetDefaultMaterial();
+            }
+            ImGui::PopStyleVar();
+            ImGui::PopID();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted("reset to default material");
+                ImGui::EndTooltip();
+            }
         }
 
         layout::group_spacing();

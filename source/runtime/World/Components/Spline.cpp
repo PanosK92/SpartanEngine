@@ -19,13 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Spline.h"
 #include "Physics.h"
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../../Rendering/Renderer.h"
+#include "../../Rendering/Material.h"
+#include "../../Resource/ResourceCache.h"
 SP_WARNINGS_OFF
 #include "../../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -121,10 +123,18 @@ namespace spartan
         m_road_width              = node.attribute("road_width").as_float(8.0f);
         m_needs_road_regeneration = node.attribute("has_road_mesh").as_bool(false);
 
-        // if a road mesh was saved, remove the renderable and physics that were loaded with it
-        // they have invalid state (mesh not in cache) and will be recreated by GenerateRoadMesh()
+        // if a road mesh was saved, remove the renderable and physics as they will be recreated by GenerateRoadMesh()
+        // save the material name first so it can be restored after regeneration
         if (m_needs_road_regeneration && m_entity_ptr)
         {
+            if (Renderable* renderable = m_entity_ptr->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    m_saved_material_name = material->GetObjectName();
+                }
+            }
+
             m_entity_ptr->RemoveComponent<Renderable>();
             m_entity_ptr->RemoveComponent<Physics>();
         }
@@ -302,7 +312,25 @@ namespace spartan
             renderable = m_entity_ptr->AddComponent<Renderable>();
         }
         renderable->SetMesh(m_mesh.get(), 0);
-        renderable->SetDefaultMaterial();
+
+        // restore saved material if one was preserved from a previous load, otherwise use default
+        if (!m_saved_material_name.empty())
+        {
+            shared_ptr<Material> material = ResourceCache::GetByName<Material>(m_saved_material_name);
+            if (material)
+            {
+                renderable->SetMaterial(material);
+            }
+            else
+            {
+                renderable->SetDefaultMaterial();
+            }
+            m_saved_material_name.clear();
+        }
+        else if (!renderable->GetMaterial())
+        {
+            renderable->SetDefaultMaterial();
+        }
 
         // attach a physics component so the road mesh is collidable
         // remove any existing one first to force recreation with the new mesh data
