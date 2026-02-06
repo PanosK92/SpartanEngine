@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGui_Style.h"
 #include "../Widgets/Viewport.h"
 #include <Rendering/Material.h>
-
 #include "World/Entity.h"
 #include "World/Components/Script.h"
 //=========================================
@@ -1018,7 +1017,7 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
             m_drag_drop_payload.type          = type;
             m_drag_drop_payload.data          = path_full.c_str();
             m_drag_drop_payload.path_relative = path_relative.c_str();
-            ImGuiSp::create_drag_drop_paylod(m_drag_drop_payload);
+            ImGuiSp::create_drag_drop_payload(m_drag_drop_payload);
         };
 
         const string& path_full     = item->GetPath();

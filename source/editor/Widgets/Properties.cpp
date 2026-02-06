@@ -1322,64 +1322,6 @@ void Properties::ShowMaterial(Material* material) const
         show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
 
         layout::separator();
-        layout::section_header("UV");
-
-        // uv
-        {
-            Vector2 tiling = material->GetTiling();
-            Vector2 offset = material->GetOffset();
-
-            property_vec2("Tiling", &tiling, 0.01f, 0.0f, 100.0f, "texture repeat count");
-            property_vec2("Offset", &offset, 0.01f, -100.0f, 100.0f, "texture offset");
-
-            if (tiling != material->GetTiling()) material->SetTiling(tiling);
-            if (offset != material->GetOffset()) material->SetOffset(offset);
-
-            // inversion
-            bool invert_x = material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
-            bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
-            property_toggle("Invert X", &invert_x, "flip texture horizontally");
-            property_toggle("Invert Y", &invert_y, "flip texture vertically");
-            material->SetProperty(MaterialProperty::TextureInvertX, invert_x ? 1.0f : 0.0f);
-            material->SetProperty(MaterialProperty::TextureInvertY, invert_y ? 1.0f : 0.0f);
-        }
-
-        layout::separator();
-        layout::section_header("Rendering");
-
-        // cull mode
-        static vector<string> cull_modes = { "Back", "Front", "None" };
-        uint32_t cull_mode_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::CullMode));
-        if (property_combo("Culling", cull_modes, &cull_mode_index, "face culling mode"))
-        {
-            material->SetProperty(MaterialProperty::CullMode, static_cast<float>(cull_mode_index));
-        }
-
-        // primary surface properties
-        show_property("Color",     "surface base color",     MaterialTextureType::Color,     MaterialProperty::ColorA);
-        show_property("Roughness", "microfacet roughness",   MaterialTextureType::Roughness, MaterialProperty::Roughness);
-        show_property("Metalness", "metallic vs dielectric", MaterialTextureType::Metalness, MaterialProperty::Metalness);
-        show_property("Normal",    "surface normal detail",  MaterialTextureType::Normal,    MaterialProperty::Normal);
-
-        layout::separator();
-        layout::section_header("Detail");
-
-        show_property("Height",     "parallax/displacement",    MaterialTextureType::Height,    MaterialProperty::Height);
-        show_property("Occlusion",  "ambient occlusion",        MaterialTextureType::Occlusion, MaterialProperty::Max);
-        show_property("Emission",   "light emission",           MaterialTextureType::Emission,  MaterialProperty::Max);
-        show_property("Alpha Mask", "transparency cutout",      MaterialTextureType::AlphaMask, MaterialProperty::Max);
-
-        layout::separator();
-        layout::section_header("Advanced");
-
-        show_property("Clearcoat",            "extra specular layer",         MaterialTextureType::Max, MaterialProperty::Clearcoat);
-        show_property("Clearcoat Roughness",  "clearcoat roughness",          MaterialTextureType::Max, MaterialProperty::Clearcoat_Roughness);
-        show_property("Anisotropic",          "anisotropic reflection",       MaterialTextureType::Max, MaterialProperty::Anisotropic);
-        show_property("Anisotropic Rotation", "anisotropy direction",         MaterialTextureType::Max, MaterialProperty::AnisotropicRotation);
-        show_property("Sheen",                "soft velvet reflection",       MaterialTextureType::Max, MaterialProperty::Sheen);
-        show_property("Subsurface",           "subsurface scattering",        MaterialTextureType::Max, MaterialProperty::SubsurfaceScattering);
-
-        layout::separator();
         layout::section_header("UV Mapping");
 
         // tiling
