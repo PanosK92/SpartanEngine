@@ -48,6 +48,17 @@ namespace spartan
         m_vertex_buffer = nullptr;
     }
 
+    void Mesh::RegisterForScripting(sol::state_view State)
+    {
+        State.new_usertype<Mesh>("Mesh",
+            "SaveToFile",               &Mesh::SaveToFile,
+            "LoadFromFile",             &Mesh::LoadFromFile,
+            "Clear",                    &Mesh::Clear,
+            "GetVertexCount",           &Mesh::GetVertexCount,
+            "GetIndexCount",            &Mesh::GetIndexCount
+            );
+    }
+
     void Mesh::Clear()
     {
         m_indices.clear();
@@ -228,7 +239,7 @@ namespace spartan
     void Mesh::GetGeometry(uint32_t sub_mesh_index, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
     {
         SP_ASSERT_MSG(indices != nullptr || vertices != nullptr, "Indices and vertices vectors can't both be null");
-    
+
         // validate sub-mesh index
         if (sub_mesh_index >= m_sub_meshes.size())
         {
@@ -244,21 +255,21 @@ namespace spartan
         }
 
         const MeshLod& lod = sub_mesh.lods[0];
-    
+
         if (indices)
         {
             SP_ASSERT_MSG(lod.index_count != 0, "Index count can't be 0");
-    
+
             indices->resize(lod.index_count); // allocate once (caller can reuse buffer)
             copy(m_indices.begin() + lod.index_offset,
                       m_indices.begin() + lod.index_offset + lod.index_count,
                       indices->begin());
         }
-    
+
         if (vertices)
         {
             SP_ASSERT_MSG(lod.vertex_count != 0, "Vertex count can't be 0");
-    
+
             vertices->resize(lod.vertex_count); // allocate once (caller can reuse buffer)
             copy(m_vertices.begin() + lod.vertex_offset,
                       m_vertices.begin() + lod.vertex_offset + lod.vertex_count,

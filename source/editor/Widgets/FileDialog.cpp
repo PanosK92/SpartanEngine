@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGui_Style.h"
 #include "../Widgets/Viewport.h"
 #include <Rendering/Material.h>
+#include "World/Entity.h"
+#include "World/Components/Script.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -65,6 +67,79 @@ namespace
     ImU32 col_text_dim;
     ImU32 col_toolbar_bg;
     ImU32 col_separator;
+
+    constexpr std::string_view NewLuaScriptContents = R"(
+
+-- ================================================================
+-- Spartan Lua Script Prelude
+-- ================================================================
+-- Lua is a lightweight scripting language for game logic.
+-- The Lua API in Spartan mirrors the C++ API:
+--   - Functions called in Lua have the same names and return types as C++.
+--   - Component queries use enums, e.g.: self:GetComponent(ComponentTypes.Light)
+--   - Colon syntax (:) automatically passes 'self'.
+--   - Dot syntax (.) accesses fields or tables on self.
+--
+-- Lua reference: https://www.lua.org/manual/5.4/manual.html
+--
+-- This is a template script. All functions are empty.
+-- ================================================================
+
+-- Create the script table. Must be returned at the end.
+MyScript = {}
+
+-- ================================================================
+-- Simulation lifecycle callbacks
+-- ================================================================
+
+-- Called once when the simulation starts.
+function MyScript:Start()
+    -- Place initialization logic here
+end
+
+-- Called once when the simulation stops.
+function MyScript:Stop()
+    -- Place shutdown logic here
+end
+
+-- Called when the script component is removed from the entity.
+function MyScript:Remove()
+    -- Cleanup logic here
+end
+
+-- ================================================================
+-- Per-frame callbacks
+-- ================================================================
+
+-- Called every frame before Tick. Useful to reset temporary states.
+function MyScript:PreTick()
+    -- Pre-update logic here
+end
+
+-- Called every frame. Main update function.
+function MyScript:Tick()
+    -- Frame update logic here
+end
+
+-- ================================================================
+-- Serialization callbacks
+-- ================================================================
+
+-- Called when the entity is being saved.
+function MyScript:Save()
+    -- Return a table with any custom data to save
+end
+
+-- Called when the entity is being loaded.
+function MyScript:Load(data)
+    -- Restore data from the table returned by Save
+end
+
+-- ================================================================
+-- Return the script table to Spartan
+-- ================================================================
+return MyScript
+)";
 
     void update_colors()
     {
@@ -191,6 +266,7 @@ bool FileDialog::Show(bool* is_visible, Editor* editor, string* directory /*= nu
                 dir = FileSystem::GetDirectoryFromFilePath(m_current_path);
             }
 
+            // ensure there's a separator between directory and filename
             if (!dir.empty() && dir.back() != '/' && dir.back() != '\\')
             {
                 dir += "/";
@@ -941,7 +1017,7 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
             m_drag_drop_payload.type          = type;
             m_drag_drop_payload.data          = path_full.c_str();
             m_drag_drop_payload.path_relative = path_relative.c_str();
-            ImGuiSp::create_drag_drop_paylod(m_drag_drop_payload);
+            ImGuiSp::create_drag_drop_payload(m_drag_drop_payload);
         };
 
         const string& path_full     = item->GetPath();
@@ -951,6 +1027,7 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
         if (FileSystem::IsSupportedImageFile(path_full)) { set_payload(ImGuiSp::DragPayloadType::Texture,  path_full, path_relative); }
         if (FileSystem::IsSupportedAudioFile(path_full)) { set_payload(ImGuiSp::DragPayloadType::Audio,    path_full, path_relative); }
         if (FileSystem::IsEngineMaterialFile(path_full)) { set_payload(ImGuiSp::DragPayloadType::Material, path_full, path_relative); }
+        if (FileSystem::IsEngineLuaFile(path_full))      { set_payload(ImGuiSp::DragPayloadType::Lua,      path_full, path_relative); }
 
         // drag preview
         ImGui::BeginTooltip();
@@ -992,6 +1069,23 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
             m_is_renaming    = true;
             m_rename_buffer  = item->GetLabel();
             m_rename_item_id = item->GetId();
+        }
+
+        if (FileSystem::IsEngineLuaFile(item->GetPath()))
+        {
+            if (ImGui::MenuItem("Reload Script"))
+            {
+                for (Entity* entity : World::GetEntities())
+                {
+                    if (Script* script = entity->GetComponent<Script>())
+                    {
+                        if (script->file_path == item->GetPath())
+                        {
+                            script->LoadScriptFile(item->GetPath());
+                        }
+                    }
+                }
+            }
         }
 
         if (ImGui::MenuItem("Delete"))
@@ -1198,6 +1292,12 @@ void FileDialog::EmptyAreaContextMenu()
         if (ImGui::MenuItem("New folder"))
         {
             FileSystem::CreateDirectory_(m_current_path + "/New folder");
+            m_is_dirty = true;
+        }
+
+        if (ImGui::MenuItem("New Lua script"))
+        {
+            FileSystem::WriteFile(m_current_path + "/new_lua_script" + EXTENSION_LUA, NewLuaScriptContents);
             m_is_dirty = true;
         }
 

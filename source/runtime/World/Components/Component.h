@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <vector>
 #include <functional>
+#include <sol/sol.hpp>
+
 #include "../../Core/SpartanObject.h"
 //===================================
 
@@ -38,6 +40,8 @@ namespace spartan
     class Entity;
     class FileStream;
 
+#define SP_COMPONENT_ARRAY Script, AudioSource, Renderable, Camera, Light, Terrain, Volume, Physics
+
     // X-Macro: single source of truth for all components
     // Format: X(ClassName, string_name)
     // To add a new component, just add a line here
@@ -48,7 +52,8 @@ namespace spartan
         X(Physics,     physics)      \
         X(Renderable,  renderable)   \
         X(Terrain,     terrain)      \
-        X(Volume,      volume)
+        X(Volume,      volume)       \
+        X(Script,      script)
 
     enum class ComponentType : uint32_t
     {
@@ -69,6 +74,8 @@ namespace spartan
     public:
         Component(Entity* entity);
         virtual ~Component() = default;
+
+        virtual sol::reference AsLua(sol::state_view state) { return sol::nil; }
 
         // called when the component gets added
         virtual void Initialize() {}
@@ -109,13 +116,13 @@ namespace spartan
                     return {};
             }
         }
-        
+
         static ComponentType StringToType(const std::string& name)
         {
             #define X(type, str) if (name == #str) return ComponentType::type;
             SP_COMPONENT_LIST
             #undef X
-        
+
             assert(false && "StringToType: Unknown component name");
             return ComponentType::Max;
         }
@@ -125,7 +132,7 @@ namespace spartan
 
         const auto& GetAttributes() const { return m_attributes; }
         void SetAttributes(const std::vector<Attribute>& attributes)
-        { 
+        {
             for (uint32_t i = 0; i < static_cast<uint32_t>(m_attributes.size()); i++)
             {
                 m_attributes[i].setter(attributes[i].getter());
@@ -133,7 +140,7 @@ namespace spartan
         }
 
         Entity* GetEntity() const { return m_entity_ptr; }
- 
+
     protected:
         #define SP_REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(  \
         [this]()                        { return getter(); },                           \
@@ -149,7 +156,7 @@ namespace spartan
 
         // registers an attribute
         void RegisterAttribute(std::function<std::any()>&& getter, std::function<void(std::any)>&& setter)
-        { 
+        {
             Attribute attribute;
             attribute.getter = std::move(getter);
             attribute.setter = std::move(setter);

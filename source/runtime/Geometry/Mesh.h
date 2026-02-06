@@ -29,6 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/BoundingBox.h"
 //================================
 
+namespace sol
+{
+    class state_view;
+}
+
 namespace spartan
 {
     class RHI_Buffer;
@@ -76,6 +81,8 @@ namespace spartan
     public:
         Mesh();
         ~Mesh();
+
+        static void RegisterForScripting(sol::state_view State);
 
         // iresource
         void SaveToFile(const std::string& file_path) override;

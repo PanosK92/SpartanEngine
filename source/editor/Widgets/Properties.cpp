@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
 #include "Rendering/Renderer.h"
+#include "World/Components/Script.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -91,6 +92,7 @@ namespace
         inline ImVec4 accent_audio()      { return ImVec4(0.70f, 0.45f, 0.55f, 1.0f); }
         inline ImVec4 accent_terrain()    { return ImVec4(0.50f, 0.70f, 0.45f, 1.0f); }
         inline ImVec4 accent_volume()     { return ImVec4(0.55f, 0.55f, 0.75f, 1.0f); }
+        inline ImVec4 accent_script()     { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
 
         // helper to get dimmed version for backgrounds
         inline ImVec4 dimmed(const ImVec4& color, float factor = 0.15f)
@@ -147,6 +149,13 @@ namespace
             ImGui::SetNextItemWidth(value_width());
         }
 
+        // position cursor at value column (alias for begin_value)
+        inline void move_to_value_column()
+        {
+            ImGui::SameLine(label_width());
+            ImGui::SetNextItemWidth(value_width());
+        }
+
         // add vertical spacing between groups
         inline void group_spacing()
         {
@@ -191,7 +200,7 @@ namespace
         }
         return nullptr;
     }
-    
+
     uint32_t get_selected_entity_count()
     {
         if (Camera* camera = World::GetCamera())
@@ -200,7 +209,7 @@ namespace
         }
         return 0;
     }
-    
+
     const std::vector<Entity*>& get_selected_entities()
     {
         static std::vector<Entity*> empty;
@@ -609,6 +618,7 @@ void Properties::OnTickVisible()
             Material* material     = renderable ? renderable->GetMaterial() : nullptr;
 
             ShowEntity(entity);
+            ShowScript(entity->GetComponent<Script>());
             ShowLight(entity->GetComponent<Light>());
             ShowCamera(entity->GetComponent<Camera>());
             ShowTerrain(entity->GetComponent<Terrain>());
@@ -681,6 +691,49 @@ void Properties::ShowEntity(Entity* entity) const
 
         // transform properties
         property_transform(entity);
+    }
+    component_end();
+}
+
+void Properties::ShowScript(spartan::Script* script) const
+{
+    if (!script)
+        return;
+
+    if (component_begin("Script", design::accent_script(), script))
+    {
+        // script file path with browse
+        property_resource("Script File", &script->file_path, "lua script file", [script](const std::string& path)
+        {
+            if (FileSystem::IsEngineLuaFile(path))
+            {
+                script->LoadScriptFile(path);
+            }
+        });
+
+        // drag-drop support for lua files
+        if (auto* payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Lua))
+        {
+            script->LoadScriptFile(std::get<const char*>(payload->data));
+        }
+
+        // status
+        bool is_loaded = script->script.valid();
+        property_text("Status", is_loaded ? "Loaded" : "Not Loaded", "whether the script is loaded and valid");
+
+        layout::group_spacing();
+
+        // reload button
+        float button_width = 80.0f * spartan::Window::GetDpiScale();
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
+        if (ImGuiSp::button("Reload", ImVec2(button_width, 0)))
+        {
+            script->LoadScriptFile(script->file_path);
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("reload the script file");
+        }
     }
     component_end();
 }
@@ -1242,29 +1295,21 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::PopID();
         };
 
-        // primary surface properties
-        show_property("Color",     "surface base color",     MaterialTextureType::Color,     MaterialProperty::ColorA);
-        show_property("Roughness", "microfacet roughness",   MaterialTextureType::Roughness, MaterialProperty::Roughness);
-        show_property("Metalness", "metallic vs dielectric", MaterialTextureType::Metalness, MaterialProperty::Metalness);
-        show_property("Normal",    "surface normal detail",  MaterialTextureType::Normal,    MaterialProperty::Normal);
-
-        layout::separator();
-        layout::section_header("Detail");
-
-        show_property("Height",     "parallax/displacement",    MaterialTextureType::Height,    MaterialProperty::Height);
-        show_property("Occlusion",  "ambient occlusion",        MaterialTextureType::Occlusion, MaterialProperty::Max);
-        show_property("Emission",   "light emission",           MaterialTextureType::Emission,  MaterialProperty::Max);
-        show_property("Alpha Mask", "transparency cutout",      MaterialTextureType::AlphaMask, MaterialProperty::Max);
-
-        layout::separator();
-        layout::section_header("Advanced");
-
-        show_property("Clearcoat",            "extra specular layer",         MaterialTextureType::Max, MaterialProperty::Clearcoat);
-        show_property("Clearcoat Roughness",  "clearcoat roughness",          MaterialTextureType::Max, MaterialProperty::Clearcoat_Roughness);
-        show_property("Anisotropic",          "anisotropic reflection",       MaterialTextureType::Max, MaterialProperty::Anisotropic);
-        show_property("Anisotropic Rotation", "anisotropy direction",         MaterialTextureType::Max, MaterialProperty::AnisotropicRotation);
-        show_property("Sheen",                "soft velvet reflection",       MaterialTextureType::Max, MaterialProperty::Sheen);
-        show_property("Subsurface",           "subsurface scattering",        MaterialTextureType::Max, MaterialProperty::SubsurfaceScattering);
+        // properties with textures
+        show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorA);
+        show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTextureType::Roughness, MaterialProperty::Roughness);
+        show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTextureType::Metalness, MaterialProperty::Metalness);
+        show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTextureType::Normal,    MaterialProperty::Normal);
+        show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTextureType::Height,    MaterialProperty::Height);
+        show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTextureType::Occlusion, MaterialProperty::Max);
+        show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTextureType::Emission,  MaterialProperty::Max);
+        show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTextureType::AlphaMask, MaterialProperty::Max);
+        show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTextureType::Max,       MaterialProperty::Clearcoat);
+        show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTextureType::Max,       MaterialProperty::Clearcoat_Roughness);
+        show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTextureType::Max,       MaterialProperty::Anisotropic);
+        show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTextureType::Max,       MaterialProperty::AnisotropicRotation);
+        show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
+        show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
 
         layout::separator();
         layout::section_header("UV Mapping");
@@ -1758,6 +1803,19 @@ void Properties::ComponentContextMenu_Add() const
     {
         if (Entity* entity = get_selected_entity())
         {
+            // scripting (Lua support)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+            ImGui::TextUnformatted("SCRIPTING");
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Script"))
+            {
+                entity->AddComponent<Script>();
+            }
+
+            ImGui::Dummy(ImVec2(0, design::spacing_sm));
+
             // rendering
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
             ImGui::TextUnformatted("RENDERING");
