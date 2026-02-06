@@ -140,6 +140,7 @@ One of the most realistic out-of-the-box car simulations available. Physics runs
 
 ### General
 
+- **Scripting**: Lua 5.4 scripting with full engine API access (entities, components, math, physics, audio) and an integrated script editor with syntax highlighting
 - **Input**: Keyboard, mouse, controllers, steering wheels
 - **Physics**: Comprehensive PhysX integration
 - **Profiling**: CPU & GPU profiling tools
