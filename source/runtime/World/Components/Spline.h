@@ -94,9 +94,10 @@ namespace spartan
         // maps a normalized t to a span index and local t
         void MapToSpan(float t, const std::vector<math::Vector3>& points, uint32_t& span_index, float& local_t) const;
 
-        bool m_closed_loop     = false;
-        uint32_t m_resolution  = 20; // line segments per span
-        float m_road_width     = 8.0f;
+        bool m_closed_loop             = false;
+        uint32_t m_resolution          = 20; // line segments per span
+        float m_road_width             = 8.0f;
+        bool m_needs_road_regeneration = false;
 
         // generated road mesh
         std::shared_ptr<Mesh> m_mesh;

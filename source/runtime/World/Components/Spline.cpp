@@ -54,6 +54,13 @@ namespace spartan
 
     void Spline::Tick()
     {
+        // if the spline had a road mesh when saved, regenerate it now that child entities are loaded
+        if (m_needs_road_regeneration)
+        {
+            m_needs_road_regeneration = false;
+            GenerateRoadMesh();
+        }
+
         // only draw spline visualization in edit mode
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
@@ -105,16 +112,26 @@ namespace spartan
 
     void Spline::Save(pugi::xml_node& node)
     {
-        node.append_attribute("closed_loop") = m_closed_loop;
-        node.append_attribute("resolution")  = m_resolution;
-        node.append_attribute("road_width")  = m_road_width;
+        node.append_attribute("closed_loop")   = m_closed_loop;
+        node.append_attribute("resolution")   = m_resolution;
+        node.append_attribute("road_width")   = m_road_width;
+        node.append_attribute("has_road_mesh") = HasRoadMesh();
     }
 
     void Spline::Load(pugi::xml_node& node)
     {
-        m_closed_loop = node.attribute("closed_loop").as_bool(false);
-        m_resolution  = node.attribute("resolution").as_uint(20);
-        m_road_width  = node.attribute("road_width").as_float(8.0f);
+        m_closed_loop             = node.attribute("closed_loop").as_bool(false);
+        m_resolution              = node.attribute("resolution").as_uint(20);
+        m_road_width              = node.attribute("road_width").as_float(8.0f);
+        m_needs_road_regeneration = node.attribute("has_road_mesh").as_bool(false);
+
+        // if a road mesh was saved, remove the renderable and physics that were loaded with it
+        // they have invalid state (mesh not in cache) and will be recreated by GenerateRoadMesh()
+        if (m_needs_road_regeneration && m_entity_ptr)
+        {
+            m_entity_ptr->RemoveComponent<Renderable>();
+            m_entity_ptr->RemoveComponent<Physics>();
+        }
     }
 
     Vector3 Spline::GetPoint(float t) const
@@ -292,11 +309,12 @@ namespace spartan
         renderable->SetDefaultMaterial();
 
         // attach a physics component so the road mesh is collidable
-        Physics* physics = m_entity_ptr->GetComponent<Physics>();
-        if (!physics)
+        // remove any existing one first to force recreation with the new mesh data
+        if (m_entity_ptr->GetComponent<Physics>())
         {
-            physics = m_entity_ptr->AddComponent<Physics>();
+            m_entity_ptr->RemoveComponent<Physics>();
         }
+        Physics* physics = m_entity_ptr->AddComponent<Physics>();
         physics->SetBodyType(BodyType::Mesh);
 
         SP_LOG_INFO("generated road mesh: %u vertices, %u indices, %.1f m long, %.1f m wide",
