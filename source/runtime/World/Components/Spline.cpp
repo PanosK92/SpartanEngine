@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include "Spline.h"
+#include "Physics.h"
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../World.h"
@@ -290,6 +291,14 @@ namespace spartan
         renderable->SetMesh(m_mesh.get(), 0);
         renderable->SetDefaultMaterial();
 
+        // attach a physics component so the road mesh is collidable
+        Physics* physics = m_entity_ptr->GetComponent<Physics>();
+        if (!physics)
+        {
+            physics = m_entity_ptr->AddComponent<Physics>();
+        }
+        physics->SetBodyType(BodyType::Mesh);
+
         SP_LOG_INFO("generated road mesh: %u vertices, %u indices, %.1f m long, %.1f m wide",
             static_cast<uint32_t>(vertices.size()), static_cast<uint32_t>(indices.size()),
             accumulated_distance, m_road_width);
@@ -299,9 +308,10 @@ namespace spartan
     {
         if (m_mesh)
         {
-            // remove the renderable component to avoid a dangling mesh pointer
+            // remove the renderable and physics components to avoid dangling mesh pointers
             if (m_entity_ptr)
             {
+                m_entity_ptr->RemoveComponent<Physics>();
                 m_entity_ptr->RemoveComponent<Renderable>();
             }
 
