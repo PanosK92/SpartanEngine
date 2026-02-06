@@ -698,51 +698,41 @@ void Properties::ShowEntity(Entity* entity) const
 void Properties::ShowScript(spartan::Script* script) const
 {
     if (!script)
-    {
         return;
-    }
 
     if (component_begin("Script", design::accent_script(), script))
     {
-        ImGui::Text("Script File");
-        layout::move_to_value_column();
-        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 60.0f);
-
-        ImGui::InputText("##ScriptPathName", &script->file_path, ImGuiInputTextFlags_ReadOnly, [](ImGuiInputTextCallbackData* data) -> int
+        // script file path with browse
+        property_resource("Script File", &script->file_path, "lua script file", [script](const std::string& path)
         {
-            auto* Comp = static_cast<Script*>(data->UserData);
-            Comp->file_path.resize(data->BufSize);
-            return (int)Comp->file_path.size();
-        }, script);
+            if (FileSystem::IsEngineLuaFile(path))
+            {
+                script->LoadScriptFile(path);
+            }
+        });
 
+        // drag-drop support for lua files
         if (auto* payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Lua))
         {
             script->LoadScriptFile(std::get<const char*>(payload->data));
         }
-        ImGui::PopItemWidth();
 
-        ImGui::SameLine();
+        // status
+        bool is_loaded = script->script.valid();
+        property_text("Status", is_loaded ? "Loaded" : "Not Loaded", "whether the script is loaded and valid");
 
-        if (ImGui::SmallButton("R"))
+        layout::group_spacing();
+
+        // reload button
+        float button_width = 80.0f * spartan::Window::GetDpiScale();
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
+        if (ImGuiSp::button("Reload", ImVec2(button_width, 0)))
         {
             script->LoadScriptFile(script->file_path);
         }
-
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
         {
-            ImGui::SetTooltip("%s", "Reload the script.");
-        }
-
-        ImGui::SameLine();
-        if (file_selection::browse_button("browse_script"))
-        {
-            file_selection::open([script](const std::string& path)
-            {
-                if (FileSystem::IsEngineLuaFile(path))
-                {
-                    script->LoadScriptFile(path);
-                }
-            });
+            ImGui::SetTooltip("reload the script file");
         }
     }
     component_end();
