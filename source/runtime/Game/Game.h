@@ -26,7 +26,6 @@ namespace spartan
     enum class DefaultWorld
     {
         Showroom,
-        CarPlayground,
         Forest,
         LiminalSpace,
         Sponza,
