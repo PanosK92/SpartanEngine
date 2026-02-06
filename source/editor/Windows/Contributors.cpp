@@ -54,7 +54,7 @@ namespace Contributors
         { "Spartan", "Ege",                  "Turkey",         "X",         "https://x.com/egedq",                                     "Second editor facelift and theme support",                    "N/A" },
         { "Spartan", "Sandro Mtchedlidze",   "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Provided some assets and artistic direction",                 "N/A" },
         { "Spartan", "Dimitris Kalyvas",     "Greece",         "X",         "https://x.com/punctuator_",                               "UX improvements, volumetric clouds, helping with plan.world", "BeamNG.drive" },
-        { "Spartan", "Bryan Casagrande ",    "United States",  "X",         "https://x.com/mrdrelliot",                                "Console variables",                                           "N/A" },
+        { "Spartan", "Bryan Casagrande ",    "United States",  "X",         "https://x.com/mrdrelliot",                                "Lua scripting, console variables",                            "BeamNG.drive" },
         { "Hoplite", "Apostolos Bouzalas",   "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                   "N/A" },
         { "Hoplite", "Nikolas Pattakos",     "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                   "N/A" },
         { "Hoplite", "Roman Koshchei",       "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                  "N/A" },
