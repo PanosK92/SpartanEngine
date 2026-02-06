@@ -915,7 +915,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.18f, 1.0f));
             
-            if (ImGui::BeginTable("##lod_table", lod_count + 1, 
+            if (ImGui::BeginTable("##lod_table", lod_count + 1,
                 ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame))
             {
                 // header row
