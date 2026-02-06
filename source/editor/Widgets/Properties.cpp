@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Physics.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
+#include "World/Components/Spline.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
@@ -92,6 +93,7 @@ namespace
         inline ImVec4 accent_audio()      { return ImVec4(0.70f, 0.45f, 0.55f, 1.0f); }
         inline ImVec4 accent_terrain()    { return ImVec4(0.50f, 0.70f, 0.45f, 1.0f); }
         inline ImVec4 accent_volume()     { return ImVec4(0.55f, 0.55f, 0.75f, 1.0f); }
+        inline ImVec4 accent_spline()     { return ImVec4(0.30f, 0.75f, 0.70f, 1.0f); }
         inline ImVec4 accent_script()     { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
 
         // helper to get dimmed version for backgrounds
@@ -622,6 +624,7 @@ void Properties::OnTickVisible()
             ShowLight(entity->GetComponent<Light>());
             ShowCamera(entity->GetComponent<Camera>());
             ShowTerrain(entity->GetComponent<Terrain>());
+            ShowSpline(entity->GetComponent<Spline>());
             ShowAudioSource(entity->GetComponent<AudioSource>());
             ShowRenderable(renderable);
             ShowMaterial(material);
@@ -1577,6 +1580,83 @@ void Properties::ShowTerrain(Terrain* terrain) const
     component_end();
 }
 
+void Properties::ShowSpline(spartan::Spline* spline) const
+{
+    if (!spline)
+        return;
+
+    if (component_begin("Spline", design::accent_spline(), spline))
+    {
+        //= REFLECT =======================================
+        bool closed_loop     = spline->GetClosedLoop();
+        uint32_t resolution  = spline->GetResolution();
+        uint32_t point_count = spline->GetControlPointCount();
+        //=================================================
+
+        layout::section_header("Properties");
+
+        // closed loop toggle
+        if (property_toggle("Closed Loop", &closed_loop, "connect the last point back to the first"))
+        {
+            spline->SetClosedLoop(closed_loop);
+        }
+
+        // resolution (segments per span)
+        float resolution_f = static_cast<float>(resolution);
+        if (property_float("Resolution", &resolution_f, 1.0f, 2.0f, 100.0f, "line segments per span", "%.0f"))
+        {
+            spline->SetResolution(static_cast<uint32_t>(resolution_f));
+        }
+
+        layout::separator();
+        layout::section_header("Control Points");
+
+        // point count
+        char stat_buf[64];
+        std::snprintf(stat_buf, sizeof(stat_buf), "%u", point_count);
+        property_text("Count", stat_buf);
+
+        // length
+        if (point_count >= 2)
+        {
+            std::snprintf(stat_buf, sizeof(stat_buf), "%.2f m", spline->GetLength());
+            property_text("Length", stat_buf);
+        }
+
+        layout::group_spacing();
+
+        // add point button
+        float button_width = 100.0f * spartan::Window::GetDpiScale();
+        float total_width  = button_width * 2.0f + design::spacing_md;
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total_width) * 0.5f + ImGui::GetCursorPosX());
+
+        if (ImGuiSp::button("+ Add Point", ImVec2(button_width, 0)))
+        {
+            // place new point offset from the last one, or at origin if no points exist
+            math::Vector3 position = math::Vector3::Zero;
+            if (point_count > 0)
+            {
+                if (spartan::Entity* last_child = spline->GetEntity()->GetChildByIndex(point_count - 1))
+                {
+                    position = last_child->GetPositionLocal() + math::Vector3(5.0f, 0.0f, 0.0f);
+                }
+            }
+            spline->AddControlPoint(position);
+        }
+
+        ImGui::SameLine(0, design::spacing_md);
+
+        // remove last point button
+        ImGui::BeginDisabled(point_count == 0);
+        if (ImGuiSp::button("- Remove Last", ImVec2(button_width, 0)))
+        {
+            spline->RemoveLastControlPoint();
+        }
+        ImGui::EndDisabled();
+    }
+    component_end();
+}
+
 void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 {
     if (!audio_source)
@@ -1835,6 +1915,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Terrain"))
             {
                 entity->AddComponent<Terrain>();
+            }
+
+            if (ImGui::MenuItem("Spline"))
+            {
+                entity->AddComponent<Spline>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

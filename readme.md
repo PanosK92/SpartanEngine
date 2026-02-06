@@ -140,7 +140,7 @@ One of the most realistic out-of-the-box car simulations available. Physics runs
 
 ### General
 
-- **Scripting**: Lua 5.4 scripting with full engine API access (entities, components, math, physics, audio) and an integrated script editor with syntax highlighting
+- **Scripting**: Lua 5.4 scripting with full engine API access (entities, components, math, physics, audio)
 - **Input**: Keyboard, mouse, controllers, steering wheels
 - **Physics**: Comprehensive PhysX integration
 - **Profiling**: CPU & GPU profiling tools
@@ -157,7 +157,7 @@ One-click project generation—see the **[Building Guide](https://github.com/Pan
 
 ### Learning the Engine
 
-Start with **[Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp)**—it shows how default worlds are loaded and is the best entry point for understanding the engine's structure. For gameplay scripting, check out the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/blob/master/scripting.md)**—it covers the full API, lifecycle callbacks, and examples.
+Start with **[Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp)**, it shows how default worlds are loaded and is the best entry point for understanding the engine's structure. For gameplay scripting, check out the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/blob/master/scripting.md)**, it covers the full API, lifecycle callbacks, and examples.
 
 ---
 
@@ -200,7 +200,7 @@ I cover the costs for Dropbox hosting to ensure library and asset bandwidth is a
 | **S.T.A.L.K.E.R. Anomaly** | Rendering addon using Spartan's source ([ModDB](https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders)) |
 | **Programming Book** | Jesse Guerrero's [beginner programming book](https://www.amazon.com/dp/B0CXG1CMNK) features Spartan's code and community |
 
-**Using code from Spartan?** [Reach out](https://twitter.com/panoskarabelas)—I'd love to showcase your project!
+**Using code from Spartan?** [Reach out](https://twitter.com/panoskarabelas), I'd love to showcase your project!
 
 ---
 

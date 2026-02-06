@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Physics.h"
 #include "Components/Script.h"
+#include "Components/Spline.h"
 #include "Components/Terrain.h"
 #include "Components/Volume.h"
 SP_WARNINGS_OFF
@@ -427,6 +428,9 @@ namespace spartan
             break;
         case ComponentType::Renderable:
             component = std::make_shared<Renderable>(this);
+            break;
+        case ComponentType::Spline:
+            component = std::make_shared<Spline>(this);
             break;
         case ComponentType::Terrain:
             component = std::make_shared<Terrain>(this);

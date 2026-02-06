@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Light.h"
 #include "Physics.h"
 #include "Script.h"
+#include "Spline.h"
 #include "Terrain.h"
 #include "Volume.h"
 //======================
