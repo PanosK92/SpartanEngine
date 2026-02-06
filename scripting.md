@@ -16,36 +16,36 @@ Add a **Script** component to any entity, then assign a `.lua` file to it. The s
 
 ### Script Structure
 
-Every script must create a table and return it. The engine calls named functions on that table at the appropriate times. The first argument (`self`) is always the owning **Entity**.
+Every script must create a table and return it. The engine calls named functions on that table at the appropriate times. The first argument (`self`) is always the owning **table (MyScript)**, Entity is the owning entity.
 
 ```lua
 MyScript = {}
 
-function MyScript:Start()
+function MyScript:Start(Entity)
     -- called once when simulation starts
 end
 
-function MyScript:Stop()
+function MyScript:Stop(Entity)
     -- called once when simulation stops
 end
 
-function MyScript:Remove()
+function MyScript:Remove(Entity)
     -- called when the script component is removed
 end
 
-function MyScript:PreTick()
+function MyScript:PreTick(Entity)
     -- called every frame before Tick
 end
 
-function MyScript:Tick()
+function MyScript:Tick(Entity)
     -- called every frame (main update)
 end
 
-function MyScript:Save()
+function MyScript:Save(Entity)
     -- called when the entity is saved
 end
 
-function MyScript:Load(data)
+function MyScript:Load(Entity)
     -- called when the entity is loaded
 end
 
