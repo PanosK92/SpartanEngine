@@ -157,7 +157,7 @@ One-click project generation—see the **[Building Guide](https://github.com/Pan
 
 ### Learning the Engine
 
-Start with **[Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp)**—it shows how default worlds are loaded and is the best entry point for understanding the engine's structure.
+Start with **[Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp)**—it shows how default worlds are loaded and is the best entry point for understanding the engine's structure. For gameplay scripting, check out the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/blob/master/scripting.md)**—it covers the full API, lifecycle callbacks, and examples.
 
 ---
 
