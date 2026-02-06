@@ -19,17 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ============================
 #include "pch.h"
 #include "Spline.h"
+#include "Renderable.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../../Core/Engine.h"
 #include "../../Rendering/Renderer.h"
+#include "../../Geometry/Mesh.h"
+#include "../../RHI/RHI_Vertex.h"
 SP_WARNINGS_OFF
 #include "../../IO/pugixml.hpp"
 SP_WARNINGS_ON
-//===================================
+//=======================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -41,6 +44,11 @@ namespace spartan
     Spline::Spline(Entity* entity) : Component(entity)
     {
 
+    }
+
+    Spline::~Spline()
+    {
+        ClearRoadMesh();
     }
 
     void Spline::Tick()
@@ -98,54 +106,24 @@ namespace spartan
     {
         node.append_attribute("closed_loop") = m_closed_loop;
         node.append_attribute("resolution")  = m_resolution;
+        node.append_attribute("road_width")  = m_road_width;
     }
 
     void Spline::Load(pugi::xml_node& node)
     {
         m_closed_loop = node.attribute("closed_loop").as_bool(false);
         m_resolution  = node.attribute("resolution").as_uint(20);
+        m_road_width  = node.attribute("road_width").as_float(8.0f);
     }
 
     Vector3 Spline::GetPoint(float t) const
     {
-        vector<Vector3> points = GetControlPoints();
-        if (points.empty())
-            return Vector3::Zero;
-        if (points.size() == 1)
-            return points[0];
-
-        uint32_t span_index = 0;
-        float local_t       = 0.0f;
-        MapToSpan(t, points, span_index, local_t);
-
-        int32_t point_count = static_cast<int32_t>(points.size());
-        int32_t i1 = static_cast<int32_t>(span_index);
-        int32_t i2 = m_closed_loop ? (i1 + 1) % point_count : min(i1 + 1, point_count - 1);
-        int32_t i0 = m_closed_loop ? (i1 - 1 + point_count) % point_count : max(i1 - 1, 0);
-        int32_t i3 = m_closed_loop ? (i2 + 1) % point_count : min(i2 + 1, point_count - 1);
-
-        return CatmullRom(points[i0], points[i1], points[i2], points[i3], local_t);
+        return EvaluatePoint(GetControlPoints(), t);
     }
 
     Vector3 Spline::GetTangent(float t) const
     {
-        vector<Vector3> points = GetControlPoints();
-        if (points.size() < 2)
-            return Vector3::Forward;
-
-        uint32_t span_index = 0;
-        float local_t       = 0.0f;
-        MapToSpan(t, points, span_index, local_t);
-
-        int32_t point_count = static_cast<int32_t>(points.size());
-        int32_t i1 = static_cast<int32_t>(span_index);
-        int32_t i2 = m_closed_loop ? (i1 + 1) % point_count : min(i1 + 1, point_count - 1);
-        int32_t i0 = m_closed_loop ? (i1 - 1 + point_count) % point_count : max(i1 - 1, 0);
-        int32_t i3 = m_closed_loop ? (i2 + 1) % point_count : min(i2 + 1, point_count - 1);
-
-        Vector3 tangent = CatmullRomTangent(points[i0], points[i1], points[i2], points[i3], local_t);
-        tangent.Normalize();
-        return tangent;
+        return EvaluateTangent(GetControlPoints(), t);
     }
 
     float Spline::GetLength(uint32_t samples_per_span) const
@@ -157,12 +135,12 @@ namespace spartan
         uint32_t span_count    = m_closed_loop ? static_cast<uint32_t>(points.size()) : static_cast<uint32_t>(points.size()) - 1;
         uint32_t total_samples = span_count * samples_per_span;
         float length           = 0.0f;
-        Vector3 prev_point     = GetPoint(0.0f);
+        Vector3 prev_point     = EvaluatePoint(points, 0.0f);
 
         for (uint32_t i = 1; i <= total_samples; i++)
         {
             float t            = static_cast<float>(i) / static_cast<float>(total_samples);
-            Vector3 curr_point = GetPoint(t);
+            Vector3 curr_point = EvaluatePoint(points, t);
             length            += prev_point.Distance(curr_point);
             prev_point         = curr_point;
         }
@@ -201,6 +179,136 @@ namespace spartan
         }
     }
 
+    void Spline::GenerateRoadMesh()
+    {
+        // need at least 2 control points to generate a road
+        vector<Vector3> points = GetControlPointsLocal();
+        if (points.size() < 2)
+        {
+            SP_LOG_WARNING("need at least 2 control points to generate a road mesh");
+            return;
+        }
+
+        // clean up any previous mesh
+        ClearRoadMesh();
+
+        float half_width       = m_road_width * 0.5f;
+        uint32_t span_count    = m_closed_loop ? static_cast<uint32_t>(points.size()) : static_cast<uint32_t>(points.size()) - 1;
+        uint32_t total_samples = span_count * m_resolution;
+
+        // generate cross-section vertices along the spline
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices;
+
+        // two vertices per sample (left and right edge), plus one extra for the end
+        uint32_t sample_count = total_samples + 1;
+        vertices.reserve(sample_count * 2);
+
+        // accumulate distance along the spline for v coordinate
+        float accumulated_distance = 0.0f;
+        Vector3 prev_position;
+
+        for (uint32_t i = 0; i <= total_samples; i++)
+        {
+            float t = static_cast<float>(i) / static_cast<float>(total_samples);
+
+            // evaluate position and tangent on the spline
+            Vector3 position = EvaluatePoint(points, t);
+            Vector3 tangent  = EvaluateTangent(points, t);
+            tangent.Normalize();
+
+            // build a coordinate frame: forward (tangent), right, up
+            // start with world up and derive right from cross product
+            Vector3 up = Vector3::Up;
+
+            // handle near-vertical tangents: fall back to world forward
+            if (abs(tangent.Dot(Vector3::Up)) > 0.99f)
+            {
+                up = Vector3::Forward;
+            }
+
+            Vector3 right = tangent.Cross(up);
+            right.Normalize();
+
+            // recompute up to be perpendicular to both
+            up = right.Cross(tangent);
+            up.Normalize();
+
+            // accumulate distance for uv v-coordinate
+            if (i > 0)
+            {
+                accumulated_distance += position.Distance(prev_position);
+            }
+            prev_position = position;
+
+            // uv: u goes across the road [0, 1], v tiles along the road length
+            float v = accumulated_distance / m_road_width; // tile proportionally to road width
+
+            // left vertex
+            Vector3 left_pos = position - right * half_width;
+            vertices.emplace_back(left_pos, Vector2(0.0f, v), up, tangent);
+
+            // right vertex
+            Vector3 right_pos = position + right * half_width;
+            vertices.emplace_back(right_pos, Vector2(1.0f, v), up, tangent);
+        }
+
+        // generate triangle indices connecting adjacent cross-sections
+        indices.reserve(total_samples * 6);
+        for (uint32_t i = 0; i < total_samples; i++)
+        {
+            uint32_t bl = i * 2;       // bottom-left
+            uint32_t br = i * 2 + 1;   // bottom-right
+            uint32_t tl = (i + 1) * 2; // top-left
+            uint32_t tr = (i + 1) * 2 + 1; // top-right
+
+            // first triangle (clockwise winding for front-face)
+            indices.push_back(bl);
+            indices.push_back(br);
+            indices.push_back(tl);
+
+            // second triangle (clockwise winding for front-face)
+            indices.push_back(br);
+            indices.push_back(tr);
+            indices.push_back(tl);
+        }
+
+        // create the mesh
+        m_mesh = make_shared<Mesh>();
+        m_mesh->SetObjectName("spline_road_mesh");
+        m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+        m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+        m_mesh->AddGeometry(vertices, indices, false);
+        m_mesh->CreateGpuBuffers();
+
+        // attach to a renderable component on this entity
+        Renderable* renderable = m_entity_ptr->GetComponent<Renderable>();
+        if (!renderable)
+        {
+            renderable = m_entity_ptr->AddComponent<Renderable>();
+        }
+        renderable->SetMesh(m_mesh.get(), 0);
+        renderable->SetDefaultMaterial();
+
+        SP_LOG_INFO("generated road mesh: %u vertices, %u indices, %.1f m long, %.1f m wide",
+            static_cast<uint32_t>(vertices.size()), static_cast<uint32_t>(indices.size()),
+            accumulated_distance, m_road_width);
+    }
+
+    void Spline::ClearRoadMesh()
+    {
+        if (m_mesh)
+        {
+            // remove the renderable component to avoid a dangling mesh pointer
+            if (m_entity_ptr)
+            {
+                m_entity_ptr->RemoveComponent<Renderable>();
+            }
+
+            m_mesh.reset();
+        }
+    }
+
     vector<Vector3> Spline::GetControlPoints() const
     {
         vector<Vector3> points;
@@ -216,6 +324,27 @@ namespace spartan
             if (Entity* child = m_entity_ptr->GetChildByIndex(i))
             {
                 points.push_back(child->GetPosition());
+            }
+        }
+
+        return points;
+    }
+
+    vector<Vector3> Spline::GetControlPointsLocal() const
+    {
+        vector<Vector3> points;
+
+        if (!m_entity_ptr)
+            return points;
+
+        uint32_t child_count = m_entity_ptr->GetChildrenCount();
+        points.reserve(child_count);
+
+        for (uint32_t i = 0; i < child_count; i++)
+        {
+            if (Entity* child = m_entity_ptr->GetChildByIndex(i))
+            {
+                points.push_back(child->GetPositionLocal());
             }
         }
 
@@ -246,6 +375,46 @@ namespace spartan
             (4.0f * p0 - 10.0f * p1 + 8.0f * p2 - 2.0f * p3) * t +
             (-3.0f * p0 + 9.0f * p1 - 9.0f * p2 + 3.0f * p3) * t2
         );
+    }
+
+    Vector3 Spline::EvaluatePoint(const vector<Vector3>& points, float t) const
+    {
+        if (points.empty())
+            return Vector3::Zero;
+        if (points.size() == 1)
+            return points[0];
+
+        uint32_t span_index = 0;
+        float local_t       = 0.0f;
+        MapToSpan(t, points, span_index, local_t);
+
+        int32_t point_count = static_cast<int32_t>(points.size());
+        int32_t i1 = static_cast<int32_t>(span_index);
+        int32_t i2 = m_closed_loop ? (i1 + 1) % point_count : min(i1 + 1, point_count - 1);
+        int32_t i0 = m_closed_loop ? (i1 - 1 + point_count) % point_count : max(i1 - 1, 0);
+        int32_t i3 = m_closed_loop ? (i2 + 1) % point_count : min(i2 + 1, point_count - 1);
+
+        return CatmullRom(points[i0], points[i1], points[i2], points[i3], local_t);
+    }
+
+    Vector3 Spline::EvaluateTangent(const vector<Vector3>& points, float t) const
+    {
+        if (points.size() < 2)
+            return Vector3::Forward;
+
+        uint32_t span_index = 0;
+        float local_t       = 0.0f;
+        MapToSpan(t, points, span_index, local_t);
+
+        int32_t point_count = static_cast<int32_t>(points.size());
+        int32_t i1 = static_cast<int32_t>(span_index);
+        int32_t i2 = m_closed_loop ? (i1 + 1) % point_count : min(i1 + 1, point_count - 1);
+        int32_t i0 = m_closed_loop ? (i1 - 1 + point_count) % point_count : max(i1 - 1, 0);
+        int32_t i3 = m_closed_loop ? (i2 + 1) % point_count : min(i2 + 1, point_count - 1);
+
+        Vector3 tangent = CatmullRomTangent(points[i0], points[i1], points[i2], points[i3], local_t);
+        tangent.Normalize();
+        return tangent;
     }
 
     void Spline::MapToSpan(float t, const vector<Vector3>& points, uint32_t& span_index, float& local_t) const

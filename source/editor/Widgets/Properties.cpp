@@ -616,9 +616,6 @@ void Properties::OnTickVisible()
         }
         else if (Entity* entity = get_selected_entity())
         {
-            Renderable* renderable = entity->GetComponent<Renderable>();
-            Material* material     = renderable ? renderable->GetMaterial() : nullptr;
-
             ShowEntity(entity);
             ShowScript(entity->GetComponent<Script>());
             ShowLight(entity->GetComponent<Light>());
@@ -626,6 +623,10 @@ void Properties::OnTickVisible()
             ShowTerrain(entity->GetComponent<Terrain>());
             ShowSpline(entity->GetComponent<Spline>());
             ShowAudioSource(entity->GetComponent<AudioSource>());
+
+            // re-fetch after ShowSpline since clearing a road mesh removes the renderable
+            Renderable* renderable = entity->GetComponent<Renderable>();
+            Material* material     = renderable ? renderable->GetMaterial() : nullptr;
             ShowRenderable(renderable);
             ShowMaterial(material);
             ShowPhysics(entity->GetComponent<Physics>());
@@ -1591,9 +1592,10 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         bool closed_loop     = spline->GetClosedLoop();
         uint32_t resolution  = spline->GetResolution();
         uint32_t point_count = spline->GetControlPointCount();
+        float road_width     = spline->GetRoadWidth();
         //=================================================
 
-        layout::section_header("Properties");
+        layout::section_header("Spline");
 
         // closed loop toggle
         if (property_toggle("Closed Loop", &closed_loop, "connect the last point back to the first"))
@@ -1625,7 +1627,7 @@ void Properties::ShowSpline(spartan::Spline* spline) const
 
         layout::group_spacing();
 
-        // add point button
+        // add/remove point buttons
         float button_width = 100.0f * spartan::Window::GetDpiScale();
         float total_width  = button_width * 2.0f + design::spacing_md;
         ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total_width) * 0.5f + ImGui::GetCursorPosX());
@@ -1646,13 +1648,43 @@ void Properties::ShowSpline(spartan::Spline* spline) const
 
         ImGui::SameLine(0, design::spacing_md);
 
-        // remove last point button
         ImGui::BeginDisabled(point_count == 0);
         if (ImGuiSp::button("- Remove Last", ImVec2(button_width, 0)))
         {
             spline->RemoveLastControlPoint();
         }
         ImGui::EndDisabled();
+
+        layout::separator();
+        layout::section_header("Road Mesh");
+
+        // road width
+        if (property_float("Width", &road_width, 0.1f, 0.5f, 100.0f, "road width in meters", "%.1f m"))
+        {
+            spline->SetRoadWidth(road_width);
+        }
+
+        layout::group_spacing();
+
+        // generate / clear road buttons
+        float road_button_width = 120.0f * spartan::Window::GetDpiScale();
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - road_button_width) * 0.5f + ImGui::GetCursorPosX());
+
+        ImGui::BeginDisabled(point_count < 2);
+        if (ImGuiSp::button("Generate Road", ImVec2(road_button_width, 0)))
+        {
+            spline->GenerateRoadMesh();
+        }
+        ImGui::EndDisabled();
+
+        if (spline->HasRoadMesh())
+        {
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - road_button_width) * 0.5f + ImGui::GetCursorPosX());
+            if (ImGuiSp::button("Clear Road", ImVec2(road_button_width, 0)))
+            {
+                spline->ClearRoadMesh();
+            }
+        }
     }
     component_end();
 }

@@ -28,11 +28,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    class Mesh;
+
     class Spline : public Component
     {
     public:
         Spline(Entity* entity);
-        ~Spline() = default;
+        ~Spline();
 
         // lifecycle
         void Tick() override;
@@ -51,15 +53,25 @@ namespace spartan
         void AddControlPoint(const math::Vector3& local_position = math::Vector3::Zero);
         void RemoveLastControlPoint();
 
+        // road mesh generation
+        void GenerateRoadMesh();
+        void ClearRoadMesh();
+        bool HasRoadMesh() const { return m_mesh != nullptr; }
+
         // properties
         bool GetClosedLoop() const              { return m_closed_loop; }
         void SetClosedLoop(bool closed)         { m_closed_loop = closed; }
         uint32_t GetResolution() const          { return m_resolution; }
         void SetResolution(uint32_t resolution) { m_resolution = resolution; }
+        float GetRoadWidth() const              { return m_road_width; }
+        void SetRoadWidth(float width)          { m_road_width = width; }
 
     private:
         // gather control point world positions from child entities
         std::vector<math::Vector3> GetControlPoints() const;
+
+        // gather control point positions local to the spline entity
+        std::vector<math::Vector3> GetControlPointsLocal() const;
 
         // catmull-rom interpolation between four points
         static math::Vector3 CatmullRom(
@@ -75,10 +87,18 @@ namespace spartan
             float t
         );
 
+        // evaluate spline position from an arbitrary set of control points
+        math::Vector3 EvaluatePoint(const std::vector<math::Vector3>& points, float t) const;
+        math::Vector3 EvaluateTangent(const std::vector<math::Vector3>& points, float t) const;
+
         // maps a normalized t to a span index and local t
         void MapToSpan(float t, const std::vector<math::Vector3>& points, uint32_t& span_index, float& local_t) const;
 
         bool m_closed_loop     = false;
         uint32_t m_resolution  = 20; // line segments per span
+        float m_road_width     = 8.0f;
+
+        // generated road mesh
+        std::shared_ptr<Mesh> m_mesh;
     };
 }
