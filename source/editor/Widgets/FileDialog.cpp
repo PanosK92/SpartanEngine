@@ -179,6 +179,9 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
     m_history.push_back(m_current_path);
     m_selected_item_id                = UINT32_MAX;
     m_hover_animation                 = 0.0f;
+    m_is_renaming                     = false;
+    m_rename_item_id                  = UINT32_MAX;
+    m_context_menu_id                 = 0;
 }
 
 void FileDialog::SetOperation(const FileDialog_Operation operation)
