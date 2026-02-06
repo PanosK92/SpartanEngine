@@ -244,8 +244,11 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             }
             else
             {
-                float env_pdf    = compute_environment_pdf(ray_dir);
-                float mis_weight = did_env_sample ? power_heuristic(prev_brdf_pdf, env_pdf) : 1.0f;
+                // env sampling now uses cosine hemisphere around surface normal (same as BRDF diffuse lobe)
+                // use n_dot_l/PI as the env PDF for MIS since that matches the cosine hemisphere sampling
+                float cos_at_prev = max(dot(sample.hit_normal, ray_dir), 0.0f);
+                float env_pdf    = cos_at_prev / PI;
+                float mis_weight = did_env_sample ? power_heuristic(prev_brdf_pdf, max(env_pdf, RESTIR_MIN_PDF)) : 1.0f;
                 sample.radiance += throughput * sky_radiance * mis_weight;
             }
 
@@ -438,12 +441,14 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         }
 
         // explicit environment sampling for non-specular surfaces
+        // sample in surface-local hemisphere to avoid sky bias in enclosed spaces
         did_env_sample = false;
         if (payload.roughness > RESTIR_SPECULAR_THRESHOLD || payload.metallic < 0.5f)
         {
             float2 env_xi = random_float2(seed);
             float env_pdf;
-            float3 env_dir = sample_environment_direction(env_xi, env_pdf);
+            float3 env_local = sample_cosine_hemisphere(env_xi, env_pdf);
+            float3 env_dir   = local_to_world(env_local, payload.hit_normal);
 
             float env_n_dot_l = dot(payload.hit_normal, env_dir);
             if (env_n_dot_l > 0.0f)
@@ -474,6 +479,13 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             }
         }
 
+        // per-bounce cumulative radiance clamp to suppress fireflies
+        // individual contributions (emission, direct, env) are clamped, but their sum can still be high
+        float bounce_lum = dot(sample.radiance, float3(0.299f, 0.587f, 0.114f));
+        float max_cumulative = 5.0f / float(bounce + 1);
+        if (bounce_lum > max_cumulative)
+            sample.radiance *= max_cumulative / bounce_lum;
+
         // russian roulette path termination
         if (bounce >= RUSSIAN_ROULETTE_START)
         {
@@ -501,7 +513,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         prev_brdf_pdf = pdf;
         prev_specular = (payload.roughness < RESTIR_SPECULAR_THRESHOLD);
 
-        float clamp_limit    = lerp(50.0f, 5.0f, float(bounce) / float(RESTIR_MAX_PATH_LENGTH));
+        float clamp_limit    = lerp(10.0f, 3.0f, float(bounce) / float(RESTIR_MAX_PATH_LENGTH));
         float max_throughput = max(max(throughput.r, throughput.g), throughput.b);
         if (max_throughput > clamp_limit)
             throughput *= clamp_limit / max_throughput;
@@ -510,9 +522,10 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         ray_dir    = new_dir;
     }
 
-    // final radiance clamp before returning
-    float final_lum = dot(sample.radiance, float3(0.299f, 0.587f, 0.114f));
+    // final radiance clamp before returning (luminance + per-channel)
     float max_radiance = (sample.path_length > 1) ? 3.0f : 5.0f;
+    sample.radiance = min(sample.radiance, float3(max_radiance, max_radiance, max_radiance));
+    float final_lum = dot(sample.radiance, float3(0.299f, 0.587f, 0.114f));
     if (final_lum > max_radiance)
         sample.radiance *= max_radiance / final_lum;
 
@@ -591,6 +604,8 @@ void ray_gen()
         update_reservoir(reservoir, candidate, weight, random_float(seed));
     }
 
+    // finalize using the same target PDF as the initial RIS weighting (luminance-based)
+    // consistency is critical: the same target function must be used everywhere
     finalize_reservoir(reservoir);
 
     // compute confidence metric

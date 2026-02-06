@@ -231,24 +231,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     Reservoir combined = create_empty_reservoir();
 
-    // evaluate center sample
-    float target_pdf_center = 0.0f;
-    if (any(center.sample.radiance > 0.0f))
-    {
-        if (is_sky_sample(center.sample))
-        {
-            target_pdf_center = calculate_target_pdf_sky(
-                center.sample.radiance, center.sample.direction, normal_ws, view_dir,
-                albedo, roughness, metallic);
-        }
-        else if (center.sample.path_length > 0)
-        {
-            target_pdf_center = calculate_target_pdf_with_geometry(
-                center.sample.radiance, pos_ws, normal_ws, view_dir,
-                center.sample.hit_position, center.sample.hit_normal,
-                albedo, roughness, metallic);
-        }
-    }
+    // evaluate center sample - luminance-based target for consistency
+    float target_pdf_center = calculate_target_pdf(center.sample.radiance);
 
     float weight_center = target_pdf_center * center.W * center.M;
     combined.weight_sum = weight_center;
@@ -298,6 +282,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (all(neighbor.sample.radiance <= 0.0f))
             continue;
 
+        // clamp neighbor radiance to match current path tracer limits
+        float max_rad = (neighbor.sample.path_length > 1) ? 3.0f : 5.0f;
+        neighbor.sample.radiance = min(neighbor.sample.radiance, float3(max_rad, max_rad, max_rad));
+        float nb_lum = dot(neighbor.sample.radiance, float3(0.299f, 0.587f, 0.114f));
+        if (nb_lum > max_rad)
+            neighbor.sample.radiance *= max_rad / nb_lum;
+
         float target_pdf_at_center = 0.0f;
         float jacobian = 1.0f;
 
@@ -307,15 +298,18 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             if (n_dot_sky <= 0.0f)
                 continue;
 
-            target_pdf_at_center = calculate_target_pdf_sky(
-                neighbor.sample.radiance, neighbor.sample.direction, normal_ws, view_dir,
-                albedo, roughness, metallic);
-
+            target_pdf_at_center = calculate_target_pdf(neighbor.sample.radiance);
             jacobian = 1.0f;
         }
         else
         {
             if (neighbor.sample.path_length == 0)
+                continue;
+
+            // reject samples whose hit point is in the wrong hemisphere relative to center surface
+            float3 dir_to_hit = normalize(neighbor.sample.hit_position - pos_ws);
+            float n_dot_l = dot(normal_ws, dir_to_hit);
+            if (n_dot_l <= 0.0f)
                 continue;
 
             bool visible = check_spatial_visibility(pos_ws, normal_ws, neighbor.sample.hit_position, neighbor.sample.hit_normal, neighbor_pos_ws);
@@ -326,17 +320,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             if (jacobian <= 0.0f)
                 continue;
 
-            target_pdf_at_center = calculate_target_pdf_with_geometry(
-                neighbor.sample.radiance, pos_ws, normal_ws, view_dir,
-                neighbor.sample.hit_position, neighbor.sample.hit_normal,
-                albedo, roughness, metallic);
+            target_pdf_at_center = calculate_target_pdf(neighbor.sample.radiance);
         }
 
         if (target_pdf_at_center <= 0.0f)
             continue;
 
         float effective_M = min(neighbor.M, max(center.M * 2.0f, 4.0f));
-        float weight = target_pdf_at_center * neighbor.W * effective_M * jacobian;
+        float weight = target_pdf_at_center * neighbor.W * effective_M;
 
         combined.weight_sum += weight;
         combined.M += effective_M;
@@ -350,8 +341,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     clamp_reservoir_M(combined, RESTIR_M_CAP);
 
-    if (combined.target_pdf > 0 && combined.M > 0)
-        combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
+    // finalize using luminance-based target PDF
+    float final_target_pdf = calculate_target_pdf(combined.sample.radiance);
+    combined.target_pdf = final_target_pdf;
+
+    if (final_target_pdf > 0 && combined.M > 0)
+        combined.W = combined.weight_sum / (final_target_pdf * combined.M);
     else
         combined.W = 0;
 
