@@ -200,10 +200,6 @@ namespace spartan
         #ifdef _WIN32
         dpi_scale = static_cast<float>(GetDpiForWindow(static_cast<HWND>(GetHandleRaw()))) / 96.0f;
         #endif
-
-        // register library
-        string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_MICRO_VERSION);
-        Settings::RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/");
     }
 
     void Window::Shutdown()

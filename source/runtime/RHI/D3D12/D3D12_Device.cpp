@@ -368,10 +368,7 @@ namespace spartan
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)]  = make_shared<RHI_Queue>(RHI_Queue_Type::Compute,  "compute");
         queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)]     = make_shared<RHI_Queue>(RHI_Queue_Type::Copy,     "copy");
 
-        // log feature level
-        std::string level = "12.0";
-        Settings::RegisterThirdPartyLib("DirectX", level, "https://en.wikipedia.org/wiki/DirectX");
-        SP_LOG_INFO("DirectX %s initialized successfully", level.c_str());
+        SP_LOG_INFO("DirectX 12.0 initialized successfully");
     }
 
     void RHI_Device::Tick(const uint64_t frame_count)

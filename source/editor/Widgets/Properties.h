@@ -35,7 +35,9 @@ namespace spartan
     class Camera;
     class AudioSource;
     class Terrain;
+    class Spline;
     class Volume;
+    class Script;
     class Component;
 }
 
@@ -54,12 +56,14 @@ public:
 
 private:
     void ShowEntity(spartan::Entity* transform) const;
+    void ShowScript(spartan::Script* script) const;
     void ShowLight(spartan::Light* light) const;
     void ShowRenderable(spartan::Renderable* renderable) const;
     void ShowPhysics(spartan::Physics* rigid_body) const;
     void ShowMaterial(spartan::Material* material) const;
     void ShowCamera(spartan::Camera* camera) const;
     void ShowTerrain(spartan::Terrain* terrain) const;
+    void ShowSpline(spartan::Spline* spline) const;
     void ShowAudioSource(spartan::AudioSource* audio_source) const;
     void ShowVolume(spartan::Volume* volume) const;
 

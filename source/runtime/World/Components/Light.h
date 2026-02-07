@@ -90,6 +90,9 @@ namespace spartan
         void Load(pugi::xml_node& node) override;
         //============================================
 
+        static void RegisterForScripting(sol::state_view State);
+        sol::reference AsLua(sol::state_view state) override;
+
         // flags
         bool GetFlag(const LightFlags flag) { return m_flags & flag; }
         void SetFlag(const LightFlags flag, const bool enable = true);

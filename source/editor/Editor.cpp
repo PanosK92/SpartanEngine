@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Editor.h"
 #include "GeneralWindows.h"
-#include "MenuBar.h"
+#include "Widgets/MenuBar.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "ImGui/ImGui_Extension.h"
@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
 #include "Widgets/Shadows.h"
+#include "Widgets/ScriptEditor.h"
 //===============================================
 
 //= NAMESPACES =====
@@ -94,6 +95,7 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<Profiler>(this));
     m_widgets.emplace_back(make_shared<ResourceViewer>(this));
     m_widgets.emplace_back(make_shared<ShaderEditor>(this));
+    m_widgets.emplace_back(make_shared<ScriptEditor>(this));
     m_widgets.emplace_back(make_shared<RenderOptions>(this));
     m_widgets.emplace_back(make_shared<TextureViewer>(this));
     m_widgets.emplace_back(make_shared<Viewport>(this));
@@ -104,9 +106,6 @@ Editor::Editor(const vector<string>& args)
 
     // allow imgui to get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
-
-    // register imgui as a third party library (will show up in the about window)
-    spartan::Settings::RegisterThirdPartyLib("ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
     GeneralWindows::Initialize(this);
     Modal::Initialize(this);
@@ -140,7 +139,7 @@ void Editor::Tick()
                 ImGui::NewFrame();
 
                 // iam animation
-                iam_update_begin_frame(); 
+                iam_update_begin_frame();
                 iam_clip_update(ImGui::GetIO().DeltaTime);
             }
 
@@ -205,12 +204,12 @@ void Editor::BeginWindow()
         ImGuiWindowFlags_NoMove                |
         ImGuiWindowFlags_NoBringToFrontOnFocus |
         ImGuiWindowFlags_NoNavFocus;
-    
+
     // set window position and size to the work area (excludes main menu bar)
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
-    
+
     // draw window border for borderless window (use full viewport for border around entire window)
     {
         ImDrawList* draw_list = ImGui::GetForegroundDrawList();
@@ -224,13 +223,13 @@ void Editor::BeginWindow()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,   0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,    ImVec2(0.0f, 0.0f));
-    
+
     // begin window
     const char* name = "##main_window";
     bool open = true;
     ImGui::Begin(name, &open, window_flags);
     ImGui::PopStyleVar(3);
-    
+
     // begin dock space
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_DockingEnable)
     {
@@ -242,24 +241,24 @@ void Editor::BeginWindow()
             ImGui::DockBuilderRemoveNode(window_id);
             ImGui::DockBuilderAddNode(window_id, ImGuiDockNodeFlags_None);
             ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
-    
+
             // dockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
             ImGuiID dock_main_id       = window_id;
             ImGuiID dock_right_id      = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Right, 0.17f, nullptr, &dock_main_id);
             ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down,  0.6f,  nullptr, &dock_right_id);
             ImGuiID dock_down_id       = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Down,  0.22f, nullptr, &dock_main_id);
             ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id,  ImGuiDir_Right, 0.3f,  nullptr, &dock_down_id);
-    
+
             // dock windows
             ImGui::DockBuilderDockWindow("World",      dock_right_id);
             ImGui::DockBuilderDockWindow("Properties", dock_right_down_id);
             ImGui::DockBuilderDockWindow("Console",    dock_down_id);
             ImGui::DockBuilderDockWindow("Assets",     dock_down_right_id);
             ImGui::DockBuilderDockWindow("Viewport",   dock_main_id);
-    
+
             ImGui::DockBuilderFinish(dock_main_id);
         }
-    
+
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         ImGui::DockSpace(window_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
         ImGui::PopStyleVar();

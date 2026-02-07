@@ -68,14 +68,16 @@ class FileDialogItem
 public:
     FileDialogItem(const std::string& path, spartan::RHI_Texture* icon)
     {
-        m_path = path;
-        m_icon = icon;
+        m_path          = path;
+        m_path_relative = spartan::FileSystem::GetRelativePath(path);
+        m_icon          = icon;
         static uint32_t id = 0;
         m_id = id++;
         m_isDirectory = spartan::FileSystem::IsDirectory(path);
         m_label = spartan::FileSystem::GetFileNameFromFilePath(path);
     }
     const auto& GetPath() const { return m_path; }
+    const auto& GetPathRelative() const { return m_path_relative; }
     const auto& GetLabel() const { return m_label; }
     uint32_t GetId() const { return m_id; }
     spartan::RHI_Texture* GetIcon() const { return m_icon; }
@@ -92,6 +94,7 @@ private:
     spartan::RHI_Texture* m_icon;
     uint32_t m_id;
     std::string m_path;
+    std::string m_path_relative;
     std::string m_label;
     bool m_isDirectory;
     std::chrono::duration<double, std::milli> m_time_since_last_click;
@@ -103,7 +106,7 @@ class FileDialog
 public:
     FileDialog(bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
-    // type & fFilter
+    // type & filter
     auto GetType() const { return m_type; }
     auto GetFilter() const { return m_filter; }
 
@@ -123,6 +126,10 @@ private:
     void ShowTop(bool* is_visible, Editor* editor);
     void ShowMiddle();
     void ShowBottom(bool* is_visible);
+    
+    // view rendering
+    void RenderGridView();
+    void RenderListView();
     void RenderItem(FileDialogItem* item, const ImVec2& size, bool is_list_view);
 
     // item functionality handling
@@ -168,6 +175,10 @@ private:
     FileDialog_ViewMode m_view_mode;
     FileDialog_SortColumn m_sort_column;
     bool m_sort_ascending;
+
+    // selection
+    uint32_t m_selected_item_id;
+    float m_hover_animation;
 
     // renaming
     bool m_is_renaming;

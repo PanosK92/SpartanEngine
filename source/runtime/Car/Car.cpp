@@ -811,7 +811,7 @@ namespace spartan
         TickEnterExit();
         TickViewSwitch();
 
-        if (m_show_telemetry)
+        if (m_show_telemetry && m_is_occupied)
         {
             DrawTelemetry();
             if (use_synthesized_engine_sound)

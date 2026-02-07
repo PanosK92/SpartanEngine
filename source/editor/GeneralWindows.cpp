@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "pch.h"
 #include "GeneralWindows.h"
-#include "WorldSelector.h"
+#include "Windows/WorldSelector.h"
+#include "Windows/Contributors.h"
 #include "ImGui/Source/imgui.h"
 #include "ImGui/ImGui_Extension.h"
 #include "FileSystem/FileSystem.h"
-#include "Settings.h"
 #include "Widgets/Viewport.h"
 #include "Widgets/Shadows.h"
 #include "Widgets/WorldSelection.h"
@@ -145,37 +145,6 @@ namespace
             "LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, "
             "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.";
 
-        struct Contributor
-        {
-            string role;
-            string name;
-            string country;
-            string button_text;
-            string button_url;
-            string contribution;
-            string steam_key;
-        };
-
-       const vector<Contributor> contributors =
-        {
-            { "Spartan", "Iker Galardi",         "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                                        "N/A" },
-            { "Spartan", "Jesse Guerrero",       "United States",  "LinkedIn",  "https://www.linkedin.com/in/jguer",                       "UX updates",                                                              "N/A" },
-            { "Spartan", "Konstantinos Benos",   "Greece",         "X",         "https://x.com/deg3x",                                     "Bug fixes & editor theme v2",                                             "N/A" },
-            { "Spartan", "Nick Polyderopoulos",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nick-polyderopoulos-21742397","UX updates",                                                              "N/A" },
-            { "Spartan", "Panos Kolyvakis",      "Greece",         "LinkedIn",  "https://www.linkedin.com/in/panos-kolyvakis-66863421a/",  "Water buoyancy improvements",                                             "N/A" },
-            { "Spartan", "Tri Tran",             "Belgium",        "LinkedIn",  "https://www.linkedin.com/in/mtrantr/",                    "Screen space shadows (Days Gone)",                                        "Starfield" },
-            { "Spartan", "Ege",                  "Turkey",         "X",         "https://x.com/egedq",                                     "Editor theme v3 + save/load themes",                                      "N/A" },
-            { "Spartan", "Sandro Mtchedlidze",   "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Tonemapper, perf/lighting finds, tubes lights in the car showroom world", "N/A" },
-            { "Spartan", "Dimitris Kalyvas",     "Greece",         "X",         "https://x.com/punctuator_",                               "Volumetric clouds, entity multi-select, grass performance improvement",   "BeamNG.drive" },
-            { "Spartan", "Bryan Casagrande ",    "United States",  "X",         "https://x.com/mrdrelliot",                                "Implement console variable support",                                      "N/A" },
-            { "Hoplite", "Apostolos Bouzalas",   "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                               "N/A" },
-            { "Hoplite", "Nikolas Pattakos",     "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                               "N/A" },
-            { "Hoplite", "Roman Koshchei",       "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                              "N/A" },
-            { "Hoplite", "Kristi Kercyku",       "Albania",        "GitHub",    "https://github.com/kristiker",                            "G-buffer depth issue fix",                                                "N/A" },
-            { "Hoplite", "Kinjal Kishor",        "India",          "X",         "https://x.com/kinjalkishor",                              "A few testing reports",                                                   "N/A" },
-            { "Hoplite", "Jose  Jiménez López ", "Spain",           "X",        "https://x.com/kerbehee",                                  "Smoke tests proof of concept",                                            "N/A" },
-        };
-
         void personal_details()
         {
             ImGui::BeginGroup();
@@ -256,65 +225,41 @@ namespace
 
         void tab_contributors()
         {
-            // Use StretchProp so columns resize nicely with the window
-            ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp;
-
-            // Subtract a bit of height to account for tab bar
-            if (ImGui::BeginTable("##contributors_table", 6, flags, ImVec2(0.0f, -FLT_MIN)))
-            {
-                ImGui::TableSetupScrollFreeze(0, 1);
-
-                // Defining weights allows for better default sizing
-                ImGui::TableSetupColumn("Title", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed, 120.0f);
-                ImGui::TableSetupColumn("Country");
-                ImGui::TableSetupColumn("Link", ImGuiTableColumnFlags_WidthFixed, 80.0f);
-                ImGui::TableSetupColumn("Contribution", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Steam Key");
-                ImGui::TableHeadersRow();
-
-                for (const auto& c : contributors)
-                {
-                    ImGui::TableNextRow();
-
-                    // Column 0: Role
-                    ImGui::TableSetColumnIndex(0);
-                    ImGui::AlignTextToFramePadding(); // Fix vertical alignment
-                    ImGui::TextUnformatted(c.role.c_str());
-
-                    // Column 1: Name
-                    ImGui::TableSetColumnIndex(1);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(c.name.c_str());
-
-                    // Column 2: Country
-                    ImGui::TableSetColumnIndex(2);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(c.country.c_str());
-
-                    // Column 3: Button
-                    ImGui::TableSetColumnIndex(3);
-                    ImGui::PushID(&c);
-                    // Use small button style if available, or standard
-                    if (ImGui::Button(c.button_text.c_str()))
-                    {
-                        spartan::FileSystem::OpenUrl(c.button_url);
-                    }
-                    ImGui::PopID();
-
-                    // Column 4: Contribution
-                    ImGui::TableSetColumnIndex(4);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(c.contribution.c_str());
-
-                    // Column 5: Key
-                    ImGui::TableSetColumnIndex(5);
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(c.steam_key.c_str());
-                }
-                ImGui::EndTable();
-            }
+            Contributors::RenderTable();
         }
+
+        struct third_party_lib
+        {
+            const char* name;
+            const char* version;
+            const char* url;
+        };
+
+        // third-party libraries used by the engine (alphabetically sorted)
+        static const third_party_lib libs[] =
+        {
+            { "AMD Compressonator",          "4.2",        "https://github.com/GPUOpen-Tools/compressonator"                  },
+            { "AMD FidelityFX",              "1.1.4",      "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK"       },
+            { "AMD Vulkan Memory Allocator", "3.3.0",      "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator"},
+            { "Assimp",                      "6.0.2",      "https://github.com/assimp/assimp"                                 },
+            { "DirectX",                     "12.0",       "https://en.wikipedia.org/wiki/DirectX"                            },
+            { "DirectXShaderCompiler",       "May 2025",   "https://github.com/microsoft/DirectXShaderCompiler"               },
+            { "FreeImage",                   "3.18.0",     "https://freeimage.sourceforge.io/"                                },
+            { "FreeType",                    "2.13.2",     "https://freetype.org/"                                            },
+            { "ImGui",                       "1.91.9 WIP", "https://github.com/ocornut/imgui"                                 },
+            { "Intel XeSS",                  "2.1.0",      "https://github.com/intel/xess"                                    },
+            { "Lua",                         "5.5.0",      "https://www.lua.org/"                                             },
+            { "meshoptimizer",               "0.25",       "https://github.com/zeux/meshoptimizer"                            },
+            { "NVIDIA NRD",                  "4.16.1",     "https://github.com/NVIDIAGameWorks/RayTracingDenoiser"            },
+            { "OpenXR",                      "1.1.54",     "https://www.khronos.org/openxr/"                                  },
+            { "PhysX",                       "5.6.0",      "https://github.com/NVIDIA-Omniverse/PhysX"                        },
+            { "pugixml",                     "1.13",       "https://github.com/zeux/pugixml"                                  },
+            { "RenderDoc",                   "1.40",       "https://renderdoc.org/"                                           },
+            { "SDL",                         "3.2.24",     "https://www.libsdl.org/"                                          },
+            { "Sol2",                        "3.3.0",      "https://github.com/ThePhD/sol2"                                   },
+            { "SPIRV-Cross",                 "2023.09",    "https://github.com/KhronosGroup/SPIRV-Cross"                      },
+            { "Vulkan",                      "1.4.321",    "https://vulkan.lunarg.com/"                                       },
+        };
 
         void tab_libraries()
         {
@@ -328,20 +273,20 @@ namespace
                 ImGui::TableSetupColumn("Link", ImGuiTableColumnFlags_WidthFixed, 60.0f);
                 ImGui::TableHeadersRow();
 
-                for (const spartan::third_party_lib& lib : spartan::Settings::GetThirdPartyLibs())
+                for (const third_party_lib& lib : libs)
                 {
                     ImGui::TableNextRow();
 
                     ImGui::TableSetColumnIndex(0);
                     ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(lib.name.c_str());
+                    ImGui::TextUnformatted(lib.name);
 
                     ImGui::TableSetColumnIndex(1);
                     ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(lib.version.c_str());
+                    ImGui::TextUnformatted(lib.version);
 
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::PushID(lib.url.c_str());
+                    ImGui::PushID(lib.url);
                     if (ImGuiSp::button("URL"))
                     {
                         spartan::FileSystem::OpenUrl(lib.url);

@@ -993,23 +993,6 @@ namespace spartan
     void RHI_VendorTechnology::Initialize()
     {
     #ifdef _WIN32
-        // register amd
-        {
-            string ffx_version = to_string(FFX_SDK_VERSION_MAJOR) + "." +
-                                 to_string(FFX_SDK_VERSION_MINOR) + "." +
-                                 to_string(FFX_SDK_VERSION_PATCH);
-            
-            Settings::RegisterThirdPartyLib("AMD FidelityFX", ffx_version, "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK");
-        }
-
-        // register intel
-        {
-            xess_version_t version;
-            SP_ASSERT(xessGetVersion(&version) == XESS_RESULT_SUCCESS);
-            string xess_version = to_string(version.major) + "." + to_string(version.minor) + "." + to_string(version.patch);
-            Settings::RegisterThirdPartyLib("Intel XeSS", xess_version, "https://github.com/intel/xess");
-        }
-
         // ffx interface
         {
             // all used contexts need to be accounted for here
@@ -1364,10 +1347,6 @@ namespace spartan
         nvidia::create_resources(width, height);
 
         nvidia::nrd_initialized = true;
-
-        // register nrd as third party lib
-        string nrd_version = to_string(NRD_VERSION_MAJOR) + "." + to_string(NRD_VERSION_MINOR) + "." + to_string(NRD_VERSION_BUILD);
-        Settings::RegisterThirdPartyLib("NVIDIA NRD", nrd_version, "https://github.com/NVIDIAGameWorks/RayTracingDenoiser");
 
         SP_LOG_INFO("NRD initialized with RELAX denoiser for ReSTIR");
     #endif

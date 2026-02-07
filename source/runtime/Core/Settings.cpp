@@ -41,8 +41,6 @@ namespace spartan
     { 
         bool m_has_loaded_user_settings = false;
         string file_path                = "spartan.xml";
-        vector<third_party_lib> m_third_party_libs;
-        mutex mutex_register;
 
         // helper to convert cvar name to xml-safe name (e.g., "r.bloom" -> "r_bloom")
         string cvar_name_to_xml(const char* name)
@@ -132,8 +130,6 @@ namespace spartan
 
     void Settings::Initialize()
     {
-        RegisterThirdPartyLib("pugixml", "1.13", "https://github.com/zeux/pugixml");
-
         if (FileSystem::Exists(file_path))
         {
             load();
@@ -143,26 +139,6 @@ namespace spartan
     void Settings::Shutdown()
     {
         save();
-    }
-
-    void Settings::RegisterThirdPartyLib(const string& name, const string& version, const string& url)
-    {
-        lock_guard<mutex> lock(mutex_register);
-
-        m_third_party_libs.emplace_back(name, version, url);
-
-        // maintain alphabetical order
-        sort(m_third_party_libs.begin(), m_third_party_libs.end(),
-            [](const third_party_lib& a, const third_party_lib& b)
-            {
-                return a.name < b.name;
-            }
-        );
-    }
-
-    const vector<third_party_lib>& Settings::GetThirdPartyLibs()
-    {
-        return m_third_party_libs;
     }
 
     bool Settings::HasLoadedUserSettingsFromFile()

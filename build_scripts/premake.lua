@@ -104,30 +104,15 @@ function spartan_project_configuration()
                 SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
-                "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/nrd", "../third_party/openxr"
+                "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/nrd", "../third_party/openxr",
+                "../third_party/lua", "../third_party/lua/lua"
             }
-             -- Ensure linker prioritizes project libraries over system paths
             linkoptions {
                 "/LIBPATH:" .. path.getabsolute("../third_party/libraries"),
-                "/NODEFAULTLIB:PhysX_64.lib",
-                "/NODEFAULTLIB:PhysX_64_debug.lib",
-                "/NODEFAULTLIB:PhysXCommon_64.lib",
-                "/NODEFAULTLIB:PhysXCommon_64_debug.lib",
-                "/NODEFAULTLIB:PhysXFoundation_64.lib",
-                "/NODEFAULTLIB:PhysXFoundation_64_debug.lib",
-                "/NODEFAULTLIB:PhysXExtensions_64.lib",
-                "/NODEFAULTLIB:PhysXExtensions_64_debug.lib",
-                "/NODEFAULTLIB:PhysXPvdSDK_64.lib",
-                "/NODEFAULTLIB:PhysXPvdSDK_64_debug.lib",
-                "/NODEFAULTLIB:PhysXCooking_64.lib",
-                "/NODEFAULTLIB:PhysXCooking_64_debug.lib",
-                "/NODEFAULTLIB:PhysXVehicle2_64.lib",
-                "/NODEFAULTLIB:PhysXVehicle2_64_debug.lib",
-                "/NODEFAULTLIB:PhysXCharacterKinematic_64.lib",
-                "/NODEFAULTLIB:PhysXCharacterKinematic_64_debug.lib",
-                "/NODEFAULTLIB:MSVCRT.lib",   -- Block dynamic CRT
-                "/NODEFAULTLIB:MSVCPRT.lib",  -- Block dynamic CRT
+                "/NODEFAULTLIB:MSVCRT.lib",  -- block dynamic crt (using static runtime)
+                "/NODEFAULTLIB:MSVCPRT.lib"
             }
+            buildoptions { "/bigobj" }
 
         -- Linux includes
         filter { "system:linux" }
@@ -154,7 +139,7 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME)
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT", "meshoptimizer", "NRD", "ShaderMakeBlob", "openxr_loader" }
+            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT", "meshoptimizer", "NRD", "ShaderMakeBlob", "openxr_loader", "lua" }
             links {
                 "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
                 "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle2_static_64", "PhysXCharacterKinematic_static_64"
@@ -177,7 +162,7 @@ function spartan_project_configuration()
             links { "dxcompiler" }
 
         filter { "configurations:debug", "system:windows" }
-            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug", "NRD_debug", "ShaderMakeBlob_debug", "openxr_loader_debug" }
+            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug", "NRD_debug", "ShaderMakeBlob_debug", "openxr_loader_debug", "lua_debug" }
             links {
                 "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
                 "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle2_static_64_debug", "PhysXCharacterKinematic_static_64_debug"

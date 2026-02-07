@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "pch.h"
 #include "WorldSelector.h"
-#include "GeneralWindows.h"
-#include "ImGui/ImGui_Extension.h"
-#include "Widgets/Viewport.h"
+#include "../GeneralWindows.h"
+#include "../ImGui/ImGui_Extension.h"
+#include "../Widgets/Viewport.h"
 #include "Core/ProgressTracker.h"
 #include "Game/Game.h"
 #include "RHI/RHI_Device.h"
@@ -50,14 +50,13 @@ namespace
 
     const DefaultWorldEntry default_worlds[] =
     {
-        { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech",                                                                  "Complete" ,  "Light",          2100 },
-        { "Car Playground",    "Highly realistic vehicle physics with proper tire slip, thermals, aero, LSD, multi ray tire, and speed dependent steering geometry.", "Prototype",  "Light",          2100 },
-        { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                                                                                       "Prototype",  "Very demanding", 5600 },
-        { "Liminal Space",     "Shifts your frequency to a nearby reality",                                                                                           "Prototype",  "Light",          2100 },
-        { "Sponza 4K",         "High-resolution textures & meshes",                                                                                                   "Complete" ,  "Demanding",      2600 },
-        { "Subway",            "GI test. No lights, only emissive textures",                                                                                          "Prototype" , "Moderate",       2600 },
-        { "Minecraft",         "Blocky aesthetic",                                                                                                                    "Complete" ,  "Light",          2100 },
-        { "Basic",             "Light, camera, floor",                                                                                                                "Complete" ,  "Light",          2100 }
+        { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" ,  "Light",          2100 },
+        { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype",  "Very demanding", 5600 },
+        { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype",  "Light",          2100 },
+        { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" ,  "Demanding",      2600 },
+        { "Subway",            "GI test. No lights, only emissive textures",                         "Prototype" , "Moderate",       2600 },
+        { "Minecraft",         "Blocky aesthetic",                                                   "Complete" ,  "Light",          2100 },
+        { "Basic",             "Light, camera, floor",                                               "Complete" ,  "Light",          2100 }
     };
     constexpr int default_world_count = sizeof(default_worlds) / sizeof(default_worlds[0]);
 
@@ -98,10 +97,10 @@ namespace
 
 
     // asset download configuration
-    const char* assets_url          = "https://www.dropbox.com/scl/fi/bdqtye9r5i6lfrct8laoi/project.7z?rlkey=5esu6smc2hzjpnda3fjexrei4&st=l9tmcwz7&dl=1";
+    const char* assets_url          = "https://www.dropbox.com/scl/fi/46p2w6opnoxzezof6tx17/project.7z?rlkey=jwv871ca91gju59gowx67a3l0&st=w69dniok&dl=1";
     const char* assets_destination  = "project/project.7z";
     const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "f8a0b02c8fa7f31d9e0700dc89228b793c65afa175791ed9ab4a23732b87d88c";
+    const char* assets_expected_sha = "058843cf43b5609b91cfbfde58163dcc042a39af2da9b8e4760540180fbfc303";
 
     void scan_directory_recursive(const string& directory)
     {

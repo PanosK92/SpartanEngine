@@ -32,25 +32,6 @@ SP_WARNINGS_ON
 
 namespace spartan::geometry_processing
 {
-    static void register_meshoptimizer()
-    {
-        static std::atomic<bool> registered = false;
-
-        // quick check without lock
-        if (registered.load(std::memory_order_acquire))
-            return;
-
-        // thread-safe registration with compare-exchange
-        bool expected = false;
-        if (registered.compare_exchange_strong(expected, true, std::memory_order_acq_rel))
-        {
-            const int major = MESHOPTIMIZER_VERSION / 1000;
-            const int minor = (MESHOPTIMIZER_VERSION % 1000) / 10;
-            const int rev   = MESHOPTIMIZER_VERSION % 10;
-            Settings::RegisterThirdPartyLib("meshoptimizer", std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(rev), "https://github.com/zeux/meshoptimizer");
-        }
-    }
-
     static void simplify(
         std::vector<uint32_t>& indices,
         std::vector<RHI_Vertex_PosTexNorTan>& vertices,
@@ -59,8 +40,6 @@ namespace spartan::geometry_processing
         const bool preserve_edges // for terrain tiles where edges must match neighboring tiles
     )
     {
-        register_meshoptimizer();
-
         size_t index_count  = indices.size();
         size_t vertex_count = vertices.size();
 

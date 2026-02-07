@@ -59,9 +59,9 @@ The most demanding world: **256 million** procedurally generated grass blades (i
 |:-:|:-:|
 | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_minecraft.jpg"/><br>A familiar blocky world | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_liminal.jpg"/><br>Reality shifts to a nearby frequency |
 
-| Showroom | Car Playground |
+| Showroom | [The Plan](plan.md) |
 |:-:|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_showroom.png"/><br>Clean showcase—no experimental tech | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_car_playground.png"/><br>Realistic car simulation with full telemetry |
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_showroom.png"/><br>Clean showcase—no experimental tech | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_car_playground.png"/><br>A neon-soaked city, built to push the engine toward real-time path-traced driving through rain-slicked streets at 60fps, that's the plan. |
 
 ---
 
@@ -140,6 +140,7 @@ One of the most realistic out-of-the-box car simulations available. Physics runs
 
 ### General
 
+- **Scripting**: Lua 5.4 scripting with full engine API access (entities, components, math, physics, audio)
 - **Input**: Keyboard, mouse, controllers, steering wheels
 - **Physics**: Comprehensive PhysX integration
 - **Profiling**: CPU & GPU profiling tools
@@ -156,7 +157,7 @@ One-click project generation—see the **[Building Guide](https://github.com/Pan
 
 ### Learning the Engine
 
-Start with **[Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp)**—it shows how default worlds are loaded and is the best entry point for understanding the engine's structure.
+Start with **[Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp)**, it shows how default worlds are loaded and is the best entry point for understanding the engine's structure. For gameplay scripting, check out the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/blob/master/scripting.md)**, it covers the full API, lifecycle callbacks, and examples.
 
 ---
 
@@ -199,7 +200,7 @@ I cover the costs for Dropbox hosting to ensure library and asset bandwidth is a
 | **S.T.A.L.K.E.R. Anomaly** | Rendering addon using Spartan's source ([ModDB](https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders)) |
 | **Programming Book** | Jesse Guerrero's [beginner programming book](https://www.amazon.com/dp/B0CXG1CMNK) features Spartan's code and community |
 
-**Using code from Spartan?** [Reach out](https://twitter.com/panoskarabelas)—I'd love to showcase your project!
+**Using code from Spartan?** [Reach out](https://twitter.com/panoskarabelas), I'd love to showcase your project!
 
 ---
 

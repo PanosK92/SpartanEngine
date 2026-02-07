@@ -135,7 +135,7 @@ namespace spartan
         lock_guard<mutex> guard(m_mutex);
         for (shared_ptr<IResource>& resource : m_resources)
         {
-            if (name == resource->GetObjectName())
+            if (name == resource->GetObjectName() && (type == ResourceType::Max || resource->GetResourceType() == type))
                 return resource;
         }
         static shared_ptr<IResource> empty;

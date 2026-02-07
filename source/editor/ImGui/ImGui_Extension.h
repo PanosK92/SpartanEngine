@@ -41,6 +41,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGuiSp
 {
+    constexpr std::string_view GDragDropTypes[] = {
+        "Texture",
+        "Entity",
+        "Model",
+        "Audio",
+        "Material",
+        "Lua",
+        "Undefined",
+    };
+
     enum class DragPayloadType
     {
         Texture,
@@ -48,6 +58,7 @@ namespace ImGuiSp
         Model,
         Audio,
         Material,
+        Lua,
         Undefined
     };
 
@@ -236,25 +247,27 @@ namespace ImGuiSp
     struct DragDropPayload
     {
         using DataVariant = std::variant<const char*, uint64_t>;
-        DragDropPayload(const DragPayloadType type = DragPayloadType::Undefined, const DataVariant data = nullptr)
+        DragDropPayload(const DragPayloadType type = DragPayloadType::Undefined, const DataVariant data = nullptr, const char* path_relative = nullptr)
         {
-            this->type = type;
-            this->data = data;
+            this->type          = type;
+            this->data          = data;
+            this->path_relative = path_relative;
         }
         DragPayloadType type;
-        DataVariant data;
+        DataVariant data;               // full/absolute path (for backward compatibility)
+        const char* path_relative;      // relative path
     };
 
     static void create_drag_drop_payload(const DragDropPayload& payload)
     {
-        ImGui::SetDragDropPayload(reinterpret_cast<const char*>(&payload.type), reinterpret_cast<const void*>(&payload), sizeof(payload), ImGuiCond_Once);
+        ImGui::SetDragDropPayload(GDragDropTypes[(int)payload.type].data(), &payload, sizeof(payload), ImGuiCond_Once);
     }
 
     static DragDropPayload* receive_drag_drop_payload(DragPayloadType type)
     {
         if (ImGui::BeginDragDropTarget())
         {
-            if (const auto payload_imgui = ImGui::AcceptDragDropPayload(reinterpret_cast<const char*>(&type)))
+            if (const ImGuiPayload* payload_imgui = ImGui::AcceptDragDropPayload(GDragDropTypes[(int)type].data()))
             {
                 return static_cast<DragDropPayload*>(payload_imgui->Data);
             }
@@ -264,34 +277,74 @@ namespace ImGuiSp
         return nullptr;
     }
 
-    // image slot
-    static void image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter)
+    // image slot - returns true if the user clicked on the slot (for browse functionality)
+    static bool image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter)
     {
         const ImVec2 slot_size  = ImVec2(80 * spartan::Window::GetDpiScale());
         const float button_size = 15.0f * spartan::Window::GetDpiScale();
+        bool clicked_for_browse = false;
 
-        // Image
         ImGui::BeginGroup();
         {
-            spartan::RHI_Texture* texture = texture_in;
-            const ImVec2 pos_image        = ImGui::GetCursorPos();
-            const ImVec2 pos_button       = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
+            spartan::RHI_Texture* texture   = texture_in;
+            const ImVec2 pos_image          = ImGui::GetCursorPos();
+            const ImVec2 screen_pos         = ImGui::GetCursorScreenPos();
 
-            // image
-            ImVec4 colro_tint   = (texture != nullptr) ? ImVec4(1, 1, 1, 1) : ImVec4(0, 0, 0, 0);
-            ImVec4 color_border = ImVec4(1, 1, 1, 0.5f);
-            ImGui::SetCursorPos(pos_image);
-            image(texture, slot_size, colro_tint, color_border);
+            // x button position (top-right corner)
+            const float x_btn_offset_x = slot_size.x - button_size - 4.0f;
+            const float x_btn_offset_y = 4.0f;
+            ImVec2 x_btn_screen_min    = ImVec2(screen_pos.x + x_btn_offset_x, screen_pos.y + x_btn_offset_y);
+            ImVec2 x_btn_screen_max    = ImVec2(x_btn_screen_min.x + button_size, x_btn_screen_min.y + button_size);
 
-            // x (remove) button
+            // check x button click FIRST using manual hit test
+            bool x_clicked = false;
             if (texture != nullptr)
             {
-                ImGui::SetCursorPos(pos_button);
-                if (image_button(spartan::ResourceCache::GetIcon(spartan::IconType::X), button_size, true))
+                bool x_hovered = ImGui::IsMouseHoveringRect(x_btn_screen_min, x_btn_screen_max);
+                if (x_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                 {
-                    texture = nullptr;
                     setter(nullptr);
+                    x_clicked = true;
                 }
+            }
+
+            // main slot interaction (only if x wasn't clicked)
+            ImGui::SetCursorPos(pos_image);
+            ImGui::InvisibleButton("##slot_click", slot_size);
+            bool is_hovered = ImGui::IsItemHovered();
+            
+            if (!x_clicked && ImGui::IsItemClicked(ImGuiMouseButton_Left))
+            {
+                clicked_for_browse = true;
+            }
+
+            // draw the image
+            ImVec4 color_tint   = (texture != nullptr) ? ImVec4(1, 1, 1, 1) : ImVec4(0, 0, 0, 0);
+            ImVec4 color_border = is_hovered ? ImVec4(0.4f, 0.6f, 1.0f, 1.0f) : ImVec4(1, 1, 1, 0.5f);
+            ImGui::SetCursorPos(pos_image);
+            image(texture, slot_size, color_tint, color_border);
+
+            // drag source
+            if (texture != nullptr && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+            {
+                ImGui::EndDragDropSource();
+            }
+
+            // draw x button (visual only - click handled above)
+            if (texture != nullptr)
+            {
+                ImVec2 pos_button = ImVec2(pos_image.x + x_btn_offset_x, pos_image.y + x_btn_offset_y);
+                ImGui::SetCursorPos(pos_button);
+                
+                // draw button background on hover
+                bool x_hovered = ImGui::IsMouseHoveringRect(x_btn_screen_min, x_btn_screen_max);
+                if (x_hovered)
+                {
+                    ImGui::GetWindowDrawList()->AddRectFilled(x_btn_screen_min, x_btn_screen_max, IM_COL32(255, 80, 80, 180), 3.0f);
+                }
+                
+                // draw x icon
+                image(spartan::ResourceCache::GetIcon(spartan::IconType::X), ImVec2(button_size, button_size));
             }
         }
         ImGui::EndGroup();
@@ -308,6 +361,8 @@ namespace ImGuiSp
             }
             catch (const std::bad_variant_access& e) { SP_LOG_ERROR("%s", e.what()); }
         }
+
+        return clicked_for_browse;
     }
 
     static void tooltip(const char* text)
@@ -327,17 +382,17 @@ namespace ImGuiSp
     {
         static const uint32_t screen_edge_padding = 10;
         ImGuiIO& io = ImGui::GetIO();
-        
+
         static ImVec2 last_mouse_pos = io.MousePos;
-        
+
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             ImVec2 mouse_pos = io.MousePos;
             bool wrapped = false;
-        
+
             float left  = static_cast<float>(screen_edge_padding);
             float right = static_cast<float>(spartan::Display::GetWidth() - screen_edge_padding);
-        
+
             if (mouse_pos.x >= right)
             {
                 mouse_pos.x = left + 1;
@@ -348,14 +403,14 @@ namespace ImGuiSp
                 mouse_pos.x = right - 1;
                 wrapped = true;
             }
-        
+
             if (wrapped)
             {
                 io.MousePos        = mouse_pos;
                 io.WantSetMousePos = true;
                 io.MouseDelta.x    = 0.0f;
                 io.MouseDelta.y    = 0.0f;
-        
+
                 // update last_mouse_pos to avoid delta spikes in the next frame
                 last_mouse_pos = mouse_pos;
             }
@@ -365,29 +420,29 @@ namespace ImGuiSp
                 last_mouse_pos = mouse_pos;
             }
         }
-        
+
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
         bool changed = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
         ImGui::PopID();
-    
+
         return changed;
     }
 
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
     {
         const uint32_t option_count = static_cast<uint32_t>(options.size());
-    
+
         // clamp index
         if (*selection_index >= option_count)
         {
             *selection_index = option_count ? option_count - 1 : 0;
         }
-    
+
         bool selection_made = false;
-    
+
         // preview: direct pointer into existing string buffer
         const char* preview = option_count ? options[*selection_index].data() : "";
-    
+
         if (ImGui::BeginCombo(label, preview))
         {
             for (uint32_t i = 0; i < option_count; ++i)
@@ -415,15 +470,15 @@ namespace ImGuiSp
         const float label_indent = 15.0f * spartan::Window::GetDpiScale();
         const float axis_spacing = 15.0f * spartan::Window::GetDpiScale();
         const float step         = 0.01f;
-    
+
         ImGui::PushID(label);
         ImGui::BeginGroup();
-    
+
         // label
         ImGui::Indent(label_indent);
         ImGui::TextUnformatted(label);
         ImGui::Unindent(label_indent);
-    
+
         // layout calculation
         float item_width = 128.0f;
         if (!vertical)
@@ -433,11 +488,11 @@ namespace ImGuiSp
             float total_spacing = spacing * 2.0f;
             item_width          = (avail_x - total_spacing) / 3.0f;
             item_width          -= axis_spacing;
-    
+
             if (item_width < 1.0f)
                 item_width = 1.0f;
         }
-    
+
         float* values[3]           = { &vector.x, &vector.y, &vector.z };
         const char* axis_labels[3] = { "X", "Y", "Z" };
         const ImU32 axis_colors[3] = {
@@ -445,38 +500,38 @@ namespace ImGuiSp
             IM_COL32(112, 162, 22, 255),
             IM_COL32(51, 122, 210, 255)
         };
-    
+
         // components
         for (int i = 0; i < 3; ++i)
         {
             ImGui::PushID(i);
-    
+
             // horizontal layout
             if (!vertical && i > 0)
             {
                 ImGui::SameLine();
             }
-    
+
             // axis label
             ImGui::TextUnformatted(axis_labels[i]);
             ImGui::SameLine();
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + axis_spacing - ImGui::CalcTextSize(axis_labels[i]).x);
             spartan::math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
-    
+
             // float input
             ImGui::PushItemWidth(item_width);
             ImGuiSp::draw_float_wrap("##v", values[i], step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
             ImGui::PopItemWidth();
-    
+
             // color bar decoration
             static const spartan::math::Vector2 size   = spartan::math::Vector2(4.0f, 19.0f);
             static const spartan::math::Vector2 offset = spartan::math::Vector2(-7.0f, 4.0f);
             spartan::math::Vector2 draw_pos            = pos_post_label + offset;
             ImGui::GetWindowDrawList()->AddRectFilled(draw_pos, draw_pos + size, axis_colors[i]);
-    
+
             ImGui::PopID();
         }
-    
+
         ImGui::EndGroup();
         ImGui::PopID();
     }

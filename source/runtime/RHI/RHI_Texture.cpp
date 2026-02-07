@@ -40,7 +40,6 @@ namespace spartan
     namespace compressonator
     {
         RHI_Format destination_format = RHI_Format::BC3_Unorm;
-        atomic<bool> registered       = false;
 
         CMP_FORMAT to_cmp_format(const RHI_Format format)
         {
@@ -263,12 +262,6 @@ namespace spartan
             PrepareForGpu();
         }
 
-        bool expected = false;
-        if (compressonator::registered.compare_exchange_strong(expected, true))
-        {
-            string version = to_string(AMD_COMPRESS_VERSION_MAJOR) + "." + to_string(AMD_COMPRESS_VERSION_MINOR);
-            Settings::RegisterThirdPartyLib("AMD Compressonator", version, "https://github.com/GPUOpen-Tools/compressonator");
-        }
     }
 
     RHI_Texture::RHI_Texture(const string& file_path) : IResource(ResourceType::Texture)

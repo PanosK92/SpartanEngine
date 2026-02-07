@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "../Math/BoundingBox.h"
 #include <string>
+#include <sol/sol.hpp>
 //==============================
 
 namespace spartan
@@ -52,6 +53,7 @@ namespace spartan
         static bool LoadFromFile(const std::string& file_path);
 
         // entities
+        static sol::state_view GetLuaState();
         static Entity* CreateEntity();
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(Entity* entity);

@@ -19,30 +19,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ===================
 #include "pch.h"
 #include "MenuBar.h"
-#include "GeneralWindows.h"
-#include "Widgets/Profiler.h"
-#include "Widgets/ShaderEditor.h"
-#include "Widgets/RenderOptions.h"
-#include "Widgets/TextureViewer.h"
-#include "Widgets/ResourceViewer.h"
-#include "Widgets/AssetBrowser.h"
-#include "Widgets/Console.h"
-#include "Widgets/Properties.h"
-#include "Widgets/Viewport.h"
-#include "Widgets/WorldViewer.h"
-#include "Widgets/FileDialog.h"
-#include "Widgets/Style.h"
+#include "Profiler.h"
+#include "ShaderEditor.h"
+#include "RenderOptions.h"
+#include "TextureViewer.h"
+#include "ResourceViewer.h"
+#include "AssetBrowser.h"
+#include "Console.h"
+#include "Properties.h"
+#include "Viewport.h"
+#include "WorldViewer.h"
+#include "FileDialog.h"
+#include "Style.h"
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
+#include "ScriptEditor.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
 
 #include <ImGui/Source/Animation/im_anim.h>
-//================================
+#include "../GeneralWindows.h"
+//==============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -220,6 +221,7 @@ namespace
                 {
                     menu_entry<Profiler>();
                     menu_entry<ShaderEditor>();
+                    menu_entry<ScriptEditor>();
                     menu_entry<RenderOptions>();
                     menu_entry<TextureViewer>();
                     menu_entry<ResourceViewer>();

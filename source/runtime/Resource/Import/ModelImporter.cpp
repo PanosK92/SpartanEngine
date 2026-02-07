@@ -500,10 +500,7 @@ namespace spartan
 
     void ModelImporter::Initialize()
     {
-        const int major = aiGetVersionMajor();
-        const int minor = aiGetVersionMinor();
-        const int rev   = aiGetVersionRevision();
-        Settings::RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
+    
     }
 
     void ModelImporter::Load(Mesh* mesh_in, const string& file_path)
