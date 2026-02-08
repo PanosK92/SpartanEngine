@@ -349,7 +349,8 @@ namespace spartan
 
     uint32_t Renderable::GetIndexOffset(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_offset;
+        // global base offset + lod-relative offset within the mesh
+        return m_mesh->GetGlobalIndexOffset() + m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_offset;
     }
 
     uint32_t Renderable::GetIndexCount(const uint32_t lod) const
@@ -359,7 +360,8 @@ namespace spartan
 
     uint32_t Renderable::GetVertexOffset(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_offset;
+        // global base offset + lod-relative offset within the mesh
+        return m_mesh->GetGlobalVertexOffset() + m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_offset;
     }
 
     uint32_t Renderable::GetVertexCount(const uint32_t lod) const

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "Material.h"
+#include "GeometryBuffer.h"
 #include "ThreadPool.h"
 #include "../Profiling/RenderDoc.h"
 #include "../Profiling/Profiler.h"
@@ -395,6 +396,7 @@ namespace spartan
         // manually destroy everything so that RHI_Device::ParseDeletionQueue() frees memory
         {
             DestroyResources();
+            GeometryBuffer::Shutdown();
             swapchain             = nullptr;
             m_lines_vertex_buffer = nullptr;
             tlas                  = nullptr;
@@ -461,6 +463,16 @@ namespace spartan
         // update CPU and GPU resources (only when we can render to avoid GPU work during window transitions)
         if (can_render)
         {
+            // build the global geometry buffer if new meshes were loaded since the last frame
+            GeometryBuffer::BuildIfDirty();
+
+            // if the geometry buffer was fully rebuilt (e.g. capacity exceeded), acceleration structures
+            // reference stale device addresses and need to be recreated from the new buffer
+            if (GeometryBuffer::WasRebuilt())
+            {
+                DestroyAccelerationStructures();
+            }
+
             // fill draw call list and determine ideal occluders
             UpdateDrawCalls(m_cmd_list_present);
 

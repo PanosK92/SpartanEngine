@@ -72,22 +72,24 @@ namespace spartan
             }
             else
             {
-                // create staging buffer, it's slower but we can copy data in and out of it
-                void* staging_buffer = nullptr;
-                RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, data, m_object_name.c_str());
-
-                // create destination buffer, it's faster but we can only copy data into it
+                // create destination buffer (device-local, fastest for gpu access)
                 RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags_usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
 
-                // copy staging buffer to destination buffer
-                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
-                VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
-                VkBufferCopy copy_region    = {};
-                copy_region.size            = m_object_size;
-                RHI_CommandList* cmd_list   = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
-                vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
-                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
+                // if initial data is provided, upload it via a staging buffer
+                if (data)
+                {
+                    void* staging_buffer = nullptr;
+                    RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, data, m_object_name.c_str());
+
+                    VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
+                    VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
+                    VkBufferCopy copy_region    = {};
+                    copy_region.size            = m_object_size;
+                    RHI_CommandList* cmd_list   = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
+                    vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
+                    RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+                    RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
+                }
             }
             
             // save device address for ray tracing vertex/index buffer access
@@ -166,6 +168,42 @@ namespace spartan
         SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
         m_data_gpu = m_mappable ? RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource) : nullptr;
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name.c_str());
+    }
+
+    void RHI_Buffer::UploadSubRegion(const void* data, uint64_t offset_bytes, uint64_t size_bytes)
+    {
+        SP_ASSERT(data != nullptr);
+        SP_ASSERT(offset_bytes + size_bytes <= m_object_size);
+
+        if (m_mappable)
+        {
+            // for mapped buffers, direct memcpy at the offset
+            memcpy(static_cast<uint8_t*>(m_data_gpu) + offset_bytes, data, size_bytes);
+        }
+        else
+        {
+            // for device-local buffers, stage and copy at the specified offset
+            void* staging_buffer = nullptr;
+            RHI_Device::MemoryBufferCreate(
+                staging_buffer, size_bytes,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                data, "staging_sub_region"
+            );
+
+            VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
+            VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
+            VkBufferCopy copy_region    = {};
+            copy_region.srcOffset       = 0;
+            copy_region.dstOffset       = offset_bytes;
+            copy_region.size            = size_bytes;
+
+            RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
+            vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
+            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
+        }
     }
 
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)

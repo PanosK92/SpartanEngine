@@ -2760,7 +2760,7 @@ namespace spartan
         cmd_list->SetCullMode(RHI_CullMode::Back);
         cmd_list->SetBufferVertex(GetStandardMesh(MeshType::Quad)->GetVertexBuffer());
         cmd_list->SetBufferIndex(GetStandardMesh(MeshType::Quad)->GetIndexBuffer());
-        cmd_list->DrawIndexed(6);
+        cmd_list->DrawIndexed(6, GetStandardMesh(MeshType::Quad)->GetGlobalIndexOffset(), GetStandardMesh(MeshType::Quad)->GetGlobalVertexOffset());
 
         cmd_list->EndTimeblock();
     }

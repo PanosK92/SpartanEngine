@@ -74,6 +74,7 @@ The most demanding world: **256 million** procedurally generated grass blades (i
 
 - Vulkan renderer with DirectX 12 backend (WIP)
 - Fully bindless design (materials, lights, samplers)
+- Single global vertex and index buffer for all geometry, inspired by id Software's id Tech engine
 - Universal HLSL shaders across both backends
 - 128-byte push constant buffer for fast CPU-to-GPU transfer
 - Tightly packed 10-byte instance format for hundreds of millions of instances
