@@ -219,7 +219,7 @@ SamplerState samplers[]                                  : register(s1,  space6)
 [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4                               : register(u3);
 [[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav                              : register(u4);
 [[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
-RWStructuredBuffer<uint> visibility                                                        : register(u6);
+RWStructuredBuffer<uint> visibility                                                        : register(u6); // unused, kept for descriptor layout stability
 globallycoherent RWStructuredBuffer<uint> g_atomic_counter                                 : register(u7); // used by FidelityFX SPD
 [[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
 // nrd denoiser output bindings
@@ -230,6 +230,35 @@ globallycoherent RWStructuredBuffer<uint> g_atomic_counter                      
 
 // integer format textures (vrs, etc)
 RWTexture2D<uint> tex_uav_uint : register(u30);
+
+// gpu-driven indirect drawing
+struct IndirectDrawArgs
+{
+    uint index_count;
+    uint instance_count;
+    uint first_index;
+    int  vertex_offset;
+    uint first_instance;
+};
+
+struct DrawData
+{
+    matrix transform;
+    matrix transform_previous;
+    uint   material_index;
+    uint   is_transparent;
+    uint   aabb_index;
+    uint   padding;
+};
+
+// gpu-driven indirect drawing uav bindings
+// input: populated by cpu, read by the cull compute shader
+RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u31);
+RWStructuredBuffer<DrawData> indirect_draw_data         : register(u32);
+// output: written by the cull compute shader, read by vertex shaders
+RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u33);
+RWStructuredBuffer<DrawData> indirect_draw_data_out         : register(u34);
+RWStructuredBuffer<uint> indirect_draw_count                : register(u35);
 
 // buffers
 [[vk::push_constant]]
@@ -242,12 +271,22 @@ bool is_ray_traced_reflections_enabled() { return buffer_frame.options & uint(1U
 bool is_ssao_enabled()                   { return buffer_frame.options & uint(1U << 1); }
 bool is_ray_traced_shadows_enabled()     { return buffer_frame.options & uint(1U << 2); }
 bool is_restir_pt_enabled()              { return buffer_frame.options & uint(1U << 3); }
+
+// for indirect draws, per-draw data comes from the draw data buffer instead of push constants
+#ifdef INDIRECT_DRAW
+static matrix _indirect_transform_previous;
+static uint _indirect_material_index;
+matrix pass_get_transform_previous() { return _indirect_transform_previous; }
+uint pass_get_material_index()       { return _indirect_material_index; }
+#else
 matrix pass_get_transform_previous() { return buffer_pass.values; }
+uint pass_get_material_index()       { return buffer_pass.values._m03; }
+#endif
+
 float2 pass_get_f2_value()           { return float2(buffer_pass.values._m23, buffer_pass.values._m30); }
 float3 pass_get_f3_value()           { return float3(buffer_pass.values._m00, buffer_pass.values._m01, buffer_pass.values._m02); }
 float3 pass_get_f3_value2()          { return float3(buffer_pass.values._m20, buffer_pass.values._m21, buffer_pass.values._m31); }
 float4 pass_get_f4_value()           { return float4(buffer_pass.values._m10, buffer_pass.values._m11, buffer_pass.values._m12, buffer_pass.values._m33); }
-uint pass_get_material_index()       { return buffer_pass.values._m03; }
 bool pass_is_transparent()           { return buffer_pass.values._m13 == 1.0f; }
 bool pass_is_opaque()                { return !pass_is_transparent(); }
 // _m32 is available for use

@@ -24,6 +24,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common_tessellation.hlsl"
 //=================================
 
+#ifdef INDIRECT_DRAW
+gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX)
+{
+    // read per-draw data from the compacted draw data buffer (written by the cull shader)
+    DrawData dd                    = indirect_draw_data_out[draw_id];
+    _indirect_transform_previous   = dd.transform_previous;
+    _indirect_material_index       = dd.material_index;
+
+    gbuffer_vertex vertex;
+    float3 position_world          = 0.0f;
+    float3 position_world_previous = 0.0f;
+    vertex                         = transform_to_world_space(input, instance_id, dd.transform, position_world, position_world_previous);
+    vertex.material_index          = dd.material_index;
+    vertex                         = transform_to_clip_space(vertex, position_world, position_world_previous);
+
+    return vertex;
+}
+#else
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
     gbuffer_vertex vertex;
@@ -32,12 +50,14 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
     vertex                         = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
+    vertex.material_index          = pass_get_material_index();
 
     // transform to clip space
     vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
 
     return vertex;
 }
+#endif
 
 void main_ps(gbuffer_vertex vertex)
 {

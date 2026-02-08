@@ -148,7 +148,7 @@ namespace spartan
         tex4          = 3,
         tex3d         = 4,
         tex_sss       = 5,
-        visibility    = 6,
+        visibility_unused = 6, // slot preserved to keep enum values stable
         sb_spd        = 7,
         tex_spd       = 8,
         geometry_info = 20, // ray tracing geometry info buffer
@@ -165,6 +165,12 @@ namespace spartan
         nrd_spec_radiance      = 29,
         // integer format textures (vrs, etc)
         tex_uint               = 30,
+        // gpu-driven indirect drawing
+        indirect_draw_args     = 31,
+        indirect_draw_data     = 32,
+        indirect_draw_args_out = 33,
+        indirect_draw_data_out = 34,
+        indirect_draw_count    = 35,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -216,7 +222,7 @@ namespace spartan
         ffx_spd_min_c,
         ffx_spd_max_c,
         blit_c,
-        occlusion_c,
+        occlusion_c_unused, // slot preserved to keep enum values stable
         icon_c,
         dithering_c,
         transparency_reflection_refraction_c,
@@ -241,6 +247,11 @@ namespace spartan
         light_reflections_c,
         // nrd denoiser
         nrd_prepare_c,
+        // gpu-driven indirect rendering
+        indirect_cull_c,
+        gbuffer_indirect_v,
+        gbuffer_indirect_p,
+        depth_prepass_indirect_v,
         max
     };
     
@@ -339,10 +350,15 @@ namespace spartan
         LightParameters,
         DummyInstance,
         AABBs,
-        Visibility,
-        VisibilityPrev,
-        VisibilityReadback,
+        Visibility_unused,         // slot preserved to keep enum values stable
+        VisibilityPrev_unused,     // slot preserved to keep enum values stable
+        VisibilityReadback_unused, // slot preserved to keep enum values stable
         GeometryInfo,
+        IndirectDrawArgs,
+        IndirectDrawData,
+        IndirectDrawDataOut,
+        IndirectDrawArgsOut,
+        IndirectDrawCount,
         Max
     };
 

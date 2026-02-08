@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Buffer.h"
 //===============================
 
-//= NAMESPACES ================
+//= NAMESPACES =====
 using namespace std;
-//=============================
+//==================
 
 namespace spartan
 {
