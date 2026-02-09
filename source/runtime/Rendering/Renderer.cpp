@@ -1407,10 +1407,11 @@ namespace spartan
                 Renderable* renderable      = dc.renderable;
                 Material* material          = renderable->GetMaterial();
 
-                // only opaque, non-tessellated, non-instanced, non-alpha-tested draws go through the indirect path
+                // only opaque, non-tessellated, non-instanced, non-alpha-tested, back-face-culled draws go through the indirect path
                 // instanced draws need per-renderable instance buffers (global instance buffer is future work)
                 // tessellated draws need a different PSO
                 // alpha-tested draws need a per-draw pixel shader with discard
+                // double-sided draws need per-draw cull mode which indirect doesn't support
                 if (!material || material->IsTransparent())
                     continue;
                 if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
@@ -1418,6 +1419,8 @@ namespace spartan
                 if (dc.instance_count > 1)
                     continue;
                 if (material->IsAlphaTested())
+                    continue;
+                if (static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back)
                     continue;
 
                 uint32_t idx = m_indirect_draw_count++;

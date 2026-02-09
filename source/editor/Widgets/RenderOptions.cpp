@@ -450,7 +450,7 @@ void RenderOptions::OnTickVisible()
                     option_check_box("Physics", "r.physics");
                     option_check_box("AABBs", "r.aabb");
                     option_check_box("Wireframe", "r.wireframe");
-                    option_check_box("Occlusion culling", "r.occlusion_culling", "For development purposes");
+                    option_check_box("Occlusion culling", "r.hiz_occlusion", "For development purposes");
                 }
 
                 ImGui::EndTable();

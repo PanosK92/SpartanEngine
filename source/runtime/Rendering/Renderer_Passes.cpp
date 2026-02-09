@@ -458,7 +458,7 @@ namespace spartan
             pso.shaders[Compute] = GetShader(Renderer_Shader::indirect_cull_c);
             cmd_list->SetPipelineState(pso);
 
-            // input: hi-z texture for occlusion testingrce
+            // input: hi-z texture for occlusion testing
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
 
             // input: draw args and draw data from cpu
@@ -556,10 +556,11 @@ namespace spartan
                         continue;
 
                     // skip draws already handled by the indirect path
-                    bool is_tessellated = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    bool is_instanced   = draw_call.instance_count > 1;
+                    bool is_tessellated  = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                    bool is_instanced    = draw_call.instance_count > 1;
                     bool is_alpha_tested = material->IsAlphaTested();
-                    if (!is_tessellated && !is_instanced && !is_alpha_tested)
+                    bool is_double_sided = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
+                    if (!is_tessellated && !is_instanced && !is_alpha_tested && !is_double_sided)
                         continue;
 
                     // alpha testing & tessellation
@@ -731,7 +732,8 @@ namespace spartan
                         bool is_tessellated  = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
                         bool is_instanced    = draw_call.instance_count > 1;
                         bool is_alpha_tested = material->IsAlphaTested();
-                        if (!is_tessellated && !is_instanced && !is_alpha_tested)
+                        bool is_double_sided = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
+                        if (!is_tessellated && !is_instanced && !is_alpha_tested && !is_double_sided)
                             continue; // already drawn by indirect path
                     }
 

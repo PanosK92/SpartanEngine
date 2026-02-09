@@ -70,26 +70,26 @@ The most demanding world: **256 million** procedurally generated grass blades (i
 ### Rendering
 
 <details>
-<summary><strong>Renderer Architecture — Fully Bindless, GPU-Driven</strong></summary>
+<summary><strong>Renderer Architecture, Fully Bindless, GPU-Driven</strong></summary>
 
-Spartan's renderer is designed from the ground up around a single principle: **the GPU owns the data**. Every resource — geometry, materials, textures, lights, transforms, AABBs — lives in persistent, globally accessible buffers. There are no per-draw descriptor set updates, no per-draw resource binding, and no CPU-side draw loops. The result is one of the most aggressively bindless renderers in any open-source engine.
+Spartan's renderer is built around a single principle: **the GPU owns the data**. Every resource (geometry, materials, textures, lights, transforms, AABBs) lives in persistent, globally accessible buffers. There are no per-draw descriptor set updates, no per-draw resource binding, and no CPU-side draw loops. The result is one of the most aggressively bindless renderers in any open-source engine.
 
-- **Zero-binding draw path** — all per-draw data (transforms, previous-frame transforms, material indices, transparency flags) is stored in a single bindless storage buffer; push constants carry only a 4-byte index into it, keeping the entire push constant footprint at 80 bytes
-- **Single global vertex and index buffer** for all geometry, inspired by id Tech — the CPU never re-binds geometry between draws
-- **GPU-driven indirect rendering** — a compute shader performs frustum and occlusion culling entirely on the GPU, emitting a compacted indirect argument buffer; the CPU issues a single `DrawIndexedIndirectCount` per pass, replacing thousands of individual draw calls
-- **Bindless materials, lights, and samplers** — material parameters, textures, light data, and samplers are all accessed through global descriptor arrays with no per-object binding
-- **Uber shaders** — minimal pipeline state object (PSO) permutations eliminate draw call state changes and keep the pipeline count low
-- **Universal HLSL** — all shaders are written once in HLSL and compiled for both Vulkan (via SPIR-V) and DirectX 12
+- **Zero-binding draw path**, all per-draw data (transforms, previous-frame transforms, material indices, transparency flags) is stored in a single bindless storage buffer, push constants carry only a 4-byte index into it, keeping the entire push constant footprint at 80 bytes
+- **Single global vertex and index buffer** for all geometry, inspired by id Tech, the CPU never re-binds geometry between draws
+- **GPU-driven indirect rendering**, a compute shader performs frustum and occlusion culling entirely on the GPU, emitting a compacted indirect argument buffer, the CPU issues a single `DrawIndexedIndirectCount` per pass, replacing thousands of individual draw calls
+- **Bindless materials, lights, and samplers**, material parameters, textures, light data, and samplers are all accessed through global descriptor arrays with no per-object binding
+- **Uber shaders**, minimal pipeline state object (PSO) permutations eliminate draw call state changes and keep the pipeline count low
+- **Universal HLSL**, all shaders are written once in HLSL and compiled for both Vulkan (via SPIR-V) and DirectX 12
 - **Tightly packed 10-byte instance format** for hundreds of millions of instances (procedural grass, foliage)
-- **On-the-fly GPU mip generation** (FidelityFX SPD) **and texture compression** (FidelityFX Compressonator) — assets are processed on the GPU at load time, not baked offline
-- **Unified deferred rendering with transparency** — opaque and transparent surfaces share the same BSDF and render path, no separate forward pass
+- **On-the-fly GPU mip generation** (FidelityFX SPD) **and texture compression** (FidelityFX Compressonator), assets are processed on the GPU at load time, not baked offline
+- **Unified deferred rendering with transparency**, opaque and transparent surfaces share the same BSDF and render path, no separate forward pass
 
 </details>
 
 <details>
-<summary><strong>Lighting & Global Illumination</strong></summary>
+<summary><strong>Lighting and Global Illumination</strong></summary>
 
-- **ReSTIR path tracing** — reservoir-based spatiotemporal resampling for real-time multi-bounce global illumination
+- **ReSTIR path tracing**, reservoir-based spatiotemporal resampling for real-time multi-bounce global illumination
 - **Ray-traced reflections and shadows** via hardware ray queries
 - **Atmospheric scattering** with real-time filtering and image-based lighting with bent normals
 - **Screen-space shadows** (inspired by Days Gone) and **ambient occlusion** (XeGTAO with visibility bitfield)
@@ -99,22 +99,22 @@ Spartan's renderer is designed from the ground up around a single principle: **t
 </details>
 
 <details>
-<summary><strong>Performance & Upscaling</strong></summary>
+<summary><strong>Performance and Upscaling</strong></summary>
 
-- **GPU-driven frustum and occlusion culling** (Hi-Z) — the CPU never touches per-object visibility
+- **GPU-driven frustum and occlusion culling** (Hi-Z), the CPU never touches per-object visibility
 - **Variable rate shading** and **dynamic resolution scaling**
-- **Upscaling**: Intel XeSS 2 and AMD FSR 3
+- **Upscaling** with Intel XeSS 2 and AMD FSR 3
 - **Temporal anti-aliasing**
 - **Custom breadcrumbs** for GPU crash tracing and post-mortem debugging
 
 </details>
 
 <details>
-<summary><strong>Camera & Post-Processing</strong></summary>
+<summary><strong>Camera and Post-Processing</strong></summary>
 
 - Physically based camera with auto-exposure
 - Physical light units (lumens and kelvin)
-- Tonemappers: ACES, AgX, Gran Turismo 7 (default)
+- Tonemappers, ACES, AgX, Gran Turismo 7 (default)
 - HDR10 output
 - FXAA, bloom, motion blur, depth of field, chromatic aberration
 
