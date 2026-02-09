@@ -125,12 +125,12 @@ namespace
         inline void begin_property(const char* label, const char* tooltip = nullptr)
         {
             ImGui::AlignTextToFramePadding();
-            
+
             // subtle text color for labels
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.70f, 0.70f, 0.70f, 1.0f));
             ImGui::TextUnformatted(label);
             ImGui::PopStyleColor();
-            
+
             if (tooltip && ImGui::IsItemHovered())
             {
                 ImGui::BeginTooltip();
@@ -230,7 +230,7 @@ namespace
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(design::spacing_md, design::spacing_md));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(design::spacing_md, design::spacing_sm));
-        
+
         if (ImGui::BeginPopup(id.c_str()))
         {
             if (removable)
@@ -264,7 +264,7 @@ namespace
 
             ImGui::EndPopup();
         }
-        
+
         ImGui::PopStyleVar(2);
     }
 
@@ -275,12 +275,12 @@ namespace
     bool component_begin(const char* name, const ImVec4& accent_color, Component* component_instance, bool options = true, const bool removable = true)
     {
         ImGui::PushID(name);
-        
+
         // header styling
         ImVec4 header_bg       = design::dimmed(accent_color, 0.25f);
         ImVec4 header_hovered  = design::dimmed(accent_color, 0.35f);
         ImVec4 header_active   = design::dimmed(accent_color, 0.30f);
-        
+
         ImGui::PushStyleColor(ImGuiCol_Header, header_bg);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, header_hovered);
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, header_active);
@@ -291,7 +291,7 @@ namespace
         ImGui::PushFont(Editor::font_bold);
         const bool is_expanded = ImGuiSp::collapsing_header(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::PopFont();
-        
+
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(3);
 
@@ -462,7 +462,7 @@ namespace
             ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(axis[i]);
             ImGui::PopStyleColor();
-            
+
             // SPACE between label and input
             ImGui::SameLine(0, label_to_input);
 
@@ -523,7 +523,7 @@ namespace
 
         // position
         property_vector3("Position", position, "local position in meters");
-        
+
         // rotation
         property_vector3("Rotation", edit_euler, "local rotation in degrees");
 
@@ -557,7 +557,7 @@ namespace
         ImGui::PopItemWidth();
 
         ImGui::SameLine(0, design::spacing_sm);
-        
+
         if (file_selection::browse_button(("browse_" + string(label)).c_str()))
         {
             file_selection::open(on_browse);
@@ -591,7 +591,7 @@ void Properties::OnTickVisible()
         {
             // multiple entities selected - show summary
             ImGui::Dummy(ImVec2(0, design::spacing_md));
-            
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.85f, 0.4f, 1.0f));
             ImGui::PushFont(Editor::font_bold);
             char buf[64];
@@ -686,7 +686,7 @@ void Properties::ShowEntity(Entity* entity) const
         ImGui::TextUnformatted(entity->GetObjectName().c_str());
         ImGui::PopFont();
         ImGui::PopStyleColor();
-        
+
         layout::group_spacing();
 
         // active toggle
@@ -730,6 +730,81 @@ void Properties::ShowScript(spartan::Script* script) const
         // status
         bool is_loaded = script->script.valid();
         property_text("Status", is_loaded ? "Loaded" : "Not Loaded", "whether the script is loaded and valid");
+
+        if (is_loaded)
+        {
+            if (ImGui::BeginTable("ScriptProperties", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+            {
+                ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableHeadersRow();
+
+                for (auto&& [K, V] : script->script)
+                {
+                    std::string key = K.as<std::string>();
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%s", key.c_str());
+
+                    ImGui::TableSetColumnIndex(1);
+
+                    if (V.is<bool>())
+                    {
+                        bool value = V.as<bool>();
+                        if (ImGui::Checkbox(("##" + key).c_str(), &value))
+                        {
+                            script->script[K] = value;
+                        }
+                    }
+                    else if (V.is<int>())
+                    {
+                        int value = V.as<int>();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        if (ImGui::InputInt(("##" + key).c_str(), &value))
+                        {
+                            script->script[K] = value;
+                        }
+                    }
+                    else if (V.is<float>() || V.is<double>())
+                    {
+                        float value = V.as<float>();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        if (ImGui::InputFloat(("##" + key).c_str(), &value))
+                        {
+                            script->script[K] = value;
+                        }
+                    }
+                    else if (V.is<std::string>())
+                    {
+                        std::string value = V.as<std::string>();
+                        char buffer[256];
+                        strncpy_s(buffer, value.c_str(), sizeof(buffer) - 1);
+                        buffer[sizeof(buffer) - 1] = '\0';
+
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        if (ImGui::InputText(("##" + key).c_str(), buffer, sizeof(buffer)))
+                        {
+                            script->script[K] = std::string(buffer);
+                        }
+                    }
+                    else if (V.is<sol::table>())
+                    {
+                        ImGui::TextDisabled("[Table]");
+                    }
+                    else if (V.is<sol::function>())
+                    {
+                        ImGui::TextDisabled("[Function]");
+                    }
+                    else
+                    {
+                        ImGui::TextDisabled("[Unknown Type]");
+                    }
+                }
+
+                ImGui::EndTable();
+            }
+        }
 
         layout::group_spacing();
 
@@ -920,7 +995,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImVec4(0.2f, 0.2f, 0.25f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.18f, 1.0f));
-            
+
             if (ImGui::BeginTable("##lod_table", lod_count + 1,
                 ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame))
             {
@@ -993,7 +1068,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
 
                     char instance_name[32];
                     std::snprintf(instance_name, sizeof(instance_name), "Instance %u", i);
-                    
+
                     if (ImGui::TreeNode(instance_name))
                     {
                         if (ImGui::DragFloat3("Position", &pos.x, 0.1f))
@@ -1135,20 +1210,20 @@ void Properties::ShowPhysics(Physics* body) const
         // freeze position with axis toggles
         {
             layout::begin_property("Freeze Position", "lock position on specific axes");
-            
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.4f, 0.4f, 1.0f));
             ImGui::TextUnformatted("X");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##freeze_pos_x", &freeze_pos_x);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 0.4f, 1.0f));
             ImGui::TextUnformatted("Y");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##freeze_pos_y", &freeze_pos_y);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.6f, 0.9f, 1.0f));
             ImGui::TextUnformatted("Z");
@@ -1160,20 +1235,20 @@ void Properties::ShowPhysics(Physics* body) const
         // freeze rotation with axis toggles
         {
             layout::begin_property("Freeze Rotation", "lock rotation on specific axes");
-            
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.4f, 0.4f, 1.0f));
             ImGui::TextUnformatted("X");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##freeze_rot_x", &freeze_rot_x);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 0.4f, 1.0f));
             ImGui::TextUnformatted("Y");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##freeze_rot_y", &freeze_rot_y);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.6f, 0.9f, 1.0f));
             ImGui::TextUnformatted("Z");
@@ -1310,7 +1385,7 @@ void Properties::ShowMaterial(Material* material) const
                 // constrain width to available space
                 float available_width = ImGui::GetContentRegionAvail().x;
                 float slider_width    = ImMin(available_width, 120.0f);
-                
+
                 if (mat_property == MaterialProperty::ColorA)
                 {
                     m_material_color_picker->Update();
@@ -1360,9 +1435,9 @@ void Properties::ShowMaterial(Material* material) const
         // tiling
         {
             layout::begin_property("Tiling", "texture repeat");
-            
+
             float w = (layout::value_width() - design::spacing_md - 24.0f) * 0.5f;
-            
+
             ImGui::PushItemWidth(w);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.5f, 0.5f, 1.0f));
             ImGui::TextUnformatted("X");
@@ -1370,7 +1445,7 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine();
             ImGui::InputFloat("##tileX", &tiling.x, 0.0f, 0.0f, "%.2f");
             ImGui::PopItemWidth();
-            
+
             ImGui::SameLine();
             ImGui::PushItemWidth(w);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.9f, 0.5f, 1.0f));
@@ -1384,9 +1459,9 @@ void Properties::ShowMaterial(Material* material) const
         // offset
         {
             layout::begin_property("Offset", "texture offset");
-            
+
             float w = (layout::value_width() - design::spacing_md - 24.0f) * 0.5f;
-            
+
             ImGui::PushItemWidth(w);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.5f, 0.5f, 1.0f));
             ImGui::TextUnformatted("X");
@@ -1394,7 +1469,7 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine();
             ImGui::InputFloat("##offsetX", &offset.x, 0.0f, 0.0f, "%.2f");
             ImGui::PopItemWidth();
-            
+
             ImGui::SameLine();
             ImGui::PushItemWidth(w);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.9f, 0.5f, 1.0f));
@@ -1410,13 +1485,13 @@ void Properties::ShowMaterial(Material* material) const
         bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
         {
             layout::begin_property("Invert", "flip texture axes");
-            
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.5f, 0.5f, 1.0f));
             ImGui::TextUnformatted("X");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##invertX", &invert_x);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.9f, 0.5f, 1.0f));
             ImGui::TextUnformatted("Y");
@@ -1861,7 +1936,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         // scrollable area of render options
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.2f));
-        
+
         if (ImGui::BeginChild("##vol_overrides", ImVec2(0, 220.0f), true))
         {
             int id_counter = 0;
@@ -1913,7 +1988,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
             }
         }
         ImGui::EndChild();
-        
+
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
     }

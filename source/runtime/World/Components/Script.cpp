@@ -50,7 +50,7 @@ void Script::Initialize()
         sol::protected_function TickFunction = script["Initialize"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(GetEntity());
+            (void)TickFunction(script, GetEntity());
         }
     }
 }
@@ -62,7 +62,7 @@ void Script::Start()
         sol::protected_function TickFunction = script["Stop"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(GetEntity());
+            (void)TickFunction(script, GetEntity());
         }
     }
 }
@@ -74,7 +74,7 @@ void Script::Stop()
         sol::protected_function TickFunction = script["Stop"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(GetEntity());
+            (void)TickFunction(script, GetEntity());
         }
     }
 }
@@ -86,7 +86,7 @@ void Script::Remove()
         sol::protected_function TickFunction = script["Remove"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(GetEntity());
+            (void)TickFunction(script, GetEntity());
         }
     }
 }
@@ -98,7 +98,7 @@ void Script::PreTick()
         sol::protected_function TickFunction = script["PreTick"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(GetEntity());
+            (void)TickFunction(script, GetEntity());
         }
     }
 }
@@ -110,7 +110,7 @@ void Script::Tick()
         sol::protected_function TickFunction = script["Tick"];
         if (TickFunction.valid())
         {
-            sol::protected_function_result Result = TickFunction(GetEntity());
+            sol::protected_function_result Result = TickFunction(script, GetEntity());
             if (!Result.valid())
             {
                 sol::error Error = Result;
@@ -129,7 +129,7 @@ void Script::Save(pugi::xml_node& node)
         sol::protected_function TickFunction = script["Save"];
         if (TickFunction.valid())
         {
-            sol::protected_function_result Result = TickFunction(GetEntity());
+            sol::protected_function_result Result = TickFunction(script, GetEntity());
             if (!Result.valid())
             {
                 sol::error Error = Result;
@@ -149,7 +149,7 @@ void Script::Load(pugi::xml_node& node)
         sol::protected_function TickFunction = script["Load"];
         if (TickFunction.valid())
         {
-            sol::protected_function_result Result = TickFunction(GetEntity());
+            sol::protected_function_result Result = TickFunction(script, GetEntity());
             if (!Result.valid())
             {
                 sol::error Error = Result;
