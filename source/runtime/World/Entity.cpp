@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Spline.h"
 #include "Components/Terrain.h"
 #include "Components/Volume.h"
+#include "Components/ParticleSystem.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -440,6 +441,9 @@ namespace spartan
             break;
         case ComponentType::Script:
             component = std::make_shared<Script>(this);
+            break;
+        case ComponentType::ParticleSystem:
+            component = std::make_shared<ParticleSystem>(this);
             break;
         case ComponentType::Max:
             break;

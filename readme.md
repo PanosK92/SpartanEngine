@@ -131,6 +131,7 @@ A full vehicle dynamics simulation running at **200Hz** for precise tire and sus
 
 | System | Details |
 |--------|---------|
+| **Particles** | GPU-driven particle system component with compute-shader emission, simulation, and rendering, screen-space depth-buffer collision, and soft blending |
 | **Physics** | PhysX integration with rigid bodies, character kinematics, and vehicle physics |
 | **Scripting** | Lua 5.4 with full engine API access (entities, components, math, physics, audio) via Sol2 bindings with lifecycle callbacks (Start, Tick, Save, Load) |
 | **Audio** | 3D positional audio, streaming, reverb, and procedural synthesis via SDL3, supports WAV, OGG, MP3, FLAC, and more |

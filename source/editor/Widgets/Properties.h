@@ -39,6 +39,7 @@ namespace spartan
     class Volume;
     class Script;
     class Component;
+    class ParticleSystem;
 }
 
 class Properties : public Widget
@@ -66,6 +67,7 @@ private:
     void ShowSpline(spartan::Spline* spline) const;
     void ShowAudioSource(spartan::AudioSource* audio_source) const;
     void ShowVolume(spartan::Volume* volume) const;
+    void ShowParticleSystem(spartan::ParticleSystem* particle_system) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

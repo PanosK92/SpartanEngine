@@ -172,6 +172,11 @@ namespace spartan
         indirect_draw_args_out = 33,
         indirect_draw_data_out = 34,
         indirect_draw_count    = 35,
+        // gpu-driven particles
+        particle_buffer_a      = 36,
+        particle_buffer_b      = 37,
+        particle_counter       = 38,
+        particle_emitter       = 39,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -253,6 +258,10 @@ namespace spartan
         gbuffer_indirect_v,
         gbuffer_indirect_p,
         depth_prepass_indirect_v,
+        // gpu-driven particles
+        particle_emit_c,
+        particle_simulate_c,
+        particle_render_c,
         max
     };
     
@@ -361,6 +370,11 @@ namespace spartan
         IndirectDrawArgsOut,
         IndirectDrawCount,
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
+        // gpu-driven particles
+        ParticleBufferA,
+        ParticleBufferB,
+        ParticleCounter,
+        ParticleEmitter,
         Max
     };
 

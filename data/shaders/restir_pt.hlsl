@@ -43,18 +43,6 @@ struct [raypayload] PathPayload
     bool   hit            : read(caller) : write(closesthit, miss);
 };
 
-RWTexture2D<float4> tex_reservoir0 : register(u21);
-RWTexture2D<float4> tex_reservoir1 : register(u22);
-RWTexture2D<float4> tex_reservoir2 : register(u23);
-RWTexture2D<float4> tex_reservoir3 : register(u24);
-RWTexture2D<float4> tex_reservoir4 : register(u25);
-
-Texture2D<float4> tex_reservoir_prev0 : register(t22);
-Texture2D<float4> tex_reservoir_prev1 : register(t23);
-Texture2D<float4> tex_reservoir_prev2 : register(t24);
-Texture2D<float4> tex_reservoir_prev3 : register(t25);
-Texture2D<float4> tex_reservoir_prev4 : register(t26);
-
 uint64_t make_address(uint2 addr)
 {
     return uint64_t(addr.x) | (uint64_t(addr.y) << 32);

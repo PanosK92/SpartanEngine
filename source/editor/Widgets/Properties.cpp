@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Volume.h"
 #include "Rendering/Renderer.h"
 #include "World/Components/Script.h"
+#include "World/Components/ParticleSystem.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -56,6 +57,8 @@ namespace
     std::unique_ptr<ButtonColorPicker> m_material_color_picker;
     std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
     std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_particle_start;
+    std::unique_ptr<ButtonColorPicker> m_colorPicker_particle_end;
 
     // context menu state
     string context_menu_id;
@@ -95,6 +98,7 @@ namespace
         inline ImVec4 accent_volume()     { return ImVec4(0.55f, 0.55f, 0.75f, 1.0f); }
         inline ImVec4 accent_spline()     { return ImVec4(0.30f, 0.75f, 0.70f, 1.0f); }
         inline ImVec4 accent_script()     { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
+        inline ImVec4 accent_particles() { return ImVec4(0.90f, 0.55f, 0.30f, 1.0f); }
 
         // helper to get dimmed version for backgrounds
         inline ImVec4 dimmed(const ImVec4& color, float factor = 0.15f)
@@ -573,9 +577,11 @@ Properties::Properties(Editor* editor) : Widget(editor)
     m_title          = "Properties";
     m_size_initial.x = 500;
 
-    m_colorPicker_light     = make_unique<ButtonColorPicker>("Light Color Picker");
-    m_material_color_picker = make_unique<ButtonColorPicker>("Material Color Picker");
-    m_colorPicker_camera    = make_unique<ButtonColorPicker>("Camera Color Picker");
+    m_colorPicker_light          = make_unique<ButtonColorPicker>("Light Color Picker");
+    m_material_color_picker      = make_unique<ButtonColorPicker>("Material Color Picker");
+    m_colorPicker_camera         = make_unique<ButtonColorPicker>("Camera Color Picker");
+    m_colorPicker_particle_start = make_unique<ButtonColorPicker>("Particle Start Color");
+    m_colorPicker_particle_end   = make_unique<ButtonColorPicker>("Particle End Color");
 
     file_selection::initialize(editor);
 }
@@ -631,6 +637,7 @@ void Properties::OnTickVisible()
             ShowMaterial(material);
             ShowPhysics(entity->GetComponent<Physics>());
             ShowVolume(entity->GetComponent<Volume>());
+            ShowParticleSystem(entity->GetComponent<ParticleSystem>());
 
             ShowAddComponentButton();
         }
@@ -1995,6 +2002,109 @@ void Properties::ShowVolume(spartan::Volume* volume) const
     component_end();
 }
 
+void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) const
+{
+    if (!particle_system)
+        return;
+
+    if (component_begin("Particle System", design::accent_particles(), particle_system))
+    {
+        //= REFLECT =====================================================
+        uint32_t max_particles   = particle_system->GetMaxParticles();
+        float emission_rate      = particle_system->GetEmissionRate();
+        float lifetime           = particle_system->GetLifetime();
+        float start_speed        = particle_system->GetStartSpeed();
+        float start_size         = particle_system->GetStartSize();
+        float end_size           = particle_system->GetEndSize();
+        float gravity_modifier   = particle_system->GetGravityModifier();
+        float emission_radius    = particle_system->GetEmissionRadius();
+        m_colorPicker_particle_start->SetColor(particle_system->GetStartColor());
+        m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
+        //===============================================================
+
+        layout::section_header("Emission");
+
+        // max particles
+        float max_p_float = static_cast<float>(max_particles);
+        if (property_float("Max Particles", &max_p_float, 100.0f, 100.0f, 100000.0f, "maximum number of particles alive at once", "%.0f"))
+        {
+            particle_system->SetMaxParticles(static_cast<uint32_t>(max_p_float));
+        }
+
+        // emission rate
+        if (property_float("Rate", &emission_rate, 1.0f, 0.0f, 10000.0f, "particles emitted per second", "%.0f /s"))
+        {
+            particle_system->SetEmissionRate(emission_rate);
+        }
+
+        // emission radius
+        if (property_float("Radius", &emission_radius, 0.01f, 0.0f, 100.0f, "sphere emission radius in meters", "%.2f m"))
+        {
+            particle_system->SetEmissionRadius(emission_radius);
+        }
+
+        layout::separator();
+        layout::section_header("Lifetime & Motion");
+
+        // lifetime
+        if (property_float("Lifetime", &lifetime, 0.1f, 0.01f, 60.0f, "particle lifetime in seconds", "%.1f s"))
+        {
+            particle_system->SetLifetime(lifetime);
+        }
+
+        // start speed
+        if (property_float("Start Speed", &start_speed, 0.1f, 0.0f, 100.0f, "initial speed in meters per second", "%.1f m/s"))
+        {
+            particle_system->SetStartSpeed(start_speed);
+        }
+
+        // gravity modifier
+        if (property_float("Gravity", &gravity_modifier, 0.1f, -20.0f, 20.0f, "gravity multiplier (negative = downward)", "%.1f"))
+        {
+            particle_system->SetGravityModifier(gravity_modifier);
+        }
+
+        layout::separator();
+        layout::section_header("Appearance");
+
+        // start size
+        if (property_float("Start Size", &start_size, 0.01f, 0.001f, 10.0f, "particle size at birth in meters", "%.3f m"))
+        {
+            particle_system->SetStartSize(start_size);
+        }
+
+        // end size
+        if (property_float("End Size", &end_size, 0.01f, 0.0f, 10.0f, "particle size at death in meters", "%.3f m"))
+        {
+            particle_system->SetEndSize(end_size);
+        }
+
+        layout::group_spacing();
+
+        // start color
+        ImGui::PushID("particle_start_color");
+        property_color("Start Color", m_colorPicker_particle_start.get(), "particle color at birth");
+        ImGui::PopID();
+
+        // end color
+        ImGui::PushID("particle_end_color");
+        property_color("End Color", m_colorPicker_particle_end.get(), "particle color at death");
+        ImGui::PopID();
+
+        //= MAP ==========================================================
+        if (m_colorPicker_particle_start->GetColor() != particle_system->GetStartColor())
+        {
+            particle_system->SetStartColor(m_colorPicker_particle_start->GetColor());
+        }
+        if (m_colorPicker_particle_end->GetColor() != particle_system->GetEndColor())
+        {
+            particle_system->SetEndColor(m_colorPicker_particle_end->GetColor());
+        }
+        //=================================================================
+    }
+    component_end();
+}
+
 void Properties::ShowAddComponentButton() const
 {
     ImGui::Dummy(ImVec2(0, design::spacing_lg));
@@ -2100,6 +2210,19 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Volume"))
             {
                 entity->AddComponent<Volume>();
+            }
+
+            ImGui::Dummy(ImVec2(0, design::spacing_sm));
+
+            // effects
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+            ImGui::TextUnformatted("EFFECTS");
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Particle System"))
+            {
+                entity->AddComponent<ParticleSystem>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

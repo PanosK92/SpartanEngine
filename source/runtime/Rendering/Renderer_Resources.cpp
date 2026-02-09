@@ -100,6 +100,13 @@ namespace spartan
 
         // bindless draw data buffer - all per-draw transforms, material indices, etc.
         buffer(Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)), renderer_max_draw_calls, nullptr, true, "draw_data");
+
+        // gpu-driven particle buffers (sized for the upper limit, ~6.4 mb at 100k particles)
+        const uint32_t particle_max = 100000;
+        uint32_t particle_counter_init[2] = { 0, 0 };
+        buffer(Renderer_Buffer::ParticleBufferA) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Particle)),       particle_max, nullptr,                true, "particle_buffer_a");
+        buffer(Renderer_Buffer::ParticleCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),          2,            particle_counter_init,  true, "particle_counter");
+        buffer(Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  1,            nullptr,                true, "particle_emitter");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -738,6 +745,21 @@ namespace spartan
             shader(Renderer_Shader::cloud_shadow_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::cloud_shadow_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "sky/cloud_shadow.hlsl", async);
 
+        }
+
+        // gpu-driven particles
+        {
+            shader(Renderer_Shader::particle_emit_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::particle_emit_c)->AddDefine("EMIT");
+            shader(Renderer_Shader::particle_emit_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "particles.hlsl", async);
+
+            shader(Renderer_Shader::particle_simulate_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::particle_simulate_c)->AddDefine("SIMULATE");
+            shader(Renderer_Shader::particle_simulate_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "particles.hlsl", async);
+
+            shader(Renderer_Shader::particle_render_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::particle_render_c)->AddDefine("RENDER");
+            shader(Renderer_Shader::particle_render_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "particles.hlsl", async);
         }
 
     }

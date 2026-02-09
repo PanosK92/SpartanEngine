@@ -28,18 +28,6 @@ static const float SPATIAL_RADIUS_MIN  = 4.0f;
 static const float SPATIAL_RADIUS_MAX  = 16.0f;
 static const float SPATIAL_DEPTH_SCALE = 0.5f;
 
-Texture2D<float4> tex_reservoir_in0 : register(t22);
-Texture2D<float4> tex_reservoir_in1 : register(t23);
-Texture2D<float4> tex_reservoir_in2 : register(t24);
-Texture2D<float4> tex_reservoir_in3 : register(t25);
-Texture2D<float4> tex_reservoir_in4 : register(t26);
-
-RWTexture2D<float4> tex_reservoir0 : register(u21);
-RWTexture2D<float4> tex_reservoir1 : register(u22);
-RWTexture2D<float4> tex_reservoir2 : register(u23);
-RWTexture2D<float4> tex_reservoir3 : register(u24);
-RWTexture2D<float4> tex_reservoir4 : register(u25);
-
 static const float2 SPATIAL_OFFSETS[16] = {
     float2(-0.7071, -0.7071), float2( 0.9239,  0.3827),
     float2(-0.3827,  0.9239), float2( 0.7071, -0.7071),
@@ -214,11 +202,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float metallic  = material.g;
 
     Reservoir center = unpack_reservoir(
-        tex_reservoir_in0[pixel],
-        tex_reservoir_in1[pixel],
-        tex_reservoir_in2[pixel],
-        tex_reservoir_in3[pixel],
-        tex_reservoir_in4[pixel]
+        tex_reservoir_prev0[pixel],
+        tex_reservoir_prev1[pixel],
+        tex_reservoir_prev2[pixel],
+        tex_reservoir_prev3[pixel],
+        tex_reservoir_prev4[pixel]
     );
 
     if (!is_reservoir_valid(center))
@@ -266,11 +254,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float3 neighbor_pos_ws = get_position(neighbor_uv);
 
         Reservoir neighbor = unpack_reservoir(
-            tex_reservoir_in0[neighbor_pixel],
-            tex_reservoir_in1[neighbor_pixel],
-            tex_reservoir_in2[neighbor_pixel],
-            tex_reservoir_in3[neighbor_pixel],
-            tex_reservoir_in4[neighbor_pixel]
+            tex_reservoir_prev0[neighbor_pixel],
+            tex_reservoir_prev1[neighbor_pixel],
+            tex_reservoir_prev2[neighbor_pixel],
+            tex_reservoir_prev3[neighbor_pixel],
+            tex_reservoir_prev4[neighbor_pixel]
         );
 
         if (!is_reservoir_valid(neighbor))

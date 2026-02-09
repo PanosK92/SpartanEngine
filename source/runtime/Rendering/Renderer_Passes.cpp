@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/AudioSource.h"
+#include "../World/Components/ParticleSystem.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
@@ -175,6 +176,9 @@ namespace spartan
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
                 cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
             }
+
+            // particles (rendered additively into the frame after opaque lighting, before transparents)
+            Pass_Particles(cmd_list_graphics_present);
 
             // transparents
             if (m_transparents_present)
@@ -2885,6 +2889,128 @@ namespace spartan
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, font->GetAtlas().get());
             cmd_list->DrawIndexed(font->GetIndexCount());
+        }
+
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Particles(RHI_CommandList* cmd_list)
+    {
+        // collect active particle system components
+        ParticleSystem* active_emitter = nullptr;
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity || !entity->GetActive())
+                continue;
+
+            if (ParticleSystem* ps = entity->GetComponent<ParticleSystem>())
+            {
+                active_emitter = ps;
+                break; // for now, support a single emitter
+            }
+        }
+
+        if (!active_emitter)
+            return;
+
+        // acquire shaders
+        RHI_Shader* shader_emit     = GetShader(Renderer_Shader::particle_emit_c);
+        RHI_Shader* shader_simulate = GetShader(Renderer_Shader::particle_simulate_c);
+        RHI_Shader* shader_render   = GetShader(Renderer_Shader::particle_render_c);
+        if (!shader_emit || !shader_emit->IsCompiled() ||
+            !shader_simulate || !shader_simulate->IsCompiled() ||
+            !shader_render || !shader_render->IsCompiled())
+            return;
+
+        // acquire buffers
+        RHI_Buffer* buf_a       = GetBuffer(Renderer_Buffer::ParticleBufferA);
+        RHI_Buffer* buf_counter = GetBuffer(Renderer_Buffer::ParticleCounter);
+        RHI_Buffer* buf_emitter = GetBuffer(Renderer_Buffer::ParticleEmitter);
+        if (!buf_a || !buf_counter || !buf_emitter)
+            return;
+
+        // clamp max_particles to the buffer's actual capacity so we never dispatch out of bounds
+        uint32_t buffer_capacity = static_cast<uint32_t>(buf_a->GetObjectSize() / sizeof(Sb_Particle));
+        uint32_t max_particles   = std::min(active_emitter->GetMaxParticles(), buffer_capacity);
+
+        // fill emitter params from the component
+        Sb_EmitterParams emitter_params = {};
+        emitter_params.position         = active_emitter->GetEntity()->GetPosition();
+        emitter_params.emission_rate    = active_emitter->GetEmissionRate();
+        emitter_params.lifetime         = active_emitter->GetLifetime();
+        emitter_params.start_speed      = active_emitter->GetStartSpeed();
+        emitter_params.start_size       = active_emitter->GetStartSize();
+        emitter_params.end_size         = active_emitter->GetEndSize();
+        emitter_params.start_color      = active_emitter->GetStartColor();
+        emitter_params.end_color        = active_emitter->GetEndColor();
+        emitter_params.gravity_modifier = active_emitter->GetGravityModifier();
+        emitter_params.radius           = active_emitter->GetEmissionRadius();
+        emitter_params.delta_time       = m_cb_frame_cpu.delta_time;
+        emitter_params.max_particles    = max_particles;
+        emitter_params.frame            = m_cb_frame_cpu.frame;
+        emitter_params.emitter_count    = 1;
+
+        // upload emitter params (reset offset since this is written once per frame)
+        buf_emitter->ResetOffset();
+        buf_emitter->Update(cmd_list, &emitter_params, sizeof(Sb_EmitterParams));
+
+        // counter[0] is the allocation head that grows monotonically - the emit shader
+        // wraps it via modulo so old dead particles are naturally overwritten (ring buffer)
+
+        uint32_t emit_count   = static_cast<uint32_t>(active_emitter->GetEmissionRate() * m_cb_frame_cpu.delta_time);
+        uint32_t thread_group = 256;
+
+        cmd_list->BeginTimeblock("particles");
+
+        // 1. emit new particles
+        if (emit_count > 0)
+        {
+            RHI_PipelineState pso;
+            pso.name             = "particle_emit";
+            pso.shaders[Compute] = shader_emit;
+
+            cmd_list->SetPipelineState(pso);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_counter,  buf_counter);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
+            cmd_list->Dispatch((emit_count + thread_group - 1) / thread_group, 1, 1);
+        }
+
+        // barrier between emit and simulate
+        cmd_list->InsertBarrier(buf_a);
+        cmd_list->InsertBarrier(buf_counter);
+
+        // 2. simulate (integrate physics, depth buffer collision, fade)
+        {
+            RHI_PipelineState pso;
+            pso.name             = "particle_simulate";
+            pso.shaders[Compute] = shader_simulate;
+
+            cmd_list->SetPipelineState(pso);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_counter,  buf_counter);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,  GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
+            cmd_list->Dispatch((max_particles + thread_group - 1) / thread_group, 1, 1);
+        }
+
+        // barrier between simulate and render
+        cmd_list->InsertBarrier(buf_a);
+
+        // 3. render (screen-space billboard splatting into the frame render target)
+        {
+            RHI_PipelineState pso;
+            pso.name             = "particle_render";
+            pso.shaders[Compute] = shader_render;
+
+            cmd_list->SetPipelineState(pso);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_counter,  buf_counter);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::frame_render));
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+            cmd_list->Dispatch((max_particles + thread_group - 1) / thread_group, 1, 1);
         }
 
         cmd_list->EndTimeblock();

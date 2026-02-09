@@ -26,18 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const float TEMPORAL_MIN_CONFIDENCE = 0.1f;
 
-RWTexture2D<float4> tex_reservoir0 : register(u21);
-RWTexture2D<float4> tex_reservoir1 : register(u22);
-RWTexture2D<float4> tex_reservoir2 : register(u23);
-RWTexture2D<float4> tex_reservoir3 : register(u24);
-RWTexture2D<float4> tex_reservoir4 : register(u25);
-
-Texture2D<float4> tex_reservoir_prev0 : register(t22);
-Texture2D<float4> tex_reservoir_prev1 : register(t23);
-Texture2D<float4> tex_reservoir_prev2 : register(t24);
-Texture2D<float4> tex_reservoir_prev3 : register(t25);
-Texture2D<float4> tex_reservoir_prev4 : register(t26);
-
 bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3 sample_hit_pos, float3 sample_hit_normal, float3 prev_shading_pos)
 {
     float3 dir = sample_hit_pos - shading_pos;

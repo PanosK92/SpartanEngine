@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
 #include "../Math/Matrix.h"
 #include "Color.h"
 //==========================
@@ -210,5 +211,40 @@ namespace spartan
         uint32_t is_transparent = 0;     // transparency flag
         uint32_t aabb_index     = 0;     // index into the aabb buffer for culling
         uint32_t padding        = 0;
+    };
+
+    // gpu particle (matches hlsl Particle struct, 64 bytes)
+    struct Sb_Particle
+    {
+        math::Vector3 position;
+        float lifetime      = 0.0f; // remaining lifetime
+        math::Vector3 velocity;
+        float max_lifetime  = 0.0f; // initial lifetime
+        math::Vector4 color;        // current rgba
+        float size          = 0.0f; // current size
+        float padding1      = 0.0f;
+        float padding2      = 0.0f;
+        float padding3      = 0.0f;
+    };
+
+    // gpu emitter parameters (matches hlsl EmitterParams struct)
+    struct Sb_EmitterParams
+    {
+        math::Vector3 position;
+        float emission_rate   = 0.0f;
+        float lifetime        = 0.0f;
+        float start_speed     = 0.0f;
+        float start_size      = 0.0f;
+        float end_size        = 0.0f;
+        Color start_color;
+        Color end_color;
+        float gravity_modifier = 0.0f;
+        float radius           = 0.0f;
+        float delta_time       = 0.0f;
+        uint32_t max_particles = 0;
+        uint32_t frame         = 0;
+        uint32_t emitter_count = 0; // number of active emitters this frame
+        float padding1         = 0.0f;
+        float padding2         = 0.0f;
     };
 }

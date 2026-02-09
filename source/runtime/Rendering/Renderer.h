@@ -216,6 +216,8 @@ namespace spartan
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list);
         static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
         static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
+        // passes - particles
+        static void Pass_Particles(RHI_CommandList* cmd_list);
         // passes - volumetric clouds
         static void Pass_CloudNoise(RHI_CommandList* cmd_list);
         static void Pass_CloudShadow(RHI_CommandList* cmd_list);

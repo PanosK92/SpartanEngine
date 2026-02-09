@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spline.h"
 #include "Terrain.h"
 #include "Volume.h"
+#include "ParticleSystem.h"
 //======================
 
 //= NAMESPACES =====

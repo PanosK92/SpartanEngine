@@ -186,6 +186,13 @@ Texture2D tex_perlin : register(t14);
 // volumetric cloud 3D noise textures
 Texture3D tex3d_cloud_shape  : register(t20); // 128^3 Perlin-Worley + Worley FBM
 Texture3D tex3d_cloud_detail : register(t21); // 32^3 high-frequency detail
+// restir reservoir textures (shared across path tracing, temporal, and spatial passes)
+Texture2D<float4> tex_reservoir_prev0 : register(t22);
+Texture2D<float4> tex_reservoir_prev1 : register(t23);
+Texture2D<float4> tex_reservoir_prev2 : register(t24);
+Texture2D<float4> tex_reservoir_prev3 : register(t25);
+Texture2D<float4> tex_reservoir_prev4 : register(t26);
+
 // ray tracing geometry info for vertex buffer access (indexed by InstanceIndex())
 // matches c++ Sb_GeometryInfo struct
 struct GeometryInfo
@@ -209,6 +216,13 @@ struct RtVertex
 
 // ray tracing geometry info buffer
 RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
+
+// restir reservoir uav bindings
+RWTexture2D<float4> tex_reservoir0 : register(u21);
+RWTexture2D<float4> tex_reservoir1 : register(u22);
+RWTexture2D<float4> tex_reservoir2 : register(u23);
+RWTexture2D<float4> tex_reservoir3 : register(u24);
+RWTexture2D<float4> tex_reservoir4 : register(u25);
 
 // bindless arrays
 Texture2D material_textures[]                            : register(t15, space1);
@@ -268,6 +282,42 @@ RWStructuredBuffer<DrawData> indirect_draw_data         : register(u32);
 RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u33);
 RWStructuredBuffer<DrawData> indirect_draw_data_out         : register(u34);
 RWStructuredBuffer<uint> indirect_draw_count                : register(u35);
+
+// gpu-driven particle system
+struct Particle
+{
+    float3 position;
+    float  lifetime;     // remaining
+    float3 velocity;
+    float  max_lifetime; // initial
+    float4 color;        // current rgba
+    float  size;         // current
+    float3 padding;
+};
+
+struct EmitterParams
+{
+    float3 position;
+    float  emission_rate;
+    float  lifetime;
+    float  start_speed;
+    float  start_size;
+    float  end_size;
+    float4 start_color;
+    float4 end_color;
+    float  gravity_modifier;
+    float  radius;
+    float  delta_time;
+    uint   max_particles;
+    uint   frame;
+    uint   emitter_count;
+    float  padding1;
+    float  padding2;
+};
+
+RWStructuredBuffer<Particle>      particle_buffer_a : register(u36);
+RWStructuredBuffer<uint>          particle_counter  : register(u38);
+RWStructuredBuffer<EmitterParams> particle_emitter  : register(u39);
 
 // buffers
 [[vk::push_constant]]
