@@ -2386,6 +2386,40 @@ namespace spartan
                     px_vertices.emplace_back(vertex.pos[0] * scale.x, vertex.pos[1] * scale.y, vertex.pos[2] * scale.z);
                 }
 
+                // remove degenerate triangles (zero/near-zero area) that would cause physx cooking to fail
+                {
+                    const float area_epsilon = 1e-6f;
+                    vector<uint32_t> valid_indices;
+                    valid_indices.reserve(indices.size());
+
+                    for (size_t i = 0; i < indices.size(); i += 3)
+                    {
+                        const PxVec3& v0 = px_vertices[indices[i]];
+                        const PxVec3& v1 = px_vertices[indices[i + 1]];
+                        const PxVec3& v2 = px_vertices[indices[i + 2]];
+
+                        // compute triangle area via cross product
+                        PxVec3 edge1 = v1 - v0;
+                        PxVec3 edge2 = v2 - v0;
+                        float area   = edge1.cross(edge2).magnitude() * 0.5f;
+
+                        if (area > area_epsilon)
+                        {
+                            valid_indices.push_back(indices[i]);
+                            valid_indices.push_back(indices[i + 1]);
+                            valid_indices.push_back(indices[i + 2]);
+                        }
+                    }
+
+                    indices = move(valid_indices);
+                }
+
+                if (indices.empty())
+                {
+                    SP_LOG_WARNING("Mesh '%s' has no valid triangles after degenerate removal, skipping physics", GetEntity()->GetObjectName().c_str());
+                    return;
+                }
+
                 // cooking parameters
                 PxTolerancesScale _scale;
                 _scale.length                          = 1.0f;                         // 1 unit = 1 meter
