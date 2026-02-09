@@ -128,16 +128,17 @@ namespace spartan
         bindless_material_parameters = 16,
         bindless_light_parameters    = 17,
         bindless_aabbs               = 18,
+        bindless_draw_data           = 19,
         
         // volumetric clouds 3D noise
-        tex3d_cloud_shape  = 19,
-        tex3d_cloud_detail = 20,
+        tex3d_cloud_shape  = 20,
+        tex3d_cloud_detail = 21,
         // restir reservoir srv bindings (for temporal/spatial read)
-        reservoir_prev0    = 21,
-        reservoir_prev1    = 22,
-        reservoir_prev2    = 23,
-        reservoir_prev3    = 24,
-        reservoir_prev4    = 25,
+        reservoir_prev0    = 22,
+        reservoir_prev1    = 23,
+        reservoir_prev2    = 24,
+        reservoir_prev3    = 25,
+        reservoir_prev4    = 26,
     };
 
     enum class Renderer_BindingsUav
@@ -359,6 +360,7 @@ namespace spartan
         IndirectDrawDataOut,
         IndirectDrawArgsOut,
         IndirectDrawCount,
+        DrawData,                  // bindless per-draw data (transforms, material index, etc.)
         Max
     };
 
@@ -411,13 +413,14 @@ namespace spartan
     class Renderable;
     struct Renderer_DrawCall
     {
-        Renderable* renderable  = nullptr;
-        uint32_t instance_index = 0;
-        uint32_t instance_count = 0;
-        uint32_t lod_index      = 0;
-        float distance_squared  = 0.0f;
-        bool is_occluder        = false;
-        bool camera_visible     = false;
+        Renderable* renderable   = nullptr;
+        uint32_t instance_index  = 0;
+        uint32_t instance_count  = 0;
+        uint32_t lod_index       = 0;
+        uint32_t draw_data_index = 0; // index into the bindless draw data buffer
+        float distance_squared   = 0.0f;
+        bool is_occluder         = false;
+        bool camera_visible      = false;
     };
 
 }

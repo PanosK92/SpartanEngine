@@ -32,11 +32,11 @@ RWTexture2D<float4> tex_reservoir2 : register(u23);
 RWTexture2D<float4> tex_reservoir3 : register(u24);
 RWTexture2D<float4> tex_reservoir4 : register(u25);
 
-Texture2D<float4> tex_reservoir_prev0 : register(t21);
-Texture2D<float4> tex_reservoir_prev1 : register(t22);
-Texture2D<float4> tex_reservoir_prev2 : register(t23);
-Texture2D<float4> tex_reservoir_prev3 : register(t24);
-Texture2D<float4> tex_reservoir_prev4 : register(t25);
+Texture2D<float4> tex_reservoir_prev0 : register(t22);
+Texture2D<float4> tex_reservoir_prev1 : register(t23);
+Texture2D<float4> tex_reservoir_prev2 : register(t24);
+Texture2D<float4> tex_reservoir_prev3 : register(t25);
+Texture2D<float4> tex_reservoir_prev4 : register(t26);
 
 bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3 sample_hit_pos, float3 sample_hit_normal, float3 prev_shading_pos)
 {
@@ -81,7 +81,7 @@ bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3
     ray.Origin    = shading_pos + shading_normal * RESTIR_RAY_NORMAL_OFFSET;
     ray.Direction = dir;
     ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET;
+    ray.TMax      = max(dist - RESTIR_RAY_NORMAL_OFFSET, RESTIR_RAY_T_MIN);
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);

@@ -97,6 +97,9 @@ namespace spartan
         buffer(Renderer_Buffer::IndirectDrawArgsOut) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)), rhi_max_array_size, nullptr,          true, "indirect_draw_args_out");
         buffer(Renderer_Buffer::IndirectDrawDataOut) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),         rhi_max_array_size, nullptr,          true, "indirect_draw_data_out");
         buffer(Renderer_Buffer::IndirectDrawCount)   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),            1,                  &draw_count_init, true, "indirect_draw_count");
+
+        // bindless draw data buffer - all per-draw transforms, material indices, etc.
+        buffer(Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)), renderer_max_draw_calls, nullptr, true, "draw_data");
     }
 
     void Renderer::CreateDepthStencilStates()

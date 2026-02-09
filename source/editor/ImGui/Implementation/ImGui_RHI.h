@@ -379,20 +379,22 @@ namespace ImGui::RHI
                                 rhi_resources->push_constant_buffer_pass.set_f2_value(mip_level, array_level);
                             }
 
-                            // compute transform matrix
+                            // compute transform matrix and write to the bindless draw data buffer
                             {
                                 const float L = draw_data->DisplayPos.x;
                                 const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
                                 const float T = draw_data->DisplayPos.y;
                                 const float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
 
-                                rhi_resources->push_constant_buffer_pass.transform = Matrix
+                                Matrix projection
                                 (
                                     2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
                                     0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
                                     0.0f, 0.0f, 0.5f, 0.5f,
                                     0.0f, 0.0f, 0.0f, 1.0f
                                 );
+
+                                rhi_resources->push_constant_buffer_pass.draw_index = Renderer::WriteDrawData(projection);
                             }
 
                             cmd_list->PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);

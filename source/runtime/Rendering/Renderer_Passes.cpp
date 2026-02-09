@@ -341,7 +341,7 @@ namespace spartan
                         }
 
                         // push constants
-                        m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                        m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
                         m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
                         m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
                         m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
@@ -421,7 +421,7 @@ namespace spartan
                 cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                 cmd_list->SetCullMode(cull_mode);
 
-                m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
+                m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
                 cmd_list->PushConstants(m_pcb_pass_cpu);
 
                 cmd_list->SetBufferVertex(renderable->GetVertexBuffer());
@@ -581,9 +581,9 @@ namespace spartan
                     // pass constants
                     {
                         bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
+                        m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
                         m_pcb_pass_cpu.set_f3_value(0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
                         m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
-                        m_pcb_pass_cpu.transform = renderable->GetEntity()->GetMatrix();
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                     }
 
@@ -752,13 +752,12 @@ namespace spartan
 
                     // pass constants
                     {
-                        Entity* entity           = renderable->GetEntity();
-                        m_pcb_pass_cpu.transform = entity->GetMatrix();
-                        m_pcb_pass_cpu.set_transform_previous(entity->GetMatrixPrevious());
+                        Entity* entity = renderable->GetEntity();
+                        m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
                         m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
                         cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                        entity->SetMatrixPrevious(m_pcb_pass_cpu.transform);
+                        entity->SetMatrixPrevious(entity->GetMatrix());
                     }
 
                     // draw
@@ -2705,7 +2704,8 @@ namespace spartan
                 floor(camera_position.z / grid_spacing) * grid_spacing
             );
 
-            m_pcb_pass_cpu.transform = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
+            Matrix grid_transform       = Matrix::CreateScale(Vector3(1000.0f, 1.0f, 1000.0f)) * Matrix::CreateTranslation(translation);
+            m_pcb_pass_cpu.draw_index = WriteDrawData(grid_transform);
             cmd_list->PushConstants(m_pcb_pass_cpu);
         }
 
@@ -2811,8 +2811,8 @@ namespace spartan
                                 continue;
 
                             // push draw data
+                            m_pcb_pass_cpu.draw_index = WriteDrawData(entity_selected->GetMatrix());
                             m_pcb_pass_cpu.set_f4_value(Color::standard_renderer_lines);
-                            m_pcb_pass_cpu.transform = entity_selected->GetMatrix();
                             cmd_list->PushConstants(m_pcb_pass_cpu);
 
                             cmd_list->SetBufferVertex(renderable->GetVertexBuffer());

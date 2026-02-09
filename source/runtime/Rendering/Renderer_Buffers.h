@@ -93,16 +93,17 @@ namespace spartan
         }
     };
 
-    // 128 byte push constant buffer - updates per pass/draw
+    // push constant buffer - updates per pass/draw
+    // the draw_index references a Sb_DrawData entry in the bindless draw data buffer,
+    // which holds per-draw transforms and material info. this keeps push constants small
+    // and consistent with the engine's fully bindless architecture.
     struct Pcb_Pass
     {
-        math::Matrix transform = math::Matrix::Identity;
-        math::Matrix m_value   = math::Matrix::Identity;
-
-        void set_transform_previous(const math::Matrix& transform_previous)
-        {
-            m_value = transform_previous;
-        }
+        uint32_t draw_index = 0;
+        float padding1      = 0;
+        float padding2      = 0;
+        float padding3      = 0;
+        math::Matrix m_value = math::Matrix::Identity;
 
         void set_f2_value(float x, float y)
         {

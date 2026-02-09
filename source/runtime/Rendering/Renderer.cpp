@@ -62,6 +62,10 @@ namespace spartan
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_pcb_pass_cpu;
 
+    // bindless draw data
+    array<Sb_DrawData, renderer_max_draw_calls> Renderer::m_draw_data_cpu;
+    uint32_t Renderer::m_draw_data_count = 0;
+
     // line and icon rendering
     shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
     vector<RHI_Vertex_PosCol> Renderer::m_lines_vertices;
@@ -544,6 +548,24 @@ namespace spartan
                     RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
                 }
 
+                // draw data - upload per-draw transforms and material info to the bindless buffer
+                {
+                    if (m_draw_data_count > 0)
+                    {
+                        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
+                        buffer->ResetOffset();
+                        buffer->Update(m_cmd_list_present, &m_draw_data_cpu[0], buffer->GetStride() * m_draw_data_count);
+                    }
+
+                    // the descriptor only needs to be written once since the buffer is persistent
+                    static bool draw_data_descriptor_set = false;
+                    if (!draw_data_descriptor_set)
+                    {
+                        RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::DrawData));
+                        draw_data_descriptor_set = true;
+                    }
+                }
+
                 // upload indirect draw buffers for gpu-driven rendering
                 if (m_indirect_draw_count > 0)
                 {
@@ -940,6 +962,31 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
     }
 
+    uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent)
+    {
+        SP_ASSERT(m_draw_data_count < renderer_max_draw_calls);
+        uint32_t index = m_draw_data_count++;
+
+        Sb_DrawData& entry     = m_draw_data_cpu[index];
+        entry.transform          = transform;
+        entry.transform_previous = transform_previous;
+        entry.material_index     = material_index;
+        entry.is_transparent     = is_transparent;
+        entry.aabb_index         = 0;
+        entry.padding            = 0;
+
+        // also write directly to the mapped gpu buffer so that entries written
+        // after the bulk upload (e.g. utility draws during render passes) are visible
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
+        if (void* mapped = buffer->GetMappedData())
+        {
+            void* dst = static_cast<char*>(mapped) + index * sizeof(Sb_DrawData);
+            memcpy(dst, &entry, sizeof(Sb_DrawData));
+        }
+
+        return index;
+    }
+
     void Renderer::UpdateMaterials(RHI_CommandList* cmd_list)
     {
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
@@ -1251,6 +1298,7 @@ namespace spartan
     {
         m_draw_call_count          = 0;
         m_draw_calls_prepass_count = 0;
+        m_draw_data_count          = 0;
         m_transparents_present     = false;
         if (ProgressTracker::IsLoading())
             return;
@@ -1265,13 +1313,22 @@ namespace spartan
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
                     // skip renderables with no material, can happen when loading a world and the material is not yet loaded
-                    if (!renderable->GetMaterial())
+                    Material* material = renderable->GetMaterial();
+                    if (!material)
                         continue;
 
-                    if (renderable->GetMaterial()->IsTransparent())
+                    if (material->IsTransparent())
                     {
                         m_transparents_present = true;
                     }
+
+                    // write per-draw data to the bindless draw data buffer
+                    uint32_t draw_data_index = WriteDrawData(
+                        entity->GetMatrix(),
+                        entity->GetMatrixPrevious(),
+                        material->GetIndex(),
+                        material->IsTransparent() ? 1 : 0
+                    );
 
                     Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
                     draw_call.renderable         = renderable;
@@ -1281,6 +1338,7 @@ namespace spartan
                     draw_call.camera_visible     = renderable->IsVisible();
                     draw_call.instance_index     = 0;
                     draw_call.instance_count     = renderable->GetInstanceCount();
+                    draw_call.draw_data_index    = draw_data_index;
                 }
             }
 

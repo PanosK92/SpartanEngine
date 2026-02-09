@@ -28,11 +28,11 @@ static const float SPATIAL_RADIUS_MIN  = 4.0f;
 static const float SPATIAL_RADIUS_MAX  = 16.0f;
 static const float SPATIAL_DEPTH_SCALE = 0.5f;
 
-Texture2D<float4> tex_reservoir_in0 : register(t21);
-Texture2D<float4> tex_reservoir_in1 : register(t22);
-Texture2D<float4> tex_reservoir_in2 : register(t23);
-Texture2D<float4> tex_reservoir_in3 : register(t24);
-Texture2D<float4> tex_reservoir_in4 : register(t25);
+Texture2D<float4> tex_reservoir_in0 : register(t22);
+Texture2D<float4> tex_reservoir_in1 : register(t23);
+Texture2D<float4> tex_reservoir_in2 : register(t24);
+Texture2D<float4> tex_reservoir_in3 : register(t25);
+Texture2D<float4> tex_reservoir_in4 : register(t26);
 
 RWTexture2D<float4> tex_reservoir0 : register(u21);
 RWTexture2D<float4> tex_reservoir1 : register(u22);
@@ -90,7 +90,7 @@ bool check_spatial_visibility(float3 center_pos, float3 center_normal, float3 sa
     ray.Origin    = center_pos + center_normal * RESTIR_RAY_NORMAL_OFFSET;
     ray.Direction = dir;
     ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET;
+    ray.TMax      = max(dist - RESTIR_RAY_NORMAL_OFFSET, RESTIR_RAY_T_MIN);
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);

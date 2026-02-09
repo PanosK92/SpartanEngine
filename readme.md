@@ -70,40 +70,42 @@ The most demanding world: **256 million** procedurally generated grass blades (i
 ### Rendering
 
 <details>
-<summary><strong>Renderer Architecture</strong></summary>
+<summary><strong>Renderer Architecture — Fully Bindless, GPU-Driven</strong></summary>
 
-- Vulkan renderer with DirectX 12 backend (WIP)
-- Fully bindless design (materials, lights, samplers)
-- Single global vertex and index buffer for all geometry, inspired by id Software's id Tech engine
-- GPU-driven rendering with indirect drawing — a compute shader performs frustum and occlusion culling on the GPU and emits a compacted indirect argument buffer, replacing thousands of CPU draw calls with a single DrawIndexedIndirectCount
-- Uber shaders for minimal pipeline state object (PSO) permutations and fewer draw call state changes
-- Universal HLSL shaders across both backends
-- 128-byte push constant buffer for fast CPU-to-GPU transfer
-- Tightly packed 10-byte instance format for hundreds of millions of instances
-- On-the-fly GPU mip generation (FidelityFX SPD) and texture compression (FidelityFX Compressonator)
-- Unified deferred rendering with transparency (BSDF with same render path)
+Spartan's renderer is designed from the ground up around a single principle: **the GPU owns the data**. Every resource — geometry, materials, textures, lights, transforms, AABBs — lives in persistent, globally accessible buffers. There are no per-draw descriptor set updates, no per-draw resource binding, and no CPU-side draw loops. The result is one of the most aggressively bindless renderers in any open-source engine.
+
+- **Zero-binding draw path** — all per-draw data (transforms, previous-frame transforms, material indices, transparency flags) is stored in a single bindless storage buffer; push constants carry only a 4-byte index into it, keeping the entire push constant footprint at 80 bytes
+- **Single global vertex and index buffer** for all geometry, inspired by id Tech — the CPU never re-binds geometry between draws
+- **GPU-driven indirect rendering** — a compute shader performs frustum and occlusion culling entirely on the GPU, emitting a compacted indirect argument buffer; the CPU issues a single `DrawIndexedIndirectCount` per pass, replacing thousands of individual draw calls
+- **Bindless materials, lights, and samplers** — material parameters, textures, light data, and samplers are all accessed through global descriptor arrays with no per-object binding
+- **Uber shaders** — minimal pipeline state object (PSO) permutations eliminate draw call state changes and keep the pipeline count low
+- **Universal HLSL** — all shaders are written once in HLSL and compiled for both Vulkan (via SPIR-V) and DirectX 12
+- **Tightly packed 10-byte instance format** for hundreds of millions of instances (procedural grass, foliage)
+- **On-the-fly GPU mip generation** (FidelityFX SPD) **and texture compression** (FidelityFX Compressonator) — assets are processed on the GPU at load time, not baked offline
+- **Unified deferred rendering with transparency** — opaque and transparent surfaces share the same BSDF and render path, no separate forward pass
 
 </details>
 
 <details>
-<summary><strong>Lighting & Shadows</strong></summary>
+<summary><strong>Lighting & Global Illumination</strong></summary>
 
-- Atmospheric scattering, real-time filtering, IBL with bent normals
-- Screen-space shadows (from Days Gone) and ambient occlusion (XeGTAO + visibility bitfield)
-- Ray-traced reflections & shadows
-- ReSTIR path-tracing
-- Fast shadow mapping with penumbra via shadow map atlas
-- Volumetric fog
+- **ReSTIR path tracing** — reservoir-based spatiotemporal resampling for real-time multi-bounce global illumination
+- **Ray-traced reflections and shadows** via hardware ray queries
+- **Atmospheric scattering** with real-time filtering and image-based lighting with bent normals
+- **Screen-space shadows** (inspired by Days Gone) and **ambient occlusion** (XeGTAO with visibility bitfield)
+- **Shadow map atlas** with fast filtering and penumbra estimation
+- **Volumetric fog** with temporal reprojection
 
 </details>
 
 <details>
 <summary><strong>Performance & Upscaling</strong></summary>
 
-- Variable rate shading and dynamic resolution scaling
-- Upscaling: XeSS 2 & FSR 3
-- Temporal anti-aliasing
-- Custom breadcrumbs for GPU crash tracing
+- **GPU-driven frustum and occlusion culling** (Hi-Z) — the CPU never touches per-object visibility
+- **Variable rate shading** and **dynamic resolution scaling**
+- **Upscaling**: Intel XeSS 2 and AMD FSR 3
+- **Temporal anti-aliasing**
+- **Custom breadcrumbs** for GPU crash tracing and post-mortem debugging
 
 </details>
 
@@ -111,8 +113,7 @@ The most demanding world: **256 million** procedurally generated grass blades (i
 <summary><strong>Camera & Post-Processing</strong></summary>
 
 - Physically based camera with auto-exposure
-- Physical light units (lumens & kelvin)
-- GPU-driven frustum & occlusion (Hi-Z) culling
+- Physical light units (lumens and kelvin)
 - Tonemappers: ACES, AgX, Gran Turismo 7 (default)
 - HDR10 output
 - FXAA, bloom, motion blur, depth of field, chromatic aberration

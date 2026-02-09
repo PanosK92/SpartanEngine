@@ -1003,6 +1003,7 @@ namespace spartan
                 { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, rhi_shader_register_shift_t, 16, 1,                  "material_parameters" }, // MaterialParameters
                 { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, rhi_shader_register_shift_t, 17, 1,                  "light_parameters"    }, // LightParameters
                 { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, rhi_shader_register_shift_t, 18, 1,                  "aabbs"               }, // Aabbs
+                { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, rhi_shader_register_shift_t, 19, 1,                  "draw_data"           }, // DrawData
                 { VK_DESCRIPTOR_TYPE_SAMPLER,        rhi_shader_register_shift_s, 0,  1,                  "samplers_comparison" }, // SamplersComparison
                 { VK_DESCRIPTOR_TYPE_SAMPLER,        rhi_shader_register_shift_s, 1,  8,                  "samplers_regular"    }, // SamplersRegular
             };
@@ -1305,6 +1306,12 @@ namespace spartan
                     features_1_2.drawIndirectCount = VK_TRUE;
                     SP_ASSERT(support_1_1.shaderDrawParameters == VK_TRUE);
                     features_1_1.shaderDrawParameters = VK_TRUE;
+
+                    // storage buffer access from vertex and fragment shaders (needed for bindless draw data)
+                    SP_ASSERT(support.features.vertexPipelineStoresAndAtomics == VK_TRUE);
+                    features.features.vertexPipelineStoresAndAtomics = VK_TRUE;
+                    SP_ASSERT(support.features.fragmentStoresAndAtomics == VK_TRUE);
+                    features.features.fragmentStoresAndAtomics = VK_TRUE;
                 }
 
                 // quality of life improvements
@@ -1931,7 +1938,8 @@ namespace spartan
         RHI_Buffer* material_parameters,
         RHI_Buffer* light_parameters,
         const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
-        RHI_Buffer* bindless_aabbs
+        RHI_Buffer* bindless_aabbs,
+        RHI_Buffer* draw_data
     )
     {
         // samplers
@@ -1961,6 +1969,12 @@ namespace spartan
         if (bindless_aabbs)
         {
             descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::Aabbs, bindless_aabbs);
+        }
+
+        // draw data
+        if (draw_data)
+        {
+            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::DrawData, draw_data);
         }
     }
 

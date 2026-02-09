@@ -137,6 +137,9 @@ namespace spartan
         static void Screenshot();
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
+        // write a draw data entry and return its index (for utility draws like grid, outline, imgui)
+        static uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0);
+
         // wind
         static const math::Vector3& GetWind();
         static void SetWind(const math::Vector3& wind);
@@ -268,6 +271,10 @@ namespace spartan
         static std::array<Sb_IndirectDrawArgs, rhi_max_array_size> m_indirect_draw_args;
         static std::array<Sb_DrawData, rhi_max_array_size> m_indirect_draw_data;
         static uint32_t m_indirect_draw_count;
+
+        // bindless draw data (per-draw transforms, material indices, etc.)
+        static std::array<Sb_DrawData, renderer_max_draw_calls> m_draw_data_cpu;
+        static uint32_t m_draw_data_count;
 
         // bindless
         static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
