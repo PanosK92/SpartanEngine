@@ -1054,6 +1054,30 @@ namespace spartan
         Profiler::m_rhi_instance_count += instance_count == 1 ? 0 : instance_count;
     }
 
+    void RHI_CommandList::DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(args_buffer  != nullptr);
+        SP_ASSERT(count_buffer != nullptr);
+
+        PreDraw();
+
+        // stride between consecutive indirect commands (5 uint32s = 20 bytes)
+        static const uint32_t stride = sizeof(uint32_t) * 5;
+
+        vkCmdDrawIndexedIndirectCount(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkBuffer>(args_buffer->GetRhiResource()),
+            static_cast<VkDeviceSize>(args_offset),
+            static_cast<VkBuffer>(count_buffer->GetRhiResource()),
+            static_cast<VkDeviceSize>(count_offset),
+            max_draw_count,
+            stride
+        );
+
+        Profiler::m_rhi_draw++;
+    }
+
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

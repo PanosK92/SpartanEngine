@@ -34,10 +34,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Physics.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
+#include "World/Components/Spline.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
 #include "Rendering/Renderer.h"
+#include "World/Components/Script.h"
 //=======================================
 
 //= NAMESPACES =========
@@ -91,6 +93,8 @@ namespace
         inline ImVec4 accent_audio()      { return ImVec4(0.70f, 0.45f, 0.55f, 1.0f); }
         inline ImVec4 accent_terrain()    { return ImVec4(0.50f, 0.70f, 0.45f, 1.0f); }
         inline ImVec4 accent_volume()     { return ImVec4(0.55f, 0.55f, 0.75f, 1.0f); }
+        inline ImVec4 accent_spline()     { return ImVec4(0.30f, 0.75f, 0.70f, 1.0f); }
+        inline ImVec4 accent_script()     { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
 
         // helper to get dimmed version for backgrounds
         inline ImVec4 dimmed(const ImVec4& color, float factor = 0.15f)
@@ -121,12 +125,12 @@ namespace
         inline void begin_property(const char* label, const char* tooltip = nullptr)
         {
             ImGui::AlignTextToFramePadding();
-            
+
             // subtle text color for labels
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.70f, 0.70f, 0.70f, 1.0f));
             ImGui::TextUnformatted(label);
             ImGui::PopStyleColor();
-            
+
             if (tooltip && ImGui::IsItemHovered())
             {
                 ImGui::BeginTooltip();
@@ -142,6 +146,13 @@ namespace
 
         // property row without label (for multi-value rows)
         inline void begin_value()
+        {
+            ImGui::SameLine(label_width());
+            ImGui::SetNextItemWidth(value_width());
+        }
+
+        // position cursor at value column (alias for begin_value)
+        inline void move_to_value_column()
         {
             ImGui::SameLine(label_width());
             ImGui::SetNextItemWidth(value_width());
@@ -191,7 +202,7 @@ namespace
         }
         return nullptr;
     }
-    
+
     uint32_t get_selected_entity_count()
     {
         if (Camera* camera = World::GetCamera())
@@ -200,7 +211,7 @@ namespace
         }
         return 0;
     }
-    
+
     const std::vector<Entity*>& get_selected_entities()
     {
         static std::vector<Entity*> empty;
@@ -219,7 +230,7 @@ namespace
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(design::spacing_md, design::spacing_md));
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(design::spacing_md, design::spacing_sm));
-        
+
         if (ImGui::BeginPopup(id.c_str()))
         {
             if (removable)
@@ -253,7 +264,7 @@ namespace
 
             ImGui::EndPopup();
         }
-        
+
         ImGui::PopStyleVar(2);
     }
 
@@ -264,12 +275,12 @@ namespace
     bool component_begin(const char* name, const ImVec4& accent_color, Component* component_instance, bool options = true, const bool removable = true)
     {
         ImGui::PushID(name);
-        
+
         // header styling
         ImVec4 header_bg       = design::dimmed(accent_color, 0.25f);
         ImVec4 header_hovered  = design::dimmed(accent_color, 0.35f);
         ImVec4 header_active   = design::dimmed(accent_color, 0.30f);
-        
+
         ImGui::PushStyleColor(ImGuiCol_Header, header_bg);
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, header_hovered);
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, header_active);
@@ -280,7 +291,7 @@ namespace
         ImGui::PushFont(Editor::font_bold);
         const bool is_expanded = ImGuiSp::collapsing_header(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::PopFont();
-        
+
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(3);
 
@@ -451,7 +462,7 @@ namespace
             ImGui::AlignTextToFramePadding();
             ImGui::TextUnformatted(axis[i]);
             ImGui::PopStyleColor();
-            
+
             // SPACE between label and input
             ImGui::SameLine(0, label_to_input);
 
@@ -512,7 +523,7 @@ namespace
 
         // position
         property_vector3("Position", position, "local position in meters");
-        
+
         // rotation
         property_vector3("Rotation", edit_euler, "local rotation in degrees");
 
@@ -546,7 +557,7 @@ namespace
         ImGui::PopItemWidth();
 
         ImGui::SameLine(0, design::spacing_sm);
-        
+
         if (file_selection::browse_button(("browse_" + string(label)).c_str()))
         {
             file_selection::open(on_browse);
@@ -580,7 +591,7 @@ void Properties::OnTickVisible()
         {
             // multiple entities selected - show summary
             ImGui::Dummy(ImVec2(0, design::spacing_md));
-            
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.85f, 0.4f, 1.0f));
             ImGui::PushFont(Editor::font_bold);
             char buf[64];
@@ -605,14 +616,17 @@ void Properties::OnTickVisible()
         }
         else if (Entity* entity = get_selected_entity())
         {
-            Renderable* renderable = entity->GetComponent<Renderable>();
-            Material* material     = renderable ? renderable->GetMaterial() : nullptr;
-
             ShowEntity(entity);
+            ShowScript(entity->GetComponent<Script>());
             ShowLight(entity->GetComponent<Light>());
             ShowCamera(entity->GetComponent<Camera>());
             ShowTerrain(entity->GetComponent<Terrain>());
+            ShowSpline(entity->GetComponent<Spline>());
             ShowAudioSource(entity->GetComponent<AudioSource>());
+
+            // re-fetch after ShowSpline since clearing a road mesh removes the renderable
+            Renderable* renderable = entity->GetComponent<Renderable>();
+            Material* material     = renderable ? renderable->GetMaterial() : nullptr;
             ShowRenderable(renderable);
             ShowMaterial(material);
             ShowPhysics(entity->GetComponent<Physics>());
@@ -653,6 +667,12 @@ void Properties::Inspect(spartan::Entity* entity)
 
 void Properties::Inspect(const shared_ptr<Material> material)
 {
+    // clear entity selection so the material is shown instead
+    if (Camera* camera = World::GetCamera())
+    {
+        camera->ClearSelection();
+    }
+
     m_inspected_material = material;
 }
 
@@ -666,7 +686,7 @@ void Properties::ShowEntity(Entity* entity) const
         ImGui::TextUnformatted(entity->GetObjectName().c_str());
         ImGui::PopFont();
         ImGui::PopStyleColor();
-        
+
         layout::group_spacing();
 
         // active toggle
@@ -681,6 +701,124 @@ void Properties::ShowEntity(Entity* entity) const
 
         // transform properties
         property_transform(entity);
+    }
+    component_end();
+}
+
+void Properties::ShowScript(spartan::Script* script) const
+{
+    if (!script)
+        return;
+
+    if (component_begin("Script", design::accent_script(), script))
+    {
+        // script file path with browse
+        property_resource("Script File", &script->file_path, "lua script file", [script](const std::string& path)
+        {
+            if (FileSystem::IsEngineLuaFile(path))
+            {
+                script->LoadScriptFile(path);
+            }
+        });
+
+        // drag-drop support for lua files
+        if (auto* payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Lua))
+        {
+            script->LoadScriptFile(std::get<const char*>(payload->data));
+        }
+
+        // status
+        bool is_loaded = script->script.valid();
+        property_text("Status", is_loaded ? "Loaded" : "Not Loaded", "whether the script is loaded and valid");
+
+        if (is_loaded)
+        {
+            if (ImGui::BeginTable("ScriptProperties", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+            {
+                ImGui::TableSetupColumn("Property", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableHeadersRow();
+
+                for (auto&& [K, V] : script->script)
+                {
+                    std::string key = K.as<std::string>();
+
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%s", key.c_str());
+
+                    ImGui::TableSetColumnIndex(1);
+
+                    if (V.is<bool>())
+                    {
+                        bool value = V.as<bool>();
+                        if (ImGui::Checkbox(("##" + key).c_str(), &value))
+                        {
+                            script->script[K] = value;
+                        }
+                    }
+                    else if (V.is<int>())
+                    {
+                        int value = V.as<int>();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        if (ImGui::InputInt(("##" + key).c_str(), &value))
+                        {
+                            script->script[K] = value;
+                        }
+                    }
+                    else if (V.is<float>() || V.is<double>())
+                    {
+                        float value = V.as<float>();
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        if (ImGui::InputFloat(("##" + key).c_str(), &value))
+                        {
+                            script->script[K] = value;
+                        }
+                    }
+                    else if (V.is<std::string>())
+                    {
+                        std::string value = V.as<std::string>();
+                        char buffer[256];
+                        strncpy_s(buffer, value.c_str(), sizeof(buffer) - 1);
+                        buffer[sizeof(buffer) - 1] = '\0';
+
+                        ImGui::SetNextItemWidth(-FLT_MIN);
+                        if (ImGui::InputText(("##" + key).c_str(), buffer, sizeof(buffer)))
+                        {
+                            script->script[K] = std::string(buffer);
+                        }
+                    }
+                    else if (V.is<sol::table>())
+                    {
+                        ImGui::TextDisabled("[Table]");
+                    }
+                    else if (V.is<sol::function>())
+                    {
+                        ImGui::TextDisabled("[Function]");
+                    }
+                    else
+                    {
+                        ImGui::TextDisabled("[Unknown Type]");
+                    }
+                }
+
+                ImGui::EndTable();
+            }
+        }
+
+        layout::group_spacing();
+
+        // reload button
+        float button_width = 80.0f * spartan::Window::GetDpiScale();
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - button_width) * 0.5f + ImGui::GetCursorPosX());
+        if (ImGuiSp::button("Reload", ImVec2(button_width, 0)))
+        {
+            script->LoadScriptFile(script->file_path);
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
+            ImGui::SetTooltip("reload the script file");
+        }
     }
     component_end();
 }
@@ -857,8 +995,8 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
             ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImVec4(0.2f, 0.2f, 0.25f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4(0.12f, 0.12f, 0.14f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4(0.16f, 0.16f, 0.18f, 1.0f));
-            
-            if (ImGui::BeginTable("##lod_table", lod_count + 1, 
+
+            if (ImGui::BeginTable("##lod_table", lod_count + 1,
                 ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame))
             {
                 // header row
@@ -930,7 +1068,7 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
 
                     char instance_name[32];
                     std::snprintf(instance_name, sizeof(instance_name), "Instance %u", i);
-                    
+
                     if (ImGui::TreeNode(instance_name))
                     {
                         if (ImGui::DragFloat3("Position", &pos.x, 0.1f))
@@ -966,17 +1104,50 @@ void Properties::ShowRenderable(spartan::Renderable* renderable) const
         }
 
         // material
-        property_resource("Material", &name_material, "assigned material", [renderable](const std::string& path) {
-            if (FileSystem::IsEngineMaterialFile(path))
-            {
-                renderable->SetMaterial(path);
-            }
-        });
-
-        // drag drop for material
-        if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
         {
-            renderable->SetMaterial(std::get<const char*>(payload->data));
+            layout::begin_property("Material", "assigned material");
+
+            float button_width = 28.0f;
+            float input_width  = layout::value_width() - button_width * 2 - design::spacing_sm * 2;
+
+            ImGui::PushItemWidth(input_width);
+            ImGui::InputText("##Material", &name_material, ImGuiInputTextFlags_ReadOnly);
+            ImGui::PopItemWidth();
+
+            // drag drop for material
+            if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
+            {
+                renderable->SetMaterial(std::get<const char*>(payload->data));
+            }
+
+            // browse
+            ImGui::SameLine(0, design::spacing_sm);
+            if (file_selection::browse_button("browse_Material"))
+            {
+                file_selection::open([renderable](const std::string& path) {
+                    if (FileSystem::IsEngineMaterialFile(path))
+                    {
+                        renderable->SetMaterial(path);
+                    }
+                });
+            }
+
+            // clear - reset to default material
+            ImGui::SameLine(0, design::spacing_sm);
+            ImGui::PushID("clear_material");
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 2));
+            if (ImGuiSp::button("x"))
+            {
+                renderable->SetDefaultMaterial();
+            }
+            ImGui::PopStyleVar();
+            ImGui::PopID();
+            if (ImGui::IsItemHovered())
+            {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted("reset to default material");
+                ImGui::EndTooltip();
+            }
         }
 
         layout::group_spacing();
@@ -1039,20 +1210,20 @@ void Properties::ShowPhysics(Physics* body) const
         // freeze position with axis toggles
         {
             layout::begin_property("Freeze Position", "lock position on specific axes");
-            
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.4f, 0.4f, 1.0f));
             ImGui::TextUnformatted("X");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##freeze_pos_x", &freeze_pos_x);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 0.4f, 1.0f));
             ImGui::TextUnformatted("Y");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##freeze_pos_y", &freeze_pos_y);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.6f, 0.9f, 1.0f));
             ImGui::TextUnformatted("Z");
@@ -1064,20 +1235,20 @@ void Properties::ShowPhysics(Physics* body) const
         // freeze rotation with axis toggles
         {
             layout::begin_property("Freeze Rotation", "lock rotation on specific axes");
-            
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.4f, 0.4f, 1.0f));
             ImGui::TextUnformatted("X");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##freeze_rot_x", &freeze_rot_x);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.8f, 0.4f, 1.0f));
             ImGui::TextUnformatted("Y");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##freeze_rot_y", &freeze_rot_y);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.4f, 0.6f, 0.9f, 1.0f));
             ImGui::TextUnformatted("Z");
@@ -1214,7 +1385,7 @@ void Properties::ShowMaterial(Material* material) const
                 // constrain width to available space
                 float available_width = ImGui::GetContentRegionAvail().x;
                 float slider_width    = ImMin(available_width, 120.0f);
-                
+
                 if (mat_property == MaterialProperty::ColorA)
                 {
                     m_material_color_picker->Update();
@@ -1242,29 +1413,21 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::PopID();
         };
 
-        // primary surface properties
-        show_property("Color",     "surface base color",     MaterialTextureType::Color,     MaterialProperty::ColorA);
-        show_property("Roughness", "microfacet roughness",   MaterialTextureType::Roughness, MaterialProperty::Roughness);
-        show_property("Metalness", "metallic vs dielectric", MaterialTextureType::Metalness, MaterialProperty::Metalness);
-        show_property("Normal",    "surface normal detail",  MaterialTextureType::Normal,    MaterialProperty::Normal);
-
-        layout::separator();
-        layout::section_header("Detail");
-
-        show_property("Height",     "parallax/displacement",    MaterialTextureType::Height,    MaterialProperty::Height);
-        show_property("Occlusion",  "ambient occlusion",        MaterialTextureType::Occlusion, MaterialProperty::Max);
-        show_property("Emission",   "light emission",           MaterialTextureType::Emission,  MaterialProperty::Max);
-        show_property("Alpha Mask", "transparency cutout",      MaterialTextureType::AlphaMask, MaterialProperty::Max);
-
-        layout::separator();
-        layout::section_header("Advanced");
-
-        show_property("Clearcoat",            "extra specular layer",         MaterialTextureType::Max, MaterialProperty::Clearcoat);
-        show_property("Clearcoat Roughness",  "clearcoat roughness",          MaterialTextureType::Max, MaterialProperty::Clearcoat_Roughness);
-        show_property("Anisotropic",          "anisotropic reflection",       MaterialTextureType::Max, MaterialProperty::Anisotropic);
-        show_property("Anisotropic Rotation", "anisotropy direction",         MaterialTextureType::Max, MaterialProperty::AnisotropicRotation);
-        show_property("Sheen",                "soft velvet reflection",       MaterialTextureType::Max, MaterialProperty::Sheen);
-        show_property("Subsurface",           "subsurface scattering",        MaterialTextureType::Max, MaterialProperty::SubsurfaceScattering);
+        // properties with textures
+        show_property("Color",                "Surface color",                                                                     MaterialTextureType::Color,     MaterialProperty::ColorA);
+        show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTextureType::Roughness, MaterialProperty::Roughness);
+        show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTextureType::Metalness, MaterialProperty::Metalness);
+        show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTextureType::Normal,    MaterialProperty::Normal);
+        show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTextureType::Height,    MaterialProperty::Height);
+        show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTextureType::Occlusion, MaterialProperty::Max);
+        show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTextureType::Emission,  MaterialProperty::Max);
+        show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTextureType::AlphaMask, MaterialProperty::Max);
+        show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTextureType::Max,       MaterialProperty::Clearcoat);
+        show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTextureType::Max,       MaterialProperty::Clearcoat_Roughness);
+        show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTextureType::Max,       MaterialProperty::Anisotropic);
+        show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTextureType::Max,       MaterialProperty::AnisotropicRotation);
+        show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTextureType::Max,       MaterialProperty::Sheen);
+        show_property("Subsurface scattering","Amount of translucency",                                                            MaterialTextureType::Max,       MaterialProperty::SubsurfaceScattering);
 
         layout::separator();
         layout::section_header("UV Mapping");
@@ -1272,9 +1435,9 @@ void Properties::ShowMaterial(Material* material) const
         // tiling
         {
             layout::begin_property("Tiling", "texture repeat");
-            
+
             float w = (layout::value_width() - design::spacing_md - 24.0f) * 0.5f;
-            
+
             ImGui::PushItemWidth(w);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.5f, 0.5f, 1.0f));
             ImGui::TextUnformatted("X");
@@ -1282,7 +1445,7 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine();
             ImGui::InputFloat("##tileX", &tiling.x, 0.0f, 0.0f, "%.2f");
             ImGui::PopItemWidth();
-            
+
             ImGui::SameLine();
             ImGui::PushItemWidth(w);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.9f, 0.5f, 1.0f));
@@ -1296,9 +1459,9 @@ void Properties::ShowMaterial(Material* material) const
         // offset
         {
             layout::begin_property("Offset", "texture offset");
-            
+
             float w = (layout::value_width() - design::spacing_md - 24.0f) * 0.5f;
-            
+
             ImGui::PushItemWidth(w);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.5f, 0.5f, 1.0f));
             ImGui::TextUnformatted("X");
@@ -1306,7 +1469,7 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::SameLine();
             ImGui::InputFloat("##offsetX", &offset.x, 0.0f, 0.0f, "%.2f");
             ImGui::PopItemWidth();
-            
+
             ImGui::SameLine();
             ImGui::PushItemWidth(w);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.9f, 0.5f, 1.0f));
@@ -1322,13 +1485,13 @@ void Properties::ShowMaterial(Material* material) const
         bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
         {
             layout::begin_property("Invert", "flip texture axes");
-            
+
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.5f, 0.5f, 1.0f));
             ImGui::TextUnformatted("X");
             ImGui::PopStyleColor();
             ImGui::SameLine();
             ImGuiSp::toggle_switch("##invertX", &invert_x);
-            
+
             ImGui::SameLine(0, design::spacing_md);
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.9f, 0.5f, 1.0f));
             ImGui::TextUnformatted("Y");
@@ -1532,6 +1695,114 @@ void Properties::ShowTerrain(Terrain* terrain) const
     component_end();
 }
 
+void Properties::ShowSpline(spartan::Spline* spline) const
+{
+    if (!spline)
+        return;
+
+    if (component_begin("Spline", design::accent_spline(), spline))
+    {
+        //= REFLECT =======================================
+        bool closed_loop     = spline->GetClosedLoop();
+        uint32_t resolution  = spline->GetResolution();
+        uint32_t point_count = spline->GetControlPointCount();
+        float road_width     = spline->GetRoadWidth();
+        //=================================================
+
+        layout::section_header("Spline");
+
+        // closed loop toggle
+        if (property_toggle("Closed Loop", &closed_loop, "connect the last point back to the first"))
+        {
+            spline->SetClosedLoop(closed_loop);
+        }
+
+        // resolution (segments per span)
+        float resolution_f = static_cast<float>(resolution);
+        if (property_float("Resolution", &resolution_f, 1.0f, 2.0f, 100.0f, "line segments per span", "%.0f"))
+        {
+            spline->SetResolution(static_cast<uint32_t>(resolution_f));
+        }
+
+        layout::separator();
+        layout::section_header("Control Points");
+
+        // point count
+        char stat_buf[64];
+        std::snprintf(stat_buf, sizeof(stat_buf), "%u", point_count);
+        property_text("Count", stat_buf);
+
+        // length
+        if (point_count >= 2)
+        {
+            std::snprintf(stat_buf, sizeof(stat_buf), "%.2f m", spline->GetLength());
+            property_text("Length", stat_buf);
+        }
+
+        layout::group_spacing();
+
+        // add/remove point buttons
+        float button_width = 100.0f * spartan::Window::GetDpiScale();
+        float total_width  = button_width * 2.0f + design::spacing_md;
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total_width) * 0.5f + ImGui::GetCursorPosX());
+
+        if (ImGuiSp::button("+ Add Point", ImVec2(button_width, 0)))
+        {
+            // place new point offset from the last one, or at origin if no points exist
+            math::Vector3 position = math::Vector3::Zero;
+            if (point_count > 0)
+            {
+                if (spartan::Entity* last_child = spline->GetEntity()->GetChildByIndex(point_count - 1))
+                {
+                    position = last_child->GetPositionLocal() + math::Vector3(5.0f, 0.0f, 0.0f);
+                }
+            }
+            spline->AddControlPoint(position);
+        }
+
+        ImGui::SameLine(0, design::spacing_md);
+
+        ImGui::BeginDisabled(point_count == 0);
+        if (ImGuiSp::button("- Remove Last", ImVec2(button_width, 0)))
+        {
+            spline->RemoveLastControlPoint();
+        }
+        ImGui::EndDisabled();
+
+        layout::separator();
+        layout::section_header("Road Mesh");
+
+        // road width
+        if (property_float("Width", &road_width, 0.1f, 0.5f, 100.0f, "road width in meters", "%.1f m"))
+        {
+            spline->SetRoadWidth(road_width);
+        }
+
+        layout::group_spacing();
+
+        // generate / clear road buttons
+        float road_button_width = 120.0f * spartan::Window::GetDpiScale();
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - road_button_width) * 0.5f + ImGui::GetCursorPosX());
+
+        ImGui::BeginDisabled(point_count < 2);
+        if (ImGuiSp::button("Generate Road", ImVec2(road_button_width, 0)))
+        {
+            spline->GenerateRoadMesh();
+        }
+        ImGui::EndDisabled();
+
+        if (spline->HasRoadMesh())
+        {
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - road_button_width) * 0.5f + ImGui::GetCursorPosX());
+            if (ImGuiSp::button("Clear Road", ImVec2(road_button_width, 0)))
+            {
+                spline->ClearRoadMesh();
+            }
+        }
+    }
+    component_end();
+}
+
 void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 {
     if (!audio_source)
@@ -1665,7 +1936,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         // scrollable area of render options
         ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.2f));
-        
+
         if (ImGui::BeginChild("##vol_overrides", ImVec2(0, 220.0f), true))
         {
             int id_counter = 0;
@@ -1717,7 +1988,7 @@ void Properties::ShowVolume(spartan::Volume* volume) const
             }
         }
         ImGui::EndChild();
-        
+
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
     }
@@ -1758,6 +2029,19 @@ void Properties::ComponentContextMenu_Add() const
     {
         if (Entity* entity = get_selected_entity())
         {
+            // scripting (Lua support)
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+            ImGui::TextUnformatted("SCRIPTING");
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Script"))
+            {
+                entity->AddComponent<Script>();
+            }
+
+            ImGui::Dummy(ImVec2(0, design::spacing_sm));
+
             // rendering
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
             ImGui::TextUnformatted("RENDERING");
@@ -1777,6 +2061,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Terrain"))
             {
                 entity->AddComponent<Terrain>();
+            }
+
+            if (ImGui::MenuItem("Spline"))
+            {
+                entity->AddComponent<Spline>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

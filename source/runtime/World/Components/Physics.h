@@ -28,6 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Quaternion.h"
 //=================================
 
+namespace sol
+{
+    class state_view;
+}
+
 namespace spartan
 {
     class Entity;
@@ -76,7 +81,10 @@ namespace spartan
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
-        
+
+        static void RegisterForScripting(sol::state_view State);
+        sol::reference AsLua(sol::state_view state) override;
+
         // static cleanup (call before physics world shutdown)
         static void Shutdown();
 
@@ -157,18 +165,18 @@ namespace spartan
         // vehicle wheel entities (visual meshes that rotate with physics)
         void SetWheelEntity(WheelIndex wheel, Entity* entity);
         Entity* GetWheelEntity(WheelIndex wheel) const;
-        
+
         // vehicle chassis entity (visual body that bounces on suspension)
         // entities_to_exclude: optional list of entities to skip when building convex shapes (e.g. wheels)
         void SetChassisEntity(Entity* entity, const std::vector<Entity*>& entities_to_exclude = {});
         Entity* GetChassisEntity() const { return m_chassis_entity; }
-        
+
         // vehicle wheel radius (used for spin calculation and physics)
         void SetWheelRadius(float radius);
         float GetWheelRadius() const { return m_wheel_radius; }
         float GetSuspensionHeight() const; // distance from body center to wheel center
         void ComputeWheelRadiusFromEntity(Entity* wheel_entity); // auto-compute from mesh AABB
-        
+
         // vehicle metrics (read-only, for display/debugging)
         float GetVehicleThrottle() const;
         float GetVehicleBrake() const;
@@ -188,31 +196,31 @@ namespace spartan
         float GetWheelTempGripFactor(WheelIndex wheel) const;   // 0.85-1.0 multiplier
         float GetWheelBrakeTemp(WheelIndex wheel) const;        // brake temperature in celsius
         float GetWheelBrakeEfficiency(WheelIndex wheel) const;  // 0.6-1.0 multiplier based on brake temp
-        
+
         // driver assists
         void SetAbsEnabled(bool enabled);
         bool GetAbsEnabled() const;
         bool IsAbsActive(WheelIndex wheel) const;               // is abs intervening on this wheel
         bool IsAbsActiveAny() const;                            // is abs intervening on any wheel
-        
+
         void SetTcEnabled(bool enabled);
         bool GetTcEnabled() const;
         bool IsTcActive() const;                                // is traction control intervening
         float GetTcReduction() const;                           // current power reduction (0-1)
-        
+
         // turbo
         void SetTurboEnabled(bool enabled);
         bool GetTurboEnabled() const;
         float GetBoostPressure() const;                         // current boost pressure (bar)
         float GetBoostMaxPressure() const;                      // max boost pressure (bar)
-        
+
         // transmission mode
         void SetManualTransmission(bool enabled);
         bool GetManualTransmission() const;
         void ShiftUp();
         void ShiftDown();
         void ShiftToNeutral();
-        
+
         // engine and gearbox
         int GetCurrentGear() const;                             // gear index (0=R, 1=N, 2-8=1st-7th)
         const char* GetCurrentGearString() const;               // gear display string ("R", "N", "1"-"7")
@@ -221,26 +229,26 @@ namespace spartan
         float GetIdleRPM() const;                               // engine idle rpm
         float GetRedlineRPM() const;                            // engine redline rpm
         bool IsShifting() const;                                // is gearbox currently shifting
-        
+
         // debug visualization
         void SetDrawRaycasts(bool enabled);
         bool GetDrawRaycasts() const;
         void SetDrawSuspension(bool enabled);
         bool GetDrawSuspension() const;
         void DrawDebugVisualization();                          // call each frame to draw debug lines
-        
+
         // sync physics wheel positions from wheel entity positions
         void SyncWheelOffsetsFromEntities();
-        
+
         // car owner - set this to have the car tick automatically through the entity system
         void SetCar(class Car* car) { m_car = car; }
         class Car* GetCar() const   { return m_car; }
-        
+
         // center of mass (for tuning handling characteristics)
         void SetCenterOfMassOffset(const math::Vector3& offset);
         void SetCenterOfMassOffset(float x, float y, float z);
         math::Vector3 GetCenterOfMassOffset() const;
-        
+
         // mesh convex compound shape - set the source entity whose hierarchy will be walked
         // to build convex hull shapes from each mesh in the hierarchy
         void SetMeshConvexSourceEntity(Entity* entity);
@@ -252,7 +260,7 @@ namespace spartan
         void TickVehicle(bool is_playing, float delta_time);
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
-        
+
         void UpdateWheelTransforms();
         void Create();
         void CreateBodies();
@@ -281,25 +289,25 @@ namespace spartan
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
         float m_wheel_mesh_center_offset_y = 0.0f; // offset from entity origin to mesh center (for non-centered meshes)
         bool m_wheel_offsets_synced = false; // flag to ensure wheel offsets are synced from entities once
-        
+
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;
         math::Vector3 m_chassis_base_pos  = math::Vector3::Zero; // base local position of chassis
         float m_chassis_suspension_offset = 0.0f;                // current suspension offset (smoothed)
-        
+
         // mesh convex source entity - the entity hierarchy to walk for building compound convex shapes
         Entity* m_mesh_convex_source = nullptr;
-        
+
         // deferred creation flag for loading (wait until renderable is available)
         bool m_needs_creation = false;
-        
+
         // interpolation state for smooth rendering between fixed physics timesteps
         math::Vector3 m_prev_position     = math::Vector3::Zero; // position at previous physics step
         math::Quaternion m_prev_rotation;                        // rotation at previous physics step
         math::Vector3 m_current_position  = math::Vector3::Zero; // position at current physics step
         math::Quaternion m_current_rotation;                     // rotation at current physics step
         bool m_interpolation_initialized  = false;               // flag to track first-frame initialization
-        
+
         // car owner (ticked automatically through entity system)
         class Car* m_car = nullptr;
     };

@@ -90,6 +90,7 @@ namespace spartan
         uint64_t GetHash() const
         {
             uint64_t hash = reinterpret_cast<uint64_t>(resource);
+            hash = rhi_hash_combine(hash, range);
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(mip));
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(mip_range));
             return hash;

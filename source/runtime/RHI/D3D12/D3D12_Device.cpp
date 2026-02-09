@@ -470,7 +470,8 @@ namespace spartan
         RHI_Buffer* material_parameters,
         RHI_Buffer* light_parameters,
         const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
-        RHI_Buffer* aabbs
+        RHI_Buffer* aabbs,
+        RHI_Buffer* draw_data
     )
     {
         // todo: implement bindless resources for d3d12

@@ -32,11 +32,11 @@ RWTexture2D<float4> tex_reservoir2 : register(u23);
 RWTexture2D<float4> tex_reservoir3 : register(u24);
 RWTexture2D<float4> tex_reservoir4 : register(u25);
 
-Texture2D<float4> tex_reservoir_prev0 : register(t21);
-Texture2D<float4> tex_reservoir_prev1 : register(t22);
-Texture2D<float4> tex_reservoir_prev2 : register(t23);
-Texture2D<float4> tex_reservoir_prev3 : register(t24);
-Texture2D<float4> tex_reservoir_prev4 : register(t25);
+Texture2D<float4> tex_reservoir_prev0 : register(t22);
+Texture2D<float4> tex_reservoir_prev1 : register(t23);
+Texture2D<float4> tex_reservoir_prev2 : register(t24);
+Texture2D<float4> tex_reservoir_prev3 : register(t25);
+Texture2D<float4> tex_reservoir_prev4 : register(t26);
 
 bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3 sample_hit_pos, float3 sample_hit_normal, float3 prev_shading_pos)
 {
@@ -81,7 +81,7 @@ bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3
     ray.Origin    = shading_pos + shading_normal * RESTIR_RAY_NORMAL_OFFSET;
     ray.Direction = dir;
     ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = dist - RESTIR_RAY_NORMAL_OFFSET;
+    ray.TMax      = max(dist - RESTIR_RAY_NORMAL_OFFSET, RESTIR_RAY_T_MIN);
 
     RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
     query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
@@ -127,8 +127,8 @@ bool is_temporal_sample_valid(float2 current_uv, float2 prev_uv, float3 current_
     float depth_up       = linearize_depth(tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv + float2(0, -texel_size.y), 0).r);
     float depth_down     = linearize_depth(tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), current_uv + float2(0, texel_size.y), 0).r);
     float depth_gradient = abs(depth_left - depth_right) + abs(depth_up - depth_down);
-    bool is_depth_edge   = depth_gradient > current_depth * 0.08f;
-    float edge_penalty = is_depth_edge ? saturate(1.0f - motion_length * 0.15f) : 1.0f;
+    bool is_depth_edge   = depth_gradient > current_depth * 0.05f;
+    float edge_penalty = is_depth_edge ? saturate(1.0f - motion_length * 0.5f) : 1.0f;
 
     // combine confidence factors
     float reproj_confidence = saturate(1.0f - reproj_dist / 2.0f);
@@ -181,24 +181,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 1);
     Reservoir combined = create_empty_reservoir();
 
-    // evaluate current sample target pdf
-    float target_pdf_current = 0.0f;
-    if (any(current.sample.radiance > 0.0f))
-    {
-        if (is_sky_sample(current.sample))
-        {
-            target_pdf_current = calculate_target_pdf_sky(
-                current.sample.radiance, current.sample.direction, normal_ws, view_dir,
-                albedo, roughness, metallic);
-        }
-        else if (current.sample.path_length > 0)
-        {
-            target_pdf_current = calculate_target_pdf_with_geometry(
-                current.sample.radiance, pos_ws, normal_ws, view_dir,
-                current.sample.hit_position, current.sample.hit_normal,
-                albedo, roughness, metallic);
-        }
-    }
+    // evaluate current sample - luminance-based target for consistency
+    float target_pdf_current = calculate_target_pdf(current.sample.radiance);
 
     // initialize combined reservoir with current sample
     float weight_current     = target_pdf_current * current.W;
@@ -232,6 +216,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
             if (is_reservoir_valid(temporal) && temporal.M > 0 && temporal.W > 0)
             {
+                // clamp old reservoir radiance to match current path tracer limits
+                // this flushes outlier samples that were generated before clamping was tightened
+                float max_rad = (temporal.sample.path_length > 1) ? 3.0f : 5.0f;
+                temporal.sample.radiance = min(temporal.sample.radiance, float3(max_rad, max_rad, max_rad));
+                float temp_lum = dot(temporal.sample.radiance, float3(0.299f, 0.587f, 0.114f));
+                if (temp_lum > max_rad)
+                    temporal.sample.radiance *= max_rad / temp_lum;
+
                 // apply temporal decay and aging
                 temporal.M          *= RESTIR_TEMPORAL_DECAY;
                 temporal.weight_sum *= RESTIR_TEMPORAL_DECAY;
@@ -244,13 +236,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
                 if (is_sky_sample(temporal.sample))
                 {
-                    // sky sample reuse
+                    // sky sample reuse - still check direction validity
                     float n_dot_sky = dot(normal_ws, temporal.sample.direction);
                     if (n_dot_sky > 0.0f)
                     {
-                        float target_pdf_temporal = calculate_target_pdf_sky(
-                            temporal.sample.radiance, temporal.sample.direction, normal_ws, view_dir,
-                            albedo, roughness, metallic);
+                        float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
 
                         if (target_pdf_temporal > 0.0f)
                         {
@@ -278,26 +268,32 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
                     if (temporal_visible)
                     {
+                        // use jacobian as a validity/quality gate, not as a weight multiplier
+                        // the target PDF re-evaluation already accounts for the geometry shift
                         float jacobian = compute_jacobian(temporal.sample.hit_position, prev_pos_ws, pos_ws, temporal.sample.hit_normal, normal_ws);
 
                         if (jacobian > 0.0f)
                         {
-                            float target_pdf_temporal = calculate_target_pdf_with_geometry(
-                                temporal.sample.radiance, pos_ws, normal_ws, view_dir,
-                                temporal.sample.hit_position, temporal.sample.hit_normal,
-                                albedo, roughness, metallic);
+                            // reject samples whose hit point is in the wrong hemisphere
+                            float3 dir_to_hit = normalize(temporal.sample.hit_position - pos_ws);
+                            float n_dot_l = dot(normal_ws, dir_to_hit);
 
-                            if (target_pdf_temporal > 0.0f)
+                            if (n_dot_l > 0.0f)
                             {
-                                float weight_temporal = target_pdf_temporal * temporal.W * temporal.M * jacobian;
+                                float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
 
-                                combined.weight_sum += weight_temporal;
-                                combined.M += temporal.M;
-
-                                if (random_float(seed) * combined.weight_sum < weight_temporal)
+                                if (target_pdf_temporal > 0.0f)
                                 {
-                                    combined.sample     = temporal.sample;
-                                    combined.target_pdf = target_pdf_temporal;
+                                    float weight_temporal = target_pdf_temporal * temporal.W * temporal.M;
+
+                                    combined.weight_sum += weight_temporal;
+                                    combined.M += temporal.M;
+
+                                    if (random_float(seed) * combined.weight_sum < weight_temporal)
+                                    {
+                                        combined.sample     = temporal.sample;
+                                        combined.target_pdf = target_pdf_temporal;
+                                    }
                                 }
                             }
                         }
@@ -307,11 +303,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    // finalize reservoir
+    // finalize reservoir using luminance-based target PDF
     clamp_reservoir_M(combined, RESTIR_M_CAP);
 
-    if (combined.target_pdf > 0 && combined.M > 0)
-        combined.W = combined.weight_sum / (combined.target_pdf * combined.M);
+    float final_target_pdf = calculate_target_pdf(combined.sample.radiance);
+    combined.target_pdf = final_target_pdf;
+
+    if (final_target_pdf > 0 && combined.M > 0)
+        combined.W = combined.weight_sum / (final_target_pdf * combined.M);
     else
         combined.W = 0;
 

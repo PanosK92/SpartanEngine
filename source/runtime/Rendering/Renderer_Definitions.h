@@ -128,16 +128,17 @@ namespace spartan
         bindless_material_parameters = 16,
         bindless_light_parameters    = 17,
         bindless_aabbs               = 18,
+        bindless_draw_data           = 19,
         
         // volumetric clouds 3D noise
-        tex3d_cloud_shape  = 19,
-        tex3d_cloud_detail = 20,
+        tex3d_cloud_shape  = 20,
+        tex3d_cloud_detail = 21,
         // restir reservoir srv bindings (for temporal/spatial read)
-        reservoir_prev0    = 21,
-        reservoir_prev1    = 22,
-        reservoir_prev2    = 23,
-        reservoir_prev3    = 24,
-        reservoir_prev4    = 25,
+        reservoir_prev0    = 22,
+        reservoir_prev1    = 23,
+        reservoir_prev2    = 24,
+        reservoir_prev3    = 25,
+        reservoir_prev4    = 26,
     };
 
     enum class Renderer_BindingsUav
@@ -148,7 +149,7 @@ namespace spartan
         tex4          = 3,
         tex3d         = 4,
         tex_sss       = 5,
-        visibility    = 6,
+        visibility_unused = 6, // slot preserved to keep enum values stable
         sb_spd        = 7,
         tex_spd       = 8,
         geometry_info = 20, // ray tracing geometry info buffer
@@ -165,6 +166,12 @@ namespace spartan
         nrd_spec_radiance      = 29,
         // integer format textures (vrs, etc)
         tex_uint               = 30,
+        // gpu-driven indirect drawing
+        indirect_draw_args     = 31,
+        indirect_draw_data     = 32,
+        indirect_draw_args_out = 33,
+        indirect_draw_data_out = 34,
+        indirect_draw_count    = 35,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -216,7 +223,7 @@ namespace spartan
         ffx_spd_min_c,
         ffx_spd_max_c,
         blit_c,
-        occlusion_c,
+        occlusion_c_unused, // slot preserved to keep enum values stable
         icon_c,
         dithering_c,
         transparency_reflection_refraction_c,
@@ -241,6 +248,11 @@ namespace spartan
         light_reflections_c,
         // nrd denoiser
         nrd_prepare_c,
+        // gpu-driven indirect rendering
+        indirect_cull_c,
+        gbuffer_indirect_v,
+        gbuffer_indirect_p,
+        depth_prepass_indirect_v,
         max
     };
     
@@ -339,10 +351,16 @@ namespace spartan
         LightParameters,
         DummyInstance,
         AABBs,
-        Visibility,
-        VisibilityPrev,
-        VisibilityReadback,
+        Visibility_unused,         // slot preserved to keep enum values stable
+        VisibilityPrev_unused,     // slot preserved to keep enum values stable
+        VisibilityReadback_unused, // slot preserved to keep enum values stable
         GeometryInfo,
+        IndirectDrawArgs,
+        IndirectDrawData,
+        IndirectDrawDataOut,
+        IndirectDrawArgsOut,
+        IndirectDrawCount,
+        DrawData,                  // bindless per-draw data (transforms, material index, etc.)
         Max
     };
 
@@ -395,13 +413,14 @@ namespace spartan
     class Renderable;
     struct Renderer_DrawCall
     {
-        Renderable* renderable  = nullptr;
-        uint32_t instance_index = 0;
-        uint32_t instance_count = 0;
-        uint32_t lod_index      = 0;
-        float distance_squared  = 0.0f;
-        bool is_occluder        = false;
-        bool camera_visible     = false;
+        Renderable* renderable   = nullptr;
+        uint32_t instance_index  = 0;
+        uint32_t instance_count  = 0;
+        uint32_t lod_index       = 0;
+        uint32_t draw_data_index = 0; // index into the bindless draw data buffer
+        float distance_squared   = 0.0f;
+        bool is_occluder         = false;
+        bool camera_visible      = false;
     };
 
 }

@@ -30,8 +30,8 @@ static const float RESTIR_SPATIAL_RADIUS     = 16.0f;
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
 static const float RESTIR_TEMPORAL_DECAY     = 0.9f;
-static const float RESTIR_RAY_NORMAL_OFFSET  = 0.01f;
-static const float RESTIR_RAY_T_MIN          = 0.001f;
+static const float RESTIR_RAY_NORMAL_OFFSET  = 0.05f;
+static const float RESTIR_RAY_T_MIN          = 0.01f;
 
 // sky/environment
 static const float RESTIR_SKY_RADIANCE_CLAMP = 5.0f;
@@ -273,21 +273,11 @@ float calculate_target_pdf_with_geometry(float3 radiance, float3 shading_pos, fl
     float dist = sqrt(dist_sq);
     float3 sample_dir = to_sample / dist;
 
-    float brdf_target = calculate_target_pdf_with_brdf(radiance, sample_dir, shading_normal, view_dir,
-                                                        albedo, roughness, metallic);
-    if (brdf_target <= 0.0f)
-        return 0.0f;
-
-    float cos_at_sample = max(dot(sample_hit_normal, -sample_dir), 0.0f);
-
-    // distance-aware minimum prevents geometry term explosion in corners
-    float min_dist_sq = max(0.1f, dist * 0.01f);
-    float geometry_term = cos_at_sample / max(dist_sq, min_dist_sq);
-
-    float max_geometry = lerp(10.0f, 5.0f, saturate(dist / 50.0f));
-    geometry_term = min(geometry_term, max_geometry);
-
-    return brdf_target * max(geometry_term, 0.01f);
+    // the radiance stored in the sample already accounts for the geometry term (1/r^2, cosines)
+    // from the path tracer, so we only need the BRDF-weighted luminance as the target PDF
+    // including a geometry term here would double-count it and cause corners to be overbright
+    return calculate_target_pdf_with_brdf(radiance, sample_dir, shading_normal, view_dir,
+                                           albedo, roughness, metallic);
 }
 
 bool is_sky_sample(PathSample s)

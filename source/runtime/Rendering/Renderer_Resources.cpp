@@ -83,11 +83,23 @@ namespace spartan
         buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size,                     nullptr,            true, "materials");
         buffer(Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                     nullptr,            true, "lights");
         buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Instance),                           static_cast<uint32_t>(identity.size()), &identity,          true, "dummy_instance_buffer");
-        buffer(Renderer_Buffer::Visibility)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                     nullptr,            true, "visibility");
-        buffer(Renderer_Buffer::VisibilityPrev)     = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                     nullptr,            true, "visibility_prev");
-        buffer(Renderer_Buffer::VisibilityReadback) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(uint32_t)),    rhi_max_array_size,                     nullptr,            true, "visibility_readback");
+        // visibility buffers no longer used by rendering but slots must remain allocated
+        buffer(Renderer_Buffer::Visibility_unused)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), 1, nullptr, true, "visibility_placeholder");
+        buffer(Renderer_Buffer::VisibilityPrev_unused)     = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), 1, nullptr, true, "visibility_prev_placeholder");
+        buffer(Renderer_Buffer::VisibilityReadback_unused) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), 1, nullptr, true, "visibility_readback_placeholder");
         buffer(Renderer_Buffer::AABBs)              = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Aabb)),         rhi_max_array_size,                     nullptr,            true, "aabbs");
         buffer(Renderer_Buffer::GeometryInfo)       = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_GeometryInfo)), rhi_max_array_size,                     nullptr,            true, "geometry_info");
+
+        // gpu-driven indirect drawing buffers
+        uint32_t draw_count_init = 0;
+        buffer(Renderer_Buffer::IndirectDrawArgs)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)), rhi_max_array_size, nullptr,          true, "indirect_draw_args");
+        buffer(Renderer_Buffer::IndirectDrawData)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),         rhi_max_array_size, nullptr,          true, "indirect_draw_data");
+        buffer(Renderer_Buffer::IndirectDrawArgsOut) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)), rhi_max_array_size, nullptr,          true, "indirect_draw_args_out");
+        buffer(Renderer_Buffer::IndirectDrawDataOut) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)),         rhi_max_array_size, nullptr,          true, "indirect_draw_data_out");
+        buffer(Renderer_Buffer::IndirectDrawCount)   = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),            1,                  &draw_count_init, true, "indirect_draw_count");
+
+        // bindless draw data buffer - all per-draw transforms, material indices, etc.
+        buffer(Renderer_Buffer::DrawData) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_DrawData)), renderer_max_draw_calls, nullptr, true, "draw_data");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -622,9 +634,27 @@ namespace spartan
         shader(Renderer_Shader::blit_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::blit_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blit.hlsl", async);
 
-        // occlusion
-        shader(Renderer_Shader::occlusion_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::occlusion_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "occlusion.hlsl", async);
+        // placeholder for removed occlusion shader (the shaders array must have no null slots)
+        shader(Renderer_Shader::occlusion_c_unused) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::occlusion_c_unused)->Compile(RHI_Shader_Type::Compute, shader_dir + "indirect_cull.hlsl", async);
+
+        // indirect draw culling
+        shader(Renderer_Shader::indirect_cull_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::indirect_cull_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "indirect_cull.hlsl", async);
+
+        // indirect draw g-buffer variants (vertex shader uses draw_id instead of push constants)
+        shader(Renderer_Shader::gbuffer_indirect_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::gbuffer_indirect_v)->AddDefine("INDIRECT_DRAW");
+        shader(Renderer_Shader::gbuffer_indirect_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+        shader(Renderer_Shader::gbuffer_indirect_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::gbuffer_indirect_p)->AddDefine("INDIRECT_DRAW");
+        shader(Renderer_Shader::gbuffer_indirect_p)->Compile(RHI_Shader_Type::Pixel, shader_dir + "g_buffer.hlsl", async);
+
+        // indirect draw depth prepass variant
+        shader(Renderer_Shader::depth_prepass_indirect_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::depth_prepass_indirect_v)->AddDefine("INDIRECT_DRAW");
+        shader(Renderer_Shader::depth_prepass_indirect_v)->Compile(RHI_Shader_Type::Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
         // icon
         shader(Renderer_Shader::icon_c) = make_shared<RHI_Shader>();
@@ -922,16 +952,6 @@ namespace spartan
     RHI_Buffer* Renderer::GetBuffer(const Renderer_Buffer type)
     {
         return buffers[static_cast<uint8_t>(type)].get();
-    }
-
-    void Renderer::SwapVisibilityBuffers()
-    {
-        // triple-buffer rotation: Readback <- Prev <- Visibility <- Readback
-        // this ensures we read from 2 frames ago (guaranteed GPU complete with double-buffered cmd lists)
-        auto temp = buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityReadback)];
-        buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityReadback)] = buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityPrev)];
-        buffers[static_cast<uint8_t>(Renderer_Buffer::VisibilityPrev)]     = buffers[static_cast<uint8_t>(Renderer_Buffer::Visibility)];
-        buffers[static_cast<uint8_t>(Renderer_Buffer::Visibility)]         = temp;
     }
 
     RHI_Texture* Renderer::GetStandardTexture(const Renderer_StandardTexture type)

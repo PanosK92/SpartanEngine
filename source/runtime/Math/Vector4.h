@@ -83,6 +83,16 @@ namespace spartan::math
             );
         }
 
+        Vector4 operator*(const Vector4& Other) const
+        {
+            return Vector4(x * Other.x, y * Other.y, z * Other.z, w * Other.w);
+        }
+
+        Vector4 operator-(const Vector4& Other) const
+        {
+            return Vector4(x - Other.x, y - Other.y, z - Other.z, w - Other.w);
+        }
+
         void operator*=(const float value)
         {
             x *= value;
@@ -94,6 +104,11 @@ namespace spartan::math
         Vector4 operator /(const float rhs) const
         {
             return Vector4(x / rhs, y / rhs, z / rhs, w / rhs);
+        }
+
+        Vector4 operator/(const Vector4& Other) const
+        {
+            return Vector4(x / Other.x, y / Other.y, z / Other.z, w / Other.w);
         }
 
         [[nodiscard]] float Length()        const { return sqrt(x * x + y * y + z * z + w * w); }

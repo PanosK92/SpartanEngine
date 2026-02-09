@@ -347,7 +347,40 @@ namespace spartan
 
         Profiler::m_rhi_draw++;
     }
-  
+
+    void RHI_CommandList::DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(args_buffer  != nullptr);
+        SP_ASSERT(count_buffer != nullptr);
+
+        // lazily create the command signature for indirect indexed draws
+        static ID3D12CommandSignature* command_signature = nullptr;
+        if (!command_signature)
+        {
+            D3D12_INDIRECT_ARGUMENT_DESC arg_desc = {};
+            arg_desc.Type                         = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+            D3D12_COMMAND_SIGNATURE_DESC desc = {};
+            desc.ByteStride                  = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
+            desc.NumArgumentDescs            = 1;
+            desc.pArgumentDescs              = &arg_desc;
+
+            RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
+        }
+
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->ExecuteIndirect(
+            command_signature,
+            max_draw_count,
+            static_cast<ID3D12Resource*>(args_buffer->GetRhiResource()),
+            static_cast<UINT64>(args_offset),
+            static_cast<ID3D12Resource*>(count_buffer->GetRhiResource()),
+            static_cast<UINT64>(count_offset)
+        );
+
+        Profiler::m_rhi_draw++;
+    }
+
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

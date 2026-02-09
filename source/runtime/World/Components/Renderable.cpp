@@ -73,18 +73,18 @@ namespace spartan
         // mesh
         node.append_attribute("mesh_name")      = m_mesh ? m_mesh->GetObjectName().c_str() : "";
         node.append_attribute("sub_mesh_index") = m_sub_mesh_index;
-    
+
         // material
         node.append_attribute("material_name")    = m_material && !m_material_default ? m_material->GetObjectName().c_str() : "";
         node.append_attribute("material_default") = m_material_default;
-    
+
         // flags
         node.append_attribute("flags") = m_flags;
-    
+
         // distances
         node.append_attribute("max_render_distance") = m_max_distance_render;
         node.append_attribute("max_shadow_distance") = m_max_distance_shadow;
-    
+
         // instances
         pugi::xml_node instances_node = node.append_child("Instances");
         for (const auto& instance : m_instances)
@@ -99,7 +99,7 @@ namespace spartan
             t_node.append_attribute("matrix") = ss.str().c_str();
         }
     }
-    
+
     void Renderable::Load(pugi::xml_node& node)
     {
         // mesh
@@ -142,7 +142,7 @@ namespace spartan
                 }
             }
         }
-    
+
         // material
         m_material_default         = node.attribute("material_default").as_bool(true);
         const string material_name = node.attribute("material_name").as_string();
@@ -159,14 +159,14 @@ namespace spartan
             // defer default material assignment - renderer may not be ready during load
             m_needs_default_material = true;
         }
-    
+
         // flags
         m_flags = node.attribute("flags").as_uint();
-    
+
         // distances
         m_max_distance_render = node.attribute("max_render_distance").as_float(FLT_MAX);
         m_max_distance_shadow = node.attribute("max_shadow_distance").as_float(FLT_MAX);
-    
+
         // instances
         m_instances.clear();
         pugi::xml_node instances_node = node.child("Instances");
@@ -193,7 +193,7 @@ namespace spartan
                 }
             }
         }
-    
+
         // compute mesh bounding box (needed for culling and LOD)
         if (m_mesh)
         {
@@ -233,6 +233,19 @@ namespace spartan
         UpdateLodIndices();
     }
 
+    void Renderable::RegisterForScripting(sol::state_view State)
+    {
+        State.new_usertype<Renderable>("Renderable",
+        sol::base_classes,              sol::bases<Component>()
+        );
+
+    }
+
+    sol::reference Renderable::AsLua(sol::state_view state)
+    {
+        return sol::make_reference(state, this);
+    }
+
     void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
     {
         if (!mesh)
@@ -270,7 +283,7 @@ namespace spartan
         }
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
-    
+
     void Renderable::SetMaterial(const shared_ptr<Material>& material)
     {
         SP_ASSERT(material != nullptr);
@@ -282,34 +295,35 @@ namespace spartan
 
         // pack textures, generate mips, compress, upload to GPU
         if (m_material->GetResourceState() == ResourceState::Max)
-        { 
+        {
             m_material->PrepareForGpu();
         }
 
-        // compute world dimensions
+        // compute world dimensions (skip if no mesh is available yet, e.g. procedural meshes like roads)
         {
-            // acquire vertices
             vector<RHI_Vertex_PosTexNorTan> vertices;
             GetGeometry(nullptr, &vertices);
-            SP_ASSERT(!vertices.empty());
-            
-            float height_min = FLT_MAX;
-            float max_height = -FLT_MAX;
-            float min_width  = FLT_MAX;
-            float max_width  = -FLT_MAX;
 
-            Matrix transform = HasInstancing() ? GetInstance(0, true) : GetEntity()->GetMatrix();
-            for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
+            if (!vertices.empty())
             {
-                Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
-                height_min       = min(height_min, position.y);
-                max_height       = max(max_height, position.y);
-                min_width        = min(min_width, position.x);
-                max_width        = max(max_width, position.x);
-            }
+                float height_min = FLT_MAX;
+                float max_height = -FLT_MAX;
+                float min_width  = FLT_MAX;
+                float max_width  = -FLT_MAX;
 
-            material->SetProperty(MaterialProperty::WorldWidth,  max_width - min_width);
-            material->SetProperty(MaterialProperty::WorldHeight, max_height - height_min);
+                Matrix transform = HasInstancing() ? GetInstance(0, true) : GetEntity()->GetMatrix();
+                for (const RHI_Vertex_PosTexNorTan& vertex : vertices)
+                {
+                    Vector3 position = Vector3(vertex.pos[0], vertex.pos[1], vertex.pos[2]);
+                    height_min       = min(height_min, position.y);
+                    max_height       = max(max_height, position.y);
+                    min_width        = min(min_width, position.x);
+                    max_width        = max(max_width, position.x);
+                }
+
+                material->SetProperty(MaterialProperty::WorldWidth,  max_width - min_width);
+                material->SetProperty(MaterialProperty::WorldHeight, max_height - height_min);
+            }
         }
     }
 
@@ -335,7 +349,8 @@ namespace spartan
 
     uint32_t Renderable::GetIndexOffset(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_offset;
+        // global base offset + lod-relative offset within the mesh
+        return m_mesh->GetGlobalIndexOffset() + m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_offset;
     }
 
     uint32_t Renderable::GetIndexCount(const uint32_t lod) const
@@ -345,7 +360,8 @@ namespace spartan
 
     uint32_t Renderable::GetVertexOffset(const uint32_t lod) const
     {
-        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_offset;
+        // global base offset + lod-relative offset within the mesh
+        return m_mesh->GetGlobalVertexOffset() + m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_offset;
     }
 
     uint32_t Renderable::GetVertexCount(const uint32_t lod) const
@@ -513,7 +529,7 @@ namespace spartan
         if (Camera* camera = World::GetCamera())
         {
             Vector3 camera_position = camera->GetEntity()->GetPosition();
-    
+
             const BoundingBox& bounding_box = GetBoundingBox();
 
             // first, check if the bounding box is in the frustum

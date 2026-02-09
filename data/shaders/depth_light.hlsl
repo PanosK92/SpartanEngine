@@ -25,9 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
+    _draw = draw_data[buffer_pass.draw_index];
+
     float3 f3_value_2 = pass_get_f3_value2();
-    uint index_light  = (uint)f3_value_2.x; // index of the light into the bindless array
-    uint index_array  = (uint)f3_value_2.y; // index of a particular slice of the texture array of the light
+    uint index_light  = (uint)f3_value_2.x;
+    uint index_array  = (uint)f3_value_2.y;
     
     Light light;
     Surface surface;
@@ -35,7 +37,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
-    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
+    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
+    vertex.material_index          = _draw.material_index;
     vertex.position                = mul(float4(position_world, 1.0f), light.transform[index_array]);
 
     return vertex;
@@ -43,6 +46,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
 
 void main_ps(gbuffer_vertex vertex)
 {
+    pass_load_draw_data_from_vertex(vertex.material_index);
+
     // distance based alpha threshold
     const bool has_albedo       = pass_get_f3_value().x == 1.0f;
     const float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;

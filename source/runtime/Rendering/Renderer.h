@@ -81,7 +81,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_variable_rate_shading;
     extern TConsoleVar<float> cvar_resolution_scale;
     extern TConsoleVar<float> cvar_dynamic_resolution;
-    extern TConsoleVar<float> cvar_occlusion_culling;
+    extern TConsoleVar<float> cvar_hiz_occlusion;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
     extern TConsoleVar<float> cvar_cloud_coverage;
     extern TConsoleVar<float> cvar_cloud_shadows;
@@ -137,6 +137,9 @@ namespace spartan
         static void Screenshot();
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
+        // write a draw data entry and return its index (for utility draws like grid, outline, imgui)
+        static uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0);
+
         // wind
         static const math::Vector3& GetWind();
         static void SetWind(const math::Vector3& wind);
@@ -173,8 +176,6 @@ namespace spartan
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();
         static void ClearMaterialTextureReferences();
-        static void SwapVisibilityBuffers();
-
     private:
         static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);
 
@@ -196,7 +197,8 @@ namespace spartan
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list);
-        static void Pass_Occlusion(RHI_CommandList* cmd_list);
+        static void Pass_HiZ(RHI_CommandList* cmd_list);
+        static void Pass_IndirectCull(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
@@ -264,6 +266,15 @@ namespace spartan
         static uint32_t m_draw_call_count;
         static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls_prepass;
         static uint32_t m_draw_calls_prepass_count;
+
+        // gpu-driven indirect drawing
+        static std::array<Sb_IndirectDrawArgs, rhi_max_array_size> m_indirect_draw_args;
+        static std::array<Sb_DrawData, rhi_max_array_size> m_indirect_draw_data;
+        static uint32_t m_indirect_draw_count;
+
+        // bindless draw data (per-draw transforms, material indices, etc.)
+        static std::array<Sb_DrawData, renderer_max_draw_calls> m_draw_data_cpu;
+        static uint32_t m_draw_data_count;
 
         // bindless
         static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;

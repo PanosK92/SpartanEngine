@@ -41,6 +41,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGuiSp
 {
+    constexpr std::string_view GDragDropTypes[] = {
+        "Texture",
+        "Entity",
+        "Model",
+        "Audio",
+        "Material",
+        "Lua",
+        "Undefined",
+    };
+
     enum class DragPayloadType
     {
         Texture,
@@ -48,6 +58,7 @@ namespace ImGuiSp
         Model,
         Audio,
         Material,
+        Lua,
         Undefined
     };
 
@@ -199,24 +210,23 @@ namespace ImGuiSp
         const char* path_relative;      // relative path
     };
 
-    static void create_drag_drop_paylod(const DragDropPayload& payload)
+    static void create_drag_drop_payload(const DragDropPayload& payload)
     {
-        ImGui::SetDragDropPayload(reinterpret_cast<const char*>(&payload.type), reinterpret_cast<const void*>(&payload), sizeof(payload), ImGuiCond_Once);
+        ImGui::SetDragDropPayload(GDragDropTypes[(int)payload.type].data(), &payload, sizeof(payload), ImGuiCond_Once);
     }
 
     static DragDropPayload* receive_drag_drop_payload(DragPayloadType type)
     {
-        DragDropPayload* result = nullptr;
         if (ImGui::BeginDragDropTarget())
         {
-            if (const auto payload_imgui = ImGui::AcceptDragDropPayload(reinterpret_cast<const char*>(&type)))
+            if (const ImGuiPayload* payload_imgui = ImGui::AcceptDragDropPayload(GDragDropTypes[(int)type].data()))
             {
-                result = static_cast<DragDropPayload*>(payload_imgui->Data);
+                return static_cast<DragDropPayload*>(payload_imgui->Data);
             }
             ImGui::EndDragDropTarget();
         }
 
-        return result;
+        return nullptr;
     }
 
     // image slot - returns true if the user clicked on the slot (for browse functionality)
@@ -324,17 +334,17 @@ namespace ImGuiSp
     {
         static const uint32_t screen_edge_padding = 10;
         ImGuiIO& io = ImGui::GetIO();
-        
+
         static ImVec2 last_mouse_pos = io.MousePos;
-        
+
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
             ImVec2 mouse_pos = io.MousePos;
             bool wrapped = false;
-        
+
             float left  = static_cast<float>(screen_edge_padding);
             float right = static_cast<float>(spartan::Display::GetWidth() - screen_edge_padding);
-        
+
             if (mouse_pos.x >= right)
             {
                 mouse_pos.x = left + 1;
@@ -345,14 +355,14 @@ namespace ImGuiSp
                 mouse_pos.x = right - 1;
                 wrapped = true;
             }
-        
+
             if (wrapped)
             {
                 io.MousePos        = mouse_pos;
                 io.WantSetMousePos = true;
                 io.MouseDelta.x    = 0.0f;
                 io.MouseDelta.y    = 0.0f;
-        
+
                 // update last_mouse_pos to avoid delta spikes in the next frame
                 last_mouse_pos = mouse_pos;
             }
@@ -362,29 +372,29 @@ namespace ImGuiSp
                 last_mouse_pos = mouse_pos;
             }
         }
-        
+
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
         bool changed = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
         ImGui::PopID();
-    
+
         return changed;
     }
 
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
     {
         const uint32_t option_count = static_cast<uint32_t>(options.size());
-    
+
         // clamp index
         if (*selection_index >= option_count)
         {
             *selection_index = option_count ? option_count - 1 : 0;
         }
-    
+
         bool selection_made = false;
-    
+
         // preview: direct pointer into existing string buffer
         const char* preview = option_count ? options[*selection_index].data() : "";
-    
+
         if (ImGui::BeginCombo(label, preview))
         {
             for (uint32_t i = 0; i < option_count; ++i)
@@ -412,15 +422,15 @@ namespace ImGuiSp
         const float label_indent = 15.0f * spartan::Window::GetDpiScale();
         const float axis_spacing = 15.0f * spartan::Window::GetDpiScale();
         const float step         = 0.01f;
-    
+
         ImGui::PushID(label);
         ImGui::BeginGroup();
-    
+
         // label
         ImGui::Indent(label_indent);
         ImGui::TextUnformatted(label);
         ImGui::Unindent(label_indent);
-    
+
         // layout calculation
         float item_width = 128.0f;
         if (!vertical)
@@ -430,11 +440,11 @@ namespace ImGuiSp
             float total_spacing = spacing * 2.0f;
             item_width          = (avail_x - total_spacing) / 3.0f;
             item_width          -= axis_spacing;
-    
+
             if (item_width < 1.0f)
                 item_width = 1.0f;
         }
-    
+
         float* values[3]           = { &vector.x, &vector.y, &vector.z };
         const char* axis_labels[3] = { "X", "Y", "Z" };
         const ImU32 axis_colors[3] = {
@@ -442,38 +452,38 @@ namespace ImGuiSp
             IM_COL32(112, 162, 22, 255),
             IM_COL32(51, 122, 210, 255)
         };
-    
+
         // components
         for (int i = 0; i < 3; ++i)
         {
             ImGui::PushID(i);
-    
+
             // horizontal layout
             if (!vertical && i > 0)
             {
                 ImGui::SameLine();
             }
-    
+
             // axis label
             ImGui::TextUnformatted(axis_labels[i]);
             ImGui::SameLine();
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + axis_spacing - ImGui::CalcTextSize(axis_labels[i]).x);
             spartan::math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
-    
+
             // float input
             ImGui::PushItemWidth(item_width);
             ImGuiSp::draw_float_wrap("##v", values[i], step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
             ImGui::PopItemWidth();
-    
+
             // color bar decoration
             static const spartan::math::Vector2 size   = spartan::math::Vector2(4.0f, 19.0f);
             static const spartan::math::Vector2 offset = spartan::math::Vector2(-7.0f, 4.0f);
             spartan::math::Vector2 draw_pos            = pos_post_label + offset;
             ImGui::GetWindowDrawList()->AddRectFilled(draw_pos, draw_pos + size, axis_colors[i]);
-    
+
             ImGui::PopID();
         }
-    
+
         ImGui::EndGroup();
         ImGui::PopID();
     }

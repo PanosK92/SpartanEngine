@@ -67,7 +67,7 @@ void ShaderEditor::ShowShaderSource()
         float start_y = ImGui::GetCursorPosY();
 
         // title
-        ImGui::Text(m_shader ? m_shader_name.c_str() : "Select a shader");
+        ImGui::TextUnformatted(m_shader ? m_shader_name.c_str() : "Select a shader");
 
         // content
         if (m_shader)
@@ -136,7 +136,7 @@ void ShaderEditor::ShowShaderList()
         {
             // get name
             string name = shader->GetObjectName();
-    
+
             // append stage
             if (shader->GetShaderStage() == RHI_Shader_Type::Vertex)
             {
@@ -162,7 +162,7 @@ void ShaderEditor::ShowShaderList()
             {
                 name += "_unknown";
             }
-    
+
             // append defines
             for (const auto& define : shader->GetDefines())
             {
@@ -171,14 +171,14 @@ void ShaderEditor::ShowShaderList()
                     name += "_" + define.first;
                 }
             }
-    
+
             if (ImGuiSp::button(name.c_str()) || m_first_run)
             {
                 m_shader          = shader;
                 m_shader_name     = name;
                 m_index_displayed = -1;
                 m_first_run       = false;
-    
+
                 // reload in case it has been modified
                 m_shader->LoadFromDrive(m_shader->GetFilePath());
             }

@@ -321,6 +321,7 @@ namespace spartan
         MaterialParameters,
         LightParameters,
         Aabbs,
+        DrawData,
         SamplersComparison,
         SamplersRegular,
         Max

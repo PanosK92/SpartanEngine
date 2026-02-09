@@ -41,7 +41,7 @@ vertex main_vs(Vertex_Pos2dUvColor input)
 {
     vertex output;
 
-    output.position = mul(buffer_pass.transform, float4(input.position.x, input.position.y, 0.0f, 1.0f));
+    output.position = mul(draw_data[buffer_pass.draw_index].transform, float4(input.position.x, input.position.y, 0.0f, 1.0f));
     output.color    = input.color;
     output.uv       = input.uv;
 

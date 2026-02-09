@@ -29,6 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/BoundingBox.h"
 //================================
 
+namespace sol
+{
+    class state_view;
+}
+
 namespace spartan
 {
     class RHI_Buffer;
@@ -77,6 +82,8 @@ namespace spartan
         Mesh();
         ~Mesh();
 
+        static void RegisterForScripting(sol::state_view State);
+
         // iresource
         void SaveToFile(const std::string& file_path) override;
         void LoadFromFile(const std::string& file_path) override;
@@ -98,8 +105,12 @@ namespace spartan
         // gpu buffers
         void CreateGpuBuffers();
         void BuildAccelerationStructure(RHI_CommandList* cmd_list);
-        RHI_Buffer* GetIndexBuffer()  { return m_index_buffer.get();  }
-        RHI_Buffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
+        RHI_Buffer* GetIndexBuffer();
+        RHI_Buffer* GetVertexBuffer();
+
+        // global geometry buffer offsets
+        uint32_t GetGlobalVertexOffset() const { return m_global_vertex_offset; }
+        uint32_t GetGlobalIndexOffset() const  { return m_global_index_offset; }
 
         // root entity
         Entity* GetRootEntity() { return m_root_entity; }
@@ -123,9 +134,11 @@ namespace spartan
         std::vector<uint32_t> m_indices;                 // all indices of a model file
         std::vector<SubMesh> m_sub_meshes;               // tracks sub-meshes and lods within the above vectors
 
-        // gpu buffers
-        std::unique_ptr<RHI_Buffer> m_vertex_buffer;
-        std::unique_ptr<RHI_Buffer> m_index_buffer;
+        // global geometry buffer offsets (base offsets into the shared vertex/index buffers)
+        uint32_t m_global_vertex_offset = 0;
+        uint32_t m_global_index_offset  = 0;
+
+        // acceleration structures
         std::vector<std::unique_ptr<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh
 
         // misc

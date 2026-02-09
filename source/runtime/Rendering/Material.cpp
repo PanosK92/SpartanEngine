@@ -607,10 +607,13 @@ namespace spartan
             m_properties[i] = node_material.child(attribute_name).text().as_float();
         }
     
-        // load textures
+        // load textures (skip packed textures as they're regenerated from source textures during PrepareForGpu)
         pugi::xml_node textures_node = node_material.child("textures");
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
+            if (static_cast<MaterialTextureType>(type) == MaterialTextureType::Packed)
+                continue;
+
             for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
                 uint32_t index   = type * slots_per_texture + slot;
@@ -621,14 +624,18 @@ namespace spartan
     
                 string tex_name = node_texture.attribute("texture_name").as_string();
                 string tex_path = node_texture.attribute("texture_path").as_string();
-    
-                // if the texture is already loaded, get a reference to it
-                auto texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
 
-                // if the texture is not loaded yet, load it
-                if (!texture && !tex_path.empty())
+                // load by path first since paths are unique
+                // name-based lookup is a fallback because names like "normal" collide across materials
+                shared_ptr<RHI_Texture> texture;
+                if (!tex_path.empty())
                 {
                     texture = ResourceCache::Load<RHI_Texture>(tex_path);
+                }
+
+                if (!texture && !tex_name.empty())
+                {
+                    texture = ResourceCache::GetByName<RHI_Texture>(tex_name);
                 }
     
                 if (texture)
@@ -654,11 +661,14 @@ namespace spartan
             material_node.append_child(attribute_name).text().set(m_properties[i]);
         }
     
-        // save textures
+        // save textures (skip packed textures as they're regenerated from source textures during PrepareForGpu)
         pugi::xml_node textures_node = material_node.append_child("textures");
         textures_node.append_attribute("count").set_value(static_cast<uint32_t>(m_textures.size()));
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
+            if (static_cast<MaterialTextureType>(type) == MaterialTextureType::Packed)
+                continue;
+
             for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
                 uint32_t index   = type * slots_per_texture + slot;
@@ -719,8 +729,11 @@ namespace spartan
             }
         }
 
-        // save on change
-        SaveToFile(GetResourceFilePath());
+        // save on change, but not during loading (auto_adjust_multipler is false when called from LoadFromFile)
+        if (auto_adjust_multipler)
+        {
+            SaveToFile(GetResourceFilePath());
+        }
     }
 
     void Material::SetTexture(const MaterialTextureType texture_type, shared_ptr<RHI_Texture> texture, const uint8_t slot)

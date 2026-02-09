@@ -173,6 +173,31 @@ namespace spartan
         audio_device::release();
     }
 
+    void AudioSource::RegisterForScripting(sol::state_view State)
+    {
+        State.new_usertype<AudioSource>("AudioSource",
+            sol::base_classes,              sol::bases<Component>(),
+            "SetAudioClip",                 &AudioSource::SetAudioClip,
+            "IsPlaying",                    &AudioSource::IsPlaying,
+            "PlayClip",                     &AudioSource::PlayClip,
+            "StopClip",                     &AudioSource::StopClip,
+            "GetAudioClipName",             &AudioSource::GetAudioClipName,
+
+
+            "GetMute",                      &AudioSource::GetMute,
+            "SetMute",                      &AudioSource::SetMute,
+
+            "IsSynthesisMode",              &AudioSource::IsSynthesisMode,
+            "SetSynthesisMode",             &AudioSource::SetSynthesisMode,
+            "StartSynthesis",               &AudioSource::StartSynthesis,
+            "StopSynthesis",                &AudioSource::StopSynthesis,
+
+            "GetPitch",                     &AudioSource::GetPitch,
+            "SetPitch",                     &AudioSource::SetPitch
+
+            );
+    }
+
     void AudioSource::Initialize()
     {
         Component::Initialize();
@@ -209,14 +234,14 @@ namespace spartan
                 static Vector3 camera_position_previous = Vector3::Zero;
                 Vector3 camera_position                 = camera->GetEntity()->GetPosition();
                 Vector3 sound_position                  = GetEntity()->GetPosition();
-       
+
                 // panning
                 {
                     Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
                     Vector3 camera_right    = camera->GetEntity()->GetRight();
                     m_pan                   = Vector3::Dot(camera_to_sound, camera_right);
                 }
-       
+
                 // attenuation
                 {
                     float distance_squared     = Vector3::DistanceSquared(camera_position, sound_position);
@@ -228,19 +253,19 @@ namespace spartan
                 {
                     const float dt             = static_cast<float>(Timer::GetDeltaTimeSec());
                     const float speed_of_sound = 343.0f;
-               
+
                     Vector3 rel_velocity = (camera_position - camera_position_previous) / dt - (sound_position - position_previous) / dt;
                     Vector3 to_sound     = (sound_position - camera_position).Normalized();
                     float radial_v       = Vector3::Dot(to_sound, rel_velocity);
                     float target_ratio   = 1.0f + radial_v / speed_of_sound;
-               
+
                     // clamping and smooething
                     target_ratio    = clamp(target_ratio, 0.5f, 2.0f);
                     const float s   = 0.2f; // smoothing factor
                     m_doppler_ratio = lerp(m_doppler_ratio, target_ratio, s);
                     SetPitch(m_pitch);
                 }
-               
+
                 // update previous positions
                 camera_position_previous = camera_position;
                 position_previous        = sound_position;
@@ -420,6 +445,11 @@ namespace spartan
         SetAudioClip(m_file_path);
     }
 
+    sol::reference AudioSource::AsLua(sol::state_view state)
+    {
+        return sol::make_reference(state, this);
+    }
+
     void AudioSource::SetAudioClip(const string& file_path)
     {
         // store the filename from the provided path
@@ -505,7 +535,7 @@ namespace spartan
     void AudioSource::SetPitch(const float pitch)
     {
         m_pitch = clamp(pitch, 0.01f, 5.0f);
-   
+
         if (m_is_playing && m_stream)
         {
             const float effective_pitch = m_pitch * m_doppler_ratio;

@@ -191,13 +191,14 @@ function spartan_project_configuration()
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/nrd", "../third_party/openxr",
-                "../third_party/lua"
+                "../third_party/lua", "../third_party/lua/lua"
             }
             linkoptions {
                 "/LIBPATH:" .. path.getabsolute("../third_party/libraries"),
                 "/NODEFAULTLIB:MSVCRT.lib",  -- block dynamic crt (using static runtime)
                 "/NODEFAULTLIB:MSVCPRT.lib"
             }
+            buildoptions { "/bigobj" }
 
         -- Linux includes
         filter { "system:linux" }

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "Material.h"
+#include "GeometryBuffer.h"
 #include "ThreadPool.h"
 #include "../Profiling/RenderDoc.h"
 #include "../Profiling/Profiler.h"
@@ -60,6 +61,10 @@ namespace spartan
     // constant and push constant buffers
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_pcb_pass_cpu;
+
+    // bindless draw data
+    array<Sb_DrawData, renderer_max_draw_calls> Renderer::m_draw_data_cpu;
+    uint32_t Renderer::m_draw_data_count = 0;
 
     // line and icon rendering
     shared_ptr<RHI_Buffer> Renderer::m_lines_vertex_buffer;
@@ -225,7 +230,7 @@ namespace spartan
     TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,                                                    "render resolution scale (0.5-1.0)",       on_resolution_scale_change);
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,                                                    "automatic resolution scaling");
     // misc                                                                                                                                              
-    TConsoleVar<float> cvar_occlusion_culling              ("r.occlusion_culling",              0.0f,                                                    "occlusion culling (dev)");
+    TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  0.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");
     TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, negative disables");
     // volumetric clouds
     TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.45f,                                                   "sky coverage (0=clear, 1=overcast)");
@@ -395,6 +400,7 @@ namespace spartan
         // manually destroy everything so that RHI_Device::ParseDeletionQueue() frees memory
         {
             DestroyResources();
+            GeometryBuffer::Shutdown();
             swapchain             = nullptr;
             m_lines_vertex_buffer = nullptr;
             tlas                  = nullptr;
@@ -461,11 +467,34 @@ namespace spartan
         // update CPU and GPU resources (only when we can render to avoid GPU work during window transitions)
         if (can_render)
         {
+            // during world loading, the loading thread is hammering the gpu with texture uploads
+            // via immediate execution (each texture requires staging copy + layout transition).
+            // skip heavy gpu work here to avoid contention on the immediate execution mutex
+            // and the graphics queue, which can cause the loading to stall or freeze.
+            // all of this work will run on the first frame after loading completes.
+            bool is_loading = ProgressTracker::IsLoading();
+
+            // build the global geometry buffer if new meshes were loaded since the last frame
+            if (!is_loading)
+            {
+                GeometryBuffer::BuildIfDirty();
+            }
+
+            // if the geometry buffer was fully rebuilt (e.g. capacity exceeded), acceleration structures
+            // reference stale device addresses and need to be recreated from the new buffer
+            if (GeometryBuffer::WasRebuilt())
+            {
+                DestroyAccelerationStructures();
+            }
+
             // fill draw call list and determine ideal occluders
             UpdateDrawCalls(m_cmd_list_present);
 
             // update tlas
-            UpdateAccelerationStructures(m_cmd_list_present);
+            if (!is_loading)
+            {
+                UpdateAccelerationStructures(m_cmd_list_present);
+            }
     
             // handle dynamic buffers and resource deletion
             {
@@ -486,6 +515,7 @@ namespace spartan
             }
     
             // update bindless resources
+            if (!is_loading)
             {
                 // we always update on the first frame so the buffers are bound and we don't get graphics api issues
                 bool initialize = GetFrameNumber() == 0;
@@ -516,6 +546,42 @@ namespace spartan
                 {
                     UpdatedBoundingBoxes(m_cmd_list_present);
                     RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
+                }
+
+                // draw data - upload per-draw transforms and material info to the bindless buffer
+                {
+                    if (m_draw_data_count > 0)
+                    {
+                        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
+                        buffer->ResetOffset();
+                        buffer->Update(m_cmd_list_present, &m_draw_data_cpu[0], buffer->GetStride() * m_draw_data_count);
+                    }
+
+                    // the descriptor only needs to be written once since the buffer is persistent
+                    static bool draw_data_descriptor_set = false;
+                    if (!draw_data_descriptor_set)
+                    {
+                        RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::DrawData));
+                        draw_data_descriptor_set = true;
+                    }
+                }
+
+                // upload indirect draw buffers for gpu-driven rendering
+                if (m_indirect_draw_count > 0)
+                {
+                    RHI_Buffer* args_buffer = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
+                    args_buffer->ResetOffset();
+                    args_buffer->Update(m_cmd_list_present, &m_indirect_draw_args[0], args_buffer->GetStride() * m_indirect_draw_count);
+
+                    RHI_Buffer* data_buffer = GetBuffer(Renderer_Buffer::IndirectDrawData);
+                    data_buffer->ResetOffset();
+                    data_buffer->Update(m_cmd_list_present, &m_indirect_draw_data[0], data_buffer->GetStride() * m_indirect_draw_count);
+
+                    // reset draw count to zero - the cull shader will atomically increment it
+                    uint32_t zero = 0;
+                    RHI_Buffer* count_buffer = GetBuffer(Renderer_Buffer::IndirectDrawCount);
+                    count_buffer->ResetOffset();
+                    count_buffer->Update(m_cmd_list_present, &zero, sizeof(uint32_t));
                 }
             }
     
@@ -896,6 +962,31 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
     }
 
+    uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent)
+    {
+        SP_ASSERT(m_draw_data_count < renderer_max_draw_calls);
+        uint32_t index = m_draw_data_count++;
+
+        Sb_DrawData& entry     = m_draw_data_cpu[index];
+        entry.transform          = transform;
+        entry.transform_previous = transform_previous;
+        entry.material_index     = material_index;
+        entry.is_transparent     = is_transparent;
+        entry.aabb_index         = 0;
+        entry.padding            = 0;
+
+        // also write directly to the mapped gpu buffer so that entries written
+        // after the bulk upload (e.g. utility draws during render passes) are visible
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
+        if (void* mapped = buffer->GetMappedData())
+        {
+            void* dst = static_cast<char*>(mapped) + index * sizeof(Sb_DrawData);
+            memcpy(dst, &entry, sizeof(Sb_DrawData));
+        }
+
+        return index;
+    }
+
     void Renderer::UpdateMaterials(RHI_CommandList* cmd_list)
     {
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
@@ -1154,7 +1245,7 @@ namespace spartan
         m_bindless_aabbs.fill(Sb_Aabb());
 
         // upload aabbs from prepass draw calls (used by occlusion culling)
-        // this must match the indexing used in Pass_Occlusion
+        // this must match the indexing used in pass_indirect_cull
         for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
@@ -1165,16 +1256,49 @@ namespace spartan
             m_bindless_aabbs[i].is_occluder    = draw_call.is_occluder;
         }
 
+        // upload aabbs for indirect draws (used by the indirect cull compute shader)
+        // these are stored right after the prepass aabbs in the same buffer
+        // the bounding boxes come from the draw calls that were added to the indirect path
+        {
+            uint32_t indirect_idx = 0;
+            for (uint32_t i = 0; i < m_draw_call_count && indirect_idx < m_indirect_draw_count; i++)
+            {
+                const Renderer_DrawCall& dc = m_draw_calls[i];
+                Material* material          = dc.renderable->GetMaterial();
+
+                // must match the filtering in UpdateDrawCalls
+                if (!material || material->IsTransparent())
+                    continue;
+                if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
+                    continue;
+                if (dc.instance_count > 1)
+                    continue;
+                if (material->IsAlphaTested())
+                    continue;
+
+                uint32_t aabb_slot = m_draw_calls_prepass_count + indirect_idx;
+                if (aabb_slot < rhi_max_array_size)
+                {
+                    const BoundingBox& aabb       = dc.renderable->GetBoundingBox();
+                    m_bindless_aabbs[aabb_slot].min = aabb.GetMin();
+                    m_bindless_aabbs[aabb_slot].max = aabb.GetMax();
+                }
+                indirect_idx++;
+            }
+        }
+
         // gpu
+        uint32_t total_aabb_count = m_draw_calls_prepass_count + m_indirect_draw_count;
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::AABBs);
         buffer->ResetOffset();
-        buffer->Update(cmd_list, &m_bindless_aabbs[0], buffer->GetStride() * m_draw_calls_prepass_count);
+        buffer->Update(cmd_list, &m_bindless_aabbs[0], buffer->GetStride() * total_aabb_count);
     }
 
     void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)
     {
         m_draw_call_count          = 0;
         m_draw_calls_prepass_count = 0;
+        m_draw_data_count          = 0;
         m_transparents_present     = false;
         if (ProgressTracker::IsLoading())
             return;
@@ -1189,13 +1313,22 @@ namespace spartan
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
                     // skip renderables with no material, can happen when loading a world and the material is not yet loaded
-                    if (!renderable->GetMaterial())
+                    Material* material = renderable->GetMaterial();
+                    if (!material)
                         continue;
 
-                    if (renderable->GetMaterial()->IsTransparent())
+                    if (material->IsTransparent())
                     {
                         m_transparents_present = true;
                     }
+
+                    // write per-draw data to the bindless draw data buffer
+                    uint32_t draw_data_index = WriteDrawData(
+                        entity->GetMatrix(),
+                        entity->GetMatrixPrevious(),
+                        material->GetIndex(),
+                        material->IsTransparent() ? 1 : 0
+                    );
 
                     Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
                     draw_call.renderable         = renderable;
@@ -1205,6 +1338,7 @@ namespace spartan
                     draw_call.camera_visible     = renderable->IsVisible();
                     draw_call.instance_index     = 0;
                     draw_call.instance_count     = renderable->GetInstanceCount();
+                    draw_call.draw_data_index    = draw_data_index;
                 }
             }
 
@@ -1261,6 +1395,54 @@ namespace spartan
                 }
                 return a.distance_squared < b.distance_squared;
             });
+        }
+
+        // populate gpu-driven indirect draw buffers for opaque, non-tessellated, non-instanced draws
+        // the compute cull shader will compact these into a contiguous output based on visibility
+        {
+            m_indirect_draw_count = 0;
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& dc = m_draw_calls[i];
+                Renderable* renderable      = dc.renderable;
+                Material* material          = renderable->GetMaterial();
+
+                // only opaque, non-tessellated, non-instanced, non-alpha-tested draws go through the indirect path
+                // instanced draws need per-renderable instance buffers (global instance buffer is future work)
+                // tessellated draws need a different PSO
+                // alpha-tested draws need a per-draw pixel shader with discard
+                if (!material || material->IsTransparent())
+                    continue;
+                if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
+                    continue;
+                if (dc.instance_count > 1)
+                    continue;
+                if (material->IsAlphaTested())
+                    continue;
+
+                uint32_t idx = m_indirect_draw_count++;
+                if (idx >= rhi_max_array_size)
+                    break;
+
+                // indirect draw arguments (matches VkDrawIndexedIndirectCommand)
+                Sb_IndirectDrawArgs& args = m_indirect_draw_args[idx];
+                args.index_count          = renderable->GetIndexCount(dc.lod_index);
+                args.instance_count       = dc.instance_count;
+                args.first_index          = renderable->GetIndexOffset(dc.lod_index);
+                args.vertex_offset        = static_cast<int32_t>(renderable->GetVertexOffset(dc.lod_index));
+                args.first_instance       = dc.instance_index;
+
+                // per-draw data (accessed by draw_id in shaders)
+                // aabb_index points past the prepass aabbs in the shared buffer
+                Sb_DrawData& data       = m_indirect_draw_data[idx];
+                Entity* entity          = renderable->GetEntity();
+                data.transform          = entity->GetMatrix();
+                data.transform_previous = entity->GetMatrixPrevious();
+                data.material_index     = material->GetIndex();
+                data.is_transparent     = 0;
+                data.aabb_index         = m_draw_calls_prepass_count + idx;
+                data.padding            = 0;
+            }
         }
 
         // select occluders by finding the top n largest screen-space bounding boxes

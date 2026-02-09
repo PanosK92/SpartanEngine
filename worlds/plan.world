@@ -1,61 +1,7 @@
 <?xml version="1.0"?>
 <World name="plan" description="NFS Underground 2 starting area blockout - airport parking lot, highway exit, and city entrance">
  <Entities>
-  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="-4.28647 -0.635654 3.39031" rotation="0 0 0 1" scale="1 1 1">
-   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" />
-   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 3 -5" rotation="0.0562033 0.528754 -0.0351198 0.846184" scale="1 1 1">
-    <camera aperture="11" shutter_speed="0.00800000038" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="17" />
-   </Entity>
-  </Entity>
-  <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="0.982287 0 0 0.187381" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="1" color_g="0.72007829" color_b="0.482821107" temperature="3200" intensity="8" intensity_lum="10000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" />
-  </Entity>
-  <Entity name="city_building_1" id="15352894423597569100" active="true" position="240 20 30" rotation="0 0 0 1" scale="15 40 15">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="player_car" id="2411005043703651744" active="true" position="-0.5 0.9 0" rotation="0 0 0 1" scale="1 1 1">
-   <prefab type="car" type="car" drivable="true" telemetry="true" camera_follows="true" />
-  </Entity>
-  <Entity name="city_building_2" id="15352894423597569101" active="true" position="260 30 25" rotation="0 0 0 1" scale="12 60 12">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="city_building_6_skyscraper" id="15352894423597569105" active="true" position="300 45 40" rotation="0 0 0 1" scale="16 90 16">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
   <Entity name="city_street_barrier_1" id="15352894423597569110" active="true" position="240 0.4 15" rotation="0 0 0 1" scale="80 0.8 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="gas_station_canopy" id="15352894423597569120" active="true" position="230 4 5" rotation="0 0 0 1" scale="12 1 8">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="gas_station_pillar_1" id="15352894423597569121" active="true" position="224 2 5" rotation="0 0 0 1" scale="1 4 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="city_building_4" id="15352894423597569103" active="true" position="255 25 50" rotation="0 0 0 1" scale="10 50 10">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="gas_pump_2" id="15352894423597569125" active="true" position="232 1 5" rotation="0 0 0 1" scale="1 2 0.5">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
@@ -400,43 +346,43 @@
     </renderable>
    </Entity>
   </Entity>
-  <Entity name="gas_station_pillar_2" id="15352894423597569122" active="true" position="236 2 5" rotation="0 0 0 1" scale="1 4 1">
+  <Entity name="road_spline" id="10358794943034623506" active="true" position="81.9 0.5 102.4" rotation="0 -0.675137 0 0.737693" scale="1 1 1">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="4" />
+   <renderable mesh_name="spline_road_mesh" sub_mesh_index="0" material_name="road" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+   <spline closed_loop="false" resolution="20" road_width="8" has_road_mesh="true" />
+   <Entity name="spline_point_0" id="14702206989428608164" active="true" position="-45.6305 -1 101.63" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_1" id="11297507697828057160" active="true" position="-2.63734 0 67.6777" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_2" id="11468542217116009539" active="true" position="17.3038 1.9 -133.447" rotation="0 0 0 1" scale="1 1 1" />
+   <Entity name="spline_point_3" id="4150127730243586464" active="true" position="-11.183 -0.6 -164.619" rotation="0 0 0 1" scale="1 1 1" />
+  </Entity>
+  <Entity name="gas_station_canopy" id="15352894423597569120" active="true" position="230 4 5" rotation="0 0 0 1" scale="12 1 8">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </renderable>
   </Entity>
-  <Entity name="city_building_5" id="15352894423597569104" active="true" position="275 12 55" rotation="0 0 0 1" scale="14 24 14">
+  <Entity name="physics_body_camera" id="17520870369699484921" active="true" position="27.1626 22.7274 134.105" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.800000012" restitution="0.100000001" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" />
+   <Entity name="component_camera" id="17524583551347340245" active="true" position="0 3 -5" rotation="0.130697 0.855846 -0.26254 0.426051" scale="1 1 1">
+    <camera aperture="11" shutter_speed="0.00800000038" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="17" />
+   </Entity>
+  </Entity>
+  <Entity name="gas_station_pillar_1" id="15352894423597569121" active="true" position="224 2 5" rotation="0 0 0 1" scale="1 4 1">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </renderable>
   </Entity>
-  <Entity name="city_building_3" id="15352894423597569102" active="true" position="280 15 35" rotation="0 0 0 1" scale="18 30 18">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="gas_station_store" id="15352894423597569123" active="true" position="230 2 -2" rotation="0 0 0 1" scale="8 4 4">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="gas_pump_1" id="15352894423597569124" active="true" position="228 1 5" rotation="0 0 0 1" scale="1 2 0.5">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
-   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </renderable>
-  </Entity>
-  <Entity name="city_street_barrier_2" id="15352894423597569111" active="true" position="206.4 0.4 -4.8" rotation="0 1 0 0.000871244" scale="40 0.8 1">
+  <Entity name="city_building_1" id="15352894423597569100" active="true" position="240 20 30" rotation="0 0 0 1" scale="15 40 15">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
    <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </renderable>
   </Entity>
   <Entity name="Highway" id="7850748446432689067" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="project/Scripts\new_lua_script.lua" />
    <Entity name="billboard_pole" id="15352894423597569130" active="true" position="100 6 90" rotation="0 0 0 1" scale="2 12 2">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
@@ -509,13 +455,13 @@
      <Instances />
     </renderable>
    </Entity>
-   <Entity name="onramp_barrier_2" id="15352894423597569061" active="true" position="-4 0.6 59.6" rotation="0 0.0184981 0 0.999829" scale="2 1.2 20">
+   <Entity name="onramp_barrier_2" id="15352894423597569061" active="true" position="-3.8 0.6 62.7" rotation="0 -0.00942604 0 0.999956" scale="2 1.2 26">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </renderable>
    </Entity>
-   <Entity name="onramp_barrier_1" id="15352894423597569060" active="true" position="6.8 0.5 78" rotation="0 0.495672 0 0.86851" scale="2 1.2 28">
+   <Entity name="onramp_barrier_1" id="15352894423597569060" active="true" position="8.1 0.5 82.6" rotation="0 0.495672 0 0.86851" scale="2 1.2 28">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
     <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
@@ -534,9 +480,75 @@
     </renderable>
    </Entity>
   </Entity>
+  <Entity name="city_building_2" id="15352894423597569101" active="true" position="260 30 25" rotation="0 0 0 1" scale="12 60 12">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="gas_pump_2" id="15352894423597569125" active="true" position="232 1 5" rotation="0 0 0 1" scale="1 2 0.5">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="city_street_barrier_2" id="15352894423597569111" active="true" position="206.4 0.4 -4.8" rotation="0 1 0 0.000871244" scale="40 0.8 1">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="city_building_6_skyscraper" id="15352894423597569105" active="true" position="300 45 40" rotation="0 0 0 1" scale="16 90 16">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="light_directional" id="17063083112552285226" active="true" position="0 0 0" rotation="0.982287 0 0 0.187381" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="1" color_g="0.72007829" color_b="0.482821107" temperature="3200" intensity="8" intensity_lum="10000" range="3.40282347e+38" angle="0.52359879" index="0" preset="2" area_width="1" area_height="1" />
+  </Entity>
+  <Entity name="gas_station_store" id="15352894423597569123" active="true" position="230 2 -2" rotation="0 0 0 1" scale="8 4 4">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="gas_station_pillar_2" id="15352894423597569122" active="true" position="236 2 5" rotation="0 0 0 1" scale="1 4 1">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="city_building_4" id="15352894423597569103" active="true" position="255 25 50" rotation="0 0 0 1" scale="10 50 10">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="city_building_3" id="15352894423597569102" active="true" position="280 15 35" rotation="0 0 0 1" scale="18 30 18">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
   <Entity name="floor" id="17522025712625852117" active="true" position="0 0.1 0" rotation="0 0.707107 0 0.707107" scale="1000 1.2 1000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" />
    <renderable mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="gas_pump_1" id="15352894423597569124" active="true" position="228 1 5" rotation="0 0 0 1" scale="1 2 0.5">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </renderable>
+  </Entity>
+  <Entity name="player_car" id="2411005043703651744" active="true" position="-0.5 0.9 0" rotation="0 0 0 1" scale="1 1 1">
+   <prefab type="car" type="car" drivable="true" telemetry="true" camera_follows="true" />
+  </Entity>
+  <Entity name="city_building_5" id="15352894423597569104" active="true" position="275 12 55" rotation="0 0 0 1" scale="14 24 14">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" />
+   <renderable mesh_name="standard_cube" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </renderable>
   </Entity>

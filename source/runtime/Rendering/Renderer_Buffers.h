@@ -93,16 +93,17 @@ namespace spartan
         }
     };
 
-    // 128 byte push constant buffer - updates per pass/draw
+    // push constant buffer - updates per pass/draw
+    // the draw_index references a Sb_DrawData entry in the bindless draw data buffer,
+    // which holds per-draw transforms and material info. this keeps push constants small
+    // and consistent with the engine's fully bindless architecture.
     struct Pcb_Pass
     {
-        math::Matrix transform = math::Matrix::Identity;
-        math::Matrix m_value   = math::Matrix::Identity;
-
-        void set_transform_previous(const math::Matrix& transform_previous)
-        {
-            m_value = transform_previous;
-        }
+        uint32_t draw_index = 0;
+        float padding1      = 0;
+        float padding2      = 0;
+        float padding3      = 0;
+        math::Matrix m_value = math::Matrix::Identity;
 
         void set_f2_value(float x, float y)
         {
@@ -225,5 +226,26 @@ namespace spartan
         uint32_t index_offset;
         uint32_t vertex_count;
         uint32_t index_count;
+    };
+
+    // gpu-driven indirect draw arguments (matches VkDrawIndexedIndirectCommand layout)
+    struct Sb_IndirectDrawArgs
+    {
+        uint32_t index_count    = 0;
+        uint32_t instance_count = 0;
+        uint32_t first_index    = 0;
+        int32_t  vertex_offset  = 0;
+        uint32_t first_instance = 0;
+    };
+
+    // per-draw data for gpu-driven rendering (indexed by draw_id in shaders)
+    struct Sb_DrawData
+    {
+        math::Matrix transform;          // current world transform
+        math::Matrix transform_previous; // previous frame world transform
+        uint32_t material_index = 0;     // index into the bindless material parameters array
+        uint32_t is_transparent = 0;     // transparency flag
+        uint32_t aabb_index     = 0;     // index into the aabb buffer for culling
+        uint32_t padding        = 0;
     };
 }
