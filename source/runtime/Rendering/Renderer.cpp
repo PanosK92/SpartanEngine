@@ -1266,7 +1266,7 @@ namespace spartan
                 const Renderer_DrawCall& dc = m_draw_calls[i];
                 Material* material          = dc.renderable->GetMaterial();
 
-                // must match the filtering in UpdateDrawCalls
+                // must match the filtering in UpdateDrawCalls exactly
                 if (!material || material->IsTransparent())
                     continue;
                 if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
@@ -1274,6 +1274,8 @@ namespace spartan
                 if (dc.instance_count > 1)
                     continue;
                 if (material->IsAlphaTested())
+                    continue;
+                if (static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back)
                     continue;
 
                 uint32_t aabb_slot = m_draw_calls_prepass_count + indirect_idx;

@@ -129,7 +129,9 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             float furthest_z = min(min(min(min(depth.x, depth.y), depth.z), depth.w), depth_center);
 
             // visibility test (reverse z: closer objects have larger z)
-            is_visible = closest_box_z > furthest_z;
+            // conservative bias prevents objects at the exact occlusion boundary from flickering
+            // due to per-frame floating point variations in the hi-z depth
+            is_visible = closest_box_z > furthest_z - 0.0001;
         }
     }
 
