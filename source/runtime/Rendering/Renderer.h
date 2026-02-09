@@ -252,6 +252,10 @@ namespace spartan
         static void UpdateLights(RHI_CommandList* cmd_lis);
         static void UpdatedBoundingBoxes(RHI_CommandList* cmd_list);
 
+        // returns true if a draw must go through the cpu-driven path (tessellated, instanced, alpha-tested, double-sided)
+        // the gpu-driven indirect path only handles opaque, back-face-culled, non-instanced, non-tessellated draws
+        static bool IsCpuDrivenDraw(const Renderer_DrawCall& draw_call, Material* material);
+
         // misc
         static void AddLinesToBeRendered();
         static void UpdatePersistentLines();
@@ -281,6 +285,37 @@ namespace spartan
         static std::array<Sb_Light, rhi_max_array_size> m_bindless_lights;
         static std::array<Sb_Aabb, rhi_max_array_size> m_bindless_aabbs;
         static bool m_bindless_samplers_dirty;
+
+        // one-shot and feature-toggle state, consolidated for easy reset on reinitialize
+        struct PassState
+        {
+            // one-shot initialization (run once, never again unless reset)
+            bool brdf_lut_produced       = false;
+            bool atmosphere_lut_produced = false;
+            bool cloud_noise_produced    = false;
+            bool draw_data_descriptor    = false;
+
+            // feature-toggle clear flags (set when feature disabled, reset when re-enabled)
+            bool cleared_reflections     = false;
+            bool cleared_rt_reflections  = false;
+            bool cleared_rt_shadows      = false;
+            bool cleared_restir          = false;
+
+            // skysphere convergence tracking
+            bool     sky_first_frame           = true;
+            bool     sky_had_directional_light = false;
+            float    sky_last_coverage         = -1.0f;
+            uint32_t sky_frames_remaining      = 0;
+
+            // vrs
+            RHI_Texture* vrs_last_cleared_texture = nullptr;
+
+            void Reset()
+            {
+                *this = PassState();
+            }
+        };
+        static PassState m_pass_state;
 
         // misc
         static Cb_Frame m_cb_frame_cpu;

@@ -465,14 +465,27 @@ namespace spartan
         return false;
     }
 
-    void RHI_Device::UpdateBindlessResources(
-        array<RHI_Texture*, rhi_max_array_size>* material_textures,
-        RHI_Buffer* material_parameters,
-        RHI_Buffer* light_parameters,
-        const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
-        RHI_Buffer* aabbs,
-        RHI_Buffer* draw_data
-    )
+    void RHI_Device::UpdateBindlessMaterials(array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
+    {
+        // todo: implement bindless resources for d3d12
+    }
+
+    void RHI_Device::UpdateBindlessLights(RHI_Buffer* parameters)
+    {
+        // todo: implement bindless resources for d3d12
+    }
+
+    void RHI_Device::UpdateBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers)
+    {
+        // todo: implement bindless resources for d3d12
+    }
+
+    void RHI_Device::UpdateBindlessAABBs(RHI_Buffer* buffer)
+    {
+        // todo: implement bindless resources for d3d12
+    }
+
+    void RHI_Device::UpdateBindlessDrawData(RHI_Buffer* buffer)
     {
         // todo: implement bindless resources for d3d12
     }

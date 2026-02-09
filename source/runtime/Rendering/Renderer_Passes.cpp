@@ -82,11 +82,10 @@ namespace spartan
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
         // generate BRDF LUT (once per session)
-        static bool brdf_produced = false;
-        if (!brdf_produced)
+        if (!m_pass_state.brdf_lut_produced)
         {
             Pass_Lut_BrdfSpecular(cmd_list_graphics_present);
-            brdf_produced = true;
+            m_pass_state.brdf_lut_produced = true;
         }
 
         // generate cloud noise textures (once at startup, before skysphere needs them)
@@ -104,10 +103,6 @@ namespace spartan
             Light* directional_light = World::GetDirectionalLight();
             
             {
-                static bool first_frame = true;
-                static bool had_directional_light = false;
-                static float last_coverage = -1.0f;
-                static uint32_t frames_remaining = 0; // temporal convergence counter
                 const uint32_t temporal_convergence_frames = 8; // frames needed for checkerboard + temporal blend
                 
                 bool has_directional_light = directional_light != nullptr;
@@ -119,37 +114,36 @@ namespace spartan
                 // 3. cloud coverage changed
                 // 4. temporal convergence still in progress
                 bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) || 
-                                     (has_directional_light != had_directional_light);
-                bool cloud_params_changed = current_coverage != last_coverage;
+                                     (has_directional_light != m_pass_state.sky_had_directional_light);
+                bool cloud_params_changed = current_coverage != m_pass_state.sky_last_coverage;
                 
                 // reset convergence counter when something changes
-                if (first_frame || light_changed || cloud_params_changed)
+                if (m_pass_state.sky_first_frame || light_changed || cloud_params_changed)
                 {
-                    frames_remaining = temporal_convergence_frames;
+                    m_pass_state.sky_frames_remaining = temporal_convergence_frames;
                 }
                 
                 // update if converging or something changed
-                update_skysphere = frames_remaining > 0;
+                update_skysphere = m_pass_state.sky_frames_remaining > 0;
                 
                 // decrement convergence counter
-                if (frames_remaining > 0)
+                if (m_pass_state.sky_frames_remaining > 0)
                 {
-                    frames_remaining--;
+                    m_pass_state.sky_frames_remaining--;
                 }
                 
-                first_frame = false;
-                had_directional_light = has_directional_light;
-                last_coverage = current_coverage;
+                m_pass_state.sky_first_frame           = false;
+                m_pass_state.sky_had_directional_light = has_directional_light;
+                m_pass_state.sky_last_coverage         = current_coverage;
             }
             
             if (update_skysphere)
             {
-                // Only update LUT when light changes (it's expensive)
-                static bool lut_generated = false;
-                if (!lut_generated || (directional_light && directional_light->NeedsSkysphereUpdate()))
+                // only update LUT when light changes (it's expensive)
+                if (!m_pass_state.atmosphere_lut_produced || (directional_light && directional_light->NeedsSkysphereUpdate()))
                 {
                     Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
-                    lut_generated = true;
+                    m_pass_state.atmosphere_lut_produced = true;
                 }
                 Pass_Skysphere(cmd_list_graphics_present);
             }
@@ -232,11 +226,10 @@ namespace spartan
 
         // clear to full rate (0 = 1x1) to ensure safe initial values when vrs is first enabled
         // we track this per-texture since render targets can be recreated on resolution changes
-        static RHI_Texture* last_cleared_texture = nullptr;
-        if (tex_out != last_cleared_texture)
+        if (tex_out != m_pass_state.vrs_last_cleared_texture)
         {
             cmd_list->ClearTexture(tex_out, Color(0.0f, 0.0f, 0.0f, 0.0f));
-            last_cleared_texture = tex_out;
+            m_pass_state.vrs_last_cleared_texture = tex_out;
         }
 
         cmd_list->BeginTimeblock("variable_rate_shading");
@@ -342,9 +335,10 @@ namespace spartan
 
                         // push constants
                         m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
+                        m_pcb_pass_cpu.is_transparent = 0;
+                        m_pcb_pass_cpu.material_index = material->GetIndex();
                         m_pcb_pass_cpu.set_f3_value(material->HasTextureOfType(MaterialTextureType::Color) ? 1.0f : 0.0f);
                         m_pcb_pass_cpu.set_f3_value2(static_cast<float>(light->GetIndex()), static_cast<float>(array_index), 0.0f);
-                        m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
                         cmd_list->PushConstants(m_pcb_pass_cpu);
     
                         // draw
@@ -556,18 +550,16 @@ namespace spartan
                         continue;
 
                     // skip draws already handled by the indirect path
-                    bool is_tessellated  = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                    bool is_instanced    = draw_call.instance_count > 1;
-                    bool is_alpha_tested = material->IsAlphaTested();
-                    bool is_double_sided = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
-                    if (!is_tessellated && !is_instanced && !is_alpha_tested && !is_double_sided)
+                    if (!IsCpuDrivenDraw(draw_call, material))
                         continue;
 
                     // alpha testing & tessellation
                     {
-                        RHI_Shader* ps   = is_alpha_tested ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr;
-                        RHI_Shader* hs   = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
-                        RHI_Shader* ds   = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
+                        bool is_alpha_tested = material->IsAlphaTested();
+                        bool is_tessellated  = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+                        RHI_Shader* ps       = is_alpha_tested ? GetShader(Renderer_Shader::depth_prepass_alpha_test_p) : nullptr;
+                        RHI_Shader* hs       = is_tessellated ? GetShader(Renderer_Shader::tessellation_h) : nullptr;
+                        RHI_Shader* ds       = is_tessellated ? GetShader(Renderer_Shader::tessellation_d) : nullptr;
 
                         if (!pipeline_set || pso.shaders[RHI_Shader_Type::Pixel] != ps || pso.shaders[RHI_Shader_Type::Hull] != hs || pso.shaders[RHI_Shader_Type::Domain] != ds)
                         {
@@ -583,8 +575,9 @@ namespace spartan
                     {
                         bool has_color_texture = material->HasTextureOfType(MaterialTextureType::Color);
                         m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
+                        m_pcb_pass_cpu.is_transparent = 0;
+                        m_pcb_pass_cpu.material_index = material->GetIndex();
                         m_pcb_pass_cpu.set_f3_value(0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
-                        m_pcb_pass_cpu.set_is_transparent_and_material_index(false, material->GetIndex());
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                     }
 
@@ -702,10 +695,10 @@ namespace spartan
                 pso.render_target_color_textures[2]  = tex_material;
                 pso.render_target_color_textures[3]  = tex_velocity;
                 pso.render_target_depth_texture      = tex_depth;
-                pso.clear_color[0]                   = is_transparent_pass ? rhi_color_load : rhi_color_load;
-                pso.clear_color[1]                   = is_transparent_pass ? rhi_color_load : rhi_color_load;
-                pso.clear_color[2]                   = is_transparent_pass ? rhi_color_load : rhi_color_load;
-                pso.clear_color[3]                   = is_transparent_pass ? rhi_color_load : rhi_color_load;
+                pso.clear_color[0]                   = rhi_color_load;
+                pso.clear_color[1]                   = rhi_color_load;
+                pso.clear_color[2]                   = rhi_color_load;
+                pso.clear_color[3]                   = rhi_color_load;
 
                 bool pipeline_set = false;
 
@@ -729,11 +722,7 @@ namespace spartan
                         if (material->IsTransparent())
                             continue;
 
-                        bool is_tessellated  = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
-                        bool is_instanced    = draw_call.instance_count > 1;
-                        bool is_alpha_tested = material->IsAlphaTested();
-                        bool is_double_sided = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
-                        if (!is_tessellated && !is_instanced && !is_alpha_tested && !is_double_sided)
+                        if (!IsCpuDrivenDraw(draw_call, material))
                             continue; // already drawn by indirect path
                     }
 
@@ -755,8 +744,9 @@ namespace spartan
                     // pass constants
                     {
                         Entity* entity = renderable->GetEntity();
-                        m_pcb_pass_cpu.draw_index = draw_call.draw_data_index;
-                        m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass, material->GetIndex());
+                        m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
+                        m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
+                        m_pcb_pass_cpu.material_index = material->GetIndex();
                         cmd_list->PushConstants(m_pcb_pass_cpu);
 
                         entity->SetMatrixPrevious(entity->GetMatrix());
@@ -817,8 +807,6 @@ namespace spartan
 
     void Renderer::Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list)
     {
-        static bool cleared = false;
-
         RHI_Texture* tex_frame             = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::reflections);
         RHI_Texture* tex_refraction_source = GetRenderTarget(Renderer_RenderTarget::frame_render_opaque);
@@ -827,11 +815,11 @@ namespace spartan
         {
             bool use_ray_traced = cvar_ray_traced_reflections.GetValueAs<bool>();
 
-             if (!cleared && !use_ray_traced)
+            if (!m_pass_state.cleared_reflections && !use_ray_traced)
             {
                 // only clear if neither ssr nor ray traced reflections wrote to this texture
                 cmd_list->ClearTexture(tex_ssr, Color::standard_transparent);
-                cleared = true;
+                m_pass_state.cleared_reflections = true;
             }
 
             cmd_list->InsertBarrier(tex_frame, RHI_BarrierType::EnsureReadThenWrite);
@@ -873,17 +861,16 @@ namespace spartan
             return;
 
         // clear reflections once when disabled, then skip
-        static bool cleared = false;
         if (!cvar_ray_traced_reflections.GetValueAs<bool>() || !tex_reflections_position)
         {
-            if (!cleared)
+            if (!m_pass_state.cleared_rt_reflections)
             {
                 cmd_list->ClearTexture(tex_reflections, Color::standard_black);
-                cleared = true;
+                m_pass_state.cleared_rt_reflections = true;
             }
             return;
         }
-        cleared = false;
+        m_pass_state.cleared_rt_reflections = false;
 
         cmd_list->BeginTimeblock("ray_traced_reflections");
         {
@@ -1028,17 +1015,16 @@ namespace spartan
             return;
         
         // clear once if disabled
-        static bool cleared = false;
         if (!cvar_ray_traced_shadows.GetValueAs<bool>())
         {
-            if (!cleared)
+            if (!m_pass_state.cleared_rt_shadows)
             {
                 cmd_list->ClearTexture(tex_shadows, Color::standard_white);
-                cleared = true;
+                m_pass_state.cleared_rt_shadows = true;
             }
             return;
         }
-        cleared = false;
+        m_pass_state.cleared_rt_shadows = false;
         
         // validate ray tracing support
         if (!RHI_Device::IsSupportedRayTracing())
@@ -1111,17 +1097,16 @@ namespace spartan
             return;
 
         // clear output once when disabled, then skip
-        static bool cleared = false;
         if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing() || !reservoir0)
         {
-            if (!cleared)
+            if (!m_pass_state.cleared_restir)
             {
                 cmd_list->ClearTexture(tex_gi, Color::standard_black);
-                cleared = true;
+                m_pass_state.cleared_restir = true;
             }
             return;
         }
-        cleared = false;
+        m_pass_state.cleared_restir = false;
             
         RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
         if (!tlas)
@@ -1623,7 +1608,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_volumetric);
     
             // push constants
-            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
+            m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_count_active_lights), cvar_fog.GetValue());
             cmd_list->PushConstants(m_pcb_pass_cpu);
     
@@ -1657,7 +1642,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
 
             // push pass constants
-            m_pcb_pass_cpu.set_is_transparent_and_material_index(is_transparent_pass);
+            m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
             m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue(), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -1781,9 +1766,8 @@ namespace spartan
 
     void Renderer::Pass_CloudNoise(RHI_CommandList* cmd_list)
     {
-        // Generate 3D noise textures for volumetric clouds (only once at startup)
-        static bool noise_generated = false;
-        if (noise_generated)
+        // generate 3d noise textures for volumetric clouds (only once at startup)
+        if (m_pass_state.cloud_noise_produced)
             return;
 
         RHI_Texture* tex_shape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
@@ -1828,7 +1812,7 @@ namespace spartan
         }
         cmd_list->EndTimeblock();
 
-        noise_generated = true;
+        m_pass_state.cloud_noise_produced = true;
     }
 
     void Renderer::Pass_CloudShadow(RHI_CommandList* cmd_list)

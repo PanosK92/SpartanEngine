@@ -61,6 +61,7 @@ namespace spartan
     // constant and push constant buffers
     Cb_Frame Renderer::m_cb_frame_cpu;
     Pcb_Pass Renderer::m_pcb_pass_cpu;
+    Renderer::PassState Renderer::m_pass_state;
 
     // bindless draw data
     array<Sb_DrawData, renderer_max_draw_calls> Renderer::m_draw_data_cpu;
@@ -525,27 +526,27 @@ namespace spartan
                 {
                     UpdateShadowAtlas();
                     UpdateLights(m_cmd_list_present);
-                    RHI_Device::UpdateBindlessResources(nullptr, nullptr, GetBuffer(Renderer_Buffer::LightParameters), nullptr, nullptr);
+                    RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
                 }
 
                 // materials
                 if (initialize || World::HaveMaterialsChangedThisFrame())
                 {
                     UpdateMaterials(m_cmd_list_present);
-                    RHI_Device::UpdateBindlessResources(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters), nullptr, nullptr, nullptr);
+                    RHI_Device::UpdateBindlessMaterials(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters));
                 }
 
                 // samplers
                 if (m_bindless_samplers_dirty)
                 {
-                    RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, &Renderer::GetSamplers(), nullptr);
+                    RHI_Device::UpdateBindlessSamplers(&Renderer::GetSamplers());
                     m_bindless_samplers_dirty = false;
                 }
 
                 // world-space aabbs, always update those as they reflect in-game entites
                 {
                     UpdatedBoundingBoxes(m_cmd_list_present);
-                    RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::AABBs));
+                    RHI_Device::UpdateBindlessAABBs(GetBuffer(Renderer_Buffer::AABBs));
                 }
 
                 // draw data - upload per-draw transforms and material info to the bindless buffer
@@ -558,11 +559,10 @@ namespace spartan
                     }
 
                     // the descriptor only needs to be written once since the buffer is persistent
-                    static bool draw_data_descriptor_set = false;
-                    if (!draw_data_descriptor_set)
+                    if (!m_pass_state.draw_data_descriptor)
                     {
-                        RHI_Device::UpdateBindlessResources(nullptr, nullptr, nullptr, nullptr, nullptr, GetBuffer(Renderer_Buffer::DrawData));
-                        draw_data_descriptor_set = true;
+                        RHI_Device::UpdateBindlessDrawData(GetBuffer(Renderer_Buffer::DrawData));
+                        m_pass_state.draw_data_descriptor = true;
                     }
                 }
 
@@ -946,6 +946,15 @@ namespace spartan
     uint64_t Renderer::GetFrameNumber()
     {
         return frame_num;
+    }
+
+    bool Renderer::IsCpuDrivenDraw(const Renderer_DrawCall& draw_call, Material* material)
+    {
+        bool is_tessellated  = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
+        bool is_instanced    = draw_call.instance_count > 1;
+        bool is_alpha_tested = material->IsAlphaTested();
+        bool is_double_sided = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
+        return is_tessellated || is_instanced || is_alpha_tested || is_double_sided;
     }
 
     void Renderer::SetCommonTextures(RHI_CommandList* cmd_list)
@@ -1409,20 +1418,11 @@ namespace spartan
                 Renderable* renderable      = dc.renderable;
                 Material* material          = renderable->GetMaterial();
 
-                // only opaque, non-tessellated, non-instanced, non-alpha-tested, back-face-culled draws go through the indirect path
-                // instanced draws need per-renderable instance buffers (global instance buffer is future work)
-                // tessellated draws need a different PSO
-                // alpha-tested draws need a per-draw pixel shader with discard
-                // double-sided draws need per-draw cull mode which indirect doesn't support
+                // only opaque, non-tessellated, non-instanced, non-alpha-tested, back-face-culled draws
+                // go through the indirect path - everything else falls back to the cpu-driven loop
                 if (!material || material->IsTransparent())
                     continue;
-                if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
-                    continue;
-                if (dc.instance_count > 1)
-                    continue;
-                if (material->IsAlphaTested())
-                    continue;
-                if (static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back)
+                if (IsCpuDrivenDraw(dc, material))
                     continue;
 
                 uint32_t idx = m_indirect_draw_count++;

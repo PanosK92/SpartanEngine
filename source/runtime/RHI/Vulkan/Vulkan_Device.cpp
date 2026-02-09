@@ -1933,48 +1933,49 @@ namespace spartan
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 
-    void RHI_Device::UpdateBindlessResources(
-        array<RHI_Texture*, rhi_max_array_size>* material_textures,
-        RHI_Buffer* material_parameters,
-        RHI_Buffer* light_parameters,
-        const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
-        RHI_Buffer* bindless_aabbs,
-        RHI_Buffer* draw_data
-    )
+    void RHI_Device::UpdateBindlessMaterials(array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters)
     {
-        // samplers
+        if (textures)
+        {
+            descriptors::bindless::update_textures(textures);
+        }
+
+        if (parameters)
+        {
+            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::MaterialParameters, parameters);
+        }
+    }
+
+    void RHI_Device::UpdateBindlessLights(RHI_Buffer* parameters)
+    {
+        if (parameters)
+        {
+            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::LightParameters, parameters);
+        }
+    }
+
+    void RHI_Device::UpdateBindlessSamplers(const array<shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers)
+    {
         if (samplers)
         {
             descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersComparison, &(*samplers)[0], 1);
             descriptors::bindless::update_samplers(RHI_Device_Bindless_Resource::SamplersRegular, &(*samplers)[1], 8);
         }
+    }
 
-        // lights
-        if (light_parameters)
+    void RHI_Device::UpdateBindlessAABBs(RHI_Buffer* buffer)
+    {
+        if (buffer)
         {
-            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::LightParameters, light_parameters);
+            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::Aabbs, buffer);
         }
+    }
 
-        // materials (textures and parameters)
-        if (material_textures)
+    void RHI_Device::UpdateBindlessDrawData(RHI_Buffer* buffer)
+    {
+        if (buffer)
         {
-            descriptors::bindless::update_textures(material_textures);
-        }
-        if (material_parameters)
-        {
-            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::MaterialParameters, material_parameters);
-        }
-
-        // aabbs
-        if (bindless_aabbs)
-        {
-            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::Aabbs, bindless_aabbs);
-        }
-
-        // draw data
-        if (draw_data)
-        {
-            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::DrawData, draw_data);
+            descriptors::bindless::update_buffer(RHI_Device_Bindless_Resource::DrawData, buffer);
         }
     }
 

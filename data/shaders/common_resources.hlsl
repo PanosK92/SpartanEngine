@@ -80,13 +80,17 @@ struct FrameBufferData
     float padding4;
 };
 
-// push constant buffer - carries a draw_index into the bindless draw data
-// buffer and a generic values matrix for per-pass parameters
+// push constant buffer - carries per-draw and per-pass data
+// draw_index indexes into the bindless draw data buffer for transforms and material info
+// material_index and is_transparent are pass-level state for compute shaders
+// values[] carries generic per-pass parameters (3 x float4)
 struct PassBufferData
 {
     uint   draw_index;
-    float3 padding_pcb;
-    matrix values;
+    uint   material_index;
+    uint   is_transparent;
+    uint   padding;
+    float4 values[3];
 };
 
 // struct which forms the bindless material parameters array
@@ -285,15 +289,19 @@ static DrawData _draw;
 matrix pass_get_transform()          { return _draw.transform; }
 matrix pass_get_transform_previous() { return _draw.transform_previous; }
 uint   pass_get_material_index()     { return _draw.material_index; }
-bool   pass_is_transparent()         { return _draw.is_transparent != 0; }
-bool   pass_is_opaque()              { return !pass_is_transparent(); }
 
-// generic pass parameter accessors - always read from push constant values
-float2 pass_get_f2_value()           { return float2(buffer_pass.values._m23, buffer_pass.values._m30); }
-float3 pass_get_f3_value()           { return float3(buffer_pass.values._m00, buffer_pass.values._m01, buffer_pass.values._m02); }
-float3 pass_get_f3_value2()          { return float3(buffer_pass.values._m20, buffer_pass.values._m21, buffer_pass.values._m31); }
-float4 pass_get_f4_value()           { return float4(buffer_pass.values._m10, buffer_pass.values._m11, buffer_pass.values._m12, buffer_pass.values._m33); }
-// _m32 is available for use
+// pass-level state - read from push constant (works in both raster and compute shaders)
+bool pass_is_transparent() { return buffer_pass.is_transparent != 0; }
+bool pass_is_opaque()      { return buffer_pass.is_transparent == 0; }
+
+// generic pass parameter accessors - read from push constant values[]
+// values[0].xyz = f3_value, values[0].w = f2_value.x
+// values[1].xyz = f3_value2, values[1].w = f2_value.y
+// values[2]     = f4_value
+float3 pass_get_f3_value()  { return buffer_pass.values[0].xyz; }
+float3 pass_get_f3_value2() { return buffer_pass.values[1].xyz; }
+float4 pass_get_f4_value()  { return buffer_pass.values[2]; }
+float2 pass_get_f2_value()  { return float2(buffer_pass.values[0].w, buffer_pass.values[1].w); }
 
 // helper to populate _draw from the appropriate source
 void pass_load_draw_data_from_buffer()          { _draw = draw_data[buffer_pass.draw_index]; }

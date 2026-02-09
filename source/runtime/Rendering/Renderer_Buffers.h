@@ -94,72 +94,35 @@ namespace spartan
     };
 
     // push constant buffer - updates per pass/draw
-    // the draw_index references a Sb_DrawData entry in the bindless draw data buffer,
-    // which holds per-draw transforms and material info. this keeps push constants small
-    // and consistent with the engine's fully bindless architecture.
+    // draw_index references a Sb_DrawData entry in the bindless draw data buffer,
+    // which holds per-draw transforms and material info. material_index and
+    // is_transparent are pass-level state used by compute shaders (lighting, composition)
+    // that don't have per-draw data. the float array carries generic per-pass parameters.
     struct Pcb_Pass
     {
-        uint32_t draw_index = 0;
-        float padding1      = 0;
-        float padding2      = 0;
-        float padding3      = 0;
-        math::Matrix m_value = math::Matrix::Identity;
+        uint32_t draw_index     = 0;
+        uint32_t material_index = 0;
+        uint32_t is_transparent = 0;
+        uint32_t padding        = 0;
 
-        void set_f2_value(float x, float y)
-        {
-            m_value.m23 = x;
-            m_value.m30 = y;
-        }
+        // generic per-pass parameters, laid out as 3 x float4:
+        // v[0..2]  = f3_value  (e.g. light count, fog, mip level)
+        // v[3]     = f2_value.x
+        // v[4..6]  = f3_value2 (e.g. light index, texel size)
+        // v[7]     = f2_value.y
+        // v[8..11] = f4_value  (e.g. light coordinate, color)
+        float v[12] = {};
 
-        void set_f3_value(const math::Vector3& value)
-        {
-            m_value.m00 = value.x;
-            m_value.m01 = value.y;
-            m_value.m02 = value.z;
-        };
+        void set_f3_value(const math::Vector3& value) { v[0] = value.x; v[1] = value.y; v[2] = value.z; }
+        void set_f3_value(float x, float y = 0.0f, float z = 0.0f) { v[0] = x; v[1] = y; v[2] = z; }
 
-        void set_f3_value(const float x, const float y = 0.0f, const float z = 0.0f)
-        {
-            m_value.m00 = x;
-            m_value.m01 = y;
-            m_value.m02 = z;
-        };
+        void set_f3_value2(const math::Vector3& value) { v[4] = value.x; v[5] = value.y; v[6] = value.z; }
+        void set_f3_value2(float x, float y, float z) { v[4] = x; v[5] = y; v[6] = z; }
 
-        void set_f3_value2(const math::Vector3& value)
-        {
-            m_value.m20 = value.x;
-            m_value.m21 = value.y;
-            m_value.m31 = value.z;
-        };
+        void set_f4_value(const Color& color) { v[8] = color.r; v[9] = color.g; v[10] = color.b; v[11] = color.a; }
+        void set_f4_value(float x, float y, float z, float w) { v[8] = x; v[9] = y; v[10] = z; v[11] = w; }
 
-        void set_f3_value2(const float x, const float y, const float z)
-        {
-            m_value.m20 = x;
-            m_value.m21 = y;
-            m_value.m31 = z;
-        };
-
-        void set_f4_value(const Color& color)
-        {
-            m_value.m10 = color.r;
-            m_value.m11 = color.g;
-            m_value.m12 = color.b;
-            m_value.m33 = color.a;
-        };
-
-        void set_f4_value(const float x, const float y, const float z, const float w)
-        {
-            m_value.m10 = x;
-            m_value.m11 = y;
-            m_value.m12 = z;
-            m_value.m33 = w;
-        };
-
-        void set_is_transparent_and_material_index(const bool is_transparent, const uint32_t material_index = 0)
-        {
-            m_value.m03 = static_cast<float>(material_index);
-            m_value.m13 = is_transparent ? 1.0f : 0.0f;
-        }
+        void set_f2_value(float x, float y) { v[3] = x; v[7] = y; }
     };
 
     struct Sb_Material
