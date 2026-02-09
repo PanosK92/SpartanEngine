@@ -231,7 +231,7 @@ namespace spartan
     TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,                                                    "render resolution scale (0.5-1.0)",       on_resolution_scale_change);
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,                                                    "automatic resolution scaling");
     // misc                                                                                                                                              
-    TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  0.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");
+    TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");
     TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, negative disables");
     // volumetric clouds
     TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.45f,                                                   "sky coverage (0=clear, 1=overcast)");

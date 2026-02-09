@@ -53,6 +53,11 @@ namespace spartan
         RHI_Image_Layout layout_old = RHI_Image_Layout::Max;
         RHI_Image_Layout layout_new = RHI_Image_Layout::Max;
         bool is_depth               = false;
+
+        // for image sync with per-mip views (pre-captured layouts at insert time)
+        std::array<RHI_Image_Layout, rhi_max_mip_count> per_mip_layouts = {};
+        uint32_t per_mip_count                                          = 0;
+        bool has_per_mip_views                                          = false;
     };
 
     class RHI_CommandList : public SpartanObject

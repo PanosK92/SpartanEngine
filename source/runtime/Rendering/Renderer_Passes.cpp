@@ -429,9 +429,9 @@ namespace spartan
             }
         }
 
-        // build hi-z mip chain (max depth downsample)
+        // build hi-z mip chain (min depth downsample for conservative occlusion with reverse z)
         Pass_Blit(cmd_list, tex_occluders, tex_occluders_hiz);
-        Pass_Downscale(cmd_list, tex_occluders_hiz, Renderer_DownsampleFilter::Max);
+        Pass_Downscale(cmd_list, tex_occluders_hiz, Renderer_DownsampleFilter::Min);
 
         cmd_list->EndTimeblock();
     }
@@ -476,7 +476,6 @@ namespace spartan
             cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawArgsOut));
             cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
             cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawCount));
-            cmd_list->FlushBarriers();
         }
         cmd_list->EndTimeblock();
     }
@@ -610,7 +609,6 @@ namespace spartan
             {
                 tex_depth->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
                 tex_depth_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-                cmd_list->FlushBarriers();
             }
         }
         cmd_list->EndTimeblock();
@@ -777,7 +775,6 @@ namespace spartan
             tex_material->SetLayout(RHI_Image_Layout::General, cmd_list);
             tex_velocity->SetLayout(RHI_Image_Layout::General, cmd_list);
             tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list); // Pass_Sss() reads it as a srv
-            cmd_list->FlushBarriers();
         }
         cmd_list->EndTimeblock();
     }
