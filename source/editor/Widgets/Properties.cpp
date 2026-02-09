@@ -2022,6 +2022,32 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
         //===============================================================
 
+        // preset selector
+        static vector<string> preset_names =
+        {
+            "Custom", "Fire", "Smoke", "Steam", "Sparks", "Dust", "Snow",
+            "Rain", "Confetti", "Fireflies", "Blood", "Magic", "Explosion",
+            "Waterfall", "Embers", "Tire Smoke", "Exhaust"
+        };
+        uint32_t preset_index = static_cast<uint32_t>(particle_system->GetPreset());
+        if (property_combo("Preset", preset_names, &preset_index, "apply a preset to quickly configure the particle system"))
+        {
+            particle_system->ApplyPreset(static_cast<spartan::ParticlePreset>(preset_index));
+
+            // refresh local copies after preset application
+            max_particles    = particle_system->GetMaxParticles();
+            emission_rate    = particle_system->GetEmissionRate();
+            lifetime         = particle_system->GetLifetime();
+            start_speed      = particle_system->GetStartSpeed();
+            start_size       = particle_system->GetStartSize();
+            end_size         = particle_system->GetEndSize();
+            gravity_modifier = particle_system->GetGravityModifier();
+            emission_radius  = particle_system->GetEmissionRadius();
+            m_colorPicker_particle_start->SetColor(particle_system->GetStartColor());
+            m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
+        }
+
+        layout::separator();
         layout::section_header("Emission");
 
         // max particles
