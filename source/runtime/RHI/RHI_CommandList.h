@@ -23,8 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include <atomic>
+#include <unordered_map>
 #include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
+#include "RHI_Buffer.h"
 #include "../Rendering/Renderer_Definitions.h"
 #include "../Core/SpartanObject.h"
 #include <stack>
@@ -95,7 +97,7 @@ namespace spartan
         void Dispatch(RHI_Texture* texture, float resolution_scale = 1.0f);
 
         // trace rays
-        void TraceRays(const uint32_t width, const uint32_t height, RHI_Buffer* shader_binding_table);
+        void TraceRays(const uint32_t width, const uint32_t height);
 
         // blit
         void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
@@ -211,6 +213,9 @@ namespace spartan
         RHI_Queue* m_queue = nullptr;
         bool m_load_depth_render_target = false;
         std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
+
+        // one sbt per pipeline (keyed by pipeline handle) so it's created once and reused
+        std::unordered_map<void*, std::unique_ptr<RHI_Buffer>> m_shader_binding_tables;
 
         // rhi resources
         void* m_rhi_resource                       = nullptr;

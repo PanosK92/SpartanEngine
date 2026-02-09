@@ -57,10 +57,6 @@ namespace spartan
     array<Sb_IndirectDrawArgs, rhi_max_array_size> Renderer::m_indirect_draw_args;
     array<Sb_DrawData, rhi_max_array_size> Renderer::m_indirect_draw_data;
     uint32_t Renderer::m_indirect_draw_count = 0;
-    unique_ptr<RHI_Buffer> Renderer::m_std_reflections;
-    unique_ptr<RHI_Buffer> Renderer::m_std_shadows;
-    unique_ptr<RHI_Buffer> Renderer::m_std_restir;
-
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
@@ -900,15 +896,6 @@ namespace spartan
             pso.shaders[RayHit]        = GetShader(Renderer_Shader::reflections_ray_hit_r);
             cmd_list->SetPipelineState(pso);
 
-            // create or update shader binding table (must be after pipeline is set)
-            if (!m_std_reflections)
-            {
-                uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
-                m_std_reflections = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "reflections_sbt");
-            }
-            // update handles every frame in case pipeline changed (UpdateHandles needs pipeline to be set first)
-            m_std_reflections->UpdateHandles(cmd_list);
-
             // set textures and acceleration structure
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
@@ -931,7 +918,7 @@ namespace spartan
             // trace full screen (match tex resolution)
             uint32_t width  = tex_reflections_position->GetWidth();
             uint32_t height = tex_reflections_position->GetHeight();
-            cmd_list->TraceRays(width, height, m_std_reflections.get());
+            cmd_list->TraceRays(width, height);
 
             // ensure writes complete before the textures are read
             cmd_list->InsertBarrier(tex_reflections_position, RHI_BarrierType::EnsureWriteThenRead);
@@ -1056,15 +1043,6 @@ namespace spartan
             pso.shaders[RayHit]        = shader_hit;
             cmd_list->SetPipelineState(pso);
             
-            // create sbt if needed (once)
-            if (!m_std_shadows)
-            {
-                uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
-                m_std_shadows = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "shadows_sbt");
-            }
-            // update handles every frame in case pipeline changed
-            m_std_shadows->UpdateHandles(cmd_list);
-            
             // set textures and acceleration structure
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
@@ -1075,7 +1053,7 @@ namespace spartan
             // trace full screen
             uint32_t width  = tex_shadows->GetWidth();
             uint32_t height = tex_shadows->GetHeight();
-            cmd_list->TraceRays(width, height, m_std_shadows.get());
+            cmd_list->TraceRays(width, height);
             
             // ensure writes complete before the texture is read
             cmd_list->InsertBarrier(tex_shadows, RHI_BarrierType::EnsureWriteThenRead);
@@ -1146,14 +1124,6 @@ namespace spartan
             pso.shaders[RayHit]        = shader_hit;
             cmd_list->SetPipelineState(pso);
             
-            // sbt
-            if (!m_std_restir)
-            {
-                uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
-                m_std_restir = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "restir_sbt");
-            }
-            m_std_restir->UpdateHandles(cmd_list);
-            
             SetCommonTextures(cmd_list);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             
@@ -1173,7 +1143,7 @@ namespace spartan
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir4), reservoir4, rhi_all_mips, 0, true);
             
             // trace
-            cmd_list->TraceRays(width, height, m_std_restir.get());
+            cmd_list->TraceRays(width, height);
             
             cmd_list->InsertBarrier(reservoir0, RHI_BarrierType::EnsureWriteThenRead);
             cmd_list->InsertBarrier(reservoir1, RHI_BarrierType::EnsureWriteThenRead);

@@ -405,9 +405,6 @@ namespace spartan
             swapchain             = nullptr;
             m_lines_vertex_buffer = nullptr;
             tlas                  = nullptr;
-            m_std_reflections     = nullptr;
-            m_std_shadows         = nullptr;
-            m_std_restir          = nullptr;
         }
 
         RHI_VendorTechnology::Shutdown();
@@ -1846,11 +1843,6 @@ namespace spartan
 
         // destroy tlas
         tlas = nullptr;
-
-        // destroy shader binding tables (they reference the pipeline which might change)
-        m_std_reflections = nullptr;
-        m_std_shadows     = nullptr;
-        m_std_restir      = nullptr;
 
         SP_LOG_INFO("Acceleration structures destroyed for world change");
     }

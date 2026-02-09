@@ -1088,10 +1088,9 @@ namespace spartan
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
     }
 
-    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height, RHI_Buffer* shader_binding_table)
+    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(shader_binding_table && shader_binding_table->GetType() == RHI_Buffer_Type::ShaderBindingTable);
 
         // skip if dimensions are invalid (can happen during window minimize/resize)
         if (width == 0 || height == 0)
@@ -1099,6 +1098,21 @@ namespace spartan
 
         // bind descriptor sets (same as draw/dispatch)
         PreDraw();
+
+        // get or create an sbt for the currently bound pipeline
+        void* pipeline_handle = GetRhiResourcePipeline();
+        SP_ASSERT(pipeline_handle != nullptr);
+        auto it = m_shader_binding_tables.find(pipeline_handle);
+        if (it == m_shader_binding_tables.end())
+        {
+            uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+            auto sbt = make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "sbt");
+            it = m_shader_binding_tables.emplace(pipeline_handle, move(sbt)).first;
+        }
+        RHI_Buffer* sbt = it->second.get();
+
+        // update handles (copies shader group handles from the pipeline into the buffer)
+        sbt->UpdateHandles(this);
 
         // load extension func once
         static PFN_vkCmdTraceRaysKHR pfn_vk_cmd_trace_rays_khr = nullptr;
@@ -1109,16 +1123,16 @@ namespace spartan
         }
 
         // get regions
-        RHI_StridedDeviceAddressRegion raygen_region = shader_binding_table->GetRegion(RHI_Shader_Type::RayGeneration);
-        RHI_StridedDeviceAddressRegion miss_region   = shader_binding_table->GetRegion(RHI_Shader_Type::RayMiss);
-        RHI_StridedDeviceAddressRegion hit_region    = shader_binding_table->GetRegion(RHI_Shader_Type::RayHit);
+        RHI_StridedDeviceAddressRegion raygen_region = sbt->GetRegion(RHI_Shader_Type::RayGeneration);
+        RHI_StridedDeviceAddressRegion miss_region   = sbt->GetRegion(RHI_Shader_Type::RayMiss);
+        RHI_StridedDeviceAddressRegion hit_region    = sbt->GetRegion(RHI_Shader_Type::RayHit);
 
         // convert to vulkan regions
         VkStridedDeviceAddressRegionKHR vk_raygen   = { raygen_region.device_address, raygen_region.stride, raygen_region.size };
         VkStridedDeviceAddressRegionKHR vk_miss     = { miss_region.device_address, miss_region.stride, miss_region.size };
         VkStridedDeviceAddressRegionKHR vk_hit      = { hit_region.device_address, hit_region.stride, hit_region.size };
         VkStridedDeviceAddressRegionKHR vk_callable = {};
-    
+
         pfn_vk_cmd_trace_rays_khr(
             static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
             &vk_raygen,                                   // pRaygenShaderBindingTable
