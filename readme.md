@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>A game engine with a fully bindless, GPU-driven renderer featuring real-time path-traced global illumination, hardware ray tracing, and a physics simulation running at 200Hz — built over 10+ years of R&D</strong>
+  <strong>A game engine with a fully bindless, GPU-driven renderer featuring real-time path-traced global illumination, hardware ray tracing, and a physics simulation running at 200Hz, built over 10+ years of R&D</strong>
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 
 ## The Engine
 
-Spartan started as a university project and has been in active development for over a decade, growing into a community of **600+ members** on Discord — including industry professionals sharing knowledge and pushing boundaries together. Its rendering technology has been adopted by **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, and featured in a **published programming book**.
+Spartan started as a university project and has been in active development for over a decade, growing into a community of **600+ members** on Discord, including industry professionals sharing knowledge and pushing boundaries together. Its rendering technology has been adopted by **Godot Engine** and **S.T.A.L.K.E.R. Anomaly**, and featured in a **published programming book**.
 
 **There's a destination that gives all this tech a purpose.** Curious? **[Read the plan →](https://github.com/PanosK92/SpartanEngine/blob/master/plan.md)**
 
@@ -67,23 +67,23 @@ The most demanding world: **256 million** procedurally generated grass blades (i
 
 ## Rendering
 
-The renderer is built around a single principle: **the GPU owns the data**. Every resource — geometry, materials, textures, lights, transforms, AABBs — lives in persistent, globally accessible buffers. There are no per-draw descriptor set updates, no per-draw resource binding, and no CPU-side draw loops.
+The renderer is built around a single principle: **the GPU owns the data**. Every resource (geometry, materials, textures, lights, transforms, AABBs) lives in persistent, globally accessible buffers. There are no per-draw descriptor set updates, no per-draw resource binding, and no CPU-side draw loops.
 
 ### Architecture
 
-- **Zero-binding draw path** — all per-draw data is stored in a single bindless storage buffer; push constants carry only a 4-byte index into it, keeping the entire push constant footprint at 80 bytes
-- **Single global vertex and index buffer** for all geometry (inspired by id Tech) — the CPU never re-binds geometry between draws
-- **GPU-driven indirect rendering** — a compute shader performs frustum and occlusion culling entirely on the GPU, emitting a compacted indirect argument buffer; the CPU issues a single `DrawIndexedIndirectCount` per pass, replacing thousands of individual draw calls
-- **Bindless materials, lights, and samplers** — all accessed through global descriptor arrays with no per-object binding
-- **Uber shaders** — minimal pipeline state object (PSO) permutations eliminate draw call state changes
-- **Universal HLSL** — all shaders are written once in HLSL and compiled for both Vulkan (via SPIR-V) and DirectX 12
-- **Tightly packed 10-byte instance format** — enables hundreds of millions of instances (procedural grass, foliage)
-- **On-the-fly GPU mip generation** (FidelityFX SPD) **and texture compression** (FidelityFX Compressonator) — assets are processed on the GPU at load time, not baked offline
-- **Unified deferred rendering with transparency** — opaque and transparent surfaces share the same BSDF and render path, no separate forward pass
+- **Zero-binding draw path**, all per-draw data is stored in a single bindless storage buffer, push constants carry only a 4-byte index into it, keeping the entire push constant footprint at 80 bytes
+- **Single global vertex and index buffer** for all geometry, inspired by id Tech, the CPU never re-binds geometry between draws
+- **GPU-driven indirect rendering**, a compute shader performs frustum and occlusion culling entirely on the GPU, emitting a compacted indirect argument buffer, the CPU issues a single `DrawIndexedIndirectCount` per pass, replacing thousands of individual draw calls
+- **Bindless materials, lights, and samplers**, all accessed through global descriptor arrays with no per-object binding
+- **Uber shaders**, minimal pipeline state object (PSO) permutations eliminate draw call state changes
+- **Universal HLSL**, all shaders are written once in HLSL and compiled for both Vulkan (via SPIR-V) and DirectX 12
+- **Tightly packed 10-byte instance format** for hundreds of millions of instances (procedural grass, foliage)
+- **On-the-fly GPU mip generation** (FidelityFX SPD) **and texture compression** (FidelityFX Compressonator), assets are processed on the GPU at load time, not baked offline
+- **Unified deferred rendering with transparency**, opaque and transparent surfaces share the same BSDF and render path, no separate forward pass
 
 ### Lighting and Global Illumination
 
-- **ReSTIR path tracing** — reservoir-based spatiotemporal resampling for real-time multi-bounce global illumination, denoised via NVIDIA ReLAX (NRD)
+- **ReSTIR path tracing**, reservoir-based spatiotemporal resampling for real-time multi-bounce global illumination, denoised via NVIDIA ReLAX (NRD)
 - **Ray-traced reflections and shadows** via hardware ray queries
 - **Atmospheric scattering** with real-time filtering and image-based lighting with bent normals
 - **Volumetric fog** with temporal reprojection
@@ -93,7 +93,7 @@ The renderer is built around a single principle: **the GPU owns the data**. Ever
 
 ### Performance and Upscaling
 
-- **GPU-driven frustum and occlusion culling** (Hi-Z) — the CPU never touches per-object visibility
+- **GPU-driven frustum and occlusion culling** (Hi-Z), the CPU never touches per-object visibility
 - **Variable rate shading** and **dynamic resolution scaling**
 - **Upscaling** with Intel XeSS 2 and AMD FSR 3
 - **Temporal anti-aliasing** and **FXAA**
@@ -132,8 +132,8 @@ A full vehicle dynamics simulation running at **200Hz** for precise tire and sus
 | System | Details |
 |--------|---------|
 | **Physics** | PhysX integration with rigid bodies, character kinematics, and vehicle physics |
-| **Scripting** | Lua 5.4 with full engine API access — entities, components, math, physics, audio — via Sol2 bindings with lifecycle callbacks (Start, Tick, Save, Load) |
-| **Audio** | 3D positional audio, streaming, reverb, and procedural synthesis via SDL3 — supports WAV, OGG, MP3, FLAC, and more |
+| **Scripting** | Lua 5.4 with full engine API access (entities, components, math, physics, audio) via Sol2 bindings with lifecycle callbacks (Start, Tick, Save, Load) |
+| **Audio** | 3D positional audio, streaming, reverb, and procedural synthesis via SDL3, supports WAV, OGG, MP3, FLAC, and more |
 | **Input** | Keyboard, mouse, controllers, and steering wheels with haptic feedback |
 | **Entity system** | Component-based architecture with transform hierarchies, prefabs, and XML serialization |
 | **Threading** | Custom thread pool with hardware-aware scaling, parallel loops, nested parallelism detection, and progress tracking |
@@ -151,7 +151,7 @@ One-click project generation—see the **[Building Guide](https://github.com/Pan
 
 ### Learning the Engine
 
-Start with **[Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp)** — it shows how default worlds are loaded and is the best entry point for understanding the engine's structure. For gameplay scripting, check out the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/blob/master/scripting.md)** — it covers the full API, lifecycle callbacks, and examples.
+Start with **[Game.cpp](https://github.com/PanosK92/SpartanEngine/blob/master/source/runtime/Game/Game.cpp)**, it shows how default worlds are loaded and is the best entry point for understanding the engine's structure. For gameplay scripting, check out the **[Lua Scripting Guide](https://github.com/PanosK92/SpartanEngine/blob/master/scripting.md)**, it covers the full API, lifecycle callbacks, and examples.
 
 ---
 
@@ -192,7 +192,7 @@ I cover the costs for Dropbox hosting to ensure library and asset bandwidth is a
 | **Godot Engine** | Integrates Spartan's TAA ([view source](https://github.com/godotengine/godot/blob/37d51d2cb7f6e47bef8329887e9e1740a914dc4e/servers/rendering/renderer_rd/shaders/effects/taa_resolve.glsl#L2)) |
 | **S.T.A.L.K.E.R. Anomaly** | Rendering addon using Spartan's source ([ModDB](https://www.moddb.com/mods/stalker-anomaly/addons/screen-space-shaders)) |
 | **Programming Book** | Jesse Guerrero's [beginner programming book](https://www.amazon.com/dp/B0CXG1CMNK) features Spartan's code and community |
-| **University Thesis** | Originally created as a portfolio piece at [University of Thessaly](https://en.wikipedia.org/wiki/University_of_Thessaly) with Professor [Fotis Kokkoras](https://ds.uth.gr/en/staff-en/faculty-en/kokkoras/) |
+| **University Thesis** | Originally created as a portfolio piece while sutyding at the [University of Thessaly](https://en.wikipedia.org/wiki/University_of_Thessaly) with Professor [Fotis Kokkoras](https://ds.uth.gr/en/staff-en/faculty-en/kokkoras/) |
 
 **Using code from Spartan?** [Reach out](https://twitter.com/panoskarabelas), I'd love to showcase your project!
 
@@ -200,4 +200,4 @@ I cover the costs for Dropbox hosting to ensure library and asset bandwidth is a
 
 ## License
 
-**[MIT License](https://github.com/PanosK92/SpartanEngine/blob/master/license.md)** — free to use with attribution.
+**[MIT License](https://github.com/PanosK92/SpartanEngine/blob/master/license.md)**, free to use with attribution.
