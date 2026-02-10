@@ -29,8 +29,8 @@ namespace spartan
         Forest,
         LiminalSpace,
         Sponza,
-        Subway,
-        Minecraft,
+        Cornell,
+        SanMiguel,
         Basic,
         Max
     };

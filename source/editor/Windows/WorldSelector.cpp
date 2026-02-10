@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include "pch.h"
 #include "WorldSelector.h"
 #include "../GeneralWindows.h"
@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/ProgressTracker.h"
 #include "Game/Game.h"
 #include "RHI/RHI_Device.h"
-//================================
+//===================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -50,13 +50,13 @@ namespace
 
     const DefaultWorldEntry default_worlds[] =
     {
-        { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" ,  "Light",          2100 },
-        { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype",  "Very demanding", 5600 },
-        { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype",  "Light",          2100 },
-        { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" ,  "Demanding",      2600 },
-        { "Subway",            "GI test. No lights, only emissive textures",                         "Prototype" , "Moderate",       2600 },
-        { "Minecraft",         "Blocky aesthetic",                                                   "Complete" ,  "Light",          2100 },
-        { "Basic",             "Light, camera, floor",                                               "Complete" ,  "Light",          2100 }
+        { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" , "Light",          2100 },
+        { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", 5600 },
+        { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype", "Light",          2100 },
+        { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      2600 },
+        { "Cornell Box",       "Classic ray tracing test scene",                                     "Complete" , "Light",          2100 },
+        { "San Miguel",        "Detailed courtyard scene with complex geometry and lighting",        "Complete" , "Demanding",      2600 },
+        { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          2100 }
     };
     constexpr int default_world_count = sizeof(default_worlds) / sizeof(default_worlds[0]);
 
@@ -72,10 +72,10 @@ namespace
     bool downloaded_and_extracted = false;
 
     // asset download configuration
-    const char* assets_url          = "https://www.dropbox.com/scl/fi/46p2w6opnoxzezof6tx17/project.7z?rlkey=jwv871ca91gju59gowx67a3l0&st=w69dniok&dl=1";
+    const char* assets_url          = "https://www.dropbox.com/scl/fi/lo0fiz7q4qggn07v2p7r7/project.7z?rlkey=twtmlivihh1rgz640ir85o4pk&st=2qbdrpxi&dl=1";
     const char* assets_destination  = "project/project.7z";
     const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "058843cf43b5609b91cfbfde58163dcc042a39af2da9b8e4760540180fbfc303";
+    const char* assets_expected_sha = "ffa63b138a7867d1fb84687533368337f374d91e78330f74542e5c751b45eee5";
 
     void scan_directory_recursive(const string& directory)
     {

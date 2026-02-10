@@ -46,18 +46,18 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    //= FORWARD DECLARATIONS (world functions) ==================
+    //= FORWARD DECLARATIONS (world functions) ================
     namespace worlds
     {
-        namespace showroom        { void create(); void tick(); }
-        namespace forest          { void create(); void tick(); }
-        namespace liminal_space   { void create(); void tick(); }
-        namespace sponza          { void create(); }
-        namespace subway          { void create(); }
-        namespace minecraft       { void create(); }
-        namespace basic           { void create(); }
+        namespace showroom      { void create(); void tick(); }
+        namespace forest        { void create(); void tick(); }
+        namespace liminal_space { void create(); void tick(); }
+        namespace sponza        { void create(); }
+        namespace cornell       { void create(); }
+        namespace san_miguel    { void create(); }
+        namespace basic         { void create(); }
     }
-    //===========================================================
+    //=========================================================
 
     // entities shared with other files (external linkage required)
     Entity* default_car        = nullptr;
@@ -91,8 +91,8 @@ namespace spartan
             worlds::forest::create,
             worlds::liminal_space::create,
             worlds::sponza::create,
-            worlds::subway::create,
-            worlds::minecraft::create,
+            worlds::cornell::create,
+            worlds::san_miguel::create,
             worlds::basic::create,
         };
 
@@ -461,24 +461,39 @@ namespace spartan
         }
         //====================================================================================
 
-        //= MINECRAFT ========================================================================
-        namespace minecraft
+        //= CORNELL ==========================================================================
+        namespace cornell
         {
             void create()
             {
-                entities::camera(false, Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-                entities::sun(LightPreset::dusk, true);
-                entities::music();
+                // the obj is 1 unit (~1 meter), scale it up to room size
+                const float room_scale = 2.0f;
 
-                // single mesh - disable optimization to preserve voxel look
-                uint32_t mesh_flags  = Mesh::GetDefaultFlags();
-                mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-                mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/vokselia_spawn/vokselia_spawn.obj", mesh_flags))
+                entities::camera(false, Vector3(0.0f, 1.2f, -8.0f), Vector3(0.0f, 0.0f, 0.0f));
+                entities::sun(LightPreset::dusk, true);
+                entities::floor();
+
+                // bring the sun below the horizon so the scene is night-lit by the emissive panel
+                default_light_directional->SetRotation(Quaternion::FromEulerAngles(-30.0f, 0.0f, 0.0f));
+
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/CornellBox/CornellBox-Original.obj"))
                 {
                     Entity* entity = mesh->GetRootEntity();
-                    entity->SetObjectName("minecraft");
-                    entity->SetScale(100.0f);
+                    entity->SetObjectName("cornell_box");
+                    entity->SetPosition(Vector3(0.0f, 0.2f, 0.0f));
+                    entity->SetScale(room_scale);
+
+                    // make the ceiling panel emissive so it lights the scene via path tracing
+                    if (Entity* light_entity = entity->GetDescendantByName("light"))
+                    {
+                        if (Renderable* renderable = light_entity->GetComponent<Renderable>())
+                        {
+                            if (Material* material = renderable->GetMaterial())
+                            {
+                                material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
+                            }
+                        }
+                    }
 
                     // physics for all meshes
                     vector<Entity*> entities;
@@ -496,31 +511,24 @@ namespace spartan
         }
         //====================================================================================
 
-        //= SUBWAY ===========================================================================
-        namespace subway
+        //= SAN MIGUEL =======================================================================
+        namespace san_miguel
         {
             void create()
             {
-                entities::camera(true);
+                entities::camera(false, Vector3(10.0f, 2.0f, 0.0f), Vector3(0.0f, -90.0f, 0.0f));
+                entities::sun(LightPreset::dusk, true);
                 entities::floor();
 
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/free-subway-station-r46-subway/Metro.fbx"))
+                // combine sub-meshes that share materials to reduce draw call and material count
+                uint32_t mesh_flags  = Mesh::GetDefaultFlags();
+                mesh_flags          |= static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/San_Miguel/san-miguel-low-poly.obj", mesh_flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
-                    entity->SetObjectName("subway");
-                    entity->SetScale(Vector3(0.015f));
-
-                    // physics for all meshes
-                    vector<Entity*> entities;
-                    entity->GetDescendants(&entities);
-                    for (Entity* entity_it : entities)
-                    {
-                        if (entity_it->GetComponent<Renderable>() != nullptr)
-                        {
-                            Physics* physics_body = entity_it->AddComponent<Physics>();
-                            physics_body->SetBodyType(BodyType::Mesh);
-                        }
-                    }
+                    entity->SetObjectName("san_miguel");
+                    entity->SetPosition(Vector3(0.0f, 0.3f, 0.0f));
+                    entity->SetScale(1.0f);
                 }
             }
         }
