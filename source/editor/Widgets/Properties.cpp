@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/Spline.h"
+#include "World/Components/SplineFollower.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
 #include "World/Components/Volume.h"
@@ -96,8 +97,9 @@ namespace
         inline ImVec4 accent_audio()      { return ImVec4(0.70f, 0.45f, 0.55f, 1.0f); }
         inline ImVec4 accent_terrain()    { return ImVec4(0.50f, 0.70f, 0.45f, 1.0f); }
         inline ImVec4 accent_volume()     { return ImVec4(0.55f, 0.55f, 0.75f, 1.0f); }
-        inline ImVec4 accent_spline()     { return ImVec4(0.30f, 0.75f, 0.70f, 1.0f); }
-        inline ImVec4 accent_script()     { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
+        inline ImVec4 accent_spline()          { return ImVec4(0.30f, 0.75f, 0.70f, 1.0f); }
+        inline ImVec4 accent_spline_follower() { return ImVec4(0.35f, 0.80f, 0.65f, 1.0f); }
+        inline ImVec4 accent_script()          { return ImVec4(0.60f, 0.70f, 0.50f, 1.0f); }
         inline ImVec4 accent_particles() { return ImVec4(0.90f, 0.55f, 0.30f, 1.0f); }
 
         // helper to get dimmed version for backgrounds
@@ -628,6 +630,7 @@ void Properties::OnTickVisible()
             ShowCamera(entity->GetComponent<Camera>());
             ShowTerrain(entity->GetComponent<Terrain>());
             ShowSpline(entity->GetComponent<Spline>());
+            ShowSplineFollower(entity->GetComponent<SplineFollower>());
             ShowAudioSource(entity->GetComponent<AudioSource>());
 
             // re-fetch after ShowSpline since clearing a road mesh removes the renderable
@@ -1900,6 +1903,83 @@ void Properties::ShowSpline(spartan::Spline* spline) const
     component_end();
 }
 
+void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
+{
+    if (!follower)
+        return;
+
+    if (component_begin("Spline Follower", design::accent_spline_follower(), follower))
+    {
+        //= REFLECT ========================================
+        float speed         = follower->GetSpeed();
+        uint32_t mode       = static_cast<uint32_t>(follower->GetFollowMode());
+        bool align          = follower->GetAlignToSpline();
+        float progress      = follower->GetProgress();
+        uint64_t spline_id  = follower->GetSplineEntityId();
+        Entity* spline_ent  = follower->GetSplineEntity();
+        //==================================================
+
+        layout::section_header("Spline Reference");
+
+        // build a list of entities that have a spline component
+        const vector<Entity*>& all_entities = World::GetEntities();
+        vector<string> spline_names;
+        vector<uint64_t> spline_ids;
+        uint32_t selected_index = 0;
+
+        // first entry is "none"
+        spline_names.push_back("(none)");
+        spline_ids.push_back(0);
+
+        for (Entity* entity : all_entities)
+        {
+            if (entity && entity->GetComponent<Spline>())
+            {
+                spline_ids.push_back(entity->GetObjectId());
+                spline_names.push_back(entity->GetObjectName());
+
+                if (entity->GetObjectId() == spline_id)
+                {
+                    selected_index = static_cast<uint32_t>(spline_names.size() - 1);
+                }
+            }
+        }
+
+        if (property_combo("Spline", spline_names, &selected_index, "the spline entity to follow"))
+        {
+            follower->SetSplineEntityId(spline_ids[selected_index]);
+        }
+
+        layout::separator();
+        layout::section_header("Movement");
+
+        // speed
+        if (property_float("Speed", &speed, 0.1f, 0.0f, 1000.0f, "movement speed in world units per second", "%.1f"))
+        {
+            follower->SetSpeed(speed);
+        }
+
+        // follow mode
+        static vector<string> mode_names = { "Clamp", "Loop", "Ping Pong" };
+        if (property_combo("Mode", mode_names, &mode, "behavior when reaching the end of the spline"))
+        {
+            follower->SetFollowMode(static_cast<spartan::SplineFollowMode>(mode));
+        }
+
+        // align to spline
+        if (property_toggle("Align To Spline", &align, "orient the entity along the spline tangent"))
+        {
+            follower->SetAlignToSpline(align);
+        }
+
+        // progress (read-only)
+        char progress_buf[32];
+        snprintf(progress_buf, sizeof(progress_buf), "%.1f%%", progress * 100.0f);
+        property_text("Progress", progress_buf, "current position along the spline");
+    }
+    component_end();
+}
+
 void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 {
     if (!audio_source)
@@ -2292,6 +2372,11 @@ void Properties::ComponentContextMenu_Add() const
             if (ImGui::MenuItem("Spline"))
             {
                 entity->AddComponent<Spline>();
+            }
+
+            if (ImGui::MenuItem("Spline Follower"))
+            {
+                entity->AddComponent<SplineFollower>();
             }
 
             ImGui::Dummy(ImVec2(0, design::spacing_sm));

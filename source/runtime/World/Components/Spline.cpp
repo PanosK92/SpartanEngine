@@ -277,6 +277,18 @@ namespace spartan
             return;
         }
 
+        // preserve the user-assigned material before clearing the old mesh
+        if (m_saved_material_name.empty() && m_entity_ptr)
+        {
+            if (Renderable* renderable = m_entity_ptr->GetComponent<Renderable>())
+            {
+                if (Material* material = renderable->GetMaterial())
+                {
+                    m_saved_material_name = material->GetObjectName();
+                }
+            }
+        }
+
         // clean up any previous mesh
         ClearRoadMesh();
 

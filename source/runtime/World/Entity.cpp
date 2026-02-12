@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Physics.h"
 #include "Components/Script.h"
 #include "Components/Spline.h"
+#include "Components/SplineFollower.h"
 #include "Components/Terrain.h"
 #include "Components/Volume.h"
 #include "Components/ParticleSystem.h"
@@ -432,6 +433,9 @@ namespace spartan
             break;
         case ComponentType::Spline:
             component = std::make_shared<Spline>(this);
+            break;
+        case ComponentType::SplineFollower:
+            component = std::make_shared<SplineFollower>(this);
             break;
         case ComponentType::Terrain:
             component = std::make_shared<Terrain>(this);

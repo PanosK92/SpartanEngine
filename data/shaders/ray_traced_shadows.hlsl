@@ -164,23 +164,27 @@ void ray_gen()
             
             TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
             
+            // read payload unconditionally so the compiler sees both fields accessed after trace
+            float local_hit_distance = payload.hit_distance;
+            float local_shadow_alpha = payload.shadow_alpha;
+            
             // no more blockers along this ray
-            if (payload.hit_distance < 0.0f)
+            if (local_hit_distance < 0.0f)
                 break;
             
             // track the first hit for penumbra estimation
             if (first_hit_dist < 0.0f)
-                first_hit_dist = payload.hit_distance;
+                first_hit_dist = local_hit_distance;
             
             // opaque blocker - fully shadowed, no need to trace further
-            if (payload.shadow_alpha >= 1.0f)
+            if (local_shadow_alpha >= 1.0f)
             {
                 accumulated_alpha = 1.0f;
                 break;
             }
             
             // transparent surface - accumulate opacity and continue past it
-            accumulated_alpha = 1.0f - (1.0f - accumulated_alpha) * (1.0f - payload.shadow_alpha);
+            accumulated_alpha = 1.0f - (1.0f - accumulated_alpha) * (1.0f - local_shadow_alpha);
             if (accumulated_alpha >= 0.99f)
             {
                 accumulated_alpha = 1.0f;
@@ -188,7 +192,7 @@ void ray_gen()
             }
             
             // advance past this surface
-            current_origin = current_origin + sample_dir * (payload.hit_distance + 0.01f);
+            current_origin = current_origin + sample_dir * (local_hit_distance + 0.01f);
         }
         
         hit_distances[i] = first_hit_dist;
