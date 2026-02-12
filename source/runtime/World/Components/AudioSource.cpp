@@ -418,18 +418,20 @@ namespace spartan
             m_stereo_chunk[2 * i + 1] *= right_gain;
         }
 
-        // apply reverb effect if enabled
+        // apply reverb effect using a feedback delay network
+        // 6 taps with long delays for large-space character (tunnels, halls)
         if (m_reverb_enabled && !m_reverb_buffer_l.empty())
         {
-            const uint32_t base_delays[4] = { 1087, 1283, 1511, 1777 };
+            const uint32_t base_delays[6] = { 4799, 6907, 8893, 10007, 11903, 13313 };
             const float room_scale        = 0.3f + m_reverb_room_size * 0.7f;
-            uint32_t delays[4];
-            for (int d = 0; d < 4; ++d)
+            uint32_t delays[6];
+            for (int d = 0; d < 6; ++d)
                 delays[d] = static_cast<uint32_t>(base_delays[d] * room_scale);
 
-            const float feedback = m_reverb_decay * 0.7f;
+            const float tap_gain = 1.0f / 6.0f;
+            const float feedback = m_reverb_decay * 0.85f;
             const float wet      = m_reverb_wet;
-            const float dry      = 1.0f - wet * 0.5f;
+            const float dry      = 1.0f - wet * 0.4f;
 
             for (uint32_t i = 0; i < num_samples; ++i)
             {
@@ -438,12 +440,12 @@ namespace spartan
 
                 float reverb_l = 0.0f;
                 float reverb_r = 0.0f;
-                for (int d = 0; d < 4; ++d)
+                for (int d = 0; d < 6; ++d)
                 {
                     uint32_t read_pos_l = (m_reverb_write_pos + reverb_buffer_size - delays[d]) % reverb_buffer_size;
-                    uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 23) % reverb_buffer_size;
-                    reverb_l += m_reverb_buffer_l[read_pos_l] * 0.25f;
-                    reverb_r += m_reverb_buffer_r[read_pos_r] * 0.25f;
+                    uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 181) % reverb_buffer_size;
+                    reverb_l += m_reverb_buffer_l[read_pos_l] * tap_gain;
+                    reverb_r += m_reverb_buffer_r[read_pos_r] * tap_gain;
                 }
 
                 m_reverb_buffer_l[m_reverb_write_pos] = dry_l + reverb_l * feedback;
@@ -656,47 +658,43 @@ namespace spartan
         }
 
         // apply reverb effect using a feedback delay network
+        // 6 taps with long delays for large-space character (tunnels, halls)
         if (m_reverb_enabled && !m_reverb_buffer_l.empty())
         {
-            // delay tap offsets scaled by room size (in samples at 48khz)
-            // these prime-number-based delays create a more natural reverb
-            const uint32_t base_delays[4] = { 1087, 1283, 1511, 1777 };
+            const uint32_t base_delays[6] = { 4799, 6907, 8893, 10007, 11903, 13313 };
             const float room_scale        = 0.3f + m_reverb_room_size * 0.7f;
-            uint32_t delays[4];
-            for (int d = 0; d < 4; ++d)
+            uint32_t delays[6];
+            for (int d = 0; d < 6; ++d)
             {
                 delays[d] = static_cast<uint32_t>(base_delays[d] * room_scale);
             }
 
-            const float feedback = m_reverb_decay * 0.7f; // scale feedback for stability
+            const float tap_gain = 1.0f / 6.0f;
+            const float feedback = m_reverb_decay * 0.85f;
             const float wet      = m_reverb_wet;
-            const float dry      = 1.0f - wet * 0.5f; // keep dry signal prominent
+            const float dry      = 1.0f - wet * 0.4f;
 
             for (uint32_t i = 0; i < num_samples; ++i)
             {
                 float dry_l = m_stereo_chunk[2 * i];
                 float dry_r = m_stereo_chunk[2 * i + 1];
 
-                // read from multiple delay taps and sum for diffuse reverb
                 float reverb_l = 0.0f;
                 float reverb_r = 0.0f;
-                for (int d = 0; d < 4; ++d)
+                for (int d = 0; d < 6; ++d)
                 {
                     uint32_t read_pos_l = (m_reverb_write_pos + reverb_buffer_size - delays[d]) % reverb_buffer_size;
-                    uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 23) % reverb_buffer_size; // slight offset for stereo width
-                    reverb_l += m_reverb_buffer_l[read_pos_l] * 0.25f;
-                    reverb_r += m_reverb_buffer_r[read_pos_r] * 0.25f;
+                    uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 181) % reverb_buffer_size;
+                    reverb_l += m_reverb_buffer_l[read_pos_l] * tap_gain;
+                    reverb_r += m_reverb_buffer_r[read_pos_r] * tap_gain;
                 }
 
-                // write new samples with feedback to the delay buffer
                 m_reverb_buffer_l[m_reverb_write_pos] = dry_l + reverb_l * feedback;
                 m_reverb_buffer_r[m_reverb_write_pos] = dry_r + reverb_r * feedback;
 
-                // mix dry and wet signals
                 m_stereo_chunk[2 * i]     = dry_l * dry + reverb_l * wet;
                 m_stereo_chunk[2 * i + 1] = dry_r * dry + reverb_r * wet;
 
-                // advance write position
                 m_reverb_write_pos = (m_reverb_write_pos + 1) % reverb_buffer_size;
             }
         }
