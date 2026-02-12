@@ -146,5 +146,8 @@ namespace spartan
         std::vector<float> m_reverb_buffer_r;  // circular buffer for right channel
         uint32_t m_reverb_write_pos   = 0;     // write position in reverb buffers
         static constexpr uint32_t reverb_buffer_size = 48000; // ~1 second at 48khz
+
+        // volume-driven reverb override
+        bool m_volume_reverb_active = false;
     };
 }

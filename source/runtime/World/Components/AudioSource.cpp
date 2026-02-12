@@ -23,7 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "AudioSource.h"
 #include "Camera.h"
+#include "Volume.h"
 #include "../Entity.h"
+#include "../World.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL_audio.h>
 #include "../IO/pugixml.hpp"
@@ -270,6 +272,53 @@ namespace spartan
                 camera_position_previous = camera_position;
                 position_previous        = sound_position;
             }
+        }
+
+        // check if inside any volume that has reverb enabled
+        {
+            Vector3 source_position      = GetEntity()->GetPosition();
+            bool found_reverb_volume     = false;
+
+            for (Entity* entity : World::GetEntities())
+            {
+                Volume* volume = entity->GetComponent<Volume>();
+                if (!volume || !volume->GetReverbEnabled())
+                    continue;
+
+                // transform the volume's local bounding box into world space
+                BoundingBox transformed_box = volume->GetBoundingBox() * entity->GetMatrix();
+                if (transformed_box.Contains(source_position))
+                {
+                    // allocate reverb buffers if they haven't been yet
+                    if (m_reverb_buffer_l.empty())
+                    {
+                        m_reverb_buffer_l.assign(reverb_buffer_size, 0.0f);
+                        m_reverb_buffer_r.assign(reverb_buffer_size, 0.0f);
+                        m_reverb_write_pos = 0;
+                    }
+
+                    // derive reverb parameters from the volume's physical size
+                    // larger volumes produce longer, more resonant reverb
+                    Vector3 size       = transformed_box.GetSize();
+                    float longest_axis = max({ size.x, size.y, size.z });
+                    float size_factor  = clamp(longest_axis / 50.0f, 0.0f, 1.0f); // 50m+ = full scale
+
+                    m_reverb_enabled   = true;
+                    m_reverb_room_size = 0.6f + size_factor * 0.4f;               // [0.6, 1.0]
+                    m_reverb_decay     = 0.7f + size_factor * 0.28f;              // [0.7, 0.98]
+                    m_reverb_wet       = 0.6f + size_factor * 0.35f;              // [0.6, 0.95]
+                    found_reverb_volume = true;
+                    break;
+                }
+            }
+
+            // leaving a reverb volume, disable the override
+            if (!found_reverb_volume && m_volume_reverb_active)
+            {
+                m_reverb_enabled = false;
+            }
+
+            m_volume_reverb_active = found_reverb_volume;
         }
 
         // feed audio based on mode

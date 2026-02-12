@@ -73,7 +73,8 @@ namespace spartan
         uint64_t GetAccelerationStructureDeviceAddress() const;
 
         // bounding box
-        const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}
+        const math::BoundingBox& GetBoundingBox() const     { return m_bounding_box; }
+        const math::BoundingBox& GetBoundingBoxMesh() const { return m_bounding_box_mesh; }
 
         // material
         void SetMaterial(const std::shared_ptr<Material>& material);

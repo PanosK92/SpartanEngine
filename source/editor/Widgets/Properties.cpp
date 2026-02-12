@@ -65,6 +65,11 @@ namespace
     string context_menu_id;
     Component* copied_component = nullptr;
 
+    // deferred component removal - storing the id prevents a use-after-free
+    // crash when the component is destroyed while its Show* function is still on the stack
+    uint64_t pending_removal_id    = 0;
+    Entity*  pending_removal_owner = nullptr;
+
     // component content tracking
     bool component_content_active = false;
 
@@ -247,7 +252,10 @@ namespace
                     {
                         if (component)
                         {
-                            entity->RemoveComponentById(component->GetObjectId());
+                            // defer the removal so we don't destroy a component
+                            // while its Show* function is still on the call stack
+                            pending_removal_id    = component->GetObjectId();
+                            pending_removal_owner = entity;
                         }
                     }
                 }
@@ -643,6 +651,14 @@ void Properties::OnTickVisible()
             ShowParticleSystem(entity->GetComponent<ParticleSystem>());
 
             ShowAddComponentButton();
+
+            // process deferred component removal now that all Show* calls are done
+            if (pending_removal_owner && pending_removal_id != 0)
+            {
+                pending_removal_owner->RemoveComponentById(pending_removal_id);
+                pending_removal_owner = nullptr;
+                pending_removal_id    = 0;
+            }
         }
         else if (!m_inspected_material.expired())
         {
@@ -2168,6 +2184,15 @@ void Properties::ShowVolume(spartan::Volume* volume) const
 
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
+
+        layout::separator();
+        layout::section_header("Audio Reverb");
+
+        bool reverb_enabled = volume->GetReverbEnabled();
+        property_toggle("Enabled", &reverb_enabled, "apply reverb to audio sources inside this volume (derived from volume size)");
+
+        if (reverb_enabled != volume->GetReverbEnabled())
+            volume->SetReverbEnabled(reverb_enabled);
     }
     component_end();
 }

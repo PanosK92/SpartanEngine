@@ -54,11 +54,18 @@ namespace spartan
         float GetOption(const char* name) const;
         const std::unordered_map<std::string, float>& GetOptions() const { return m_options; }
 
+        // audio reverb - applied to any audio source inside this volume
+        bool GetReverbEnabled() const             { return m_reverb_enabled; }
+        void SetReverbEnabled(const bool enabled) { m_reverb_enabled = enabled; }
+
     private:
         // the shape of the volume
         math::BoundingBox m_bounding_box;
 
         // the user defined overrides
         std::unordered_map<std::string, float> m_options;
+
+        // audio reverb
+        bool m_reverb_enabled = false;
     };
 }
