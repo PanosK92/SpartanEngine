@@ -57,6 +57,7 @@ namespace spartan
     array<Sb_IndirectDrawArgs, rhi_max_array_size> Renderer::m_indirect_draw_args;
     array<Sb_DrawData, rhi_max_array_size> Renderer::m_indirect_draw_data;
     uint32_t Renderer::m_indirect_draw_count = 0;
+
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
@@ -516,6 +517,10 @@ namespace spartan
                 // bind the compacted draw data buffer for vertex shader access
                 cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data_out, GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
 
+                // reset cull mode to back since indirect draws all use back-face culling,
+                // and prior cpu-driven draws may have changed the dynamic cull mode state
+                cmd_list->SetCullMode(RHI_CullMode::Back);
+
                 cmd_list->DrawIndexedIndirectCount(
                     GetBuffer(Renderer_Buffer::IndirectDrawArgsOut),
                     0,
@@ -655,6 +660,10 @@ namespace spartan
 
                 // bind the compacted draw data buffer for vertex/pixel shader access
                 cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data_out, GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
+
+                // reset cull mode to back since indirect draws all use back-face culling,
+                // and prior cpu-driven draws may have changed the dynamic cull mode state
+                cmd_list->SetCullMode(RHI_CullMode::Back);
 
                 // single indirect draw call replaces the entire opaque draw loop
                 cmd_list->DrawIndexedIndirectCount(

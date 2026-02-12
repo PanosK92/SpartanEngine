@@ -687,10 +687,18 @@ namespace spartan
             // set some dynamic states
             if (m_pso.IsGraphics())
             {
-                // cull mode
+                // binding a new pipeline invalidates all dynamic state, so reset the
+                // cached cull mode to ensure the next SetCullMode call always executes
+                m_cull_mode = RHI_CullMode::Max;
+
+                // cull mode - must be set after every pipeline bind since dynamic state is invalidated
                 if (m_pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe)
                 {
                     SetCullMode(RHI_CullMode::None);
+                }
+                else
+                {
+                    SetCullMode(RHI_CullMode::Back);
                 }
 
                 // scissor rectangle

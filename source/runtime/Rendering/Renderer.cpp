@@ -950,8 +950,8 @@ namespace spartan
         bool is_tessellated  = material->GetProperty(MaterialProperty::Tessellation) > 0.0f;
         bool is_instanced    = draw_call.instance_count > 1;
         bool is_alpha_tested = material->IsAlphaTested();
-        bool is_double_sided = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
-        return is_tessellated || is_instanced || is_alpha_tested || is_double_sided;
+        bool is_non_standard_cull = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
+        return is_tessellated || is_instanced || is_alpha_tested || is_non_standard_cull;
     }
 
     void Renderer::SetCommonTextures(RHI_CommandList* cmd_list)

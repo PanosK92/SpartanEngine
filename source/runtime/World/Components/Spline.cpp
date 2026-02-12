@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Material.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Math/Quaternion.h"
+#include "../../RHI/RHI_Definitions.h"
 SP_WARNINGS_OFF
 #include "../../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -53,7 +54,11 @@ namespace spartan
     Spline::~Spline()
     {
         ClearRoadMesh();
-        ClearInstances();
+
+        // don't call ClearInstances() here because during destruction the world's entity
+        // list may contain dangling pointers (e.g. shutdown deletes entities in a loop),
+        // and RemoveEntity -> AcquireChildren would iterate over freed memory.
+        // the world already removes all descendants when an entity is removed or shut down.
     }
 
     void Spline::Tick()
@@ -681,6 +686,15 @@ namespace spartan
         else if (!renderable->GetMaterial())
         {
             renderable->SetDefaultMaterial();
+        }
+
+        // disable face culling for profiles that are visible from both sides
+        if (m_profile == SplineProfile::Wall || m_profile == SplineProfile::Fence || m_profile == SplineProfile::Tube)
+        {
+            if (Material* material = renderable->GetMaterial())
+            {
+                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+            }
         }
 
         // attach a physics component so the mesh is collidable
