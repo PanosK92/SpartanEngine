@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "Entity.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Prefab.h"
 #include "Components/AudioSource.h"
 #include "Components/Camera.h"
@@ -233,6 +236,8 @@ namespace spartan
 
     void Entity::Tick()
     {
+        ZoneScoped;
+
         for (shared_ptr<Component>& component : m_components)
         {
             if (component)

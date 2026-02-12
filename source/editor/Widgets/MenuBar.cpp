@@ -377,6 +377,18 @@ namespace
                     );
 
                     // renderdoc button
+                    static auto tracy_visible = [](Widget*) { return false; };
+                    static auto tracy_press   = [](Widget*)
+                    {
+                        spartan::FileSystem::OpenUrl(std::filesystem::absolute("../third_party/Tracy/tracy-profiler.exe").generic_string().c_str());
+                    };
+                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Compressed), "Opens the tracy profiler",
+                        tracy_visible,
+                        tracy_press,
+                        nullptr
+                    );
+
+                    // renderdoc button
                     static auto renderdoc_visible = [](Widget*) { return false; };
                     static auto renderdoc_press   = [](Widget*)
                     {
