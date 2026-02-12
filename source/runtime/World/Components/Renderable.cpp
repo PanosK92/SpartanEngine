@@ -292,6 +292,11 @@ namespace spartan
 
         // cache it so it can be serialized/deserialized
         m_material = ResourceCache::Cache(material).get();
+        if (m_material == nullptr)
+        {
+            SP_LOG_ERROR("Material was unable to be cached, and failed to be set.")
+            return;
+        }
 
         // pack textures, generate mips, compress, upload to GPU
         if (m_material->GetResourceState() == ResourceState::Max)
