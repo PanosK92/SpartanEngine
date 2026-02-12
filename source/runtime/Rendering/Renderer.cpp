@@ -462,6 +462,10 @@ namespace spartan
             m_cmd_list_present->Begin();
         }
 
+        // reset draw data count every frame so that late writers like imgui
+        // don't accumulate across frames when can_render is false (e.g. during boot)
+        m_draw_data_count = 0;
+
         // update CPU and GPU resources (only when we can render to avoid GPU work during window transitions)
         if (can_render)
         {
