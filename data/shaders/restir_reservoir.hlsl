@@ -23,13 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_RESTIR_RESERVOIR
 
 // core parameters
-static const uint RESTIR_MAX_PATH_LENGTH     = 3;
-static const uint RESTIR_M_CAP               = 32;
-static const uint RESTIR_SPATIAL_SAMPLES     = 8;
-static const float RESTIR_SPATIAL_RADIUS     = 16.0f;
+static const uint RESTIR_MAX_PATH_LENGTH     = 5;
+static const uint RESTIR_M_CAP               = 128;
+static const uint RESTIR_SPATIAL_SAMPLES     = 16;
+static const float RESTIR_SPATIAL_RADIUS     = 32.0f;
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
-static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
-static const float RESTIR_TEMPORAL_DECAY     = 0.9f;
+static const float RESTIR_NORMAL_THRESHOLD   = 0.75f;
+static const float RESTIR_TEMPORAL_DECAY     = 0.95f;
 static const float RESTIR_RAY_NORMAL_OFFSET  = 0.05f;
 static const float RESTIR_RAY_T_MIN          = 0.01f;
 
@@ -42,14 +42,14 @@ static const float RESTIR_SKY_DISTANCE       = 1e10f;
 
 // visibility/geometry
 static const float RESTIR_VIS_COS_FRONT      = 0.1f;
-static const float RESTIR_VIS_COS_BACK       = 0.15f;
+static const float RESTIR_VIS_COS_BACK       = 0.05f;
 static const float RESTIR_VIS_MIN_DIST       = 0.02f;
 static const float RESTIR_VIS_PLANE_MIN      = 0.001f;
 
 // BRDF thresholds
 static const float RESTIR_MIN_ROUGHNESS      = 0.04f;
 static const float RESTIR_MIN_PDF            = 1e-6f;
-static const float RESTIR_W_CLAMP_DEFAULT    = 1.5f;
+static const float RESTIR_W_CLAMP_DEFAULT    = 5.0f;
 static const float RESTIR_SPECULAR_THRESHOLD = 0.2f;
 
 // firefly suppression
@@ -495,13 +495,13 @@ float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 ne
     dir_new      /= dist_new;
 
     float cos_at_receiver = dot(new_receiver_normal, dir_new);
-    if (cos_at_receiver < 0.2f)
+    if (cos_at_receiver < 0.05f)
         return 0.0f;
 
     float cos_original = dot(sample_normal, -dir_original);
     float cos_new      = dot(sample_normal, -dir_new);
 
-    static const float MIN_COS_ANGLE = 0.15f;
+    static const float MIN_COS_ANGLE = 0.05f;
     if (cos_original < MIN_COS_ANGLE || cos_new < MIN_COS_ANGLE)
         return 0.0f;
 
@@ -579,12 +579,12 @@ float3 soft_clamp_gi(float3 gi, PathSample sample)
     float soft_clamp;
     if (is_sky_sample(sample))
     {
-        soft_clamp = 4.0f;
+        soft_clamp = 8.0f;
     }
     else
     {
         float bounce_factor = saturate(float(sample.path_length - 1) / 2.0f);
-        soft_clamp = lerp(3.0f, 1.5f, bounce_factor);
+        soft_clamp = lerp(8.0f, 4.0f, bounce_factor);
     }
 
     if (lum > soft_clamp)
@@ -595,7 +595,7 @@ float3 soft_clamp_gi(float3 gi, PathSample sample)
     }
 
     // hard clamp
-    float max_lum = 5.0f;
+    float max_lum = 15.0f;
     float final_lum = dot(gi, float3(0.299f, 0.587f, 0.114f));
     if (final_lum > max_lum)
         gi *= max_lum / final_lum;

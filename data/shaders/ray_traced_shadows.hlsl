@@ -136,33 +136,68 @@ void ray_gen()
     float hit_distances[TOTAL_SAMPLES];
     float shadow_alphas[TOTAL_SAMPLES];
     
-    // blocker search
+    // blocker search - trace through transparent surfaces to find opaque blockers behind them
+    static const uint MAX_TRANSPARENT_LAYERS = 4;
+    
     for (uint i = 0; i < TOTAL_SAMPLES; i++)
     {
-        float2 sample_2d = halton_2d(i + frame_offset * TOTAL_SAMPLES);
-        sample_2d        = frac(sample_2d + temporal_offset);
-        float2 disk      = concentric_disk_sample(sample_2d);
+        float2 sample_2d  = halton_2d(i + frame_offset * TOTAL_SAMPLES);
+        sample_2d         = frac(sample_2d + temporal_offset);
+        float2 disk       = concentric_disk_sample(sample_2d);
         float3 sample_dir = sample_sun_direction(light_dir, disk, SUN_ANGULAR_RADIUS);
         
-        RayDesc ray;
-        ray.Origin    = ray_origin;
-        ray.Direction = sample_dir;
-        ray.TMin      = 0.001f;
-        ray.TMax      = 10000.0f;
+        float  accumulated_alpha = 0.0f;
+        float  first_hit_dist    = -1.0f;
+        float3 current_origin    = ray_origin;
         
-        ShadowPayload payload;
-        payload.hit_distance = -1.0f;
-        payload.shadow_alpha = 0.0f;
-        
-        TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
-        
-        hit_distances[i] = payload.hit_distance;
-        shadow_alphas[i] = payload.shadow_alpha;
-        
-        if (payload.hit_distance > 0.0f && payload.shadow_alpha > 0.0f)
+        for (uint layer = 0; layer < MAX_TRANSPARENT_LAYERS; layer++)
         {
-            avg_blocker_dist += payload.hit_distance;
-            blocker_count    += payload.shadow_alpha; // weight by opacity
+            RayDesc ray;
+            ray.Origin    = current_origin;
+            ray.Direction = sample_dir;
+            ray.TMin      = 0.001f;
+            ray.TMax      = 10000.0f;
+            
+            ShadowPayload payload;
+            payload.hit_distance = -1.0f;
+            payload.shadow_alpha = 0.0f;
+            
+            TraceRay(tlas, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
+            
+            // no more blockers along this ray
+            if (payload.hit_distance < 0.0f)
+                break;
+            
+            // track the first hit for penumbra estimation
+            if (first_hit_dist < 0.0f)
+                first_hit_dist = payload.hit_distance;
+            
+            // opaque blocker - fully shadowed, no need to trace further
+            if (payload.shadow_alpha >= 1.0f)
+            {
+                accumulated_alpha = 1.0f;
+                break;
+            }
+            
+            // transparent surface - accumulate opacity and continue past it
+            accumulated_alpha = 1.0f - (1.0f - accumulated_alpha) * (1.0f - payload.shadow_alpha);
+            if (accumulated_alpha >= 0.99f)
+            {
+                accumulated_alpha = 1.0f;
+                break;
+            }
+            
+            // advance past this surface
+            current_origin = current_origin + sample_dir * (payload.hit_distance + 0.01f);
+        }
+        
+        hit_distances[i] = first_hit_dist;
+        shadow_alphas[i] = accumulated_alpha;
+        
+        if (first_hit_dist > 0.0f && accumulated_alpha > 0.0f)
+        {
+            avg_blocker_dist += first_hit_dist;
+            blocker_count    += accumulated_alpha; // weight by opacity
         }
     }
     

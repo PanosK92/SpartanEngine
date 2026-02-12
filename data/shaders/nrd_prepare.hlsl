@@ -26,7 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // octahedron encoding for normals
 float2 oct_wrap(float2 v)
 {
-    return (1.0f - abs(v.yx)) * select(v.xy >= 0.0f, 1.0f, -1.0f);
+    float2 sign_v = float2(v.x >= 0.0f ? 1.0f : -1.0f, v.y >= 0.0f ? 1.0f : -1.0f);
+    return (1.0f - abs(v.yx)) * sign_v;
 }
 
 float2 encode_oct(float3 n)

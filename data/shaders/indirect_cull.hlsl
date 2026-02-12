@@ -90,8 +90,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         // hi-z occlusion test
         if (is_visible)
         {
-            float2 min_uv = saturate(ndc_to_uv(min_ndc));
-            float2 max_uv = saturate(ndc_to_uv(max_ndc));
+            // ndc_to_uv flips y, so recompute proper min/max in uv space
+            float2 uv_a   = saturate(ndc_to_uv(min_ndc));
+            float2 uv_b   = saturate(ndc_to_uv(max_ndc));
+            float2 min_uv = min(uv_a, uv_b);
+            float2 max_uv = max(uv_a, uv_b);
 
             float2 render_size;
             tex.GetDimensions(render_size.x, render_size.y);

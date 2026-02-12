@@ -1714,6 +1714,12 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         uint32_t resolution  = spline->GetResolution();
         uint32_t point_count = spline->GetControlPointCount();
         float road_width     = spline->GetRoadWidth();
+        uint32_t profile     = static_cast<uint32_t>(spline->GetProfile());
+        float height         = spline->GetHeight();
+        float thickness      = spline->GetThickness();
+        uint32_t tube_sides  = spline->GetTubeSides();
+        float inst_spacing   = spline->GetInstanceSpacing();
+        bool inst_align      = spline->GetAlignInstancesToSpline();
         //=================================================
 
         layout::section_header("Spline");
@@ -1759,9 +1765,18 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             math::Vector3 position = math::Vector3::Zero;
             if (point_count > 0)
             {
-                if (spartan::Entity* last_child = spline->GetEntity()->GetChildByIndex(point_count - 1))
+                // find the last control point child by walking children in reverse
+                spartan::Entity* parent = spline->GetEntity();
+                for (uint32_t i = parent->GetChildrenCount(); i > 0; i--)
                 {
-                    position = last_child->GetPositionLocal() + math::Vector3(5.0f, 0.0f, 0.0f);
+                    if (spartan::Entity* child = parent->GetChildByIndex(i - 1))
+                    {
+                        if (child->GetObjectName().find("spline_point_") == 0)
+                        {
+                            position = child->GetPositionLocal() + math::Vector3(5.0f, 0.0f, 0.0f);
+                            break;
+                        }
+                    }
                 }
             }
             spline->AddControlPoint(position);
@@ -1777,22 +1792,63 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         ImGui::EndDisabled();
 
         layout::separator();
-        layout::section_header("Road Mesh");
+        layout::section_header("Mesh Generation");
 
-        // road width
-        if (property_float("Width", &road_width, 0.1f, 0.5f, 100.0f, "road width in meters", "%.1f m"))
+        // profile type selector
+        static vector<string> profile_names = { "Road", "Wall", "Tube", "Fence", "Channel" };
+        if (property_combo("Profile", profile_names, &profile, "cross-section shape extruded along the spline"))
+        {
+            spline->SetProfile(static_cast<spartan::SplineProfile>(profile));
+        }
+
+        // width (used by all profiles)
+        if (property_float("Width", &road_width, 0.1f, 0.5f, 100.0f, "width in meters", "%.1f m"))
         {
             spline->SetRoadWidth(road_width);
         }
 
+        // height (used by wall, fence, channel)
+        spartan::SplineProfile current_profile = static_cast<spartan::SplineProfile>(profile);
+        bool needs_height = current_profile == spartan::SplineProfile::Wall ||
+                            current_profile == spartan::SplineProfile::Fence ||
+                            current_profile == spartan::SplineProfile::Channel;
+        if (needs_height)
+        {
+            if (property_float("Height", &height, 0.1f, 0.1f, 100.0f, "height in meters", "%.1f m"))
+            {
+                spline->SetHeight(height);
+            }
+        }
+
+        // thickness (used by wall, fence)
+        bool needs_thickness = current_profile == spartan::SplineProfile::Wall ||
+                               current_profile == spartan::SplineProfile::Fence;
+        if (needs_thickness)
+        {
+            if (property_float("Thickness", &thickness, 0.01f, 0.01f, 10.0f, "thickness in meters", "%.2f m"))
+            {
+                spline->SetThickness(thickness);
+            }
+        }
+
+        // tube sides (only for tube)
+        if (current_profile == spartan::SplineProfile::Tube)
+        {
+            float tube_sides_f = static_cast<float>(tube_sides);
+            if (property_float("Sides", &tube_sides_f, 1.0f, 3.0f, 64.0f, "tube cross-section subdivisions", "%.0f"))
+            {
+                spline->SetTubeSides(static_cast<uint32_t>(tube_sides_f));
+            }
+        }
+
         layout::group_spacing();
 
-        // generate / clear road buttons
-        float road_button_width = 120.0f * spartan::Window::GetDpiScale();
-        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - road_button_width) * 0.5f + ImGui::GetCursorPosX());
+        // generate / clear mesh buttons
+        float gen_button_width = 120.0f * spartan::Window::GetDpiScale();
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - gen_button_width) * 0.5f + ImGui::GetCursorPosX());
 
         ImGui::BeginDisabled(point_count < 2);
-        if (ImGuiSp::button("Generate Road", ImVec2(road_button_width, 0)))
+        if (ImGuiSp::button("Generate", ImVec2(gen_button_width, 0)))
         {
             spline->GenerateRoadMesh();
         }
@@ -1800,11 +1856,45 @@ void Properties::ShowSpline(spartan::Spline* spline) const
 
         if (spline->HasRoadMesh())
         {
-            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - road_button_width) * 0.5f + ImGui::GetCursorPosX());
-            if (ImGuiSp::button("Clear Road", ImVec2(road_button_width, 0)))
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - gen_button_width) * 0.5f + ImGui::GetCursorPosX());
+            if (ImGuiSp::button("Clear", ImVec2(gen_button_width, 0)))
             {
                 spline->ClearRoadMesh();
             }
+        }
+
+        layout::separator();
+        layout::section_header("Instancing");
+
+        // instance spacing
+        if (property_float("Spacing", &inst_spacing, 0.1f, 0.5f, 100.0f, "distance between instances in meters", "%.1f m"))
+        {
+            spline->SetInstanceSpacing(inst_spacing);
+        }
+
+        // align instances to spline
+        if (property_toggle("Align to Spline", &inst_align, "rotate instances to follow the spline direction"))
+        {
+            spline->SetAlignInstancesToSpline(inst_align);
+        }
+
+        layout::group_spacing();
+
+        // spawn / clear instance buttons
+        float inst_button_width = 120.0f * spartan::Window::GetDpiScale();
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - inst_button_width) * 0.5f + ImGui::GetCursorPosX());
+
+        ImGui::BeginDisabled(point_count < 2);
+        if (ImGuiSp::button("Spawn", ImVec2(inst_button_width, 0)))
+        {
+            spline->SpawnInstances();
+        }
+        ImGui::EndDisabled();
+
+        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - inst_button_width) * 0.5f + ImGui::GetCursorPosX());
+        if (ImGuiSp::button("Clear Instances", ImVec2(inst_button_width, 0)))
+        {
+            spline->ClearInstances();
         }
     }
     component_end();

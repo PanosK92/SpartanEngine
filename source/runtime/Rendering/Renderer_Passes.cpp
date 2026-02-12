@@ -465,7 +465,7 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_count,    GetBuffer(Renderer_Buffer::IndirectDrawCount));
 
             // pass constants: draw count and max mip level for hi-z
-            m_pcb_pass_cpu.set_f4_value(static_cast<float>(m_indirect_draw_count), static_cast<float>(tex_occluders_hiz->GetMipCount()), 0.0f, 0.0f);
+            m_pcb_pass_cpu.set_f4_value(static_cast<float>(m_indirect_draw_count), static_cast<float>(tex_occluders_hiz->GetMipCount() - 1), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // dispatch: ceil(draw_count / 256) thread groups
@@ -1285,29 +1285,8 @@ namespace spartan
 
     void Renderer::Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        return;
-        // initialize nrd if not already done
         uint32_t width  = tex_in->GetWidth();
         uint32_t height = tex_in->GetHeight();
-        
-        if (!RHI_VendorTechnology::NRD_IsAvailable())
-        {
-            RHI_VendorTechnology::NRD_Initialize(width, height);
-        }
-        else
-        {
-            RHI_VendorTechnology::NRD_Resize(width, height);
-        }
-
-        if (!RHI_VendorTechnology::NRD_IsAvailable())
-        {
-            // fallback: just pass through
-            if (tex_in && tex_out && tex_in != tex_out)
-            {
-                cmd_list->Blit(tex_in, tex_out, false);
-            }
-            return;
-        }
 
         // prepare nrd input textures from g-buffer and path tracer output
         cmd_list->BeginTimeblock("nrd_prepare");
@@ -1315,10 +1294,8 @@ namespace spartan
             RHI_Shader* shader = GetShader(Renderer_Shader::nrd_prepare_c);
             if (!shader || !shader->IsCompiled())
             {
+                SP_LOG_WARNING("nrd_prepare shader failed to compile, skipping denoiser");
                 cmd_list->EndTimeblock();
-                // fallback
-                if (tex_in && tex_out && tex_in != tex_out)
-                    cmd_list->Blit(tex_in, tex_out, false);
                 return;
             }
 
@@ -1326,6 +1303,16 @@ namespace spartan
             RHI_Texture* nrd_normal_roughness = GetRenderTarget(Renderer_RenderTarget::nrd_normal_roughness);
             RHI_Texture* nrd_diff_radiance    = GetRenderTarget(Renderer_RenderTarget::nrd_diff_radiance_hitdist);
             RHI_Texture* nrd_spec_radiance    = GetRenderTarget(Renderer_RenderTarget::nrd_spec_radiance_hitdist);
+
+            if (!nrd_diff_radiance || !nrd_spec_radiance || !nrd_viewz || !nrd_normal_roughness)
+            {
+                SP_LOG_WARNING("nrd render targets not allocated, skipping denoiser");
+                cmd_list->EndTimeblock();
+                return;
+            }
+
+            // transition tex_in from general/uav to shader read for sampling
+            cmd_list->InsertBarrier(tex_in, RHI_Image_Layout::Shader_Read);
 
             RHI_PipelineState pso;
             pso.name             = "nrd_prepare";
@@ -1337,7 +1324,7 @@ namespace spartan
             // input: noisy radiance from path tracer
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
-            // outputs: nrd input textures (using dedicated nrd binding slots)
+            // outputs: nrd input textures
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_viewz), nrd_viewz, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_normal_roughness), nrd_normal_roughness, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::nrd_diff_radiance), nrd_diff_radiance, rhi_all_mips, 0, true);
@@ -1349,53 +1336,22 @@ namespace spartan
             uint32_t dispatch_y = (height + thread_group_count_y - 1) / thread_group_count_y;
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
 
-            // barriers - keep in GENERAL layout for NRD (uses same layout for sampled and storage)
-            cmd_list->InsertBarrier(nrd_viewz, RHI_Image_Layout::General);
-            cmd_list->InsertBarrier(nrd_normal_roughness, RHI_Image_Layout::General);
-            cmd_list->InsertBarrier(nrd_diff_radiance, RHI_Image_Layout::General);
-            cmd_list->InsertBarrier(nrd_spec_radiance, RHI_Image_Layout::General);
+            // ensure compute write is complete
+            cmd_list->InsertBarrier(nrd_diff_radiance, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
 
-        // get camera matrices from frame constant buffer
-        Matrix view_matrix            = m_cb_frame_cpu.view;
-        Matrix projection_matrix      = m_cb_frame_cpu.projection;
-        Matrix view_matrix_prev       = m_cb_frame_cpu.view_previous;
-        Matrix projection_matrix_prev = m_cb_frame_cpu.projection_previous;
-
-        // get jitter values
-        float jitter_x      = m_cb_frame_cpu.taa_jitter_current.x;
-        float jitter_y      = m_cb_frame_cpu.taa_jitter_current.y;
-        float jitter_prev_x = m_cb_frame_cpu.taa_jitter_previous.x;
-        float jitter_prev_y = m_cb_frame_cpu.taa_jitter_previous.y;
-
-        // run nrd denoiser
-        cmd_list->BeginTimeblock("nrd_denoise");
-        RHI_VendorTechnology::NRD_Denoise(
-            cmd_list,
-            tex_in,
-            tex_out,
-            view_matrix,
-            projection_matrix,
-            view_matrix_prev,
-            projection_matrix_prev,
-            jitter_x,
-            jitter_y,
-            jitter_prev_x,
-            jitter_prev_y,
-            m_cb_frame_cpu.delta_time * 1000.0f, // convert to milliseconds
-            static_cast<uint32_t>(GetFrameNumber())
-        );
-        cmd_list->EndTimeblock();
-
-        // DEBUG: bypass NRD output and use nrd_prepare output directly
-        // this tests if the prepare pass is working
-        RHI_Texture* nrd_diff = GetRenderTarget(Renderer_RenderTarget::nrd_diff_radiance_hitdist);
-        if (nrd_diff && tex_out)
+        // diagnostic: bypass nrd and blit the prepare output directly to verify the prepare shader works
+        // if the output is visible (noisy gi), prepare is correct and the issue is in nrd
+        // if the output is still black, the prepare shader itself has a problem
         {
-            cmd_list->InsertBarrier(nrd_diff, RHI_Image_Layout::Transfer_Source);
-            cmd_list->InsertBarrier(tex_out, RHI_Image_Layout::Transfer_Destination);
-            cmd_list->Blit(nrd_diff, tex_out, false);
+            RHI_Texture* nrd_diff = GetRenderTarget(Renderer_RenderTarget::nrd_diff_radiance_hitdist);
+            if (nrd_diff && tex_out)
+            {
+                cmd_list->InsertBarrier(nrd_diff, RHI_Image_Layout::Transfer_Source);
+                cmd_list->InsertBarrier(tex_out, RHI_Image_Layout::Transfer_Destination);
+                cmd_list->Blit(nrd_diff, tex_out, false);
+            }
         }
     }
 

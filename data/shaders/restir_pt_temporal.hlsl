@@ -38,7 +38,7 @@ bool check_temporal_visibility(float3 shading_pos, float3 shading_normal, float3
 
     // reject samples behind the surface
     float cos_theta = dot(dir, shading_normal);
-    if (cos_theta <= 0.25f)
+    if (cos_theta <= 0.05f)
         return false;
 
     // reject backfacing samples
@@ -206,7 +206,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             {
                 // clamp old reservoir radiance to match current path tracer limits
                 // this flushes outlier samples that were generated before clamping was tightened
-                float max_rad = (temporal.sample.path_length > 1) ? 3.0f : 5.0f;
+                float max_rad = (temporal.sample.path_length > 1) ? 10.0f : 15.0f;
                 temporal.sample.radiance = min(temporal.sample.radiance, float3(max_rad, max_rad, max_rad));
                 float temp_lum = dot(temporal.sample.radiance, float3(0.299f, 0.587f, 0.114f));
                 if (temp_lum > max_rad)

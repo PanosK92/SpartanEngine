@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-static const uint INITIAL_CANDIDATE_SAMPLES   = 10;
+static const uint INITIAL_CANDIDATE_SAMPLES   = 16;
 static const float RUSSIAN_ROULETTE_PROB      = 0.85f;
 static const uint RUSSIAN_ROULETTE_START      = 3;
 static const uint VERTEX_STRIDE               = 44;
@@ -262,27 +262,15 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         sample.path_length = bounce + 1;
         float3 view_dir = -ray_dir;
 
-        // emission contribution with MIS and per-bounce clamping
+        // emission contribution with per-bounce clamping
+        // no MIS here because there is no explicit emissive geometry sampling strategy;
+        // applying MIS without a complementary sampling term would incorrectly discard energy
         if (luminance(payload.emission) > 0.0f)
         {
-            float3 emission_contribution;
-            if (bounce == 0 || prev_specular)
-            {
-                emission_contribution = throughput * payload.emission;
-            }
-            else
-            {
-                float emissive_area = max(payload.triangle_area, 0.001f);
-                float3 to_light     = payload.hit_position - ray_origin;
-                float light_dist_sq = dot(to_light, to_light);
-                float cos_light     = abs(dot(payload.hit_normal, -ray_dir));
-                float light_pdf     = light_dist_sq / (max(cos_light, 0.001f) * emissive_area);
-                float mis_weight    = power_heuristic(prev_brdf_pdf, light_pdf);
-                emission_contribution = throughput * payload.emission * mis_weight;
-            }
+            float3 emission_contribution = throughput * payload.emission;
 
             float emission_lum = dot(emission_contribution, float3(0.299f, 0.587f, 0.114f));
-            float max_emission_per_bounce = 2.0f / float(bounce + 1);
+            float max_emission_per_bounce = 10.0f / float(bounce + 1);
             if (emission_lum > max_emission_per_bounce)
                 emission_contribution *= max_emission_per_bounce / emission_lum;
 
@@ -421,7 +409,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             float3 light_contribution = throughput * brdf * Li * mis_weight / max(light_pdf, 1e-6f);
 
             float light_lum = dot(light_contribution, float3(0.299f, 0.587f, 0.114f));
-            float max_light_per_bounce = 3.0f / float(bounce + 1);
+            float max_light_per_bounce = 15.0f / float(bounce + 1);
             if (light_lum > max_light_per_bounce)
                 light_contribution *= max_light_per_bounce / light_lum;
 
@@ -458,7 +446,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
                     float3 env_contribution = throughput * brdf_env * env_radiance * mis_weight_env / max(env_pdf, 1e-6f);
 
                     float env_lum = dot(env_contribution, float3(0.299f, 0.587f, 0.114f));
-                    float max_env_per_bounce = 2.5f / float(bounce + 1);
+                    float max_env_per_bounce = 10.0f / float(bounce + 1);
                     if (env_lum > max_env_per_bounce)
                         env_contribution *= max_env_per_bounce / env_lum;
 
@@ -466,13 +454,6 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
                 }
             }
         }
-
-        // per-bounce cumulative radiance clamp to suppress fireflies
-        // individual contributions (emission, direct, env) are clamped, but their sum can still be high
-        float bounce_lum = dot(sample.radiance, float3(0.299f, 0.587f, 0.114f));
-        float max_cumulative = 5.0f / float(bounce + 1);
-        if (bounce_lum > max_cumulative)
-            sample.radiance *= max_cumulative / bounce_lum;
 
         // russian roulette path termination
         if (bounce >= RUSSIAN_ROULETTE_START)
@@ -501,7 +482,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         prev_brdf_pdf = pdf;
         prev_specular = (payload.roughness < RESTIR_SPECULAR_THRESHOLD);
 
-        float clamp_limit    = lerp(10.0f, 3.0f, float(bounce) / float(RESTIR_MAX_PATH_LENGTH));
+        float clamp_limit    = lerp(20.0f, 8.0f, float(bounce) / float(RESTIR_MAX_PATH_LENGTH));
         float max_throughput = max(max(throughput.r, throughput.g), throughput.b);
         if (max_throughput > clamp_limit)
             throughput *= clamp_limit / max_throughput;
@@ -511,7 +492,7 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
     }
 
     // final radiance clamp before returning (luminance + per-channel)
-    float max_radiance = (sample.path_length > 1) ? 3.0f : 5.0f;
+    float max_radiance = (sample.path_length > 1) ? 10.0f : 15.0f;
     sample.radiance = min(sample.radiance, float3(max_radiance, max_radiance, max_radiance));
     float final_lum = dot(sample.radiance, float3(0.299f, 0.587f, 0.114f));
     if (final_lum > max_radiance)
@@ -581,7 +562,7 @@ void ray_gen()
         candidate.pdf         = pdf;
 
         // clamp candidate radiance at source
-        float radiance_clamp = (candidate.path_length > 1) ? 2.0f : 4.0f;
+        float radiance_clamp = (candidate.path_length > 1) ? 8.0f : 12.0f;
         float candidate_lum = dot(candidate.radiance, float3(0.299f, 0.587f, 0.114f));
         if (candidate_lum > radiance_clamp)
             candidate.radiance *= radiance_clamp / candidate_lum;
@@ -734,6 +715,9 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     }
     if (mat.emissive_from_albedo())
         emission += albedo;
+
+    // scale to match rasterization path intensity (light_composition uses *10)
+    emission *= 10.0f;
 
     // compute hit position and triangle area
     float3 hit_position = WorldRayOrigin() + WorldRayDirection() * dist;
