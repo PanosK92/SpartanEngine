@@ -96,14 +96,14 @@ void LightAuditor::OnTickVisible()
     static ImGuiTableFlags flags =
         ImGuiTableFlags_Borders           | // Draw all borders.
         ImGuiTableFlags_RowBg             | // Set each RowBg color with ImGuiCol_TableRowBg or ImGuiCol_TableRowBgAlt (equivalent of calling TableSetBgColor with ImGuiTableBgFlags_RowBg0 on each row manually)
-        ImGuiTableFlags_Resizable         | // Allow resizing columns.
+        ImGuiTableFlags_SizingFixedFit    | // Match column width with its content's maximum width.
         ImGuiTableFlags_Reorderable       | // Allow reordering columns.
         ImGuiTableFlags_Sortable          | // Allow sorting rows.
         ImGuiTableFlags_ContextMenuInBody | // Right-click on columns body/contents will display table context menu. By default it is available in TableHeadersRow().
         ImGuiTableFlags_ScrollX           | // Enable horizontal scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size. Changes default sizing policy. Because this create a child window, ScrollY is currently generally recommended when using ScrollX.
         ImGuiTableFlags_ScrollY;            // Enable vertical scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size.
 
-    static ImVec2 size = ImVec2(-1.0f);
+    static ImVec2 size = ImGui::GetContentRegionAvail();
     if (ImGui::BeginTable("##Widget_LightAuditor", 16, flags, size))
     {
         // Headers
