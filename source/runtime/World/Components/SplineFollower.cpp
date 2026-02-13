@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "SplineFollower.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Spline.h"
 #include "../Entity.h"
 #include "../World.h"
@@ -64,6 +67,8 @@ namespace spartan
 
     void SplineFollower::Tick()
     {
+        ZoneScoped;
+
         // only move during play mode
         if (!Engine::IsFlagSet(EngineMode::Playing))
             return;
