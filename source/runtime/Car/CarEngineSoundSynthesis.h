@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <cstdint>
 #include "../../editor/ImGui/Source/imgui.h"
+#include "CarTireSquealSynthesis.h"
 //==========================================
 
 namespace engine_sound
@@ -865,32 +866,11 @@ namespace engine_sound
 
     inline void debug_window()
     {
-        if (!ImGui::Begin("Engine Sound Synthesis", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+        if (!ImGui::Begin("Sound Synthesis", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGui::End();
             return;
         }
-
-        const debug_data& dbg = get_debug();
-
-        ImGui::TextColored(dbg.initialized ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : ImVec4(1.0f, 0.2f, 0.2f, 1.0f),
-            "Status: %s", dbg.initialized ? "Initialized" : "NOT Initialized");
-
-        ImGui::Text("Generate calls: %llu", dbg.generate_calls);
-        ImGui::Text("Samples generated: %llu", dbg.samples_generated);
-
-        ImGui::Separator();
-
-        ImGui::Text("Input Parameters:");
-        ImGui::Text("  RPM: %.0f", dbg.rpm);
-        ImGui::Text("  Throttle: %.1f%%", dbg.throttle * 100.0f);
-        ImGui::Text("  Load: %.1f%%", dbg.load * 100.0f);
-        ImGui::Text("  Boost: %.2f bar", dbg.boost);
-        ImGui::Text("  Firing freq: %.1f Hz", dbg.firing_freq);
-
-        ImGui::Separator();
-
-        ImGui::Text("Component Levels (RMS):");
 
         auto draw_level_bar = [](const char* label, float level, ImU32 color)
         {
@@ -912,25 +892,52 @@ namespace engine_sound
             ImGui::Text("%.4f", level);
         };
 
+        // ---- engine section ----
+        const debug_data& dbg = get_debug();
+
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "Engine");
+
+        ImGui::Text("  RPM: %.0f  |  Throttle: %.0f%%  |  Boost: %.2f bar",
+            dbg.rpm, dbg.throttle * 100.0f, dbg.boost);
+
         draw_level_bar("Combustion", dbg.combustion_level, IM_COL32(255, 100, 100, 255));
-        draw_level_bar("Exhaust", dbg.exhaust_level, IM_COL32(255, 180, 100, 255));
-        draw_level_bar("Induction", dbg.induction_level, IM_COL32(100, 200, 255, 255));
-        draw_level_bar("Mechanical", dbg.mechanical_level, IM_COL32(200, 200, 100, 255));
-        draw_level_bar("Turbo", dbg.turbo_level, IM_COL32(100, 255, 200, 255));
+        draw_level_bar("Exhaust",    dbg.exhaust_level,    IM_COL32(255, 180, 100, 255));
+        draw_level_bar("Induction",  dbg.induction_level,  IM_COL32(100, 200, 255, 255));
+        draw_level_bar("Mechanical", dbg.mechanical_level,  IM_COL32(200, 200, 100, 255));
+        draw_level_bar("Turbo",      dbg.turbo_level,      IM_COL32(100, 255, 200, 255));
 
         ImGui::Separator();
 
-        ImGui::Text("Output:");
-        draw_level_bar("RMS", dbg.output_level, IM_COL32(100, 255, 100, 255));
-        draw_level_bar("Peak", dbg.output_peak, IM_COL32(255, 255, 100, 255));
+        // ---- tire squeal section ----
+        const tire_squeal_sound::debug_data& tire_dbg = tire_squeal_sound::get_debug();
+
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Tire Squeal");
+
+        ImGui::Text("  Intensity: %.0f%%  |  Speed: %.0f%%",
+            tire_dbg.intensity * 100.0f, tire_dbg.speed_norm * 100.0f);
+
+        draw_level_bar("Screech",    tire_dbg.screech_level, IM_COL32(255, 100, 180, 255));
+        draw_level_bar("Sibilance",  tire_dbg.sibilance_lvl, IM_COL32(200, 130, 255, 255));
+        draw_level_bar("Body",       tire_dbg.body_level,    IM_COL32(180, 180, 100, 255));
 
         ImGui::Separator();
 
-        ImGui::Text("Waveform:");
+        // ---- combined output ----
+        ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "Output");
+
+        draw_level_bar("Engine",  dbg.output_level,       IM_COL32(100, 255, 100, 255));
+        draw_level_bar("Tire",    tire_dbg.output_level,   IM_COL32(180, 100, 255, 255));
+        draw_level_bar("Eng Peak", dbg.output_peak,        IM_COL32(255, 255, 100, 255));
+        draw_level_bar("Tire Peak", tire_dbg.output_peak,  IM_COL32(255, 200, 255, 255));
+
+        ImGui::Separator();
+
+        // ---- waveform (engine) ----
+        ImGui::Text("Engine Waveform:");
         {
             ImVec2 pos = ImGui::GetCursorScreenPos();
             float width = 400.0f;
-            float height = 100.0f;
+            float height = 80.0f;
             float center_y = pos.y + height * 0.5f;
 
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -958,8 +965,6 @@ namespace engine_sound
 
             ImGui::Dummy(ImVec2(width, height));
         }
-
-        ImGui::Text("Scale: +/- 1.0 (vertical)  |  ~%d samples (horizontal)", debug_data::waveform_size * 4);
 
         ImGui::End();
     }

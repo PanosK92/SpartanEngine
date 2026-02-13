@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Car.h"
 #include "CarSimulation.h"
 #include "CarEngineSoundSynthesis.h"
+#include "CarTireSquealSynthesis.h"
 #include "../Input/Input.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
@@ -40,9 +41,6 @@ namespace spartan
 {
     // static member initialization
     std::vector<Car*> Car::s_cars;
-
-    // engine sound toggle: false = audio recording, true = synthesis
-    static bool use_synthesized_engine_sound = true;
 
     // external references from game state (defined in Game.cpp)
     extern Entity* default_camera;
@@ -328,7 +326,6 @@ namespace spartan
         {
             if (AudioSource* audio = sound_engine->GetComponent<AudioSource>())
             {
-                audio->StopClip();
                 audio->StopSynthesis();
             }
         }
@@ -709,8 +706,9 @@ namespace spartan
 
     void Car::CreateAudioSources(Entity* parent_entity)
     {
-        // initialize the engine sound synthesizer
+        // initialize sound synthesizers
         engine_sound::initialize(48000);
+        tire_squeal_sound::initialize(48000);
 
         // engine start (still uses a sample for the starter motor sound)
         {
@@ -724,7 +722,7 @@ namespace spartan
             audio_source->SetPlayOnStart(false);
         }
 
-        // engine sound (either synthesized or from audio clip)
+        // engine sound (synthesized)
         {
             Entity* sound = World::CreateEntity();
             sound->SetObjectName("sound_engine");
@@ -734,9 +732,6 @@ namespace spartan
             audio_source->SetLoop(true);
             audio_source->SetPlayOnStart(false);
             audio_source->SetVolume(0.8f);
-
-            // set up audio clip for recording mode (default)
-            audio_source->SetAudioClip("project\\music\\car_idle.wav");
         }
 
         // door open/close
@@ -751,14 +746,13 @@ namespace spartan
             audio_source->SetPlayOnStart(false);
         }
 
-        // tire squeal
+        // tire squeal (synthesized)
         {
             Entity* sound = World::CreateEntity();
             sound->SetObjectName("sound_tire_squeal");
             sound->SetParent(parent_entity);
 
             AudioSource* audio_source = sound->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\tire_squeal.wav");
             audio_source->SetLoop(true);
             audio_source->SetPlayOnStart(false);
             audio_source->SetVolume(0.0f);
@@ -814,8 +808,7 @@ namespace spartan
         if (m_show_telemetry && m_is_occupied)
         {
             DrawTelemetry();
-            if (use_synthesized_engine_sound)
-                engine_sound::debug_window();
+            engine_sound::debug_window();
         }
 
         // osd hint
@@ -980,42 +973,23 @@ namespace spartan
             float redline_rpm = physics->GetRedlineRPM();
             float rpm_normalized = std::clamp((engine_rpm - idle_rpm) / (redline_rpm - idle_rpm), 0.0f, 1.0f);
 
-            if (use_synthesized_engine_sound)
+            audio_engine->SetSynthesisMode(true, [](float* buffer, int num_samples)
             {
-                // enable synthesis mode (this stops clip if playing and switches mode)
-                audio_engine->SetSynthesisMode(true, [](float* buffer, int num_samples)
-                {
-                    engine_sound::generate(buffer, num_samples, true);
-                });
+                engine_sound::generate(buffer, num_samples, true);
+            });
 
-                if (!audio_engine->IsPlaying())
-                    audio_engine->StartSynthesis();
+            if (!audio_engine->IsPlaying())
+                audio_engine->StartSynthesis();
 
-                // update synthesizer parameters
-                float load = throttle * (0.5f + rpm_normalized * 0.5f);
-                engine_sound::set_parameters(engine_rpm, throttle, load, boost);
+            // update synthesizer parameters
+            float load = throttle * (0.5f + rpm_normalized * 0.5f);
+            engine_sound::set_parameters(engine_rpm, throttle, load, boost);
 
-                float volume = 0.6f + rpm_normalized * 0.3f + throttle * 0.1f;
-                audio_engine->SetVolume(volume);
-            }
-            else
-            {
-                // disable synthesis mode (this stops synthesis if playing and switches mode)
-                audio_engine->SetSynthesisMode(false, nullptr);
-
-                if (!audio_engine->IsPlaying())
-                    audio_engine->PlayClip();
-
-                // adjust pitch and volume based on rpm
-                float pitch = 0.5f + rpm_normalized * 1.5f;  // 0.5x at idle, 2.0x at redline
-                float volume = 0.4f + rpm_normalized * 0.4f + throttle * 0.2f;
-                audio_engine->SetPitch(pitch);
-                audio_engine->SetVolume(volume);
-            }
+            float volume = 0.6f + rpm_normalized * 0.3f + throttle * 0.1f;
+            audio_engine->SetVolume(volume);
         }
         else if (!m_is_occupied && audio_engine && audio_engine->IsPlaying())
         {
-            audio_engine->StopClip();
             audio_engine->StopSynthesis();
         }
 
@@ -1026,7 +1000,7 @@ namespace spartan
 
             float max_slip_angle = 0.0f;
             float max_slip_ratio = 0.0f;
-            int grounded_count = 0;
+            int grounded_count   = 0;
 
             for (int i = 0; i < 4; i++)
             {
@@ -1057,25 +1031,32 @@ namespace spartan
                 }
             }
 
+            // smooth the intensity to avoid abrupt changes
             float fade_rate = (target_intensity > m_tire_squeal_volume) ? 0.04f : 0.025f;
             m_tire_squeal_volume += (target_intensity - m_tire_squeal_volume) * fade_rate;
 
-            const float max_volume = 0.25f;
-            float volume = m_tire_squeal_volume * max_volume;
+            // feed parameters into the synthesizer
+            float speed_normalized = std::clamp(speed_kmh / 200.0f, 0.0f, 1.0f);
+            tire_squeal_sound::set_parameters(m_tire_squeal_volume, speed_normalized);
 
             if (m_tire_squeal_volume > 0.02f)
             {
-                if (!audio_tire->IsPlaying())
-                    audio_tire->PlayClip();
+                audio_tire->SetSynthesisMode(true, [](float* buffer, int num_samples)
+                {
+                    tire_squeal_sound::generate(buffer, num_samples, true);
+                });
 
-                audio_tire->SetVolume(volume);
-                audio_tire->SetPitch(0.95f + m_tire_squeal_volume * 0.15f);
+                if (!audio_tire->IsPlaying())
+                    audio_tire->StartSynthesis();
+
+                const float max_volume = 0.25f;
+                audio_tire->SetVolume(m_tire_squeal_volume * max_volume);
             }
             else
             {
                 m_tire_squeal_volume = 0.0f;
                 if (audio_tire->IsPlaying())
-                    audio_tire->StopClip();
+                    audio_tire->StopSynthesis();
             }
         }
     }
@@ -1648,8 +1629,6 @@ namespace spartan
                 ImGui::SameLine();
                 ImGui::TextColored(boost > 0.5f ? ImVec4(0.3f, 1, 0.3f, 1) : ImVec4(0.7f, 0.7f, 0.7f, 1), "%.2f bar", boost);
             }
-
-            ImGui::Checkbox("Synth Audio", &use_synthesized_engine_sound);
 
             if (physics->GetVehicleHandbrake() > 0.1f)
             {
