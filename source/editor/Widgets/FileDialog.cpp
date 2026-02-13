@@ -1162,48 +1162,48 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
 
     if (m_filter == FileDialog_Filter_All)
     {
-        for (const string& file_path : paths_anything)
+        for (const string& path : paths_anything)
         {
-            if (FileSystem::IsSupportedImageFile(file_path))
+            if (FileSystem::IsSupportedImageFile(path))
             {
-                ThreadPool::AddTask([this, file_path]()
+                ThreadPool::AddTask([this, path]()
                 {
-                    auto texture = spartan::ResourceCache::Load<RHI_Texture>(file_path);
+                    auto texture = spartan::ResourceCache::Load<RHI_Texture>(path);
                     if (texture)
                     {
                         texture->PrepareForGpu();
                     }
                     lock_guard<mutex> lock(m_mutex_items);
-                    m_items.emplace_back(file_path, texture.get());
+                    m_items.emplace_back(path, texture.get());
                 });
             }
-            else if (FileSystem::IsSupportedAudioFile(file_path))
+            else if (FileSystem::IsSupportedAudioFile(path))
             {
-                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Audio));
+                m_items.emplace_back(path, spartan::ResourceCache::GetIcon(spartan::IconType::Audio));
             }
-            else if (FileSystem::IsSupportedModelFile(file_path))
+            else if (FileSystem::IsSupportedModelFile(path))
             {
-                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
+                m_items.emplace_back(path, spartan::ResourceCache::GetIcon(spartan::IconType::Model));
             }
-            else if (FileSystem::IsSupportedFontFile(file_path))
+            else if (FileSystem::IsSupportedFontFile(path))
             {
-                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Font));
+                m_items.emplace_back(path, spartan::ResourceCache::GetIcon(spartan::IconType::Font));
             }
-            else if (FileSystem::IsEngineMaterialFile(file_path))
+            else if (FileSystem::IsEngineMaterialFile(path))
             {
-                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Material));
+                m_items.emplace_back(path, spartan::ResourceCache::GetIcon(spartan::IconType::Material));
             }
-            else if (FileSystem::IsEngineWorldFile(file_path))
+            else if (FileSystem::IsEngineWorldFile(path))
             {
-                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::World));
+                m_items.emplace_back(path, spartan::ResourceCache::GetIcon(spartan::IconType::World));
             }
-            else if (FileSystem::GetExtensionFromFilePath(file_path) == ".7z")
+            else if (FileSystem::GetExtensionFromFilePath(path) == ".7z")
             {
-                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Compressed));
+                m_items.emplace_back(path, spartan::ResourceCache::GetIcon(spartan::IconType::Compressed));
             }
             else
             {
-                m_items.emplace_back(file_path, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
+                m_items.emplace_back(path, spartan::ResourceCache::GetIcon(spartan::IconType::Undefined));
             }
         }
     }
