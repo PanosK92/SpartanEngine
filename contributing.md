@@ -1,83 +1,94 @@
-# Why do it
+# Why Contribute
+
 The goal is to see you evolve beyond the version of yourself who initially started contributing here.
-By engaging with this project, you can gain knowledge, forge connections, or even secure job opportunities (Discord).
-This platform offers you the freedom to explore, experiment, and excel. Make the most of it and see how far you can go.
+By engaging with this project, you gain knowledge, forge connections, and potentially secure job opportunities (via Discord).
+This is a space where you're free to explore, experiment, and excel. Make the most of it and see how far you can go.
 
-# How to do it
-- Starting small: If it's your first time contributing, pick a small task and go through the process of cloning, working, and submitting. This will give you an idea of the workflow, the scale of the project, and maybe even how to have fun while doing it.
-- Task complexity: The bigger the task you choose, the higher the probability that you'll end up dropping it due to complexity, scale, or boredom. You might even feel stressed, which is the wrong way to go about it. If you are in this place, remember that I have zero expectations.
-- Your priorities: Your first priority should be to have fun. Secondly, prioritize practical action over extensive theorizing. For instance, spending four hours discussing a task that could be completed in 30 minutes is inefficient.
+# Getting Started
 
-# What to do
-- Check out the [issues](https://github.com/PanosK92/SpartanEngine/issues) section. I regularly open issues myself to keep track of them and also for others to tackle them.
-- You can also [join our Discord server](https://discord.gg/TG5r2BS), a growing community of 600+ members, where you can ask for ideas on what to contribute.
-- Another great approach is to simply run the engine, see what doesn't work or could be improved.
+- **Start small.** If it's your first time, pick a small task and go through the full cycle: clone, work, submit. This gives you a feel for the workflow, the scale of the project, and maybe even how to have fun while doing it.
+- **Mind the scope.** The bigger the task, the higher the chance you'll drop it due to complexity, scale, or boredom. If you feel stressed, remember that there are zero expectations.
+- **Have fun first.** Prioritize practical action over extensive theorizing. Spending four hours discussing a task that takes 30 minutes to complete is inefficient.
 
-# Workflow overview
-- The standard flow is always through your own fork, not the main SpartanEngine repo.
-- Fork the SpartanEngine repo to your GitHub account.
-- Clone your fork locally.
-- Create a branch in your fork and do your work there.
-- Push the branch to your fork (you have full rights there).
-- Open a Pull Request from your fork/branch → SpartanEngine.
+# What to Work On
 
-# Pull Request (PR) Guidelines
-- **Functionality:** Ensure your PR is functional. While it can be incomplete, the code it introduces should be operational.
-- **Collaboration restrictions:** Other contributors generally can't modify your PR directly. Hence, non-functional PRs can obstruct the project's progress.
-- **Iterative improvements:** It's okay for your PR to be a part of a larger task. Incremental, functional changes are encouraged.
-- **Focus:** Keep PRs focused on one issue or change. Avoid touching unrelated aspects of the engine, as it makes review harder and increases merge conflicts.
-- **Communication:** If you're looking for collaboration on your PR, communicate this in your PR description or through our Discord community.
-- **Nature of work:** This is an open source project, not a classroom. Contributors are expected to be self-sufficient in their implementation. Maintainers provide architectural direction, not private tutoring or line-by-line coding instruction.
+- Browse the [issues](https://github.com/PanosK92/SpartanEngine/issues) page. Issues are regularly opened for tracking and for others to pick up.
+- [Join our Discord server](https://discord.gg/TG5r2BS), a growing community of 600+ members, where you can ask for ideas on what to contribute.
+- Run the engine yourself, see what doesn't work or what could be improved, and take it from there.
 
-# Coding style
+# Workflow
 
-## General advice
-- Try to adhere to the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle whenever possible. A term coined by the lead engineer of the SR-71 Blackbird.
-- Avoid [defensive programming](https://en.wikipedia.org/wiki/Defensive_programming). Instead, use asserts everywhere (offensive). If an assert pops up, it should be fixed ASAP.
-- If **auto** is used, the type must be deducible at a glance. Long iterator types can also be replaced with auto.
-- Choose the right tool for the job. Refrain from dogmas like "Only use orthodox C++" or "Only use modern C++".
-- You can use tabs or spaces. The project will replace all tabs with 4 spaces to maintain a consistent look across IDEs.
-- Use comments, but if you can name your code well enough that it doesn't need comments, that's ideal.
+All contributions go through your own fork, not the main SpartanEngine repo.
+
+1. Fork the SpartanEngine repo to your GitHub account.
+2. Clone your fork locally.
+3. Create a branch and do your work there.
+4. Push the branch to your fork.
+5. Open a Pull Request from your fork/branch into SpartanEngine.
+
+# Pull Request Guidelines
+
+- **Functional code.** Your PR can be incomplete, but the code it introduces must be operational. Non-functional PRs block progress.
+- **Incremental changes.** It's perfectly fine for your PR to be part of a larger task. Small, functional steps are encouraged.
+- **Stay focused.** Keep each PR scoped to one issue or change. Avoid touching unrelated parts of the engine, it makes review harder and increases merge conflicts.
+- **Communicate.** If you're looking for collaboration, mention it in the PR description or on Discord.
+- **Be self-sufficient.** This is an open source project, not a classroom. Maintainers provide architectural direction, not line-by-line coding instruction.
+
+# Coding Style
+
+## General
+
+- Follow the [KISS](https://en.wikipedia.org/wiki/KISS_principle) principle whenever possible. A term coined by the lead engineer of the SR-71 Blackbird.
+- Avoid [defensive programming](https://en.wikipedia.org/wiki/Defensive_programming). Use asserts everywhere (offensive). If an assert fires, fix it immediately.
+- **auto** should only be used when the type is obvious at a glance. Long iterator types are a reasonable exception.
+- Choose the right tool for the job. Avoid dogmas like "only orthodox C++" or "only modern C++".
+- Tabs or spaces are both fine. The project automatically replaces tabs with 4 spaces for consistency across IDEs.
+- Use comments when needed, but if you can name things well enough to not need them, that's ideal.
 - If a class doesn't need multiple instances, make it static. Don't invite unnecessary complexity.
-- With massive and complex projects like this, simplicity is your friend, observe the image below.
+- With a project of this scale, simplicity is your best friend.
 
 <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/simplicity.jpg"/>
 
 ## Naming
-Variables should be named using the snake_case naming convention.
+
+Variables use the snake_case convention.
 ```
 bool name_like_this;
 ```
 It's closer to natural language and easier for our brains to read.
 
 ## Alignment
-When you are initializing a lot of variables, try to align them in a symmetrical manner, like so:
+
+When initializing multiple variables, align them symmetrically.
 ```
 m_matrix       = Matrix::Identity;
 m_matrix_local = Matrix::Identity;
 m_parent       = nullptr;
 ```
-A Visual Studio extension that automatically aligns like this can be found [here](https://marketplace.visualstudio.com/items?itemName=cpmcgrath.Codealignment).
+A Visual Studio extension for automatic alignment can be found [here](https://marketplace.visualstudio.com/items?itemName=cpmcgrath.Codealignment).
 
-## If statements
-If statements should have their brackets in their own individual lines.
+## Braces
+
+Braces go on their own lines.
 ```
 if (condition)
 {
     // code
 }
 ```
-The only exception is the early exit if statements, which can have no brackets, like so:
+The only exception is early-exit statements, which can omit braces.
 ```
 if (condition)
-    return
+    return;
 ```
-## Const correctness
-Try to use const for function parameters, if needed. But don't worry too much about const correctness.
+
+## Const Correctness
+
+Use const for function parameters when appropriate, but don't obsess over it.
 
 # The Bigger Picture
 
-Everything above will make you a solid contributor. But if you want to do exceptional work - the kind you're proud of - there's a bigger vision waiting.
+Everything above will make you a solid contributor. But if you want to do exceptional work, the kind you're proud of, there's a bigger vision waiting.
 
 We're building something inspired by [this video](https://youtu.be/R3QvniaZ5qM?t=53) that captured millions: a cinematic night city running in real-time on Spartan. Watch it. Then look at the engine. The delta between them is your roadmap. You don't need anyone to assign you tasks. Your taste tells you what's not good enough. Your skills tell you what you can fix.
 
