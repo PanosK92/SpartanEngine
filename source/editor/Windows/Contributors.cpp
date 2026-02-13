@@ -45,23 +45,23 @@ namespace Contributors
 
     const vector<Contributor> contributors =
     {
-        { "Hippeus", "Bryan Casagrande",     "United States",  "X",         "https://x.com/mrdrelliot",                                "Lua scripting, console variables",                            "BeamNG.drive" },
-        { "Spartan", "Iker Galardi",         "Basque Country", "LinkedIn",  "https://www.linkedin.com/in/iker-galardi/",               "Linux port (WIP)",                                            "N/A" },
-        { "Spartan", "Jesse Guerrero",       "United States",  "LinkedIn",  "https://www.linkedin.com/in/jguer",                       "UX improvements",                                             "N/A" },
-        { "Spartan", "Konstantinos Benos",   "Greece",         "X",         "https://x.com/deg3x",                                     "First editor facelift",                                       "N/A" },
-        { "Spartan", "Nick Polyderopoulos",  "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nick-polyderopoulos-21742397","UX improvements",                                             "N/A" },
-        { "Spartan", "Panos Kolyvakis",      "Greece",         "LinkedIn",  "https://www.linkedin.com/in/panos-kolyvakis-66863421a/",  "Water buoyancy improvements",                                 "N/A" },
-        { "Spartan", "Tri Tran",             "Belgium",        "LinkedIn",  "https://www.linkedin.com/in/mtrantr/",                    "Screen space shadows (Days Gone)",                            "Starfield" },
-        { "Spartan", "Ege",                  "Turkey",         "X",         "https://x.com/egedq",                                     "Second editor facelift and theme support",                    "N/A" },
-        { "Spartan", "Sandro Mtchedlidze",   "Georgia",        "Artstation","https://www.artstation.com/sandromch",                    "Provided some assets and artistic direction",                 "N/A" },
-        { "Spartan", "Dimitris Kalyvas",     "Greece",         "X",         "https://x.com/punctuator_",                               "UX improvements, volumetric clouds, helping with plan.world", "BeamNG.drive" },
-        { "Hoplite", "Apostolos Bouzalas",   "Greece",         "LinkedIn",  "https://www.linkedin.com/in/apostolos-bouzalas",          "A few performance reports",                                   "N/A" },
-        { "Hoplite", "Nikolas Pattakos",     "Greece",         "LinkedIn",  "https://www.linkedin.com/in/nikolaspattakos/",            "GCC fixes",                                                   "N/A" },
-        { "Hoplite", "Roman Koshchei",       "Ukraine",        "X",         "https://x.com/roman_koshchei",                            "Circular stack (undo/redo)",                                  "N/A" },
-        { "Hoplite", "Kristi Kercyku",       "Albania",        "GitHub",    "https://github.com/kristiker",                            "G-buffer depth issue fix",                                    "N/A" },
-        { "Hoplite", "Kinjal Kishor",        "India",          "X",         "https://x.com/kinjalkishor",                              "A few testing reports",                                       "N/A" },
-        { "Hoplite", "Jose Jiménez López ",  "Spain",          "X",         "https://x.com/kerbehee",                                  "Smoke tests proof of concept",                                "N/A" },
-    };
+        { "Hippeus", "Bryan Casagrande",    "United States",  "X",          "https://x.com/mrdrelliot",                                 "Lua scripting, console variables",                             "BeamNG.drive" },
+        { "Spartan", "Dimitris Kalyvas",    "Greece",         "X",          "https://x.com/punctuator_",                                "UX improvements, volumetric clouds, helping with plan.world",  "BeamNG.drive" },
+        { "Spartan", "Iker Galardi",        "Basque Country", "LinkedIn",   "https://www.linkedin.com/in/iker-galardi/",                "Linux compilation - Part 1",                                   "N/A" },
+        { "Spartan", "Jose Jiménez López ", "Spain",          "X",          "https://x.com/kerbehee",                                   "Linux compilation - Part 3, and smoke tests proof of concept", "N/A" },
+        { "Spartan", "Tri Tran",            "Belgium",        "LinkedIn",   "https://www.linkedin.com/in/mtrantr/",                     "Screen space shadows (Days Gone)",                             "Starfield" },
+        { "Spartan", "Ege",                 "Turkey",         "X",          "https://x.com/egedq",                                      "Second editor facelift and theme support",                     "N/A" },
+        { "Spartan", "Konstantinos Benos",  "Greece",         "X",          "https://x.com/deg3x",                                      "First editor facelift",                                        "N/A" },
+        { "Spartan", "Nick Polyderopoulos", "Greece",         "LinkedIn",   "https://www.linkedin.com/in/nick-polyderopoulos-21742397", "UX improvements",                                              "N/A" },
+        { "Spartan", "Panos Kolyvakis",     "Greece",         "LinkedIn",   "https://www.linkedin.com/in/panos-kolyvakis-66863421a/",   "Water buoyancy improvements",                                  "N/A" },
+        { "Spartan", "Jesse Guerrero",      "United States",  "LinkedIn",   "https://www.linkedin.com/in/jguer",                        "UX improvements",                                              "N/A" },
+        { "Spartan", "Sandro Mtchedlidze",  "Georgia",        "Artstation", "https://www.artstation.com/sandromch",                     "Provided some assets and artistic direction",                  "N/A" },
+        { "Hoplite", "Apostolos Bouzalas",  "Greece",         "LinkedIn",   "https://www.linkedin.com/in/apostolos-bouzalas",           "A few performance reports",                                    "N/A" },
+        { "Hoplite", "Nikolas Pattakos",    "Greece",         "LinkedIn",   "https://www.linkedin.com/in/nikolaspattakos/",             "Linux compilation - Part 2",                                   "N/A" },
+        { "Hoplite", "Roman Koshchei",      "Ukraine",        "X",          "https://x.com/roman_koshchei",                             "Circular stack (undo/redo)",                                   "N/A" },
+        { "Hoplite", "Kristi Kercyku",      "Albania",        "GitHub",     "https://github.com/kristiker",                             "G-buffer depth issue fix",                                     "N/A" },
+        { "Hoplite", "Kinjal Kishor",       "India",          "X",          "https://x.com/kinjalkishor",                               "A few testing reports",                                        "N/A" },
+    };                                      
 
     void RenderTable()
     {
