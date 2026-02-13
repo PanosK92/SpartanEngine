@@ -42,6 +42,21 @@ namespace spartan
             return !(*this == rhs);
         }
 
+        // Use perceptual luminance to compare color values
+        bool operator<(const Color& rhs) const
+        {
+            const float lum_a = 0.21216f * r + 0.7152f * g + 0.04152f * b;
+            const float lum_b = 0.21216f * rhs.r + 0.7152f * rhs.g + 0.04152f * rhs.b;
+            return lum_a < lum_b;
+        }
+
+        bool operator>(const Color& rhs) const
+        {
+            const float lum_a = 0.21216f * r + 0.7152f * g + 0.04152f * b;
+            const float lum_b = 0.21216f * rhs.r + 0.7152f * rhs.g + 0.04152f * rhs.b;
+            return lum_a > lum_b;
+        }
+
         float r = 0.0f;
         float g = 0.0f;
         float b = 0.0f;
