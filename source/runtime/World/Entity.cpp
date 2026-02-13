@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "Entity.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Prefab.h"
 #include "Components/AudioSource.h"
 #include "Components/Camera.h"
@@ -233,6 +236,8 @@ namespace spartan
 
     void Entity::Tick()
     {
+        ZoneScoped;
+
         for (shared_ptr<Component>& component : m_components)
         {
             if (component)
@@ -242,6 +247,50 @@ namespace spartan
         }
 
         m_time_since_last_transform_sec += static_cast<float>(Timer::GetDeltaTimeSec());
+    }
+
+    void Entity::OnTriggerEntered(Entity* other)
+    {
+        for (shared_ptr<Component>& component : m_components)
+        {
+            if (component)
+            {
+                component->OnTriggerEntered(other);
+            }
+        }
+    }
+
+    void Entity::OnTriggerExited(Entity* other)
+    {
+        for (shared_ptr<Component>& component : m_components)
+        {
+            if (component)
+            {
+                component->OnTriggerExited(other);
+            }
+        }
+    }
+
+    void Entity::OnContact(Entity* other, const math::Vector3& contactPoint, const math::Vector3& contactNormal, float impulse)
+    {
+        for (shared_ptr<Component>& component : m_components)
+        {
+            if (component)
+            {
+                component->OnContact(other, contactPoint, contactNormal, impulse);
+            }
+        }
+    }
+
+    void Entity::OnContactEnd(Entity* other)
+    {
+        for (shared_ptr<Component>& component : m_components)
+        {
+            if (component)
+            {
+                component->OnContactEnd(other);
+            }
+        }
     }
 
     void Entity::Save(pugi::xml_node& node)

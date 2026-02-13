@@ -104,6 +104,18 @@ namespace spartan
         // called when the entity is being loaded
         virtual void Load(pugi::xml_node& node) {}
 
+        // called when a trigger volume is entered
+        virtual void OnTriggerEntered(Entity* other) {}
+
+        // called when a trigger volume is exited.
+        virtual void OnTriggerExited(Entity* other) {}
+
+        // called when a contact is detected
+        virtual void OnContact(Entity* other, const math::Vector3& contactPoint, const math::Vector3& contactNormal, float impulse) {}
+
+        // called when a contact ends.
+        virtual void OnContactEnd(Entity* other) {}
+
         template <typename T>
         static ComponentType TypeToEnum();
 

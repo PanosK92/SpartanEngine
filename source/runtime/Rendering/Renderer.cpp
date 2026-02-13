@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "Renderer.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Material.h"
 #include "GeometryBuffer.h"
 #include "ThreadPool.h"
@@ -204,7 +207,7 @@ namespace spartan
     TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "show performance metrics",                on_performance_metrics_change);
     TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,                                                    "draw physics debug");
     TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");
-    // post-processing                                                                                                                                   
+    // post-processing
     TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,                                                    "bloom intensity, 0 to disable");
     TConsoleVar<float> cvar_fog                            ("r.fog",                            1.0f,                                                    "fog intensity/particle density");
     TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,                                                    "screen space ambient occlusion");
@@ -218,19 +221,19 @@ namespace spartan
     TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,                                                    "chromatic aberration");
     TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,                                                    "dithering to reduce banding");
     TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,                                                    "sharpening intensity");
-    // quality settings                                                                                                                                  
+    // quality settings
     TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering level (0-16)",      on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
     TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        2.0f,                                                    "aa/upsampling method index",              on_antialiasing_change);
-    // display                                                                                                                                                                                      
+    // display
     TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
-    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");                          
+    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");
     TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,                                                    "vertical sync",                           on_vsync_change);
-    // resolution                                                                                                                                                                                   
+    // resolution
     TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,                                                    "variable rate shading",                   on_vrs_change);
     TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,                                                    "render resolution scale (0.5-1.0)",       on_resolution_scale_change);
     TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,                                                    "automatic resolution scaling");
-    // misc                                                                                                                                              
+    // misc
     TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");
     TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, negative disables");
     // volumetric clouds
@@ -294,7 +297,7 @@ namespace spartan
         {
             // set gamma from display
             ConsoleRegistry::Get().SetValueFromString("r.gamma", to_string(Display::GetGamma()));
-            
+
             // set tonemapping to gran turismo 7 (works for both hdr and sdr)
             ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
 
@@ -421,6 +424,8 @@ namespace spartan
 
     void Renderer::Tick()
     {
+        ZoneScoped;
+
         // acquire next swapchain image and update RHI
         {
             swapchain->AcquireNextImage();
@@ -434,12 +439,12 @@ namespace spartan
                 Breadcrumbs::StartFrame();
             }
         }
-        
+
         // update optional render targets when their cvars change
         {
             static uint32_t options_hash = 0;
             uint32_t options_hash_new    = (cvar_ssao.GetValueAs<bool>() << 0) | (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) | (cvar_restir_pt.GetValueAs<bool>() << 2);
-            
+
             if (options_hash_new != options_hash)
             {
                 RHI_Device::QueueWaitAll(true);
@@ -449,7 +454,7 @@ namespace spartan
                 options_hash = options_hash_new;
             }
         }
-    
+
         // check if we can render (not minimized and resolution is valid)
         const uint32_t min_render_dimension = 64;
         bool resolution_valid = m_resolution_render.x >= min_render_dimension && m_resolution_render.y >= min_render_dimension;
@@ -497,7 +502,7 @@ namespace spartan
             {
                 UpdateAccelerationStructures(m_cmd_list_present);
             }
-    
+
             // handle dynamic buffers and resource deletion
             {
                 m_resource_index++;
@@ -505,17 +510,17 @@ namespace spartan
                 if (is_sync_point)
                 {
                     m_resource_index = 0;
-    
+
                     if (RHI_Device::DeletionQueueNeedsToParse())
                     {
                         RHI_Device::QueueWaitAll();
                         RHI_Device::DeletionQueueParse();
                     }
-    
+
                     GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
                 }
             }
-    
+
             // update bindless resources
             if (!is_loading)
             {
@@ -585,7 +590,7 @@ namespace spartan
                     count_buffer->Update(m_cmd_list_present, &zero, sizeof(uint32_t));
                 }
             }
-    
+
             // update frame constant buffer and add lines to render
             UpdateFrameConstantBuffer(m_cmd_list_present);
             UpdatePersistentLines();
@@ -618,7 +623,7 @@ namespace spartan
         {
             Xr::EndFrame();
         }
-    
+
         // blit to back buffer when standalone
         {
             bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
@@ -627,7 +632,7 @@ namespace spartan
                 BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
             }
         }
-    
+
         // present frame when standalone (always submit command list to avoid stalled commands)
         {
             bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
@@ -636,13 +641,13 @@ namespace spartan
                 SubmitAndPresent();
             }
         }
-    
+
         // clear per-frame data
         {
             m_lines_vertices.clear();
             m_icons.clear();
         }
-    
+
         // increment frame counter and trigger first-frame event
         {
             frame_num++;
@@ -766,7 +771,7 @@ namespace spartan
             }
 
             if (dirty_orthographic_projection)
-            { 
+            {
                 // near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below
                 Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
                 m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
@@ -850,6 +855,8 @@ namespace spartan
 
     void Renderer::OnFullScreenToggled()
     {
+        ZoneScoped;
+
         static float    width_previous_viewport  = 0;
         static float    height_previous_viewport = 0;
         static uint32_t width_previous_output    = 0;
@@ -899,7 +906,7 @@ namespace spartan
     {
         return swapchain.get();
     }
-    
+
     void Renderer::BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture)
     {
         cmd_list->BeginMarker("blit_to_back_buffer");
@@ -924,7 +931,7 @@ namespace spartan
             if (swapchain->IsImageAcquired())
             {
                 m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
-                
+
                 // use per-swapchain-image semaphore to signal rendering complete
                 // this ensures the semaphore isn't reused until the image is re-acquired
                 m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
@@ -999,19 +1006,21 @@ namespace spartan
 
     void Renderer::UpdateMaterials(RHI_CommandList* cmd_list)
     {
+        ZoneScoped;
+
         static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
         static unordered_set<uint64_t> unique_material_ids;
         static uint32_t count = 0;
-    
+
         auto update_material = [](Material* material)
         {
             // check if the material's ID is already processed
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
                 return;
-    
+
             // if not, add it to the list
             unique_material_ids.insert(material->GetObjectId());
-    
+
             // properties
             {
                 SP_ASSERT(count < rhi_max_array_size);
@@ -1059,7 +1068,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
                 // when changing the bit flags, ensure that you also update the Surface struct in common_structs.hlsl, so that it reads those flags as expected
             }
-    
+
             // textures
             {
                 // iterate through all texture types and their slots
@@ -1069,19 +1078,19 @@ namespace spartan
                     {
                         // calculate the final index in the bindless array
                         uint32_t bindless_index = count + (type * Material::slots_per_texture) + slot;
-                        
+
                         // get the texture from the material using type and slot
                         m_bindless_textures[bindless_index] = material->GetTexture(static_cast<MaterialTextureType>(type), slot);
                     }
                 }
             }
-    
+
             material->SetIndex(count);
 
             // update index increment to account for all texture slots
             count += static_cast<uint32_t>(MaterialTextureType::Max) * Material::slots_per_texture;
         };
-    
+
         auto update_entities = [update_material]()
         {
             for (Entity* entity : World::GetEntities())
@@ -1098,7 +1107,7 @@ namespace spartan
                 }
             }
         };
-    
+
         // cpu
         {
             // clear
@@ -1107,7 +1116,7 @@ namespace spartan
             unique_material_ids.clear();
             update_entities();
         }
-    
+
         // gpu
         {
             // material properties
@@ -1121,27 +1130,29 @@ namespace spartan
 
     void Renderer::UpdateLights(RHI_CommandList* cmd_list)
     {
+        ZoneScoped;
+
         const Entity* camera_entity = World::GetCamera() ? World::GetCamera()->GetEntity() : nullptr;
         const Vector3 camera_pos    = camera_entity ? camera_entity->GetPosition() : Vector3::Zero;
-    
+
         m_bindless_lights.fill(Sb_Light());
-        
+
         // reset the active count so we can track exactly how many lights are uploaded
-        m_count_active_lights    = 0; 
+        m_count_active_lights    = 0;
         Light* first_directional = nullptr;
-    
+
         auto fill_light = [&](Light* light_component)
         {
             const uint32_t index = m_count_active_lights++;
-            
+
             light_component->SetIndex(index);
             Sb_Light& light_buffer_entry = m_bindless_lights[index];
-    
+
             for (uint32_t i = 0; i < light_component->GetSliceCount(); i++)
             {
                 light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
             }
-    
+
             light_buffer_entry.screen_space_shadows_slice_index  = light_component->GetScreenSpaceShadowsSliceIndex();
             light_buffer_entry.intensity                         = light_component->GetIntensityWatt();
             light_buffer_entry.range                             = light_component->GetRange();
@@ -1159,7 +1170,7 @@ namespace spartan
             light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::ShadowsScreenSpace)  ? (1 << 4) : 0;
             light_buffer_entry.flags                            |= light_component->GetFlag(LightFlags::Volumetric)          ? (1 << 5) : 0;
             light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Area        ? (1 << 6) : 0;
-    
+
             for (uint32_t i = 0; i < 6; i++)
             {
                 if (i < light_component->GetSliceCount())
@@ -1177,7 +1188,7 @@ namespace spartan
                 }
             }
         };
-    
+
         // directional light always goes in slot 0
         for (Entity* entity : World::GetEntitiesLights())
         {
@@ -1186,11 +1197,11 @@ namespace spartan
                 if (light_component->GetLightType() == LightType::Directional)
                 {
                     first_directional = light_component;
-    
+
                     // even if disabled (intensity 0 or !active), we must upload it to slot 0
                     // because the shader hard-assumes slot 0 is the sun.
                     fill_light(light_component);
-                    
+
                     // if it was effectively disabled, ensure the uploaded intensity is 0
                     // so it doesn't affect lighting calculation
                     if (!light_component->GetEntity()->GetActive())
@@ -1202,7 +1213,7 @@ namespace spartan
                 }
             }
         }
-    
+
         // fill remaining lights (skip disabled or out-of-range)
         for (Entity* entity : World::GetEntitiesLights())
         {
@@ -1211,21 +1222,21 @@ namespace spartan
                 // skip the directional light we already handled
                 if (light_component == first_directional)
                     continue;
-    
+
                 light_component->SetIndex(numeric_limits<uint32_t>::max());
-    
+
                 if (!light_component->GetEntity()->GetActive())
                     continue;
-    
+
                 if (light_component->GetIntensityWatt() <= 0.0f)
                     continue;
-    
+
                 if (Camera* camera = World::GetCamera())
                 {
                     if (!camera->IsInViewFrustum(light_component->GetBoundingBox()))
                         continue;
                 }
-    
+
                 if (light_component->GetLightType() != LightType::Directional)
                 {
                     const float distance_squared      = Vector3::DistanceSquared(light_component->GetEntity()->GetPosition(), camera_pos);
@@ -1233,15 +1244,15 @@ namespace spartan
                     if (distance_squared > draw_distance_squared)
                         continue;
                 }
-    
+
                 fill_light(light_component);
             }
         }
-    
+
         // upload to gpu
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::LightParameters);
         buffer->ResetOffset();
-        
+
         // update only the active lights count so we don't upload garbage data
         if (m_count_active_lights > 0)
         {
@@ -1251,6 +1262,8 @@ namespace spartan
 
     void Renderer::UpdatedBoundingBoxes(RHI_CommandList* cmd_list)
     {
+        ZoneScoped;
+
         // clear
         m_bindless_aabbs.fill(Sb_Aabb());
 
@@ -1547,13 +1560,13 @@ namespace spartan
                             blas_built++;
                         }
                         else
-                        { 
+                        {
                             blas_skipped++;
                         }
                     }
                 }
             }
-            
+
             if (blas_built > 0 || blas_skipped > 0)
             {
                 SP_LOG_INFO("Ray tracing: built %u BLAS, skipped %u (no sub-meshes)", blas_built, blas_skipped);
@@ -1581,7 +1594,7 @@ namespace spartan
             {
                 if (!entity->GetActive())
                     continue;
-    
+
                if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
                     if (Material* material = renderable->GetMaterial())
@@ -1629,7 +1642,7 @@ namespace spartan
                     }
                 }
             }
-    
+
             static uint32_t last_instance_count = 0;
             if (!instances.empty())
             {
@@ -1660,7 +1673,7 @@ namespace spartan
         const uint32_t min_slice_res    = 256;
 
         // assume atlas is square, width == height
-    
+
         // collect slices
         m_shadow_slices.clear();
         for (const auto& entity : World::GetEntitiesLights())
@@ -1676,23 +1689,23 @@ namespace spartan
         }
         if (m_shadow_slices.empty())
             return;
-    
+
         // lambda to check if slices of given res can fit with borders
         uint32_t border  = 8; // pixels between slices, none at edges
         auto can_fit = [&](uint32_t test_res, uint32_t num_slices) -> bool
         {
             if (test_res > resolution_atlas)
                 return false;
-    
+
             uint32_t x     = 0;
             uint32_t y     = 0;
             uint32_t row_h = 0;
-    
+
             for (uint32_t i = 0; i < num_slices; ++i)
             {
                 uint32_t left_pad = (x == 0) ? 0 : border;
                 uint32_t placed_x = x + left_pad;
-    
+
                 // wrap to next row if overflow
                 if (placed_x + test_res > resolution_atlas)
                 {
@@ -1701,23 +1714,23 @@ namespace spartan
                     row_h     = 0;
                     placed_x  = 0;
                 }
-    
+
                 // check if too wide after wrap
                 if (placed_x + test_res > resolution_atlas)
                     return false;
-    
+
                 uint32_t placed_y       = y;
                 if (placed_y + test_res > resolution_atlas)
                     return false;
-    
+
                 // simulate placement
                 x     = placed_x + test_res;
                 row_h = max(row_h, test_res);
             }
-    
+
             return true;
         };
-    
+
         // binary search for max uniform slice res
         uint32_t max_slice_res = resolution_atlas;
         if (m_shadow_slices.size() > 1)
@@ -1739,13 +1752,13 @@ namespace spartan
             max_slice_res = low;
         }
         max_slice_res = max(max_slice_res, min_slice_res); // clamp to min
-    
+
         // assign res to all slices (uniform)
         for (auto& slice : m_shadow_slices)
         {
             slice.res = max_slice_res;
         }
-    
+
         // pack slices in scanline order
         uint32_t x     = 0;
         uint32_t y     = 0;
@@ -1754,7 +1767,7 @@ namespace spartan
         {
             uint32_t left_pad = (x == 0) ? 0 : border;
             uint32_t placed_x = x + left_pad;
-    
+
             // wrap to next row if needed
             if (placed_x + slice.res > resolution_atlas)
             {
@@ -1763,22 +1776,22 @@ namespace spartan
                 row_h     = 0;
                 placed_x  = 0;
             }
-    
+
             // no overflow checks here, as can_fit validated
             // assert(placed_x + slice.res <= resolution_atlas && y + slice.res <= resolution_atlas);
-    
+
             slice.rect = math::Rectangle(
                 static_cast<float>(placed_x),
                 static_cast<float>(y),
                 static_cast<float>(slice.res),
                 static_cast<float>(slice.res)
             );
-    
+
             // advance
             x     = placed_x + slice.res;
             row_h = max(row_h, slice.res);
         }
-    
+
         // assign rects back to lights
         for (const auto& slice : m_shadow_slices)
         {

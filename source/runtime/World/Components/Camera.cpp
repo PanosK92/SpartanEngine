@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Camera.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Renderable.h"
 #include "Spline.h"
 #include "Window.h"
@@ -62,6 +65,8 @@ namespace spartan
 
     void Camera::Tick()
     {
+        ZoneScoped;
+
         const auto& current_viewport = Renderer::GetViewport();
         if (m_last_known_viewport != current_viewport)
         {
@@ -113,7 +118,7 @@ namespace spartan
         node.append_attribute("projection")     = static_cast<int>(m_projection_type);
         node.append_attribute("flags")          = m_flags;
     }
-    
+
     void Camera::Load(pugi::xml_node& node)
     {
         m_aperture           = node.attribute("aperture").as_float(5.6f);
@@ -178,7 +183,7 @@ namespace spartan
 
         return ray;
     }
-    
+
     void Camera::Pick()
     {
         if (!Input::GetMouseIsInViewport())
@@ -219,7 +224,7 @@ namespace spartan
                 // query mesh size first to reserve exact capacity and avoid allocations
                 uint32_t index_count  = renderable->GetIndexCount();
                 uint32_t vertex_count = renderable->GetVertexCount();
-                
+
                 // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
                 // only reserve if current capacity is insufficient
                 if (m_pick_indices.capacity() < index_count)
@@ -230,8 +235,8 @@ namespace spartan
                 {
                     m_pick_vertices.reserve(vertex_count);
                 }
-                
-                // clear and reuse pre-allocated buffers 
+
+                // clear and reuse pre-allocated buffers
                 m_pick_indices.clear();
                 m_pick_vertices.clear();
 
@@ -357,7 +362,7 @@ namespace spartan
             }
         }
     }
-    
+
     void Camera::SetSelectedEntity(Entity* entity)
     {
         m_selected_entities.clear();
@@ -366,44 +371,44 @@ namespace spartan
             m_selected_entities.push_back(entity);
         }
     }
-    
+
     Entity* Camera::GetSelectedEntity()
     {
         return m_selected_entities.empty() ? nullptr : m_selected_entities[0];
     }
-    
+
     void Camera::AddToSelection(Entity* entity)
     {
         if (!entity)
             return;
-        
+
         // check if already selected
         for (Entity* e : m_selected_entities)
         {
             if (e && e->GetObjectId() == entity->GetObjectId())
                 return;
         }
-        
+
         m_selected_entities.push_back(entity);
     }
-    
+
     void Camera::RemoveFromSelection(Entity* entity)
     {
         if (!entity)
             return;
-        
+
         m_selected_entities.erase(
             remove_if(m_selected_entities.begin(), m_selected_entities.end(),
                 [entity](Entity* e) { return e && e->GetObjectId() == entity->GetObjectId(); }),
             m_selected_entities.end()
         );
     }
-    
+
     void Camera::ToggleSelection(Entity* entity)
     {
         if (!entity)
             return;
-        
+
         if (IsSelected(entity))
         {
             RemoveFromSelection(entity);
@@ -413,17 +418,17 @@ namespace spartan
             AddToSelection(entity);
         }
     }
-    
+
     void Camera::ClearSelection()
     {
         m_selected_entities.clear();
     }
-    
+
     bool Camera::IsSelected(Entity* entity) const
     {
         if (!entity)
             return false;
-        
+
         for (Entity* e : m_selected_entities)
         {
             if (e && e->GetObjectId() == entity->GetObjectId())
@@ -561,14 +566,14 @@ namespace spartan
         bool is_grounded          = has_physics_body ? physics_body->IsGrounded() : false;
         bool is_crouching         = button_crouch && is_grounded;
         m_is_walking              = (button_move_forward || button_move_backward || button_move_left || button_move_right) && is_grounded;
-        
+
         // behavior: control activation and cursor handling
         {
             bool control_initiated  = mouse_click_right_down && mouse_in_viewport;
             bool control_maintained = mouse_click_right && is_controlled;
             bool is_controlled_new  = control_initiated || control_maintained;
             SetFlag(CameraFlags::IsControlled, is_controlled_new);
-    
+
             if (is_controlled_new && !wants_cursor_hidden)
             {
                 m_mouse_last_position = Input::GetMousePosition();
@@ -588,7 +593,7 @@ namespace spartan
                 SetFlag(CameraFlags::WantsCursorHidden, false);
             }
         }
-    
+
         // behavior: mouse look and movement direction calculation
         Vector3 movement_direction = Vector3::Zero;
         bool is_xr_active = Xr::IsSessionRunning();
@@ -608,7 +613,7 @@ namespace spartan
                     Input::SetMousePosition(Vector2(static_cast<float>(Display::GetWidth() - edge - 1), mouse_pos.y));
                 }
             }
-    
+
             // mouse and gamepad look - skip in xr mode since head tracking handles rotation
             if (!is_xr_active)
             {
@@ -636,7 +641,7 @@ namespace spartan
                 }
                 GetEntity()->SetRotationLocal(new_rotation.Normalized());
             }
-    
+
             // Keyboard and gamepad movement direction
             if (is_controlled)
             {
@@ -654,19 +659,19 @@ namespace spartan
                 movement_direction += Vector3::Up                * Input::GetGamepadTriggerRight();
                 movement_direction += Vector3::Down              * Input::GetGamepadTriggerLeft();
             }
-    
+
             if (has_physics_body && is_playing)
             {
                 movement_direction.y = 0.0f;
             }
             movement_direction.Normalize();
         }
-    
+
         // behavior: speed adjustment
         {
             m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
             m_movement_scroll_accumulator = clamp(m_movement_scroll_accumulator, -acceleration + 0.1f, acceleration * 2.0f);
-    
+
             Vector3 translation = (acceleration + m_movement_scroll_accumulator) * movement_direction * 4.0f;
             if (button_sprint)
             {
@@ -679,17 +684,17 @@ namespace spartan
                 m_movement_speed = m_movement_speed.Normalized() * max_speed;
             }
         }
-    
+
         // behavior: physical body animation (head bob when walking)
         if (GetFlag(CameraFlags::PhysicalBodyAnimation) && is_playing && has_physics_body && is_grounded)
         {
             static Vector3 prev_bob_offset = Vector3::Zero;
             static float bob_timer         = 0.0f;
             static float bob_amplitude     = 0.0f;
-            
+
             const float max_amplitude    = 0.04f;
             float velocity_magnitude     = physics_body->GetLinearVelocity().Length();
-            
+
             if (velocity_magnitude > 0.1f) // walking - ramp up amplitude and advance timer
             {
                 bob_timer     += delta_time * velocity_magnitude * 1.5f;
@@ -704,7 +709,7 @@ namespace spartan
                     bob_timer     = 0.0f;
                 }
             }
-            
+
             // compute bob offset
             Vector3 bob_offset = Vector3::Zero;
             if (bob_amplitude > 0.0f)
@@ -712,17 +717,17 @@ namespace spartan
                 bob_offset.y = sin(bob_timer) * bob_amplitude;
                 bob_offset.x = cos(bob_timer) * bob_amplitude * 0.5f;
             }
-            
+
             // apply change in bob offset (delta) to avoid drift
             Vector3 bob_delta = bob_offset - prev_bob_offset;
             prev_bob_offset   = bob_offset;
-            
+
             if (bob_delta.LengthSquared() > 0.0000001f)
             {
                 GetEntity()->SetPositionLocal(GetEntity()->GetPositionLocal() + bob_delta);
             }
         }
-    
+
         // behavior: jumping
         {
             if (has_physics_body && is_playing && is_grounded && button_jump)
@@ -730,7 +735,7 @@ namespace spartan
                 m_jump_velocity = sqrt(2.0f * jump_acceleration * jump_height); // initial velocity from v^2 = 2*a*h
                 m_jump_time     = 0.0f;
             }
-        
+
             if (m_jump_velocity > 0.0f)
             {
                 m_jump_time         += delta_time;
@@ -745,7 +750,7 @@ namespace spartan
                     m_jump_velocity = 0.0f; // stop applying upward velocity
                 }
             }
-        
+
             // end jump condition
             if (is_grounded && m_jump_velocity == 0.0f)
             {
@@ -758,7 +763,7 @@ namespace spartan
         {
             physics_body->Crouch(is_crouching);
         }
-        
+
         // behavior: apply movement
         if (m_movement_speed != Vector3::Zero || (has_physics_body && is_playing && is_grounded))
         {
@@ -834,7 +839,7 @@ namespace spartan
                 // set active state and intensity based on flag
                 bool flashlight_enabled = GetFlag(CameraFlags::Flashlight);
                 m_flashlight->SetActive(flashlight_enabled);
-                
+
                 if (Light* light = m_flashlight->GetComponent<Light>())
                 {
                     // set intensity to 0 when off, restore to 2000 when on
@@ -969,7 +974,7 @@ namespace spartan
         // extract basis vectors directly from world matrix to avoid quaternion decomposition instability
         // row-major layout: row 0 = right (X), row 1 = up (Y), row 2 = forward (Z), row 3 = translation
         const Matrix& m = GetEntity()->GetMatrix();
-        
+
         Vector3 position = Vector3(m.m30, m.m31, m.m32);
         Vector3 forward  = Vector3(m.m20, m.m21, m.m22).Normalized();
         Vector3 up       = Vector3(m.m10, m.m11, m.m12).Normalized();

@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "ParticleSystem.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "../Entity.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
@@ -52,6 +55,8 @@ namespace spartan
 
     void ParticleSystem::Tick()
     {
+        ZoneScoped;
+
         // nothing to do on the cpu side; the gpu handles emission, simulation, and rendering
         // the renderer reads the component properties directly when building the emitter params buffer
     }

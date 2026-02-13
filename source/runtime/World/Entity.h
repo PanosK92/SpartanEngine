@@ -57,6 +57,12 @@ namespace spartan
         void PreTick();
         void Tick();
 
+        void OnTriggerEntered(Entity* other);
+        void OnTriggerExited(Entity* other);
+
+        virtual void OnContact(Entity* other, const math::Vector3& contactPoint, const math::Vector3& contactNormal, float impulse);
+        virtual void OnContactEnd(Entity* other);
+
         // io
         void Save(pugi::xml_node& node);
         void Load(pugi::xml_node& node);
