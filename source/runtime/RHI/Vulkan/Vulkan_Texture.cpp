@@ -146,7 +146,7 @@ namespace spartan
             }
         }
 
-        template<uint32_t MaxRegions>
+        template<size_t MaxRegions>
         void copy_to_staging_buffer(RHI_Texture* texture, array<VkBufferImageCopy, MaxRegions>& regions, void*& staging_buffer)
         {
             SP_ASSERT_MSG(texture->HasData(), "No data to stage");

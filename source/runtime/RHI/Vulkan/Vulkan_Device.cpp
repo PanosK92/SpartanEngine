@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
+#include <SDL3/SDL_vulkan.h>
 SP_WARNINGS_ON
 //=====================================
 
@@ -245,12 +246,14 @@ namespace spartan
             "VK_KHR_surface",
             "VK_KHR_win32_surface",
             "VK_EXT_swapchain_colorspace",
+
             // openxr requirements
             "VK_KHR_external_memory_capabilities",
             "VK_KHR_external_fence_capabilities",
             "VK_KHR_get_physical_device_properties2",
         };
-        vector<const char*> extensions_device   = {
+
+        vector<const char*> extensions_device = {
             "VK_KHR_swapchain",
             "VK_EXT_memory_budget",          // to obtain precise memory usage information from Vulkan Memory Allocator
             "VK_KHR_fragment_shading_rate",
@@ -265,10 +268,18 @@ namespace spartan
             // openxr requirements
             "VK_KHR_external_memory",
             "VK_KHR_external_semaphore",
+
+        #ifdef _WIN32
             "VK_KHR_external_memory_win32",
             "VK_KHR_win32_keyed_mutex",
+        #elif defined(__linux__)
+            "VK_KHR_external_memory_fd",
+            "VK_KHR_external_semaphore_fd",
+        #endif
+
             "VK_KHR_timeline_semaphore",
             "VK_KHR_dedicated_allocation",
+
             // ray tracing
             "VK_KHR_acceleration_structure",
             "VK_KHR_ray_tracing_pipeline",
@@ -331,6 +342,20 @@ namespace spartan
 
         vector<const char*> get_extensions_instance()
         {
+            uint32_t sdl_extension_count = 0;
+            const char* const* sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_extension_count);
+            if (sdl_extensions && sdl_extension_count > 0)
+            {
+                for (uint32_t i = 0; i < sdl_extension_count; i++)
+                {
+                    extensions_instance.emplace_back(sdl_extensions[i]);
+                }
+            }
+            else
+            {
+                SP_LOG_ERROR("Failed to get Vulkan instance extensions from SDL");
+            }
+
             // validation layer messaging/logging
             if (Debugging::IsValidationLayerEnabled())
             {

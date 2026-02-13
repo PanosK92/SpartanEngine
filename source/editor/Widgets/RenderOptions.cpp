@@ -267,9 +267,11 @@ void RenderOptions::OnTickVisible()
                     static vector<string> upsamplers =
                     {
                         "Off",   // AA_Off_Upscale_Linear
-                        "FXAA",  // AA_Fxaa_Upscale_Linear
-                        "FSR 3", // AA_Fsr_Upscale_Fsr
-                        "XeSS 2" // AA_Xess_Upscale_Xess
+                        "FXAA"   // AA_Fxaa_Upscale_Linear
+#if defined(_WIN32)
+                        ,"FSR 3" // AA_Fsr_Upscale_Fsr
+                        ,"XeSS 2" // AA_Xess_Upscale_Xess
+#endif
                     };
 
                     Vector2 res_render = Renderer::GetResolutionRender();

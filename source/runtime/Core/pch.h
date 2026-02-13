@@ -85,3 +85,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if !defined(_MSC_VER)
     #define FFX_GCC
 #endif
+
+#ifdef __linux__
+#include "linux_compat.h"
+#endif

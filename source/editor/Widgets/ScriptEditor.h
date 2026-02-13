@@ -18,5 +18,5 @@ private:
     static constexpr size_t kBufferSize = 1024 * 64;
     char m_buffer[kBufferSize]      = {0};
 
-    TextEditor TextEditor;
+    TextEditor m_text_editor;
 };
