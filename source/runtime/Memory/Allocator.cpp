@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Allocator.h"
 #include <cstring>
+#include <cstdlib>
 #if defined(_WIN32)
 #include <Windows.h>
 #include <psapi.h>
@@ -31,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #elif defined(__linux__)
 #include <unistd.h>
 #include <sys/resource.h>
+#include <malloc.h>
 #endif
 //===============================
 
@@ -155,6 +157,52 @@ namespace spartan
         // perform the actual allocation (bypassing cache)
         void* allocate_internal(size_t size, size_t alignment, MemoryTag tag)
         {
+#if defined(__linux__)
+            // ABI-safe End-Header implementation for Linux
+            const size_t header_size = sizeof(allocation_header);
+            const size_t total_size  = size + header_size;
+
+            void* ptr = nullptr;
+            if (alignment <= alignof(std::max_align_t))
+            {
+                ptr = malloc(total_size);
+            }
+            else
+            {
+                // ensure alignment is a power of 2
+                if ((alignment & (alignment - 1)) != 0)
+                {
+                    size_t p2 = 1;
+                    while (p2 < alignment) p2 <<= 1;
+                    alignment = p2;
+                }
+                if (posix_memalign(&ptr, alignment, align_up(total_size, alignment)) != 0)
+                    return nullptr;
+            }
+
+            if (!ptr)
+                return nullptr;
+
+            // store header at the very end of the usable space
+            size_t usable_size = malloc_usable_size(ptr);
+            allocation_header* header = reinterpret_cast<allocation_header*>(static_cast<char*>(ptr) + usable_size - header_size);
+            header->magic  = allocation_magic_active;
+            header->offset = 0; // indicates End-Header format
+            header->size   = size;
+            header->tag    = tag;
+
+#if defined(_DEBUG) || defined(DEBUG)
+            memset(ptr, poison_allocated, size);
+#endif
+
+            // update counters
+            size_t current = bytes_allocated.fetch_add(usable_size, memory_order_relaxed) + usable_size;
+            update_peak(current);
+            allocation_count.fetch_add(1, memory_order_relaxed);
+            bytes_by_tag[static_cast<size_t>(tag)].fetch_add(usable_size, memory_order_relaxed);
+
+            return ptr;
+#else
             // ensure minimum alignment for our header
             alignment = max(alignment, alignof(allocation_header));
 
@@ -196,11 +244,36 @@ namespace spartan
             bytes_by_tag[static_cast<size_t>(tag)].fetch_add(size, memory_order_relaxed);
 
             return user_ptr;
+#endif
         }
 
         // perform the actual free (bypassing cache)
         void free_internal(void* ptr)
         {
+#if defined(__linux__)
+            // End-Header implementation for Linux
+            // This makes it ABI safe, some system libraries were crashing without this.
+            // On Linux we may receive foreign pointers from driver code (e.g., Mesa/OpenGL),
+            // so we fallback to free() instead of asserting to avoid crashes from untrusted pointers.
+            size_t usable_size = malloc_usable_size(ptr);
+            const size_t header_size = sizeof(allocation_header);
+            
+            allocation_header* header = reinterpret_cast<allocation_header*>(static_cast<char*>(ptr) + usable_size - header_size);
+
+            if (header->magic != allocation_magic_active || header->offset != 0)
+            {
+                SP_LOG_WARNING("Foreign pointer detected in allocator, falling back to free()");
+                ::free(ptr);
+                return;
+            }
+
+            header->magic = allocation_magic_freed;
+            bytes_allocated.fetch_sub(usable_size, memory_order_relaxed);
+            allocation_count.fetch_sub(1, memory_order_relaxed);
+            bytes_by_tag[static_cast<size_t>(header->tag)].fetch_sub(usable_size, memory_order_relaxed);
+
+            ::free(ptr);
+#else
             const size_t header_size = sizeof(allocation_header);
 
             // read header just before user pointer
@@ -245,7 +318,8 @@ namespace spartan
 #if defined(_MSC_VER)
             _aligned_free(raw);
 #else
-            free(raw);
+            ::free(raw);
+#endif
 #endif
         }
     }
@@ -262,14 +336,23 @@ namespace spartan
             {
                 // update header with new tag (size stays the same since it's from same size class)
                 const size_t header_size  = sizeof(allocation_header);
+#if defined(__linux__)
+                size_t usable_size = malloc_usable_size(cached);
+                allocation_header* header = reinterpret_cast<allocation_header*>(static_cast<char*>(cached) + usable_size - header_size);
+#else
                 allocation_header* header = reinterpret_cast<allocation_header*>(static_cast<char*>(cached) - header_size);
+#endif
                 
                 // re-activate the allocation
                 header->magic = allocation_magic_active;
                 header->tag   = tag;
 
                 // update tag counter (size is already counted from original allocation)
+#if defined(__linux__)
+                bytes_by_tag[static_cast<size_t>(tag)].fetch_add(usable_size, memory_order_relaxed);
+#else
                 bytes_by_tag[static_cast<size_t>(tag)].fetch_add(header->size, memory_order_relaxed);
+#endif
 
 #if defined(_DEBUG) || defined(DEBUG)
                 memset(cached, poison_allocated, header->size);
@@ -289,7 +372,12 @@ namespace spartan
             return;
 
         const size_t header_size = sizeof(allocation_header);
+#if defined(__linux__)
+        size_t usable_size = malloc_usable_size(ptr);
+        allocation_header* header = reinterpret_cast<allocation_header*>(static_cast<char*>(ptr) + usable_size - header_size);
+#else
         allocation_header* header = reinterpret_cast<allocation_header*>(static_cast<char*>(ptr) - header_size);
+#endif
 
         // validate before accessing other fields
         if (header->magic == allocation_magic_freed)
@@ -298,17 +386,32 @@ namespace spartan
             SP_ASSERT(false && "double-free detected");
             return;
         }
+
+#if defined(__linux__)
+        if (header->magic != allocation_magic_active || header->offset != 0)
+        {
+            // Foreign pointer (not allocated by our allocator) - log and free
+            SP_LOG_WARNING("Foreign pointer free at %p (magic: 0x%08X, offset: %zu)", ptr, header->magic, header->offset);
+            ::free(ptr);
+            return;
+        }
+#else
         if (header->magic != allocation_magic_active)
         {
             SP_LOG_ERROR("Memory corruption detected at address %p (magic: 0x%08X)", ptr, header->magic);
             SP_ASSERT(false && "memory corruption detected");
             return;
         }
+#endif
 
         size_t size = header->size;
 
         // update tag counter before potential caching
+#if defined(__linux__)
+        bytes_by_tag[static_cast<size_t>(header->tag)].fetch_sub(usable_size, memory_order_relaxed);
+#else
         bytes_by_tag[static_cast<size_t>(header->tag)].fetch_sub(size, memory_order_relaxed);
+#endif
 
         // try to cache small allocations
         if (size <= cache_max_size)

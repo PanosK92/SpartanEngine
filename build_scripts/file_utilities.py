@@ -26,6 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+
 def install_and_import(package):
     try:
         importlib.import_module(package)
@@ -35,13 +36,20 @@ def install_and_import(package):
     finally:
         globals()[package] = importlib.import_module(package)
 
-install_and_import('tqdm')
-install_and_import('requests')
-install_and_import('tenacity')
+
+install_and_import("tqdm")
+install_and_import("requests")
+install_and_import("tenacity")
 
 import requests
 from tqdm import tqdm
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
+
 
 def calculate_file_hash(file_path):
     hash_func = hashlib.new("sha256")
@@ -50,10 +58,11 @@ def calculate_file_hash(file_path):
             hash_func.update(chunk)
     return hash_func.hexdigest()
 
+
 def download_file(url, destination, expected_hash, max_retries=3, chunk_size=1024):
     """
     Download a file with retry and resume support.
-    
+
     Args:
         url (str): URL of the file to download.
         destination (str): Local path to save the file.
@@ -63,74 +72,82 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
     """
     # Ensure destination directory exists
     os.makedirs(os.path.dirname(destination), exist_ok=True)
-    
+
     # Check if file exists and get its size
     current_size = 0
     if os.path.exists(destination):
         if calculate_file_hash(destination) == expected_hash:
-            print(f"File {destination} already exists with the correct hash. Skipping download.")
+            print(
+                f"File {destination} already exists with the correct hash. Skipping download."
+            )
             return True
         current_size = os.path.getsize(destination)
 
     @retry(
         stop=stop_after_attempt(max_retries),
         wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type((requests.ConnectionError, requests.Timeout, requests.HTTPError)),
-        reraise=True
+        retry=retry_if_exception_type(
+            (requests.ConnectionError, requests.Timeout, requests.HTTPError)
+        ),
+        reraise=True,
     )
     def download_with_retry():
         nonlocal current_size
-        headers = {'Range': f'bytes={current_size}-'} if current_size > 0 else {}
-        mode = 'ab' if current_size > 0 else 'wb'
-        
+        headers = {"Range": f"bytes={current_size}-"} if current_size > 0 else {}
+        mode = "ab" if current_size > 0 else "wb"
+
         print(f"\nDownloading {destination} (Starting from: {current_size:,} bytes)...")
-        
+
         response = None
         try:
             response = requests.get(url, stream=True, headers=headers, timeout=30)
             response.raise_for_status()  # Raise exception for bad status codes
-            
+
             # Determine total_size
             total_size = None
-            if 'content-length' in response.headers:
-                remaining = int(response.headers['content-length'])
+            if "content-length" in response.headers:
+                remaining = int(response.headers["content-length"])
             else:
                 remaining = None
-            
+
             # Parse content-range if available
-            if 'content-range' in response.headers:
-                cr = response.headers['content-range']
-                total_str = cr.rsplit('/', 1)[-1]
+            if "content-range" in response.headers:
+                cr = response.headers["content-range"]
+                total_str = cr.rsplit("/", 1)[-1]
                 if total_str.isdigit():
                     total_size = int(total_str)
-            
+
             # If content-length available but no total from range, compute it
             if remaining is not None and total_size is None:
                 total_size = current_size + remaining
-            
+
             # Check if server supports range requests
             if current_size > 0 and response.status_code != 206:
-                print("Server does not support range requests. Restarting download from scratch...")
+                print(
+                    "Server does not support range requests. Restarting download from scratch..."
+                )
                 response.close()
                 # Truncate the file to zero
-                open(destination, 'wb').close()
+                open(destination, "wb").close()
                 current_size = 0
-                raise requests.RequestException("Restarting due to lack of range support")  # Trigger retry to restart
-            
+                raise requests.RequestException(
+                    "Restarting due to lack of range support"
+                )  # Trigger retry to restart
+
             # Print total size if known
             if total_size is not None:
                 print(f"Total size detected: {total_size:,} bytes")
-            
+
             # Now create tqdm with known total or None
-            t = tqdm(total=total_size, initial=current_size, unit='iB', unit_scale=True)
-            
+            t = tqdm(total=total_size, initial=current_size, unit="iB", unit_scale=True)
+
             # Open file and download
             with open(destination, mode) as f:
                 for chunk in response.iter_content(chunk_size):
                     if chunk:  # Filter out keep-alive chunks
                         f.write(chunk)
                         t.update(len(chunk))
-        
+
         except requests.RequestException as e:
             print(f"Download failed: {e}. Retrying...")
             raise
@@ -138,19 +155,23 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
             if response:
                 response.close()
             t.close()
-        
+
         # Verify file size if known
         downloaded_size = os.path.getsize(destination)
         if total_size is not None and downloaded_size != total_size:
-            print(f"Download incomplete: {downloaded_size:,} of {total_size:,} bytes downloaded.")
+            print(
+                f"Download incomplete: {downloaded_size:,} of {total_size:,} bytes downloaded."
+            )
             raise requests.RequestException("Incomplete download")
-        
+
         # Verify hash
         downloaded_hash = calculate_file_hash(destination)
         if downloaded_hash != expected_hash:
-            print(f"Hash mismatch. Expected: {expected_hash}, Got: {downloaded_hash}. Downloaded file is corrupted.")
+            print(
+                f"Hash mismatch. Expected: {expected_hash}, Got: {downloaded_hash}. Downloaded file is corrupted."
+            )
             raise requests.RequestException("Hash mismatch")
-        
+
         print(f"Successfully downloaded {destination}.")
         return True
 
@@ -160,24 +181,42 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
         print(f"Failed to download {destination} after {max_retries} attempts: {e}")
         return False
 
-def extract_archive(archive_path, destination_path):
-    # Check if 7z.exe exists locally
-    current_dir_7z  = Path("7z.exe")
-    if current_dir_7z.exists():
-        seven_zip_exe = current_dir_7z
-    else:
-        # define the path where 7z.exe should be if not in the current directory
-        seven_zip_exe = Path("build_scripts") / "7z.exe"
-        seven_zip_exe = seven_zip_exe.resolve()
 
-    # check if the 7z executable exists
+def extract_archive(archive_path, destination_path):
+    import platform
+
+    is_windows = platform.system() == "Windows"
+
+    if is_windows:
+        current_dir_7z = Path("7z.exe")
+        if current_dir_7z.exists():
+            seven_zip_exe = current_dir_7z
+        else:
+            seven_zip_exe = Path("build_scripts") / "7z.exe"
+            seven_zip_exe = seven_zip_exe.resolve()
+    else:
+        seven_zip_exe_path = shutil.which("7z")
+        if not seven_zip_exe_path:
+            raise FileNotFoundError(
+                "The 7z executable was not found. Please install p7zip or 7zip."
+            )
+        seven_zip_exe = Path(seven_zip_exe_path)
+
     if not os.path.exists(seven_zip_exe):
-        raise FileNotFoundError(f"The 7z executable was not found at {seven_zip_exe}. Please check the path or installation.")
-    
+        raise FileNotFoundError(
+            f"The 7z executable was not found at {seven_zip_exe}. Please check the path or installation."
+        )
+
     archive_path_str = str(Path(archive_path).resolve())
     destination_path_str = str(Path(destination_path).resolve())
 
-    cmd = [str(seven_zip_exe), 'x', archive_path_str, '-o'+destination_path_str, '-aoa']
+    cmd = [
+        str(seven_zip_exe),
+        "x",
+        archive_path_str,
+        "-o" + destination_path_str,
+        "-aoa",
+    ]
 
     print(f"Extracting {archive_path} to {destination_path} using: {seven_zip_exe}")
 
@@ -188,7 +227,8 @@ def extract_archive(archive_path, destination_path):
         print(f"An error occurred while extracting: {e}")
         print(f"Error output: {e.stderr}")
         raise
-    
+
+
 def copy(source, destination):
     def on_rm_error(func, path, exc_info):
         os.chmod(path, stat.S_IWRITE)
@@ -200,15 +240,19 @@ def copy(source, destination):
     # check if source is a directory or file
     if source_path.is_dir():
         # if source is a directory, ensure destination is a directory too
-        dest_path.mkdir(parents=True, exist_ok=True)  # Create the destination directory if it doesn't exist
-        print(f"Copying directory \"{source_path}\" to directory \"{dest_path}\"...")
+        dest_path.mkdir(
+            parents=True, exist_ok=True
+        )  # Create the destination directory if it doesn't exist
+        print(f'Copying directory "{source_path}" to directory "{dest_path}"...')
         shutil.rmtree(str(dest_path), onerror=on_rm_error)
         shutil.copytree(str(source_path), str(dest_path), dirs_exist_ok=True)
     elif source_path.is_file():
         # if source is a file, ensure the parent directory of the destination exists
-        dest_path.parent.mkdir(parents=True, exist_ok=True)  # Create parent directory if it doesn't exist
+        dest_path.parent.mkdir(
+            parents=True, exist_ok=True
+        )  # Create parent directory if it doesn't exist
         target = dest_path if dest_path.is_file() else dest_path / source_path.name
-        print(f"Copying file \"{source_path}\" to \"{target}\"...")
+        print(f'Copying file "{source_path}" to "{target}"...')
         shutil.copy2(str(source_path), str(target))
     else:
         print(f"Error: Source '{source_path}' is neither a file nor a directory.")
