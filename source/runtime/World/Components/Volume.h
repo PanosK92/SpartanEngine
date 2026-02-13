@@ -28,6 +28,11 @@ connection with the software or the use or other dealings in the software.
 #include <string>
 //==============================================
 
+namespace physx
+{
+    class PxRigidStatic;
+}
+
 namespace spartan
 {
     class Entity;
@@ -36,9 +41,11 @@ namespace spartan
     {
     public:
         Volume(Entity* entity);
-        ~Volume() = default;
+        ~Volume() override = default;
 
         //= COMPONENT =====================
+        void Initialize() override;
+        void Remove() override;
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
@@ -59,13 +66,19 @@ namespace spartan
         void SetReverbEnabled(const bool enabled) { m_reverb_enabled = enabled; }
 
     private:
+
+        void CreatePhysics();
+
+    private:
+        physx::PxRigidStatic*                   m_rigid_body = nullptr;
+
         // the shape of the volume
-        math::BoundingBox m_bounding_box;
+        math::BoundingBox                       m_bounding_box;
 
         // the user defined overrides
-        std::unordered_map<std::string, float> m_options;
+        std::unordered_map<std::string, float>  m_options;
 
         // audio reverb
-        bool m_reverb_enabled = false;
+        bool                                    m_reverb_enabled = false;
     };
 }

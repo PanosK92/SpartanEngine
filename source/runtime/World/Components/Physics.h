@@ -82,6 +82,7 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
+
         static void RegisterForScripting(sol::state_view State);
         sol::reference AsLua(sol::state_view state) override;
 

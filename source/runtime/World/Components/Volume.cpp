@@ -23,12 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Volume.h"
 
+#include <physx/PxPhysics.h>
+#include <physx/PxRigidStatic.h>
 #include <tracy/Tracy.hpp>
 
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../../Core/Engine.h"
 #include "../../Rendering/Renderer.h"
+#include "Physics/PhysicsWorld.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -58,9 +61,28 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_GET_SET(GetReverbEnabled, SetReverbEnabled, bool);
     }
 
+    void Volume::Initialize()
+    {
+    }
+
+    void Volume::Remove()
+    {
+        if (m_rigid_body && PhysicsWorld::GetPhysics())
+        {
+            PhysicsWorld::RemoveActor(m_rigid_body);
+            m_rigid_body->release();
+            m_rigid_body = nullptr;
+        }
+    }
+
     void Volume::Tick()
     {
         ZoneScoped;
+
+        if (m_rigid_body == nullptr)
+        {
+            CreatePhysics();
+        }
 
         // only draw in editor mode (not playing)
         if (Engine::IsFlagSet(EngineMode::Playing))
@@ -153,4 +175,31 @@ namespace spartan
         return 0.0f;
     }
 
+    void Volume::CreatePhysics()
+    {
+        physx::PxPhysics* physics = static_cast<physx::PxPhysics*>(PhysicsWorld::GetPhysics());
+
+        auto Position = GetEntity()->GetPosition();
+        m_rigid_body = physics->createRigidStatic(physx::PxTransform(physx::PxVec3(Position.x, Position.y, Position.z)));
+
+        physx::PxMaterial* material = physics->createMaterial(0.5f, 0.5f, 0.1f);
+        Vector3 boundingBoxSize = m_bounding_box.GetSize();
+
+        Vector3 scale = GetEntity()->GetScale();
+
+        physx::PxBoxGeometry geometry(
+            scale.x * boundingBoxSize.x * 0.5f,
+            scale.y * boundingBoxSize.y * 0.5f,
+            scale.z * boundingBoxSize.z * 0.5f
+        );
+        physx::PxShape* shape = physics->createShape(geometry, *material, false,
+            physx::PxShapeFlag::eVISUALIZATION | physx::PxShapeFlag::eTRIGGER_SHAPE);
+
+
+        m_rigid_body->userData = GetEntity();
+        m_rigid_body->attachShape(*shape);
+        shape->release();
+
+        PhysicsWorld::AddActor(m_rigid_body);
+    }
 }

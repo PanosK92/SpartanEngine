@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Physics.h"
 #include "../World/World.h"
+#include "World/Entity.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
     #define _DEBUG 1
@@ -60,7 +61,7 @@ namespace spartan
         float gravity = -9.81f; // gravity value in m/s^2
         float hz      = 200.0f; // simulation frequency in hz
     }
-    
+
     namespace interpolation
     {
         float alpha = 0.0f; // interpolation factor between physics steps (0 = previous, 1 = current)
@@ -196,6 +197,125 @@ namespace spartan
         }
     };
 
+    class SpartanPhysicsCallback : public PxSimulationEventCallback
+    {
+    public:
+        void onConstraintBreak(PxConstraintInfo* constraints, PxU32 count) override
+        {
+            SP_LOG_INFO("onConstraintBreak")
+        }
+
+        void onWake(PxActor** actors, PxU32 count) override
+        {
+            SP_LOG_INFO("onWake")
+        }
+
+        void onSleep(PxActor** actors, PxU32 count) override
+        {
+            SP_LOG_INFO("onSleep")
+        }
+
+        void onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs) override
+        {
+            Entity* entity0 = static_cast<Entity*>(pairHeader.actors[0]->userData);
+            Entity* entity1 = static_cast<Entity*>(pairHeader.actors[1]->userData);
+
+            if (!entity0 || !entity1)
+            {
+                return;
+            }
+
+            for (PxU32 i = 0; i < nbPairs; i++)
+            {
+                const PxContactPair& pair = pairs[i];
+
+                if (pair.events & PxPairFlag::eNOTIFY_TOUCH_FOUND)
+                {
+                    PxContactPairPoint contacts[16];
+                    PxU32 contactCount = pair.extractContacts(contacts, 16);
+
+                    Vector3 contactPoint(0, 0, 0);
+                    Vector3 contactNormal(0, 0, 0);
+                    float impulse = 0.0f;
+
+                    if (contactCount > 0)
+                    {
+                        contactPoint = Vector3(contacts[0].position.x, contacts[0].position.y, contacts[0].position.z);
+                        contactNormal = Vector3(contacts[0].normal.x, contacts[0].normal.y, contacts[0].normal.z);
+                        impulse = contacts[0].impulse.magnitude();
+                    }
+
+                    entity0->OnContact(entity1, contactPoint, contactNormal, impulse);
+                    entity1->OnContact(entity0, contactPoint, -contactNormal, impulse);
+                }
+
+                if (pair.events & PxPairFlag::eNOTIFY_TOUCH_LOST)
+                {
+                    entity0->OnContactEnd(entity1);
+                    entity1->OnContactEnd(entity0);
+                }
+            }
+        }
+
+        void onTrigger(PxTriggerPair* pairs, PxU32 count) override
+        {
+            for (PxU32 i = 0; i < count; i++)
+            {
+                const PxTriggerPair& tp = pairs[i];
+
+                if (tp.flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER | PxTriggerPairFlag::eREMOVED_SHAPE_OTHER))
+                {
+                    continue;
+                }
+
+                Entity* triggerEntity = static_cast<Entity*>(tp.triggerActor->userData);
+                Entity* otherEntity = static_cast<Entity*>(tp.otherActor->userData);
+
+                if (!triggerEntity || !otherEntity)
+                {
+                    continue;
+                }
+
+                if (tp.status & PxPairFlag::eNOTIFY_TOUCH_FOUND)
+                {
+                    triggerEntity->OnTriggerEntered(otherEntity);
+                    otherEntity->OnTriggerEntered(triggerEntity);
+                }
+                else if (tp.status & PxPairFlag::eNOTIFY_TOUCH_LOST)
+                {
+                    triggerEntity->OnTriggerExited(otherEntity);
+                    otherEntity->OnTriggerExited(triggerEntity);
+                }
+            }
+        }
+
+        void onAdvance(const PxRigidBody* const* bodyBuffer, const PxTransform* poseBuffer, const PxU32 count) override
+        {
+            SP_LOG_INFO("onAdvance")
+        }
+    };
+
+    static PxFilterFlags SpartanFilterShader(PxFilterObjectAttributes attributes0, PxFilterData filterData0, PxFilterObjectAttributes attributes1, PxFilterData filterData1,
+        PxPairFlags& pairFlags, const void* constantBlock, PxU32 constantBlockSize)
+    {
+        if (PxFilterObjectIsTrigger(attributes0) || PxFilterObjectIsTrigger(attributes1))
+        {
+            pairFlags = PxPairFlag::eTRIGGER_DEFAULT;
+            pairFlags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;
+            pairFlags |= PxPairFlag::eNOTIFY_TOUCH_LOST;
+            return PxFilterFlag::eDEFAULT;
+        }
+
+        pairFlags = PxPairFlag::eCONTACT_DEFAULT;
+
+        // Enable contact event notifications
+        pairFlags |= PxPairFlag::eNOTIFY_TOUCH_FOUND;      // Collision started
+        pairFlags |= PxPairFlag::eNOTIFY_TOUCH_PERSISTS;   // Collision ongoing
+        pairFlags |= PxPairFlag::eNOTIFY_TOUCH_LOST;       // Collision ended
+
+        return PxFilterFlag::eDEFAULT;
+    }
+
     namespace
     {
         static PxDefaultAllocator allocator;
@@ -204,7 +324,9 @@ namespace spartan
         static PxPhysics* physics                 = nullptr;
         static PxScene* scene                     = nullptr;
         static PxDefaultCpuDispatcher* dispatcher = nullptr;
+        SpartanPhysicsCallback* callback          = nullptr;
     }
+
 
     void PhysicsWorld::Initialize()
     {
@@ -216,14 +338,20 @@ namespace spartan
         physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, PxTolerancesScale(), false, nullptr);
         SP_ASSERT(physics);
 
+        callback = new SpartanPhysicsCallback{};
+
+
+
         // scene
         PxSceneDesc scene_desc(physics->getTolerancesScale());
-        scene_desc.gravity        = PxVec3(0.0f, settings::gravity, 0.0f);
-        scene_desc.cpuDispatcher  = PxDefaultCpuDispatcherCreate(2);
-        scene_desc.filterShader   = PxDefaultSimulationFilterShader;
-        scene_desc.flags         |= PxSceneFlag::eENABLE_CCD; // enable continuous collision detection to reduce tunneling
-        scene                     = physics->createScene(scene_desc);
-        SP_ASSERT(scene);
+        scene_desc.gravity                      = PxVec3(0.0f, settings::gravity, 0.0f);
+        scene_desc.cpuDispatcher                = PxDefaultCpuDispatcherCreate(2);
+        scene_desc.filterShader                 = SpartanFilterShader;
+        scene_desc.flags                        |= PxSceneFlag::eENABLE_CCD; // enable continuous collision detection to reduce tunneling
+        scene_desc.simulationEventCallback      = callback;
+        scene                                   = physics->createScene(scene_desc);
+        SP_ASSERT(scene)
+
 
         // store dispatcher
         dispatcher = static_cast<PxDefaultCpuDispatcher*>(scene_desc.cpuDispatcher);
@@ -257,6 +385,8 @@ namespace spartan
         PX_RELEASE(dispatcher);
         PX_RELEASE(physics);
         PX_RELEASE(foundation);
+
+        delete callback;
     }
 
     void PhysicsWorld::Tick()
@@ -285,7 +415,7 @@ namespace spartan
                     scene->fetchResults(true); // block
                     accumulated_time -= fixed_time_step;
                 }
-                
+
                 // compute interpolation alpha for smooth rendering
                 // alpha = how far into the next physics step we are (0 to 1)
                 interpolation::alpha = accumulated_time / fixed_time_step;
@@ -355,7 +485,7 @@ namespace spartan
     {
         return static_cast<void*>(physics);
     }
-    
+
     float PhysicsWorld::GetInterpolationAlpha()
     {
         return interpolation::alpha;

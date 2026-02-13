@@ -43,7 +43,7 @@ void Script::LoadScriptFile(std::string_view path)
     file_path.assign(path.data(), path.size());
 
     script = ReturnValue;
-
+    script["Entity"] = GetEntity();
 }
 
 void Script::Initialize()
@@ -53,7 +53,7 @@ void Script::Initialize()
         sol::protected_function TickFunction = script["Initialize"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(script, GetEntity());
+            (void)TickFunction(script);
         }
     }
 }
@@ -65,7 +65,7 @@ void Script::Start()
         sol::protected_function TickFunction = script["Stop"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(script, GetEntity());
+            (void)TickFunction(script);
         }
     }
 }
@@ -77,7 +77,7 @@ void Script::Stop()
         sol::protected_function TickFunction = script["Stop"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(script, GetEntity());
+            (void)TickFunction(script);
         }
     }
 }
@@ -89,7 +89,7 @@ void Script::Remove()
         sol::protected_function TickFunction = script["Remove"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(script, GetEntity());
+            (void)TickFunction(script);
         }
     }
 }
@@ -101,7 +101,7 @@ void Script::PreTick()
         sol::protected_function TickFunction = script["PreTick"];
         if (TickFunction.valid())
         {
-            (void)TickFunction(script, GetEntity());
+            (void)TickFunction(script);
         }
     }
 }
@@ -115,7 +115,7 @@ void Script::Tick()
         sol::protected_function TickFunction = script["Tick"];
         if (TickFunction.valid())
         {
-            sol::protected_function_result Result = TickFunction(script, GetEntity());
+            sol::protected_function_result Result = TickFunction(script);
             if (!Result.valid())
             {
                 sol::error Error = Result;
@@ -134,7 +134,7 @@ void Script::Save(pugi::xml_node& node)
         sol::protected_function TickFunction = script["Save"];
         if (TickFunction.valid())
         {
-            sol::protected_function_result Result = TickFunction(script, GetEntity());
+            sol::protected_function_result Result = TickFunction(script);
             if (!Result.valid())
             {
                 sol::error Error = Result;
@@ -154,7 +154,75 @@ void Script::Load(pugi::xml_node& node)
         sol::protected_function TickFunction = script["Load"];
         if (TickFunction.valid())
         {
-            sol::protected_function_result Result = TickFunction(script, GetEntity());
+            sol::protected_function_result Result = TickFunction(script);
+            if (!Result.valid())
+            {
+                sol::error Error = Result;
+                SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
+            }
+        }
+    }
+}
+
+void Script::OnTriggerEntered(Entity* other)
+{
+    if (script.valid())
+    {
+        sol::protected_function TickFunction = script["OnTriggerEntered"];
+        if (TickFunction.valid())
+        {
+            sol::protected_function_result Result = TickFunction(script, other);
+            if (!Result.valid())
+            {
+                sol::error Error = Result;
+                SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
+            }
+        }
+    }
+}
+
+void Script::OnTriggerExited(Entity* other)
+{
+    if (script.valid())
+    {
+        sol::protected_function TickFunction = script["OnTriggerExited"];
+        if (TickFunction.valid())
+        {
+            sol::protected_function_result Result = TickFunction(script, other);
+            if (!Result.valid())
+            {
+                sol::error Error = Result;
+                SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
+            }
+        }
+    }
+}
+
+void Script::OnContact(Entity* other, const math::Vector3& contactPoint, const math::Vector3& contactNormal, float impulse)
+{
+    if (script.valid())
+    {
+        sol::protected_function TickFunction = script["OnContact"];
+        if (TickFunction.valid())
+        {
+            sol::protected_function_result Result = TickFunction(script, other, contactPoint, contactNormal, impulse);
+            if (!Result.valid())
+            {
+                sol::error Error = Result;
+                SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
+            }
+        }
+    }
+}
+
+void Script::OnContactEnd(Entity* other)
+{
+    if (script.valid())
+    {
+        sol::protected_function TickFunction = script["OnContactEnd"];
+        if (TickFunction.valid())
+        {
+            sol::protected_function_result Result = TickFunction(script, other);
             if (!Result.valid())
             {
                 sol::error Error = Result;

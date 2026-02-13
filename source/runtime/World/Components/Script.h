@@ -23,6 +23,11 @@ namespace spartan
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
 
+        void OnTriggerEntered(Entity* other) override;
+        void OnTriggerExited(Entity* other) override;
+        void OnContact(Entity* other, const math::Vector3& contactPoint, const math::Vector3& contactNormal, float impulse) override;
+        void OnContactEnd(Entity* other) override;
+
 
         std::string file_path;
         sol::table  script;
