@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Volume.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Renderable.h"
 #include "../Entity.h"
 #include "../../Core/Engine.h"
@@ -57,6 +60,8 @@ namespace spartan
 
     void Volume::Tick()
     {
+        ZoneScoped;
+
         // only draw in editor mode (not playing)
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;

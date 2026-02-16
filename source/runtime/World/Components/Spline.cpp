@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "Spline.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Physics.h"
 #include "Renderable.h"
 #include "../Entity.h"
@@ -63,6 +66,8 @@ namespace spartan
 
     void Spline::Tick()
     {
+        ZoneScoped;
+
         // if the spline had a mesh when saved, regenerate it now that child entities are loaded
         if (m_needs_road_regeneration)
         {

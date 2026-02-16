@@ -1,5 +1,8 @@
 ﻿#include "pch.h"
 #include "Script.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "IO/pugixml.hpp"
 #include "World/Entity.h"
 #include "World/World.h"
@@ -105,6 +108,8 @@ void Script::PreTick()
 
 void Script::Tick()
 {
+    ZoneScoped;
+
     if (script.valid())
     {
         sol::protected_function TickFunction = script["Tick"];

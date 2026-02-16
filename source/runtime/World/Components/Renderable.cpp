@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "Renderable.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Camera.h"
 #include "../Entity.h"
 #include "../RHI/RHI_Buffer.h"
@@ -218,6 +221,8 @@ namespace spartan
 
     void Renderable::Tick()
     {
+        ZoneScoped;
+
         // deferred default material assignment (renderer may not be ready during load)
         if (m_needs_default_material)
         {

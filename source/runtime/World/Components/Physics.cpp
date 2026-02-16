@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "pch.h"
 #include "Physics.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Renderable.h"
 #include "Camera.h"
 #include "../Entity.h"
@@ -257,6 +260,8 @@ namespace spartan
 
     void Physics::Tick()
     {
+        ZoneScoped;
+
         // distance-based activation/deactivation for static actors
         if (m_body_type != BodyType::Controller && m_is_static)
         {

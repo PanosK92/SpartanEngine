@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================================
 #include "pch.h"
 #include "Editor.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "GeneralWindows.h"
 #include "Widgets/MenuBar.h"
 #include "Core/Engine.h"
@@ -125,6 +128,8 @@ void Editor::Tick()
     // main loop
     while (!spartan::Window::WantsToClose())
     {
+        FrameMark;
+        ZoneScoped;
         bool render_editor = spartan::Engine::IsFlagSet(spartan::EngineMode::EditorVisible);
 
         // logic
@@ -144,6 +149,7 @@ void Editor::Tick()
             {
                 BeginWindow();
 
+                ZoneScopedN("Tick Widgets");
                 for (shared_ptr<Widget>& widget : m_widgets)
                 {
                     widget->Tick();

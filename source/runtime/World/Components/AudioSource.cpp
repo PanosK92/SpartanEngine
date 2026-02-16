@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "pch.h"
 #include "AudioSource.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Camera.h"
 #include "Volume.h"
 #include "../Entity.h"
@@ -225,6 +228,8 @@ namespace spartan
 
     void AudioSource::Tick()
     {
+        ZoneScoped;
+
         if (!m_is_playing)
             return;
 

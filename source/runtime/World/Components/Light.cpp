@@ -22,6 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Light.h"
+
+#include <tracy/Tracy.hpp>
+
 #include "Camera.h"
 #include "../World.h"
 #include "../Entity.h"
@@ -132,6 +135,8 @@ namespace spartan
 
     void Light::Tick()
     {
+        ZoneScoped;
+
         // detect transform change
         bool update_matrices = false;
         if (GetEntity()->GetTimeSinceLastTransform() <= 0.1f)
