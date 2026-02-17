@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "pch.h"
 #include "GeneralWindows.h"
+#include "Widgets/Shadows.h"
 #include "Windows/WorldSelector.h"
 #include "Windows/Contributors.h"
 #include "ImGui/Source/imgui.h"
