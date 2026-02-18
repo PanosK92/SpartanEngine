@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Renderer.h"
+#include "../Core/Window.h"
 #include <unordered_map>
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
@@ -88,6 +89,7 @@ namespace spartan
         m_default_icons[IconType::World]         = Load<RHI_Texture>(data_dir + "icons/world.png");
         m_default_icons[IconType::Material]      = Load<RHI_Texture>(data_dir + "icons/material.png");
         m_default_icons[IconType::Shader]        = Load<RHI_Texture>(data_dir + "icons/shader.png");
+        Window::PumpEvents();
         m_default_icons[IconType::Xml]           = Load<RHI_Texture>(data_dir + "icons/xml.png");
         m_default_icons[IconType::Dll]           = Load<RHI_Texture>(data_dir + "icons/dll.png");
         m_default_icons[IconType::Txt]           = Load<RHI_Texture>(data_dir + "icons/txt.png");
@@ -96,6 +98,7 @@ namespace spartan
         m_default_icons[IconType::Font]          = Load<RHI_Texture>(data_dir + "icons/font.png");
         m_default_icons[IconType::Screenshot]    = Load<RHI_Texture>(data_dir + "icons/screenshot.png");
         m_default_icons[IconType::Gear]          = Load<RHI_Texture>(data_dir + "icons/gear.png");
+        Window::PumpEvents();
         m_default_icons[IconType::Play]          = Load<RHI_Texture>(data_dir + "icons/play.png");
         m_default_icons[IconType::Profiler]      = Load<RHI_Texture>(data_dir + "icons/timer.png");
         m_default_icons[IconType::ResourceCache] = Load<RHI_Texture>(data_dir + "icons/resource_viewer.png");
@@ -104,6 +107,7 @@ namespace spartan
         m_default_icons[IconType::Texture]       = Load<RHI_Texture>(data_dir + "icons/texture.png");
         m_default_icons[IconType::Minimize]      = Load<RHI_Texture>(data_dir + "icons/window_minimise.png");
         m_default_icons[IconType::Maximize]      = Load<RHI_Texture>(data_dir + "icons/window_maximise.png");
+        Window::PumpEvents();
         m_default_icons[IconType::X]             = Load<RHI_Texture>(data_dir + "icons/window_close.png");
         m_default_icons[IconType::Hybrid]        = Load<RHI_Texture>(data_dir + "icons/hybrid.png");
         m_default_icons[IconType::Audio]         = Load<RHI_Texture>(data_dir + "icons/audio.png");
@@ -114,6 +118,7 @@ namespace spartan
         m_default_icons[IconType::Physics]       = Load<RHI_Texture>(data_dir + "icons/physics.png");
         m_default_icons[IconType::Compressed]    = Load<RHI_Texture>(data_dir + "icons/compressed.png");
         m_default_icons[IconType::Logo]          = Load<RHI_Texture>(data_dir + "logo.ico");
+        Window::PumpEvents();
 
         // prepare icons for gpu (standalone textures, not processed by material)
         for (auto& [type, icon] : m_default_icons)

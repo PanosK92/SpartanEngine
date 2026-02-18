@@ -319,7 +319,7 @@ namespace car
             lat_B  = 12.0f;
             lat_C  = 1.4f;
             lat_D  = 1.0f;
-            lat_E  = 0.6f;
+            lat_E  = -0.5f;
             long_B = 20.0f;
             long_C = 1.5f;
             long_D = 1.0f;
@@ -534,7 +534,7 @@ namespace car
             lat_B  = 12.0f;
             lat_C  = 1.4f;
             lat_D  = 1.0f;
-            lat_E  = 0.6f;
+            lat_E  = -0.5f;
             long_B = 20.0f;
             long_C = 1.5f;
             long_D = 1.0f;
@@ -748,7 +748,7 @@ namespace car
             lat_B  = 10.5f;
             lat_C  = 1.3f;
             lat_D  = 1.0f;
-            lat_E  = 0.4f;
+            lat_E  = -0.6f;
             long_B = 16.0f;
             long_C = 1.4f;
             long_D = 1.0f;
@@ -1028,8 +1028,9 @@ namespace car
         float handbrake = 0.0f;
     };
 
-    inline static PxRigidDynamic* body     = nullptr;
-    inline static PxMaterial*     material = nullptr;
+    inline static PxRigidDynamic* body             = nullptr;
+    inline static PxMaterial*     material         = nullptr;
+    inline static PxConvexMesh*   wheel_sweep_mesh = nullptr;
     inline static config          cfg;
     inline static wheel           wheels[wheel_count];
     inline static input_state     input;
@@ -1060,16 +1061,15 @@ namespace car
     inline static float           road_bump_phase         = 0.0f;
     inline static PxVec3          prev_velocity           = PxVec3(0);
     
-    struct debug_ray
+    struct debug_sweep_data
     {
         PxVec3 origin;
         PxVec3 hit_point;
         bool   hit;
     };
-    constexpr int debug_rays_per_wheel = 7;
-    inline static debug_ray debug_rays[wheel_count][debug_rays_per_wheel];
-    inline static PxVec3    debug_suspension_top[wheel_count];
-    inline static PxVec3    debug_suspension_bottom[wheel_count];
+    inline static debug_sweep_data debug_sweep[wheel_count];
+    inline static PxVec3           debug_suspension_top[wheel_count];
+    inline static PxVec3           debug_suspension_bottom[wheel_count];
 
     inline bool  is_front(int i)                { return i == front_left || i == front_right; }
     inline bool  is_rear(int i)                 { return i == rear_left || i == rear_right; }
@@ -1412,8 +1412,9 @@ namespace car
     
     inline void destroy()
     {
-        if (body)    { body->release();     body = nullptr; }
-        if (material){ material->release(); material = nullptr; }
+        if (body)             { body->release();             body = nullptr; }
+        if (material)         { material->release();         material = nullptr; }
+        if (wheel_sweep_mesh) { wheel_sweep_mesh->release(); wheel_sweep_mesh = nullptr; }
     }
 
     inline void compute_aero_from_shape(const std::vector<PxVec3>& vertices)
@@ -1694,6 +1695,40 @@ namespace car
         if (!params.vertices.empty())
             compute_aero_from_shape(params.vertices);
 
+        // cook a convex cylinder for wheel sweep queries
+        if (!wheel_sweep_mesh)
+        {
+            const int segments = 16;
+            std::vector<PxVec3> cyl_verts;
+            cyl_verts.reserve(segments * 2);
+            float half_w = cfg.wheel_width * 0.5f;
+            for (int s = 0; s < segments; s++)
+            {
+                float angle = (2.0f * PxPi * s) / segments;
+                float cy = cosf(angle) * cfg.wheel_radius;
+                float cz = sinf(angle) * cfg.wheel_radius;
+                cyl_verts.push_back(PxVec3(-half_w, cy, cz));
+                cyl_verts.push_back(PxVec3( half_w, cy, cz));
+            }
+
+            PxTolerancesScale px_scale;
+            px_scale.length = 1.0f;
+            px_scale.speed  = 9.81f;
+            PxCookingParams cook_params(px_scale);
+            cook_params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
+
+            PxConvexMeshDesc desc;
+            desc.points.count  = static_cast<PxU32>(cyl_verts.size());
+            desc.points.stride = sizeof(PxVec3);
+            desc.points.data   = cyl_verts.data();
+            desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
+
+            PxConvexMeshCookingResult::Enum cook_result;
+            wheel_sweep_mesh = PxCreateConvexMesh(cook_params, desc, *PxGetStandaloneInsertionCallback(), &cook_result);
+            if (!wheel_sweep_mesh || cook_result != PxConvexMeshCookingResult::eSUCCESS)
+                SP_LOG_WARNING("failed to create wheel sweep cylinder mesh");
+        }
+
         SP_LOG_INFO("car setup complete: mass=%.0f kg", cfg.mass);
         return true;
     }
@@ -1799,169 +1834,99 @@ namespace car
     
     inline void update_suspension(PxScene* scene, float dt)
     {
-        // --- raycast setup ---
         PxTransform pose = body->getGlobalPose();
         PxVec3 local_down  = pose.q.rotate(PxVec3(0, -1, 0));
-        PxVec3 local_fwd   = pose.q.rotate(PxVec3(0, 0, 1));
         PxVec3 local_right = pose.q.rotate(PxVec3(1, 0, 0));
-        
-        const int ray_count = 7;
-        float half_width = cfg.wheel_width * 0.4f;
-        
-        auto get_curvature_height = [&](float x_offset) -> float
-        {
-            float r = cfg.wheel_radius;
-            float x = PxMin(fabsf(x_offset), r * 0.95f);
-            return r - sqrtf(r * r - x * x);
-        };
-        
-        float dist_near   = cfg.wheel_radius * 0.4f;
-        float dist_far    = cfg.wheel_radius * 0.75f;
-        float height_near = get_curvature_height(dist_near);
-        float height_far  = get_curvature_height(dist_far);
-        
-        PxVec3 ray_offsets[ray_count] = {
-            PxVec3(0.0f,       0.0f,        0.0f),
-            PxVec3(dist_near,  0.0f,        height_near),
-            PxVec3(dist_far,   0.0f,        height_far),
-            PxVec3(-dist_near, 0.0f,        height_near),
-            PxVec3(-dist_far,  0.0f,        height_far),
-            PxVec3(0.0f,       -half_width, 0.0f),
-            PxVec3(0.0f,        half_width, 0.0f)
-        };
-        
+
         PxQueryFilterData filter;
         filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-        
-        float max_curvature_height = height_far;
-        float ray_len = cfg.suspension_travel + cfg.wheel_radius + max_curvature_height + 0.5f;
-        float max_dist = cfg.suspension_travel + cfg.wheel_radius;
-        
+
+        float sweep_dist = cfg.suspension_travel + cfg.wheel_radius + 0.5f;
+
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
             w.prev_compression = w.compression;
-            
+
             PxVec3 attach = wheel_offsets[i];
             attach.y += cfg.suspension_travel;
             PxVec3 world_attach = pose.transform(attach);
-            
-            float min_ground_dist = FLT_MAX;
-            PxVec3 best_contact_point = PxVec3(0);
-            PxVec3 accumulated_normal = PxVec3(0);
-            int hit_count = 0;
-            
-            // per-ray hit storage for weighted contact patch averaging
-            float  ray_dists[ray_count];
-            PxVec3 ray_positions[ray_count];
-            PxVec3 ray_normals[ray_count];
-            bool   ray_valid[ray_count] = {};
-            
-            for (int r = 0; r < ray_count; r++)
+
+            // sweep a cylinder shape downward from the top of suspension travel
+            PxTransform sweep_pose(world_attach, pose.q);
+            PxConvexMeshGeometry cylinder_geom(wheel_sweep_mesh);
+            PxSweepBuffer hit;
+
+            bool swept = wheel_sweep_mesh
+                && scene->sweep(cylinder_geom, sweep_pose, local_down, sweep_dist, hit,
+                    PxHitFlag::eDEFAULT, filter)
+                && hit.block.actor && hit.block.actor != body;
+
+            debug_sweep[i].origin = world_attach;
+            debug_sweep[i].hit    = swept;
+
+            if (swept)
             {
-                PxVec3 offset = local_fwd * ray_offsets[r].x + local_right * ray_offsets[r].y - local_down * ray_offsets[r].z;
-                PxVec3 ray_origin = world_attach + offset;
-                
-                debug_rays[i][r].origin = ray_origin;
-                debug_rays[i][r].hit = false;
-                
-                PxRaycastBuffer hit;
-                if (scene->raycast(ray_origin, local_down, ray_len, hit, PxHitFlag::eDEFAULT, filter) &&
-                    hit.block.actor && hit.block.actor != body)
-                {
-                    debug_rays[i][r].hit_point = hit.block.position;
-                    debug_rays[i][r].hit = true;
-                    
-                    float adjusted_dist = hit.block.distance - ray_offsets[r].z;
-                    if (adjusted_dist <= max_dist)
-                    {
-                        ray_dists[hit_count]     = adjusted_dist;
-                        ray_positions[hit_count] = hit.block.position;
-                        ray_normals[hit_count]   = hit.block.normal;
-                        ray_valid[hit_count]     = true;
-                        hit_count++;
-                        accumulated_normal += hit.block.normal;
-                        if (adjusted_dist < min_ground_dist)
-                            min_ground_dist = adjusted_dist;
-                    }
-                }
-                else
-                {
-                    debug_rays[i][r].hit_point = ray_origin + local_down * ray_len;
-                }
-            }
-            
-            // --- contact averaging ---
-            if (hit_count > 1)
-            {
-                float weight_margin = cfg.wheel_radius * 0.3f;
-                PxVec3 weighted_pos(0);
-                PxVec3 weighted_nrm(0);
-                float total_w = 0.0f;
-                for (int h = 0; h < hit_count; h++)
-                {
-                    if (ray_dists[h] <= min_ground_dist + weight_margin)
-                    {
-                        float w = 1.0f / (1.0f + (ray_dists[h] - min_ground_dist) * 10.0f);
-                        weighted_pos += ray_positions[h] * w;
-                        weighted_nrm += ray_normals[h] * w;
-                        total_w += w;
-                    }
-                }
-                if (total_w > 0.0f)
-                {
-                    best_contact_point = weighted_pos * (1.0f / total_w);
-                    accumulated_normal = weighted_nrm;
-                }
-                else
-                {
-                    best_contact_point = ray_positions[0];
-                }
-            }
-            else if (hit_count == 1)
-            {
-                best_contact_point = ray_positions[0];
-            }
-            
-            debug_suspension_top[i] = world_attach;
-            PxVec3 wheel_center = world_attach + local_down * (cfg.suspension_travel * (1.0f - w.compression) + cfg.wheel_radius);
-            debug_suspension_bottom[i] = wheel_center;
-            
-            if (hit_count > 0)
-            {
-                w.grounded = true;
-                w.contact_point = best_contact_point;
-                w.contact_normal = accumulated_normal.getNormalized();
-                float dist_from_rest = min_ground_dist - cfg.wheel_radius;
-                
-                // --- road bumps ---
+                debug_sweep[i].hit_point = hit.block.position;
+
+                w.grounded       = true;
+                w.contact_point  = hit.block.position;
+                w.contact_normal = hit.block.normal;
+                float dist_from_rest = hit.block.distance;
+
+                // road bumps
                 float speed = body->getLinearVelocity().magnitude();
                 if (speed > 1.0f && tuning::road_bump_amplitude > 0.0f)
                 {
                     float phase = road_bump_phase;
-                    float bump = sinf(phase * 17.3f + i * 2.1f) * (0.5f + 0.5f * sinf(phase * 7.1f + i * 4.3f));
+                    float bump  = sinf(phase * 17.3f + i * 2.1f) * (0.5f + 0.5f * sinf(phase * 7.1f + i * 4.3f));
                     bump += sinf(phase * 31.7f + i * 1.3f) * 0.3f;
                     dist_from_rest += bump * tuning::road_bump_amplitude;
                 }
-                
+
                 w.target_compression = PxClamp(1.0f - dist_from_rest / cfg.suspension_travel, 0.0f, 1.0f);
+
+                // surface-type probe: 3 short rays to detect material under different parts of the contact patch
+                PxVec3 wheel_center = world_attach + local_down * (cfg.suspension_travel * (1.0f - w.compression) + cfg.wheel_radius);
+                float probe_len     = cfg.wheel_radius + 0.3f;
+                float half_width    = cfg.wheel_width * 0.4f;
+                PxVec3 probe_origins[3] = {
+                    wheel_center,
+                    wheel_center - local_right * half_width,
+                    wheel_center + local_right * half_width
+                };
+
+                for (int p = 0; p < 3; p++)
+                {
+                    PxRaycastBuffer probe;
+                    if (scene->raycast(probe_origins[p], local_down, probe_len, probe, PxHitFlag::eDEFAULT, filter) &&
+                        probe.block.actor && probe.block.actor != body)
+                    {
+                        // TODO: map probe.block.shape material to surface_type for split-mu detection
+                    }
+                }
             }
             else
             {
-                w.grounded = false;
-                w.target_compression = 0.0f;
-                w.contact_normal = PxVec3(0, 1, 0);
+                debug_sweep[i].hit_point = world_attach + local_down * sweep_dist;
+                w.grounded               = false;
+                w.target_compression     = 0.0f;
+                w.contact_normal         = PxVec3(0, 1, 0);
             }
-            
-            // --- wheel tracking ---
-            float compression_error = w.target_compression - w.compression;
+
+            debug_suspension_top[i] = world_attach;
+            PxVec3 wheel_center = world_attach + local_down * (cfg.suspension_travel * (1.0f - w.compression) + cfg.wheel_radius);
+            debug_suspension_bottom[i] = wheel_center;
+
+            // wheel tracking
+            float compression_error  = w.target_compression - w.compression;
             float wheel_spring_force = spring_stiffness[i] * compression_error;
             float wheel_damper_force = -spring_damping[i] * w.compression_velocity * 0.15f;
-            float wheel_accel = (wheel_spring_force + wheel_damper_force) / cfg.wheel_mass;
-            
+            float wheel_accel        = (wheel_spring_force + wheel_damper_force) / cfg.wheel_mass;
+
             w.compression_velocity += wheel_accel * dt;
-            w.compression += w.compression_velocity * dt;
-            
+            w.compression          += w.compression_velocity * dt;
+
             if (w.compression > 1.0f)      { w.compression = 1.0f; w.compression_velocity = PxMin(w.compression_velocity, 0.0f); }
             else if (w.compression < 0.0f) { w.compression = 0.0f; w.compression_velocity = PxMax(w.compression_velocity, 0.0f); }
         }
@@ -2204,35 +2169,23 @@ namespace car
                 float pacejka_slip_angle = PxClamp(effective_slip_angle, -tuning::spec.max_slip_angle, tuning::spec.max_slip_angle);
                 
                 // load-dependent B coefficient scaling
+                // real tires follow ~Fz^-0.4 from the BCD cornering stiffness saturation curve
                 float load_norm = w.tire_load / tuning::spec.load_reference;
-                float B_load_scale = 1.0f / PxMax(load_norm, tuning::spec.load_B_scale_min);
+                float B_load_scale = powf(1.0f / PxMax(load_norm, tuning::spec.load_B_scale_min), 0.4f);
                 float lat_B_eff  = tuning::spec.lat_B * B_load_scale;
                 float long_B_eff = tuning::spec.long_B * B_load_scale;
                 
-                // combined slip via equivalent slip projection
-                float sin_a = sinf(pacejka_slip_angle);
-                float cos_a = cosf(pacejka_slip_angle);
-                float sigma = sqrtf(w.slip_ratio * w.slip_ratio + sin_a * sin_a);
+                // evaluate each curve at its own pure-slip input, then enforce friction ellipse
+                float lat_mu  = pacejka(pacejka_slip_angle, lat_B_eff, tuning::spec.lat_C, tuning::spec.lat_D, tuning::spec.lat_E);
+                float long_mu = pacejka(w.slip_ratio, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, tuning::spec.long_E);
                 
-                float lat_mu, long_mu;
-                if (sigma > 0.001f)
+                // friction ellipse: scale both axes so the resultant stays within the grip circle
+                float total_mu = sqrtf(lat_mu * lat_mu + long_mu * long_mu);
+                if (total_mu > 1.0f)
                 {
-                    // combined regime - both slip axes active
-                    float sigma_lat  = sin_a / sigma;
-                    float sigma_long = w.slip_ratio / sigma;
-                    
-                    // evaluate pacejka with the total slip magnitude, then project back
-                    float mu_lat_raw  = pacejka(sigma, lat_B_eff, tuning::spec.lat_C, tuning::spec.lat_D, tuning::spec.lat_E);
-                    float mu_long_raw = pacejka(sigma, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, tuning::spec.long_E);
-                    
-                    lat_mu  = mu_lat_raw * sigma_lat;
-                    long_mu = mu_long_raw * sigma_long;
-                }
-                else
-                {
-                    // pure slip regime - standard independent evaluation
-                    lat_mu  = pacejka(pacejka_slip_angle, lat_B_eff, tuning::spec.lat_C, tuning::spec.lat_D, tuning::spec.lat_E);
-                    long_mu = pacejka(w.slip_ratio, long_B_eff, tuning::spec.long_C, tuning::spec.long_D, tuning::spec.long_E);
+                    float inv_total = 1.0f / total_mu;
+                    lat_mu  *= inv_total;
+                    long_mu *= inv_total;
                 }
                 
                 // lateral grip floor
@@ -2253,6 +2206,15 @@ namespace car
                 bool is_left_wheel = (i == front_left || i == rear_left);
                 float camber_thrust = camber * w.tire_load * tuning::spec.camber_thrust_coeff;
                 lat_f += is_left_wheel ? -camber_thrust : camber_thrust;
+
+                // friction circle cap on the final force vector
+                float total_f = sqrtf(lat_f * lat_f + long_f * long_f);
+                if (total_f > peak_force)
+                {
+                    float inv = peak_force / total_f;
+                    lat_f  *= inv;
+                    long_f *= inv;
+                }
 
                 if (tuning::log_pacejka)
                     SP_LOG_INFO("[%s] pacejka: lat_mu=%.3f, long_mu=%.3f, lat_f=%.1f, long_f=%.1f", wheel_name, lat_mu, long_mu, lat_f, long_f);
@@ -3194,16 +3156,16 @@ namespace car
     inline const aero_debug_data& get_aero_debug() { return aero_debug; }
     inline const shape_2d& get_shape_data() { return shape_data_ref(); }
     
-    inline void get_debug_ray(int wheel, int ray, PxVec3& origin, PxVec3& hit_point, bool& hit)
+    inline void get_debug_sweep(int wheel, PxVec3& origin, PxVec3& hit_point, bool& hit)
     {
-        if (wheel >= 0 && wheel < wheel_count && ray >= 0 && ray < debug_rays_per_wheel)
+        if (wheel >= 0 && wheel < wheel_count)
         {
-            origin    = debug_rays[wheel][ray].origin;
-            hit_point = debug_rays[wheel][ray].hit_point;
-            hit       = debug_rays[wheel][ray].hit;
+            origin    = debug_sweep[wheel].origin;
+            hit_point = debug_sweep[wheel].hit_point;
+            hit       = debug_sweep[wheel].hit;
         }
     }
-    
+
     inline void get_debug_suspension(int wheel, PxVec3& top, PxVec3& bottom)
     {
         if (wheel >= 0 && wheel < wheel_count)
@@ -3212,8 +3174,10 @@ namespace car
             bottom = debug_suspension_bottom[wheel];
         }
     }
-    
-    inline int get_debug_rays_per_wheel() { return debug_rays_per_wheel; }
+
+    inline float get_wheel_radius()    { return cfg.wheel_radius; }
+    inline float get_wheel_width()     { return cfg.wheel_width; }
+    inline PxTransform get_body_pose() { return body ? body->getGlobalPose() : PxTransform(PxIdentity); }
 
     // debug window - call this during tick to display car telemetry
     inline void debug_window(bool* visible = nullptr)

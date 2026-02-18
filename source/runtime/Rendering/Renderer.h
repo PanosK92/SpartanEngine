@@ -48,7 +48,7 @@ namespace spartan
         class Frustum;
     }
 
-    // console varibales
+    // console variables
     extern TConsoleVar<float> cvar_aabb;
     extern TConsoleVar<float> cvar_picking_ray;
     extern TConsoleVar<float> cvar_grid;
@@ -178,6 +178,8 @@ namespace spartan
         static void ClearMaterialTextureReferences();
     private:
         static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);
+        static bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources,
+                                  bool create_render, bool create_output, const char* label);
 
         // resources
         static void CreateBuffers();
@@ -230,17 +232,12 @@ namespace spartan
         // passes - post-process
         static void Pass_PostProcess(RHI_CommandList* cmd_list);
         static void Pass_Output(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_FilmGrain(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Vhs(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_ChromaticAberration(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_MotionBlur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Dithering(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_AA_Upscale(RHI_CommandList* cmd_list);
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
+        template<typename F = std::nullptr_t>
+        static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum,
+                                 RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
         // passes - utility
         static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
@@ -252,7 +249,7 @@ namespace spartan
         // bindless
         static void UpdateMaterials(RHI_CommandList* cmd_list);
         static void UpdateLights(RHI_CommandList* cmd_lis);
-        static void UpdatedBoundingBoxes(RHI_CommandList* cmd_list);
+        static void UpdateBoundingBoxes(RHI_CommandList* cmd_list);
 
         // returns true if a draw must go through the cpu-driven path (tessellated, instanced, alpha-tested, double-sided)
         // the gpu-driven indirect path only handles opaque, back-face-culled, non-instanced, non-tessellated draws

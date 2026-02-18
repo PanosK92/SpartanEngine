@@ -78,7 +78,7 @@ The renderer is built around a single principle: **the GPU owns the data**. Ever
 - **Uber shaders**, minimal pipeline state object (PSO) permutations eliminate draw call state changes
 - **Universal HLSL**, all shaders are written once in HLSL and compiled for both Vulkan (via SPIR-V) and DirectX 12
 - **Tightly packed 10-byte instance format** for hundreds of millions of instances (procedural grass, foliage)
-- **On-the-fly GPU mip generation** (FidelityFX SPD) **and texture compression** (FidelityFX Compressonator), assets are processed on the GPU at load time, not baked offline
+- **On-the-fly GPU mip generation** (FidelityFX SPD) **and GPU texture compression** (Compressonator compute shaders), assets are compressed on the GPU at load time in milliseconds, not baked offline
 - **Unified deferred rendering with transparency**, opaque and transparent surfaces share the same BSDF and render path, no separate forward pass
 - **Async compute**, SSAO, screen-space shadows, and cloud shadows run on the compute queue in parallel with shadow map rasterization, synchronized via timeline semaphores
 

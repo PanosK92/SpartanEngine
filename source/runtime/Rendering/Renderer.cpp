@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ===================================
 #include "pch.h"
 #include "Renderer.h"
 #include "Material.h"
@@ -42,14 +42,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
-#include <World/Components/Volume.h>
+#include "../World/Components/Volume.h"
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Commands/Console/ConsoleCommands.h"
 #include "../Core/Breadcrumbs.h"
 #include "../XR/Xr.h"
-//===========================================
+//==============================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -86,7 +86,7 @@ namespace spartan
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
-    unique_ptr<RHI_AccelerationStructure> tlas;
+    unique_ptr<RHI_AccelerationStructure> m_tlas;
     uint32_t Renderer::m_count_active_lights = 0;
 
     namespace
@@ -100,148 +100,6 @@ namespace spartan
         shared_ptr<RHI_SwapChain> swapchain;
         const uint8_t swap_chain_buffer_count = 2;
 
-        // cvar callbacks for cascading changes and validation
-        void on_anisotropy_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 0.0f, 16.0f);
-            *ConsoleRegistry::Get().Find("r.anisotropy")->m_value_ptr = v;
-        }
-
-        void on_resolution_scale_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 0.5f, 1.0f);
-            *ConsoleRegistry::Get().Find("r.resolution_scale")->m_value_ptr = v;
-        }
-
-        void on_hdr_change(const CVarVariant& value)
-        {
-            // reject if display doesn't support hdr
-            if (get<float>(value) == 1.0f && !Display::GetHdr())
-            {
-                SP_LOG_WARNING("This display doesn't support HDR");
-                *ConsoleRegistry::Get().Find("r.hdr")->m_value_ptr = 0.0f;
-                return;
-            }
-
-            if (swapchain)
-            {
-                swapchain->SetHdr(get<float>(value) != 0.0f);
-            }
-        }
-
-        void on_vsync_change(const CVarVariant& value)
-        {
-            if (swapchain)
-            {
-                swapchain->SetVsync(get<float>(value) != 0.0f);
-            }
-        }
-
-        void on_vrs_change(const CVarVariant& value)
-        {
-            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedVrs())
-            {
-                SP_LOG_WARNING("This GPU doesn't support variable rate shading");
-                *ConsoleRegistry::Get().Find("r.variable_rate_shading")->m_value_ptr = 0.0f;
-            }
-        }
-
-        void on_ray_traced_reflections_change(const CVarVariant& value)
-        {
-            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedRayTracing())
-            {
-                SP_LOG_WARNING("This GPU doesn't support ray tracing");
-                *ConsoleRegistry::Get().Find("r.ray_traced_reflections")->m_value_ptr = 0.0f;
-            }
-        }
-
-        void on_ray_traced_shadows_change(const CVarVariant& value)
-        {
-            if (get<float>(value) == 1.0f && !RHI_Device::IsSupportedRayTracing())
-            {
-                SP_LOG_WARNING("This GPU doesn't support ray tracing");
-                *ConsoleRegistry::Get().Find("r.ray_traced_shadows")->m_value_ptr = 0.0f;
-            }
-        }
-
-        void on_antialiasing_change(const CVarVariant& value)
-        {
-            float v = get<float>(value);
-
-            // reject xess if not supported
-            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess) && !RHI_Device::IsSupportedXess())
-            {
-                SP_LOG_WARNING("This GPU doesn't support XeSS");
-                *ConsoleRegistry::Get().Find("r.antialiasing_upsampling")->m_value_ptr = 0.0f;
-                return;
-            }
-
-            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) ||
-                v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
-            {
-                RHI_VendorTechnology::ResetHistory();
-            }
-        }
-
-        void on_performance_metrics_change(const CVarVariant& value)
-        {
-            static bool was_enabled = false;
-            bool is_enabled = get<float>(value) != 0.0f;
-            if (!was_enabled && is_enabled)
-            {
-                Profiler::ClearMetrics();
-            }
-            was_enabled = is_enabled;
-        }
-    }
-
-    // renderer cvars (externally accessible for direct access in hot paths)
-    // debug visualization
-    TConsoleVar<float> cvar_aabb                           ("r.aabb",                           0.0f,                                                    "draw axis-aligned bounding boxes");
-    TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,                                                    "draw picking ray");
-    TConsoleVar<float> cvar_grid                           ("r.grid",                           1.0f,                                                    "draw editor grid");
-    TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,                                                    "draw transform handles");
-    TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
-    TConsoleVar<float> cvar_lights                         ("r.lights",                         1.0f,                                                    "draw light icons");
-    TConsoleVar<float> cvar_audio_sources                  ("r.audio_sources",                  1.0f,                                                    "draw audio source icons");
-    TConsoleVar<float> cvar_performance_metrics            ("r.performance_metrics",            1.0f,                                                    "show performance metrics",                on_performance_metrics_change);
-    TConsoleVar<float> cvar_physics                        ("r.physics",                        0.0f,                                                    "draw physics debug");
-    TConsoleVar<float> cvar_wireframe                      ("r.wireframe",                      0.0f,                                                    "render in wireframe mode");
-    // post-processing                                                                                                                                   
-    TConsoleVar<float> cvar_bloom                          ("r.bloom",                          1.0f,                                                    "bloom intensity, 0 to disable");
-    TConsoleVar<float> cvar_fog                            ("r.fog",                            1.0f,                                                    "fog intensity/particle density");
-    TConsoleVar<float> cvar_ssao                           ("r.ssao",                           1.0f,                                                    "screen space ambient occlusion");
-    TConsoleVar<float> cvar_ray_traced_reflections         ("r.ray_traced_reflections",         static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced reflections",                  on_ray_traced_reflections_change);
-    TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced directional shadows",          on_ray_traced_shadows_change);
-    TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,                                                    "restir path tracing global illumination");
-    TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,                                                    "motion blur");
-    TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,                                                    "depth of field");
-    TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,                                                    "film grain effect");
-    TConsoleVar<float> cvar_vhs                            ("r.vhs",                            0.0f,                                                    "vhs retro effect");
-    TConsoleVar<float> cvar_chromatic_aberration           ("r.chromatic_aberration",           0.0f,                                                    "chromatic aberration");
-    TConsoleVar<float> cvar_dithering                      ("r.dithering",                      0.0f,                                                    "dithering to reduce banding");
-    TConsoleVar<float> cvar_sharpness                      ("r.sharpness",                      0.0f,                                                    "sharpening intensity");
-    // quality settings                                                                                                                                  
-    TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering level (0-16)",      on_anisotropy_change);
-    TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
-    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        2.0f,                                                    "aa/upsampling method index",              on_antialiasing_change);
-    // display                                                                                                                                                                                      
-    TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
-    TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");                          
-    TConsoleVar<float> cvar_vsync                          ("r.vsync",                          0.0f,                                                    "vertical sync",                           on_vsync_change);
-    // resolution                                                                                                                                                                                   
-    TConsoleVar<float> cvar_variable_rate_shading          ("r.variable_rate_shading",          0.0f,                                                    "variable rate shading",                   on_vrs_change);
-    TConsoleVar<float> cvar_resolution_scale               ("r.resolution_scale",               1.0f,                                                    "render resolution scale (0.5-1.0)",       on_resolution_scale_change);
-    TConsoleVar<float> cvar_dynamic_resolution             ("r.dynamic_resolution",             0.0f,                                                    "automatic resolution scaling");
-    // misc                                                                                                                                              
-    TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");
-    TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, negative disables");
-    // volumetric clouds
-    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.45f,                                                   "sky coverage (0=clear, 1=overcast)");
-    TConsoleVar<float> cvar_cloud_shadows                  ("r.cloud_shadows",                  1.0f,                                                    "cloud shadow intensity on ground");
-
-    namespace
-    {
         uint64_t frame_num                   = 0;
         math::Vector2 jitter_offset          = math::Vector2::Zero;
         const uint32_t resolution_shadow_min = 128;
@@ -407,7 +265,7 @@ namespace spartan
             GeometryBuffer::Shutdown();
             swapchain             = nullptr;
             m_lines_vertex_buffer = nullptr;
-            tlas                  = nullptr;
+            m_tlas                = nullptr;
         }
 
         RHI_VendorTechnology::Shutdown();
@@ -441,6 +299,9 @@ namespace spartan
         }
         
         // update optional render targets when their cvars change
+        // skip until resources are initialized to avoid blocking the first frame with QueueWaitAll
+        // while the background thread is still uploading textures via immediate execution
+        if (m_initialized_resources)
         {
             static uint32_t options_hash = 0;
             uint32_t options_hash_new    = (cvar_ssao.GetValueAs<bool>() << 0) | (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) | (cvar_restir_pt.GetValueAs<bool>() << 2);
@@ -464,7 +325,9 @@ namespace spartan
         // (including present) to complete before starting new commands on the graphics queue.
         // with a larger command list pool, idle slots can cycle without implicit waits,
         // so this prevents write-after-present hazards on swapchain images.
-        if (!can_render)
+        // skip on the first frame since no prior rendering has occurred and waiting here
+        // would just block on the background thread's immediate execution texture uploads
+        if (!can_render && frame_num > 0)
         {
             RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->Wait();
         }
@@ -574,7 +437,7 @@ namespace spartan
 
                 // world-space aabbs, always update those as they reflect in-game entites
                 {
-                    UpdatedBoundingBoxes(m_cmd_list_present);
+                    UpdateBoundingBoxes(m_cmd_list_present);
                     RHI_Device::UpdateBindlessAABBs(GetBuffer(Renderer_Buffer::AABBs));
                 }
 
@@ -643,22 +506,18 @@ namespace spartan
             Xr::EndFrame();
         }
     
+        bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
+
         // blit to back buffer when standalone
+        if (is_standalone && can_render)
         {
-            bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
-            if (is_standalone && can_render)
-            {
-                BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
-            }
+            BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
-    
+
         // present frame when standalone (always submit command list to avoid stalled commands)
+        if (is_standalone)
         {
-            bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
-            if (is_standalone)
-            {
-                SubmitAndPresent();
-            }
+            SubmitAndPresent();
         }
     
         // clear per-frame data
@@ -668,6 +527,9 @@ namespace spartan
         }
     
         // increment frame counter and trigger first-frame event
+        // only count frames that actually rendered so the splash screen
+        // stays visible until the editor has real content to show
+        if (can_render)
         {
             frame_num++;
             if (frame_num == 1)
@@ -700,34 +562,40 @@ namespace spartan
         return m_resolution_render;
     }
 
-    void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
+    bool Renderer::SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources,
+                                 bool create_render, bool create_output, const char* label)
     {
         if (!RHI_Device::IsValidResolution(width, height))
         {
-            SP_LOG_WARNING("Can't set %dx% as it's an invalid resolution", width, height);
-            return;
+            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            return false;
         }
 
-        if (m_resolution_render.x == width && m_resolution_render.y == height)
-            return;
+        if (current.x == width && current.y == height)
+            return false;
 
-        m_resolution_render.x = static_cast<float>(width);
-        m_resolution_render.y = static_cast<float>(height);
+        current.x = static_cast<float>(width);
+        current.y = static_cast<float>(height);
 
         if (recreate_resources)
         {
-            // if frames are in-flight, wait for them to finish before resizing
             if (m_cb_frame_cpu.frame > 1)
             {
                 bool flush = true;
                 RHI_Device::QueueWaitAll(flush);
             }
 
-            CreateRenderTargets(true, false, true);
+            CreateRenderTargets(create_render, create_output, true);
             CreateSamplers();
         }
 
-        SP_LOG_INFO("Render resolution has been set to %dx%d", width, height);
+        SP_LOG_INFO("%s resolution has been set to %dx%d", label, width, height);
+        return true;
+    }
+
+    void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
+    {
+        SetResolution(m_resolution_render, width, height, recreate_resources, true, false, "Render");
     }
 
     const Vector2& Renderer::GetResolutionOutput()
@@ -737,35 +605,10 @@ namespace spartan
 
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
-        if (!RHI_Device::IsValidResolution(width, height))
+        if (SetResolution(m_resolution_output, width, height, recreate_resources, false, true, "Output"))
         {
-            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
-            return;
+            Display::RegisterDisplayMode(width, height, Timer::GetFpsLimit(), Display::GetId());
         }
-
-        if (m_resolution_output.x == width && m_resolution_output.y == height)
-            return;
-
-        m_resolution_output.x = static_cast<float>(width);
-        m_resolution_output.y = static_cast<float>(height);
-
-        if (recreate_resources)
-        {
-            // if frames are in-flight, wait for them to finish before resizing
-            if (m_cb_frame_cpu.frame > 1)
-            {
-                bool flush = true;
-                RHI_Device::QueueWaitAll(flush);
-            }
-
-            CreateRenderTargets(false, true, true);
-            CreateSamplers();
-        }
-
-        // register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
-        Display::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), Timer::GetFpsLimit(), Display::GetId());
-
-        SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
     void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
@@ -1022,13 +865,12 @@ namespace spartan
 
     void Renderer::UpdateMaterials(RHI_CommandList* cmd_list)
     {
-        static array<Sb_Material, rhi_max_array_size> properties; // mapped to the gpu as a structured properties buffer
+        static array<Sb_Material, rhi_max_array_size> properties;
         static unordered_set<uint64_t> unique_material_ids;
-        static uint32_t count = 0;
+        uint32_t count = 0;
     
-        auto update_material = [](Material* material)
+        auto update_material = [&count](Material* material)
         {
-            // check if the material's ID is already processed
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
                 return;
     
@@ -1138,8 +980,6 @@ namespace spartan
             buffer->ResetOffset();
             buffer->Update(cmd_list, &properties[0], buffer->GetStride() * count);
         }
-
-        count = 0;
     }
 
     void Renderer::UpdateLights(RHI_CommandList* cmd_list)
@@ -1272,7 +1112,7 @@ namespace spartan
         }
     }
 
-    void Renderer::UpdatedBoundingBoxes(RHI_CommandList* cmd_list)
+    void Renderer::UpdateBoundingBoxes(RHI_CommandList* cmd_list)
     {
         // clear
         m_bindless_aabbs.fill(Sb_Aabb());
@@ -1299,16 +1139,9 @@ namespace spartan
                 const Renderer_DrawCall& dc = m_draw_calls[i];
                 Material* material          = dc.renderable->GetMaterial();
 
-                // must match the filtering in UpdateDrawCalls exactly
                 if (!material || material->IsTransparent())
                     continue;
-                if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
-                    continue;
-                if (dc.instance_count > 1)
-                    continue;
-                if (material->IsAlphaTested())
-                    continue;
-                if (static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back)
+                if (IsCpuDrivenDraw(dc, material))
                     continue;
 
                 uint32_t aabb_slot = m_draw_calls_prepass_count + indirect_idx;
@@ -1585,10 +1418,9 @@ namespace spartan
 
         // top-level acceleration structure
         {
-            // create or rebuild tlas
-            if (!tlas)
+            if (!m_tlas)
             {
-                tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "world_tlas");
+                m_tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "world_tlas");
             }
 
             // temp till we make rhi enum
@@ -1661,17 +1493,15 @@ namespace spartan
                     SP_LOG_INFO("Ray tracing: building TLAS with %zu instances", instances.size());
                     last_instance_count = static_cast<uint32_t>(instances.size());
                 }
-                tlas->BuildTopLevel(cmd_list, instances);
+                m_tlas->BuildTopLevel(cmd_list, instances);
 
                 // update geometry info buffer for hit shader vertex access
                 GetBuffer(Renderer_Buffer::GeometryInfo)->Update(cmd_list, geometry_infos.data(), static_cast<uint32_t>(geometry_infos.size() * sizeof(Sb_GeometryInfo)));
             }
             else if (last_instance_count != 0)
             {
-                // no instances (world cleared/loading) - destroy tlas to prevent stale blas references
-                // it will be recreated when new instances are available
                 SP_LOG_INFO("Ray tracing: destroying TLAS (world changed)");
-                tlas = nullptr;
+                m_tlas = nullptr;
                 last_instance_count = 0;
             }
         }
@@ -1860,7 +1690,7 @@ namespace spartan
 
     RHI_AccelerationStructure* Renderer::GetTopLevelAccelerationStructure()
     {
-        return tlas.get();
+        return m_tlas.get();
     }
 
     void Renderer::DestroyAccelerationStructures()
@@ -1868,8 +1698,7 @@ namespace spartan
         // wait for gpu to finish using the acceleration structures
         RHI_Device::QueueWaitAll();
 
-        // destroy tlas
-        tlas = nullptr;
+        m_tlas = nullptr;
 
         SP_LOG_INFO("Acceleration structures destroyed for world change");
     }

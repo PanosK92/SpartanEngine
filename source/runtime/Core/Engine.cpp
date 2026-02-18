@@ -78,6 +78,7 @@ namespace spartan
             Profiler::Initialize();
             PhysicsWorld::Initialize();
             Renderer::Initialize();
+            Window::PumpEvents();
             World::Initialize();
             Settings::Initialize();
             SmokeTest::Initialize();
@@ -94,7 +95,9 @@ namespace spartan
                 ConsoleRegistry::Get().SetValueFromString("r.ray_traced_shadows", std::to_string(static_cast<float>(ray_tracing_supported)));
             }
 
-            ResourceCache::LoadDefaultResources(); // requires rhi to be initialized so they can be uploaded to the gpu
+            Window::PumpEvents();
+            ResourceCache::LoadDefaultResources();
+            Window::PumpEvents();
         }
 
         SP_LOG_INFO("%s has been initialized. Duration %.1f sec", version::c_str(), timer_initialize.GetElapsedTimeSec());

@@ -22,8 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "RHI_Texture.h"
-#include "ThreadPool.h"
+#include "RHI_Buffer.h"
+#include "RHI_Device.h"
+#include "RHI_Shader.h"
 #include "RHI_CommandList.h"
+#include "ThreadPool.h"
+#include "../Rendering/Renderer.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Core/ProgressTracker.h"
 SP_WARNINGS_OFF
@@ -120,6 +124,179 @@ namespace spartan
             }
 
             texture->SetFormat(destination_format);
+        }
+    }
+
+    namespace gpu_compression
+    {
+        static mutex compress_mutex;
+
+        bool compress_bc3(RHI_Texture* texture)
+        {
+            SP_ASSERT(texture != nullptr);
+
+            RHI_Shader* shader = Renderer::GetShader(Renderer_Shader::texture_compress_bc3_c);
+            if (!shader || !shader->IsCompiled())
+                return false;
+
+            // serialize gpu compression to avoid blowing through vram when
+            // many textures are loaded in parallel during world loading
+            lock_guard<mutex> lock(compress_mutex);
+
+            const uint32_t width     = texture->GetWidth();
+            const uint32_t height    = texture->GetHeight();
+            const uint32_t mip_count = texture->GetMipCount();
+
+            // compute per-mip layout: block counts, output offsets, and input pixel offsets
+            uint32_t total_blocks      = 0;
+            uint32_t total_input_pixels = 0;
+            vector<uint32_t> mip_output_offsets(mip_count);
+            vector<uint32_t> mip_input_offsets(mip_count);
+            vector<uint32_t> mip_widths(mip_count);
+            vector<uint32_t> mip_blocks_x(mip_count);
+            vector<uint32_t> mip_block_counts(mip_count);
+            for (uint32_t mip = 0; mip < mip_count; mip++)
+            {
+                uint32_t mip_w = max(1u, width >> mip);
+                uint32_t mip_h = max(1u, height >> mip);
+
+                mip_output_offsets[mip] = total_blocks;
+                mip_input_offsets[mip]  = total_input_pixels;
+                mip_widths[mip]         = mip_w;
+                mip_blocks_x[mip]       = max(1u, (mip_w + 3) / 4);
+                uint32_t blocks_y       = max(1u, (mip_h + 3) / 4);
+                mip_block_counts[mip]   = mip_blocks_x[mip] * blocks_y;
+                total_blocks           += mip_block_counts[mip];
+                total_input_pixels     += mip_w * mip_h;
+            }
+
+            if (total_blocks == 0)
+                return false;
+
+            // bail out to cpu compression if we don't have enough vram headroom
+            uint64_t required_mb = (static_cast<uint64_t>(total_input_pixels) * 4 + static_cast<uint64_t>(total_blocks) * 16) / (1024 * 1024);
+            if (RHI_Device::MemoryGetAvailableMb() < required_mb + 256)
+                return false;
+
+            // concatenate all mip rgba data into a contiguous buffer (packed as uint per pixel)
+            vector<uint32_t> input_pixels(total_input_pixels);
+            for (uint32_t mip = 0; mip < mip_count; mip++)
+            {
+                RHI_Texture_Mip* mip_data = texture->GetMip(0, mip);
+                if (!mip_data || mip_data->bytes.empty())
+                    return false;
+
+                uint32_t mip_w      = mip_widths[mip];
+                uint32_t mip_h      = max(1u, height >> mip);
+                uint32_t pixel_count = mip_w * mip_h;
+                memcpy(&input_pixels[mip_input_offsets[mip]], mip_data->bytes.data(), pixel_count * sizeof(uint32_t));
+            }
+
+            // create input and output buffers (both mappable for cpu access)
+            // note: don't pass initial data to the constructor because storage buffer stride
+            // alignment inflates m_object_size beyond the actual data size, causing memcpy overflow
+            auto input_buffer = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,
+                static_cast<uint32_t>(sizeof(uint32_t)),
+                total_input_pixels,
+                nullptr, true,
+                "bc3_compress_input"
+            );
+
+            auto output_buffer = make_shared<RHI_Buffer>(
+                RHI_Buffer_Type::Storage,
+                static_cast<uint32_t>(sizeof(uint32_t) * 4),
+                total_blocks,
+                nullptr, true,
+                "bc3_compress_output"
+            );
+
+            if (!input_buffer->GetRhiResource() || !output_buffer->GetRhiResource())
+            {
+                SP_LOG_ERROR("failed to create buffers for gpu compression");
+                return false;
+            }
+
+            // manually fill the input buffer with pixel data (bypassing stride alignment)
+            {
+                void* mapped = nullptr;
+                RHI_Device::MemoryMap(input_buffer->GetRhiResource(), mapped);
+                if (!mapped)
+                {
+                    SP_LOG_ERROR("failed to map input buffer for gpu compression");
+                    return false;
+                }
+                memcpy(mapped, input_pixels.data(), total_input_pixels * sizeof(uint32_t));
+                RHI_Device::MemoryUnmap(input_buffer->GetRhiResource());
+            }
+
+            RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
+            if (!cmd_list)
+                return false;
+
+            {
+                RHI_PipelineState pso;
+                pso.name = "texture_compress_bc3";
+                pso.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)] = shader;
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetBuffer(Renderer_BindingsUav::compress_input,  input_buffer.get());
+                cmd_list->SetBuffer(Renderer_BindingsUav::compress_output, output_buffer.get());
+
+                auto uint_as_float = [](uint32_t val) -> float
+                {
+                    float f;
+                    memcpy(&f, &val, sizeof(float));
+                    return f;
+                };
+
+                for (uint32_t mip = 0; mip < mip_count; mip++)
+                {
+                    uint32_t mip_h = max(1u, height >> mip);
+
+                    Pcb_Pass pass = {};
+                    pass.v[0]     = uint_as_float(mip_blocks_x[mip]);
+                    pass.v[1]     = uint_as_float(mip_block_counts[mip]);
+                    pass.v[2]     = 0.05f;
+                    pass.v[3]     = uint_as_float(mip_input_offsets[mip]);
+                    pass.v[4]     = uint_as_float(mip_output_offsets[mip]);
+                    pass.v[5]     = uint_as_float(mip_widths[mip]);
+                    pass.v[6]     = uint_as_float(mip_h);
+
+                    cmd_list->PushConstants(pass);
+
+                    uint32_t dispatch_x = (mip_block_counts[mip] + 3) / 4;
+                    cmd_list->Dispatch(dispatch_x, 1, 1);
+
+                    cmd_list->InsertBarrier(output_buffer.get());
+                }
+            }
+
+            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+
+            // read back compressed data from the mapped buffer
+            void* mapped = output_buffer->GetMappedData();
+            if (!mapped)
+            {
+                SP_LOG_ERROR("gpu compression buffer has no mapped data for readback");
+                return false;
+            }
+
+            for (uint32_t mip = 0; mip < mip_count; mip++)
+            {
+                uint32_t mip_size_bytes = mip_block_counts[mip] * 16;
+                uint8_t* src            = reinterpret_cast<uint8_t*>(mapped) + mip_output_offsets[mip] * 16;
+
+                RHI_Texture_Mip* mip_data = texture->GetMip(0, mip);
+                if (mip_data)
+                {
+                    mip_data->bytes.resize(mip_size_bytes);
+                    memcpy(mip_data->bytes.data(), src, mip_size_bytes);
+                }
+            }
+
+            texture->SetFormat(compressonator::destination_format);
+            return true;
         }
     }
 
@@ -582,12 +759,15 @@ namespace spartan
                 }
             }
 
-            // compress
+            // compress - try gpu first, fall back to cpu
             bool compress       = m_flags & RHI_Texture_Compress;
             bool not_compressed = !IsCompressedFormat();
             if (compress && not_compressed)
             {
-                compressonator::compress(this);
+                if (!gpu_compression::compress_bc3(this))
+                {
+                    compressonator::compress(this);
+                }
             }
         }
         
