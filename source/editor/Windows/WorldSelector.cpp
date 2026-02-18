@@ -45,18 +45,20 @@ namespace
         const char* description;
         const char* status;      // wip, prototype, complete
         const char* performance; // light, moderate, demanding
+        const char* preview_image;
         uint32_t vram;           // min vram requirement in megabytes
+
     };
 
     const DefaultWorldEntry default_worlds[] =
     {
-        { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" , "Light",          2100 },
-        { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", 5600 },
-        { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype", "Light",          2100 },
-        { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      2600 },
-        { "Cornell Box",       "Classic ray tracing test scene",                                     "Complete" , "Light",          2100 },
-        { "San Miguel",        "Detailed courtyard scene with complex geometry and lighting",        "Complete" , "Demanding",      2600 },
-        { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          2100 }
+        { "Car Showroom",      "Showcase world for YouTubers/Press. Does not use experimental tech", "Complete" , "Light",          "car_showroom.png", 2100 },
+        { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", "open_world_forest.png", 5600 },
+        { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype", "Light",          "liminal_space.png", 2100 },
+        { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      "sponza_4k.png", 2600 },
+        { "Cornell Box",       "Classic ray tracing test scene",                                     "Complete" , "Light",          "cornell_box.png", 2100 },
+        { "San Miguel",        "Detailed courtyard scene with complex geometry and lighting",        "Complete" , "Demanding",      "san_miguel.png", 2600 },
+        { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          "basic.png", 2100 }
     };
     constexpr int default_world_count = sizeof(default_worlds) / sizeof(default_worlds[0]);
 
@@ -64,6 +66,7 @@ namespace
     vector<spartan::WorldMetadata> world_files;
     int selected_index = 0;
     bool is_default_world_selected = true; // true = default world, false = world file
+    unordered_map<string, shared_ptr<spartan::RHI_Texture>> preview_texture_cache;
 
     // visibility states
     bool visible_download_prompt  = false;
@@ -75,6 +78,7 @@ namespace
     struct NewWorldSettings
     {
         char title[128]            = "New World";
+        shared_ptr<spartan::RHI_Texture> preview_texture = nullptr;
         char description[512]      = "";
         char save_path[256]        = "";
         int renderer_preset        = 1;  // 0 = Low, 1 = Medium, 2 = High, 3 = Ultra
@@ -85,12 +89,14 @@ namespace
             memset(description, 0, sizeof(description));
             memset(save_path, 0, sizeof(save_path));
             renderer_preset       = 1;
+            preview_texture       = nullptr;
 
             // set default save path
             string default_path = string(spartan::ResourceCache::GetProjectDirectory()) + "worlds/";
             strcpy_s(save_path, default_path.c_str());
         }
     };
+
     NewWorldSettings new_world_settings;
     bool visible_create_world_modal = false;
 
@@ -311,6 +317,68 @@ namespace
         scan_for_world_files();
     }
 
+    // Function to get preview texture (with caching)
+    spartan::RHI_Texture* get_preview_texture(const spartan::WorldMetadata& metadata)
+    {
+        // Check cache first
+        auto it = preview_texture_cache.find(metadata.file_path);
+        if (it != preview_texture_cache.end() && it->second)
+        {
+            return it->second.get();
+        }
+    
+        // Try to load the preview image
+        if (!metadata.preview_image.empty() && spartan::FileSystem::Exists(metadata.preview_image))
+        {
+            auto texture = spartan::ResourceCache::Load<spartan::RHI_Texture>(metadata.preview_image);
+            if (texture)
+            {
+                preview_texture_cache[metadata.file_path] = texture;
+                return texture.get();
+            }
+        }
+    
+        // Return default checkerboard texture if no preview exists
+        return spartan::Renderer::GetStandardTexture(spartan::Renderer_StandardTexture::Checkerboard);
+    }
+
+    spartan::RHI_Texture* get_default_world_preview(const char* preview_image_filename)
+    {
+        // Check cache first (use filename as key for default worlds)
+        auto it = preview_texture_cache.find(preview_image_filename);
+        if (it != preview_texture_cache.end() && it->second)
+        {
+            return it->second.get();
+        }
+    
+        // Try to load from project directory first (for downloaded assets)
+        string project_preview = string(spartan::ResourceCache::GetProjectDirectory()) + "previews/" + preview_image_filename;
+        if (spartan::FileSystem::Exists(project_preview))
+        {
+            auto texture = spartan::ResourceCache::Load<spartan::RHI_Texture>(project_preview);
+            if (texture)
+            {
+                preview_texture_cache[preview_image_filename] = texture;
+                return texture.get();
+            }
+        }
+    
+        // Fallback to data directory
+        string data_preview = string(spartan::ResourceCache::GetDataDirectory()) + "/previews/" + preview_image_filename;
+        if (spartan::FileSystem::Exists(data_preview))
+        {
+            auto texture = spartan::ResourceCache::Load<spartan::RHI_Texture>(data_preview);
+            if (texture)
+            {
+                preview_texture_cache[preview_image_filename] = texture;
+                return texture.get();
+            }
+        }
+    
+        // Return checkerboard as fallback
+        return spartan::Renderer::GetStandardTexture(spartan::Renderer_StandardTexture::Checkerboard);
+    }
+
     void show_create_world_modal()
     {
         if (!visible_create_world_modal) return;
@@ -461,6 +529,22 @@ namespace
                     // show default world details
                     const DefaultWorldEntry& w = default_worlds[selected_index];
 
+                    // World selection preview image
+                    spartan::RHI_Texture* preview_texture = get_default_world_preview(w.preview_image);
+                    if (preview_texture)
+                    {
+                        ImGui::Image(
+                            reinterpret_cast<ImTextureID>(preview_texture),
+                            ImVec2(400, 225),
+                            ImVec2(0, 0),
+                            ImVec2(1, 1),
+                            ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
+                            ImVec4(0.0f, 0.0f, 0.0f, 0.5f));
+
+                        ImGui::Separator();
+                    }
+
+
                     ImGui::TextWrapped("Description: %s", w.description);
                     ImGui::Separator();
                     ImGui::TextWrapped("Status: %s", w.status);
@@ -485,6 +569,21 @@ namespace
                 {
                     // show world file details
                     const spartan::WorldMetadata& w = world_files[selected_index];
+
+                    // World selection preview image
+                    spartan::RHI_Texture* preview_texture = get_preview_texture(w);
+                    if (preview_texture)
+                    {
+                        ImGui::Image(
+                            reinterpret_cast<ImTextureID>(preview_texture),
+                            ImVec2(400, 225),
+                            ImVec2(0, 0),
+                            ImVec2(1, 1),
+                            ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
+                            ImVec4(0.0f, 0.0f, 0.0f, 0.5f));
+                        
+                        ImGui::Separator();
+                    }
 
                     ImGui::TextWrapped("Name: %s", w.name.c_str());
                     ImGui::Separator();
@@ -601,4 +700,10 @@ void WorldSelector::SetVisible(bool visibility)
         selected_index = 0;
         is_default_world_selected = true;
     }
+    else
+    {
+        // Clear preview texture cache when window is closed
+        preview_texture_cache.clear();
+    }
 }
+

@@ -59,6 +59,7 @@ namespace spartan
         string file_path;
         string world_name; // cached to avoid per-frame allocation
         string world_description;
+        string world_preview_image;
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
@@ -1481,6 +1482,16 @@ namespace spartan
         world_description = description;
     }
 
+    const std::string& World::GetPreviewImage()
+    { 
+        return world_preview_image;
+    }
+
+    void World::SetPreviewImage(const std::string& image)
+    { 
+        world_preview_image = image;
+    }
+
     bool World::ReadMetadata(const string& world_file_path, WorldMetadata& metadata)
     {
         // load xml document
@@ -1504,6 +1515,7 @@ namespace spartan
         metadata.file_path   = world_file_path;
         metadata.name        = world_node.attribute("name").as_string();
         metadata.description = world_node.attribute("description").as_string();
+        metadata.preview_image = world_node.attribute("preview_image").as_string();
 
         return true;
     }
