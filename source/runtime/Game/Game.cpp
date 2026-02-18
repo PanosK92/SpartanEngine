@@ -22,24 +22,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============================
 #include "pch.h"
 #include "Game.h"
-#include "../World/World.h"
+#include "../Input/Input.h"
+#include "../Car/Car.h"
+#include "../Car/CarSimulation.h"
 #include "../World/Entity.h"
+#include "../World/Prefab.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Physics.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/Terrain.h"
-#include "../Core/ThreadPool.h"
 #include "../Core/ProgressTracker.h"
-#include "../Geometry/Mesh.h"
 #include "../Rendering/Renderer.h"
-#include "../Rendering/Material.h"
 #include "../Resource/ResourceCache.h"
-#include "../Input/Input.h"
 #include "../Geometry/GeometryGeneration.h"
 #include "../Geometry/GeometryProcessing.h"
-#include "../Physics/Car.h"
-#include "../Logging/Log.h"
 //==========================================
 
 //= NAMESPACES ===============
@@ -49,19 +46,23 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    //= FORWARD DECLARATIONS (world functions) ==================
+    //= FORWARD DECLARATIONS (world functions) ================
     namespace worlds
     {
-        namespace showroom        { void create(); void tick(); }
-        namespace car_playground  { void create(); }
-        namespace forest          { void create(); void tick(); }
-        namespace liminal_space   { void create(); void tick(); }
-        namespace sponza          { void create(); }
-        namespace subway          { void create(); }
-        namespace minecraft       { void create(); }
-        namespace basic           { void create(); }
+        namespace showroom      { void create(); void tick(); }
+        namespace forest        { void create(); void tick(); }
+        namespace liminal_space { void create(); void tick(); }
+        namespace sponza        { void create(); }
+        namespace cornell       { void create(); }
+        namespace san_miguel    { void create(); }
+        namespace basic         { void create(); }
     }
-    //===========================================================
+    //=========================================================
+
+    // entities shared with other files (external linkage required)
+    Entity* default_car        = nullptr;
+    Entity* default_car_window = nullptr;
+    Entity* default_camera     = nullptr;
 
     namespace
     {
@@ -72,14 +73,11 @@ namespace spartan
         //= SHARED ENTITIES ========================
         Entity* default_floor             = nullptr;
         Entity* default_terrain           = nullptr;
-        Entity* default_car               = nullptr;
-        Entity* default_car_window        = nullptr;
-        Entity* default_camera            = nullptr;
         Entity* default_environment       = nullptr;
         Entity* default_light_directional = nullptr;
         Entity* default_metal_cube        = nullptr;
         Entity* default_water             = nullptr;
-        vector<shared_ptr<Mesh>> meshes;
+        std::vector<std::shared_ptr<Mesh>> meshes;
         //==========================================
 
         //= WORLD DISPATCH TABLES =====================================================================================================
@@ -90,19 +88,17 @@ namespace spartan
         constexpr create_fn world_create[] =
         {
             worlds::showroom::create,
-            worlds::car_playground::create,
             worlds::forest::create,
             worlds::liminal_space::create,
             worlds::sponza::create,
-            worlds::subway::create,
-            worlds::minecraft::create,
+            worlds::cornell::create,
+            worlds::san_miguel::create,
             worlds::basic::create,
         };
 
         constexpr tick_fn world_tick[] =
         {
             worlds::showroom::tick,
-            nullptr,
             worlds::forest::tick,
             worlds::liminal_space::tick,
             nullptr,
@@ -119,7 +115,7 @@ namespace spartan
         namespace entities
         {
             // background music
-            void music(const char* soundtrack_file_path = "project\\music\\jake_chudnow_shona.wav")
+            void music(const char* soundtrack_file_path = "project/music/jake_chudnow_shona.wav")
             {
                 SP_ASSERT(soundtrack_file_path);
 
@@ -216,12 +212,12 @@ namespace spartan
 
                 // pbr material
                 shared_ptr<Material> material = make_shared<Material>();
-                material->SetTexture(MaterialTextureType::Color,     "project\\materials\\crate_space\\albedo.png");
-                material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\crate_space\\normal.png");
-                material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\crate_space\\ao.png");
-                material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\crate_space\\roughness.png");
-                material->SetTexture(MaterialTextureType::Metalness, "project\\materials\\crate_space\\metallic.png");
-                material->SetTexture(MaterialTextureType::Height,    "project\\materials\\crate_space\\height.png");
+                material->SetTexture(MaterialTextureType::Color,     "project/materials/crate_space/albedo.png");
+                material->SetTexture(MaterialTextureType::Normal,    "project/materials/crate_space/normal.png");
+                material->SetTexture(MaterialTextureType::Occlusion, "project/materials/crate_space/ao.png");
+                material->SetTexture(MaterialTextureType::Roughness, "project/materials/crate_space/roughness.png");
+                material->SetTexture(MaterialTextureType::Metalness, "project/materials/crate_space/metallic.png");
+                material->SetTexture(MaterialTextureType::Height,    "project/materials/crate_space/height.png");
                 material->SetProperty(MaterialProperty::Tessellation, 1.0f);
                 material->SetResourceName("crate_space" + string(EXTENSION_MATERIAL));
 
@@ -237,7 +233,7 @@ namespace spartan
             // flight helmet model
             void flight_helmet(const Vector3& position)
             {
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/flight_helmet/FlightHelmet.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("flight_helmet");
@@ -253,7 +249,7 @@ namespace spartan
             // damaged helmet model
             void damaged_helmet(const Vector3& position)
             {
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/damaged_helmet/DamagedHelmet.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("damaged_helmet");
@@ -270,7 +266,7 @@ namespace spartan
             void material_ball(const Vector3& position)
             {
                 uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\material_ball_in_3d-coat\\scene.gltf", flags))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/material_ball_in_3d-coat/scene.gltf", flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("material_ball");
@@ -296,7 +292,7 @@ namespace spartan
                 {
                     material->SetResourceName("water" + string(EXTENSION_MATERIAL));
                     material->SetColor(color);
-                    material->SetTexture(MaterialTextureType::Normal,            "project\\materials\\water\\normal.jpeg");
+                    material->SetTexture(MaterialTextureType::Normal,            "project/materials/water/normal.jpeg");
                     material->SetProperty(MaterialProperty::Roughness,           0.0f);
                     material->SetProperty(MaterialProperty::Clearcoat,           0.0f);
                     material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.0f);
@@ -361,1100 +357,13 @@ namespace spartan
             ConsoleRegistry::Get().SetValueFromString("r.vhs",                  "0");
         }
     }
-
-    //= CAR ==================================================================================
-    namespace car
-    {
-        // configuration for car creation
-        struct Config
-        {
-            Vector3 position        = Vector3::Zero;
-            bool    drivable        = false;  // creates vehicle physics with wheels
-            bool    static_physics  = false;  // kinematic physics on the body (for display)
-            bool    show_telemetry  = false;  // shows vehicle telemetry hud
-            bool    camera_follows  = false;  // attach camera to follow the car
-        };
-
-        // state for drivable cars
-        Entity* vehicle_entity = nullptr;
-        bool    show_telemetry = false;
-
-        // chase camera state - gran turismo 7 style
-        namespace chase_camera
-        {
-            Vector3 position     = Vector3::Zero;  // smoothed camera world position
-            Vector3 velocity     = Vector3::Zero;  // velocity for smooth damping
-            float   yaw          = 0.0f;           // smoothed yaw angle (radians)
-            float   yaw_bias     = 0.0f;           // manual horizontal camera rotation from right stick (radians)
-            float   pitch_bias   = 0.0f;           // manual vertical camera rotation from right stick (radians)
-            float   speed_factor = 0.0f;           // smoothed speed factor for dynamic adjustments
-            bool    initialized  = false;          // first frame initialization flag
-            
-            // base tuning parameters
-            constexpr float distance_base      = 5.0f;   // base distance behind the car
-            constexpr float distance_min       = 4.0f;   // minimum distance at high speed (camera pulls in)
-            constexpr float height_base        = 1.5f;   // base height above the car
-            constexpr float height_min         = 1.2f;   // minimum height at high speed (camera drops)
-            constexpr float position_smoothing = 0.15f;  // position smooth time (lower = faster, snappier)
-            constexpr float rotation_smoothing = 4.0f;   // rotation catch-up speed (higher = faster)
-            constexpr float speed_smoothing    = 2.0f;   // how fast speed factor changes
-            constexpr float look_offset_up     = 0.6f;   // look slightly above car center
-            constexpr float look_ahead_amount  = 2.5f;   // how far ahead to look based on velocity
-            constexpr float speed_reference    = 50.0f;  // speed (m/s) at which effects are maxed (~180 km/h)
-            
-            // right stick orbit parameters  
-            constexpr float orbit_bias_speed   = 1.5f;   // how fast the right stick rotates the camera (radians/sec)
-            constexpr float orbit_bias_decay   = 4.0f;   // how fast the camera returns to center when stick released
-            constexpr float yaw_bias_max       = math::pi; // maximum yaw angle (180 degrees, can look behind)
-            constexpr float pitch_bias_max     = 1.2f;   // maximum pitch angle (~70 degrees)
-
-            // smooth damp - critically damped spring for smooth following
-            Vector3 smooth_damp(const Vector3& current, const Vector3& target, Vector3& velocity, float smooth_time, float dt)
-            {
-                float omega = 2.0f / std::max(smooth_time, 0.0001f);
-                float x = omega * dt;
-                float exp_factor = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
-                Vector3 delta = current - target;
-                Vector3 temp = (velocity + omega * delta) * dt;
-                velocity = (velocity - omega * temp) * exp_factor;
-                return target + (delta + temp) * exp_factor;
-            }
-
-            float lerp_angle(float a, float b, float t)
-            {
-                // handle wrap-around for angles
-                float diff = fmodf(b - a + math::pi * 3.0f, math::pi * 2.0f) - math::pi;
-                return a + diff * t;
-            }
-        }
-
-        // track whether player is currently operating the car (independent of camera parenting)
-        bool is_in_vehicle = false;
-
-        // spawn position for reset functionality
-        Vector3 spawn_position = Vector3::Zero;
-
-        // helper: loads car body mesh with material tweaks
-        // out_excluded_entities: if remove_wheels is true, returns entities that were disabled (for collision exclusion)
-        Entity* create_body(bool remove_wheels, vector<Entity*>* out_excluded_entities = nullptr)
-        {
-            uint32_t mesh_flags  = Mesh::GetDefaultFlags();
-            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-
-            shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags);
-            if (!mesh_car)
-                return nullptr;
-
-            Entity* car_entity = mesh_car->GetRootEntity();
-            car_entity->SetObjectName("ferrari_laferrari");
-            car_entity->SetScale(2.0f);
-
-            if (remove_wheels)
-            {
-                auto to_lower = [](string s)
-                {
-                    transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return tolower(c); });
-                    return s;
-                };
-
-                vector<Entity*> descendants;
-                car_entity->GetDescendants(&descendants);
-
-                for (Entity* descendant : descendants)
-                {
-                     string entity_name = to_lower(descendant->GetObjectName());
-            
-                     if (entity_name.find("tire 1")    != string::npos ||
-                         entity_name.find("tire 2")    != string::npos ||
-                         entity_name.find("tire 3")    != string::npos ||
-                         entity_name.find("tire 4")    != string::npos ||
-                         entity_name.find("brakerear") != string::npos) // all four have this prefix
-                     {
-                         descendant->SetActive(false);
-                         
-                         // collect excluded entities for collision shape building
-                         if (out_excluded_entities)
-                         {
-                             out_excluded_entities->push_back(descendant);
-                         }
-                     }
-                }
-            }
-            
-            // material tweaks
-            {
-                // body main - red clearcoat paint
-                if (Material* material = car_entity->GetDescendantByName("Object_12")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetResourceName("car_paint" + string(EXTENSION_MATERIAL));
-                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
-                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.1f);
-                    material->SetColor(Color(100.0f / 255.0f, 0.0f, 0.0f, 1.0f));
-                    material->SetProperty(MaterialProperty::Normal, 0.03f);
-                    material->SetProperty(MaterialProperty::TextureTilingX, 100.0f);
-                    material->SetProperty(MaterialProperty::TextureTilingY, 100.0f);
-                    //material->SetTexture(MaterialTextureType::Normal, "project\\models\\ferrari_laferrari\\paint_normal.png"); fix: it doesn't tile wile
-                }
-
-                // body metallic/carbon parts
-                if (Material* material = car_entity->GetDescendantByName("Object_10")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Roughness, 0.4f);
-                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                }
-
-                // tires - rubber
-                {
-                    const char* tire_parts[] = {"Object_127", "Object_142", "Object_157", "Object_172"};
-                    for (const char* part : tire_parts)
-                    {
-                        if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::Roughness, 0.7f);
-                        }
-                    }
-                }
-
-                // rims - polished metal
-                if (Material* material = car_entity->GetDescendantByName("Object_180")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                    material->SetProperty(MaterialProperty::Roughness, 0.3f);
-                }
-                if (Material* material = car_entity->GetDescendantByName("Object_150")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                    material->SetProperty(MaterialProperty::Roughness, 0.3f);
-                }
-
-                // headlight and taillight glass
-                if (Material* material = car_entity->GetDescendantByName("Object_38")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Roughness, 0.5f);
-                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                }
-
-                // windshield and engine glass
-                if (Material* material = car_entity->GetDescendantByName("Object_58")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                    material->SetProperty(MaterialProperty::Metalness, 0.0f);
-                }
-
-                // side mirror glass
-                if (Material* material = car_entity->GetDescendantByName("Object_98")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Roughness, 0.0f);
-                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                }
-
-                // engine block
-                if (Material* material = car_entity->GetDescendantByName("Object_14")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Roughness, 0.4f);
-                    material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                }
-
-                // brake discs - anisotropic metal
-                {
-                    const char* brake_parts[] = {"Object_129", "Object_144", "Object_174", "Object_159"};
-                    for (const char* part : brake_parts)
-                    {
-                        if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
-                        {
-                            material->SetProperty(MaterialProperty::Metalness, 1.0f);
-                            material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
-                            material->SetProperty(MaterialProperty::AnisotropicRotation, 0.2f);
-                        }
-                    }
-                }
-
-                // interior leather
-                if (Material* material = car_entity->GetDescendantByName("Object_90")->GetComponent<Renderable>()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Roughness, 0.75f);
-                }
-            }
-
-            return car_entity;
-        }
-
-        // helper: adds audio sources to car
-        void add_audio_sources(Entity* car_entity)
-        {
-            // engine start
-            {
-                Entity* sound = World::CreateEntity();
-                sound->SetObjectName("sound_start");
-                sound->SetParent(car_entity);
-
-                AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project\\music\\car_start.wav");
-                audio_source->SetLoop(false);
-                audio_source->SetPlayOnStart(false);
-            }
-
-            // engine idle
-            {
-                Entity* sound = World::CreateEntity();
-                sound->SetObjectName("sound_idle");
-                sound->SetParent(car_entity);
-
-                AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project\\music\\car_idle.wav");
-                audio_source->SetLoop(true);
-                audio_source->SetPlayOnStart(false);
-            }
-
-            // door open/close
-            {
-                Entity* sound = World::CreateEntity();
-                sound->SetObjectName("sound_door");
-                sound->SetParent(car_entity);
-
-                AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project\\music\\car_door.wav");
-                audio_source->SetLoop(false);
-                audio_source->SetPlayOnStart(false);
-            }
-        }
-
-        // helper: creates wheels and attaches to vehicle
-        void create_wheels(Entity* vehicle_ent, Physics* physics)
-        {
-            uint32_t mesh_flags  = Mesh::GetDefaultFlags();
-            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-            mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-
-            shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend", mesh_flags);
-            if (!mesh)
-                return;
-
-            Entity* wheel_root = mesh->GetRootEntity();
-            Entity* wheel_base = wheel_root->GetChildByIndex(0);
-            if (!wheel_base)
-                return;
-
-            // remove and delete parent - makes all math simpler down the line
-            wheel_base->SetParent(nullptr);
-            World::RemoveEntity(wheel_root);
-            
-            // scale to fit the car
-            wheel_base->SetScale(0.2f);
-
-            // set material
-            if (Renderable* renderable = wheel_base->GetComponent<Renderable>())
-            {
-                Material* material = renderable->GetMaterial();
-                material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
-                material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
-                material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
-                material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
-            }
-
-            // compute wheel radius from the now-standalone entity
-            physics->ComputeWheelRadiusFromEntity(wheel_base);
-            const float wheel_radius = physics->GetWheelRadius();
-
-            // wheel positions relative to vehicle body center (laferrari dimensions)
-            // physics wheel shapes are at y = -suspension_height relative to body center
-            // the visual wheel mesh has its origin at the center of the rim, matching the physics shape center
-            const float suspension_height = physics->GetSuspensionHeight();
-            const float wheel_x           = 0.95f;
-            const float wheel_y           = -suspension_height;
-            const float front_z           = 1.45f;
-            const float rear_z            = -1.35f;
-
-            // front left wheel (use the base)
-            Entity* wheel_fl = wheel_base;
-            wheel_fl->SetObjectName("wheel_front_left");
-            wheel_fl->SetParent(vehicle_ent);
-            wheel_fl->SetPositionLocal(Vector3(-wheel_x, wheel_y, front_z));
-
-            // front right wheel (clone and mirror)
-            Entity* wheel_fr = wheel_base->Clone();
-            wheel_fr->SetObjectName("wheel_front_right");
-            wheel_fr->SetParent(vehicle_ent);
-            wheel_fr->SetPositionLocal(Vector3(wheel_x, wheel_y, front_z));
-            wheel_fr->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Up, math::pi));
-
-            // rear left wheel (clone)
-            Entity* wheel_rl = wheel_base->Clone();
-            wheel_rl->SetObjectName("wheel_rear_left");
-            wheel_rl->SetParent(vehicle_ent);
-            wheel_rl->SetPositionLocal(Vector3(-wheel_x, wheel_y, rear_z));
-
-            // rear right wheel (clone and mirror)
-            Entity* wheel_rr = wheel_base->Clone();
-            wheel_rr->SetObjectName("wheel_rear_right");
-            wheel_rr->SetParent(vehicle_ent);
-            wheel_rr->SetPositionLocal(Vector3(wheel_x, wheel_y, rear_z));
-            wheel_rr->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Up, math::pi));
-
-            // hook up wheel entities to the physics component
-            physics->SetWheelEntity(WheelIndex::FrontLeft,  wheel_fl);
-            physics->SetWheelEntity(WheelIndex::FrontRight, wheel_fr);
-            physics->SetWheelEntity(WheelIndex::RearLeft,   wheel_rl);
-            physics->SetWheelEntity(WheelIndex::RearRight,  wheel_rr);
-        }
-
-        // main car creation function - returns the root entity (vehicle_entity if drivable, car body otherwise)
-        Entity* create(const Config& config)
-        {
-            show_telemetry = config.show_telemetry;
-            spawn_position = config.position;
-
-            if (config.drivable)
-            {
-                // create vehicle entity with physics
-                vehicle_entity = World::CreateEntity();
-                vehicle_entity->SetObjectName("vehicle");
-                vehicle_entity->SetPosition(config.position);
-
-                Physics* physics = vehicle_entity->AddComponent<Physics>();
-                physics->SetStatic(false);
-                physics->SetMass(1500.0f);
-                physics->SetBodyType(BodyType::Vehicle);
-
-                // create car body (without its original wheels)
-                // collect excluded wheel entities for collision shape building
-                vector<Entity*> excluded_wheel_entities;
-                default_car = create_body(true, &excluded_wheel_entities);
-                if (default_car)
-                {
-                    // the wheel distances are based on laferrari dimensions
-                    // if you scale the body by 1.1, it seems to match them
-                    // same goes for the 0.07f z offset
-                    default_car->SetParent(vehicle_entity);
-                    default_car->SetPositionLocal(Vector3(0.0f, ::car::get_chassis_visual_offset_y(), 0.07f));
-                    default_car->SetRotationLocal(Quaternion::FromAxisAngle(Vector3::Right, math::pi * 0.5f));
-                    default_car->SetScaleLocal(1.1f);
-
-                    // hook up chassis entity (the ferrari body that bounces on the suspension)
-                    // pass excluded wheel entities so they're not included in the collision shape
-                    physics->SetChassisEntity(default_car, excluded_wheel_entities);
-                }
-
-                add_audio_sources(vehicle_entity);
-                create_wheels(vehicle_entity, physics);
-
-                // setup camera to follow if requested
-                if (config.camera_follows && default_camera)
-                {
-                    if (Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>())
-                    {
-                        camera->SetFlag(CameraFlags::CanBeControlled, false);
-                    }
-
-                    // start already inside the car (default chase view)
-                    is_in_vehicle             = true;
-                    chase_camera::initialized = false;
-                }
-
-                return vehicle_entity;
-            }
-            else
-            {
-                // non-drivable display car
-                default_car = create_body(false);
-                if (default_car)
-                {
-                    default_car->SetPosition(config.position);
-
-                    // add kinematic physics if requested
-                    if (config.static_physics)
-                    {
-                        vector<Entity*> car_parts;
-                        default_car->GetDescendants(&car_parts);
-                        for (Entity* car_part : car_parts)
-                        {
-                            if (car_part->GetComponent<Renderable>())
-                            {
-                                Physics* physics_body = car_part->AddComponent<Physics>();
-                                physics_body->SetKinematic(true);
-                                physics_body->SetBodyType(BodyType::Mesh);
-                            }
-                        }
-                    }
-                }
-
-                add_audio_sources(default_car);
-                return default_car;
-            }
-        }
-
-        // helper: draws vehicle telemetry hud
-        void draw_telemetry()
-        {
-            if (!vehicle_entity)
-                return;
-
-            Physics* physics = vehicle_entity->GetComponent<Physics>();
-            if (!physics)
-                return;
-
-            static char text_buffer[256];
-            Vector3 velocity = physics->GetLinearVelocity();
-            float speed_kmh  = velocity.Length() * 3.6f;
-            
-            const float line_spacing = 0.018f;
-            const float left_x       = 0.005f;
-            const float right_x      = 0.75f;
-            const char* wheel_names[] = { "FL", "FR", "RL", "RR" };
-            
-            // draw debug visualization
-            physics->DrawDebugVisualization();
-            
-            // ============================================
-            // right side - traditional dashboard
-            // ============================================
-            float y_right = 0.70f;
-            
-            // speed (large, prominent)
-            snprintf(text_buffer, sizeof(text_buffer), "%.0f km/h", speed_kmh);
-            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
-            y_right += line_spacing * 1.5f;
-            
-            // gear and rpm
-            float engine_rpm = physics->GetEngineRPM();
-            float redline    = physics->GetRedlineRPM();
-            const char* gear_str = physics->GetCurrentGearString();
-            bool is_shifting = physics->IsShifting();
-            snprintf(text_buffer, sizeof(text_buffer), "Gear: %s%s  RPM: %.0f/%.0f", 
-                gear_str, is_shifting ? "*" : "", engine_rpm, redline);
-            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
-            y_right += line_spacing;
-            
-            // throttle/brake bars
-            int throttle_bar = static_cast<int>(physics->GetVehicleThrottle() * 10.0f);
-            int brake_bar    = static_cast<int>(physics->GetVehicleBrake() * 10.0f);
-            char thr_bar[16], brk_bar[16];
-            for (int j = 0; j < 10; j++) { thr_bar[j] = (j < throttle_bar) ? '=' : '.'; }
-            for (int j = 0; j < 10; j++) { brk_bar[j] = (j < brake_bar) ? '=' : '.'; }
-            thr_bar[10] = brk_bar[10] = '\0';
-            snprintf(text_buffer, sizeof(text_buffer), "THR [%s]  BRK [%s]", thr_bar, brk_bar);
-            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
-            y_right += line_spacing;
-            
-            // steering indicator
-            float steer = physics->GetVehicleSteering();
-            char steer_bar[21];
-            for (int j = 0; j < 20; j++) steer_bar[j] = '.';
-            steer_bar[10] = '|'; // center
-            int steer_pos = 10 + static_cast<int>(steer * 9.0f);
-            steer_pos = steer_pos < 0 ? 0 : (steer_pos > 19 ? 19 : steer_pos);
-            steer_bar[steer_pos] = 'O';
-            steer_bar[20] = '\0';
-            snprintf(text_buffer, sizeof(text_buffer), "STR [%s]", steer_bar);
-            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
-            y_right += line_spacing * 1.2f;
-            
-            // assists status (compact)
-            bool abs_active = physics->IsAbsActiveAny();
-            bool tc_active  = physics->IsTcActive();
-            snprintf(text_buffer, sizeof(text_buffer), "ABS:%s%s TC:%s%s %s",
-                physics->GetAbsEnabled() ? "ON" : "--",
-                abs_active ? "!" : "",
-                physics->GetTcEnabled() ? "ON" : "--",
-                tc_active ? "!" : "",
-                physics->GetManualTransmission() ? "MT" : "AT");
-            Renderer::DrawString(text_buffer, Vector2(right_x, y_right));
-            y_right += line_spacing;
-            
-            // handbrake
-            if (physics->GetVehicleHandbrake() > 0.1f)
-            {
-                Renderer::DrawString("[ HANDBRAKE ]", Vector2(right_x, y_right));
-            }
-            
-            // ============================================
-            // left side - technical telemetry
-            // ============================================
-            float y_left = 0.58f;
-            
-            Renderer::DrawString("Tire Physics", Vector2(left_x, y_left));
-            y_left += line_spacing;
-            
-            // compact per-wheel data
-            for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
-            {
-                WheelIndex wheel = static_cast<WheelIndex>(i);
-                bool grounded       = physics->IsWheelGrounded(wheel);
-                float slip_angle    = physics->GetWheelSlipAngle(wheel) * 57.2958f;
-                float slip_ratio    = physics->GetWheelSlipRatio(wheel) * 100.0f;
-                float lat_force_kn  = physics->GetWheelLateralForce(wheel) / 1000.0f;
-                float long_force_kn = physics->GetWheelLongitudinalForce(wheel) / 1000.0f;
-                
-                snprintf(text_buffer, sizeof(text_buffer), "%s %s SA:%+5.1f SR:%+5.1f Lat:%+4.1f Lon:%+4.1f",
-                    wheel_names[i],
-                    grounded ? "G" : "-",
-                    slip_angle, slip_ratio, lat_force_kn, long_force_kn);
-                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
-                y_left += line_spacing;
-            }
-            
-            // temperature section
-            y_left += line_spacing * 0.3f;
-            Renderer::DrawString("Temperature", Vector2(left_x, y_left));
-            y_left += line_spacing;
-            
-            for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
-            {
-                WheelIndex wheel = static_cast<WheelIndex>(i);
-                float temp             = physics->GetWheelTemperature(wheel);
-                float grip_factor      = physics->GetWheelTempGripFactor(wheel);
-                float brake_temp       = physics->GetWheelBrakeTemp(wheel);
-                float brake_efficiency = physics->GetWheelBrakeEfficiency(wheel);
-                
-                // compact tire temp bar (10 chars)
-                int tire_bar_len = static_cast<int>((temp / 150.0f) * 10.0f);
-                tire_bar_len = tire_bar_len > 10 ? 10 : (tire_bar_len < 0 ? 0 : tire_bar_len);
-                char tire_bar[16];
-                for (int j = 0; j < 10; j++)
-                    tire_bar[j] = (j < tire_bar_len) ? ((j < 4) ? '-' : ((j < 8) ? '=' : '+')) : '.';
-                tire_bar[10] = '\0';
-                
-                // compact brake temp bar (6 chars)
-                int brk_bar_len = static_cast<int>((brake_temp / 900.0f) * 6.0f);
-                brk_bar_len = brk_bar_len > 6 ? 6 : (brk_bar_len < 0 ? 0 : brk_bar_len);
-                char brk_bar[8];
-                for (int j = 0; j < 6; j++)
-                    brk_bar[j] = (j < brk_bar_len) ? ((j < 3) ? '-' : ((j < 5) ? '=' : '!')) : '.';
-                brk_bar[6] = '\0';
-                
-                snprintf(text_buffer, sizeof(text_buffer), "%s T[%s]%.0f%% B[%s]%.0f%%",
-                    wheel_names[i], tire_bar, grip_factor * 100.0f, brk_bar, brake_efficiency * 100.0f);
-                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
-                y_left += line_spacing;
-            }
-            
-            // suspension section
-            y_left += line_spacing * 0.3f;
-            Renderer::DrawString("Suspension", Vector2(left_x, y_left));
-            y_left += line_spacing;
-            
-            // show front pair and rear pair on same lines
-            for (int pair = 0; pair < 2; pair++)
-            {
-                int left_wheel  = pair * 2;
-                int right_wheel = pair * 2 + 1;
-                float comp_l = physics->GetWheelCompression(static_cast<WheelIndex>(left_wheel));
-                float comp_r = physics->GetWheelCompression(static_cast<WheelIndex>(right_wheel));
-                
-                // bars (8 chars each)
-                char bar_l[12], bar_r[12];
-                int len_l = static_cast<int>((1.0f - comp_l) * 8.0f);
-                int len_r = static_cast<int>((1.0f - comp_r) * 8.0f);
-                for (int j = 0; j < 8; j++) { bar_l[j] = (j < len_l) ? '|' : '.'; bar_r[j] = (j < len_r) ? '|' : '.'; }
-                bar_l[8] = bar_r[8] = '\0';
-                
-                snprintf(text_buffer, sizeof(text_buffer), "%s[%s]%2.0f%%  %s[%s]%2.0f%%",
-                    wheel_names[left_wheel], bar_l, comp_l * 100.0f,
-                    wheel_names[right_wheel], bar_r, comp_r * 100.0f);
-                Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
-                y_left += line_spacing;
-            }
-            
-            // debug toggles (compact)
-            y_left += line_spacing * 0.3f;
-            snprintf(text_buffer, sizeof(text_buffer), "Debug: Rays[%s] Susp[%s]",
-                physics->GetDrawRaycasts() ? "X" : "-",
-                physics->GetDrawSuspension() ? "X" : "-");
-            Renderer::DrawString(text_buffer, Vector2(left_x, y_left));
-        }
-
-        void tick()
-        {
-            if (!default_car)
-                return;
-
-            // handle drivable car input
-            if (vehicle_entity)
-            {
-                Physics* physics = vehicle_entity->GetComponent<Physics>();
-                if (physics && Engine::IsFlagSet(EngineMode::Playing))
-                {
-                    // input mapping - keyboard and gamepad combined into analog values
-                    bool is_gamepad_connected = Input::IsGamepadConnected();
-
-                    // throttle: right trigger (analog) or arrow up (binary)
-                    float throttle = 0.0f;
-                    if (is_gamepad_connected)
-                    {
-                        throttle = Input::GetGamepadTriggerRight();
-                    }
-                    if (Input::GetKey(KeyCode::Arrow_Up))
-                    {
-                        throttle = 1.0f;
-                    }
-
-                    // brake: left trigger (analog) or arrow down (binary)
-                    float brake = 0.0f;
-                    if (is_gamepad_connected)
-                    {
-                        brake = Input::GetGamepadTriggerLeft();
-                    }
-                    if (Input::GetKey(KeyCode::Arrow_Down))
-                    {
-                        brake = 1.0f;
-                    }
-
-                    // steering: left stick x-axis (analog) or arrow keys (binary)
-                    float steering = 0.0f;
-                    if (is_gamepad_connected)
-                    {
-                        steering = Input::GetGamepadThumbStickLeft().x;
-                    }
-                    if (Input::GetKey(KeyCode::Arrow_Left))
-                    {
-                        steering = -1.0f;
-                    }
-                    if (Input::GetKey(KeyCode::Arrow_Right))
-                    {
-                        steering = 1.0f;
-                    }
-
-                    // handbrake: space or button south (A on Xbox, X on PlayStation)
-                    float handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_South)) ? 1.0f : 0.0f;
-
-                    // apply vehicle controls
-                    physics->SetVehicleThrottle(throttle);
-                    physics->SetVehicleBrake(brake);
-                    physics->SetVehicleSteering(steering);
-                    physics->SetVehicleHandbrake(handbrake);
-
-                    // camera orbit: right stick rotates camera around the car (horizontal and vertical)
-                    float dt = static_cast<float>(Timer::GetDeltaTimeSec());
-                    if (is_gamepad_connected)
-                    {
-                        Vector2 right_stick = Input::GetGamepadThumbStickRight();
-
-                        // horizontal (yaw) - three zones:
-                        // - active (> 0.3): orbit the camera
-                        // - hold (0.1 - 0.3): camera stays in place (small stick offset to lock view)
-                        // - release (< 0.1): camera reverts back behind the car
-                        float stick_x = fabsf(right_stick.x);
-                        if (stick_x > 0.3f)
-                        {
-                            chase_camera::yaw_bias += right_stick.x * chase_camera::orbit_bias_speed * dt;
-                            chase_camera::yaw_bias  = std::clamp(chase_camera::yaw_bias, -chase_camera::yaw_bias_max, chase_camera::yaw_bias_max);
-                        }
-                        else if (stick_x < 0.1f && fabsf(chase_camera::yaw_bias) > 0.01f)
-                        {
-                            chase_camera::yaw_bias *= expf(-chase_camera::orbit_bias_decay * dt);
-                        }
-                        // hold zone (0.1 - 0.3): do nothing, camera stays where it is
-
-                        // vertical (pitch) - same three zones as horizontal
-                        float stick_y = fabsf(right_stick.y);
-                        if (stick_y > 0.3f)
-                        {
-                            chase_camera::pitch_bias += right_stick.y * chase_camera::orbit_bias_speed * dt;
-                            chase_camera::pitch_bias  = std::clamp(chase_camera::pitch_bias, -chase_camera::pitch_bias_max, chase_camera::pitch_bias_max);
-                        }
-                        else if (stick_y < 0.1f && fabsf(chase_camera::pitch_bias) > 0.01f)
-                        {
-                            chase_camera::pitch_bias *= expf(-chase_camera::orbit_bias_decay * dt);
-                        }
-                        // hold zone (0.1 - 0.3): do nothing, camera stays where it is
-                    }
-
-                    // reset car to spawn position: R key or button east (B on Xbox, O on PlayStation)
-                    if (Input::GetKeyDown(KeyCode::R) || Input::GetKeyDown(KeyCode::Button_East))
-                    {
-                        physics->SetBodyTransform(spawn_position, Quaternion::Identity);
-                        chase_camera::initialized = false; // reset camera to avoid jump
-                    }
-
-                    // haptic feedback - focused on meaningful events
-                    if (is_gamepad_connected)
-                    {
-                        float left_motor  = 0.0f;  // low-frequency rumble (heavy, tire slip)
-                        float right_motor = 0.0f;  // high-frequency rumble (light, abs/braking)
-
-                        // collect wheel slip data
-                        float max_slip_ratio = 0.0f;
-                        float max_slip_angle = 0.0f;
-                        for (int i = 0; i < 4; i++)
-                        {
-                            WheelIndex wheel = static_cast<WheelIndex>(i);
-                            max_slip_ratio   = std::max(max_slip_ratio, fabsf(physics->GetWheelSlipRatio(wheel)));
-                            max_slip_angle   = std::max(max_slip_angle, fabsf(physics->GetWheelSlipAngle(wheel)));
-                        }
-
-                        // wheelspin (acceleration) or lockup (braking) - strong feedback
-                        if (max_slip_ratio > 0.15f)
-                        {
-                            float slip_intensity = std::clamp((max_slip_ratio - 0.15f) * 1.5f, 0.0f, 1.0f);
-                            left_motor += slip_intensity * 0.5f;
-                        }
-
-                        // drifting/sliding - moderate feedback
-                        if (max_slip_angle > 0.15f)
-                        {
-                            float drift_intensity = std::clamp((max_slip_angle - 0.15f) * 2.0f, 0.0f, 1.0f);
-                            left_motor  += drift_intensity * 0.3f;
-                            right_motor += drift_intensity * 0.2f;
-                        }
-
-                        // abs activation - distinctive pulsing feedback
-                        if (physics->IsAbsActiveAny())
-                        {
-                            static float abs_pulse = 0.0f;
-                            abs_pulse += dt * 25.0f;  // 25hz pulse
-                            float pulse_value = (sinf(abs_pulse * math::pi * 2.0f) + 1.0f) * 0.5f;
-                            right_motor += pulse_value * 0.6f;
-                            left_motor  += pulse_value * 0.3f;
-                        }
-
-                        // heavy braking feedback (without abs)
-                        if (brake > 0.8f && !physics->IsAbsActiveAny())
-                        {
-                            right_motor += (brake - 0.8f) * 0.4f;
-                        }
-
-                        // clamp and apply
-                        left_motor  = std::clamp(left_motor, 0.0f, 1.0f);
-                        right_motor = std::clamp(right_motor, 0.0f, 1.0f);
-                        Input::GamepadVibrate(left_motor, right_motor);
-                    }
-                }
-
-                // draw telemetry if enabled
-                if (show_telemetry)
-                {
-                    draw_telemetry();
-                }
-            }
-
-            // view presets (chase is default like GT7)
-            enum class CarView { Chase, Hood, Dashboard };
-            static CarView current_view = CarView::Chase;
-
-            // compute car aabb from all renderables in the hierarchy
-            auto get_car_aabb = []() -> BoundingBox
-            {
-                if (!default_car)
-                    return BoundingBox::Unit;
-
-                BoundingBox combined(Vector3::Infinity, Vector3::InfinityNeg);
-                vector<Entity*> descendants;
-                default_car->GetDescendants(&descendants);
-                descendants.push_back(default_car);
-
-                for (Entity* entity : descendants)
-                {
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
-                    {
-                        combined.Merge(renderable->GetBoundingBox());
-                    }
-                }
-
-                return combined;
-            };
-
-            // compute view positions and rotations based on car aabb
-            struct CarViewData
-            {
-                Vector3    position;
-                Quaternion rotation;
-            };
-
-            auto get_car_view_data = [&]() -> array<CarViewData, 3>
-            {
-                // the car body is rotated 90 degrees around X for physics alignment
-                // we need to counter-rotate the camera to look forward
-                Quaternion car_local_rot     = default_car->GetRotationLocal();
-                Quaternion camera_correction = car_local_rot.Inverse();
-
-                // use fixed positions that work well for typical car models
-                // note: car's 90-degree X rotation swaps Y and Z axes
-                // x = right/left, y = forward/back, z = down/up (negative = up)
-                // order matches enum: Chase, Hood, Dashboard
-                return
-                {
-                    CarViewData
-                    {
-                        // chase: behind and above the car (handled dynamically, this is just fallback)
-                        Vector3(0.0f, -5.0, -1.5f),
-                        camera_correction
-                    },
-                    CarViewData
-                    {
-                        // hood: above the hood, looking forward
-                        Vector3(0.0f, 0.8f, -1.0f),
-                        camera_correction
-                    },
-                    CarViewData
-                    {
-                        // dashboard: driver seat position
-                        Vector3(-0.3f, 0.05f, -0.85f),
-                        camera_correction
-                    }
-                };
-            };
-
-            // need camera for inside/outside detection
-            if (!default_camera)
-                return;
-
-            // cached references
-            bool inside_the_car             = is_in_vehicle;
-            Entity* sound_door_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_door")  : nullptr;
-            Entity* sound_start_entity      = vehicle_entity ? vehicle_entity->GetChildByName("sound_start") : nullptr;
-            Entity* sound_idle_entity       = vehicle_entity ? vehicle_entity->GetChildByName("sound_idle")  : nullptr;
-            AudioSource* audio_source_door  = sound_door_entity  ? sound_door_entity->GetComponent<AudioSource>()  : nullptr;
-            AudioSource* audio_source_start = sound_start_entity ? sound_start_entity->GetComponent<AudioSource>() : nullptr;
-            AudioSource* audio_source_idle  = sound_idle_entity  ? sound_idle_entity->GetComponent<AudioSource>()  : nullptr;
-            if (!vehicle_entity || !audio_source_door || !audio_source_start || !audio_source_idle)
-                return;
-
-            // engine sound: pitch and volume based on rpm
-            if (vehicle_entity && inside_the_car)
-            {
-                Physics* physics = vehicle_entity->GetComponent<Physics>();
-                if (physics)
-                {
-                    if (!audio_source_idle->IsPlaying())
-                    {
-                        audio_source_idle->PlayClip();
-                    }
-                    
-                    float engine_rpm   = physics->GetEngineRPM();
-                    float idle_rpm     = physics->GetIdleRPM();
-                    float redline_rpm  = physics->GetRedlineRPM();
-                    
-                    float rpm_normalized = (engine_rpm - idle_rpm) / (redline_rpm - idle_rpm);
-                    rpm_normalized = std::max(0.0f, std::min(1.0f, rpm_normalized));
-                    
-                    // pitch curve: slight quadratic gives more response at higher rpm
-                    float pitch_curve = rpm_normalized * rpm_normalized * 0.3f + rpm_normalized * 0.7f;
-                    float pitch = 0.8f + pitch_curve * 1.5f;  // 0.8 at idle, up to 2.3 at redline
-                    audio_source_idle->SetPitch(pitch);
-                    
-                    // volume increases with rpm
-                    float volume = 0.6f + rpm_normalized * 0.4f;
-                    audio_source_idle->SetVolume(volume);
-                }
-            }
-            else if (!inside_the_car && audio_source_idle->IsPlaying())
-            {
-                audio_source_idle->StopClip();
-            }
-
-            // gt7-style chase camera
-            if (inside_the_car && current_view == CarView::Chase && vehicle_entity)
-            {
-                // chase camera must be parented to default_camera, not the car
-                Entity* camera = default_camera->GetChildByName("component_camera");
-                if (!camera)
-                {
-                    camera = vehicle_entity->GetChildByName("component_camera");
-                    if (!camera)
-                        camera = default_car->GetChildByName("component_camera");
-                    if (camera)
-                    {
-                        camera->SetParent(default_camera);
-                        chase_camera::initialized = false;
-                    }
-                }
-                
-                if (camera)
-                {
-                    Physics* car_physics = vehicle_entity->GetComponent<Physics>();
-                    float dt = static_cast<float>(Timer::GetDeltaTimeSec());
-                    
-                    // get car state (position is already smoothly interpolated by physics component)
-                    Vector3 car_position = vehicle_entity->GetPosition();
-                    Vector3 car_forward  = vehicle_entity->GetForward();
-                    Vector3 car_velocity = car_physics ? car_physics->GetLinearVelocity() : Vector3::Zero;
-                    float car_speed      = car_velocity.Length();
-                    
-                    // extract yaw from forward vector
-                    float target_yaw = atan2f(car_forward.x, car_forward.z);
-                    
-                    // gt7-style: smooth speed factor for gradual transitions
-                    float target_speed_factor = std::clamp(car_speed / chase_camera::speed_reference, 0.0f, 1.0f);
-                    chase_camera::speed_factor += (target_speed_factor - chase_camera::speed_factor) * 
-                        std::min(1.0f, chase_camera::speed_smoothing * dt);
-                    
-                    // gt7-style: dynamic distance and height based on speed
-                    float dynamic_distance = chase_camera::distance_base - 
-                        (chase_camera::distance_base - chase_camera::distance_min) * chase_camera::speed_factor;
-                    float dynamic_height = chase_camera::height_base - 
-                        (chase_camera::height_base - chase_camera::height_min) * chase_camera::speed_factor;
-                    
-                    // initialize chase camera state on first use
-                    if (!chase_camera::initialized)
-                    {
-                        chase_camera::yaw          = target_yaw;
-                        chase_camera::yaw_bias     = 0.0f;
-                        chase_camera::pitch_bias   = 0.0f;
-                        chase_camera::speed_factor = target_speed_factor;
-                        chase_camera::position     = car_position - Vector3(sinf(target_yaw), 0.0f, cosf(target_yaw)) * dynamic_distance
-                                                   + Vector3::Up * dynamic_height;
-                        chase_camera::velocity     = Vector3::Zero;
-                        chase_camera::initialized  = true;
-                    }
-                    
-                    // gt7-style: rotation follows car with slight lag (more lag = more dramatic swinging)
-                    float rotation_speed = chase_camera::rotation_smoothing * (1.0f + chase_camera::speed_factor * 0.5f);
-                    chase_camera::yaw = chase_camera::lerp_angle(chase_camera::yaw, target_yaw, 
-                        1.0f - expf(-rotation_speed * dt));
-                    
-                    // compute target camera position based on smoothed yaw/pitch + manual bias from right stick
-                    float effective_yaw   = chase_camera::yaw + chase_camera::yaw_bias;
-                    float effective_pitch = chase_camera::pitch_bias;
-
-                    // pitch affects the orbit: positive pitch = higher camera, negative = lower
-                    float horizontal_scale = cosf(effective_pitch);
-                    float vertical_offset  = sinf(effective_pitch) * dynamic_distance;
-
-                    Vector3 offset_direction = Vector3(sinf(effective_yaw), 0.0f, cosf(effective_yaw));
-                    Vector3 target_position  = car_position 
-                                             - offset_direction * dynamic_distance * horizontal_scale
-                                             + Vector3::Up * (dynamic_height + vertical_offset);
-                    
-                    // gt7-style: position smoothing gets snappier at higher speeds
-                    float position_smooth = chase_camera::position_smoothing * (1.0f - chase_camera::speed_factor * 0.3f);
-                    Vector3 prev_position = chase_camera::position;
-                    chase_camera::position = chase_camera::smooth_damp(
-                        chase_camera::position, target_position, chase_camera::velocity, 
-                        position_smooth, dt);
-                    
-                    // gt7-style: look-ahead based on velocity (camera looks where the car is going)
-                    Vector3 velocity_xz = Vector3(car_velocity.x, 0.0f, car_velocity.z);
-                    float velocity_xz_len = velocity_xz.Length();
-                    Vector3 look_ahead = Vector3::Zero;
-                    if (velocity_xz_len > 2.0f)
-                    {
-                        look_ahead = (velocity_xz / velocity_xz_len) * chase_camera::look_ahead_amount * chase_camera::speed_factor;
-                    }
-                    Vector3 look_at = car_position + Vector3::Up * chase_camera::look_offset_up + look_ahead;
-                    
-                    // update camera transform
-                    camera->SetPosition(chase_camera::position);
-                    Vector3 look_direction = (look_at - chase_camera::position).Normalized();
-                    camera->SetRotation(Quaternion::FromLookRotation(look_direction, Vector3::Up));
-                }
-            }
-
-            // enter/exit car
-            if (Input::GetKeyDown(KeyCode::E))
-            {
-                Entity* camera = nullptr;
-                if (!inside_the_car)
-                {
-                    // entering the car
-                    camera = default_camera->GetChildByName("component_camera");
-                    
-                    if (current_view == CarView::Chase)
-                    {
-                        // chase: stays under default_camera, world-space following
-                        chase_camera::initialized = false;
-                    }
-                    else
-                    {
-                        // hood: parent to car body
-                        camera->SetParent(default_car);
-                        array<CarViewData, 3> view_data = get_car_view_data();
-                        camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
-                        camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
-                    }
-                    
-                    audio_source_start->PlayClip();
-                    is_in_vehicle = true;
-                }
-                else
-                {
-                    // exiting the car
-                    camera = default_car->GetChildByName("component_camera");
-                    if (!camera)
-                        camera = default_camera->GetChildByName("component_camera");
-                    
-                    camera->SetParent(default_camera);
-                    camera->SetPositionLocal(default_camera->GetComponent<Physics>()->GetControllerTopLocal());
-                    camera->SetRotationLocal(Quaternion::Identity);
-                    
-                    BoundingBox car_aabb = get_car_aabb();
-                    Vector3 exit_offset  = default_car->GetLeft() * car_aabb.GetSize().x + Vector3::Up * car_aabb.GetSize().y * 0.5f;
-                    default_camera->SetPosition(default_car->GetPosition() + exit_offset);
-                    
-                    audio_source_idle->StopClip();
-                    chase_camera::initialized = false;
-                    is_in_vehicle = false;
-
-                    // stop vibration when exiting car
-                    Input::GamepadVibrate(0.0f, 0.0f);
-                }
-
-                camera->GetComponent<Camera>()->SetFlag(CameraFlags::CanBeControlled, !is_in_vehicle);
-                audio_source_door->PlayClip();
-
-                if (default_car_window)
-                {
-                    default_car_window->SetActive(!is_in_vehicle);
-                }
-            }
-
-            // cycle camera view: V key or Right Shoulder button (like GT7)
-            if (Input::GetKeyDown(KeyCode::V) || Input::GetKeyDown(KeyCode::Right_Shoulder))
-            {
-                if (inside_the_car)
-                {
-                    // find camera
-                    Entity* camera = default_car->GetChildByName("component_camera");
-                    if (!camera)
-                        camera = default_camera->GetChildByName("component_camera");
-
-                    if (camera)
-                    {
-                        CarView previous_view = current_view;
-                        current_view = static_cast<CarView>((static_cast<int>(current_view) + 1) % 2); // chase and hood only
-                        
-                        if (current_view == CarView::Chase)
-                        {
-                            // switching to chase: unparent for world-space following
-                            camera->SetParent(default_camera);
-                            chase_camera::initialized = false;
-                        }
-                        else
-                        {
-                            // switching to hood: parent to car body
-                            camera->SetParent(default_car);
-                            array<CarViewData, 3> view_data = get_car_view_data();
-                            camera->SetPositionLocal(view_data[static_cast<int>(current_view)].position);
-                            camera->SetRotationLocal(view_data[static_cast<int>(current_view)].rotation);
-                        }
-                    }
-                }
-            }
-
-            // osd
-            Renderer::DrawString("WASD/Gamepad: Move | E: Enter/Exit | V/RB: Change View | R/B: Reset | RS: Look Around", Vector2(0.005f, 0.98f));
-        }
-
-        // reset state on shutdown
-        void shutdown()
-        {
-            vehicle_entity                 = nullptr;
-            show_telemetry                 = false;
-            is_in_vehicle                  = false;
-            chase_camera::initialized  = false;
-            chase_camera::position     = Vector3::Zero;
-            chase_camera::velocity     = Vector3::Zero;
-            chase_camera::yaw          = 0.0f;
-            chase_camera::yaw_bias     = 0.0f;
-            chase_camera::pitch_bias   = 0.0f;
-            chase_camera::speed_factor = 0.0f;
-
-            // stop any vibration
-            Input::GamepadVibrate(0.0f, 0.0f);
-        }
-    }
     //========================================================================================
+
+    // register prefabs (called once before any world file is loaded)
+    namespace
+    {
+        bool prefabs_registered = false;
+    }
 
     //= WORLDS ===============================================================================
     namespace worlds
@@ -1467,7 +376,7 @@ namespace spartan
                 // base setup
                 entities::camera(false, Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
                 entities::sun(LightPreset::dusk, true);
-                entities::music("project\\music\\jake_chudnow_olive.wav");
+                entities::music("project/music/jake_chudnow_olive.wav");
                 entities::floor();
                 Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
@@ -1476,7 +385,7 @@ namespace spartan
 
                 // main building
                 uint32_t mesh_flags = Mesh::GetDefaultFlags();
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf", mesh_flags))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/sponza/main/NewSponza_Main_Blender_glTF.gltf", mesh_flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza");
@@ -1502,7 +411,7 @@ namespace spartan
                 }
 
                 // curtains
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/sponza/curtains/NewSponza_Curtains_glTF.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza_curtains");
@@ -1521,7 +430,7 @@ namespace spartan
                 }
 
                 // ivy
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\sponza\\ivy\\NewSponza_IvyGrowth_glTF.gltf"))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/sponza/ivy/NewSponza_IvyGrowth_glTF.gltf"))
                 {
                     Entity* entity = mesh->GetRootEntity();
                     entity->SetObjectName("sponza_ivy");
@@ -1552,24 +461,39 @@ namespace spartan
         }
         //====================================================================================
 
-        //= MINECRAFT ========================================================================
-        namespace minecraft
+        //= CORNELL ==========================================================================
+        namespace cornell
         {
             void create()
             {
-                entities::camera(false, Vector3(-51.7576f, 21.4551f, -85.3699f), Vector3(11.3991f, 30.6026f, 0.0f));
-                entities::sun(LightPreset::dusk, true);
-                entities::music();
+                // the obj is 1 unit (~1 meter), scale it up to room size
+                const float room_scale = 2.0f;
 
-                // single mesh - disable optimization to preserve voxel look
-                uint32_t mesh_flags  = Mesh::GetDefaultFlags();
-                mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
-                mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\vokselia_spawn\\vokselia_spawn.obj", mesh_flags))
+                entities::camera(false, Vector3(0.0f, 1.2f, -8.0f), Vector3(0.0f, 0.0f, 0.0f));
+                entities::sun(LightPreset::dusk, true);
+                entities::floor();
+
+                // bring the sun below the horizon so the scene is night-lit by the emissive panel
+                default_light_directional->SetRotation(Quaternion::FromEulerAngles(-30.0f, 0.0f, 0.0f));
+
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/CornellBox/CornellBox-Original.obj"))
                 {
                     Entity* entity = mesh->GetRootEntity();
-                    entity->SetObjectName("minecraft");
-                    entity->SetScale(100.0f);
+                    entity->SetObjectName("cornell_box");
+                    entity->SetPosition(Vector3(0.0f, 0.2f, 0.0f));
+                    entity->SetScale(room_scale);
+
+                    // make the ceiling panel emissive so it lights the scene via path tracing
+                    if (Entity* light_entity = entity->GetDescendantByName("light"))
+                    {
+                        if (Renderable* renderable = light_entity->GetComponent<Renderable>())
+                        {
+                            if (Material* material = renderable->GetMaterial())
+                            {
+                                material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
+                            }
+                        }
+                    }
 
                     // physics for all meshes
                     vector<Entity*> entities;
@@ -1587,31 +511,24 @@ namespace spartan
         }
         //====================================================================================
 
-        //= SUBWAY ===========================================================================
-        namespace subway
+        //= SAN MIGUEL =======================================================================
+        namespace san_miguel
         {
             void create()
             {
-                entities::camera(true);
+                entities::camera(false, Vector3(10.0f, 2.0f, 0.0f), Vector3(0.0f, -90.0f, 0.0f));
+                entities::sun(LightPreset::dusk, true);
                 entities::floor();
 
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\free-subway-station-r46-subway\\Metro.fbx"))
+                // combine sub-meshes that share materials to reduce draw call and material count
+                uint32_t mesh_flags  = Mesh::GetDefaultFlags();
+                mesh_flags          |= static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/San_Miguel/san-miguel-low-poly.obj", mesh_flags))
                 {
                     Entity* entity = mesh->GetRootEntity();
-                    entity->SetObjectName("subway");
-                    entity->SetScale(Vector3(0.015f));
-
-                    // physics for all meshes
-                    vector<Entity*> entities;
-                    entity->GetDescendants(&entities);
-                    for (Entity* entity_it : entities)
-                    {
-                        if (entity_it->GetComponent<Renderable>() != nullptr)
-                        {
-                            Physics* physics_body = entity_it->AddComponent<Physics>();
-                            physics_body->SetBodyType(BodyType::Mesh);
-                        }
-                    }
+                    entity->SetObjectName("san_miguel");
+                    entity->SetPosition(Vector3(0.0f, 0.3f, 0.0f));
+                    entity->SetScale(1.0f);
                 }
             }
         }
@@ -1633,6 +550,7 @@ namespace spartan
 
                 // lighting
                 entities::sun(LightPreset::david_lynch, true);
+                default_light_directional->SetRotation(Quaternion::FromEulerAngles(9.07f, -122.84f, 180.0f));
                 Light* sun = default_light_directional->GetComponent<Light>();
                 sun->SetFlag(LightFlags::Volumetric, true);
 
@@ -1641,11 +559,11 @@ namespace spartan
 
                 // drivable car near the player
                 {
-                    //car::Config car_config;
+                    //Car::Config car_config;
                     //car_config.position       = Vector3(-1470.0f, 20.0f, 1490.0f); // slightly in front of camera
                     //car_config.drivable       = true;
                     //car_config.show_telemetry = true;
-                    //car::create(car_config);
+                    //Car::Create(car_config);
                 }
 
                 // terrain root
@@ -1663,7 +581,7 @@ namespace spartan
                         sound->SetObjectName("footsteps");
                         sound->SetParent(entity);
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                        audio_source->SetAudioClip("project\\music\\footsteps_grass.wav");
+                        audio_source->SetAudioClip("project/music/footsteps_grass.wav");
                         audio_source->SetPlayOnStart(false);
                     }
 
@@ -1673,7 +591,7 @@ namespace spartan
                         sound->SetObjectName("forest_river");
                         sound->SetParent(entity);
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                        audio_source->SetAudioClip("project\\music\\forest_river.wav");
+                        audio_source->SetAudioClip("project/music/forest_river.wav");
                         audio_source->SetLoop(true);
                     }
 
@@ -1683,7 +601,7 @@ namespace spartan
                         sound->SetObjectName("wind");
                         sound->SetParent(entity);
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                        audio_source->SetAudioClip("project\\music\\wind.wav");
+                        audio_source->SetAudioClip("project/music/wind.wav");
                         audio_source->SetLoop(true);
                     }
 
@@ -1693,7 +611,7 @@ namespace spartan
                         sound->SetObjectName("underwater");
                         sound->SetParent(entity);
                         AudioSource* audio_source = sound->AddComponent<AudioSource>();
-                        audio_source->SetAudioClip("project\\music\\underwater.wav");
+                        audio_source->SetAudioClip("project/music/underwater.wav");
                         audio_source->SetPlayOnStart(false);
                     }
                 }
@@ -1710,28 +628,28 @@ namespace spartan
                         material->SetProperty(MaterialProperty::TextureTilingY, 2000.0f);
 
                         // grass layer
-                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\whispy_grass_meadow\\albedo.png",    0);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\whispy_grass_meadow\\normal.png",    0);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\whispy_grass_meadow\\roughness.png", 0);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\whispy_grass_meadow\\occlusion.png", 0);
+                        material->SetTexture(MaterialTextureType::Color,     "project/materials/whispy_grass_meadow/albedo.png",    0);
+                        material->SetTexture(MaterialTextureType::Normal,    "project/materials/whispy_grass_meadow/normal.png",    0);
+                        material->SetTexture(MaterialTextureType::Roughness, "project/materials/whispy_grass_meadow/roughness.png", 0);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project/materials/whispy_grass_meadow/occlusion.png", 0);
 
                         // rock layer
-                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\rock\\albedo.png",    1);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\rock\\normal.png",    1);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\rock\\roughness.png", 1);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\rock\\occlusion.png", 1);
-                        material->SetTexture(MaterialTextureType::Height,    "project\\materials\\rock\\height.png",    1);
+                        material->SetTexture(MaterialTextureType::Color,     "project/materials/rock/albedo.png",    1);
+                        material->SetTexture(MaterialTextureType::Normal,    "project/materials/rock/normal.png",    1);
+                        material->SetTexture(MaterialTextureType::Roughness, "project/materials/rock/roughness.png", 1);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project/materials/rock/occlusion.png", 1);
+                        material->SetTexture(MaterialTextureType::Height,    "project/materials/rock/height.png",    1);
 
                         // sand layer
-                        material->SetTexture(MaterialTextureType::Color,     "project\\materials\\sand\\albedo.png",    2);
-                        material->SetTexture(MaterialTextureType::Normal,    "project\\materials\\sand\\normal.png",    2);
-                        material->SetTexture(MaterialTextureType::Roughness, "project\\materials\\sand\\roughness.png", 2);
-                        material->SetTexture(MaterialTextureType::Occlusion, "project\\materials\\sand\\occlusion.png", 2);
+                        material->SetTexture(MaterialTextureType::Color,     "project/materials/sand/albedo.png",    2);
+                        material->SetTexture(MaterialTextureType::Normal,    "project/materials/sand/normal.png",    2);
+                        material->SetTexture(MaterialTextureType::Roughness, "project/materials/sand/roughness.png", 2);
+                        material->SetTexture(MaterialTextureType::Occlusion, "project/materials/sand/occlusion.png", 2);
                         material->SetProperty(MaterialProperty::Tessellation, 0.0f);
                     }
 
                     // height map generation
-                    shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project\\height_maps\\height_map.png");
+                    shared_ptr<RHI_Texture> height_map = ResourceCache::Load<RHI_Texture>("project/height_maps/height_map.png");
                     if (height_map)
                     {
                         height_map->PrepareForGpu();
@@ -1757,8 +675,8 @@ namespace spartan
                 {
                     // load meshes
                     uint32_t flags             = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                    shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project\\models\\tree\\tree.fbx", flags);
-                    shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project\\models\\rock_2\\model.obj");
+                    shared_ptr<Mesh> mesh_tree = ResourceCache::Load<Mesh>("project/models/tree/tree.fbx", flags);
+                    shared_ptr<Mesh> mesh_rock = ResourceCache::Load<Mesh>("project/models/rock_2/model.obj");
 
                     // procedural grass mesh with lods
                     shared_ptr<Mesh> mesh_grass_blade = meshes.emplace_back(make_shared<Mesh>());
@@ -1837,9 +755,9 @@ namespace spartan
                     {
                         // tree leaves
                         material_leaf = make_shared<Material>();
-                        material_leaf->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\Twig_Base_Material_2.png");
-                        material_leaf->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\Twig_Normal.png");
-                        material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project\\models\\tree\\Twig_Opacity_Map.jpg");
+                        material_leaf->SetTexture(MaterialTextureType::Color, "project/models/tree/Twig_Base_Material_2.png");
+                        material_leaf->SetTexture(MaterialTextureType::Normal, "project/models/tree/Twig_Normal.png");
+                        material_leaf->SetTexture(MaterialTextureType::AlphaMask, "project/models/tree/Twig_Opacity_Map.jpg");
                         material_leaf->SetProperty(MaterialProperty::WindAnimation, 1.0f);
                         material_leaf->SetProperty(MaterialProperty::ColorVariationFromInstance, 1.0f);
                         material_leaf->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
@@ -1847,17 +765,17 @@ namespace spartan
 
                         // tree bark
                         material_body = make_shared<Material>();
-                        material_body->SetTexture(MaterialTextureType::Color, "project\\models\\tree\\tree_bark_diffuse.png");
-                        material_body->SetTexture(MaterialTextureType::Normal, "project\\models\\tree\\tree_bark_normal.png");
-                        material_body->SetTexture(MaterialTextureType::Roughness, "project\\models\\tree\\tree_bark_roughness.png");
+                        material_body->SetTexture(MaterialTextureType::Color, "project/models/tree/tree_bark_diffuse.png");
+                        material_body->SetTexture(MaterialTextureType::Normal, "project/models/tree/tree_bark_normal.png");
+                        material_body->SetTexture(MaterialTextureType::Roughness, "project/models/tree/tree_bark_roughness.png");
                         material_body->SetResourceName("tree_body" + string(EXTENSION_MATERIAL));
 
                         // rocks
                         material_rock = make_shared<Material>();
-                        material_rock->SetTexture(MaterialTextureType::Color, "project\\models\\rock_2\\albedo.png");
-                        material_rock->SetTexture(MaterialTextureType::Normal, "project\\models\\rock_2\\normal.png");
-                        material_rock->SetTexture(MaterialTextureType::Roughness, "project\\models\\rock_2\\roughness.png");
-                        material_rock->SetTexture(MaterialTextureType::Occlusion, "project\\models\\rock_2\\occlusion.png");
+                        material_rock->SetTexture(MaterialTextureType::Color, "project/models/rock_2/albedo.png");
+                        material_rock->SetTexture(MaterialTextureType::Normal, "project/models/rock_2/normal.png");
+                        material_rock->SetTexture(MaterialTextureType::Roughness, "project/models/rock_2/roughness.png");
+                        material_rock->SetTexture(MaterialTextureType::Occlusion, "project/models/rock_2/occlusion.png");
                         material_rock->SetResourceName("rock" + string(EXTENSION_MATERIAL));
 
                         // grass blades
@@ -2102,17 +1020,17 @@ namespace spartan
 
             void create()
             {
-                entities::music("project\\music\\gran_turismo.wav");
+                entities::music("project/music/gran_turismo_4.wav");
 
                 // textures
-                texture_brand_logo = make_shared<RHI_Texture>("project\\models\\ferrari_laferrari\\logo.png");
+                texture_brand_logo = make_shared<RHI_Texture>("project/models/ferrari_laferrari/logo.png");
 
                 // create display car (non-drivable)
-                car::Config car_config;
+                Car::Config car_config;
                 car_config.position       = Vector3(0.0f, 0.08f, 0.0f);
                 car_config.drivable       = false;
                 car_config.static_physics = false;
-                car::create(car_config);
+                Car::Create(car_config);
 
                 // camera looking at car
                 {
@@ -2130,7 +1048,7 @@ namespace spartan
                     mesh_flags          &= static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
                     mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\SpartanLaFerrariV2\\LaFerrariV2.gltf", mesh_flags))
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/ferrari_laferrari/SpartanLaFerrariV2/LaFerrariV2.gltf", mesh_flags))
                     {
                         Entity* floor_tube_lights = mesh->GetRootEntity();
                         floor_tube_lights->SetObjectName("tube_lights_and_floor");
@@ -2239,43 +1157,52 @@ namespace spartan
                 Quaternion rotation  = Quaternion::FromAxisAngle(Vector3::Up, angle);
                 turn_table->Rotate(rotation);
 
-                // osd car specs
-                const float x       = 0.75f;
-                const float y       = 0.05f;
-                const float spacing = 0.02f;
+                // car specs window
+                if (Engine::IsFlagSet(EngineMode::EditorVisible))
+                {
+                    ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x - 420, 40), ImGuiCond_FirstUseEver);
+                    ImGui::SetNextWindowSize(ImVec2(400, 0), ImGuiCond_FirstUseEver);
+                    ImGui::SetNextWindowBgAlpha(0.85f);
+                    if (ImGui::Begin("Ferrari LaFerrari", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+                    {
+                        // specs table
+                        if (ImGui::BeginTable("specs", 2, ImGuiTableFlags_None))
+                        {
+                            ImGui::TableSetupColumn("Spec", ImGuiTableColumnFlags_WidthFixed, 120);
+                            ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
-                static char text_buffer[128];
+                            auto spec_row = [](const char* label, const char* value)
+                            {
+                                ImGui::TableNextRow();
+                                ImGui::TableNextColumn(); ImGui::TextDisabled("%s", label);
+                                ImGui::TableNextColumn(); ImGui::Text("%s", value);
+                            };
 
-                Renderer::DrawString("Ferrari LaFerrari", Vector2(x, y));
+                            spec_row("Engine", "6.3L V12 + HY-KERS");
+                            spec_row("Power", "708 kW (950 hp)");
+                            spec_row("Torque", "900 Nm");
+                            spec_row("Weight", "1585 kg");
+                            spec_row("Drivetrain", "RWD");
+                            spec_row("Top Speed", "350 km/h");
+                            spec_row("0-100 km/h", "2.6 s");
+                            spec_row("Power/Weight", "446.7 kW/ton");
+                            spec_row("Production", "2013-2018");
 
-                snprintf(text_buffer, sizeof(text_buffer), "Torque: %.1f Nm", 900.0f);
-                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 1));
+                            ImGui::EndTable();
+                        }
 
-                snprintf(text_buffer, sizeof(text_buffer), "Weight: %.1f kg", 1585.0f);
-                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 2));
-
-                snprintf(text_buffer, sizeof(text_buffer), "Power: %.1f kW", 708.0f);
-                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 3));
-
-                snprintf(text_buffer, sizeof(text_buffer), "Top Speed: %.1f km/h", 350.0f);
-                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 4));
-
-                Renderer::DrawString("Engine: 6.3L V12 + HY-KERS", Vector2(x, y + spacing * 5));
-                Renderer::DrawString("Drivetrain: RWD", Vector2(x, y + spacing * 6));
-
-                snprintf(text_buffer, sizeof(text_buffer), "0-100 km/h: %.1f s", 2.6f);
-                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 7));
-
-                snprintf(text_buffer, sizeof(text_buffer), "Power/Weight: %.1f kW/ton", 446.7f);
-                Renderer::DrawString(text_buffer, Vector2(x, y + spacing * 8));
-
-                Renderer::DrawString("Production: 2013-2018", Vector2(x, y + spacing * 9));
-                Renderer::DrawString("Flagship Hypercar: Ferrari's Hybrid Masterpiece", Vector2(x, y + spacing * 10));
-
-                Renderer::DrawString("The LaFerrari is Ferrari's first hybrid hypercar, blending a 6.3L V12 with", Vector2(x, y + spacing * 12));
-                Renderer::DrawString("an electric motor via its HY-KERS system. It delivers extreme performance", Vector2(x, y + spacing * 13));
-                Renderer::DrawString("and razor-sharp dynamics, wrapped in a design that embodies pure", Vector2(x, y + spacing * 14));
-                Renderer::DrawString("Ferrari DNA. A limited-production icon of modern automotive engineering.", Vector2(x, y + spacing * 15));
+                        ImGui::Separator();
+                        ImGui::TextDisabled("Flagship Hypercar");
+                        ImGui::Spacing();
+                        ImGui::PushTextWrapPos(380);
+                        ImGui::TextWrapped("The LaFerrari is Ferrari's first hybrid hypercar, blending a 6.3L V12 with "
+                                           "an electric motor via its HY-KERS system. It delivers extreme performance "
+                                           "and razor-sharp dynamics, wrapped in a design that embodies pure "
+                                           "Ferrari DNA. A limited-production icon of modern automotive engineering.");
+                        ImGui::PopTextWrapPos();
+                    }
+                    ImGui::End();
+                }
 
                 Renderer::DrawIcon(texture_brand_logo.get(), Vector2(400.0f, 300.0f));
             }
@@ -2290,11 +1217,11 @@ namespace spartan
                 // shared tile material
                 shared_ptr<Material> tile_material = make_shared<Material>();
                 tile_material->SetResourceName("floor_tile" + string(EXTENSION_MATERIAL));
-                tile_material->SetTexture(MaterialTextureType::Color,        "project\\materials\\tile_white\\albedo.png");
-                tile_material->SetTexture(MaterialTextureType::Normal,       "project\\materials\\tile_white\\normal.png");
-                tile_material->SetTexture(MaterialTextureType::Metalness,    "project\\materials\\tile_white\\metallic.png");
-                tile_material->SetTexture(MaterialTextureType::Roughness,    "project\\materials\\tile_white\\roughness.png");
-                tile_material->SetTexture(MaterialTextureType::Occlusion,    "project\\materials\\tile_white\\ao.png");
+                tile_material->SetTexture(MaterialTextureType::Color,        "project/materials/tile_white/albedo.png");
+                tile_material->SetTexture(MaterialTextureType::Normal,       "project/materials/tile_white/normal.png");
+                tile_material->SetTexture(MaterialTextureType::Metalness,    "project/materials/tile_white/metallic.png");
+                tile_material->SetTexture(MaterialTextureType::Roughness,    "project/materials/tile_white/roughness.png");
+                tile_material->SetTexture(MaterialTextureType::Occlusion,    "project/materials/tile_white/ao.png");
                 tile_material->SetProperty(MaterialProperty::WorldSpaceUv,   1.0f);
                 tile_material->SetProperty(MaterialProperty::TextureTilingX, 0.25);
                 tile_material->SetProperty(MaterialProperty::TextureTilingY, 0.25);
@@ -2303,7 +1230,7 @@ namespace spartan
                 Entity* entity_pool_light = nullptr;
                 uint32_t flags  = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
                 flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\pool_light\\pool_light.blend", flags))
+                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/pool_light/pool_light.blend", flags))
                 {
                     entity_pool_light = mesh->GetRootEntity();
                     entity_pool_light->SetObjectName("pool_light");
@@ -2322,7 +1249,7 @@ namespace spartan
                     // inner light paraboloid
                     shared_ptr<Material> material_paraboloid = make_shared<Material>();
                     material_paraboloid->SetResourceName("material_paraboloid" + string(EXTENSION_MATERIAL));
-                    material_paraboloid->SetTexture(MaterialTextureType::Emission, "project\\models\\pool_light\\emissive.png");
+                    material_paraboloid->SetTexture(MaterialTextureType::Emission, "project/models/pool_light/emissive.png");
                     material_paraboloid->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_paraboloid->SetProperty(MaterialProperty::Metalness, 1.0f);
                     entity_pool_light->GetChildByName("Circle.001")->GetComponent<Renderable>()->SetMaterial(material_paraboloid);
@@ -2343,7 +1270,7 @@ namespace spartan
                     entity_hum->SetObjectName("audio_hum_electric");
                     entity_hum->SetParent(default_camera);
                     AudioSource* audio_source = entity_hum->AddComponent<AudioSource>();
-                    audio_source->SetAudioClip("project\\music\\hum_electric.wav");
+                    audio_source->SetAudioClip("project/music/hum_electric.wav");
                     audio_source->SetLoop(true);
                     audio_source->SetVolume(0.25f);
 
@@ -2352,7 +1279,7 @@ namespace spartan
                     entity_tiles->SetObjectName("audio_footsteps_tiles");
                     entity_tiles->SetParent(default_camera);
                     AudioSource* audio_source_tiles = entity_tiles->AddComponent<AudioSource>();
-                    audio_source_tiles->SetAudioClip("project\\music\\footsteps_tiles.wav");
+                    audio_source_tiles->SetAudioClip("project/music/footsteps_tiles.wav");
                     audio_source_tiles->SetPlayOnStart(false);
 
                     // water footsteps
@@ -2360,7 +1287,7 @@ namespace spartan
                     entity_water->SetObjectName("audio_footsteps_water");
                     entity_water->SetParent(default_camera);
                     AudioSource* audio_source_water = entity_water->AddComponent<AudioSource>();
-                    audio_source_water->SetAudioClip("project\\music\\footsteps_water.wav");
+                    audio_source_water->SetAudioClip("project/music/footsteps_water.wav");
                     audio_source_water->SetPlayOnStart(false);
                 }
 
@@ -2608,243 +1535,6 @@ namespace spartan
         }
         //====================================================================================
 
-        //== CAR PLAYGROUND ==================================================================
-        namespace car_playground
-        {
-            // helper to create a cube obstacle with physics
-            // mass = 0 means static, mass > 0 means dynamic with that mass in kg
-            void create_cube(const string& name, const Vector3& position, const Vector3& euler_angles, const Vector3& scale, float mass = 0.0f)
-            {
-                Entity* entity = World::CreateEntity();
-                entity->SetObjectName(name);
-                entity->SetPosition(position);
-                entity->SetRotation(Quaternion::FromEulerAngles(euler_angles.x, euler_angles.y, euler_angles.z));
-                entity->SetScale(scale);
-
-                Renderable* renderable = entity->AddComponent<Renderable>();
-                renderable->SetMesh(MeshType::Cube);
-                renderable->SetDefaultMaterial();
-
-                Physics* physics_body = entity->AddComponent<Physics>();
-                physics_body->SetBodyType(BodyType::Box);
-                physics_body->SetStatic(mass == 0.0f);
-                physics_body->SetMass(mass);
-            }
-
-            void create()
-            {
-                entities::camera(false, Vector3(0.0f, 8.0f, -25.0f), Vector3(15.0f, 0.0f, 0.0f));
-                entities::sun(LightPreset::dusk, true);
-                entities::floor();
-
-                // create drivable car with telemetry
-                car::Config car_config;
-                car_config.position       = Vector3(0.0f, 0.5f, 0.0f);
-                car_config.drivable       = true;
-                car_config.show_telemetry = true;
-                car_config.camera_follows = true;
-                car::create(car_config);
-
-                //==================================================================================
-                // zone 1: main jump ramp area (in front of spawn)
-                //==================================================================================
-                
-                // gentle starter ramp
-                create_cube("ramp_starter", Vector3(12.0f, 0.3f, 0.0f), Vector3(0.0f, 0.0f, 8.0f), Vector3(8.0f, 0.6f, 6.0f));
-                
-                // main jump ramp - steep for big air
-                create_cube("ramp_jump_main", Vector3(28.0f, 1.2f, 0.0f), Vector3(0.0f, 0.0f, 18.0f), Vector3(10.0f, 0.8f, 7.0f));
-                
-                // landing ramp - downward slope for smooth landings
-                create_cube("ramp_landing", Vector3(50.0f, 0.5f, 0.0f), Vector3(0.0f, 0.0f, -12.0f), Vector3(12.0f, 0.6f, 7.0f));
-
-                //==================================================================================
-                // zone 2: suspension test track (to the right of spawn)
-                //==================================================================================
-                
-                // speed bumps - series of small bumps to test suspension
-                for (int i = 0; i < 8; i++)
-                {
-                    float x_offset = i * 4.0f;
-                    create_cube("speed_bump_" + to_string(i), Vector3(15.0f + x_offset, 0.15f, 20.0f), Vector3::Zero, Vector3(1.5f, 0.3f, 5.0f));
-                }
-                
-                // rumble strips - alternating small ridges
-                for (int i = 0; i < 12; i++)
-                {
-                    float x_offset = i * 2.5f;
-                    float height   = (i % 2 == 0) ? 0.1f : 0.18f;
-                    create_cube("rumble_" + to_string(i), Vector3(15.0f + x_offset, height * 0.5f, 30.0f), Vector3::Zero, Vector3(1.0f, height, 4.0f));
-                }
-                
-                // pothole simulation - dips created by raised edges
-                create_cube("pothole_edge_1", Vector3(60.0f, 0.08f, 20.0f), Vector3::Zero, Vector3(0.8f, 0.16f, 6.0f));
-                create_cube("pothole_edge_2", Vector3(66.0f, 0.08f, 20.0f), Vector3::Zero, Vector3(0.8f, 0.16f, 6.0f));
-
-                //==================================================================================
-                // zone 3: stunt ramps and half-pipe (to the left of spawn)
-                //==================================================================================
-                
-                // half-pipe left wall
-                create_cube("halfpipe_left", Vector3(-25.0f, 2.0f, 0.0f), Vector3(0.0f, 0.0f, 35.0f), Vector3(8.0f, 0.5f, 20.0f));
-                
-                // half-pipe right wall
-                create_cube("halfpipe_right", Vector3(-25.0f, 2.0f, 15.0f), Vector3(0.0f, 0.0f, -35.0f), Vector3(8.0f, 0.5f, 20.0f));
-                
-                // half-pipe back wall (for u-turns)
-                create_cube("halfpipe_back", Vector3(-38.0f, 1.5f, 7.5f), Vector3(25.0f, 0.0f, 0.0f), Vector3(6.0f, 0.5f, 18.0f));
-                
-                // kicker ramp - small but steep for tricks
-                create_cube("kicker_ramp", Vector3(-10.0f, 0.6f, -15.0f), Vector3(0.0f, 0.0f, 25.0f), Vector3(4.0f, 0.5f, 4.0f));
-                
-                // side ramp for barrel rolls
-                create_cube("barrel_roll_ramp", Vector3(-15.0f, 0.8f, -25.0f), Vector3(30.0f, 45.0f, 15.0f), Vector3(5.0f, 0.4f, 3.0f));
-
-                //==================================================================================
-                // zone 4: slalom course (behind spawn)
-                //==================================================================================
-                
-                // slalom pylons - alternating obstacles (25 kg like plastic barriers)
-                for (int i = 0; i < 6; i++)
-                {
-                    float z_offset  = -20.0f - (i * 12.0f);
-                    float x_offset  = (i % 2 == 0) ? 5.0f : -5.0f;
-                    create_cube("slalom_pylon_" + to_string(i), Vector3(x_offset, 1.0f, z_offset), Vector3::Zero, Vector3(1.5f, 2.0f, 1.5f), 25.0f);
-                }
-                
-                // slalom finish gate pillars - dynamic so they can be knocked over
-                create_cube("gate_left", Vector3(-6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f), 30.0f);
-                create_cube("gate_right", Vector3(6.0f, 2.0f, -95.0f), Vector3::Zero, Vector3(1.0f, 4.0f, 1.0f), 30.0f);
-
-                //==================================================================================
-                // zone 5: banked turn circuit (far right area)
-                //==================================================================================
-                
-                // banked turn - outside wall
-                create_cube("bank_outer", Vector3(80.0f, 1.5f, 0.0f), Vector3(0.0f, 30.0f, -25.0f), Vector3(20.0f, 0.6f, 8.0f));
-                
-                // banked turn - inside wall
-                create_cube("bank_inner", Vector3(75.0f, 0.8f, 8.0f), Vector3(0.0f, 30.0f, -15.0f), Vector3(15.0f, 0.4f, 6.0f));
-                
-                // exit ramp from banked turn
-                create_cube("bank_exit_ramp", Vector3(95.0f, 0.4f, -10.0f), Vector3(0.0f, 60.0f, 10.0f), Vector3(8.0f, 0.5f, 5.0f));
-
-                //==================================================================================
-                // zone 6: obstacle course (scattered dynamic objects)
-                //==================================================================================
-                
-                // stack of crates to crash through (20 kg wooden crates)
-                // add small gaps (1.55 spacing for 1.5 size) to prevent interpenetration explosions
-                for (int row = 0; row < 3; row++)
-                {
-                    for (int col = 0; col < 3; col++)
-                    {
-                        float y_pos = 0.76f + (row * 1.55f);
-                        float x_pos = 35.0f + (col * 1.65f);
-                        create_cube("crate_stack_" + to_string(row) + "_" + to_string(col), Vector3(x_pos, y_pos, -30.0f), Vector3::Zero, Vector3(1.5f, 1.5f, 1.5f), 20.0f);
-                    }
-                }
-                
-                // barrel wall (15 kg empty barrels)
-                // add gaps to prevent interpenetration
-                for (int i = 0; i < 5; i++)
-                {
-                    float x_pos = 50.0f + (i * 2.2f);
-                    create_cube("barrel_" + to_string(i), Vector3(x_pos, 0.85f, -45.0f), Vector3(90.0f, 0.0f, 0.0f), Vector3(1.2f, 1.6f, 1.2f), 15.0f);
-                }
-                
-                // pyramid of boxes (15 kg cardboard boxes)
-                // add small gaps to prevent interpenetration explosions
-                int pyramid_base = 4;
-                for (int level = 0; level < pyramid_base; level++)
-                {
-                    int boxes_in_level = pyramid_base - level;
-                    float y_pos        = 0.62f + (level * 1.25f);
-                    float start_x      = 70.0f - (boxes_in_level * 0.65f);
-                    for (int b = 0; b < boxes_in_level; b++)
-                    {
-                        create_cube("pyramid_" + to_string(level) + "_" + to_string(b), Vector3(start_x + (b * 1.35f), y_pos, -60.0f), Vector3::Zero, Vector3(1.2f, 1.2f, 1.2f), 15.0f);
-                    }
-                }
-
-                //==================================================================================
-                // zone 7: wavy terrain (far left)
-                //==================================================================================
-                
-                // series of sine-wave like bumps
-                for (int i = 0; i < 10; i++)
-                {
-                    float z_pos  = -40.0f + (i * 6.0f);
-                    float height = 0.3f + 0.3f * sin(i * 0.8f);
-                    float angle  = 8.0f * sin(i * 0.5f);
-                    create_cube("wave_" + to_string(i), Vector3(-50.0f, height, z_pos), Vector3(angle, 0.0f, 0.0f), Vector3(8.0f, 0.4f, 4.0f));
-                }
-
-                //==================================================================================
-                // zone 8: stunt park center piece - mega ramp
-                //==================================================================================
-                
-                // approach ramp
-                create_cube("mega_approach", Vector3(-70.0f, 1.0f, -30.0f), Vector3(0.0f, 0.0f, 12.0f), Vector3(15.0f, 0.6f, 10.0f));
-                
-                // main mega ramp
-                create_cube("mega_ramp", Vector3(-90.0f, 4.0f, -30.0f), Vector3(0.0f, 0.0f, 30.0f), Vector3(12.0f, 0.8f, 10.0f));
-                
-                // mega ramp platform top
-                create_cube("mega_platform", Vector3(-105.0f, 7.5f, -30.0f), Vector3::Zero, Vector3(8.0f, 0.5f, 10.0f));
-                
-                // drop ramp on other side
-                create_cube("mega_drop", Vector3(-118.0f, 4.0f, -30.0f), Vector3(0.0f, 0.0f, -35.0f), Vector3(10.0f, 0.8f, 10.0f));
-
-                //==================================================================================
-                // zone 9: figure-8 crossover
-                //==================================================================================
-                
-                // elevated crossing ramp 1
-                create_cube("cross_ramp_up_1", Vector3(0.0f, 1.0f, 50.0f), Vector3(0.0f, 45.0f, 15.0f), Vector3(12.0f, 0.5f, 6.0f));
-                
-                // elevated bridge section
-                create_cube("cross_bridge", Vector3(8.0f, 2.5f, 58.0f), Vector3(0.0f, 45.0f, 0.0f), Vector3(10.0f, 0.4f, 6.0f));
-                
-                // elevated crossing ramp 2
-                create_cube("cross_ramp_down_1", Vector3(16.0f, 1.0f, 66.0f), Vector3(0.0f, 45.0f, -15.0f), Vector3(12.0f, 0.5f, 6.0f));
-                
-                // lower path goes underneath
-                create_cube("under_path_guide_left", Vector3(-2.0f, 0.4f, 62.0f), Vector3(0.0f, -45.0f, 0.0f), Vector3(0.5f, 0.8f, 15.0f));
-                create_cube("under_path_guide_right", Vector3(10.0f, 0.4f, 50.0f), Vector3(0.0f, -45.0f, 0.0f), Vector3(0.5f, 0.8f, 15.0f));
-
-                //==================================================================================
-                // zone 10: parking challenge (precision driving)
-                //==================================================================================
-                
-                // tight parking spots with pillars
-                for (int i = 0; i < 4; i++)
-                {
-                    float z_pos = 80.0f + (i * 8.0f);
-                    create_cube("parking_left_" + to_string(i), Vector3(-8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f), 5.0f);
-                    create_cube("parking_right_" + to_string(i), Vector3(8.0f, 0.5f, z_pos), Vector3::Zero, Vector3(0.3f, 1.0f, 0.3f), 5.0f);
-                }
-                
-                // parking lot boundary walls
-                create_cube("parking_wall_back", Vector3(0.0f, 0.5f, 115.0f), Vector3::Zero, Vector3(20.0f, 1.0f, 0.5f));
-                create_cube("parking_wall_left", Vector3(-10.0f, 0.5f, 97.0f), Vector3::Zero, Vector3(0.5f, 1.0f, 38.0f));
-                create_cube("parking_wall_right", Vector3(10.0f, 0.5f, 97.0f), Vector3::Zero, Vector3(0.5f, 1.0f, 38.0f));
-
-                //==================================================================================
-                // decorative boundary markers
-                //==================================================================================
-                
-                // corner markers for the playground area
-                create_cube("marker_ne", Vector3(120.0f, 1.5f, 120.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
-                create_cube("marker_nw", Vector3(-130.0f, 1.5f, 120.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
-                create_cube("marker_se", Vector3(120.0f, 1.5f, -100.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
-                create_cube("marker_sw", Vector3(-130.0f, 1.5f, -100.0f), Vector3::Zero, Vector3(2.0f, 3.0f, 2.0f));
-
-                // make room for the telemetry display
-                ConsoleRegistry::Get().SetValueFromString("r.performance_metrics", "0");
-            }
-        }
-        //====================================================================================
     }
     //========================================================================================
 
@@ -2862,15 +1552,12 @@ namespace spartan
 
         // reset world-specific state
         worlds::showroom::texture_brand_logo = nullptr;
-        car::shutdown();
+        Car::ShutdownAll();
         meshes.clear();
     }
 
     void Game::Tick()
     {
-        // car tick (always)
-        car::tick();
-
         // world-specific tick
         if (loaded_world != DefaultWorld::Max)
         {
@@ -2898,6 +1585,15 @@ namespace spartan
         });
 
         loaded_world = default_world;
+    }
+
+    void Game::RegisterPrefabs()
+    {
+        if (prefabs_registered)
+            return;
+
+        Prefab::Register("car", Car::CreatePrefab);
+        prefabs_registered = true;
     }
     //========================================================================================
 }

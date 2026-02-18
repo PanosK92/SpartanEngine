@@ -261,25 +261,23 @@ namespace spartan
             }
         
             if (staging_buffer)
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
+                RHI_Device::MemoryBufferDestroy(staging_buffer);
         }
 
         RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
         {
-            RHI_Image_Layout target_layout = RHI_Image_Layout::Preinitialized;
+            // priority: uav (requires general) > rt (requires attachment) > srv (shader read)
+            // uav takes highest priority because vulkan mandates general layout for storage images
+            if (texture->IsUav())
+                return RHI_Image_Layout::General;
 
             if (texture->IsRt())
-            {
-                target_layout = RHI_Image_Layout::Attachment;
-            }
-
-            if (texture->IsUav())
-                target_layout = RHI_Image_Layout::General;
+                return RHI_Image_Layout::Attachment;
 
             if (texture->IsSrv())
-                target_layout = RHI_Image_Layout::Shader_Read;
+                return RHI_Image_Layout::Shader_Read;
 
-            return target_layout;
+            return RHI_Image_Layout::Preinitialized;
         }
     }
 
@@ -300,14 +298,24 @@ namespace spartan
         // transition to target layout
         if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
         {
-            uint32_t array_length = m_type == RHI_Texture_Type::Type3D ? 1 : m_depth;
+            uint32_t array_length          = m_type == RHI_Texture_Type::Type3D ? 1 : m_depth;
+            RHI_Image_Layout target_layout = GetAppropriateLayout(this);
+
+            // empty srv-only textures: use general instead of shader_read to avoid the validation
+            // warning about transitioning from undefined (content-discarding) to a read-only layout.
+            // SetTexture() will transition to shader_read on first use.
+            if (!HasData() && target_layout == RHI_Image_Layout::Shader_Read)
+            {
+                target_layout = RHI_Image_Layout::General;
+            }
+
             cmd_list->InsertBarrier(
                 m_rhi_resource,
                 m_format,
                 0,            // mip start
                 m_mip_count,  // mip count
                 array_length, // array length
-                GetAppropriateLayout(this)
+                target_layout
             );
         
             // flush

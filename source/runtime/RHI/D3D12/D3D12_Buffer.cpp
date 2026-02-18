@@ -137,6 +137,21 @@ namespace spartan
         }
     }
 
+    void RHI_Buffer::UploadSubRegion(const void* data, uint64_t offset_bytes, uint64_t size_bytes)
+    {
+        SP_ASSERT(data != nullptr);
+        SP_ASSERT(offset_bytes + size_bytes <= m_object_size);
+
+        if (m_data_gpu)
+        {
+            memcpy(static_cast<uint8_t*>(m_data_gpu) + offset_bytes, data, size_bytes);
+        }
+        else
+        {
+            SP_LOG_WARNING("UploadSubRegion: buffer is not mapped, cannot upload");
+        }
+    }
+
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
         if (!data_cpu || size == 0)

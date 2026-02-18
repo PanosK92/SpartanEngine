@@ -159,7 +159,11 @@ namespace spartan
         }
     }
 
-    void RHI_Queue::Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal)
+    void RHI_Queue::Submit(
+        void* cmd_buffer, const uint32_t wait_flags,
+        RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal,
+        RHI_SyncPrimitive* semaphore_timeline_wait, uint64_t timeline_wait_value
+    )
     {
         lock_guard<mutex> lock(get_mutex(this));
 

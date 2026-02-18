@@ -50,6 +50,12 @@ public:
         m_redo_buffer.Clear();
     }
 
+    // push an already-created command to the undo stack
+    static void Push(std::shared_ptr<Command> command) {
+        m_undo_buffer.Push(command);
+        m_redo_buffer.Clear();
+    }
+
     /** Undoes the latest applied command */
     static void Undo();
 

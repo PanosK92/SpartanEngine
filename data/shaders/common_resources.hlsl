@@ -73,21 +73,24 @@ struct FrameBufferData
     float3 camera_right;
     float camera_exposure;
 
-    // weather/clouds
+    // clouds
     float cloud_coverage;
-    float cloud_type;
     float cloud_shadows;
-    float cloud_darkness;
-
-    float3 cloud_color;
-    float cloud_seed;
+    float padding3;
+    float padding4;
 };
 
-// 128 byte push constant buffer used by every pass
+// push constant buffer - carries per-draw and per-pass data
+// draw_index indexes into the bindless draw data buffer for transforms and material info
+// material_index and is_transparent are pass-level state for compute shaders
+// values[] carries generic per-pass parameters (3 x float4)
 struct PassBufferData
 {
-    matrix transform;
-    matrix values;
+    uint   draw_index;
+    uint   material_index;
+    uint   is_transparent;
+    uint   padding;
+    float4 values[3];
 };
 
 // struct which forms the bindless material parameters array
@@ -181,8 +184,15 @@ Texture3D tex3d : register(t13);
 Texture2D tex_perlin : register(t14);
 
 // volumetric cloud 3D noise textures
-Texture3D tex3d_cloud_shape  : register(t19); // 128^3 Perlin-Worley + Worley FBM
-Texture3D tex3d_cloud_detail : register(t20); // 32^3 high-frequency detail
+Texture3D tex3d_cloud_shape  : register(t20); // 128^3 Perlin-Worley + Worley FBM
+Texture3D tex3d_cloud_detail : register(t21); // 32^3 high-frequency detail
+// restir reservoir textures (shared across path tracing, temporal, and spatial passes)
+Texture2D<float4> tex_reservoir_prev0 : register(t22);
+Texture2D<float4> tex_reservoir_prev1 : register(t23);
+Texture2D<float4> tex_reservoir_prev2 : register(t24);
+Texture2D<float4> tex_reservoir_prev3 : register(t25);
+Texture2D<float4> tex_reservoir_prev4 : register(t26);
+
 // ray tracing geometry info for vertex buffer access (indexed by InstanceIndex())
 // matches c++ Sb_GeometryInfo struct
 struct GeometryInfo
@@ -207,32 +217,107 @@ struct RtVertex
 // ray tracing geometry info buffer
 RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
 
+// restir reservoir uav bindings
+RWTexture2D<float4> tex_reservoir0 : register(u21);
+RWTexture2D<float4> tex_reservoir1 : register(u22);
+RWTexture2D<float4> tex_reservoir2 : register(u23);
+RWTexture2D<float4> tex_reservoir3 : register(u24);
+RWTexture2D<float4> tex_reservoir4 : register(u25);
+
 // bindless arrays
 Texture2D material_textures[]                            : register(t15, space1);
 StructuredBuffer<MaterialParameters> material_parameters : register(t16, space2);
 StructuredBuffer<LightParameters> light_parameters       : register(t17, space3);
 StructuredBuffer<aabb> aabbs                             : register(t18, space4);
-SamplerComparisonState samplers_comparison[]             : register(s0,  space5);
-SamplerState samplers[]                                  : register(s1,  space6);
+SamplerComparisonState samplers_comparison[]             : register(s0,  space6);
+SamplerState samplers[]                                  : register(s1,  space7);
 
-// storage textures/buffers
-RWTexture2D<float4> tex_uav                                : register(u0);
-RWTexture2D<float4> tex_uav2                               : register(u1);
-RWTexture2D<float4> tex_uav3                               : register(u2);
-RWTexture2D<float4> tex_uav4                               : register(u3);
-RWTexture3D<float4> tex3d_uav                              : register(u4);
-RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
-RWStructuredBuffer<uint> visibility                        : register(u6);
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u7); // used by FidelityFX SPD
-globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
+// storage textures/buffers (image_format unknown allows flexible format binding)
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav                                : register(u0);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav2                               : register(u1);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav3                               : register(u2);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4                               : register(u3);
+[[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav                              : register(u4);
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
+RWStructuredBuffer<uint> visibility                                                        : register(u6); // unused, kept for descriptor layout stability
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter                                 : register(u7); // used by FidelityFX SPD
+[[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
 // nrd denoiser output bindings
-RWTexture2D<float4> tex_uav_nrd_viewz            : register(u26);
-RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
-RWTexture2D<float4> tex_uav_nrd_diff_radiance    : register(u28);
-RWTexture2D<float4> tex_uav_nrd_spec_radiance    : register(u29);
+[[vk::image_format("r16f")]]    RWTexture2D<float> tex_uav_nrd_viewz             : register(u26);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
+[[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_diff_radiance    : register(u28);
+[[vk::image_format("rgba16f")]] RWTexture2D<float4> tex_uav_nrd_spec_radiance    : register(u29);
 
 // integer format textures (vrs, etc)
 RWTexture2D<uint> tex_uav_uint : register(u30);
+
+// gpu-driven indirect drawing
+struct IndirectDrawArgs
+{
+    uint index_count;
+    uint instance_count;
+    uint first_index;
+    int  vertex_offset;
+    uint first_instance;
+};
+
+struct DrawData
+{
+    matrix transform;
+    matrix transform_previous;
+    uint   material_index;
+    uint   is_transparent;
+    uint   aabb_index;
+    uint   padding;
+};
+
+// bindless draw data - per-draw transforms, material indices, etc.
+StructuredBuffer<DrawData> draw_data                     : register(t19, space5);
+
+// gpu-driven indirect drawing uav bindings
+// input: populated by cpu, read by the cull compute shader
+RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args : register(u31);
+RWStructuredBuffer<DrawData> indirect_draw_data         : register(u32);
+// output: written by the cull compute shader, read by vertex shaders
+RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u33);
+RWStructuredBuffer<DrawData> indirect_draw_data_out         : register(u34);
+RWStructuredBuffer<uint> indirect_draw_count                : register(u35);
+
+// gpu-driven particle system
+struct Particle
+{
+    float3 position;
+    float  lifetime;     // remaining
+    float3 velocity;
+    float  max_lifetime; // initial
+    float4 color;        // current rgba
+    float  size;         // current
+    float3 padding;
+};
+
+struct EmitterParams
+{
+    float3 position;
+    float  emission_rate;
+    float  lifetime;
+    float  start_speed;
+    float  start_size;
+    float  end_size;
+    float4 start_color;
+    float4 end_color;
+    float  gravity_modifier;
+    float  radius;
+    float  delta_time;
+    uint   max_particles;
+    uint   frame;
+    uint   emitter_count;
+    float  padding1;
+    float  padding2;
+};
+
+RWStructuredBuffer<Particle>      particle_buffer_a : register(u36);
+RWStructuredBuffer<uint>          particle_counter  : register(u38);
+RWStructuredBuffer<EmitterParams> particle_emitter  : register(u39);
 
 // buffers
 [[vk::push_constant]]
@@ -245,17 +330,34 @@ bool is_ray_traced_reflections_enabled() { return buffer_frame.options & uint(1U
 bool is_ssao_enabled()                   { return buffer_frame.options & uint(1U << 1); }
 bool is_ray_traced_shadows_enabled()     { return buffer_frame.options & uint(1U << 2); }
 bool is_restir_pt_enabled()              { return buffer_frame.options & uint(1U << 3); }
-matrix pass_get_transform_previous() { return buffer_pass.values; }
-float2 pass_get_f2_value()           { return float2(buffer_pass.values._m23, buffer_pass.values._m30); }
-float3 pass_get_f3_value()           { return float3(buffer_pass.values._m00, buffer_pass.values._m01, buffer_pass.values._m02); }
-float3 pass_get_f3_value2()          { return float3(buffer_pass.values._m20, buffer_pass.values._m21, buffer_pass.values._m31); }
-float4 pass_get_f4_value()           { return float4(buffer_pass.values._m10, buffer_pass.values._m11, buffer_pass.values._m12, buffer_pass.values._m33); }
-uint pass_get_material_index()       { return buffer_pass.values._m03; }
-bool pass_is_transparent()           { return buffer_pass.values._m13 == 1.0f; }
-bool pass_is_opaque()                { return !pass_is_transparent(); }
-// _m32 is available for use
 
-// binldess array indices
+// per-draw data is stored in a static so both vertex and pixel shaders can access it
+// vertex shaders populate this from the appropriate buffer (draw_data or indirect_draw_data_out)
+static DrawData _draw;
+
+// per-draw accessors - read from the static draw data populated by the vertex shader entry point
+matrix pass_get_transform()          { return _draw.transform; }
+matrix pass_get_transform_previous() { return _draw.transform_previous; }
+uint   pass_get_material_index()     { return _draw.material_index; }
+
+// pass-level state - read from push constant (works in both raster and compute shaders)
+bool pass_is_transparent() { return buffer_pass.is_transparent != 0; }
+bool pass_is_opaque()      { return buffer_pass.is_transparent == 0; }
+
+// generic pass parameter accessors - read from push constant values[]
+// values[0].xyz = f3_value, values[0].w = f2_value.x
+// values[1].xyz = f3_value2, values[1].w = f2_value.y
+// values[2]     = f4_value
+float3 pass_get_f3_value()  { return buffer_pass.values[0].xyz; }
+float3 pass_get_f3_value2() { return buffer_pass.values[1].xyz; }
+float4 pass_get_f4_value()  { return buffer_pass.values[2]; }
+float2 pass_get_f2_value()  { return float2(buffer_pass.values[0].w, buffer_pass.values[1].w); }
+
+// helper to populate _draw from the appropriate source
+void pass_load_draw_data_from_buffer()          { _draw = draw_data[buffer_pass.draw_index]; }
+void pass_load_draw_data_from_vertex(uint mi)   { _draw.material_index = mi; } // pixel shader: restore material_index from vertex output
+
+// bindless array indices
 static const uint material_texture_slots_per_type  = 4;
 static const uint material_texture_index_albedo    = 0 * material_texture_slots_per_type;
 static const uint material_texture_index_roughness = 1 * material_texture_slots_per_type;

@@ -52,6 +52,9 @@ namespace spartan
         void Load(pugi::xml_node& node) override;
         void Tick() override;
 
+        static void RegisterForScripting(sol::state_view State);
+        sol::reference AsLua(sol::state_view state) override;
+
         // mesh
         void SetMesh(Mesh* mesh, const uint32_t sub_mesh_index = 0);
         void SetMesh(const MeshType type);
@@ -70,7 +73,8 @@ namespace spartan
         uint64_t GetAccelerationStructureDeviceAddress() const;
 
         // bounding box
-        const math::BoundingBox& GetBoundingBox() const { return m_bounding_box;}
+        const math::BoundingBox& GetBoundingBox() const     { return m_bounding_box; }
+        const math::BoundingBox& GetBoundingBoxMesh() const { return m_bounding_box_mesh; }
 
         // material
         void SetMaterial(const std::shared_ptr<Material>& material);

@@ -167,7 +167,8 @@ namespace spartan
         m_buffer_id_index  = 0;
     }
 
-    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal /*= nullptr*/)
+    void RHI_CommandList::Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal /*= nullptr*/,
+                                RHI_SyncPrimitive* semaphore_timeline_wait /*= nullptr*/, uint64_t timeline_wait_value /*= 0*/)
     {
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -347,7 +348,40 @@ namespace spartan
 
         Profiler::m_rhi_draw++;
     }
-  
+
+    void RHI_CommandList::DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(args_buffer  != nullptr);
+        SP_ASSERT(count_buffer != nullptr);
+
+        // lazily create the command signature for indirect indexed draws
+        static ID3D12CommandSignature* command_signature = nullptr;
+        if (!command_signature)
+        {
+            D3D12_INDIRECT_ARGUMENT_DESC arg_desc = {};
+            arg_desc.Type                         = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+            D3D12_COMMAND_SIGNATURE_DESC desc = {};
+            desc.ByteStride                  = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
+            desc.NumArgumentDescs            = 1;
+            desc.pArgumentDescs              = &arg_desc;
+
+            RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
+        }
+
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->ExecuteIndirect(
+            command_signature,
+            max_draw_count,
+            static_cast<ID3D12Resource*>(args_buffer->GetRhiResource()),
+            static_cast<UINT64>(args_offset),
+            static_cast<ID3D12Resource*>(count_buffer->GetRhiResource()),
+            static_cast<UINT64>(count_offset)
+        );
+
+        Profiler::m_rhi_draw++;
+    }
+
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -355,7 +389,7 @@ namespace spartan
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Dispatch(x, y, z);
     }
 
-    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height, RHI_Buffer* shader_binding_table)
+    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height)
     {
         // todo: implement ray tracing
     }
@@ -376,6 +410,11 @@ namespace spartan
         SP_ASSERT_MSG(source->GetWidth() <= destination->GetWidth() && source->GetHeight() <= destination->GetHeight(),
             "The source texture dimension(s) are larger than the those of the destination texture");
         // todo: implement blit to swapchain
+    }
+
+    void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source)
+    {
+        // todo: implement xr swapchain blit for d3d12
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
@@ -531,6 +570,17 @@ namespace spartan
     float RHI_CommandList::GetTimestampResult(const uint32_t timestamp_index)
     {
         return 0.0f;
+    }
+
+    float RHI_CommandList::GetTimestampStartMs(const uint32_t timestamp_index)
+    {
+        // todo: implement timestamps
+        return 0.0f;
+    }
+
+    void RHI_CommandList::ReadbackTimestampsForProfiler()
+    {
+        // todo: implement timestamps
     }
 
     void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)

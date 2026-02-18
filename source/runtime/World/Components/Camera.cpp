@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Camera.h"
 #include "Renderable.h"
+#include "Spline.h"
 #include "Window.h"
 #include "Physics.h"
 #include "Light.h"
@@ -30,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Input/Input.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
+#include "../../XR/Xr.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -75,7 +77,28 @@ namespace spartan
             SetFlag(CameraFlags::IsDirty, true);
         }
 
+        // always process input for movement (gamepad, keyboard, physics body control)
         ProcessInput();
+
+        // xr head tracking - apply hmd orientation to camera (position is relative to body)
+        if (Xr::IsSessionRunning())
+        {
+            // get xr head tracking data
+            const Vector3& xr_position    = Xr::GetHeadPosition();
+            const Quaternion& xr_rotation = Xr::GetHeadOrientation();
+
+            // convert from openxr (right-handed: +x right, +y up, -z forward)
+            // to engine (left-handed: +x right, +y up, +z forward)
+            // negate z for position, and negate z and w for quaternion to flip handedness
+            Vector3 position = Vector3(xr_position.x, xr_position.y, -xr_position.z);
+            Quaternion rotation = Quaternion(xr_rotation.x, xr_rotation.y, -xr_rotation.z, -xr_rotation.w);
+
+            GetEntity()->SetPositionLocal(position);
+            GetEntity()->SetRotationLocal(rotation);
+
+            SetFlag(CameraFlags::IsDirty, true);
+        }
+
         ComputeMatrices();
     }
 
@@ -181,81 +204,136 @@ namespace spartan
             m_pick_hits.emplace_back(entity, Vector3::Zero, distance, distance == 0.0f);
         }
 
-        if (m_pick_hits.empty())
-        {
-            ClearSelection();
-            return;
-        }
-
         Vector2 cursor         = Input::GetMousePosition();
         float best_screen_dist = numeric_limits<float>::max();
         float best_depth       = numeric_limits<float>::max();
         Entity* best_entity    = nullptr;
-        for (RayHitResult& broad_hit : m_pick_hits)
+
+        // mesh-based triangle picking
+        if (!m_pick_hits.empty())
         {
-            Renderable* renderable = broad_hit.m_entity->GetComponent<Renderable>();
-
-            // query mesh size first to reserve exact capacity and avoid allocations
-            uint32_t index_count  = renderable->GetIndexCount();
-            uint32_t vertex_count = renderable->GetVertexCount();
-            
-            // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
-            // only reserve if current capacity is insufficient
-            if (m_pick_indices.capacity() < index_count)
+            for (RayHitResult& broad_hit : m_pick_hits)
             {
-                m_pick_indices.reserve(index_count);
-            }
-            if (m_pick_vertices.capacity() < vertex_count)
-            {
-                m_pick_vertices.reserve(vertex_count);
-            }
-            
-            // clear and reuse pre-allocated buffers 
-            m_pick_indices.clear();
-            m_pick_vertices.clear();
+                Renderable* renderable = broad_hit.m_entity->GetComponent<Renderable>();
 
-            renderable->GetGeometry(&m_pick_indices, &m_pick_vertices);
-            if (m_pick_indices.empty() || m_pick_vertices.empty())
-                continue;
-
-            const Matrix& transform = broad_hit.m_entity->GetMatrix();
-
-            for (uint32_t i = 0; i < m_pick_indices.size(); i += 3)
-            {
-                Vector3 p1(m_pick_vertices[m_pick_indices[i]].pos);
-                Vector3 p2(m_pick_vertices[m_pick_indices[i + 1]].pos);
-                Vector3 p3(m_pick_vertices[m_pick_indices[i + 2]].pos);
-
-                p1 = p1 * transform;
-                p2 = p2 * transform;
-                p3 = p3 * transform;
-
-                float distance = ray.HitDistance(p1, p2, p3);
-                if (distance == numeric_limits<float>::infinity())
-                    continue;
-
-                Vector3 world_hit = ray.GetStart() + ray.GetDirection() * distance;
-
-                // project to clip space
-                Vector4 clip = Vector4(world_hit, 1.0f) * GetViewProjectionMatrix();
-                if (clip.w == 0.0f)
-                    continue;
-
-                // ndc → screen
-                Vector2 screen_pos(
-                    (clip.x / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().width,
-                    (clip.y / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().height
-                );
-
-                float screen_dist = (screen_pos - cursor).Length();
-
-                // prefer smallest screen distance, then depth
-                if (screen_dist < best_screen_dist || (screen_dist == best_screen_dist && distance < best_depth))
+                // query mesh size first to reserve exact capacity and avoid allocations
+                uint32_t index_count  = renderable->GetIndexCount();
+                uint32_t vertex_count = renderable->GetVertexCount();
+                
+                // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
+                // only reserve if current capacity is insufficient
+                if (m_pick_indices.capacity() < index_count)
                 {
-                    best_screen_dist = screen_dist;
-                    best_depth       = distance;
-                    best_entity      = broad_hit.m_entity;
+                    m_pick_indices.reserve(index_count);
                 }
+                if (m_pick_vertices.capacity() < vertex_count)
+                {
+                    m_pick_vertices.reserve(vertex_count);
+                }
+                
+                // clear and reuse pre-allocated buffers 
+                m_pick_indices.clear();
+                m_pick_vertices.clear();
+
+                renderable->GetGeometry(&m_pick_indices, &m_pick_vertices);
+                if (m_pick_indices.empty() || m_pick_vertices.empty())
+                    continue;
+
+                const Matrix& transform = broad_hit.m_entity->GetMatrix();
+
+                for (uint32_t i = 0; i < m_pick_indices.size(); i += 3)
+                {
+                    Vector3 p1(m_pick_vertices[m_pick_indices[i]].pos);
+                    Vector3 p2(m_pick_vertices[m_pick_indices[i + 1]].pos);
+                    Vector3 p3(m_pick_vertices[m_pick_indices[i + 2]].pos);
+
+                    p1 = p1 * transform;
+                    p2 = p2 * transform;
+                    p3 = p3 * transform;
+
+                    float distance = ray.HitDistance(p1, p2, p3);
+                    if (distance == numeric_limits<float>::infinity())
+                        continue;
+
+                    Vector3 world_hit = ray.GetStart() + ray.GetDirection() * distance;
+
+                    // project to clip space
+                    Vector4 clip = Vector4(world_hit, 1.0f) * GetViewProjectionMatrix();
+                    if (clip.w == 0.0f)
+                        continue;
+
+                    // ndc → screen
+                    Vector2 screen_pos(
+                        (clip.x / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().width,
+                        (clip.y / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().height
+                    );
+
+                    float screen_dist = (screen_pos - cursor).Length();
+
+                    // prefer smallest screen distance, then depth
+                    if (screen_dist < best_screen_dist || (screen_dist == best_screen_dist && distance < best_depth))
+                    {
+                        best_screen_dist = screen_dist;
+                        best_depth       = distance;
+                        best_entity      = broad_hit.m_entity;
+                    }
+                }
+            }
+        }
+
+        // spline control point picking
+        {
+            const float pick_radius_px = 20.0f;
+            float best_spline_dist     = numeric_limits<float>::max();
+            Entity* best_spline_entity = nullptr;
+
+            // ray.m_direction is set to a world-space position (from ScreenToWorldCoordinates),
+            // not a normalized direction, so compute the actual direction ourselves
+            Vector3 ray_origin = ray.GetStart();
+            Vector3 ray_dir    = ray.GetDirection() - ray_origin;
+            ray_dir.Normalize();
+
+            for (Entity* entity : entities)
+            {
+                Spline* spline = entity->GetComponent<Spline>();
+                if (!spline)
+                    continue;
+
+                for (uint32_t i = 0; i < entity->GetChildrenCount(); i++)
+                {
+                    Entity* point_entity = entity->GetChildByIndex(i);
+                    if (!point_entity)
+                        continue;
+
+                    Vector3 world_pos = point_entity->GetPosition();
+
+                    // depth along the ray direction
+                    float depth = (world_pos - ray_origin).Dot(ray_dir);
+                    if (depth <= 0.0f)
+                        continue;
+
+                    // perpendicular distance from the ray to this point: ||(P - O) x D||
+                    Vector3 to_point        = world_pos - ray_origin;
+                    float distance_from_ray = to_point.Cross(ray_dir).Length();
+
+                    // convert pick radius from screen pixels to world-space at this depth
+                    float viewport_width  = Renderer::GetViewport().width;
+                    float meters_per_pixel = (2.0f * depth * tanf(GetFovHorizontalRad() * 0.5f)) / viewport_width;
+                    float pick_threshold   = pick_radius_px * meters_per_pixel;
+
+                    if (distance_from_ray > pick_threshold)
+                        continue;
+                    if (distance_from_ray < best_spline_dist)
+                    {
+                        best_spline_dist   = distance_from_ray;
+                        best_spline_entity = point_entity;
+                    }
+                }
+            }
+
+            if (best_spline_entity)
+            {
+                best_entity = best_spline_entity;
             }
         }
 
@@ -459,7 +537,7 @@ namespace spartan
         bool mouse_click_right      = Input::GetKey(KeyCode::Click_Right);
         bool mouse_click_left_down  = Input::GetKeyDown(KeyCode::Click_Left);
 
-        // if the camera is paranted to an entity with a physics body, we will control that instead
+        // if the camera is parented to an entity with a physics body, we will control that instead
         Physics* physics_body = nullptr;
         if (Entity* parent = GetEntity()->GetParent())
         {
@@ -468,6 +546,10 @@ namespace spartan
                 physics_body = physics;
             }
         }
+
+        // skip fps control if the physics body is disabled (e.g. when in a vehicle)
+        if (physics_body && !physics_body->IsEnabled())
+            return;
 
         // deduce all states into booleans (some states exists as part of the class, so no need to deduce here)
         bool mouse_in_viewport    = Input::GetMouseIsInViewport();
@@ -509,10 +591,11 @@ namespace spartan
     
         // behavior: mouse look and movement direction calculation
         Vector3 movement_direction = Vector3::Zero;
+        bool is_xr_active = Xr::IsSessionRunning();
         if (is_controlled || is_gamepad_connected)
         {
-            // cursor edge wrapping
-            if (is_controlled)
+            // cursor edge wrapping (skip in xr mode - head tracking handles rotation)
+            if (is_controlled && !is_xr_active)
             {
                 Vector2 mouse_pos = Input::GetMousePosition();
                 uint32_t edge = 5;
@@ -526,30 +609,33 @@ namespace spartan
                 }
             }
     
-        // mouse and gamepad look - use local rotation to avoid unstable matrix decomposition
-        Quaternion current_rotation = GetEntity()->GetRotationLocal();
-        Vector2 input_delta = Vector2::Zero;
-        if (is_controlled)
-        {
-            input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
-        }
-        else if (is_gamepad_connected)
-        {
-            // gamepad stick is a rate (rotation speed), not accumulated movement like mouse
-            // scale by delta_time and a base rotation speed for framerate-independent behavior
-            const float gamepad_rotation_speed = 120.0f; // degrees per second at full stick deflection
-            input_delta = Input::GetGamepadThumbStickRight() * gamepad_rotation_speed * delta_time;
-        }
-            Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
-            Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
-            Quaternion new_rotation    = yaw_increment * current_rotation * pitch_increment;
-            Vector3 forward            = new_rotation * Vector3::Forward;
-            float pitch_angle          = asin(-forward.y) * rad_to_deg;
-            if (pitch_angle > 80.0f || pitch_angle < -80.0f)
+            // mouse and gamepad look - skip in xr mode since head tracking handles rotation
+            if (!is_xr_active)
             {
-                new_rotation = yaw_increment * current_rotation;
+                Quaternion current_rotation = GetEntity()->GetRotationLocal();
+                Vector2 input_delta = Vector2::Zero;
+                if (is_controlled)
+                {
+                    input_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
+                }
+                else if (is_gamepad_connected)
+                {
+                    // gamepad stick is a rate (rotation speed), not accumulated movement like mouse
+                    // scale by delta_time and a base rotation speed for framerate-independent behavior
+                    const float gamepad_rotation_speed = 120.0f; // degrees per second at full stick deflection
+                    input_delta = Input::GetGamepadThumbStickRight() * gamepad_rotation_speed * delta_time;
+                }
+                Quaternion yaw_increment   = Quaternion::FromAxisAngle(Vector3::Up, input_delta.x * deg_to_rad);
+                Quaternion pitch_increment = Quaternion::FromAxisAngle(Vector3::Right, input_delta.y * deg_to_rad);
+                Quaternion new_rotation    = yaw_increment * current_rotation * pitch_increment;
+                Vector3 forward            = new_rotation * Vector3::Forward;
+                float pitch_angle          = asin(-forward.y) * rad_to_deg;
+                if (pitch_angle > 80.0f || pitch_angle < -80.0f)
+                {
+                    new_rotation = yaw_increment * current_rotation;
+                }
+                GetEntity()->SetRotationLocal(new_rotation.Normalized());
             }
-            GetEntity()->SetRotationLocal(new_rotation.Normalized());
     
             // Keyboard and gamepad movement direction
             if (is_controlled)
@@ -713,6 +799,7 @@ namespace spartan
                 // entity
                 m_flashlight = World::CreateEntity();
                 m_flashlight->SetObjectName("flashlight");
+                m_flashlight->SetTransient(true); // don't serialize - dynamically created
                 m_flashlight->SetParent(GetEntity());
                 m_flashlight->SetRotationLocal(Quaternion::Identity);
 

@@ -96,6 +96,9 @@ private:
     std::recursive_mutex               m_mutex;
     ImGuiTextFilter                    m_log_filter;
 
+    // cached for rendering - avoids per-frame heap allocation
+    std::vector<std::pair<uint32_t, const LogPackage*>> m_visible_logs;
+
     // text selection state
     struct TextSelection
     {

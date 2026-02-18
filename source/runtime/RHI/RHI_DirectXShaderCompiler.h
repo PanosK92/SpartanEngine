@@ -303,18 +303,7 @@ Warning Options:
                 IDxcVersionInfo* version_info = nullptr;
                 if (SUCCEEDED(m_compiler->QueryInterface(&version_info)))
                 {
-                    UINT32 major = 0, minor = 0;
-                    version_info->GetVersion(&major, &minor);
-
-                    std::ostringstream stream;
-                    stream << major << "." << minor;
-                    Settings::RegisterThirdPartyLib("DirectXShaderCompiler", stream.str(), "https://github.com/microsoft/DirectXShaderCompiler");
-
                     version_info->Release();
-                }
-                else
-                {
-                    SP_LOG_ERROR("Failed to get DirectXShaderCompiler version info");
                 }
             }
 

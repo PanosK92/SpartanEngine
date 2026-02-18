@@ -24,8 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Viewport.h"
 #include "AssetBrowser.h"
 #include "WorldViewer.h"
+#include "Properties.h"
 #include "RHI/RHI_Device.h"
 #include "Rendering/Renderer.h"
+#include "World/Prefab.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/ImGui_TransformGizmo.h"
 #include "Settings.h"
@@ -66,8 +68,8 @@ void Viewport::OnTickVisible()
         {
             if (RHI_Device::IsValidResolution(width, height))
             {
-                Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height)); 
-                
+                Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
+
                 if (!resolution_set)
                 {
                     // only set the render and output resolutions once
@@ -102,6 +104,26 @@ void Viewport::OnTickVisible()
         m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(get<const char*>(payload->data));
     }
 
+    // handle prefab drop
+    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Prefab))
+    {
+        const char* file_path = get<const char*>(payload->data);
+        if (file_path)
+        {
+            Entity* entity = World::CreateEntity();
+            string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+            entity->SetObjectName(name);
+            if (Prefab::LoadFromFile(file_path, entity))
+            {
+                entity->SetPrefabFilePath(file_path);
+            }
+            else
+            {
+                World::RemoveEntity(entity);
+            }
+        }
+    }
+
     Camera* camera = World::GetCamera();
 
     // double-click to focus on entity
@@ -118,8 +140,50 @@ void Viewport::OnTickVisible()
     else if (camera && ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
     {
         camera->Pick();
-        // update the world viewer to reflect selection (uses primary selected entity for Properties)
-        m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+
+        // when ctrl is held, Pick() already handled multi-selection via ToggleSelection(),
+        // so we only update the properties panel without overwriting the camera's selection
+        if (Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right))
+        {
+            Properties::Inspect(camera->GetSelectedEntity());
+        }
+        else
+        {
+            m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+        }
+    }
+
+    // Ctrl+D to duplicate selected entities
+    if (camera && ImGui::IsWindowFocused() && Input::GetKey(KeyCode::Ctrl_Left) && Input::GetKeyDown(KeyCode::D))
+    {
+        const std::vector<Entity*>& selected_entities = camera->GetSelectedEntities();
+        if (!selected_entities.empty())
+        {
+            // clone all selected entities
+            std::vector<Entity*> cloned_entities;
+            for (Entity* entity : selected_entities)
+            {
+                if (entity)
+                {
+                    Entity* cloned = entity->Clone();
+                    if (cloned)
+                    {
+                        cloned_entities.push_back(cloned);
+                    }
+                }
+            }
+
+            // select the cloned entities instead
+            if (!cloned_entities.empty())
+            {
+                camera->ClearSelection();
+                for (Entity* cloned : cloned_entities)
+                {
+                    camera->AddToSelection(cloned);
+                }
+                m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(cloned_entities[0]);
+            }
+        }
     }
 
     // entity transform gizmo (will only show if entities have been picked)

@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../Physics/PhysicsWorld.h"
-#include "../../Physics/Car.h"
+#include "../../Car/Car.h"
+#include "../../Car/CarSimulation.h"
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Rendering/Renderer.h"
 SP_WARNINGS_OFF
@@ -142,6 +143,42 @@ namespace spartan
         Component::Initialize();
     }
 
+    BodyType Physics::DetectBodyType()
+    {
+        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        if (renderable)
+        {
+            // check if the mesh is a simple primitive shape (case-insensitive)
+            string mesh_name = renderable->GetMeshName();
+            transform(mesh_name.begin(), mesh_name.end(), mesh_name.begin(), ::tolower);
+
+            if (mesh_name.find("cube") != string::npos || mesh_name.find("box") != string::npos)
+            {
+                return BodyType::Box;
+            }
+            else if (mesh_name.find("sphere") != string::npos)
+            {
+                return BodyType::Sphere;
+            }
+            else if (mesh_name.find("capsule") != string::npos || mesh_name.find("cylinder") != string::npos)
+            {
+                return BodyType::Capsule;
+            }
+            else if (mesh_name.find("plane") != string::npos || mesh_name.find("quad") != string::npos)
+            {
+                return BodyType::Plane;
+            }
+            else
+            {
+                // default to mesh collision for complex shapes
+                return BodyType::Mesh;
+            }
+        }
+
+        // no renderable - default to box (common for invisible colliders/triggers)
+        return BodyType::Box;
+    }
+
     void Physics::Shutdown()
     {
         // release the controller manager (created lazily when first controller is made)
@@ -155,16 +192,18 @@ namespace spartan
     void Physics::Remove()
     {
         // release controller if it exists
-        if (m_controller)
+        // skip if controller_manager was already released during shutdown
+        if (m_controller && controller_manager)
         {
             static_cast<PxController*>(m_controller)->release();
             m_controller = nullptr;
         }
 
         // release all actors
+        // skip if physics world was already shut down (scene is null)
         for (auto* body : m_actors)
         {
-            if (body)
+            if (body && PhysicsWorld::GetScene())
             {
                 PxRigidActor* actor = static_cast<PxRigidActor*>(body);
                 PhysicsWorld::RemoveActor(actor);
@@ -175,7 +214,8 @@ namespace spartan
         m_actors_active.clear();
 
         // release material (shared by both controller and regular bodies)
-        if (m_material)
+        // skip if physics world was already shut down
+        if (m_material && PhysicsWorld::GetPhysics())
         {
             static_cast<PxMaterial*>(m_material)->release();
             m_material = nullptr;
@@ -235,12 +275,12 @@ namespace spartan
         {
             // apply gravity
             m_velocity.y += PhysicsWorld::GetGravity().y * delta_time;
-            
+
             // move controller
             PxControllerFilters filters;
             filters.mFilterFlags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
             PxControllerCollisionFlags collision_flags = controller->move(PxVec3(0.0f, m_velocity.y * delta_time, 0.0f), 0.001f, delta_time, filters);
-            
+
             // reset vertical velocity on ground collision
             if (collision_flags & PxControllerCollisionFlag::eCOLLISION_DOWN)
             {
@@ -283,20 +323,20 @@ namespace spartan
                 SyncWheelOffsetsFromEntities();
                 m_wheel_offsets_synced = true;
             }
-            
+
             // update vehicle physics
             car::tick(delta_time);
-            
+
             // get current physics state
             Vector3 physics_pos;
             Quaternion physics_rot;
             from_px_transform(actor->getGlobalPose(), physics_pos, physics_rot);
-            
+
             // get physics velocity for smooth extrapolation
             PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
             Vector3 physics_vel = dynamic ? from_px_vec3(dynamic->getLinearVelocity()) : Vector3::Zero;
             Vector3 physics_ang_vel = dynamic ? from_px_vec3(dynamic->getAngularVelocity()) : Vector3::Zero;
-            
+
             // initialize smoothed state on first frame
             if (!m_interpolation_initialized)
             {
@@ -304,14 +344,14 @@ namespace spartan
                 m_current_rotation          = physics_rot;
                 m_interpolation_initialized = true;
             }
-            
+
             // velocity-based extrapolation for smooth rendering
             // physics position jumps discretely due to fixed timestep, but velocity is smooth
             // we extrapolate using velocity and blend toward the real position to prevent drift
             {
                 // extrapolate: move smoothed position forward by physics velocity
                 m_current_position = m_current_position + physics_vel * delta_time;
-                
+
                 // blend toward real physics position to prevent drift
                 // higher correction_rate = faster correction but more jitter
                 // lower correction_rate = smoother but more drift
@@ -319,7 +359,7 @@ namespace spartan
                 float blend = 1.0f - expf(-correction_rate * delta_time);
                 m_current_position = m_current_position + (physics_pos - m_current_position) * blend;
             }
-            
+
             // rotation: use angular velocity for extrapolation
             {
                 // extrapolate rotation using angular velocity
@@ -332,28 +372,34 @@ namespace spartan
                     m_current_rotation = delta_rot * m_current_rotation;
                     m_current_rotation.Normalize();
                 }
-                
+
                 // blend toward real physics rotation
                 constexpr float rot_correction_rate = 10.0f;
                 float rot_blend = 1.0f - expf(-rot_correction_rate * delta_time);
                 m_current_rotation = Quaternion::Lerp(m_current_rotation, physics_rot, rot_blend);
             }
-            
+
             // sync smoothed transform to entity
             GetEntity()->SetPosition(m_current_position);
             GetEntity()->SetRotation(m_current_rotation);
 
             // update wheel visuals
             UpdateWheelTransforms();
+
+            // tick the car (input, camera, sounds, telemetry)
+            if (m_car)
+            {
+                m_car->Tick();
+            }
         }
         else
         {
             // editor mode: sync entity -> physx, reset velocities
             m_wheel_offsets_synced      = false;
             m_interpolation_initialized = false;
-            
+
             actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
-            
+
             if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
             {
                 dynamic->setLinearVelocity(PxVec3(0, 0, 0));
@@ -372,7 +418,7 @@ namespace spartan
         {
             if (!m_actors[i])
                 continue;
-                
+
             PxRigidActor* actor     = static_cast<PxRigidActor*>(m_actors[i]);
             PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
 
@@ -436,7 +482,7 @@ namespace spartan
             return;
 
         const Vector3 camera_pos = camera->GetEntity()->GetPosition();
-        
+
         // ensure tracking vector matches actor count
         if (m_actors_active.size() != m_actors.size())
         {
@@ -489,7 +535,7 @@ namespace spartan
         node.append_attribute("center_of_mass_z") = m_center_of_mass.z;
         node.append_attribute("body_type")        = static_cast<int>(m_body_type);
     }
-    
+
     void Physics::Load(pugi::xml_node& node)
     {
         m_mass             = node.attribute("mass").as_float(0.001f);
@@ -508,10 +554,148 @@ namespace spartan
         m_center_of_mass.y = node.attribute("center_of_mass_y").as_float(0.0f);
         m_center_of_mass.z = node.attribute("center_of_mass_z").as_float(0.0f);
         m_body_type        = static_cast<BodyType>(node.attribute("body_type").as_int(static_cast<int>(BodyType::Max)));
-    
+
         // defer creation until tick so that renderable component is available
         // (components load in enum order, and renderable comes after physics)
         m_needs_creation = true;
+    }
+
+    void Physics::RegisterForScripting(sol::state_view State)
+    {
+
+        State.new_enum("BodyType",
+            "Box",          BodyType::Box,
+            "Sphere",       BodyType::Sphere,
+            "Plane",        BodyType::Plane,
+            "Capsule",      BodyType::Capsule,
+            "Mesh",         BodyType::Mesh,
+            "MeshConvex",   BodyType::MeshConvex,
+            "Controller",   BodyType::Controller,
+            "Vehicle",      BodyType::Vehicle,
+            "Max",          BodyType::Max);
+
+
+        State.new_enum("WheelIndex",
+            "FrontLeft",    WheelIndex::FrontLeft,
+            "FrontRight",   WheelIndex::FrontRight,
+            "RearLeft",     WheelIndex::RearLeft,
+            "RearRight",    WheelIndex::RearRight,
+            "Count",        WheelIndex::Count);
+
+
+        State.new_usertype<Physics>("Physics",
+            sol::base_classes,              sol::bases<Component>(),
+
+            "GetMass",                      &Physics::GetMass,
+            "SetMass",                      &Physics::SetMass,
+            "GetFriction",                  &Physics::GetFriction,
+            "SetFriction",                  &Physics::SetFriction,
+            "GetFrictionRolling",           &Physics::GetFrictionRolling,
+            "SetFrictionRolling",           &Physics::SetFrictionRolling,
+            "GetRestitution",               &Physics::SetRestitution,
+            "SetRestitution",               &Physics::SetRestitution,
+
+            "SetLinearVelocity",            &Physics::SetLinearVelocity,
+            "GetLinearVelocity",            &Physics::GetLinearVelocity,
+            "SetAngularVelocity",           &Physics::SetAngularVelocity,
+
+            "SetCenterOfMass",              &Physics::SetCenterOfMass,
+            "GetCenterOfMass",              &Physics::GetCenterOfMass,
+
+            "GetCapsuleVolume",             &Physics::GetCapsuleVolume,
+            "GetCapsuleRadius",             &Physics::GetCapsuleRadius,
+
+            "SetVehicleThrottle",           &Physics::SetVehicleThrottle,
+            "SetVehicleBrake",              &Physics::SetVehicleBrake,
+            "SetVehicleSteering",           &Physics::SetVehicleSteering,
+            "SetVehicleHandbrake",          &Physics::SetVehicleHandbrake,
+
+            "SetWheelEntity",               &Physics::SetWheelEntity,
+            "GetWheelEntity",               &Physics::GetWheelEntity,
+
+            "SetChassisEntity",             &Physics::SetChassisEntity,
+            "GetChassisEntity",             &Physics::GetChassisEntity,
+
+            "SetWheelRadius",               &Physics::SetWheelRadius,
+            "GetWheelRadius",               &Physics::GetWheelRadius,
+            "GetSuspensionHeight",          &Physics::GetSuspensionHeight,
+            "ComputeWheelRadiusFromEntity", &Physics::ComputeWheelRadiusFromEntity,
+
+            "GetVehicleThrottle",           &Physics::GetVehicleThrottle,
+            "GetVehicleBrake",              &Physics::GetVehicleBrake,
+            "GetVehicleSteering",           &Physics::GetVehicleSteering,
+            "GetVehicleHandbrake",          &Physics::GetVehicleHandbrake,
+            "IsWheelGrounded",              &Physics::IsWheelGrounded,
+            "GetWheelCompression",          &Physics::GetWheelCompression,
+            "GetWheelSuspensionForce",      &Physics::GetWheelSuspensionForce,
+            "GetWheelSlipAngle",            &Physics::GetWheelSlipAngle,
+            "GetWheelSlipRatio",            &Physics::GetWheelSlipRatio,
+            "GetWheelTireLoad",             &Physics::GetWheelTireLoad,
+            "GetWheelLateralForce",         &Physics::GetWheelLateralForce,
+            "GetWheelLongitudinalForce",    &Physics::GetWheelLongitudinalForce,
+            "GetWheelAngularVelocity",      &Physics::GetWheelAngularVelocity,
+            "GetWheelRPM",                  &Physics::GetWheelRPM,
+            "GetWheelTemperature",          &Physics::GetWheelTemperature,
+            "GetWheelTempGripFactor",       &Physics::GetWheelTempGripFactor,
+            "GetWheelBrakeTemp",            &Physics::GetWheelBrakeTemp,
+            "GetWheelBrakeEfficiency",      &Physics::GetWheelBrakeEfficiency,
+
+
+            "SetAbsEnabled",                &Physics::SetAbsEnabled,
+            "GetAbsEnabled",                &Physics::GetAbsEnabled,
+            "IsAbsActive",                  &Physics::IsAbsActive,
+            "IsAbsActiveAny",               &Physics::IsAbsActiveAny,
+
+            "SetTcEnabled",                 &Physics::SetTcEnabled,
+            "GetTcEnabled",                 &Physics::GetTcEnabled,
+            "IsTcActive",                   &Physics::IsTcActive,
+            "GetTcReduction",               &Physics::GetTcReduction,
+
+            "SetTurboEnabled",              &Physics::SetTurboEnabled,
+            "GetTurboEnabled",              &Physics::GetTurboEnabled,
+            "GetBoostPressure",             &Physics::GetBoostPressure,
+            "GetBoostMaxPressure",          &Physics::GetBoostMaxPressure,
+
+            "SetDrsEnabled",                &Physics::SetDrsEnabled,
+            "GetDrsEnabled",                &Physics::GetDrsEnabled,
+            "SetDrsActive",                 &Physics::SetDrsActive,
+            "GetDrsActive",                 &Physics::GetDrsActive,
+
+            "SetDiffType",                  &Physics::SetDiffType,
+            "GetDiffType",                  &Physics::GetDiffType,
+            "GetDiffTypeName",              &Physics::GetDiffTypeName,
+
+            "GetWheelWear",                 &Physics::GetWheelWear,
+            "GetWheelWearGripFactor",       &Physics::GetWheelWearGripFactor,
+            "ResetTireWear",                &Physics::ResetTireWear,
+
+            "SetManualTransmission",        &Physics::SetManualTransmission,
+            "GetManualTransmission",        &Physics::GetManualTransmission,
+            "ShiftUp",                      &Physics::ShiftUp,
+            "ShiftDown",                    &Physics::ShiftDown,
+            "ShiftToNeutral",               &Physics::ShiftToNeutral,
+            "GetCurrentGear",               &Physics::GetCurrentGear,
+            "GetCurrentGearString",         &Physics::GetCurrentGearString,
+            "GetEngineRPM",                 &Physics::GetEngineRPM,
+            "GetEngineTorque",              &Physics::GetEngineTorque,
+            "GetIdleRPM",                   &Physics::GetIdleRPM,
+            "GetRedlineRPM",                &Physics::GetRedlineRPM,
+            "IsShifting",                   &Physics::IsShifting,
+
+            "SetDrawRaycasts",              &Physics::SetDrawRaycasts,
+            "GetDrawRaycasts",              &Physics::GetDrawRaycasts,
+            "SetDrawSuspension",            &Physics::SetDrawSuspension,
+            "GetDrawSuspension",            &Physics::GetDrawSuspension,
+            "DrawDebugVisualization",       &Physics::DrawDebugVisualization,
+
+            "SyncWheelOffsetsFromEntities", &Physics::SyncWheelOffsetsFromEntities
+            );
+
+    }
+
+    sol::reference Physics::AsLua(sol::state_view state)
+    {
+        return sol::make_reference(state, this);
     }
 
     void Physics::SetMass(float mass)
@@ -585,22 +769,22 @@ namespace spartan
                     break;
                 }
             }
-    
+
             // calculate mass from volume if applicable
             if (volume > 0.0f)
             {
                 mass = volume * density;
             }
         }
-    
+
         // ensure safe physx mass range
         m_mass = min(max(mass, 0.001f), 10000.0f);
-    
+
         // update mass for all dynamic bodies
         for (auto* body : m_actors)
         {
             if (body)
-            { 
+            {
                 if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
                 {
                     dynamic->setMass(m_mass);
@@ -619,7 +803,7 @@ namespace spartan
     {
         if (m_friction == friction)
             return;
-    
+
         if (m_material)
         {
             m_friction = friction;
@@ -680,16 +864,16 @@ namespace spartan
             }
             return Vector3::Zero;
         }
-        
+
         if (m_actors.empty() || !m_actors[0])
             return Vector3::Zero;
-            
+
         if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(m_actors[0])->is<PxRigidDynamic>())
         {
             PxVec3 velocity = dynamic->getLinearVelocity();
             return Vector3(velocity.x, velocity.y, velocity.z);
         }
-        
+
         return Vector3::Zero;
     }
 
@@ -742,7 +926,7 @@ namespace spartan
     {
         if (m_body_type == BodyType::Controller)
             return;
-    
+
         m_position_lock = lock;
         for (auto* body : m_actors)
         {
@@ -762,7 +946,7 @@ namespace spartan
     {
         if (m_body_type == BodyType::Controller)
             return;
-    
+
         m_rotation_lock = lock;
         for (auto* body : m_actors)
         {
@@ -777,13 +961,13 @@ namespace spartan
     {
         if (m_body_type == BodyType::Controller)
             return;
-    
+
         m_center_of_mass = center_of_mass;
         for (auto* body : m_actors)
         {
             if (!body)
                 continue;
-                
+
             if (PxRigidDynamic* dynamic = static_cast<PxRigidActor*>(body)->is<PxRigidDynamic>())
             {
                 if (m_center_of_mass != Vector3::Zero)
@@ -822,48 +1006,48 @@ namespace spartan
             SP_LOG_WARNING("this method is only applicable for controller bodies.");
             return nullptr;
         }
-    
+
         if (!m_controller)
             return nullptr;
-    
+
         // get controller's current position
         PxController* controller = static_cast<PxController*>(m_controller);
         PxExtendedVec3 pos_ext   = controller->getPosition();
         PxVec3 pos               = PxVec3(static_cast<float>(pos_ext.x), static_cast<float>(pos_ext.y), static_cast<float>(pos_ext.z));
-    
+
         // ray start just below the controller
         const float ray_length = standing_height;
         PxVec3 ray_start       = pos;
         PxVec3 ray_dir         = PxVec3(0.0f, -1.0f, 0.0f);
-    
+
         const PxU32 max_hits = 10;
         PxRaycastHit hit_buffer[max_hits];
         PxRaycastBuffer hit(hit_buffer, max_hits);
-    
+
         PxQueryFilterData filter_data;
         filter_data.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC;
-    
+
         PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
         if (!scene)
             return nullptr;
-    
+
         // get the actor used by the controller to avoid returning itself
         PxRigidActor* actor_to_ignore = controller->getActor();
-    
+
         if (scene->raycast(ray_start, ray_dir, ray_length, hit, PxHitFlag::eDEFAULT, filter_data))
-        { 
+        {
             for (PxU32 i = 0; i < hit.nbTouches; ++i)
             {
                 const PxRaycastHit& current_hit = hit.getTouch(i);
-    
+
                 if (!current_hit.actor || current_hit.actor == actor_to_ignore)
                     continue;
-    
+
                 if (current_hit.actor->userData)
                     return static_cast<Entity*>(current_hit.actor->userData);
             }
         }
-    
+
         return nullptr;
     }
 
@@ -896,11 +1080,11 @@ namespace spartan
             SP_LOG_WARNING("Only applicable for controller bodies.");
             return Vector3::Zero;
         }
-        
+
         PxCapsuleController* controller = static_cast<PxCapsuleController*>(m_controller);
         float height                    = controller->getHeight();
         float radius                    = controller->getRadius();
-        
+
         // for an average european male (1.8m), eye level is at ~1.65m from the ground
         // that's about 0.15m below the top of the head
         // this returns eye level position relative to capsule center (where camera should be)
@@ -913,11 +1097,11 @@ namespace spartan
         // return if state hasn't changed
         if (m_is_static == is_static)
             return;
-    
+
         // update static state
         m_is_static    = is_static;
         m_is_kinematic = false; // statics can't be kinematic
-     
+
         // recreate bodies to apply static/dynamic state
         Create();
     }
@@ -927,11 +1111,11 @@ namespace spartan
         // return if state hasn't changed
         if (m_is_kinematic == is_kinematic)
             return;
-    
+
         // update kinematic state
         m_is_kinematic = is_kinematic;
         m_is_static    = false; // kinematics require dynamic (non-static) bodies
-    
+
         Create(); // recreate body to apply changes
     }
 
@@ -965,7 +1149,7 @@ namespace spartan
         const float target_height       = crouch ? crouch_height : standing_height;
         const float delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
         const float speed               = 10.0f;
-        const float lerped_height       = math::lerp(current_height, target_height, 1.0f - exp(-speed * delta_time));  
+        const float lerped_height       = math::lerp(current_height, target_height, 1.0f - exp(-speed * delta_time));
         controller->resize(lerped_height);
 
         // ensure bottom of the capsule is touching the ground
@@ -981,7 +1165,16 @@ namespace spartan
         m_prev_rotation             = rotation;
         m_current_position          = position;
         m_current_rotation          = rotation;
-        
+
+        // for character controllers, use setPosition to teleport
+        if (m_body_type == BodyType::Controller && m_controller)
+        {
+            PxController* controller = static_cast<PxController*>(m_controller);
+            controller->setPosition(PxExtendedVec3(position.x, position.y, position.z));
+            m_velocity = Vector3::Zero; // reset movement velocity
+            return;
+        }
+
         // for vehicles, use the car body directly
         if (m_body_type == BodyType::Vehicle && car::body)
         {
@@ -989,7 +1182,7 @@ namespace spartan
             car::body->setGlobalPose(pose);
             car::body->setLinearVelocity(PxVec3(0, 0, 0));
             car::body->setAngularVelocity(PxVec3(0, 0, 0));
-            
+
             // reset wheel angular velocities
             for (int i = 0; i < 4; i++)
             {
@@ -1004,7 +1197,7 @@ namespace spartan
             PxRigidActor* actor = static_cast<PxRigidActor*>(m_actors[0]);
             PxTransform pose(PxVec3(position.x, position.y, position.z), PxQuat(rotation.x, rotation.y, rotation.z, rotation.w));
             actor->setGlobalPose(pose);
-            
+
             if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
             {
                 dynamic->setLinearVelocity(PxVec3(0, 0, 0));
@@ -1017,7 +1210,7 @@ namespace spartan
     {
         if (m_body_type != BodyType::Vehicle)
             return;
-        
+
         car::set_throttle(value);
     }
 
@@ -1025,7 +1218,7 @@ namespace spartan
     {
         if (m_body_type != BodyType::Vehicle)
             return;
-        
+
         car::set_brake(value);
     }
 
@@ -1033,7 +1226,7 @@ namespace spartan
     {
         if (m_body_type != BodyType::Vehicle)
             return;
-        
+
         car::set_steering(value);
     }
 
@@ -1041,7 +1234,7 @@ namespace spartan
     {
         if (m_body_type != BodyType::Vehicle)
             return;
-        
+
         car::set_handbrake(value);
     }
 
@@ -1057,7 +1250,7 @@ namespace spartan
         if (index >= 0 && index < static_cast<int>(WheelIndex::Count))
         {
             m_wheel_entities[index] = entity;
-            
+
             // sync the physics wheel offset from the entity position
             if (entity)
             {
@@ -1068,7 +1261,7 @@ namespace spartan
                     Vector3 vehicle_world_pos = vehicle_entity->GetPosition();
                     Quaternion vehicle_world_rot = vehicle_entity->GetRotation();
                     Quaternion vehicle_world_rot_inv = vehicle_world_rot.Conjugate();
-                    
+
                     // try to get the actual mesh center from the renderable's bounding box
                     Vector3 wheel_world_pos = entity->GetPosition();
                     Renderable* renderable = entity->GetComponent<Renderable>();
@@ -1078,7 +1271,7 @@ namespace spartan
                         BoundingBox aabb = renderable->GetBoundingBox();
                         wheel_world_pos = aabb.GetCenter();
                     }
-                    
+
                     Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
                     car::set_wheel_offset(index, local_pos.x, local_pos.z);
                 }
@@ -1109,9 +1302,9 @@ namespace spartan
         {
             // store base position so we can offset from it
             m_chassis_base_pos = entity->GetPositionLocal();
-            SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f), excluding %zu entities", 
+            SP_LOG_INFO("SetChassisEntity: chassis set to '%s', base_pos=(%.2f, %.2f, %.2f), excluding %zu entities",
                 entity->GetObjectName().c_str(), m_chassis_base_pos.x, m_chassis_base_pos.y, m_chassis_base_pos.z, entities_to_exclude.size());
-            
+
             // build convex hull shapes from the chassis mesh hierarchy
             BuildChassisConvexShapes(entity, entities_to_exclude);
         }
@@ -1120,21 +1313,21 @@ namespace spartan
             SP_LOG_WARNING("SetChassisEntity: entity is null!");
         }
     }
-    
+
     void Physics::BuildChassisConvexShapes(Entity* chassis_entity, const vector<Entity*>& entities_to_exclude)
     {
         if (!car::body || !chassis_entity)
             return;
-            
+
         PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         if (!physics)
             return;
-            
+
         // collect all entities with renderables in the hierarchy
         vector<Entity*> mesh_entities;
         mesh_entities.push_back(chassis_entity);
         chassis_entity->GetDescendants(&mesh_entities);
-        
+
         // helper to check if an entity should be excluded
         auto should_exclude = [&entities_to_exclude](Entity* ent) -> bool
         {
@@ -1142,7 +1335,7 @@ namespace spartan
             {
                 if (ent == excluded)
                     return true;
-                    
+
                 // also check if this entity is a descendant of an excluded entity
                 Entity* parent = ent->GetParent();
                 while (parent)
@@ -1154,7 +1347,7 @@ namespace spartan
             }
             return false;
         };
-        
+
         // filter to only entities with renderable components, excluding specified entities
         vector<pair<Entity*, Renderable*>> renderable_entities;
         for (Entity* ent : mesh_entities)
@@ -1164,25 +1357,22 @@ namespace spartan
                 continue;
             if (should_exclude(ent))
                 continue;
-                
+
             if (Renderable* renderable = ent->GetComponent<Renderable>())
             {
                 renderable_entities.push_back({ent, renderable});
             }
         }
-        
+
         if (renderable_entities.empty())
         {
             SP_LOG_WARNING("No renderable entities found in chassis hierarchy (after exclusions)");
             return;
         }
-        
-        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)", 
+
+        SP_LOG_INFO("BuildChassisConvexShapes: collecting vertices from %zu entities (excluded %zu)",
             renderable_entities.size(), entities_to_exclude.size());
-        
-        // clear existing chassis shapes
-        car::clear_chassis_shapes();
-        
+
         // the chassis entity's local transform relative to the vehicle (physics body)
         Vector3 chassis_local_pos = chassis_entity->GetPositionLocal();
         Quaternion chassis_local_rot = chassis_entity->GetRotationLocal();
@@ -1190,11 +1380,11 @@ namespace spartan
         Vector3 chassis_world_pos = chassis_entity->GetPosition();
         Quaternion chassis_world_rot = chassis_entity->GetRotation();
         Quaternion chassis_world_rot_inv = chassis_world_rot.Conjugate();
-        
+
         // collect ALL vertices from all meshes into a single list, transformed to vehicle body space
         vector<PxVec3> all_vertices;
         all_vertices.reserve(10000); // pre-allocate for performance
-        
+
         for (const auto& [ent, renderable] : renderable_entities)
         {
             // get geometry
@@ -1203,41 +1393,41 @@ namespace spartan
             renderable->GetGeometry(&indices, &vertices);
             if (vertices.empty())
                 continue;
-            
+
             // compute transform from entity space to vehicle body space
             Vector3 ent_world_pos = ent->GetPosition();
             Quaternion ent_world_rot = ent->GetRotation();
             Vector3 ent_scale = ent->GetScale();
-            
+
             // transform: entity local -> world -> chassis local -> vehicle body local
             for (const auto& vertex : vertices)
             {
                 // vertex in entity local space (scaled)
                 Vector3 v(vertex.pos[0] * ent_scale.x, vertex.pos[1] * ent_scale.y, vertex.pos[2] * ent_scale.z);
-                
+
                 // transform to world space
                 Vector3 world_v = ent_world_rot * v + ent_world_pos;
-                
+
                 // transform to chassis local space
                 Vector3 chassis_local_v = chassis_world_rot_inv * (world_v - chassis_world_pos);
-                
+
                 // apply chassis scale and transform to vehicle body space
                 chassis_local_v.x *= chassis_local_scale.x;
                 chassis_local_v.y *= chassis_local_scale.y;
                 chassis_local_v.z *= chassis_local_scale.z;
-                
+
                 Vector3 body_local_v = chassis_local_rot * chassis_local_v + chassis_local_pos;
-                
+
                 all_vertices.emplace_back(body_local_v.x, body_local_v.y, body_local_v.z);
             }
         }
-        
+
         if (all_vertices.empty())
         {
             SP_LOG_WARNING("No vertices collected for chassis convex shape");
             return;
         }
-        
+
         // subsample vertices if there are too many - physx convex hull works best with fewer points
         const size_t max_input_vertices = 512;
         if (all_vertices.size() > max_input_vertices)
@@ -1246,18 +1436,18 @@ namespace spartan
             size_t stride = all_vertices.size() / max_input_vertices;
             vector<PxVec3> subsampled;
             subsampled.reserve(max_input_vertices);
-            
+
             for (size_t i = 0; i < all_vertices.size() && subsampled.size() < max_input_vertices; i += stride)
             {
                 subsampled.push_back(all_vertices[i]);
             }
-            
+
             SP_LOG_INFO("BuildChassisConvexShapes: subsampled %zu vertices to %zu", all_vertices.size(), subsampled.size());
             all_vertices = std::move(subsampled);
         }
-        
+
         SP_LOG_INFO("BuildChassisConvexShapes: creating convex hull from %zu vertices", all_vertices.size());
-        
+
         // cooking parameters for convex hull generation
         PxTolerancesScale px_scale;
         px_scale.length = 1.0f;
@@ -1268,9 +1458,9 @@ namespace spartan
         params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
         params.meshWeldTolerance = 0.05f; // aggressive welding for cleaner hull
         params.gaussMapLimit = 32;
-        
+
         PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
-        
+
         // create a SINGLE convex hull from all collected vertices
         // physx will compute the convex hull automatically
         PxConvexMeshDesc mesh_desc;
@@ -1279,7 +1469,7 @@ namespace spartan
         mesh_desc.points.data = all_vertices.data();
         mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX | PxConvexFlag::eSHIFT_VERTICES;
         mesh_desc.vertexLimit = 64; // limit output hull complexity
-        
+
         PxConvexMeshCookingResult::Enum condition;
         PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
         if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
@@ -1289,27 +1479,21 @@ namespace spartan
                 convex_mesh->release();
             return;
         }
-        
-        // attach the single convex shape at identity pose (vertices are already in body space)
-        PxTransform local_pose(PxIdentity);
+
+        // extract the actual convex hull vertices from physx for visualization
         PxU32 hull_vert_count = convex_mesh->getNbVertices();
-        
-        if (!car::attach_chassis_convex_shape(convex_mesh, local_pose, physics))
+        const PxVec3* hull_verts = convex_mesh->getVertices();
+        std::vector<PxVec3> convex_hull_vertices(hull_verts, hull_verts + hull_vert_count);
+
+        if (!car::set_chassis(convex_mesh, convex_hull_vertices, physics))
         {
-            SP_LOG_ERROR("Failed to attach chassis convex shape");
+            SP_LOG_ERROR("Failed to set chassis");
             convex_mesh->release();
             return;
         }
-        
+
         convex_mesh->release();
-        
-        // update mass properties after adding the shape
-        car::update_mass_properties();
-        
-        // compute aerodynamic properties from the shape
-        car::compute_aero_from_shape(all_vertices);
-        
-        SP_LOG_INFO("BuildChassisConvexShapes: created single convex hull with %u vertices from %zu source vertices", 
+        SP_LOG_INFO("BuildChassisConvexShapes: created hull with %u verts from %zu source verts",
             hull_vert_count, all_vertices.size());
     }
 
@@ -1322,32 +1506,32 @@ namespace spartan
         }
 
         m_wheel_radius = radius;
-        
+
         // update the wheel radius in vehicle config (for physics contact calculations)
         car::cfg.wheel_radius = radius;
-        
+
         // recalculate and update body height based on actual wheel radius
         if (car::body)
         {
             // calculate correct body height using actual spring stiffness
             float front_mass_per_wheel = car::cfg.mass * 0.40f * 0.5f;
-            float front_omega = 2.0f * math::pi * car::tuning::front_spring_freq;
+            float front_omega = 2.0f * math::pi * car::tuning::spec.front_spring_freq;
             float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
             float front_load = front_mass_per_wheel * 9.81f;
             float expected_sag = std::clamp(front_load / front_stiffness, 0.0f, car::cfg.suspension_travel * 0.8f);
             const float correct_body_height = radius + car::cfg.suspension_height + expected_sag;
-            
+
             // update body position with correct height
             PxTransform pose = car::body->getGlobalPose();
             pose.p.y = correct_body_height;
             car::body->setGlobalPose(pose);
-            
+
             // recompute wheel constants with new radius
             car::compute_constants();
-            
+
             SP_LOG_INFO("SetWheelRadius: adjusted body height to %.3f for radius %.3f", correct_body_height, radius);
         }
-        
+
         SP_LOG_INFO("SetWheelRadius: wheel radius set to %.3f", radius);
     }
 
@@ -1374,20 +1558,20 @@ namespace spartan
         // get the aabb - this is in world space (transformed by entity matrix including scale)
         BoundingBox aabb = renderable->GetBoundingBox();
         Vector3 extents = aabb.GetExtents(); // half-sizes, already scaled
-        
+
         // the wheel radius is the largest extent (wheels are usually symmetric)
         // for a wheel mesh, this gives us the actual visual radius
         float radius = max(max(extents.x, extents.y), extents.z);
-        
+
         // compute the offset from entity origin to mesh center
         // this handles meshes that don't have their origin at geometric center
         Vector3 aabb_center = aabb.GetCenter();
         Vector3 entity_pos = wheel_entity->GetPosition();
         m_wheel_mesh_center_offset_y = aabb_center.y - entity_pos.y;
-        
+
         SetWheelRadius(radius);
-        
-        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f, center_offset_y=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)", 
+
+        SP_LOG_INFO("ComputeWheelRadiusFromEntity: computed radius=%.3f, center_offset_y=%.3f from entity '%s' (extents: %.3f, %.3f, %.3f)",
             radius, m_wheel_mesh_center_offset_y, wheel_entity->GetObjectName().c_str(), extents.x, extents.y, extents.z);
     }
 
@@ -1510,215 +1694,284 @@ namespace spartan
             return 1.0f;
         return car::get_wheel_temp_grip_factor(static_cast<int>(wheel));
     }
-    
+
     float Physics::GetWheelBrakeTemp(WheelIndex wheel) const
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_wheel_brake_temp(static_cast<int>(wheel));
     }
-    
+
     float Physics::GetWheelBrakeEfficiency(WheelIndex wheel) const
     {
         if (m_body_type != BodyType::Vehicle)
             return 1.0f;
         return car::get_wheel_brake_efficiency(static_cast<int>(wheel));
     }
-    
+
     void Physics::SetAbsEnabled(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)
             car::set_abs_enabled(enabled);
     }
-    
+
     bool Physics::GetAbsEnabled() const
     {
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::get_abs_enabled();
     }
-    
+
     bool Physics::IsAbsActive(WheelIndex wheel) const
     {
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::is_abs_active(static_cast<int>(wheel));
     }
-    
+
     bool Physics::IsAbsActiveAny() const
     {
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::is_abs_active_any();
     }
-    
+
     void Physics::SetTcEnabled(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)
             car::set_tc_enabled(enabled);
     }
-    
+
     bool Physics::GetTcEnabled() const
     {
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::get_tc_enabled();
     }
-    
+
     bool Physics::IsTcActive() const
     {
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::is_tc_active();
     }
-    
+
     float Physics::GetTcReduction() const
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_tc_reduction();
     }
-    
+
     void Physics::SetTurboEnabled(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)
             car::set_turbo_enabled(enabled);
     }
-    
+
     bool Physics::GetTurboEnabled() const
     {
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::get_turbo_enabled();
     }
-    
+
     float Physics::GetBoostPressure() const
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_boost_pressure();
     }
-    
+
     float Physics::GetBoostMaxPressure() const
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_boost_max_pressure();
     }
-    
+
+    // drs
+    void Physics::SetDrsEnabled(bool enabled)
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::set_drs_enabled(enabled);
+    }
+
+    bool Physics::GetDrsEnabled() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::get_drs_enabled();
+    }
+
+    void Physics::SetDrsActive(bool active)
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::set_drs_active(active);
+    }
+
+    bool Physics::GetDrsActive() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return false;
+        return car::get_drs_active();
+    }
+
+    // differential
+    void Physics::SetDiffType(int type)
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::set_diff_type(type);
+    }
+
+    int Physics::GetDiffType() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 2;
+        return car::get_diff_type();
+    }
+
+    const char* Physics::GetDiffTypeName() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return "N/A";
+        return car::get_diff_type_name();
+    }
+
+    // tire wear
+    float Physics::GetWheelWear(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 0.0f;
+        return car::get_wheel_wear(static_cast<int>(wheel));
+    }
+
+    float Physics::GetWheelWearGripFactor(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+            return 1.0f;
+        return car::get_wheel_wear_grip_factor(static_cast<int>(wheel));
+    }
+
+    void Physics::ResetTireWear()
+    {
+        if (m_body_type == BodyType::Vehicle)
+            car::reset_tire_wear();
+    }
+
     void Physics::SetManualTransmission(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)
             car::set_manual_transmission(enabled);
     }
-    
+
     bool Physics::GetManualTransmission() const
     {
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::get_manual_transmission();
     }
-    
+
     void Physics::ShiftUp()
     {
         if (m_body_type == BodyType::Vehicle)
             car::shift_up();
     }
-    
+
     void Physics::ShiftDown()
     {
         if (m_body_type == BodyType::Vehicle)
             car::shift_down();
     }
-    
+
     void Physics::ShiftToNeutral()
     {
         if (m_body_type == BodyType::Vehicle)
             car::shift_to_neutral();
     }
-    
+
     int Physics::GetCurrentGear() const
     {
         if (m_body_type != BodyType::Vehicle)
             return 1; // neutral
         return car::get_current_gear();
     }
-    
+
     const char* Physics::GetCurrentGearString() const
     {
         if (m_body_type != BodyType::Vehicle)
             return "N";
         return car::get_current_gear_string();
     }
-    
+
     float Physics::GetEngineRPM() const
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_current_engine_rpm();
     }
-    
+
     float Physics::GetEngineTorque() const
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_engine_torque_current();
     }
-    
+
     float Physics::GetIdleRPM() const
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_idle_rpm();
     }
-    
+
     float Physics::GetRedlineRPM() const
     {
         if (m_body_type != BodyType::Vehicle)
             return 0.0f;
         return car::get_redline_rpm();
     }
-    
+
     bool Physics::IsShifting() const
     {
         if (m_body_type != BodyType::Vehicle)
             return false;
         return car::get_is_shifting();
     }
-    
+
     void Physics::SetDrawRaycasts(bool enabled)
     {
         car::set_draw_raycasts(enabled);
     }
-    
+
     bool Physics::GetDrawRaycasts() const
     {
         return car::get_draw_raycasts();
     }
-    
+
     void Physics::SetDrawSuspension(bool enabled)
     {
         car::set_draw_suspension(enabled);
     }
-    
+
     bool Physics::GetDrawSuspension() const
     {
         return car::get_draw_suspension();
     }
-    
+
     void Physics::DrawDebugVisualization()
     {
         if (m_body_type != BodyType::Vehicle)
             return;
-        
+
         using namespace physx;
-        
+
         // colors for visualization
         const Color color_ray_hit    = Color(0.0f, 1.0f, 0.0f, 1.0f);   // green - ray hit ground
         const Color color_ray_miss   = Color(1.0f, 0.0f, 0.0f, 1.0f);   // red - ray missed
         const Color color_susp_top   = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - suspension top
         const Color color_susp_bot   = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - suspension bottom/wheel
-        
+
         // draw raycasts
         if (car::get_draw_raycasts())
         {
@@ -1730,15 +1983,15 @@ namespace spartan
                     PxVec3 origin, hit_point;
                     bool hit;
                     car::get_debug_ray(w, r, origin, hit_point, hit);
-                    
+
                     math::Vector3 from(origin.x, origin.y, origin.z);
                     math::Vector3 to(hit_point.x, hit_point.y, hit_point.z);
-                    
+
                     Renderer::DrawLine(from, to, hit ? color_ray_hit : color_ray_miss, hit ? color_ray_hit : color_ray_miss);
                 }
             }
         }
-        
+
         // draw suspension
         if (car::get_draw_suspension())
         {
@@ -1746,139 +1999,40 @@ namespace spartan
             {
                 PxVec3 top, bottom;
                 car::get_debug_suspension(w, top, bottom);
-                
+
                 math::Vector3 susp_top(top.x, top.y, top.z);
                 math::Vector3 susp_bottom(bottom.x, bottom.y, bottom.z);
-                
+
                 Renderer::DrawLine(susp_top, susp_bottom, color_susp_top, color_susp_bot);
             }
         }
-        
-        // draw aerodynamics
-        if (car::get_draw_aero())
-        {
-            const car::aero_debug_data& aero = car::get_aero_debug();
-            
-            // colors for aero visualization
-            const Color color_velocity   = Color(1.0f, 1.0f, 1.0f, 1.0f);   // white - velocity vector
-            const Color color_drag       = Color(1.0f, 0.3f, 0.0f, 1.0f);   // orange - drag force
-            const Color color_downforce  = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - downforce
-            const Color color_side       = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - side force
-            const Color color_ground_eff = Color(0.0f, 1.0f, 0.5f, 1.0f);   // cyan - ground effect
-            const Color color_aero_point = Color(1.0f, 0.0f, 1.0f, 1.0f);   // magenta - aero application points
-            
-            // scale factors for visualization
-            // forces in Newtons - a typical car has 500-2000N of aero forces at speed
-            const float force_scale = 0.002f;      // 1000N = 2 meter arrow
-            const float velocity_scale = 0.15f;    // 30 m/s = 4.5 meter arrow
-            
-            // always show aero application points even when stationary
-            // offset car_pos upward so arrows are visible above the car body
-            Vector3 car_pos(aero.position.x, aero.position.y + 0.8f, aero.position.z);
-            Vector3 front_pos(aero.front_aero_pos.x, aero.front_aero_pos.y, aero.front_aero_pos.z);
-            Vector3 rear_pos(aero.rear_aero_pos.x, aero.rear_aero_pos.y, aero.rear_aero_pos.z);
-            
-            // draw aero application points (always visible) - larger circles for visibility
-            Renderer::DrawCircle(front_pos, Vector3::Up, 0.35f, 16, color_aero_point);
-            Renderer::DrawCircle(rear_pos, Vector3::Up, 0.35f, 16, color_aero_point);
-            
-            // draw lines connecting front/rear to center for clarity
-            Renderer::DrawLine(front_pos, car_pos, color_aero_point, color_aero_point);
-            Renderer::DrawLine(rear_pos, car_pos, color_aero_point, color_aero_point);
-            
-            if (aero.valid)
-            {
-                // velocity vector (white arrow)
-                if (aero.velocity.magnitude() > 1.0f)
-                {
-                    Vector3 vel_end = car_pos + Vector3(aero.velocity.x, aero.velocity.y, aero.velocity.z) * velocity_scale;
-                    Renderer::DrawDirectionalArrow(car_pos, vel_end, 0.15f, color_velocity);
-                }
-                
-                // drag force (orange arrow, opposite to velocity)
-                float drag_mag = aero.drag_force.magnitude();
-                if (drag_mag > 10.0f) // low threshold to see it at low speeds too
-                {
-                    Vector3 drag_end = car_pos + Vector3(aero.drag_force.x, aero.drag_force.y, aero.drag_force.z) * force_scale;
-                    Renderer::DrawDirectionalArrow(car_pos, drag_end, 0.12f, color_drag);
-                }
-                
-                // front downforce (blue arrow pointing down)
-                float front_df_mag = aero.front_downforce.magnitude();
-                if (front_df_mag > 10.0f)
-                {
-                    Vector3 front_df_end = front_pos + Vector3(aero.front_downforce.x, aero.front_downforce.y, aero.front_downforce.z) * force_scale;
-                    Renderer::DrawDirectionalArrow(front_pos, front_df_end, 0.12f, color_downforce);
-                    
-                    // draw circle at front aero point
-                    Renderer::DrawCircle(front_pos, Vector3::Up, 0.2f, 12, color_downforce);
-                }
-                
-                // rear downforce (blue arrow pointing down)
-                float rear_df_mag = aero.rear_downforce.magnitude();
-                if (rear_df_mag > 10.0f)
-                {
-                    Vector3 rear_df_end = rear_pos + Vector3(aero.rear_downforce.x, aero.rear_downforce.y, aero.rear_downforce.z) * force_scale;
-                    Renderer::DrawDirectionalArrow(rear_pos, rear_df_end, 0.12f, color_downforce);
-                    
-                    // draw circle at rear aero point
-                    Renderer::DrawCircle(rear_pos, Vector3::Up, 0.2f, 12, color_downforce);
-                }
-                
-                // side force (yellow arrow)
-                float side_mag = aero.side_force.magnitude();
-                if (side_mag > 10.0f)
-                {
-                    Vector3 side_end = car_pos + Vector3(aero.side_force.x, aero.side_force.y, aero.side_force.z) * force_scale;
-                    Renderer::DrawDirectionalArrow(car_pos, side_end, 0.12f, color_side);
-                }
-                
-                // ground effect indicator (green circles at car position, size based on effect strength)
-                if (aero.ground_effect_factor > 1.02f)
-                {
-                    float effect_radius = 0.3f + (aero.ground_effect_factor - 1.0f) * 0.8f;
-                    Vector3 ground_pos = car_pos;
-                    ground_pos.y -= aero.ride_height; // at ground level
-                    Renderer::DrawCircle(ground_pos, Vector3::Up, effect_radius, 16, color_ground_eff);
-                }
-            }
-        }
+
     }
-    
-    void Physics::SetDrawAero(bool enabled)
-    {
-        car::set_draw_aero(enabled);
-    }
-    
-    bool Physics::GetDrawAero() const
-    {
-        return car::get_draw_aero();
-    }
-    
+
     void Physics::SyncWheelOffsetsFromEntities()
     {
         if (m_body_type != BodyType::Vehicle)
             return;
-        
+
         Entity* vehicle_entity = GetEntity();
         if (!vehicle_entity)
             return;
-        
+
         // get vehicle's world transform to convert wheel world positions to vehicle-local space
         Vector3 vehicle_world_pos = vehicle_entity->GetPosition();
         Quaternion vehicle_world_rot = vehicle_entity->GetRotation();
         Quaternion vehicle_world_rot_inv = vehicle_world_rot.Conjugate();
-        
+
         for (int i = 0; i < static_cast<int>(WheelIndex::Count); i++)
         {
             Entity* wheel_entity = m_wheel_entities[i];
             if (!wheel_entity)
                 continue;
-            
+
             // try to get the actual mesh center from the renderable's bounding box
             // this handles meshes where the origin is not at the geometric center
             Vector3 wheel_world_pos = wheel_entity->GetPosition();
-            
+
             Renderable* renderable = wheel_entity->GetComponent<Renderable>();
             if (renderable)
             {
@@ -1886,21 +2040,21 @@ namespace spartan
                 BoundingBox aabb = renderable->GetBoundingBox();
                 wheel_world_pos = aabb.GetCenter(); // use mesh center instead of entity origin
             }
-            
+
             // transform to vehicle-local space
             // this handles cases where wheel is a child of an intermediate entity (e.g. "model")
             Vector3 local_pos = vehicle_world_rot_inv * (wheel_world_pos - vehicle_world_pos);
-            
+
             // update the physics wheel offset x and z to match the mesh position
             car::set_wheel_offset(i, local_pos.x, local_pos.z);
         }
     }
-    
+
     void Physics::SetCenterOfMassOffset(const Vector3& offset)
     {
         SetCenterOfMassOffset(offset.x, offset.y, offset.z);
     }
-    
+
     void Physics::SetCenterOfMassOffset(float x, float y, float z)
     {
         if (m_body_type != BodyType::Vehicle)
@@ -1908,22 +2062,22 @@ namespace spartan
             SP_LOG_WARNING("SetCenterOfMassOffset only works with Vehicle body type");
             return;
         }
-        
+
         car::set_center_of_mass(x, y, z);
     }
-    
+
     Vector3 Physics::GetCenterOfMassOffset() const
     {
         if (m_body_type != BodyType::Vehicle)
             return Vector3::Zero;
-            
+
         return Vector3(car::get_center_of_mass_x(), car::get_center_of_mass_y(), car::get_center_of_mass_z());
     }
-    
+
     void Physics::SetMeshConvexSourceEntity(Entity* entity)
     {
         m_mesh_convex_source = entity;
-        
+
         // if body type is already MeshConvex, recreate the physics shapes
         if (m_body_type == BodyType::MeshConvex)
         {
@@ -1940,7 +2094,7 @@ namespace spartan
         float steering = car::get_steering();
         const float max_steering_angle = 35.0f * math::deg_to_rad;
         float steering_angle = steering * max_steering_angle;
-        
+
         // get suspension parameters for position calculation
         float suspension_height = car::cfg.suspension_height;
         float suspension_travel = car::cfg.suspension_travel;
@@ -1959,7 +2113,7 @@ namespace spartan
             // compression: 0 = fully extended (wheel at lowest), 1 = fully compressed (wheel at highest)
             float compression = car::get_wheel_compression(i);
             Vector3 current_pos = wheel_entity->GetPositionLocal();
-            
+
             // base Y is at -suspension_height (fully extended position)
             // as compression increases, wheel moves UP by compression * suspension_travel
             // subtract mesh center offset to account for meshes with non-centered origin
@@ -1976,7 +2130,7 @@ namespace spartan
             {
                 steer_rotation = Quaternion::FromAxisAngle(Vector3::Up, steering_angle);
             }
-            
+
             // mirror rotation for right side wheels
             Quaternion mirror_rotation = Quaternion::Identity;
             if (is_right_wheel)
@@ -1997,6 +2151,12 @@ namespace spartan
     {
         // clear previous state
         Remove();
+
+        // auto-detect body type if not explicitly set
+        if (m_body_type == BodyType::Max)
+        {
+            m_body_type = DetectBodyType();
+        }
 
         PxPhysics* physics = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         PxScene* scene     = static_cast<PxScene*>(PhysicsWorld::GetScene());
@@ -2026,18 +2186,18 @@ namespace spartan
             desc.contactOffset    = 0.01f; // allows early contact without tunneling
             desc.upDirection      = PxVec3(0, 1, 0); // up is y
             desc.nonWalkableMode  = PxControllerNonWalkableMode::ePREVENT_CLIMBING_AND_FORCE_SLIDING;
-            
+
             // optional but recommended: disable callbacks unless needed
             desc.reportCallback   = nullptr;
             desc.behaviorCallback = nullptr;
-            
+
             // apply initial position
             const Vector3& pos = GetEntity()->GetPosition();
             desc.position      = PxExtendedVec3(pos.x, pos.y, pos.z);
-            
+
             // assign material
             desc.material = static_cast<PxMaterial*>(m_material);
-            
+
             // create controller
             m_controller = static_cast<PxControllerManager*>(controller_manager)->createController(desc);
             if (!m_controller)
@@ -2047,31 +2207,26 @@ namespace spartan
                 m_material = nullptr;
                 return;
             }
-            
+
             // note: the controller internally references the material, so don't release m_material here
             // it will be released in Remove() when the controller is destroyed
         }
         else if (m_body_type == BodyType::Vehicle)
         {
-            // create vehicle
-            if (car::create(physics, scene))
+            car::setup_params params;
+            params.physics = physics;
+            params.scene   = scene;
+
+            if (car::setup(params))
             {
-                // store the rigid body actor
                 m_actors.resize(1, nullptr);
                 m_actors[0] = car::body;
                 m_actors_active.resize(1, true);
-                
-                // set initial position - use physics-calculated height for proper ground contact
-                // car::create already set correct body height accounting for suspension sag
-                // we just use entity's X and Z, but keep the physics Y
+
                 Vector3 pos = GetEntity()->GetPosition();
                 PxTransform current_pose = car::body->getGlobalPose();
                 car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
-                
-                // store user data for raycasts
                 car::body->userData = reinterpret_cast<void*>(GetEntity());
-                
-                SP_LOG_INFO("vehicle physics body created successfully");
             }
             else
             {
@@ -2082,19 +2237,19 @@ namespace spartan
         {
             // compound shape built from convex hulls of entity hierarchy meshes
             // this walks all descendants of a source entity and creates a convex hull for each mesh
-            
+
             Entity* source_entity = m_mesh_convex_source ? m_mesh_convex_source : GetEntity();
             if (!source_entity)
             {
                 SP_LOG_ERROR("No source entity for MeshConvex body type");
                 return;
             }
-            
+
             // collect all entities with renderables in the hierarchy
             vector<Entity*> mesh_entities;
             mesh_entities.push_back(source_entity);
             source_entity->GetDescendants(&mesh_entities);
-            
+
             // filter to only entities with renderable components
             vector<pair<Entity*, Renderable*>> renderable_entities;
             for (Entity* entity : mesh_entities)
@@ -2104,13 +2259,13 @@ namespace spartan
                     renderable_entities.push_back({entity, renderable});
                 }
             }
-            
+
             if (renderable_entities.empty())
             {
                 SP_LOG_ERROR("No renderable entities found in hierarchy for MeshConvex");
                 return;
             }
-            
+
             // create the rigid body at the physics entity's transform
             Vector3 body_pos = GetEntity()->GetPosition();
             Quaternion body_rot = GetEntity()->GetRotation();
@@ -2118,7 +2273,7 @@ namespace spartan
                 PxVec3(body_pos.x, body_pos.y, body_pos.z),
                 PxQuat(body_rot.x, body_rot.y, body_rot.z, body_rot.w)
             );
-            
+
             PxRigidActor* actor = nullptr;
             if (IsStatic())
             {
@@ -2136,13 +2291,13 @@ namespace spartan
                     dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
                 }
             }
-            
+
             if (!actor)
             {
                 SP_LOG_ERROR("Failed to create rigid actor for MeshConvex");
                 return;
             }
-            
+
             // cooking parameters for convex hull generation
             PxTolerancesScale px_scale;
             px_scale.length = 1.0f;
@@ -2153,13 +2308,13 @@ namespace spartan
             params.meshPreprocessParams |= PxMeshPreprocessingFlag::eWELD_VERTICES;
             params.meshWeldTolerance = 0.01f;
             params.gaussMapLimit = 32;
-            
+
             PxInsertionCallback* insertion_callback = PxGetStandaloneInsertionCallback();
             PxMaterial* material = static_cast<PxMaterial*>(m_material);
-            
+
             // inverse transform to convert world positions to body-local space
             Quaternion body_rot_inv = body_rot.Conjugate();
-            
+
             int shapes_created = 0;
             for (const auto& [entity, renderable] : renderable_entities)
             {
@@ -2169,7 +2324,7 @@ namespace spartan
                 renderable->GetGeometry(&indices, &vertices);
                 if (vertices.empty())
                     continue;
-                
+
                 // simplify geometry for physics (use moderate detail for convex hulls)
                 const size_t max_convex_verts = 256; // physx limit
                 if (vertices.size() > max_convex_verts)
@@ -2177,16 +2332,16 @@ namespace spartan
                     const size_t target_index_count = min<size_t>(indices.size(), max_convex_verts * 3);
                     geometry_processing::simplify(indices, vertices, target_index_count, false, false);
                 }
-                
+
                 // compute the local transform of this entity relative to the physics body
                 Vector3 entity_world_pos = entity->GetPosition();
                 Quaternion entity_world_rot = entity->GetRotation();
                 Vector3 entity_scale = entity->GetScale();
-                
+
                 // transform entity position to body-local space
                 Vector3 local_pos = body_rot_inv * (entity_world_pos - body_pos);
                 Quaternion local_rot = body_rot_inv * entity_world_rot;
-                
+
                 // convert vertices to physx format in entity-local space (with scale)
                 vector<PxVec3> px_vertices;
                 px_vertices.reserve(vertices.size());
@@ -2198,14 +2353,14 @@ namespace spartan
                         vertex.pos[2] * entity_scale.z
                     );
                 }
-                
+
                 // create convex mesh
                 PxConvexMeshDesc mesh_desc;
                 mesh_desc.points.count = static_cast<PxU32>(px_vertices.size());
                 mesh_desc.points.stride = sizeof(PxVec3);
                 mesh_desc.points.data = px_vertices.data();
                 mesh_desc.flags = PxConvexFlag::eCOMPUTE_CONVEX;
-                
+
                 PxConvexMeshCookingResult::Enum condition;
                 PxConvexMesh* convex_mesh = PxCreateConvexMesh(params, mesh_desc, *insertion_callback, &condition);
                 if (!convex_mesh || condition != PxConvexMeshCookingResult::eSUCCESS)
@@ -2215,7 +2370,7 @@ namespace spartan
                         convex_mesh->release();
                     continue;
                 }
-                
+
                 // create shape with local pose relative to body
                 PxConvexMeshGeometry geometry(convex_mesh);
                 PxShape* shape = physics->createShape(geometry, *material);
@@ -2232,17 +2387,17 @@ namespace spartan
                     shape->release(); // actor owns the shape now
                     shapes_created++;
                 }
-                
+
                 convex_mesh->release(); // shape holds its own reference
             }
-            
+
             if (shapes_created == 0)
             {
                 SP_LOG_ERROR("No convex shapes were created for MeshConvex");
                 actor->release();
                 return;
             }
-            
+
             // update mass and inertia based on compound shape
             if (PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>())
             {
@@ -2256,14 +2411,14 @@ namespace spartan
                     PxRigidBodyExt::setMassAndUpdateInertia(*dynamic, m_mass);
                 }
             }
-            
+
             actor->userData = reinterpret_cast<void*>(GetEntity());
             PhysicsWorld::AddActor(actor);
-            
+
             m_actors.resize(1, nullptr);
             m_actors[0] = actor;
             m_actors_active.resize(1, true);
-            
+
             SP_LOG_INFO("MeshConvex created: %d convex shapes from %zu entities", shapes_created, renderable_entities.size());
         }
         else
@@ -2297,7 +2452,7 @@ namespace spartan
                 const size_t max_index_count    = 16'000;
                 const size_t target_index_count = clamp<size_t>(static_cast<size_t>(indices.size() * volume_factor), min_index_count, max_index_count);
                 geometry_processing::simplify(indices, vertices, target_index_count, false, false);
-                
+
                 // warn if we hit the complexity cap (original mesh was very detailed)
                 if (indices.size() > max_index_count && target_index_count == max_index_count)
                 {
@@ -2313,12 +2468,46 @@ namespace spartan
                     px_vertices.emplace_back(vertex.pos[0] * scale.x, vertex.pos[1] * scale.y, vertex.pos[2] * scale.z);
                 }
 
+                // remove degenerate triangles (zero/near-zero area) that would cause physx cooking to fail
+                {
+                    const float area_epsilon = 1e-6f;
+                    vector<uint32_t> valid_indices;
+                    valid_indices.reserve(indices.size());
+
+                    for (size_t i = 0; i < indices.size(); i += 3)
+                    {
+                        const PxVec3& v0 = px_vertices[indices[i]];
+                        const PxVec3& v1 = px_vertices[indices[i + 1]];
+                        const PxVec3& v2 = px_vertices[indices[i + 2]];
+
+                        // compute triangle area via cross product
+                        PxVec3 edge1 = v1 - v0;
+                        PxVec3 edge2 = v2 - v0;
+                        float area   = edge1.cross(edge2).magnitude() * 0.5f;
+
+                        if (area > area_epsilon)
+                        {
+                            valid_indices.push_back(indices[i]);
+                            valid_indices.push_back(indices[i + 1]);
+                            valid_indices.push_back(indices[i + 2]);
+                        }
+                    }
+
+                    indices = move(valid_indices);
+                }
+
+                if (indices.empty())
+                {
+                    SP_LOG_WARNING("Mesh '%s' has no valid triangles after degenerate removal, skipping physics", GetEntity()->GetObjectName().c_str());
+                    return;
+                }
+
                 // cooking parameters
                 PxTolerancesScale _scale;
                 _scale.length                          = 1.0f;                         // 1 unit = 1 meter
                 Vector3 gravity                        = PhysicsWorld::GetGravity();
                 _scale.speed                           = sqrtf(gravity.x * gravity.x + gravity.y * gravity.y + gravity.z * gravity.z); // magnitude of gravity vector
-                PxCookingParams params(_scale);         
+                PxCookingParams params(_scale);
                 params.areaTestEpsilon                 = 0.06f * _scale.length * _scale.length;
                 params.planeTolerance                  = 0.0007f;
                 params.convexMeshCookingType           = PxConvexMeshCookingType::eQUICKHULL;
@@ -2389,20 +2578,16 @@ namespace spartan
     {
         PxPhysics* physics      = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
         Renderable* renderable  = GetEntity()->GetComponent<Renderable>();
-        
-        if (!renderable)
-        {
-            SP_LOG_ERROR("No Renderable component found for physics body creation");
-            return;
-        }
+
+        // determine instance count - use renderable if available, otherwise single instance
+        const uint32_t instance_count = renderable ? renderable->GetInstanceCount() : 1;
 
         // create bodies and shapes
-        const uint32_t instance_count = renderable->GetInstanceCount();
         m_actors.resize(instance_count, nullptr);
         m_actors_active.resize(instance_count, true); // all actors start active
         for (uint32_t i = 0; i < instance_count; i++)
         {
-            math::Matrix transform = renderable->HasInstancing() ? renderable->GetInstance(i, true) : GetEntity()->GetMatrix();
+            math::Matrix transform = (renderable && renderable->HasInstancing()) ? renderable->GetInstance(i, true) : GetEntity()->GetMatrix();
             PxTransform pose(
                 PxVec3(transform.GetTranslation().x, transform.GetTranslation().y, transform.GetTranslation().z),
                 PxQuat(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z, transform.GetRotation().w)
@@ -2429,7 +2614,7 @@ namespace spartan
                     dynamic->setRigidDynamicLockFlags(build_lock_flags(m_position_lock, m_rotation_lock));
                 }
             }
-        
+
             PxShape* shape       = nullptr;
             PxMaterial* material = static_cast<PxMaterial*>(m_material);
             switch (m_body_type)
@@ -2486,7 +2671,7 @@ namespace spartan
                     break;
                 }
             }
-            
+
             if (shape)
             {
                 shape->setFlag(PxShapeFlag::eVISUALIZATION, true);

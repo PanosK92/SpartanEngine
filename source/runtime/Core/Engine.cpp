@@ -35,7 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Display/Display.h"
 #include "../Game/Game.h"
 #include "../Memory/Allocator.h"
+#include "../Testing/SmokeTest.h"
 #include "../RHI/RHI_Device.h"
+#include "../XR/Xr.h"
 #include "../Commands/Console/ConsoleCommands.h"
 #include "Settings.h"
 //===========================================
@@ -51,19 +53,6 @@ namespace spartan
     {
         vector<string> arguments;
         uint32_t flags = 0;
-
-        void write_ci_test_file(const uint32_t value)
-        {
-            if (Engine::HasArgument("-ci_test"))
-            {
-                ofstream file("ci_test.txt"); 
-                if (file.is_open())
-                {
-                    file << value;
-                    file.close();
-                }
-            }
-        }
     }
 
     void Engine::Initialize(const vector<string>& args)
@@ -89,8 +78,10 @@ namespace spartan
             Profiler::Initialize();
             PhysicsWorld::Initialize();
             Renderer::Initialize();
+            Window::PumpEvents();
             World::Initialize();
             Settings::Initialize();
+            SmokeTest::Initialize();
         }
 
         // post-initialize
@@ -104,11 +95,12 @@ namespace spartan
                 ConsoleRegistry::Get().SetValueFromString("r.ray_traced_shadows", std::to_string(static_cast<float>(ray_tracing_supported)));
             }
 
-            ResourceCache::LoadDefaultResources(); // requires rhi to be initialized so they can be uploaded to the gpu
+            Window::PumpEvents();
+            ResourceCache::LoadDefaultResources();
+            Window::PumpEvents();
         }
 
         SP_LOG_INFO("%s has been initialized. Duration %.1f sec", version::c_str(), timer_initialize.GetElapsedTimeSec());
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION_STATIC(write_ci_test_file(0);));
     }
 
     void Engine::Shutdown()
@@ -122,8 +114,9 @@ namespace spartan
         ResourceCache::Shutdown();
         ResourceCache::UnloadDefaultResources();
 
-        World::Shutdown();
         PhysicsWorld::Shutdown();
+        World::Shutdown();
+        Xr::Shutdown();
         Renderer::Shutdown();
    
         Event::Shutdown();
@@ -138,13 +131,28 @@ namespace spartan
         // pre-tick
         Input::PreTick();
 
+        // ctrl+0 to toggle xr
+        if ((Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right)) && Input::GetKeyDown(KeyCode::Alpha0))
+        {
+            if (!Xr::IsAvailable())
+            {
+                Xr::Initialize();
+            }
+            else
+            {
+                Xr::Shutdown();
+            }
+        }
+
         // tick
         Window::Tick();
         Input::Tick();
         PhysicsWorld::Tick();
         World::Tick();
+        Xr::Tick();
         Renderer::Tick();
         Allocator::Tick();
+        SmokeTest::Tick();
 
         // post-tick
         Timer::PostTick();

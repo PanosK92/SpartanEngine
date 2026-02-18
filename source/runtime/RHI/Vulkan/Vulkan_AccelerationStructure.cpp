@@ -82,11 +82,22 @@ namespace spartan
             m_scratch_buffer_size = 0;
         }
 
-        if (m_instance_buffer)
+        // destroy double-buffered instance and staging buffers
+        for (uint32_t i = 0; i < buffer_count; i++)
         {
-            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_instance_buffer);
-            m_instance_buffer      = nullptr;
-            m_instance_buffer_size = 0;
+            if (m_instance_buffer[i])
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_instance_buffer[i]);
+                m_instance_buffer[i]      = nullptr;
+                m_instance_buffer_size[i] = 0;
+            }
+
+            if (m_staging_buffer[i])
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer[i]);
+                m_staging_buffer[i]      = nullptr;
+                m_staging_buffer_size[i] = 0;
+            }
         }
 
         m_size = 0;
@@ -189,15 +200,21 @@ namespace spartan
         as_build(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos.data());
 
         // barrier: ensure build completes before use
-        VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-        barrier.srcAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        barrier.dstAccessMask   = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(
-            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-            0, 1, &barrier, 0, nullptr, 0, nullptr
-        );
+        {
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+            memory_barrier.srcAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+            memory_barrier.dstAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT;
+
+            VkDependencyInfo dependency_info   = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &dependency_info);
+        }
 
         // destroy temp buffer
         RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, scratch_buffer);
@@ -207,9 +224,15 @@ namespace spartan
     {
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Top);
         SP_ASSERT(!instances.empty());
+
+        // use double buffering to avoid frame-to-frame synchronization issues
+        // while frame N's GPU is reading from buffer set 0, frame N+1's CPU writes to buffer set 1
+        uint32_t buf_idx = m_buffer_index;
+        m_buffer_index   = (m_buffer_index + 1) % buffer_count;
     
-        // define instances
-        vector<VkAccelerationStructureInstanceKHR> vk_instances(instances.size());
+        // define instances (static to avoid per-frame heap allocation - resize keeps capacity)
+        static vector<VkAccelerationStructureInstanceKHR> vk_instances;
+        vk_instances.resize(instances.size());
         for (size_t i = 0; i < instances.size(); ++i)
         {
             const RHI_AccelerationStructureInstance& instance = instances[i];
@@ -222,30 +245,41 @@ namespace spartan
             memcpy(&vk_inst.transform.matrix, instance.transform.data(), sizeof(float) * 12);
         }
     
-        // create staging buffer
-        void* staging_buffer                     = nullptr;
-        const size_t data_size                   = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size();
-        VkBufferUsageFlags staging_usage         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        VkMemoryPropertyFlags staging_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        RHI_Device::MemoryBufferCreate(staging_buffer, data_size, staging_usage, staging_properties, vk_instances.data(), (m_object_name + "_staging").c_str());
+        // reuse or create staging buffer for current frame
+        const size_t data_size = sizeof(VkAccelerationStructureInstanceKHR) * vk_instances.size();
+        if (!m_staging_buffer[buf_idx] || data_size > m_staging_buffer_size[buf_idx])
+        {
+            if (m_staging_buffer[buf_idx])
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer[buf_idx]);
+            }
+            VkBufferUsageFlags staging_usage         = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+            VkMemoryPropertyFlags staging_properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+            RHI_Device::MemoryBufferCreate(m_staging_buffer[buf_idx], data_size, staging_usage, staging_properties, nullptr, (m_object_name + "_staging_" + to_string(buf_idx)).c_str());
+            m_staging_buffer_size[buf_idx] = data_size;
+        }
+
+        // copy data to staging buffer
+        void* mapped_data = RHI_Device::MemoryGetMappedDataFromBuffer(m_staging_buffer[buf_idx]);
+        memcpy(mapped_data, vk_instances.data(), data_size);
     
-        // reuse or create instance buffer
+        // reuse or create instance buffer for current frame
         const uint64_t alignment = max(static_cast<uint64_t>(16), RHI_Device::PropertyGetMinStorageBufferOffsetAlignment());
         const size_t required_instance_size = data_size + alignment - 1; // pad for alignment
-        if (!m_instance_buffer || required_instance_size > m_instance_buffer_size)
+        if (!m_instance_buffer[buf_idx] || required_instance_size > m_instance_buffer_size[buf_idx])
         {
-            if (m_instance_buffer)
+            if (m_instance_buffer[buf_idx])
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_instance_buffer);
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_instance_buffer[buf_idx]);
             }
             VkBufferUsageFlags instance_usage         = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
             VkMemoryPropertyFlags instance_properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-            RHI_Device::MemoryBufferCreate(m_instance_buffer, required_instance_size, instance_usage, instance_properties, nullptr, (m_object_name + "_instances").c_str());
-            m_instance_buffer_size = required_instance_size;
+            RHI_Device::MemoryBufferCreate(m_instance_buffer[buf_idx], required_instance_size, instance_usage, instance_properties, nullptr, (m_object_name + "_instances_" + to_string(buf_idx)).c_str());
+            m_instance_buffer_size[buf_idx] = required_instance_size;
         }
     
         // compute aligned offset
-        VkDeviceAddress base_address    = RHI_Device::GetBufferDeviceAddress(m_instance_buffer);
+        VkDeviceAddress base_address    = RHI_Device::GetBufferDeviceAddress(m_instance_buffer[buf_idx]);
         VkDeviceAddress aligned_address = (base_address + alignment - 1) & ~(alignment - 1);
         uint64_t dst_offset             = aligned_address - base_address;
     
@@ -253,18 +287,25 @@ namespace spartan
         VkBufferCopy region = {};
         region.size         = data_size;
         region.dstOffset    = dst_offset;
-        vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(staging_buffer), static_cast<VkBuffer>(m_instance_buffer), 1, &region);
+        vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), static_cast<VkBuffer>(m_staging_buffer[buf_idx]), static_cast<VkBuffer>(m_instance_buffer[buf_idx]), 1, &region);
     
         // barrier: make copy available for build
-        VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-        barrier.srcAccessMask   = VK_ACCESS_TRANSFER_WRITE_BIT;
-        barrier.dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
-        vkCmdPipelineBarrier(
-            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-            0, 1, &barrier, 0, nullptr, 0, nullptr
-        );
+        // the as build stage reads instance data via shader read, not acceleration structure read
+        {
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            memory_barrier.srcAccessMask    = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+            memory_barrier.dstAccessMask    = VK_ACCESS_2_SHADER_READ_BIT;
+
+            VkDependencyInfo dependency_info   = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &dependency_info);
+        }
     
         // build info
         VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
@@ -278,31 +319,23 @@ namespace spartan
         geom.geometry.instances.data.deviceAddress             = aligned_address;
         build_info.pGeometries                                 = &geom;
     
-        // determine mode
-        bool do_update                      = m_rhi_resource != nullptr;
+        // always use full build mode - tlas updates can produce degenerate bvh when transforms change significantly
         uint32_t primitive_count            = static_cast<uint32_t>(instances.size());
-        build_info.mode                     = do_update ? VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR : VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-        build_info.srcAccelerationStructure = do_update ? static_cast<VkAccelerationStructureKHR>(m_rhi_resource) : VK_NULL_HANDLE;
-        build_info.dstAccelerationStructure = do_update ? static_cast<VkAccelerationStructureKHR>(m_rhi_resource) : VK_NULL_HANDLE;
+        build_info.mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        build_info.srcAccelerationStructure = VK_NULL_HANDLE;
+        build_info.dstAccelerationStructure = VK_NULL_HANDLE;
     
         // get build sizes
         VkAccelerationStructureBuildSizesInfoKHR size_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR };
         as_get_build_sizes(RHI_Context::device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
     
-        // if update requires more space, fallback to rebuild
-        if (do_update && size_info.accelerationStructureSize > m_size)
+        // create or resize acceleration structure if needed
+        if (!m_rhi_resource || size_info.accelerationStructureSize > m_size)
         {
-            do_update = false;
-            Destroy();
-            build_info.mode                     = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-            build_info.srcAccelerationStructure = VK_NULL_HANDLE;
-            build_info.dstAccelerationStructure = VK_NULL_HANDLE;
-            as_get_build_sizes(RHI_Context::device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build_info, &primitive_count, &size_info);
-        }
-    
-        // create or reuse acceleration structure
-        if (!do_update)
-        {
+            // destroy old resources if they exist
+            if (m_rhi_resource)
+                Destroy();
+
             // create result buffer
             VkBufferUsageFlags usage         = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
             VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -324,7 +357,7 @@ namespace spartan
     
         // reuse or create scratch buffer
         const uint64_t scratch_alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-        uint64_t required_scratch_size   = do_update ? size_info.updateScratchSize : size_info.buildScratchSize;
+        uint64_t required_scratch_size   = size_info.buildScratchSize;
         required_scratch_size            = (required_scratch_size + scratch_alignment - 1) & ~(scratch_alignment - 1);
         if (!m_scratch_buffer || required_scratch_size > m_scratch_buffer_size)
         {
@@ -348,17 +381,21 @@ namespace spartan
         as_build(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos);
     
         // barrier: ensure build complete before use and before next frame's copy/build
-        barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-        vkCmdPipelineBarrier(
-            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0, 1, &barrier, 0, nullptr, 0, nullptr
-        );
-    
-        // destroy temp buffer
-        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
+        {
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+            memory_barrier.srcAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            memory_barrier.dstAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+
+            VkDependencyInfo dependency_info   = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &dependency_info);
+        }
     }
 
     uint64_t RHI_AccelerationStructure::GetDeviceAddress()

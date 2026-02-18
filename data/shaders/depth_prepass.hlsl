@@ -24,23 +24,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common_tessellation.hlsl"
 //=================================
 
+#ifdef INDIRECT_DRAW
+gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX)
+{
+    _draw = indirect_draw_data_out[draw_id];
+#else
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
-    gbuffer_vertex vertex;
-    
-    // transform to world space
+    _draw = draw_data[buffer_pass.draw_index];
+#endif
+
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
-    vertex                         = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
-
-    // transform to clip space
-    vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
-
-    return vertex;
+    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
+    vertex.material_index          = _draw.material_index;
+    return transform_to_clip_space(vertex, position_world, position_world_previous);
 }
 
 void main_ps(gbuffer_vertex vertex)
 {
+    pass_load_draw_data_from_vertex(vertex.material_index);
+
     // distance based alpha threshold
     const bool has_albedo       = pass_get_f3_value().y == 1.0f;
     const float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;

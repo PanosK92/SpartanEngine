@@ -336,6 +336,13 @@ namespace spartan
         SP_ASSERT(m_sdl_window != nullptr);
         SP_ASSERT(m_rhi_surface != nullptr);
 
+        // apply pending format change now that we're actually recreating the swapchain
+        if (m_format_pending != RHI_Format::Max)
+        {
+            m_format         = m_format_pending;
+            m_format_pending = RHI_Format::Max;
+        }
+
         // get surface capabilities
         VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(static_cast<VkSurfaceKHR>(m_rhi_surface));
     
@@ -580,10 +587,13 @@ namespace spartan
             new_format = RHI_Format::B8R8G8A8_Unorm;
         }
     
+        // don't update m_format immediately - that would cause pipeline format mismatches
+        // if rendering happens between SetHdr() and Create(). instead, store the pending
+        // format and apply it in Create() when the swapchain is actually recreated
         if (new_format != m_format)
         {
-            m_format   = new_format;
-            m_is_dirty = true;
+            m_format_pending = new_format;
+            m_is_dirty       = true;
         }
     }
 

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Profiler.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../Core/ThreadPool.h"
@@ -95,7 +96,15 @@ namespace spartan
         bool is_stuttering_gpu = false;
 
         // misc
-        bool poll = false;
+        bool poll          = false;
+        bool is_visualized = false;
+
+        // command lists used during the current poll frame (for deferred timestamp readback)
+        vector<RHI_CommandList*> cmd_lists_used;
+
+        // frame start reference for timeline
+        chrono::high_resolution_clock::time_point frame_start_cpu;
+        float frame_duration_ms = 0.0f;
 
         // cpu
         const char* cpu_name = "N/A";
@@ -139,8 +148,27 @@ namespace spartan
         cpu_name = get_cpu_name();
     }
 
+    void Profiler::FrameStart()
+    {
+        frame_start_cpu = chrono::high_resolution_clock::now();
+    }
+
+    float Profiler::GetCpuOffsetMs(const chrono::high_resolution_clock::time_point& time_point)
+    {
+        const chrono::duration<double, milli> ms = time_point - frame_start_cpu;
+        return static_cast<float>(ms.count());
+    }
+
+    float Profiler::GetFrameDurationMs()
+    {
+        return frame_duration_ms;
+    }
+
     void Profiler::PostTick()
     {
+        // measure frame duration for timeline
+        frame_duration_ms = GetCpuOffsetMs(chrono::high_resolution_clock::now());
+
         // compute timings
         {
             is_stuttering_cpu = time_cpu_last > (time_cpu_avg + stutter_delta_ms);
@@ -208,40 +236,87 @@ namespace spartan
 
     void Profiler::ReadTimeBlocks()
     {
-        // clear read array
         m_time_blocks_read.clear();
         if (m_time_block_index < 0)
         {
-            // no time blocks to copy, just reset write array
             m_time_blocks_write.clear();
             m_time_blocks_write.resize(max_timeblocks);
             m_time_block_index = -1;
+            cmd_lists_used.clear();
             return;
         }
 
-        // copy from write array to read array
-        for (uint32_t i = 0; i <= static_cast<uint32_t>(m_time_block_index); i++)
+        // only pay the gpu stall cost when the profiler widget is actually open and
+        // we need accurate timeline positions; otherwise use cheap stale durations
+        if (is_visualized)
         {
-            TimeBlock& time_block = m_time_blocks_write[i];
-
-            // skip incomplete time blocks and let the user know
-            if (!time_block.IsComplete())
+            // wait for gpu completion and read back fresh timestamps from all used command lists
+            for (RHI_CommandList* cmd_list : cmd_lists_used)
             {
-                SP_LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
-                continue;
+                cmd_list->ReadbackTimestampsForProfiler();
             }
 
-            // copy
-            m_time_blocks_read.push_back(time_block);
+            // compute the global gpu frame reference (earliest tick across all command lists)
+            uint64_t global_reference_tick = 0;
+            for (RHI_CommandList* cmd_list : cmd_lists_used)
+            {
+                uint64_t first_tick = cmd_list->GetTimestampRawTick(0);
+                if (first_tick != 0 && (global_reference_tick == 0 || first_tick < global_reference_tick))
+                {
+                    global_reference_tick = first_tick;
+                }
+            }
+
+            // resolve gpu timeblocks with fresh data and the global reference
+            float timestamp_period = RHI_Device::PropertyGetTimestampPeriod();
+            for (uint32_t i = 0; i <= static_cast<uint32_t>(m_time_block_index); i++)
+            {
+                TimeBlock& time_block = m_time_blocks_write[i];
+
+                if (!time_block.IsComplete())
+                {
+                    SP_LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
+                    continue;
+                }
+
+                if (time_block.GetType() == TimeBlockType::Gpu && global_reference_tick != 0)
+                {
+                    time_block.ResolveGpuTimestamps(global_reference_tick, timestamp_period);
+                }
+
+                m_time_blocks_read.push_back(time_block);
+            }
+        }
+        else
+        {
+            // cheap path: no gpu wait, approximate durations from existing query pool data
+            for (uint32_t i = 0; i <= static_cast<uint32_t>(m_time_block_index); i++)
+            {
+                TimeBlock& time_block = m_time_blocks_write[i];
+
+                if (!time_block.IsComplete())
+                {
+                    SP_LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
+                    continue;
+                }
+
+                if (time_block.GetType() == TimeBlockType::Gpu)
+                {
+                    time_block.ResolveGpuDuration();
+                }
+
+                m_time_blocks_read.push_back(time_block);
+            }
         }
 
-        // clear write array
+        // clear write array and tracking state
         m_time_blocks_write.clear();
         m_time_blocks_write.resize(max_timeblocks);
         m_time_block_index = -1;
+        cmd_lists_used.clear();
     }
 
-    void Profiler::TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/)
+    void Profiler::TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/, RHI_Queue_Type queue_type /*= RHI_Queue_Type::Max*/)
     {
         if (!poll)
             return;
@@ -253,12 +328,21 @@ namespace spartan
 
         SP_ASSERT(m_time_block_index < static_cast<int>(max_timeblocks) - 1);
 
+        // track command lists used during this poll for deferred timestamp readback
+        if (type == TimeBlockType::Gpu && cmd_list)
+        {
+            if (find(cmd_lists_used.begin(), cmd_lists_used.end(), cmd_list) == cmd_lists_used.end())
+            {
+                cmd_lists_used.push_back(cmd_list);
+            }
+        }
+
         // last incomplete block of the same type, is the parent
         TimeBlock* time_block_parent = GetLastIncompleteTimeBlock(type);
 
         // get new time block
         TimeBlock& new_time_block = m_time_blocks_write[++m_time_block_index];
-        new_time_block.Begin(++m_rhi_timeblock_count, func_name, type, time_block_parent, cmd_list);
+        new_time_block.Begin(++m_rhi_timeblock_count, func_name, type, time_block_parent, cmd_list, queue_type);
     }
 
     void Profiler::TimeBlockEnd()
@@ -339,6 +423,16 @@ namespace spartan
         return is_stuttering_gpu;
     }
 
+    void Profiler::SetVisualized(bool value)
+    {
+        is_visualized = value;
+    }
+
+    bool Profiler::IsVisualized()
+    {
+        return is_visualized;
+    }
+
     TimeBlock* Profiler::GetLastIncompleteTimeBlock(const TimeBlockType type)
     {
         for (int i = m_time_block_index; i >= 0; i--)
@@ -368,35 +462,30 @@ namespace spartan
 
             // fps and frames
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "FPS:\t\t\t%.1f\n", m_fps);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Time:\t\t%.2f ms\n", time_frame_avg);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Frame:\t%llu\n\n", Renderer::GetFrameNumber());
+                "FPS:\t\t%.1f\n"
+                "Time:\t\t%.2f ms\n"
+                "Frame:\t\t%llu\n\n",
+                m_fps, time_frame_avg, Renderer::GetFrameNumber());
             SP_ASSERT(offset < sizeof(metrics_buffer));
 
             // timings
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "\t\t\t\tavg\t\tmin\t\tmax\tlast\n");
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Total:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n",
-                time_frame_avg, time_frame_min, time_frame_max, time_frame_last);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "CPU:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n",
-                time_cpu_avg, time_cpu_min, time_cpu_max, time_cpu_last);
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "GPU:\t\t%.2f\t\t%.2f\t\t%.2f\t\t%.2f ms\n\n",
+                "\t\tavg\tmin\tmax\tlast\n"
+                "Total:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n"
+                "CPU:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n"
+                "GPU:\t\t%.2f\t%.2f\t%.2f\t%.2f ms\n\n",
+                time_frame_avg, time_frame_min, time_frame_max, time_frame_last,
+                time_cpu_avg, time_cpu_min, time_cpu_max, time_cpu_last,
                 time_gpu_avg, time_gpu_min, time_gpu_max, time_gpu_last);
             SP_ASSERT(offset < sizeof(metrics_buffer));
 
             // gpu
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "GPU\nName:\t\t%s\nMemory:\t%u/%u MB\nAPI:\t\t\t\t%s %s\nDriver:\t\t%s %s\n\n",
+                "GPU\n"
+                "Name:\t\t%s\n"
+                "Memory:\t\t%u/%u MB\n"
+                "API:\t\t%s %s\n"
+                "Driver:\t\t%s %s\n\n",
                 RHI_Device::GetPrimaryPhysicalDevice()->GetName(),
                 static_cast<unsigned int>(RHI_Device::MemoryGetAllocatedMb()),
                 static_cast<unsigned int>(RHI_Device::MemoryGetAvailableMb()),
@@ -408,29 +497,28 @@ namespace spartan
 
             // cpu
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "CPU\nName:\t\t\t\t\t%s\nWorker threads:\t%u/%u\nAVX2:\t\t%s\n\n",
+                "CPU\n"
+                "Name:\t\t%s\n"
+                "Threads:\t\t%u/%u\n"
+                "AVX2:\t\t%s\n\n",
                 cpu_name,
                 static_cast<unsigned int>(ThreadPool::GetWorkingThreadCount()),
                 static_cast<unsigned int>(ThreadPool::GetThreadCount()),
 #ifdef __AVX2__
-                "\t\t\t\tYes"
+                "Yes"
 #else
-                "\t\t\t\tNo"
+                "No"
 #endif
             );
             SP_ASSERT(offset < sizeof(metrics_buffer));
 
             // memory
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Memory\n");
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Allocated:\t%.2f MB | Peak: %.2f MB\n",
+                "Memory\n"
+                "Allocated:\t%.2f MB (Peak: %.2f MB)\n"
+                "Process:\t\t%.2f MB (Avail: %.2f MB, Total: %.2f MB)\n\n",
                 Allocator::GetMemoryAllocatedMb(),
-                Allocator::GetMemoryAllocatedPeakMb());
-            SP_ASSERT(offset < sizeof(metrics_buffer));
-            offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Process:\t\t%.2f MB | Available: %.2f MB | Total: %.2f MB\n\n",
+                Allocator::GetMemoryAllocatedPeakMb(),
                 Allocator::GetMemoryProcessUsedMb(),
                 Allocator::GetMemoryAvailableMb(),
                 Allocator::GetMemoryTotalMb());
@@ -441,8 +529,14 @@ namespace spartan
             const auto& res_output = Renderer::GetResolutionOutput();
             const auto& vp = Renderer::GetViewport();
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Display\nName:\t\t%s\nHz:\t\t\t\t%d\nHDR:\t\t\t%s\nMax nits:\t%u\n"
-                "Render:\t\t%u x %u - %.0f%%\nOutput:\t\t%u x %u\nViewport:\t%u x %u\n\n",
+                "Display\n"
+                "Name:\t\t%s\n"
+                "Hz:\t\t%d\n"
+                "HDR:\t\t%s\n"
+                "Max nits:\t\t%u\n"
+                "Render:\t\t%u x %u (%.0f%%)\n"
+                "Output:\t\t%u x %u\n"
+                "Viewport:\t\t%u x %u\n\n",
                 Display::GetName(),
                 static_cast<int>(Display::GetRefreshRate()),
                 Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
@@ -458,9 +552,14 @@ namespace spartan
 
             // graphics api
             offset += snprintf(metrics_buffer + offset, sizeof(metrics_buffer) - offset,
-                "Graphics API\nDraw:\t\t\t\t\t\t\t\t\t\t%u\nInstances:\t\t\t\t\t\t\t\t%u\nIndex buffer bindings:\t\t%u\n"
-                "Vertex buffer bindings:\t\t%u\nBarriers:\t\t\t\t\t\t\t\t\t%u\nBindings from pipelines:\t%u/%u\n"
-                "Descriptor set capacity:\t%u/%u",
+                "Graphics API\n"
+                "Draw:\t\t%u\n"
+                "Instances:\t%u\n"
+                "Index bindings:\t%u\n"
+                "Vertex bindings:\t%u\n"
+                "Barriers:\t\t%u\n"
+                "Pipeline bindings:\t%u/%u\n"
+                "Descriptor sets:\t%u/%u",
                 static_cast<uint32_t>(m_rhi_draw),
                 static_cast<uint32_t>(m_rhi_instance_count),
                 static_cast<uint32_t>(m_rhi_bindings_buffer_index),

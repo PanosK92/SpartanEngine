@@ -34,9 +34,18 @@ float sample_cloud_shadow(float3 world_pos)
     if (buffer_frame.cloud_shadows <= 0.0 || buffer_frame.cloud_coverage <= 0.0)
         return 1.0;
     
-    // cloud shadow map covers 10km x 10km area centered on camera
+    // cloud shadow map covers 10km x 10km area
     float shadow_map_size = 10000.0;
-    float2 relative_pos = world_pos.xz - buffer_frame.camera_position.xz;
+    
+    // get shadow map dimensions for texel size calculation
+    float2 shadow_dims;
+    tex3.GetDimensions(shadow_dims.x, shadow_dims.y);
+    float texel_size = shadow_map_size / shadow_dims.x;
+    
+    // snap center to texel grid (must match cloud_shadow.hlsl)
+    float2 snapped_center = floor(buffer_frame.camera_position.xz / texel_size) * texel_size;
+    
+    float2 relative_pos = world_pos.xz - snapped_center;
     float2 uv = relative_pos / shadow_map_size + 0.5;
     
     // out of bounds check

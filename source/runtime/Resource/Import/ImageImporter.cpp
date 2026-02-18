@@ -471,7 +471,7 @@ namespace spartan
                 if (den <= 0.0001f) return 0.0f;
                 float linear = powf(num / den, 1.0f / m1);
                 // scale for good aces input range
-                return linear * 40.0f;
+                return linear * 50.0f;
             };
 
             float lr = decode_pq(r);
@@ -493,7 +493,6 @@ namespace spartan
     {
         FreeImage_Initialise();
         FreeImage_SetOutputMessage(free_image_error_handler);
-        Settings::RegisterThirdPartyLib("FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/");
     }
 
     void ImageImporter::Shutdown()

@@ -200,10 +200,6 @@ namespace spartan
         #ifdef _WIN32
         dpi_scale = static_cast<float>(GetDpiForWindow(static_cast<HWND>(GetHandleRaw()))) / 96.0f;
         #endif
-
-        // register library
-        string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_MICRO_VERSION);
-        Settings::RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/");
     }
 
     void Window::Shutdown()
@@ -481,7 +477,7 @@ namespace spartan
     void Window::CreateAndShowSplashScreen()
     {
         // load splash screen image
-        SDL_Surface* image = SDL_LoadBMP("data\\textures\\banner.bmp");
+        SDL_Surface* image = SDL_LoadBMP("data/textures/banner.bmp");
         if (!image)
         {
             SP_LOG_ERROR("Failed to load splash screen image: %s", SDL_GetError());
@@ -542,6 +538,11 @@ namespace spartan
         SDL_DestroyTexture(m_splash_screen_texture);
         SDL_DestroyRenderer(m_splash_screen_renderer);
         SDL_DestroyWindow(m_splash_screen_window);
+    }
+
+    void Window::PumpEvents()
+    {
+        SDL_PumpEvents();
     }
 
     void Window::SetTitleBarHeight(float height)

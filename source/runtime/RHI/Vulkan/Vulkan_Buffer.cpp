@@ -72,22 +72,24 @@ namespace spartan
             }
             else
             {
-                // create staging buffer, it's slower but we can copy data in and out of it
-                void* staging_buffer = nullptr;
-                RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, data, m_object_name.c_str());
-
-                // create destination buffer, it's faster but we can only copy data into it
+                // create destination buffer (device-local, fastest for gpu access)
                 RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags_usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
 
-                // copy staging buffer to destination buffer
-                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
-                VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
-                VkBufferCopy copy_region    = {};
-                copy_region.size            = m_object_size;
-                RHI_CommandList* cmd_list   = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
-                vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
-                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, staging_buffer);
+                // if initial data is provided, upload it via a staging buffer
+                if (data)
+                {
+                    void* staging_buffer = nullptr;
+                    RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, data, m_object_name.c_str());
+
+                    VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
+                    VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
+                    VkBufferCopy copy_region    = {};
+                    copy_region.size            = m_object_size;
+                    RHI_CommandList* cmd_list   = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
+                    vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
+                    RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+                    RHI_Device::MemoryBufferDestroy(staging_buffer);
+                }
             }
             
             // save device address for ray tracing vertex/index buffer access
@@ -112,7 +114,7 @@ namespace spartan
             {
                 flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
             }
-            VkBufferUsageFlags flags_usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+            VkBufferUsageFlags flags_usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, data, m_object_name.c_str());
         }
         else if (m_type == RHI_Buffer_Type::Constant)
@@ -168,6 +170,42 @@ namespace spartan
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name.c_str());
     }
 
+    void RHI_Buffer::UploadSubRegion(const void* data, uint64_t offset_bytes, uint64_t size_bytes)
+    {
+        SP_ASSERT(data != nullptr);
+        SP_ASSERT(offset_bytes + size_bytes <= m_object_size);
+
+        if (m_mappable)
+        {
+            // for mapped buffers, direct memcpy at the offset
+            memcpy(static_cast<uint8_t*>(m_data_gpu) + offset_bytes, data, size_bytes);
+        }
+        else
+        {
+            // for device-local buffers, stage and copy at the specified offset
+            void* staging_buffer = nullptr;
+            RHI_Device::MemoryBufferCreate(
+                staging_buffer, size_bytes,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                data, "staging_sub_region"
+            );
+
+            VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
+            VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
+            VkBufferCopy copy_region    = {};
+            copy_region.srcOffset       = 0;
+            copy_region.dstOffset       = offset_bytes;
+            copy_region.size            = size_bytes;
+
+            RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
+            vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
+            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+
+            RHI_Device::MemoryBufferDestroy(staging_buffer);
+        }
+    }
+
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
         SP_ASSERT(cmd_list);
@@ -218,15 +256,18 @@ namespace spartan
             SP_ASSERT(pfn_vk_get_ray_tracing_shader_group_handles_khr != nullptr);
         }
     
-        uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
-        vector<uint8_t> handles(m_element_count * handle_size);
+        uint32_t handle_size      = RHI_Device::PropertyGetShaderGroupHandleSize();
+        uint32_t handles_size     = m_element_count * handle_size;
+        constexpr uint32_t max_handles_size = 512; // handles are typically ~32 bytes each, 512 covers 16 groups
+        SP_ASSERT(handles_size <= max_handles_size);
+        uint8_t handles[max_handles_size];
         SP_ASSERT_VK(pfn_vk_get_ray_tracing_shader_group_handles_khr(
             RHI_Context::device,
             static_cast<VkPipeline>(cmd_list->GetRhiResourcePipeline()),
             0,
             m_element_count,
-            handles.size(),
-            handles.data()
+            handles_size,
+            handles
         ));
     
         SP_ASSERT(m_data_gpu != nullptr);
@@ -235,32 +276,35 @@ namespace spartan
         
         // copy shader handles to their respective offsets
         // standard layout: [raygen][miss][hit] + optional extra groups
-        memcpy(dst + m_raygen_offset, handles.data() + 0 * handle_size, handle_size);
-        memcpy(dst + m_miss_offset, handles.data() + 1 * handle_size, handle_size);
-        memcpy(dst + m_hit_offset, handles.data() + 2 * handle_size, handle_size);
+        memcpy(dst + m_raygen_offset, handles + 0 * handle_size, handle_size);
+        memcpy(dst + m_miss_offset, handles + 1 * handle_size, handle_size);
+        memcpy(dst + m_hit_offset, handles + 2 * handle_size, handle_size);
         
         // copy any additional shader groups (for passes needing more than 3)
         for (uint32_t i = 3; i < m_element_count; i++)
         {
             uint64_t extra_offset = m_hit_offset + (i - 2) * m_aligned_handle_size;
-            memcpy(dst + extra_offset, handles.data() + i * handle_size, handle_size);
+            memcpy(dst + extra_offset, handles + i * handle_size, handle_size);
         }
     
-        // Use buffer memory barrier for more specific synchronization
-        // Since memory is HOST_COHERENT, writes are immediately visible, but we need ordering
-        VkBufferMemoryBarrier barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER };
-        barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.buffer = static_cast<VkBuffer>(m_rhi_resource);
-        barrier.offset = 0;
-        barrier.size = VK_WHOLE_SIZE;
-        vkCmdPipelineBarrier(
-            static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
-            VK_PIPELINE_STAGE_HOST_BIT,
-            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-            0, 0, nullptr, 1, &barrier, 0, nullptr
-        );
+        // ensure host writes are visible before ray tracing reads
+        VkBufferMemoryBarrier2 barrier        = {};
+        barrier.sType                         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+        barrier.srcStageMask                  = VK_PIPELINE_STAGE_2_HOST_BIT;
+        barrier.srcAccessMask                 = VK_ACCESS_2_HOST_WRITE_BIT;
+        barrier.dstStageMask                  = VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        barrier.dstAccessMask                 = VK_ACCESS_2_SHADER_READ_BIT;
+        barrier.srcQueueFamilyIndex           = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex           = VK_QUEUE_FAMILY_IGNORED;
+        barrier.buffer                        = static_cast<VkBuffer>(m_rhi_resource);
+        barrier.offset                        = 0;
+        barrier.size                          = VK_WHOLE_SIZE;
+
+        VkDependencyInfo dependency_info      = {};
+        dependency_info.sType                 = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependency_info.bufferMemoryBarrierCount = 1;
+        dependency_info.pBufferMemoryBarriers = &barrier;
+
+        vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &dependency_info);
     }
 }

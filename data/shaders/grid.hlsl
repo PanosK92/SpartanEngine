@@ -46,7 +46,7 @@ PixelInput main_vs(Vertex_PosUvNorTan input)
     PixelInput output;
 
     input.position.w      = 1.0f;
-    output.position_world = mul(input.position, buffer_pass.transform);
+    output.position_world = mul(input.position, draw_data[buffer_pass.draw_index].transform);
     output.position       = mul(output.position_world, buffer_frame.view_projection_unjittered);
 
     return output;

@@ -113,12 +113,11 @@ namespace spartan
     
             if (character == ASCII_TAB)
             {
-                const float space_offset = static_cast<float>(m_glyphs[ASCII_SPACE].horizontal_advance);
-                const float tab_spacing  = space_offset * 4.0f;
+                // use max character width for consistent tab stops (works reliably across all resolutions)
+                const float tab_spacing  = static_cast<float>(m_char_max_width) * 4.0f;
                 float relative_x         = cursor.x - position.x;
-                float k                  = floor((relative_x + tab_spacing) / tab_spacing);
-                float next_tab_stop      = position.x + k * tab_spacing;
-                cursor.x                 = next_tab_stop;
+                float next_tab_stop      = (floor(relative_x / tab_spacing) + 1.0f) * tab_spacing;
+                cursor.x                 = position.x + next_tab_stop;
             }
             else if (character == ASCII_NEW_LINE)
             {

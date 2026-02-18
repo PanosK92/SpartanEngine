@@ -49,8 +49,9 @@ namespace spartan
         RHI_Texture_PerMipViews = 1U << 5,
         RHI_Texture_Greyscale   = 1U << 6,
         RHI_Texture_Transparent = 1U << 7,
-        RHI_Texture_Srgb        = 1U << 8,
-        RHI_Texture_Mappable    = 1U << 9,
+        RHI_Texture_Srgb              = 1U << 8,
+        RHI_Texture_Mappable          = 1U << 9,
+        RHI_Texture_ConcurrentSharing = 1U << 10, // shared between graphics and compute queue families
         RHI_Texture_Compress    = 1U << 10
     };
 

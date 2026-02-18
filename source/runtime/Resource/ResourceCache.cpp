@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Renderer.h"
+#include "../Core/Window.h"
 #include <unordered_map>
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
@@ -50,10 +51,10 @@ namespace spartan
     void ResourceCache::Initialize()
     {
         // create project directory
-        SetProjectDirectory("project\\");
+        SetProjectDirectory("project/");
 
         // add engine standard resource directories
-        const string data_dir = string(GetDataDirectory()) + "\\";
+        const string data_dir = string(GetDataDirectory()) + "/";
         AddResourceDirectory(ResourceDirectory::Environment, string(m_project_directory) + "environment");
         AddResourceDirectory(ResourceDirectory::Fonts, data_dir + "fonts");
         AddResourceDirectory(ResourceDirectory::Icons, data_dir + "icons");
@@ -78,42 +79,46 @@ namespace spartan
 
     void ResourceCache::LoadDefaultResources()
     {
-        const string data_dir = string(GetDataDirectory()) + "\\";
+        const string data_dir = string(GetDataDirectory()) + "/";
 
-        m_default_icons[IconType::Console]       = Load<RHI_Texture>(data_dir + "Icons\\console.png");
-        m_default_icons[IconType::File]          = Load<RHI_Texture>(data_dir + "Icons\\file.png");
-        m_default_icons[IconType::Folder]        = Load<RHI_Texture>(data_dir + "Icons\\folder.png");
-        m_default_icons[IconType::Audio]         = Load<RHI_Texture>(data_dir + "Icons\\audio.png");
-        m_default_icons[IconType::Model]         = Load<RHI_Texture>(data_dir + "Icons\\model.png");
-        m_default_icons[IconType::World]         = Load<RHI_Texture>(data_dir + "Icons\\world.png");
-        m_default_icons[IconType::Material]      = Load<RHI_Texture>(data_dir + "Icons\\material.png");
-        m_default_icons[IconType::Shader]        = Load<RHI_Texture>(data_dir + "Icons\\shader.png");
-        m_default_icons[IconType::Xml]           = Load<RHI_Texture>(data_dir + "Icons\\xml.png");
-        m_default_icons[IconType::Dll]           = Load<RHI_Texture>(data_dir + "Icons\\dll.png");
-        m_default_icons[IconType::Txt]           = Load<RHI_Texture>(data_dir + "Icons\\txt.png");
-        m_default_icons[IconType::Ini]           = Load<RHI_Texture>(data_dir + "Icons\\ini.png");
-        m_default_icons[IconType::Exe]           = Load<RHI_Texture>(data_dir + "Icons\\exe.png");
-        m_default_icons[IconType::Font]          = Load<RHI_Texture>(data_dir + "Icons\\font.png");
-        m_default_icons[IconType::Screenshot]    = Load<RHI_Texture>(data_dir + "Icons\\screenshot.png");
-        m_default_icons[IconType::Gear]          = Load<RHI_Texture>(data_dir + "Icons\\gear.png");
-        m_default_icons[IconType::Play]          = Load<RHI_Texture>(data_dir + "Icons\\play.png");
-        m_default_icons[IconType::Profiler]      = Load<RHI_Texture>(data_dir + "Icons\\timer.png");
-        m_default_icons[IconType::ResourceCache] = Load<RHI_Texture>(data_dir + "Icons\\resource_viewer.png");
-        m_default_icons[IconType::RenderDoc]     = Load<RHI_Texture>(data_dir + "Icons\\renderdoc.png");
-        m_default_icons[IconType::Shader]        = Load<RHI_Texture>(data_dir + "Icons\\code.png");
-        m_default_icons[IconType::Texture]       = Load<RHI_Texture>(data_dir + "Icons\\texture.png");
-        m_default_icons[IconType::Minimize]      = Load<RHI_Texture>(data_dir + "Icons\\window_minimise.png");
-        m_default_icons[IconType::Maximize]      = Load<RHI_Texture>(data_dir + "Icons\\window_maximise.png");
-        m_default_icons[IconType::X]             = Load<RHI_Texture>(data_dir + "Icons\\window_close.png");
-        m_default_icons[IconType::Hybrid]        = Load<RHI_Texture>(data_dir + "Icons\\hybrid.png");
-        m_default_icons[IconType::Audio]         = Load<RHI_Texture>(data_dir + "Icons\\audio.png");
-        m_default_icons[IconType::Terrain]       = Load<RHI_Texture>(data_dir + "Icons\\terrain.png");
-        m_default_icons[IconType::Entity]        = Load<RHI_Texture>(data_dir + "Icons\\entity.png");
-        m_default_icons[IconType::Light]         = Load<RHI_Texture>(data_dir + "Icons\\light.png");
-        m_default_icons[IconType::Camera]        = Load<RHI_Texture>(data_dir + "Icons\\camera.png");
-        m_default_icons[IconType::Physics]       = Load<RHI_Texture>(data_dir + "Icons\\physics.png");
-        m_default_icons[IconType::Compressed]    = Load<RHI_Texture>(data_dir + "Icons\\compressed.png");
+        m_default_icons[IconType::Console]       = Load<RHI_Texture>(data_dir + "icons/console.png");
+        m_default_icons[IconType::File]          = Load<RHI_Texture>(data_dir + "icons/file.png");
+        m_default_icons[IconType::Folder]        = Load<RHI_Texture>(data_dir + "icons/folder.png");
+        m_default_icons[IconType::Audio]         = Load<RHI_Texture>(data_dir + "icons/audio.png");
+        m_default_icons[IconType::Model]         = Load<RHI_Texture>(data_dir + "icons/model.png");
+        m_default_icons[IconType::World]         = Load<RHI_Texture>(data_dir + "icons/world.png");
+        m_default_icons[IconType::Material]      = Load<RHI_Texture>(data_dir + "icons/material.png");
+        m_default_icons[IconType::Shader]        = Load<RHI_Texture>(data_dir + "icons/shader.png");
+        Window::PumpEvents();
+        m_default_icons[IconType::Xml]           = Load<RHI_Texture>(data_dir + "icons/xml.png");
+        m_default_icons[IconType::Dll]           = Load<RHI_Texture>(data_dir + "icons/dll.png");
+        m_default_icons[IconType::Txt]           = Load<RHI_Texture>(data_dir + "icons/txt.png");
+        m_default_icons[IconType::Ini]           = Load<RHI_Texture>(data_dir + "icons/ini.png");
+        m_default_icons[IconType::Exe]           = Load<RHI_Texture>(data_dir + "icons/exe.png");
+        m_default_icons[IconType::Font]          = Load<RHI_Texture>(data_dir + "icons/font.png");
+        m_default_icons[IconType::Screenshot]    = Load<RHI_Texture>(data_dir + "icons/screenshot.png");
+        m_default_icons[IconType::Gear]          = Load<RHI_Texture>(data_dir + "icons/gear.png");
+        Window::PumpEvents();
+        m_default_icons[IconType::Play]          = Load<RHI_Texture>(data_dir + "icons/play.png");
+        m_default_icons[IconType::Profiler]      = Load<RHI_Texture>(data_dir + "icons/timer.png");
+        m_default_icons[IconType::ResourceCache] = Load<RHI_Texture>(data_dir + "icons/resource_viewer.png");
+        m_default_icons[IconType::RenderDoc]     = Load<RHI_Texture>(data_dir + "icons/renderdoc.png");
+        m_default_icons[IconType::Shader]        = Load<RHI_Texture>(data_dir + "icons/code.png");
+        m_default_icons[IconType::Texture]       = Load<RHI_Texture>(data_dir + "icons/texture.png");
+        m_default_icons[IconType::Minimize]      = Load<RHI_Texture>(data_dir + "icons/window_minimise.png");
+        m_default_icons[IconType::Maximize]      = Load<RHI_Texture>(data_dir + "icons/window_maximise.png");
+        Window::PumpEvents();
+        m_default_icons[IconType::X]             = Load<RHI_Texture>(data_dir + "icons/window_close.png");
+        m_default_icons[IconType::Hybrid]        = Load<RHI_Texture>(data_dir + "icons/hybrid.png");
+        m_default_icons[IconType::Audio]         = Load<RHI_Texture>(data_dir + "icons/audio.png");
+        m_default_icons[IconType::Terrain]       = Load<RHI_Texture>(data_dir + "icons/terrain.png");
+        m_default_icons[IconType::Entity]        = Load<RHI_Texture>(data_dir + "icons/entity.png");
+        m_default_icons[IconType::Light]         = Load<RHI_Texture>(data_dir + "icons/light.png");
+        m_default_icons[IconType::Camera]        = Load<RHI_Texture>(data_dir + "icons/camera.png");
+        m_default_icons[IconType::Physics]       = Load<RHI_Texture>(data_dir + "icons/physics.png");
+        m_default_icons[IconType::Compressed]    = Load<RHI_Texture>(data_dir + "icons/compressed.png");
         m_default_icons[IconType::Logo]          = Load<RHI_Texture>(data_dir + "logo.ico");
+        Window::PumpEvents();
 
         // prepare icons for gpu (standalone textures, not processed by material)
         for (auto& [type, icon] : m_default_icons)
@@ -135,7 +140,7 @@ namespace spartan
         lock_guard<mutex> guard(m_mutex);
         for (shared_ptr<IResource>& resource : m_resources)
         {
-            if (name == resource->GetObjectName())
+            if (name == resource->GetObjectName() && (type == ResourceType::Max || resource->GetResourceType() == type))
                 return resource;
         }
         static shared_ptr<IResource> empty;
@@ -219,7 +224,11 @@ namespace spartan
 
     const char* ResourceCache::GetDataDirectory()
     {
+        #ifdef _WIN32
         return "Data";
+        #else
+        return "data";
+        #endif
     }
 
     vector<shared_ptr<IResource>>& ResourceCache::GetResources()

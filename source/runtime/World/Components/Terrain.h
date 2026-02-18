@@ -81,6 +81,7 @@ namespace spartan
         Terrain(Entity* entity);
         ~Terrain();
 
+
         // height map
         RHI_Texture* GetHeightMapSeed() const          { return m_height_map_seed; }
         void SetHeightMapSeed(RHI_Texture* height_map) { m_height_map_seed = height_map;}
@@ -141,7 +142,7 @@ namespace spartan
 
         // triangle data access for placement system
         std::unordered_map<uint64_t, std::vector<TriangleData>>& GetTriangleData() { return m_triangle_data; }
- 
+
     private:
         void Clear();
         uint64_t ComputeCacheHash() const;
@@ -171,7 +172,7 @@ namespace spartan
         uint32_t m_triangle_count         = 0;
         uint32_t m_dense_width            = 0;
         uint32_t m_dense_height           = 0;
-    
+
         // geometry data
         std::vector<float> m_height_data;
         std::vector<std::vector<RHI_Vertex_PosTexNorTan>> m_tile_vertices;

@@ -26,12 +26,11 @@ namespace spartan
     enum class DefaultWorld
     {
         Showroom,
-        CarPlayground,
         Forest,
         LiminalSpace,
         Sponza,
-        Subway,
-        Minecraft,
+        Cornell,
+        SanMiguel,
         Basic,
         Max
     };
@@ -47,5 +46,8 @@ namespace spartan
 
         // load a default world
         static void Load(DefaultWorld default_world);
+
+        // register game prefabs (called automatically before world loading)
+        static void RegisterPrefabs();
     };
 }

@@ -993,23 +993,6 @@ namespace spartan
     void RHI_VendorTechnology::Initialize()
     {
     #ifdef _WIN32
-        // register amd
-        {
-            string ffx_version = to_string(FFX_SDK_VERSION_MAJOR) + "." +
-                                 to_string(FFX_SDK_VERSION_MINOR) + "." +
-                                 to_string(FFX_SDK_VERSION_PATCH);
-            
-            Settings::RegisterThirdPartyLib("AMD FidelityFX", ffx_version, "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK");
-        }
-
-        // register intel
-        {
-            xess_version_t version;
-            SP_ASSERT(xessGetVersion(&version) == XESS_RESULT_SUCCESS);
-            string xess_version = to_string(version.major) + "." + to_string(version.minor) + "." + to_string(version.patch);
-            Settings::RegisterThirdPartyLib("Intel XeSS", xess_version, "https://github.com/intel/xess");
-        }
-
         // ffx interface
         {
             // all used contexts need to be accounted for here
@@ -1140,11 +1123,14 @@ namespace spartan
 
     void RHI_VendorTechnology::ResetHistory()
     {
+    #ifdef _WIN32
         common::reset_history = true;
+    #endif
     }
 
     void RHI_VendorTechnology::XeSS_GenerateJitterSample(float* x, float* y)
     {
+    #ifdef _WIN32
         // generate a single halton value for a given base and index
         auto get_corput = [](uint32_t index, uint32_t base) -> float
         {
@@ -1197,6 +1183,7 @@ namespace spartan
         // advance to the next sample, cycling back to 0
         uint32_t sample_count_at_current_quality_level = intel::get_sample_count();
         halton_index = (halton_index + 1) % sample_count_at_current_quality_level;
+    #endif
     }
 
     void RHI_VendorTechnology::XeSS_Dispatch(
@@ -1360,10 +1347,6 @@ namespace spartan
         nvidia::create_resources(width, height);
 
         nvidia::nrd_initialized = true;
-
-        // register nrd as third party lib
-        string nrd_version = to_string(NRD_VERSION_MAJOR) + "." + to_string(NRD_VERSION_MINOR) + "." + to_string(NRD_VERSION_BUILD);
-        Settings::RegisterThirdPartyLib("NVIDIA NRD", nrd_version, "https://github.com/NVIDIAGameWorks/RayTracingDenoiser");
 
         SP_LOG_INFO("NRD initialized with RELAX denoiser for ReSTIR");
     #endif
@@ -1547,7 +1530,7 @@ namespace spartan
         // nrd input textures (viewz, normal_roughness, radiance) are already in GENERAL from Renderer_Passes.cpp
         {
             set<void*> transitioned_images;
-            vector<VkImageMemoryBarrier> pre_barriers;
+            vector<VkImageMemoryBarrier2> pre_barriers;
 
             for (uint32_t dispatch_idx = 0; dispatch_idx < dispatch_count; dispatch_idx++)
             {
@@ -1581,10 +1564,12 @@ namespace spartan
                         old_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     }
 
-                    VkImageMemoryBarrier barrier = {};
-                    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-                    barrier.srcAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                    barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                    VkImageMemoryBarrier2 barrier            = {};
+                    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+                    barrier.srcStageMask                    = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                    barrier.srcAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                    barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                    barrier.dstAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
                     barrier.oldLayout                       = old_layout;
                     barrier.newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
                     barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
@@ -1602,10 +1587,12 @@ namespace spartan
 
             if (!pre_barriers.empty())
             {
-                vkCmdPipelineBarrier(vk_cmd,
-                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    0, 0, nullptr, 0, nullptr,
-                    static_cast<uint32_t>(pre_barriers.size()), pre_barriers.data());
+                VkDependencyInfo dependency_info         = {};
+                dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                dependency_info.imageMemoryBarrierCount  = static_cast<uint32_t>(pre_barriers.size());
+                dependency_info.pImageMemoryBarriers     = pre_barriers.data();
+
+                vkCmdPipelineBarrier2(vk_cmd, &dependency_info);
             }
         }
 
@@ -1633,7 +1620,7 @@ namespace spartan
 
             // transition all resources to GENERAL layout (compatible with both sampled and storage access)
             // use memory barriers for coherency between dispatches
-            vector<VkImageMemoryBarrier> image_barriers;
+            vector<VkImageMemoryBarrier2> image_barriers;
             for (uint32_t r = 0; r < dispatch.resourcesNum; r++)
             {
                 const nrd::ResourceDesc& res = dispatch.resources[r];
@@ -1642,10 +1629,12 @@ namespace spartan
                 if (!texture)
                     continue;
 
-                VkImageMemoryBarrier barrier = {};
-                barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-                barrier.srcAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-                barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                VkImageMemoryBarrier2 barrier            = {};
+                barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+                barrier.srcStageMask                    = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                barrier.srcAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+                barrier.dstStageMask                    = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+                barrier.dstAccessMask                   = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
                 barrier.oldLayout                       = VK_IMAGE_LAYOUT_GENERAL;
                 barrier.newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
                 barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
@@ -1662,8 +1651,12 @@ namespace spartan
 
             if (!image_barriers.empty())
             {
-                vkCmdPipelineBarrier(vk_cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    0, 0, nullptr, 0, nullptr, static_cast<uint32_t>(image_barriers.size()), image_barriers.data());
+                VkDependencyInfo dependency_info         = {};
+                dependency_info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+                dependency_info.imageMemoryBarrierCount  = static_cast<uint32_t>(image_barriers.size());
+                dependency_info.pImageMemoryBarriers     = image_barriers.data();
+
+                vkCmdPipelineBarrier2(vk_cmd, &dependency_info);
             }
 
             // build descriptor writes
@@ -1700,29 +1693,34 @@ namespace spartan
 
                 VkDescriptorImageInfo img_info = {};
                 img_info.sampler     = VK_NULL_HANDLE;
-                img_info.imageView   = static_cast<VkImageView>(texture->GetRhiSrv());
                 img_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-                image_infos.push_back(img_info);
 
                 VkWriteDescriptorSet write = {};
                 write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 write.dstSet          = descriptor_set;
                 write.descriptorCount = 1;
-                write.pImageInfo      = &image_infos.back();
+
+                // use the same image view for both SRV and UAV (Vulkan allows this)
+                // the difference is the descriptor type and layout (GENERAL for storage)
+                img_info.imageView = static_cast<VkImageView>(texture->GetRhiSrv());
 
                 if (res.descriptorType == nrd::DescriptorType::TEXTURE)
                 {
+                    // SRV - sampled image
                     write.dstBinding     = nvidia::nrd_binding_offsets.textureOffset + texture_index;
                     write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                     texture_index++;
                 }
                 else
                 {
+                    // UAV - storage image
                     write.dstBinding     = nvidia::nrd_binding_offsets.storageTextureAndBufferOffset + storage_index;
                     write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
                     storage_index++;
                 }
+
+                image_infos.push_back(img_info);
+                write.pImageInfo = &image_infos.back();
 
                 writes.push_back(write);
             }
@@ -1741,20 +1739,32 @@ namespace spartan
             vkCmdDispatch(vk_cmd, dispatch.gridWidth, dispatch.gridHeight, 1);
 
             // memory barrier between dispatches
-            VkMemoryBarrier barrier = {};
-            barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-            barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-            barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-            vkCmdPipelineBarrier(vk_cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+            memory_barrier.srcAccessMask    = VK_ACCESS_2_SHADER_WRITE_BIT;
+            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+            memory_barrier.dstAccessMask    = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+
+            VkDependencyInfo dependency_info   = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+
+            vkCmdPipelineBarrier2(vk_cmd, &dependency_info);
         }
 
-        // copy denoised diffuse result to output
-        RHI_Texture* denoised = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist);
-        if (denoised && tex_output)
+        // combine denoised diffuse + specular and copy to output
+        // for now, just copy diffuse (most energy for non-metals)
+        // TODO: add a combine pass that adds diffuse + specular
+        RHI_Texture* denoised_diff = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_out_diff_radiance_hitdist);
+        RHI_Texture* denoised_spec = Renderer::GetRenderTarget(Renderer_RenderTarget::nrd_out_spec_radiance_hitdist);
+        if (denoised_diff && tex_output)
         {
-            // transition output texture for reading
-            cmd_list->InsertBarrier(denoised, RHI_Image_Layout::General);
-            cmd_list->Blit(denoised, tex_output, false);
+            // transition denoised textures for reading
+            cmd_list->InsertBarrier(denoised_diff, RHI_Image_Layout::Transfer_Source);
+            cmd_list->InsertBarrier(tex_output, RHI_Image_Layout::Transfer_Destination);
+            cmd_list->Blit(denoised_diff, tex_output, false);
         }
     #endif
     }

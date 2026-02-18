@@ -71,13 +71,26 @@ void TextureViewer::OnVisible()
     render_targets.clear();
 
     // get render targets
+    vector<pair<string, spartan::RHI_Texture*>> sorted_targets;
     for (const shared_ptr<spartan::RHI_Texture>& render_target : Renderer::GetRenderTargets())
     {
         if (render_target)
         {
-            render_target_names.emplace_back(render_target->GetObjectName());
-            render_targets.emplace_back(render_target.get());
+            sorted_targets.emplace_back(render_target->GetObjectName(), render_target.get());
         }
+    }
+
+    // sort alphabetically by name
+    sort(sorted_targets.begin(), sorted_targets.end(), [](const auto& a, const auto& b)
+    {
+        return a.first < b.first;
+    });
+
+    // populate the lists
+    for (const auto& target : sorted_targets)
+    {
+        render_target_names.emplace_back(target.first);
+        render_targets.emplace_back(target.second);
     }
 }
 
