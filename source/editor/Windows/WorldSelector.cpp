@@ -71,6 +71,29 @@ namespace
     bool visible_world_list       = false;
     bool downloaded_and_extracted = false;
 
+    // New World Creation state
+    struct NewWorldSettings
+    {
+        char title[128]            = "New World";
+        char description[512]      = "";
+        char save_path[256]        = "";
+        int renderer_preset        = 1;  // 0 = Low, 1 = Medium, 2 = High, 3 = Ultra
+
+        void Reset()
+        {
+            strcpy_s(title, "New World");
+            memset(description, 0, sizeof(description));
+            memset(save_path, 0, sizeof(save_path));
+            renderer_preset       = 1;
+
+            // set default save path
+            string default_path = string(spartan::ResourceCache::GetProjectDirectory()) + "worlds/";
+            strcpy_s(save_path, default_path.c_str());
+        }
+    };
+    NewWorldSettings new_world_settings;
+    bool visible_create_world_modal = false;
+
     // asset download configuration
     const char* assets_url          = "https://www.dropbox.com/scl/fi/lo0fiz7q4qggn07v2p7r7/project.7z?rlkey=twtmlivihh1rgz640ir85o4pk&st=2qbdrpxi&dl=1";
     const char* assets_destination  = "project/project.7z";
@@ -260,6 +283,100 @@ namespace
         ImGui::End();
     }
 
+    void create_new_world()
+    {
+        // validate title
+        if (strlen(new_world_settings.title) == 0)
+        {
+            Modal::ShowMessage("Error", "Please enter a world title.");
+            return;
+        }
+
+        // ensure save directory exists
+        if (!spartan::FileSystem::Exists(new_world_settings.save_path))
+        {
+            spartan::FileSystem::CreateDirectory_(new_world_settings.save_path);
+        }
+
+        // set world metadata
+        spartan::World::SetDescription(new_world_settings.description);
+
+        // construct full file path and save
+        string file_path = string(new_world_settings.save_path) + new_world_settings.title + ".world";
+        spartan::World::SaveToFile(file_path);
+
+        // close modals and refresh
+        visible_create_world_modal = false;
+        visible_world_list         = false;
+        scan_for_world_files();
+    }
+
+    void show_create_world_modal()
+    {
+        if (!visible_create_world_modal) return;
+
+        Modal::ModalPanel panel;
+        panel.title              = "Create New World";
+        panel.confirm_text       = "Create";
+        panel.cancel_text        = "Cancel";
+        panel.show_cancel_button = true;
+        panel.dim_alpha          = 0.7f;
+        panel.min_size           = ImVec2(450, 0);
+        panel.max_size           = ImVec2(550, 500);
+
+        panel.custom_content = []()
+        {
+            float input_width = ImGui::GetContentRegionAvail().x;
+
+            // world title
+            Modal::ModalHeader("World Information", true, false);
+
+            ImGui::Text("Title");
+            ImGui::SetNextItemWidth(input_width);
+            ImGui::InputText("##world_title", new_world_settings.title, sizeof(new_world_settings.title));
+            ImGui::Spacing();
+
+            // description
+            ImGui::Text("Description");
+            ImGui::SetNextItemWidth(input_width);
+            ImGui::InputTextMultiline(
+                "##world_description", new_world_settings.description, sizeof(new_world_settings.description),
+                ImVec2(input_width, 60));
+            ImGui::Spacing();
+
+            // save location
+            Modal::ModalHeader("Save Location", true, true);
+
+            ImGui::Text("Save Path");
+            ImGui::SetNextItemWidth(input_width);
+            ImGui::InputText("##save_path", new_world_settings.save_path, sizeof(new_world_settings.save_path));
+            ImGui::Spacing();
+
+            // default content options
+            Modal::ModalHeader("Default Content", true, true);
+
+            /*ImGui::Checkbox("Create default camera", &new_world_settings.create_default_camera);
+            ImGui::Checkbox("Create default directional light", &new_world_settings.create_default_light);
+            ImGui::Checkbox("Create default floor plane", &new_world_settings.create_default_floor);*/
+            ImGui::Spacing();
+
+            // renderer preset
+            Modal::ModalHeader("Renderer Settings", true, true);
+
+            ImGui::Text("Quality Preset");
+            ImGui::SetNextItemWidth(input_width);
+            const char* presets[] = {"Low", "Medium", "High", "Ultra"};
+            ImGui::Combo("##renderer_preset", &new_world_settings.renderer_preset, presets, IM_ARRAYSIZE(presets));
+
+            ImGui::Unindent();
+        };
+
+        Modal::ShowConfirmation(panel.title, "", []() { create_new_world(); }, []() { visible_create_world_modal = false; });
+
+        // use Show with custom content instead
+        Modal::Show(panel);
+    }
+    
     void window_world_list()
     {
         if (!visible_world_list)
@@ -395,7 +512,7 @@ namespace
             // buttons
             ImGui::Spacing();
             float button_width = 100.0f;
-            float total_width  = button_width * 3 + ImGui::GetStyle().ItemSpacing.x * 2;
+            float total_width  = button_width * 4 + ImGui::GetStyle().ItemSpacing.x * 3;
             float offset_x     = (ImGui::GetContentRegionAvail().x - total_width) * 0.5f;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
@@ -414,6 +531,13 @@ namespace
                 visible_world_list = false;
             }
             ImGui::SameLine();
+            if (ImGui::Button("New", ImVec2(button_width, 0)))
+            {
+                new_world_settings.Reset();
+                visible_world_list         = false;
+                visible_create_world_modal = true;
+            }
+            ImGui::SameLine();
             if (ImGui::Button("Cancel", ImVec2(button_width, 0)))
             {
                 visible_world_list = false;
@@ -423,9 +547,11 @@ namespace
             {
                 *GeneralWindows::GetVisiblityWindowControls() = true;
             }
+
         }
         ImGui::End();
     }
+
 }
 
 void WorldSelector::Initialize(Editor* editor_in)
@@ -456,6 +582,7 @@ void WorldSelector::Tick()
     window_download_prompt();
     window_update_prompt();
     window_world_list();
+    show_create_world_modal();
 }
 
 bool WorldSelector::GetVisible()
