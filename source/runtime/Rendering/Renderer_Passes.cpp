@@ -168,15 +168,15 @@ namespace spartan
 
                 prev_material = material;
 
-                //if (material->ShouldComputeSpectrum())
-                //{
+                if (material->ShouldComputeSpectrum())
+                {
                     //SP_LOG_INFO("Computing Ocean Spectrum...");
                     Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
                     // calculates conjugate and stores it in BA channels of the initial spectrum
                     Pass_PackSpectrum(cmd_list_graphics_present);
 
                     material->MarkSpectrumAsComputed(true);
-                //}
+                }
 
                 // computes displacement and slope maps
                 Pass_AdvanceSpectrum(cmd_list_graphics_present);
@@ -613,6 +613,31 @@ namespace spartan
                 // and prior cpu-driven draws may have changed the dynamic cull mode state
                 cmd_list->SetCullMode(RHI_CullMode::Back);
 
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                {
+                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                    Renderable* renderable = draw_call.renderable;
+                    Material* material = renderable->GetMaterial();
+                    if (!material || !draw_call.camera_visible)
+                        continue;
+
+                    Entity* entity = renderable->GetEntity();
+
+                    //if (material->IsOcean())
+                    //{
+                    //    const Vector3 tile_pos = renderable->GetEntity()->GetPosition();
+                    //    m_pcb_pass_cpu.set_f3_value2(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                    //}
+
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    if (material->IsOcean())
+                    {
+                        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+                    }
+                }
+
                 cmd_list->DrawIndexedIndirectCount(
                     GetBuffer(Renderer_Buffer::IndirectDrawArgsOut),
                     0,
@@ -675,11 +700,11 @@ namespace spartan
                         m_pcb_pass_cpu.material_index = material->GetIndex();
                         m_pcb_pass_cpu.set_f3_value(0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
 
-                        if (material->IsOcean())
-                        {
-                            const Vector3 tile_pos = renderable->GetEntity()->GetPosition();
-                            m_pcb_pass_cpu.set_f3_value2(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
-                        }
+                        //if (material->IsOcean())
+                        //{
+                        //    const Vector3 tile_pos = renderable->GetEntity()->GetPosition();
+                        //    m_pcb_pass_cpu.set_f3_value2(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                        //}
 
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                     }
@@ -769,6 +794,40 @@ namespace spartan
                 // reset cull mode to back since indirect draws all use back-face culling,
                 // and prior cpu-driven draws may have changed the dynamic cull mode state
                 cmd_list->SetCullMode(RHI_CullMode::Back);
+
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                {
+                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                    Renderable* renderable = draw_call.renderable;
+                    Material* material = renderable->GetMaterial();
+                    if (!material || !draw_call.camera_visible)
+                        continue;
+
+                    Entity* entity = renderable->GetEntity();
+
+                    //if (material->IsOcean())
+                    //{
+                    //    const Vector3 tile_pos = entity->GetPosition();
+                    //    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                    //}
+
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    if (material->IsOcean())
+                    {
+                        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+
+                        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
+
+                        RHI_Texture* heightmap = material->GetTexture(MaterialTextureType::Height);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex4, heightmap);
+
+                        RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Flowmap);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex5, flowmap);
+                    }
+                }
 
                 // single indirect draw call replaces the entire opaque draw loop
                 cmd_list->DrawIndexedIndirectCount(
@@ -860,11 +919,11 @@ namespace spartan
                         m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
                         m_pcb_pass_cpu.material_index = material->GetIndex();
 
-                        if (material->IsOcean())
-                        {
-                            const Vector3 tile_pos = entity->GetPosition();
-                            m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
-                        }
+                        //if (material->IsOcean())
+                        //{
+                        //    const Vector3 tile_pos = entity->GetPosition();
+                        //    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                        //}
 
                         cmd_list->PushConstants(m_pcb_pass_cpu);
 
@@ -1923,6 +1982,7 @@ namespace spartan
     void Renderer::Pass_ComputeInitialSpectrum(RHI_CommandList* cmd_list)
     {
         RHI_Texture* initial_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+        RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
         
         cmd_list->BeginTimeblock("ocean_intial_spectrum");
         {
@@ -1932,6 +1992,7 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
 
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, tex_normal);
             cmd_list->Dispatch(initial_spectrum);
         }
         cmd_list->EndTimeblock();
@@ -1962,6 +2023,7 @@ namespace spartan
         RHI_Texture* initial_spectrum      = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
         RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
         RHI_Texture* slope_spectrum        = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+        RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
 
         cmd_list->BeginTimeblock("ocean_advance_spectrum");
         {
@@ -1973,6 +2035,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum,      initial_spectrum);
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum,        slope_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, tex_normal);
             cmd_list->Dispatch(initial_spectrum);
         }
         cmd_list->EndTimeblock();
@@ -2027,6 +2090,8 @@ namespace spartan
         RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
         RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
+        RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
+
         cmd_list->BeginTimeblock("ocean_map_generation");
         {
             RHI_PipelineState pso;
@@ -2038,6 +2103,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_map, displacement_map);
             cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, tex_normal);
             cmd_list->Dispatch(displacement_map);
 
             Pass_Downscale(cmd_list, displacement_map, Renderer_DownsampleFilter::Average);

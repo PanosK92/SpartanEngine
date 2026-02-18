@@ -374,7 +374,7 @@ namespace spartan
                     // if material fails to load from file
                     if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)
                     {
-                        material->SetColor(Color(0.0f, 142.0f / 255.0f, 229.0f / 255.0f, 254.0f / 255.0f));
+                        material->SetColor(Color(0.0f, 142.0f / 255.0f, 229.0f / 255.0f, 255.0f / 255.0f));
                         material->SetProperty(MaterialProperty::IsOcean, 1.0f);
 
                         material->SetOceanProperty(OceanParameters::Angle, 0.0f); //handled internally

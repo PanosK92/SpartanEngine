@@ -131,18 +131,18 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     
     if (surface.is_ocean() && material.ocean_parameters.displacementScale > -1.0f)
     {
-        const float3 pass_values = pass_get_f3_value();
-        const float2 tile_xz_pos = pass_values.xy;
-        const float tile_size = pass_values.z;
-        const float2 tile_local_uv = ocean_get_world_space_uvs(input.uv, tile_xz_pos, tile_size);
+        //const float3 pass_values = pass_get_f3_value();
+        //const float2 tile_xz_pos = pass_values.xy;
+        //const float tile_size = pass_values.z;
+        const float2 tile_local_uv = ocean_get_world_space_uvs(input.uv, _draw.tile_xz_pos, _draw.tile_size);
         
         const float2 world_pos = mul(input.position, _draw.transform).xz;
         
         const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
 
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        //synthesize(tex2, displacement, world_space_tile_uv);
-        synthesize_with_flow(tex2, displacement, tex5, world_pos, material.ocean_parameters.windDirection, tile_local_uv);
+        synthesize(tex2, displacement, tile_local_uv);
+        //synthesize_with_flow(tex2, displacement, tex5, world_pos, material.ocean_parameters.windDirection, tile_local_uv);
 
         const float height = tex4.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
         
@@ -300,14 +300,15 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
     else if (surface.is_ocean())
     {
-        const float3 pass_values = pass_get_f3_value();
-        const float2 tile_xz_pos = pass_values.xy;
-        const float tile_size = pass_values.z;
-        const float2 tile_local_uv = ocean_get_world_space_uvs(vertex.uv_misc.xy, tile_xz_pos, tile_size);
+        //const float3 pass_values = pass_get_f3_value();
+        //const float2 tile_xz_pos = pass_values.xy;
+        //const float tile_size = pass_values.z;
+        
+        const float2 tile_local_uv = ocean_get_world_space_uvs(vertex.uv_misc.xy, _draw.tile_xz_pos, _draw.tile_size);
         
         float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        //synthesize(tex3, slope, world_space_tile_uv);
-        synthesize_with_flow(tex3, slope, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv);
+        synthesize(tex3, slope, tile_local_uv);
+        //synthesize_with_flow(tex3, slope, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv);
         
         slope = slope * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, vertex.normal.y, -slope.y));
@@ -323,8 +324,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
                 // first we must synthesise again since we dont have access
                 // to the synthesised displacement (it's calculated in the vertex stage)
                 float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-                //synthesize(tex2, displacement, world_space_tile_uv);
-                synthesize_with_flow(tex2, displacement, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv, true);
+                synthesize(tex2, displacement, tile_local_uv);
+                //synthesize_with_flow(tex2, displacement, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv, true);
                 
                 normal = displacement;
 
@@ -392,6 +393,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     gbuffer g_buffer;
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pass_get_material_index());
+    g_buffer.normal   = float4(_draw.tile_xz_pos.x, _draw.tile_xz_pos.y, _draw.tile_size, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity;
     return g_buffer;

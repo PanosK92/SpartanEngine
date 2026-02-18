@@ -143,7 +143,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         // atomically allocate a slot in the output buffers
         uint output_index;
         InterlockedAdd(indirect_draw_count[0], 1, output_index);
-
+        
         // compact the draw arguments and per-draw data
         indirect_draw_args_out[output_index] = indirect_draw_args[draw_index];
         indirect_draw_data_out[output_index] = indirect_draw_data[draw_index];

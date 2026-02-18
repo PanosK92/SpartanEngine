@@ -987,7 +987,8 @@ namespace spartan
         bool is_instanced    = draw_call.instance_count > 1;
         bool is_alpha_tested = material->IsAlphaTested();
         bool is_non_standard_cull = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
-        return is_tessellated || is_instanced || is_alpha_tested || is_non_standard_cull;
+        //bool is_ocean = material->IsOcean(); // TEMP: for now, ocean is cpu driven. Might wanna move it to gpu driven
+        return is_tessellated || is_instanced || is_alpha_tested || is_non_standard_cull; //|| is_ocean;
     }
 
     void Renderer::SetCommonTextures(RHI_CommandList* cmd_list)
@@ -1501,11 +1502,14 @@ namespace spartan
                 // aabb_index points past the prepass aabbs in the shared buffer
                 Sb_DrawData& data       = m_indirect_draw_data[idx];
                 Entity* entity          = renderable->GetEntity();
+                math::Vector3 ent_pos   = entity->GetPosition();
                 data.transform          = entity->GetMatrix();
                 data.transform_previous = entity->GetMatrixPrevious();
                 data.material_index     = material->GetIndex();
                 data.is_transparent     = 0;
                 data.aabb_index         = m_draw_calls_prepass_count + idx;
+                data.tile_size          = material->GetOceanTileSize();
+                data.tile_xz_pos        = { ent_pos.x, ent_pos.z };
                 data.padding            = 0;
             }
         }
