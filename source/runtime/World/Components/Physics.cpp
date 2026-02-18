@@ -1972,38 +1972,61 @@ namespace spartan
         const Color color_susp_top   = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - suspension top
         const Color color_susp_bot   = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - suspension bottom/wheel
 
-        // draw raycasts
-        if (car::get_draw_raycasts())
+        for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
         {
-            int rays_per_wheel = car::get_debug_rays_per_wheel();
-            for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
+            PxVec3 top, bottom;
+            car::get_debug_suspension(w, top, bottom);
+            math::Vector3 susp_top(top.x, top.y, top.z);
+            math::Vector3 wheel_center(bottom.x, bottom.y, bottom.z);
+
+            // suspension line
+            if (car::get_draw_suspension())
+                Renderer::DrawLine(susp_top, wheel_center, color_susp_top, color_susp_bot);
+
+            // cylinder wireframe at wheel center
+            if (car::get_draw_raycasts())
             {
-                for (int r = 0; r < rays_per_wheel; r++)
+                float radius     = car::get_wheel_radius();
+                float half_width = car::get_wheel_width() * 0.5f;
+
+                PxTransform pose = car::get_body_pose();
+                PxVec3 right     = pose.q.rotate(PxVec3(1, 0, 0));
+                PxVec3 fwd       = pose.q.rotate(PxVec3(0, 0, 1));
+                PxVec3 up        = pose.q.rotate(PxVec3(0, 1, 0));
+
+                PxVec3 center = PxVec3(bottom.x, bottom.y, bottom.z) + up * radius;
+                PxVec3 left_center  = center - right * half_width;
+                PxVec3 right_center = center + right * half_width;
+
+                const int segments = 16;
+                PxVec3 prev_l, prev_r;
+                for (int s = 0; s <= segments; s++)
                 {
-                    PxVec3 origin, hit_point;
-                    bool hit;
-                    car::get_debug_ray(w, r, origin, hit_point, hit);
+                    float angle = (2.0f * PxPi * s) / segments;
+                    PxVec3 offset = fwd * (cosf(angle) * radius) + up * (sinf(angle) * radius);
+                    PxVec3 pl = left_center + offset;
+                    PxVec3 pr = right_center + offset;
 
-                    math::Vector3 from(origin.x, origin.y, origin.z);
-                    math::Vector3 to(hit_point.x, hit_point.y, hit_point.z);
-
-                    Renderer::DrawLine(from, to, hit ? color_ray_hit : color_ray_miss, hit ? color_ray_hit : color_ray_miss);
+                    if (s > 0)
+                    {
+                        Color col = car::is_wheel_grounded(w) ? color_ray_hit : color_ray_miss;
+                        Renderer::DrawLine(math::Vector3(prev_l.x, prev_l.y, prev_l.z), math::Vector3(pl.x, pl.y, pl.z), col, col);
+                        Renderer::DrawLine(math::Vector3(prev_r.x, prev_r.y, prev_r.z), math::Vector3(pr.x, pr.y, pr.z), col, col);
+                    }
+                    prev_l = pl;
+                    prev_r = pr;
                 }
-            }
-        }
 
-        // draw suspension
-        if (car::get_draw_suspension())
-        {
-            for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
-            {
-                PxVec3 top, bottom;
-                car::get_debug_suspension(w, top, bottom);
-
-                math::Vector3 susp_top(top.x, top.y, top.z);
-                math::Vector3 susp_bottom(bottom.x, bottom.y, bottom.z);
-
-                Renderer::DrawLine(susp_top, susp_bottom, color_susp_top, color_susp_bot);
+                // connecting lines between caps (4 cardinal points)
+                for (int s = 0; s < 4; s++)
+                {
+                    float angle = (2.0f * PxPi * s) / 4;
+                    PxVec3 offset = fwd * (cosf(angle) * radius) + up * (sinf(angle) * radius);
+                    PxVec3 pl = left_center + offset;
+                    PxVec3 pr = right_center + offset;
+                    Color col = car::is_wheel_grounded(w) ? color_ray_hit : color_ray_miss;
+                    Renderer::DrawLine(math::Vector3(pl.x, pl.y, pl.z), math::Vector3(pr.x, pr.y, pr.z), col, col);
+                }
             }
         }
 

@@ -83,10 +83,6 @@ namespace spartan
         buffer(Renderer_Buffer::MaterialParameters) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Material)), rhi_max_array_size,                     nullptr,            true, "materials");
         buffer(Renderer_Buffer::LightParameters)    = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Light)),    rhi_max_array_size,                     nullptr,            true, "lights");
         buffer(Renderer_Buffer::DummyInstance)      = make_shared<RHI_Buffer>(RHI_Buffer_Type::Instance, sizeof(Instance),                           static_cast<uint32_t>(identity.size()), &identity,          true, "dummy_instance_buffer");
-        // visibility buffers no longer used by rendering but slots must remain allocated
-        buffer(Renderer_Buffer::Visibility_unused)         = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), 1, nullptr, true, "visibility_placeholder");
-        buffer(Renderer_Buffer::VisibilityPrev_unused)     = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), 1, nullptr, true, "visibility_prev_placeholder");
-        buffer(Renderer_Buffer::VisibilityReadback_unused) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)), 1, nullptr, true, "visibility_readback_placeholder");
         buffer(Renderer_Buffer::AABBs)              = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_Aabb)),         rhi_max_array_size,                     nullptr,            true, "aabbs");
         buffer(Renderer_Buffer::GeometryInfo)       = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage,  static_cast<uint32_t>(sizeof(Sb_GeometryInfo)), rhi_max_array_size,                     nullptr,            true, "geometry_info");
 
@@ -175,7 +171,7 @@ namespace spartan
                 sampler(Renderer_Sampler::Point_clamp_border,    RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToZero, RHI_Comparison_Function::Never,   0.0f, false, 0.0f);
                 sampler(Renderer_Sampler::Point_wrap,            RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Wrap,        RHI_Comparison_Function::Never,   0.0f, false, 0.0f);
                 sampler(Renderer_Sampler::Bilinear_clamp_edge,   RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Clamp,       RHI_Comparison_Function::Never,   0.0f, false, 0.0f);
-                sampler(Renderer_Sampler::Bilienar_clamp_border, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToZero, RHI_Comparison_Function::Never,   0.0f, false, 0.0f);
+                sampler(Renderer_Sampler::Bilinear_clamp_border, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::ClampToZero, RHI_Comparison_Function::Never,   0.0f, false, 0.0f);
                 sampler(Renderer_Sampler::Bilinear_wrap,         RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Nearest, RHI_Sampler_Address_Mode::Wrap,        RHI_Comparison_Function::Never,   0.0f, false, 0.0f);
                 sampler(Renderer_Sampler::Trilinear_clamp,       RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Address_Mode::Clamp,       RHI_Comparison_Function::Never,   0.0f, false, 0.0f);
 
@@ -248,21 +244,18 @@ namespace spartan
         {
             uint32_t restir_flags = flags | RHI_Texture_ConcurrentSharing;
 
-            render_target(Renderer_RenderTarget::restir_reservoir0)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir0");
-            render_target(Renderer_RenderTarget::restir_reservoir1)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir1");
-            render_target(Renderer_RenderTarget::restir_reservoir2)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir2");
-            render_target(Renderer_RenderTarget::restir_reservoir3)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir3");
-            render_target(Renderer_RenderTarget::restir_reservoir4)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir4");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev0)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_prev0");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev1)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_prev1");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev2)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_prev2");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev3)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_prev3");
-            render_target(Renderer_RenderTarget::restir_reservoir_prev4)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_prev4");
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial0) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_spatial0");
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial1) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_spatial1");
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_spatial2");
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial3) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_spatial3");
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial4) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, "restir_reservoir_spatial4");
+            static const char* reservoir_names[] =
+            {
+                "restir_reservoir0",         "restir_reservoir1",         "restir_reservoir2",         "restir_reservoir3",         "restir_reservoir4",
+                "restir_reservoir_prev0",    "restir_reservoir_prev1",    "restir_reservoir_prev2",    "restir_reservoir_prev3",    "restir_reservoir_prev4",
+                "restir_reservoir_spatial0", "restir_reservoir_spatial1", "restir_reservoir_spatial2", "restir_reservoir_spatial3", "restir_reservoir_spatial4",
+            };
+
+            for (uint32_t i = 0; i < 15; i++)
+            {
+                auto rt = static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0) + i);
+                render_target(rt) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, reservoir_names[i]);
+            }
             
             // nrd denoiser textures (concurrent sharing: denoiser runs as part of restir on async compute)
             render_target(Renderer_RenderTarget::nrd_viewz)                    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16_Float,          restir_flags, "nrd_viewz");
@@ -274,21 +267,11 @@ namespace spartan
         }
         else if (!need_restir && render_target(Renderer_RenderTarget::restir_reservoir0))
         {
-            render_target(Renderer_RenderTarget::restir_reservoir0)         = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir1)         = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir2)         = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir3)         = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir4)         = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev0)    = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev1)    = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev2)    = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev3)    = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_prev4)    = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial0) = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial1) = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial2) = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial3) = nullptr;
-            render_target(Renderer_RenderTarget::restir_reservoir_spatial4) = nullptr;
+            for (uint32_t i = 0; i < 15; i++)
+            {
+                auto rt = static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0) + i);
+                render_target(rt) = nullptr;
+            }
             
             // nrd denoiser textures
             render_target(Renderer_RenderTarget::nrd_viewz)                     = nullptr;
@@ -655,10 +638,6 @@ namespace spartan
         shader(Renderer_Shader::blit_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::blit_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "blit.hlsl", async);
 
-        // placeholder for removed occlusion shader (the shaders array must have no null slots)
-        shader(Renderer_Shader::occlusion_c_unused) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::occlusion_c_unused)->Compile(RHI_Shader_Type::Compute, shader_dir + "indirect_cull.hlsl", async);
-
         // indirect draw culling
         shader(Renderer_Shader::indirect_cull_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::indirect_cull_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "indirect_cull.hlsl", async);
@@ -776,6 +755,10 @@ namespace spartan
             shader(Renderer_Shader::particle_render_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "particles.hlsl", async);
         }
 
+        // gpu texture compression - compiled synchronously since it's needed during texture loading
+        shader(Renderer_Shader::texture_compress_bc3_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::texture_compress_bc3_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "texture_compress_bc3.hlsl", false);
+
     }
 
     void Renderer::CreateFonts()
@@ -790,54 +773,46 @@ namespace spartan
 
     void Renderer::CreateStandardMeshes()
     {
-        auto create_mesh = [](const MeshType type)
+        using VertexVec = vector<RHI_Vertex_PosTexNorTan>;
+        using IndexVec  = vector<uint32_t>;
+
+        struct MeshDef
         {
-            const string project_directory = ResourceCache::GetProjectDirectory();
-            shared_ptr<Mesh> mesh = make_shared<Mesh>();
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            vector<uint32_t> indices;
-
-            if (type == MeshType::Cube)
-            {
-                geometry_generation::generate_cube(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_cube" + EXTENSION_MESH);
-            }
-            else if (type == MeshType::Quad)
-            {
-                geometry_generation::generate_quad(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MESH);
-            }
-            else if (type == MeshType::Sphere)
-            {
-                geometry_generation::generate_sphere(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_sphere" + EXTENSION_MESH);
-            }
-            else if (type == MeshType::Cylinder)
-            {
-                geometry_generation::generate_cylinder(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_cylinder" + EXTENSION_MESH);
-            }
-            else if (type == MeshType::Cone)
-            {
-                geometry_generation::generate_cone(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MESH);
-            }
-
-            // don't optimize this geometry as it's made to spec
-            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-
-            mesh->AddGeometry(vertices, indices, false);
-            mesh->SetType(type);
-            mesh->CreateGpuBuffers();
-
-            standard_meshes[static_cast<uint8_t>(type)] = mesh;
+            MeshType type;
+            void (*generate)(VertexVec*, IndexVec*);
+            const char* name;
         };
 
-        create_mesh(MeshType::Cube);
-        create_mesh(MeshType::Quad);
-        create_mesh(MeshType::Sphere);
-        create_mesh(MeshType::Cylinder);
-        create_mesh(MeshType::Cone);
+        // wrappers to bind default arguments for functions with extra parameters
+        auto gen_sphere   = [](VertexVec* v, IndexVec* i) { geometry_generation::generate_sphere(v, i);   };
+        auto gen_cylinder = [](VertexVec* v, IndexVec* i) { geometry_generation::generate_cylinder(v, i); };
+        auto gen_cone     = [](VertexVec* v, IndexVec* i) { geometry_generation::generate_cone(v, i);     };
+
+        const MeshDef defs[] =
+        {
+            { MeshType::Cube,     geometry_generation::generate_cube, "standard_cube"     },
+            { MeshType::Quad,     geometry_generation::generate_quad, "standard_quad"     },
+            { MeshType::Sphere,   +gen_sphere,                        "standard_sphere"   },
+            { MeshType::Cylinder, +gen_cylinder,                      "standard_cylinder" },
+            { MeshType::Cone,     +gen_cone,                          "standard_cone"     },
+        };
+
+        const string project_directory = ResourceCache::GetProjectDirectory();
+        for (const MeshDef& def : defs)
+        {
+            shared_ptr<Mesh> mesh = make_shared<Mesh>();
+            VertexVec vertices;
+            IndexVec indices;
+
+            def.generate(&vertices, &indices);
+            mesh->SetResourceFilePath(project_directory + def.name + EXTENSION_MESH);
+            mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+            mesh->AddGeometry(vertices, indices, false);
+            mesh->SetType(def.type);
+            mesh->CreateGpuBuffers();
+
+            standard_meshes[static_cast<uint8_t>(def.type)] = mesh;
+        }
 
         // this buffers holds all debug primitives that can be drawn
         m_lines_vertex_buffer = make_shared<RHI_Buffer>();
@@ -869,45 +844,17 @@ namespace spartan
             standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture>(dir_texture + "no_texture.png");
         }
 
-        // black and white
+        // solid 1x1 textures
         {
-            // black texture (1x1 pixel, rgba = 0,0,0,255)
-            std::vector<RHI_Texture_Mip> black_mips = {
-                RHI_Texture_Mip{std::vector<std::byte>{std::byte{0}, std::byte{0}, std::byte{0}, std::byte{255}}} // single pixel: r=0, g=0, b=0, a=255
+            auto create_solid_texture = [](const char* name, std::byte r, std::byte g, std::byte b, std::byte a)
+            {
+                std::vector<RHI_Texture_Mip>   mips   = { RHI_Texture_Mip{std::vector<std::byte>{r, g, b, a}} };
+                std::vector<RHI_Texture_Slice> slices  = { RHI_Texture_Slice{mips} };
+                return make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv | RHI_Texture_Uav, name, slices);
             };
-            std::vector<RHI_Texture_Slice> black_data = {
-                RHI_Texture_Slice{black_mips}
-            };
-            standard_texture(Renderer_StandardTexture::Black) = make_shared<RHI_Texture>(
-                RHI_Texture_Type::Type2D,          // type
-                1,                                 // width
-                1,                                 // height
-                1,                                 // depth
-                1,                                 // mip_count
-                RHI_Format::R8G8B8A8_Unorm,        // format
-                RHI_Texture_Srv | RHI_Texture_Uav, // flags
-                "black_texture",                   // name
-                black_data                         // data
-            );
-        
-            // white texture (1x1 pixel, rgba = 255,255,255,255)
-            std::vector<RHI_Texture_Mip> white_mips = {
-                RHI_Texture_Mip{std::vector<std::byte>{std::byte{255}, std::byte{255}, std::byte{255}, std::byte{255}}} // single pixel: r=255, g=255, b=255, a=255
-            };
-            std::vector<RHI_Texture_Slice> white_data = {
-                RHI_Texture_Slice{white_mips}
-            };
-            standard_texture(Renderer_StandardTexture::White) = make_shared<RHI_Texture>(
-                RHI_Texture_Type::Type2D,          // type
-                1,                                 // width
-                1,                                 // height
-                1,                                 // depth
-                1,                                 // mip_count
-                RHI_Format::R8G8B8A8_Unorm,        // format
-                RHI_Texture_Srv | RHI_Texture_Uav, // flags
-                "white_texture",                   // name
-                white_data                         // data
-            );
+
+            standard_texture(Renderer_StandardTexture::Black) = create_solid_texture("black_texture", std::byte{0},   std::byte{0},   std::byte{0},   std::byte{255});
+            standard_texture(Renderer_StandardTexture::White) = create_solid_texture("white_texture", std::byte{255}, std::byte{255}, std::byte{255}, std::byte{255});
         }
     }
 
@@ -936,6 +883,7 @@ namespace spartan
         standard_textures.fill(nullptr);
         standard_meshes.fill(nullptr);
         buffers.fill(nullptr);
+        m_draw_data_buffers.fill(nullptr);
         standard_font     = nullptr;
         standard_material = nullptr;
     }

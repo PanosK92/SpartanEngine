@@ -540,6 +540,11 @@ namespace spartan
         SDL_DestroyWindow(m_splash_screen_window);
     }
 
+    void Window::PumpEvents()
+    {
+        SDL_PumpEvents();
+    }
+
     void Window::SetTitleBarHeight(float height)
     {
         titlebar_height = height;
