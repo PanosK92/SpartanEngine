@@ -22,11 +22,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "World.h"
+
+#include <sol/sol.hpp>
+
 #include "Entity.h"
+#include "Prefab.h"
 #include "../Game/Game.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/ProgressTracker.h"
-//#include "../Core/ThreadPool.h" // Take a look at later
+#include "../Core/ThreadPool.h"
 #include "Components/Renderable.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
@@ -34,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Renderer.h"
+#include "Components/Physics.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -48,18 +53,31 @@ namespace spartan
 {
     namespace
     {
+        sol::state lua_state;
         vector<Entity*> entities;
         vector<Entity*> entities_lights; // entities subset that contains only lights
         string file_path;
+        string world_name; // cached to avoid per-frame allocation
+        string world_description;
         mutex entity_access_mutex;
         vector<Entity*> pending_add;
         set<uint64_t> pending_remove;
-        uint32_t audio_source_count     = 0;
-        atomic<bool> resolve            = false;
-        bool was_in_editor_mode         = false;
+        uint32_t audio_source_count = 0;
+        atomic<bool> resolve        = false;
+        bool was_in_editor_mode     = false;
         BoundingBox bounding_box    = BoundingBox::Unit;
         Entity* camera              = nullptr;
         Entity* light               = nullptr;
+
+        // snapshot for play/stop state restoration (like unity's play mode)
+        struct EntitySnapshot
+        {
+            Vector3 position;
+            Quaternion rotation;
+            Vector3 scale;
+        };
+        unordered_map<uint64_t, EntitySnapshot> play_mode_snapshot;
+        float play_mode_time_of_day = 0.0f;
 
         // entity state tracking - things that change the nature of the entity for rendering
         enum class EntityChange : uint8_t
@@ -125,11 +143,464 @@ namespace spartan
             }
         }
 
+        bool is_world_in_project_directory(const string& world_file_path)
+        {
+            // check if the world is in the project directory (has local assets alongside it)
+            string normalized_path = world_file_path;
+            replace(normalized_path.begin(), normalized_path.end(), '\\', '/');
+
+            string project_dir = ResourceCache::GetProjectDirectory();
+            replace(project_dir.begin(), project_dir.end(), '\\', '/');
+
+            // world is in project if path starts with project directory or contains /project/
+            return normalized_path.find(project_dir) != string::npos ||
+                   normalized_path.find("/project/") != string::npos ||
+                   normalized_path.rfind("project/", 0) == 0;
+        }
+
         string world_file_path_to_resource_directory(const string& world_file_path)
         {
             const string world_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(world_file_path);
-            return FileSystem::GetDirectoryFromFilePath(world_file_path) + "\\" + world_name + "_resources\\";
+            string result;
+
+            // if the world is in the project directory, resources are alongside the world file
+            if (is_world_in_project_directory(world_file_path))
+            {
+                result = FileSystem::GetDirectoryFromFilePath(world_file_path) + "/" + world_name + "_resources/";
+            }
+            else
+            {
+                // otherwise (worlds/, repo root, etc.), resources go to ./project/
+                result = "./" + string(ResourceCache::GetProjectDirectory()) + world_name + "_resources/";
+            }
+
+            // normalize to forward slashes
+            replace(result.begin(), result.end(), '\\', '/');
+
+            SP_LOG_INFO("World resource directory: %s (from world: %s)", result.c_str(), world_file_path.c_str());
+            return result;
         }
+
+
+        void InitializeCoreLua()
+        {
+            lua_state.collect_gc();
+
+            lua_state.open_libraries(
+                sol::lib::base,
+                sol::lib::package,
+                sol::lib::coroutine,
+                sol::lib::string,
+                sol::lib::math,
+                sol::lib::table,
+                sol::lib::io);
+
+            sol::state_view state_view(lua_state);
+
+            lua_state.set_function("print", [&](sol::this_state s, const sol::variadic_args& args)
+            {
+                sol::state_view lua(s);
+                sol::protected_function LuaStringFunc = lua["tostring"];
+
+                std::string Output;
+                Output.reserve(256);
+                for (size_t i = 0; i < args.size(); ++i)
+                {
+                    sol::object Obj = args[i];
+
+                    sol::protected_function_result Result = LuaStringFunc(Obj);
+
+                    if (Result.valid())
+                    {
+                        if (sol::optional<const char*> str = Result)
+                        {
+                            Output += *str;
+                        }
+                        else
+                        {
+                            Output += "[tostring error]";
+                        }
+                    }
+                    else
+                    {
+                        sol::error err = Result;
+                        Output += "[error: ";
+                        Output += err.what();
+                        Output += "]";
+                    }
+
+                    if (i < args.size() - 1)
+                    {
+                        Output += "\t";
+                    }
+                }
+
+                SP_LOG_INFO("[Lua] %s", Output.c_str())
+            });
+
+            sol::table Timer = lua_state.create_named_table("Timer");
+            Timer["SetFPSLimit"]                    = &Timer::SetFpsLimit;
+            Timer["GetFPSLimit"]                    = &Timer::GetFpsLimit;
+            Timer["GetTimeMs"]                      = &Timer::GetTimeMs;
+            Timer["GetTimeSec"]                     = &Timer::GetTimeSec;
+            Timer["GetDeltaTimeMs"]                 = &Timer::GetDeltaTimeMs;
+            Timer["GetDeltaTimeSec"]                = &Timer::GetDeltaTimeSec;
+            Timer["GetDeltaTimeSmoothedMs"]         = &Timer::GetDeltaTimeSmoothedMs;
+            Timer["GetDeltaTimeSmoothedSec"]        = &Timer::GetDeltaTimeSmoothedSec;
+
+            Entity          ::RegisterForScripting(state_view);
+            Mesh            ::RegisterForScripting(state_view);
+            AudioSource     ::RegisterForScripting(state_view);
+            Renderable      ::RegisterForScripting(state_view);
+            Physics         ::RegisterForScripting(state_view);
+            Light           ::RegisterForScripting(state_view);
+
+            lua_state.new_enum("ComponentType",
+                "AudioSource",              ComponentType::AudioSource,
+                "Camera",                   ComponentType::Camera,
+                "Light",                    ComponentType::Light,
+                "Physics",                  ComponentType::Physics,
+                "Renderable",               ComponentType::Renderable,
+                "Terrain",                  ComponentType::Terrain,
+                "Volume",                   ComponentType::Volume,
+                "Script",                   ComponentType::Script
+            );
+
+            lua_state.new_enum("Intersection",
+                "Outside", Intersection::Outside,
+                "Inside",       Intersection::Inside,
+                "Intersects",   Intersection::Intersects
+                );
+
+            lua_state.new_usertype<BoundingBox>("BoundingBox",
+                sol::call_constructor,      sol::constructors<BoundingBox(), BoundingBox(Vector3, Vector3)>(),
+
+                "Intersects",               sol::overload(
+                    [](const BoundingBox& Self, const Vector3& Point) { return Self.Intersects(Point); },
+                    [](const BoundingBox& Self, const BoundingBox& Other) { return Self.Intersects(Other); }),
+
+                "Contains",                 &BoundingBox::Contains,
+                "Merge",                    &BoundingBox::Merge,
+                "GetClosestPoint",          &BoundingBox::GetClosestPoint,
+                "GetCenter",                &BoundingBox::GetCenter,
+                "GetSize",                  &BoundingBox::GetSize,
+                "GetExtents",               &BoundingBox::GetExtents,
+                "GetVolume",                &BoundingBox::GetVolume,
+
+                "GetMin",                   &BoundingBox::GetMin,
+                "GetMax",                   &BoundingBox::GetMax
+
+                );
+
+            sol::table WorldTable = lua_state.create_named_table("World");
+            WorldTable["GetName"]                   = &World::GetName;
+            WorldTable["GetFilePath"]               = &World::GetFilePath;
+            WorldTable["GetBoundingBox"]            = &World::GetBoundingBox;
+            WorldTable["GetEntities"]               = &World::GetEntities;
+            WorldTable["GetEntitiesLights"]         = &World::GetEntitiesLights;
+            WorldTable["CreateEntity"]              = &World::CreateEntity;
+            WorldTable["RemoveEntity"]              = &World::RemoveEntity;
+            WorldTable["GetLightCount"]             = &World::GetLightCount;
+            WorldTable["GetAudioSourceCount"]       = &World::GetAudioSourceCount;
+            WorldTable["GetTimeOfDay"]              = &World::GetTimeOfDay;
+            WorldTable["SetTimeOfDay"]              = &World::SetTimeOfDay;
+            WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
+
+
+            lua_state.new_usertype<Vector2>("Vector2",
+                sol::call_constructor,
+                sol::constructors<Vector2(), Vector2(const Vector2&), Vector2(int, int), Vector2(float, float)>(),
+
+                "x", &Vector2::x,
+                "y", &Vector2::y,
+
+                // Addition
+                sol::meta_function::addition, sol::overload(
+                    [](const Vector2& LHS, const Vector2& RHS) { return LHS + RHS; },
+                    [](const Vector2& LHS, float RHS) { return LHS + RHS; }
+                ),
+
+                // Subtraction
+                sol::meta_function::subtraction, sol::overload(
+                    [](const Vector2& LHS, const Vector2& RHS) { return LHS - RHS; },
+                    [](const Vector2& LHS, float RHS) { return LHS - RHS; }
+                ),
+
+                // Multiplication
+                sol::meta_function::multiplication, sol::overload(
+                    [](const Vector2& LHS, const Vector2& RHS) { return LHS * RHS; },
+                    [](const Vector2& LHS, float RHS) { return LHS * RHS; }
+                ),
+
+                // Division
+                sol::meta_function::division, sol::overload(
+                    [](const Vector2& LHS, const Vector2& RHS) { return LHS / RHS; },
+                    [](const Vector2& LHS, float RHS) { return LHS / RHS; }
+                ),
+
+                // Unary minus
+                sol::meta_function::unary_minus, [](const Vector2& V) { return -V; },
+
+                // Equality
+                sol::meta_function::equal_to, [](const Vector2& LHS, const Vector2& RHS) { return LHS == RHS; },
+
+                // To string
+                sol::meta_function::to_string, [](const Vector2& V)
+                {
+                    return "Vector2(" + std::to_string(V.x) + ", " + std::to_string(V.y) + ")";
+                },
+
+                // Length
+                sol::meta_function::length, [](const Vector2& V) { return 2; },
+
+                // Index access
+                sol::meta_function::index, [](const Vector2& V, int index) -> float {
+                    if (index == 1)
+                    {
+                        return V.x;
+                    }
+                    if (index == 2)
+                    {
+                        return V.y;
+                    }
+                    throw std::out_of_range("Vector2 index out of range (1-2)");
+                },
+
+                sol::meta_function::new_index, [](Vector2& V, int index, float value) {
+                    if (index == 1)
+                    {
+                        V.x = value;
+                    }
+                    else if (index == 2)
+                    {
+                        V.y = value;
+                    }
+                    else
+                    {
+                        throw std::out_of_range("Vector2 index out of range (1-2)");
+                    }
+                },
+
+                // Utility methods
+                "Length", [](const Vector2& V) { return V.Length(); },
+                "LengthSquared", [](const Vector2& V) { return V.LengthSquared(); },
+                "Normalize", [](Vector2& V) { return V.Normalize(); },
+                "Normalized", [](const Vector2& V) { return V.Normalized(); },
+                "Distance", [](const Vector2& V, const Vector2& Other) { return Vector2::Distance(V, Other); },
+                "DistanceSquared", [](const Vector2& V, const Vector2& Other) { return Vector2::DistanceSquared(V, Other); }
+            );
+
+
+
+            lua_state.new_usertype<Vector3>("Vector3",
+                sol::call_constructor,
+                sol::constructors<Vector3(), Vector3(const Vector3&), Vector3(float, float, float)>(),
+
+                "x", &Vector3::x,
+                "y", &Vector3::y,
+                "z", &Vector3::z,
+
+                // Addition
+                sol::meta_function::addition, sol::overload(
+                    [](const Vector3& LHS, const Vector3& RHS) { return LHS + RHS; },
+                    [](const Vector3& LHS, float RHS) { return LHS + RHS; }
+                ),
+
+                // Subtraction
+                sol::meta_function::subtraction, sol::overload(
+                    [](const Vector3& LHS, const Vector3& RHS) { return LHS - RHS; },
+                    [](const Vector3& LHS, float RHS) { return LHS - RHS; }
+                ),
+
+                // Multiplication
+                sol::meta_function::multiplication, sol::overload(
+                    [](const Vector3& LHS, const Vector3& RHS) { return LHS * RHS; },
+                    [](const Vector3& LHS, float RHS) { return LHS * RHS; }
+                ),
+
+                // Division
+                sol::meta_function::division, sol::overload(
+                    [](const Vector3& LHS, const Vector3& RHS) { return LHS / RHS; },
+                    [](const Vector3& LHS, float RHS) { return LHS / RHS; }
+                ),
+
+                // Unary minus
+                sol::meta_function::unary_minus, [](const Vector3& V) { return -V; },
+
+                // Equality
+                sol::meta_function::equal_to, [](const Vector3& LHS, const Vector3& RHS) { return LHS == RHS; },
+
+                // To string
+                sol::meta_function::to_string, [](const Vector3& V)
+                {
+                    return "Vector3(" + std::to_string(V.x) + ", " + std::to_string(V.y) + ", " + std::to_string(V.z) + ")";
+                },
+
+                // Length
+                sol::meta_function::length, [](const Vector3& V) { return 2; },
+
+                // Index access
+                sol::meta_function::index, [](const Vector3& V, int index) -> float
+                {
+                    if (index == 1)
+                    {
+                        return V.x;
+                    }
+                    if (index == 2)
+                    {
+                        return V.y;
+                    }
+                    if (index == 3)
+                    {
+                        return V.z;
+                    }
+                    throw std::out_of_range("Vector2 index out of range (1-2)");
+                },
+
+                sol::meta_function::new_index, [](Vector3& V, int index, float value)
+                {
+                    if (index == 1)
+                    {
+                        V.x = value;
+                    }
+                    else if (index == 2)
+                    {
+                        V.y = value;
+                    }
+                    else if (index == 3)
+                    {
+                        V.z = value;
+                    }
+                    else
+                    {
+                        throw std::out_of_range("Vector3 index out of range (1-2)");
+                    }
+                },
+
+                // Utility methods
+                "Length", [](const Vector3& V) { return V.Length(); },
+                "LengthSquared", [](const Vector3& V) { return V.LengthSquared(); },
+                "Normalize", [](Vector3& V) { return V.Normalize(); },
+                "Normalized", [](const Vector3& V) { return V.Normalized(); },
+                "Distance", [](const Vector3& V, const Vector3& Other) { return Vector3::Distance(V, Other); },
+                "DistanceSquared", [](const Vector3& V, const Vector3& Other) { return Vector3::DistanceSquared(V, Other); }
+            );
+
+
+            lua_state.new_usertype<Vector4>("Vector4",
+                sol::call_constructor,
+                sol::constructors<Vector4(), Vector4(const Vector4&), Vector4(float, float, float, float)>(),
+
+                "x", &Vector4::x,
+                "y", &Vector4::y,
+                "z", &Vector4::z,
+                "w", &Vector4::w,
+
+                // Addition
+                sol::meta_function::addition, sol::overload(
+                    [](const Vector4& LHS, const Vector4& RHS) { return LHS + RHS; },
+                    [](const Vector4& LHS, float RHS) { return LHS + RHS; }
+                ),
+
+                // Subtraction
+                sol::meta_function::subtraction, sol::overload(
+                    [](const Vector4& LHS, const Vector4& RHS) { return LHS - RHS; },
+                    [](const Vector4& LHS, float RHS) { return LHS - RHS; }
+                ),
+
+                // Multiplication
+                sol::meta_function::multiplication, sol::overload(
+                    [](const Vector4& LHS, const Vector4& RHS) { return LHS * RHS; },
+                    [](const Vector4& LHS, float RHS) { return LHS * RHS; }
+                ),
+
+                // Division
+                sol::meta_function::division, sol::overload(
+                    [](const Vector4& LHS, const Vector4& RHS) { return LHS / RHS; },
+                    [](const Vector4& LHS, float RHS) { return LHS / RHS; }
+                ),
+
+                // Unary minus
+                //@TODO
+
+                // Equality
+                sol::meta_function::equal_to, [](const Vector4& LHS, const Vector4& RHS) { return LHS == RHS; },
+
+                // To string
+                sol::meta_function::to_string, [](const Vector4& V)
+                {
+                    return "Vector4(" + std::to_string(V.x) + ", " + std::to_string(V.y) + std::to_string(V.z) + ", " + std::to_string(V.w) + ")";
+                },
+
+                // Length
+                sol::meta_function::length, [](const Vector4& V) { return 4; },
+
+                // Index access
+                sol::meta_function::index, [](const Vector4& V, int index) -> float {
+                    if (index == 1)
+                    {
+                        return V.x;
+                    }
+                    if (index == 2)
+                    {
+                        return V.y;
+                    }
+                    if (index == 3)
+                    {
+                        return V.z;
+                    }
+                    if (index == 4)
+                    {
+                        return V.w;
+                    }
+                    throw std::out_of_range("Vector4 index out of range (1-2-3-4)");
+                },
+
+                sol::meta_function::new_index, [](Vector4& V, int index, float value) {
+                    if (index == 1)
+                    {
+                        V.x = value;
+                    }
+                    else if (index == 2)
+                    {
+                        V.y = value;
+                    }
+                    else if (index == 3)
+                    {
+                        V.z = value;
+                    }
+                    else if (index == 4)
+                    {
+                        V.w = value;
+                    }
+                    else
+                    {
+                        throw std::out_of_range("Vector3 index out of range (1-2)");
+                    }
+                },
+
+                // Utility methods
+                "Length", [](const Vector4& V) { return V.Length(); },
+                "LengthSquared", [](const Vector4& V) { return V.LengthSquared(); },
+                "Normalize", [](Vector4& V) { return V.Normalize(); },
+                "Normalized", [](const Vector4& V) { return V.Normalized(); },
+                "Distance", [](const Vector4& V, const Vector4& Other) { return Vector3::Distance(V, Other); },
+                "DistanceSquared", [](const Vector4& V, const Vector4& Other) { return Vector3::DistanceSquared(V, Other); }
+            );
+
+            lua_state.new_usertype<Quaternion>("Quaternion",
+                sol::call_constructor,
+                sol::constructors<Quaternion()>(),
+
+                "x", &Quaternion::x,
+                "y", &Quaternion::y,
+                "z", &Quaternion::z,
+                "w", &Quaternion::w
+            );
+
+
+        }
+
     }
 
     namespace world_time
@@ -220,14 +691,14 @@ namespace spartan
 
     void World::Initialize()
     {
-
+        InitializeCoreLua();
     }
 
     void World::Shutdown()
     {
         Engine::SetFlag(EngineMode::Playing, false); // stop simulation
         Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
-        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)
+        ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)n
 
         // clear entities
         camera = nullptr;
@@ -242,6 +713,8 @@ namespace spartan
         camera = nullptr;
         light  = nullptr;
         file_path.clear();
+        world_name.clear();
+        world_description.clear();
 
         // clear change tracking
         entity_states.clear();
@@ -267,6 +740,21 @@ namespace spartan
         // start
         if (started)
         {
+            // snapshot all entity transforms before simulation begins
+            play_mode_snapshot.clear();
+            for (Entity* entity : entities)
+            {
+                if (!entity->IsTransient())
+                {
+                    EntitySnapshot snapshot;
+                    snapshot.position = entity->GetPositionLocal();
+                    snapshot.rotation = entity->GetRotationLocal();
+                    snapshot.scale    = entity->GetScaleLocal();
+                    play_mode_snapshot[entity->GetObjectId()] = snapshot;
+                }
+            }
+            play_mode_time_of_day = world_time::time_of_day;
+
             for (Entity* entity : entities)
             {
                 entity->Start();
@@ -280,11 +768,26 @@ namespace spartan
             {
                 entity->Stop();
             }
+
+            // restore all entity transforms from snapshot
+            for (Entity* entity : entities)
+            {
+                auto it = play_mode_snapshot.find(entity->GetObjectId());
+                if (it != play_mode_snapshot.end())
+                {
+                    const EntitySnapshot& snapshot = it->second;
+                    entity->SetPositionLocal(snapshot.position);
+                    entity->SetRotationLocal(snapshot.rotation);
+                    entity->SetScaleLocal(snapshot.scale);
+                }
+            }
+            play_mode_snapshot.clear();
+            world_time::time_of_day = play_mode_time_of_day;
         }
 
         ProcessPendingRemovals();
 
-      
+
         for (Entity* entity : entities)
         {
             if (entity->GetActive())
@@ -461,7 +964,8 @@ namespace spartan
         // create document
         pugi::xml_document doc;
         pugi::xml_node world_node = doc.append_child("World");
-        world_node.append_attribute("name") = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
+        world_node.append_attribute("name")        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path).c_str();
+        world_node.append_attribute("description") = world_description.c_str();
 
         // entities
         {
@@ -501,88 +1005,153 @@ namespace spartan
 
     bool World::LoadFromFile(const string& file_path_)
     {
-        Shutdown(); // clear existing world
-        file_path = file_path_;
+        // ensure prefabs are registered before loading
+        Game::RegisterPrefabs();
 
-        // start timing
-        const Stopwatch timer;
+        // shutdown synchronously before async loading
+        Shutdown();
 
-        // deserialize the resources before loading the world (XML), as it references them
+        // copy path for the lambda capture
+        string path_copy = file_path_;
+
+        // load asynchronously
+        ThreadPool::AddTask([path_copy]()
         {
-            string directory = world_file_path_to_resource_directory(file_path);
-            vector<string> files = FileSystem::GetFilesInDirectory(directory);
+            ProgressTracker::SetGlobalLoadingState(true);
 
-            // Combined loop for loading, filtered by extension
-            for (string& path : files)
+            file_path  = path_copy;
+            world_name = FileSystem::GetFileNameFromFilePath(file_path);
+
+            // start timing
+            const Stopwatch timer;
+
+            // deserialize the resources before loading the world (XML), as it references them
             {
-                if (FileSystem::IsEngineTextureFile(path))
+                string directory = world_file_path_to_resource_directory(file_path);
+
+                // only load resources if the directory exists (worlds in "worlds/" folder may not have local resources yet)
+                if (FileSystem::Exists(directory) && FileSystem::IsDirectory(directory))
                 {
-                    if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                    vector<string> files = FileSystem::GetFilesInDirectory(directory);
+
+                    // progress for resource loading
+                    uint32_t resource_count = static_cast<uint32_t>(files.size());
+                    if (resource_count > 0)
                     {
-                        texture->PrepareForGpu();
+                        ProgressTracker::GetProgress(ProgressType::World).Start(resource_count, "Loading resources...");
+                    }
+
+                    // load resources in dependency order: textures and meshes first, then materials
+                    // this ensures materials can find their textures when loading
+                    for (string& path : files)
+                    {
+                        if (FileSystem::IsEngineTextureFile(path))
+                        {
+                            if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
+                            {
+                                texture->PrepareForGpu();
+                            }
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
+                        }
+                        else if (FileSystem::IsEngineMeshFile(path))
+                        {
+                            ResourceCache::Load<Mesh>(path);
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
+                        }
+                    }
+
+                    // second pass: load materials after textures are available
+                    for (string& path : files)
+                    {
+                        if (FileSystem::IsEngineMaterialFile(path))
+                        {
+                            ResourceCache::Load<Material>(path);
+
+                            if (resource_count > 0)
+                            {
+                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                            }
+                        }
                     }
                 }
-                else if (FileSystem::IsEngineMaterialFile(path))
+            }
+
+            // load xml document
+            pugi::xml_document doc;
+            pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+            if (!result)
+            {
+                SP_LOG_ERROR("Failed to load XML file: %s", result.description());
+                ProgressTracker::SetGlobalLoadingState(false);
+                return;
+            }
+
+            // get world node
+            pugi::xml_node world_node = doc.child("World");
+            if (!world_node)
+            {
+                SP_LOG_ERROR("No 'World' node found.");
+                ProgressTracker::SetGlobalLoadingState(false);
+                return;
+            }
+
+            // read metadata
+            world_description = world_node.attribute("description").as_string();
+
+            // entities
+            {
+                // get node
+                pugi::xml_node entities_node = world_node.child("Entities");
+                if (!entities_node)
                 {
-                    ResourceCache::Load<Material>(path);
+                    SP_LOG_ERROR("No 'Entities' node found.");
+                    ProgressTracker::SetGlobalLoadingState(false);
+                    return;
                 }
-                else if (FileSystem::IsEngineMeshFile(path))
+
+                // collect all root entity nodes
+                vector<pugi::xml_node> entity_nodes;
+                for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
                 {
-                    ResourceCache::Load<Mesh>(path);
+                    entity_nodes.push_back(entity_node);
                 }
-            }
-        }
 
-        // load xml document
-        pugi::xml_document doc;
-        pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-        if (!result)
-        {
-            SP_LOG_ERROR("Failed to load XML file: %s", result.description());
-            return false;
-        }
+                // progress tracking
+                uint32_t entity_count = static_cast<uint32_t>(entity_nodes.size());
+                ProgressTracker::GetProgress(ProgressType::World).Start(entity_count, "Loading entities...");
 
-        // get world node
-        pugi::xml_node world_node = doc.child("World");
-        if (!world_node)
-        {
-            SP_LOG_ERROR("No 'World' node found.");
-            return false;
-        }
-
-        // entities
-        {
-            // get node
-            pugi::xml_node entities_node = world_node.child("Entities");
-            if (!entities_node)
-            {
-                SP_LOG_ERROR("No 'Entities' node found.");
-                return false;
+                // load root entities in parallel
+                ThreadPool::ParallelLoop([&entity_nodes](uint32_t start, uint32_t end)
+                {
+                    for (uint32_t i = start; i < end; i++)
+                    {
+                        Entity* entity = World::CreateEntity();
+                        entity->Load(entity_nodes[i]);
+                        ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                    }
+                }, entity_count);
             }
 
-            // count root entities for progress tracking
-            uint32_t root_entity_count = 0;
-            for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
-            {
-                ++root_entity_count;
-            }
+            // report time
+            SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
 
-            // progress tracking
-            ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
-
-            // load root entities (they will load their descendants recursively)
-            for (pugi::xml_node entity_node = entities_node.child("Entity"); entity_node; entity_node = entity_node.next_sibling("Entity"))
-            {
-                Entity* entity = World::CreateEntity();
-                entity->Load(entity_node);
-                ProgressTracker::GetProgress(ProgressType::World).JobDone();
-            }
-        }
-
-        // report time
-        SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
+            ProgressTracker::SetGlobalLoadingState(false);
+        });
 
         return true;
+    }
+
+    sol::state_view World::GetLuaState()
+    {
+        return sol::state_view(lua_state);
     }
 
     Entity* World::CreateEntity()
@@ -642,12 +1211,66 @@ namespace spartan
         resolve = true;
     }
 
+    void World::RemoveEntityImmediate(Entity* entity_to_remove)
+    {
+        SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
+
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        // keep track of the local camera pointer so we don't have a dangling pointer
+        if (Camera* camera_ = entity_to_remove->GetComponent<Camera>())
+        {
+            camera = nullptr;
+        }
+
+        // get the entity and all of its descendants
+        vector<Entity*> entities_to_remove;
+        entities_to_remove.push_back(entity_to_remove);
+        entity_to_remove->GetDescendants(&entities_to_remove);
+
+        // if there was a parent, update it
+        if (Entity* parent = entity_to_remove->GetParent())
+        {
+            parent->AcquireChildren();
+        }
+
+        // remove and delete immediately
+        for (Entity* entity : entities_to_remove)
+        {
+            uint64_t id = entity->GetObjectId();
+
+            // remove from entities vector
+            auto it = find(entities.begin(), entities.end(), entity);
+            if (it != entities.end())
+            {
+                // clean up change tracking
+                entity_states.erase(id);
+                if (Material* mat = entity->GetComponent<Renderable>() ? entity->GetComponent<Renderable>()->GetMaterial() : nullptr)
+                {
+                    material_state_hashes.erase(mat->GetObjectId());
+                }
+                entities.erase(it);
+            }
+
+            // also remove from pending_add if it was just added
+            auto pending_it = find(pending_add.begin(), pending_add.end(), entity);
+            if (pending_it != pending_add.end())
+            {
+                pending_add.erase(pending_it);
+            }
+
+            delete entity;
+        }
+    }
+
     void World::GetRootEntities(vector<Entity*>& entities_out)
     {
         lock_guard<mutex> lock(entity_access_mutex);
 
         entities_out.clear();
-        entities_out.reserve(entities.size());
+        entities_out.reserve(entities.size() + pending_add.size());
+
+        // include committed entities
         for (Entity* entity : entities)
         {
             if (!entity->GetParent())
@@ -655,6 +1278,80 @@ namespace spartan
                 entities_out.emplace_back(entity);
             }
         }
+
+        // also include pending entities (important during world loading when prefabs
+        // need to reference other entities that haven't been committed yet)
+        for (Entity* entity : pending_add)
+        {
+            if (!entity->GetParent())
+            {
+                entities_out.emplace_back(entity);
+            }
+        }
+    }
+
+    void World::MoveEntityToIndex(Entity* entity, uint32_t index)
+    {
+        if (!entity)
+            return;
+
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        // find the entity in the list
+        auto it = find(entities.begin(), entities.end(), entity);
+        if (it == entities.end())
+            return; // entity not found
+
+        // get current position before removing
+        uint32_t current_index = static_cast<uint32_t>(distance(entities.begin(), it));
+
+        // remove from current position
+        entities.erase(it);
+
+        // adjust target index if the entity was before the target position
+        // (removing it shifts all subsequent indices down by 1)
+        if (current_index < index && index > 0)
+            index--;
+
+        // clamp index to valid range
+        if (index > entities.size())
+            index = static_cast<uint32_t>(entities.size());
+
+        // insert at new position
+        entities.insert(entities.begin() + index, entity);
+    }
+
+    void World::MoveRootEntityNear(Entity* entity_to_move, Entity* target_entity, bool insert_after)
+    {
+        if (!entity_to_move || !target_entity)
+            return;
+
+        // both must be root entities (no parent)
+        if (entity_to_move->GetParent() || target_entity->GetParent())
+            return;
+
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        // find and remove the entity to move
+        auto move_it = find(entities.begin(), entities.end(), entity_to_move);
+        if (move_it == entities.end())
+            return;
+        entities.erase(move_it);
+
+        // find the target entity's position (after removal of entity_to_move)
+        auto target_it = find(entities.begin(), entities.end(), target_entity);
+        if (target_it == entities.end())
+        {
+            // target not found, put entity_to_move back at end
+            entities.push_back(entity_to_move);
+            return;
+        }
+
+        // insert before or after the target
+        if (insert_after)
+            ++target_it;
+
+        entities.insert(target_it, entity_to_move);
     }
 
     Entity* World::GetEntityById(const uint64_t id)
@@ -680,9 +1377,9 @@ namespace spartan
         return entities_lights;
     }
 
-    string World::GetName()
+    const string& World::GetName()
     {
-        return FileSystem::GetFileNameFromFilePath(file_path);
+        return world_name;
     }
 
     const string& World::GetFilePath()
@@ -776,5 +1473,42 @@ namespace spartan
         else if (time_of_day > 1.0f)
             time_of_day = 1.0f;
         world_time::time_of_day = time_of_day;
+    }
+
+    const string& World::GetDescription()
+    {
+        return world_description;
+    }
+
+    void World::SetDescription(const string& description)
+    {
+        world_description = description;
+    }
+
+    bool World::ReadMetadata(const string& world_file_path, WorldMetadata& metadata)
+    {
+        // load xml document
+        pugi::xml_document doc;
+        pugi::xml_parse_result result = doc.load_file(world_file_path.c_str());
+        if (!result)
+        {
+            SP_LOG_ERROR("Failed to load world file for metadata: %s", result.description());
+            return false;
+        }
+
+        // get world node
+        pugi::xml_node world_node = doc.child("World");
+        if (!world_node)
+        {
+            SP_LOG_ERROR("No 'World' node found in: %s", world_file_path.c_str());
+            return false;
+        }
+
+        // read metadata
+        metadata.file_path   = world_file_path;
+        metadata.name        = world_node.attribute("name").as_string();
+        metadata.description = world_node.attribute("description").as_string();
+
+        return true;
     }
 }

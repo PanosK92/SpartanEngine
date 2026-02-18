@@ -72,6 +72,7 @@ void Console::OnTickVisible()
     // lambda for info, warning, error filter buttons
     const auto button_log_type_visibility_toggle = [this](uint32_t index)
     {
+        ImGui::PushID(static_cast<int>(index));
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
         if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Console), 15.0f * spartan::Window::GetDpiScale(), false, m_log_type_color[index]))
@@ -82,6 +83,7 @@ void Console::OnTickVisible()
         ImGui::SameLine();
         ImGui::Text("%u", m_log_type_count[index]);
         ImGui::SameLine();
+        ImGui::PopID();
     };
 
     // log category visibility buttons
@@ -104,16 +106,17 @@ void Console::OnTickVisible()
 
     // log output section with custom text selection support
     {
-        // build list of visible logs for rendering
-        std::vector<std::pair<uint32_t, const LogPackage*>> visible_logs;
+        // build list of visible logs for rendering (reuses member vector to avoid per-frame allocation)
+        m_visible_logs.clear();
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_logs.size()); i++)
         {
             const LogPackage& log = m_logs[i];
             if (m_log_filter.PassFilter(log.text.c_str()) && m_log_type_visibility[log.error_level])
             {
-                visible_logs.push_back({i, &log});
+                m_visible_logs.push_back({i, &log});
             }
         }
+        const auto& visible_logs = m_visible_logs;
 
         const ImVec2 log_size = ImVec2(-1.0f, log_height);
         const float line_height = ImGui::GetTextLineHeightWithSpacing();
@@ -637,6 +640,9 @@ void Console::Clear()
 {
     m_logs.clear();
     m_logs.shrink_to_fit();
+
+    m_visible_logs.clear();
+    m_visible_logs.shrink_to_fit();
 
     m_log_type_count[0] = 0;
     m_log_type_count[1] = 0;

@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "pch.h"
 #include "RHI_DescriptorSetLayout.h"
+#include "RHI_AccelerationStructure.h"
 #include "RHI_Buffer.h"
 #include "RHI_Texture.h"
 #include "RHI_DescriptorSet.h"
@@ -126,6 +127,7 @@ namespace spartan
         if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
         {
             binding->resource = static_cast<void*>(tlas);
+            binding->range    = tlas ? reinterpret_cast<uint64_t>(tlas->GetRhiResource()) : 0;
             m_dirty = true;
         }
     }

@@ -43,17 +43,22 @@ namespace spartan
         TimeBlock() = default;
         ~TimeBlock();
 
-        void Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr);
+        void Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, RHI_Queue_Type queue_type = RHI_Queue_Type::Max);
         void End();
+        void ResolveGpuTimestamps(uint64_t global_reference_tick, float timestamp_period);
+        void ResolveGpuDuration();
 
-        TimeBlockType GetType()      const { return m_type; }
-        const char* GetName()        const { return m_name; }
-        const TimeBlock* GetParent() const { return m_parent; }
-        uint32_t GetTreeDepth()      const { return m_tree_depth; }
-        uint32_t GetTreeDepthMax()   const { return m_max_tree_depth; }
-        float GetDuration()          const { return m_duration; }
-        bool IsComplete()            const { return m_is_complete; }
-        uint32_t GetId()             const { return m_id; }
+        TimeBlockType GetType()        const { return m_type; }
+        const char* GetName()          const { return m_name; }
+        const TimeBlock* GetParent()   const { return m_parent; }
+        uint32_t GetTreeDepth()        const { return m_tree_depth; }
+        uint32_t GetTreeDepthMax()     const { return m_max_tree_depth; }
+        float GetDuration()            const { return m_duration; }
+        bool IsComplete()              const { return m_is_complete; }
+        uint32_t GetId()               const { return m_id; }
+        float GetStartMs()             const { return m_start_ms; }
+        float GetEndMs()               const { return m_end_ms; }
+        RHI_Queue_Type GetQueueType()  const { return m_queue_type; }
 
     private:    
         static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
@@ -68,10 +73,15 @@ namespace spartan
         uint32_t m_id              = 0;
         uint32_t m_timestamp_index = 0;
 
-        // Dependencies
+        // timeline data (frame-relative offsets in milliseconds)
+        float m_start_ms           = 0.0f;
+        float m_end_ms             = 0.0f;
+        RHI_Queue_Type m_queue_type = RHI_Queue_Type::Max;
+
+        // dependencies
         RHI_CommandList* m_cmd_list = nullptr;
 
-        // CPU timing
+        // cpu timing
         std::chrono::high_resolution_clock::time_point m_start;
         std::chrono::high_resolution_clock::time_point m_end;
     };

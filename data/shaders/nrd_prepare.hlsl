@@ -26,7 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // octahedron encoding for normals
 float2 oct_wrap(float2 v)
 {
-    return (1.0f - abs(v.yx)) * select(v.xy >= 0.0f, 1.0f, -1.0f);
+    float2 sign_v = float2(v.x >= 0.0f ? 1.0f : -1.0f, v.y >= 0.0f ? 1.0f : -1.0f);
+    return (1.0f - abs(v.yx)) * sign_v;
 }
 
 float2 encode_oct(float3 n)
@@ -60,8 +61,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     if (depth <= 0.0f)
     {
-        // sky pixel
-        tex_uav_nrd_viewz[pos]            = float4(100000.0f, 0.0f, 0.0f, 0.0f);
+        // sky pixel - use large positive viewz for sky
+        tex_uav_nrd_viewz[pos]            = 100000.0f;
         tex_uav_nrd_normal_roughness[pos] = float4(0.5f, 0.5f, 0.0f, 0.0f);
         tex_uav_nrd_diff_radiance[pos]    = float4(0.0f, 0.0f, 0.0f, 0.0f);
         tex_uav_nrd_spec_radiance[pos]    = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -95,7 +96,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_radiance = radiance * metallic;
     
     // write nrd input textures (nrd expects view-space normals)
-    tex_uav_nrd_viewz[pos]            = float4(view_z, 0.0f, 0.0f, 0.0f);
+    tex_uav_nrd_viewz[pos]            = view_z;
     tex_uav_nrd_normal_roughness[pos] = pack_normal_roughness(normal_view, roughness);
     tex_uav_nrd_diff_radiance[pos]    = float4(diffuse_radiance, hit_distance);
     tex_uav_nrd_spec_radiance[pos]    = float4(specular_radiance, hit_distance);

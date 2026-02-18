@@ -51,13 +51,11 @@ namespace spartan
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static void* GetDescriptorSet(const RHI_Device_Bindless_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Bindless_Resource resource_type);
-        static void UpdateBindlessResources(
-            std::array<RHI_Texture*, rhi_max_array_size>* material_textures,
-            RHI_Buffer* material_parameters,
-            RHI_Buffer* light_parameters,
-            const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers,
-            RHI_Buffer* bindless_aabbs
-        );
+        static void UpdateBindlessMaterials(std::array<RHI_Texture*, rhi_max_array_size>* textures, RHI_Buffer* parameters);
+        static void UpdateBindlessLights(RHI_Buffer* parameters);
+        static void UpdateBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers);
+        static void UpdateBindlessAABBs(RHI_Buffer* buffer);
+        static void UpdateBindlessDrawData(RHI_Buffer* buffer);
 
         // pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);

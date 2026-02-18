@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "pch.h"
 #include "Volume.h"
+#include "Renderable.h"
 #include "../Entity.h"
 #include "../../Core/Engine.h"
 #include "../../Rendering/Renderer.h"
@@ -39,8 +40,19 @@ namespace spartan
 {
     Volume::Volume(Entity* entity) : Component(entity)
     {
-        // unit cube
-        m_bounding_box = BoundingBox::Unit;
+        // if the entity has a renderable, match the volume to its mesh-space bounding box
+        // (not the world-space one, since the volume transforms by the entity matrix itself)
+        if (Renderable* renderable = entity->GetComponent<Renderable>())
+        {
+            m_bounding_box = renderable->GetBoundingBoxMesh();
+        }
+        else
+        {
+            m_bounding_box = BoundingBox::Unit;
+        }
+
+        // register attributes for copy/paste and cloning
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetReverbEnabled, SetReverbEnabled, bool);
     }
 
     void Volume::Tick()
@@ -77,6 +89,9 @@ namespace spartan
             option_node.append_attribute("name")  = name.c_str();
             option_node.append_attribute("value") = value;
         }
+
+        // audio reverb
+        node.append_attribute("reverb_enabled") = m_reverb_enabled;
     }
 
     void Volume::Load(pugi::xml_node& node)
@@ -106,6 +121,9 @@ namespace spartan
                 }
             }
         }
+
+        // audio reverb
+        m_reverb_enabled = node.attribute("reverb_enabled").as_bool(false);
     }
 
     void Volume::SetOption(const char* name, float value)
@@ -129,4 +147,5 @@ namespace spartan
 
         return 0.0f;
     }
+
 }

@@ -22,12 +22,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "pch.h"
 #include "Entity.h"
+#include "Prefab.h"
+#include "Components/AudioSource.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/Physics.h"
-#include "Components/AudioSource.h"
+#include "Components/Script.h"
+#include "Components/Spline.h"
+#include "Components/SplineFollower.h"
 #include "Components/Terrain.h"
 #include "Components/Volume.h"
+#include "Components/ParticleSystem.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -83,6 +88,7 @@ namespace spartan
 
             return clone_self;
         };
+
     }
 
     Entity::Entity()
@@ -113,6 +119,83 @@ namespace spartan
     Entity* Entity::Clone()
     {
         return clone_entity_and_descendants(this);
+    }
+
+    void Entity::RegisterForScripting(sol::state_view State)
+    {
+        State.new_usertype<Entity>("Entity",
+            "GetComponent", [](Entity* Self, ComponentType Type) -> sol::reference
+            {
+                if (Component* comp = Self->GetComponentByType(Type))
+                {
+                    return comp->AsLua(World::GetLuaState());
+                }
+
+                return sol::nil;
+            },
+            "AddComponent", [](Entity* Self, ComponentType Type) -> sol::reference
+            {
+                if (Component* comp = Self->AddComponentByType(Type))
+                {
+                    return comp->AsLua(World::GetLuaState());
+                }
+
+                return sol::nil;
+            },
+            "RemoveComponent", [](Entity* Self, ComponentType Type)
+            {
+                Self->RemoveComponentByType(Type);
+            },
+            "ForEachChild",    [](Entity* Self, const sol::function& Callback)
+            {
+                for (Entity* Child : Self->m_children)
+                {
+                    Callback(Child);
+                }
+            },
+
+            "GetAllComponents",         &Entity::GetAllComponents,
+            "GetComponentCount",        &Entity::GetComponentCount,
+            "GetName",                  &Entity::GetObjectName,
+            "GetObjectSize",            &Entity::GetObjectSize,
+            "GetObjectID",              &Entity::GetObjectId,
+
+            "IsActive",                 &Entity::IsActive,
+            "GetChildren",              &Entity::GetChildren,
+            "HasChildren",              &Entity::HasChildren,
+            "GetParent",                &Entity::GetParent,
+            "GetChildByName",           &Entity::GetChildByName,
+            "GetChildByIndex",          &Entity::GetChildByIndex,
+            "GetChildrenCount",         &Entity::GetChildrenCount,
+            "IsDescendantOf",           &Entity::IsDescendantOf,
+
+            "Translate",                &Entity::Translate,
+            "Rotate",                   &Entity::Rotate,
+
+            "IsTransient",              &Entity::IsTransient,
+
+            "GetUp",                    &Entity::GetUp,
+            "GetDown",                  &Entity::GetDown,
+            "GetForward",               &Entity::GetForward,
+            "GetBackward",              &Entity::GetBackward,
+            "GetRight",                 &Entity::GetRight,
+            "GetLeft",                  &Entity::GetLeft,
+
+            "GetPosition",              &Entity::GetPosition,
+            "GetPositionLocal",         &Entity::GetPositionLocal,
+            "SetPosition",              &Entity::SetPosition,
+            "SetPositionLocal",         &Entity::SetPositionLocal,
+
+            "GetRotation",              &Entity::GetRotation,
+            "GetRotationLocal",         &Entity::GetRotationLocal,
+            "SetRotation",              &Entity::SetRotation,
+            "SetRotationLocal",         &Entity::SetRotationLocal,
+
+            "GetScale",                 &Entity::GetScale,
+            "GetScaleLocal",            &Entity::GetScaleLocal,
+            "SetScale",                 &Entity::SetScale,
+            "SetScaleLocal",            &Entity::SetScaleLocal
+            );
     }
 
     void Entity::Start()
@@ -168,7 +251,7 @@ namespace spartan
             node.append_attribute("name")   = m_object_name.c_str();
             node.append_attribute("id")     = m_object_id;
             node.append_attribute("active") = m_is_active;
-            
+
             {
                 stringstream ss;
                 ss << m_position_local.x << " " << m_position_local.y << " " << m_position_local.z;
@@ -187,6 +270,25 @@ namespace spartan
                 node.append_attribute("scale") = ss.str().c_str();
             }
 
+            // if this entity has prefab data, save the prefab reference instead of components/children
+            if (HasPrefabData())
+            {
+                pugi::xml_node prefab_node = node.append_child("prefab");
+
+                if (!m_prefab_type.empty())
+                    prefab_node.append_attribute("type") = m_prefab_type.c_str();
+
+                if (!m_prefab_file_path.empty())
+                    prefab_node.append_attribute("file") = m_prefab_file_path.c_str();
+
+                for (const auto& [key, value] : m_prefab_attributes)
+                {
+                    prefab_node.append_attribute(key.c_str()) = value.c_str();
+                }
+
+                return; // don't save components or children - prefab will recreate them
+            }
+
             // components
             for (shared_ptr<Component>& component : m_components)
             {
@@ -199,12 +301,33 @@ namespace spartan
             }
         }
 
-        // children
+        // children (skip transient entities - they are dynamically created and shouldn't be serialized)
         for (Entity* child : m_children)
         {
+            if (child->IsTransient())
+                continue;
+
             pugi::xml_node child_node = node.append_child("Entity");
             child->Save(child_node);
         }
+    }
+
+    void Entity::SetPrefabData(const string& type, const unordered_map<string, string>& attributes)
+    {
+        m_prefab_type       = type;
+        m_prefab_attributes = attributes;
+    }
+
+    void Entity::SetPrefabFilePath(const string& path)
+    {
+        m_prefab_file_path = path;
+    }
+
+    void Entity::ClearPrefabData()
+    {
+        m_prefab_type.clear();
+        m_prefab_file_path.clear();
+        m_prefab_attributes.clear();
     }
 
     void Entity::Load(pugi::xml_node& node)
@@ -233,12 +356,46 @@ namespace spartan
                 ss >> m_scale_local.x >> m_scale_local.y >> m_scale_local.z;
             }
 
-            // components
+            // components and prefabs
             for (pugi::xml_node component_node = node.first_child(); component_node; component_node = component_node.next_sibling())
             {
                 string type_name = component_node.name();
-                if (std::string(component_node.name()) == "Entity")
-                    continue; // skip children
+                if (type_name == "Entity")
+                    continue; // skip children, handled below
+
+                // check for prefab node - creates complex entity hierarchies
+                if (type_name == "prefab")
+                {
+                    // store prefab data for saving later
+                    string prefab_type = component_node.attribute("type").as_string();
+                    string prefab_file = component_node.attribute("file").as_string();
+
+                    unordered_map<string, string> prefab_attributes;
+                    for (pugi::xml_attribute attr = component_node.first_attribute(); attr; attr = attr.next_attribute())
+                    {
+                        string attr_name = attr.name();
+                        if (attr_name == "file")
+                            continue; // file path is stored separately
+                        prefab_attributes[attr_name] = attr.value();
+                    }
+                    SetPrefabData(prefab_type, prefab_attributes);
+
+                    if (!prefab_file.empty())
+                        SetPrefabFilePath(prefab_file);
+
+                    // code prefab - use registered factory function
+                    if (!prefab_type.empty() && Prefab::IsRegistered(prefab_type))
+                    {
+                        Prefab::Create(component_node, this);
+                    }
+                    // file prefab - load entity hierarchy from .prefab file
+                    else if (!prefab_file.empty())
+                    {
+                        Prefab::LoadFromFile(prefab_file, this);
+                    }
+
+                    continue;
+                }
 
                 ComponentType type = Component::StringToType(type_name);
                 if (type != ComponentType::Max)
@@ -279,7 +436,72 @@ namespace spartan
 
         m_is_active = active;
     }
-    
+
+    Component* Entity::GetComponentByType(ComponentType Type) const
+    {
+        return m_components[static_cast<uint32_t>(Type)].get();
+    }
+
+    Component* Entity::AddComponentByType(ComponentType Type)
+    {
+        if (Component* component = GetComponentByType(Type))
+        {
+            return component;
+        }
+
+        std::shared_ptr<Component> component;
+        switch (Type)
+        {
+        case ComponentType::AudioSource:
+            component = std::make_shared<AudioSource>(this);
+            break;
+        case ComponentType::Camera:
+            component = std::make_shared<Camera>(this);
+            break;
+        case ComponentType::Light:
+            component = std::make_shared<Light>(this);
+            break;
+        case ComponentType::Physics:
+            component = std::make_shared<Physics>(this);
+            break;
+        case ComponentType::Renderable:
+            component = std::make_shared<Renderable>(this);
+            break;
+        case ComponentType::Spline:
+            component = std::make_shared<Spline>(this);
+            break;
+        case ComponentType::SplineFollower:
+            component = std::make_shared<SplineFollower>(this);
+            break;
+        case ComponentType::Terrain:
+            component = std::make_shared<Terrain>(this);
+            break;
+        case ComponentType::Volume:
+            component = std::make_shared<Volume>(this);
+            break;
+        case ComponentType::Script:
+            component = std::make_shared<Script>(this);
+            break;
+        case ComponentType::ParticleSystem:
+            component = std::make_shared<ParticleSystem>(this);
+            break;
+        case ComponentType::Max:
+            break;
+        }
+
+        m_components[static_cast<uint32_t>(Type)] = component;
+
+        component->SetType(Type);
+        component->Initialize();
+
+        return component.get();
+    }
+
+    void Entity::RemoveComponentByType(ComponentType Type)
+    {
+        m_components[static_cast<uint32_t>(Type)] = nullptr;
+    }
+
     Component* Entity::AddComponent(const ComponentType type)
     {
         Component* component = nullptr;
@@ -403,14 +625,14 @@ namespace spartan
                 rotations.push_back(ancestor->GetRotationLocal());
                 ancestor = ancestor->GetParent();
             }
-            
+
             // compose from root (back of vector) to parent (front of vector)
             Quaternion parent_world_rotation = Quaternion::Identity;
             for (auto it = rotations.rbegin(); it != rotations.rend(); ++it)
             {
                 parent_world_rotation = parent_world_rotation * (*it);
             }
-            
+
             local_rotation = parent_world_rotation.Inverse() * rotation;
         }
 
@@ -501,11 +723,11 @@ namespace spartan
             // early exit if the parent is this entity
             if (GetObjectId() == new_parent->GetObjectId())
                 return;
-        
+
             // early exit if the parent is already set
             if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
                 return;
-        
+
             // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
             if (new_parent->IsDescendantOf(this))
             {
@@ -514,18 +736,18 @@ namespace spartan
                     child->m_parent = m_parent; // directly setting parent
                     child->UpdateTransform();   // update transform if needed
                 }
-        
+
                 m_children.clear();
             }
         }
-        
+
         // remove the this as a child from the existing parent
         if (m_parent)
         {
             bool update_child_with_null_parent = false;
             m_parent->RemoveChild(this, update_child_with_null_parent);
         }
-        
+
         // add this is a child to new parent
         if (new_parent)
         {
@@ -550,6 +772,35 @@ namespace spartan
         {
             m_children.emplace_back(child);
         }
+    }
+
+    void Entity::MoveChildToIndex(Entity* child, uint32_t index)
+    {
+        SP_ASSERT(child != nullptr);
+        lock_guard lock(m_mutex_children);
+
+        // find the child in the list
+        auto it = find(m_children.begin(), m_children.end(), child);
+        if (it == m_children.end())
+            return; // child not found
+
+        // get current position before removing
+        uint32_t current_index = static_cast<uint32_t>(distance(m_children.begin(), it));
+
+        // remove from current position
+        m_children.erase(it);
+
+        // adjust target index if the child was before the target position
+        // (removing it shifts all subsequent indices down by 1)
+        if (current_index < index && index > 0)
+            index--;
+
+        // clamp index to valid range
+        if (index > m_children.size())
+            index = static_cast<uint32_t>(m_children.size());
+
+        // insert at new position
+        m_children.insert(m_children.begin() + index, child);
     }
 
     void Entity::RemoveChild(Entity* child, bool update_child_with_null_parent)

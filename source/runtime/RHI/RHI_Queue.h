@@ -37,13 +37,19 @@ namespace spartan
         ~RHI_Queue();
 
         void Wait(const bool flush = false);
-        void Submit(void* cmd_buffer, const uint32_t wait_flags, RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore, RHI_SyncPrimitive* semaphore_timeline);
+        void Submit(
+            void* cmd_buffer, const uint32_t wait_flags,
+            RHI_SyncPrimitive* semaphore_wait, RHI_SyncPrimitive* semaphore_signal, RHI_SyncPrimitive* semaphore_timeline_signal,
+            RHI_SyncPrimitive* semaphore_timeline_wait = nullptr, uint64_t timeline_wait_value = 0
+        );
         bool Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait);
         RHI_CommandList* NextCommandList();
         RHI_Queue_Type GetType() const { return m_type; }
 
     private:
-        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists = { nullptr };
+        // 4 command lists: supports 3 submissions per frame (pre-gbuffer, shadows, lighting+present)
+        // plus slack for the previous frame's in-flight work to complete without stalling
+        std::array<std::shared_ptr<RHI_CommandList>, 4> m_cmd_lists = { nullptr };
         void* m_rhi_resource                                        = nullptr;
         std::atomic<uint32_t> m_index                               = 0;
         RHI_Queue_Type m_type                                       = RHI_Queue_Type::Max;

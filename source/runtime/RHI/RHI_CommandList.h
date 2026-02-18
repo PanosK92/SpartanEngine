@@ -23,8 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include <atomic>
+#include <unordered_map>
 #include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
+#include "RHI_Buffer.h"
+#include "RHI_SyncPrimitive.h"
 #include "../Rendering/Renderer_Definitions.h"
 #include "../Core/SpartanObject.h"
 #include <stack>
@@ -53,6 +56,11 @@ namespace spartan
         RHI_Image_Layout layout_old = RHI_Image_Layout::Max;
         RHI_Image_Layout layout_new = RHI_Image_Layout::Max;
         bool is_depth               = false;
+
+        // for image sync with per-mip views (pre-captured layouts at insert time)
+        std::array<RHI_Image_Layout, rhi_max_mip_count> per_mip_layouts = {};
+        uint32_t per_mip_count                                          = 0;
+        bool has_per_mip_views                                          = false;
     };
 
     class RHI_CommandList : public SpartanObject
@@ -62,7 +70,8 @@ namespace spartan
         ~RHI_CommandList();
 
         void Begin();
-        void Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal = nullptr);
+        void Submit(RHI_SyncPrimitive* semaphore_wait, const bool is_immediate, RHI_SyncPrimitive* semaphore_signal = nullptr,
+                    RHI_SyncPrimitive* semaphore_timeline_wait = nullptr, uint64_t timeline_wait_value = 0);
         void WaitForExecution(const bool log_wait_time = false);
         void SetPipelineState(RHI_PipelineState& pso);
 
@@ -83,17 +92,19 @@ namespace spartan
         // draw
         void Draw(const uint32_t vertex_count, const uint32_t vertex_start_index = 0);
         void DrawIndexed(const uint32_t index_count, const uint32_t index_offset = 0, const uint32_t vertex_offset = 0, const uint32_t instance_index = 0, const uint32_t instance_count = 1);
+        void DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count);
 
         // dispatch
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1);
         void Dispatch(RHI_Texture* texture, float resolution_scale = 1.0f);
 
         // trace rays
-        void TraceRays(const uint32_t width, const uint32_t height, RHI_Buffer* shader_binding_table);
+        void TraceRays(const uint32_t width, const uint32_t height);
 
         // blit
         void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float source_scaling = 1.0f);
         void Blit(RHI_Texture* source, RHI_SwapChain* destination);
+        void BlitToXrSwapchain(RHI_Texture* source); // blit to openxr swapchain with aspect ratio preservation
 
         // copy
         void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
@@ -139,6 +150,11 @@ namespace spartan
         uint32_t BeginTimestamp();
         void EndTimestamp();
         float GetTimestampResult(const uint32_t index_timestamp);
+        float GetTimestampStartMs(const uint32_t index_timestamp);
+
+        // deferred profiler readback (reads fresh timestamps after gpu execution)
+        void ReadbackTimestampsForProfiler();
+        uint64_t GetTimestampRawTick(uint32_t index) const { return (index < m_max_timestamps) ? m_timestamp_data[index] : 0; }
 
         // occlusion queries
         void BeginOcclusionQuery(const uint64_t entity_id);
@@ -169,9 +185,11 @@ namespace spartan
 
         // misc
         void RenderPassEnd();
-        RHI_SyncPrimitive* GetRenderingCompleteSemaphore() { return m_rendering_complete_semaphore.get(); }
-        const RHI_CommandListState GetState() const        { return m_state; }
-        RHI_Queue* GetQueue() const                        { return m_queue; }
+        RHI_SyncPrimitive* GetRenderingCompleteSemaphore()         { return m_rendering_complete_semaphore.get(); }
+        RHI_SyncPrimitive* GetTimelineSemaphore()                  { return m_rendering_complete_semaphore_timeline.get(); }
+        uint64_t GetLastTimelineSignalValue() const                { return m_rendering_complete_semaphore_timeline ? m_rendering_complete_semaphore_timeline->GetValue() : 0; }
+        const RHI_CommandListState GetState() const                { return m_state; }
+        RHI_Queue* GetQueue() const                                { return m_queue; }
         void CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination);
 
         // rhi
@@ -191,6 +209,11 @@ namespace spartan
         uint64_t m_buffer_id_instance                        = 0;
         uint64_t m_buffer_id_index                           = 0;
         uint32_t m_timestamp_index                           = 0;
+
+        // per-command-list timestamp storage (avoids cross-queue data corruption)
+        static constexpr uint32_t m_max_timestamps           = 256;
+        std::array<uint64_t, m_max_timestamps> m_timestamp_data = {};
+        uint64_t m_gpu_frame_reference_tick                  = 0;
         RHI_Pipeline* m_pipeline                             = nullptr;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
         std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
@@ -204,6 +227,9 @@ namespace spartan
         RHI_Queue* m_queue = nullptr;
         bool m_load_depth_render_target = false;
         std::array<bool, rhi_max_render_target_count> m_load_color_render_targets = { false };
+
+        // one sbt per pipeline (keyed by pipeline handle) so it's created once and reused
+        std::unordered_map<void*, std::unique_ptr<RHI_Buffer>> m_shader_binding_tables;
 
         // rhi resources
         void* m_rhi_resource                       = nullptr;

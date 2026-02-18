@@ -23,12 +23,31 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Editor.h"
 #include <vector>
 #include <string>
+#include <filesystem>
 #ifdef _WIN32 // windows
 #include <Windows.h>
 #include <shellapi.h>
 
+// ensure the working directory is the executable's own directory
+// this prevents path resolution failures when the os or shell provides
+// a different cwd (e.g. after environment variable changes from other installers)
+static void set_working_directory_to_executable()
+{
+    wchar_t path[MAX_PATH];
+    if (GetModuleFileNameW(nullptr, path, MAX_PATH))
+    {
+        std::filesystem::path exe_dir = std::filesystem::path(path).parent_path();
+        if (!exe_dir.empty())
+        {
+            std::filesystem::current_path(exe_dir);
+        }
+    }
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+    set_working_directory_to_executable();
+
     // convert command line to argv-like format
     int argc;
     LPWSTR* argv_w = CommandLineToArgvW(GetCommandLineW(), &argc);
@@ -45,6 +64,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #else // linux
 int main(int argc, char** argv)
 {
+    // ensure working directory is the executable's location
+    std::filesystem::path exe_dir = std::filesystem::canonical("/proc/self/exe").parent_path();
+    if (!exe_dir.empty())
+    {
+        std::filesystem::current_path(exe_dir);
+    }
+
     std::vector<std::string> args(argv, argv + argc);
 #endif
     Editor editor = Editor(args);

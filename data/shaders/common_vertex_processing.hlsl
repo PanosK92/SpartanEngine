@@ -50,6 +50,7 @@ struct gbuffer_vertex
     float3 tangent           : TANGENT_WORLD;
     float4 uv_misc           : TEXCOORD;  // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
     float width_percent      : TEXCOORD2; // temp, will remove
+    nointerpolation uint material_index : TEXCOORD3; // for indirect draws, material index passed from vs
     float2 tile_position     : POS_TILE;
 };
 

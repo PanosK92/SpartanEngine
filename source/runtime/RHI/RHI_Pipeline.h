@@ -40,12 +40,14 @@ namespace spartan
         void* GetRhiResourceLayout() const       { return m_rhi_resource_layout; }
         void SetRhiResource(void* resource)      { m_rhi_resource = resource; }
         void SetRhiResourceLayout(void* layout)  { m_rhi_resource_layout = layout; }
+        uint32_t GetPushConstantStages() const   { return m_push_constant_stages; }
 
     private:
         RHI_PipelineState m_state;
  
         // rhi
-        void* m_rhi_resource        = nullptr;
-        void* m_rhi_resource_layout = nullptr;
+        void* m_rhi_resource          = nullptr;
+        void* m_rhi_resource_layout   = nullptr;
+        uint32_t m_push_constant_stages = 0;
     };
 }

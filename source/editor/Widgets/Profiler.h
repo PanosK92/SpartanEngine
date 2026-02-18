@@ -21,11 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
+//= INCLUDES ======================
 #include "Widget.h"
 #include <array>
 #include <utility>
-//=================
+#include <vector>
+#include "Profiling/TimeBlock.h"
+//=================================
 
 struct Timings
 {
@@ -60,9 +62,24 @@ class Profiler : public Widget
 {
 public:
     Profiler(Editor* editor);
+    void OnTick() override;
     void OnTickVisible() override;
 
 private:
     std::array<float, 400> m_plot;
     Timings m_timings;
+
+    // timeline state
+    float m_timeline_offset_ms       = 0.0f;
+    float m_timeline_range_ms        = 16.0f;
+    bool  m_timeline_needs_fit       = true;
+    bool  m_user_has_interacted      = false; // set when user zooms or pans, disables auto-grow
+    int   m_prev_mode_hardware       = -1;
+    int   m_prev_mode_view           = -1;
+
+    // freeze state
+    bool m_frozen = false;
+    std::vector<spartan::TimeBlock> m_frozen_time_blocks;
+    float m_frozen_time_cpu  = 0.0f;
+    float m_frozen_time_gpu  = 0.0f;
 };

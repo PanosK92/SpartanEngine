@@ -190,7 +190,24 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     float3 normal_world   = normalize(mul(normal_object, obj_to_world));
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
     
-    texcoord = texcoord * mat.tiling + mat.offset;
+    // world space uv transformation
+    float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    if (any(mat.world_space_uv))
+    {
+        float3 abs_normal = abs(normal_world);
+        float2 uv_world   = hit_pos.yz * abs_normal.x + 
+                            hit_pos.xz * abs_normal.y + 
+                            hit_pos.xy * abs_normal.z;
+        uv_world          = uv_world * mat.tiling + mat.offset;
+        
+        // branchless inversion
+        float2 invert_mask = step(0.5f, mat.invert_uv);
+        texcoord           = lerp(uv_world, 1.0f - frac(uv_world) + floor(uv_world), invert_mask);
+    }
+    else
+    {
+        texcoord = texcoord * mat.tiling + mat.offset;
+    }
     
     // normal mapping
     if (mat.has_texture_normal())
@@ -217,9 +234,7 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
             albedo = sampled_albedo.rgb * mat.color.rgb;
     }
     
-    float3 hit_position = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    
-    payload.position       = hit_position;
+    payload.position       = hit_pos;
     payload.hit_distance   = RayTCurrent();
     payload.normal         = normal_world;
     payload.material_index = float(material_index);

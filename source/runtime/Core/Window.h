@@ -65,6 +65,7 @@ namespace spartan
         static void SetTitleBarHeight(float height);
         static void SetTitleBarButtonWidth(float width);
         static void SetTitleBarHovered(bool hovered);
+        static void PumpEvents();
 
     private:
         static void CreateAndShowSplashScreen();

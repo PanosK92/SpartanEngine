@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_AccelerationStructure.h"
 #include "../World/Entity.h"
 #include "../Resource/Import/ModelImporter.h"
+#include "../Rendering/GeometryBuffer.h"
 #include "GeometryProcessing.h"
 //===========================================
 
@@ -44,8 +45,18 @@ namespace spartan
 
     Mesh::~Mesh()
     {
-        m_index_buffer  = nullptr;
-        m_vertex_buffer = nullptr;
+
+    }
+
+    void Mesh::RegisterForScripting(sol::state_view State)
+    {
+        State.new_usertype<Mesh>("Mesh",
+            "SaveToFile",               &Mesh::SaveToFile,
+            "LoadFromFile",             &Mesh::LoadFromFile,
+            "Clear",                    &Mesh::Clear,
+            "GetVertexCount",           &Mesh::GetVertexCount,
+            "GetIndexCount",            &Mesh::GetIndexCount
+            );
     }
 
     void Mesh::Clear()
@@ -207,11 +218,8 @@ namespace spartan
         }
 
         // compute memory usage
-        if (m_vertex_buffer && m_index_buffer)
-        {
-            m_object_size = m_vertex_buffer->GetObjectSize();
-            m_object_size += m_index_buffer->GetObjectSize();
-        }
+        m_object_size  = m_vertices.size() * sizeof(RHI_Vertex_PosTexNorTan);
+        m_object_size += m_indices.size() * sizeof(uint32_t);
 
         SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
     }
@@ -228,7 +236,7 @@ namespace spartan
     void Mesh::GetGeometry(uint32_t sub_mesh_index, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices)
     {
         SP_ASSERT_MSG(indices != nullptr || vertices != nullptr, "Indices and vertices vectors can't both be null");
-    
+
         // validate sub-mesh index
         if (sub_mesh_index >= m_sub_meshes.size())
         {
@@ -244,21 +252,21 @@ namespace spartan
         }
 
         const MeshLod& lod = sub_mesh.lods[0];
-    
+
         if (indices)
         {
             SP_ASSERT_MSG(lod.index_count != 0, "Index count can't be 0");
-    
+
             indices->resize(lod.index_count); // allocate once (caller can reuse buffer)
             copy(m_indices.begin() + lod.index_offset,
                       m_indices.begin() + lod.index_offset + lod.index_count,
                       indices->begin());
         }
-    
+
         if (vertices)
         {
             SP_ASSERT_MSG(lod.vertex_count != 0, "Vertex count can't be 0");
-    
+
             vertices->resize(lod.vertex_count); // allocate once (caller can reuse buffer)
             copy(m_vertices.begin() + lod.vertex_offset,
                       m_vertices.begin() + lod.vertex_offset + lod.vertex_count,
@@ -399,23 +407,9 @@ namespace spartan
 
     void Mesh::CreateGpuBuffers()
     {
-        // vertex buffer
-        m_vertex_buffer = make_unique<RHI_Buffer>(RHI_Buffer_Type::Vertex,
-            sizeof(m_vertices[0]),
-            static_cast<uint32_t>(m_vertices.size()),
-            static_cast<void*>(&m_vertices[0]),
-            false,
-            (string("mesh_vertex_buffer_") + m_object_name).c_str()
-        );
-
-        // index buffer
-        m_index_buffer = make_unique<RHI_Buffer>(RHI_Buffer_Type::Index,
-            sizeof(m_indices[0]),
-            static_cast<uint32_t>(m_indices.size()),
-            static_cast<void*>(&m_indices[0]),
-            false,
-            (string("mesh_index_buffer_") + m_object_name).c_str()
-        );
+        // append this mesh's geometry into the global vertex/index buffers
+        m_global_vertex_offset = GeometryBuffer::AppendVertices(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
+        m_global_index_offset  = GeometryBuffer::AppendIndices(m_indices.data(), static_cast<uint32_t>(m_indices.size()));
 
         // normalize scale
         if (m_flags & static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale))
@@ -430,12 +424,28 @@ namespace spartan
         }
     }
 
+    RHI_Buffer* Mesh::GetVertexBuffer()
+    {
+        return GeometryBuffer::GetVertexBuffer();
+    }
+
+    RHI_Buffer* Mesh::GetIndexBuffer()
+    {
+        return GeometryBuffer::GetIndexBuffer();
+    }
+
     void Mesh::BuildAccelerationStructure(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
 
         // nothing to build
         if (m_sub_meshes.empty())
+            return;
+
+        // the global geometry buffer must be built before acceleration structures
+        RHI_Buffer* vertex_buffer = GeometryBuffer::GetVertexBuffer();
+        RHI_Buffer* index_buffer  = GeometryBuffer::GetIndexBuffer();
+        if (!vertex_buffer || !index_buffer)
             return;
 
         // resize blas vector to match sub-mesh count if needed
@@ -453,15 +463,19 @@ namespace spartan
 
             const auto& lod = m_sub_meshes[i].lods[0]; // use lod 0 for blas
 
-            // create geometry for this sub-mesh
+            // compute global offsets: mesh base offset + lod-relative offset
+            uint32_t global_vertex_offset = m_global_vertex_offset + lod.vertex_offset;
+            uint32_t global_index_offset  = m_global_index_offset + lod.index_offset;
+
+            // create geometry for this sub-mesh using global buffer addresses
             RHI_AccelerationStructureGeometry geo;
             geo.transparent           = false;
             geo.vertex_format         = RHI_Format::R32G32B32_Float; // positions
-            geo.vertex_buffer_address = RHI_Device::GetBufferDeviceAddress(m_vertex_buffer->GetRhiResource()) + lod.vertex_offset * m_vertex_buffer->GetStride();
-            geo.vertex_stride         = m_vertex_buffer->GetStride();
+            geo.vertex_buffer_address = RHI_Device::GetBufferDeviceAddress(vertex_buffer->GetRhiResource()) + global_vertex_offset * vertex_buffer->GetStride();
+            geo.vertex_stride         = vertex_buffer->GetStride();
             geo.max_vertex            = lod.vertex_count - 1;
             geo.index_format          = RHI_Format::R32_Uint;
-            geo.index_buffer_address  = RHI_Device::GetBufferDeviceAddress(m_index_buffer->GetRhiResource()) + lod.index_offset * sizeof(uint32_t);
+            geo.index_buffer_address  = RHI_Device::GetBufferDeviceAddress(index_buffer->GetRhiResource()) + global_index_offset * sizeof(uint32_t);
 
             vector<RHI_AccelerationStructureGeometry> geometries = { geo };
             vector<uint32_t> primitive_counts                    = { lod.index_count / 3 };

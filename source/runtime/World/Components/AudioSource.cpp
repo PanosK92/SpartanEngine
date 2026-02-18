@@ -23,7 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "AudioSource.h"
 #include "Camera.h"
+#include "Volume.h"
 #include "../Entity.h"
+#include "../World.h"
 SP_WARNINGS_OFF
 #include <SDL3/SDL_audio.h>
 #include "../IO/pugixml.hpp"
@@ -173,6 +175,31 @@ namespace spartan
         audio_device::release();
     }
 
+    void AudioSource::RegisterForScripting(sol::state_view State)
+    {
+        State.new_usertype<AudioSource>("AudioSource",
+            sol::base_classes,              sol::bases<Component>(),
+            "SetAudioClip",                 &AudioSource::SetAudioClip,
+            "IsPlaying",                    &AudioSource::IsPlaying,
+            "PlayClip",                     &AudioSource::PlayClip,
+            "StopClip",                     &AudioSource::StopClip,
+            "GetAudioClipName",             &AudioSource::GetAudioClipName,
+
+
+            "GetMute",                      &AudioSource::GetMute,
+            "SetMute",                      &AudioSource::SetMute,
+
+            "IsSynthesisMode",              &AudioSource::IsSynthesisMode,
+            "SetSynthesisMode",             &AudioSource::SetSynthesisMode,
+            "StartSynthesis",               &AudioSource::StartSynthesis,
+            "StopSynthesis",                &AudioSource::StopSynthesis,
+
+            "GetPitch",                     &AudioSource::GetPitch,
+            "SetPitch",                     &AudioSource::SetPitch
+
+            );
+    }
+
     void AudioSource::Initialize()
     {
         Component::Initialize();
@@ -209,14 +236,14 @@ namespace spartan
                 static Vector3 camera_position_previous = Vector3::Zero;
                 Vector3 camera_position                 = camera->GetEntity()->GetPosition();
                 Vector3 sound_position                  = GetEntity()->GetPosition();
-       
+
                 // panning
                 {
                     Vector3 camera_to_sound = (sound_position - camera_position).Normalized();
                     Vector3 camera_right    = camera->GetEntity()->GetRight();
                     m_pan                   = Vector3::Dot(camera_to_sound, camera_right);
                 }
-       
+
                 // attenuation
                 {
                     float distance_squared     = Vector3::DistanceSquared(camera_position, sound_position);
@@ -228,50 +255,250 @@ namespace spartan
                 {
                     const float dt             = static_cast<float>(Timer::GetDeltaTimeSec());
                     const float speed_of_sound = 343.0f;
-               
+
                     Vector3 rel_velocity = (camera_position - camera_position_previous) / dt - (sound_position - position_previous) / dt;
                     Vector3 to_sound     = (sound_position - camera_position).Normalized();
                     float radial_v       = Vector3::Dot(to_sound, rel_velocity);
                     float target_ratio   = 1.0f + radial_v / speed_of_sound;
-               
+
                     // clamping and smooething
                     target_ratio    = clamp(target_ratio, 0.5f, 2.0f);
                     const float s   = 0.2f; // smoothing factor
                     m_doppler_ratio = lerp(m_doppler_ratio, target_ratio, s);
                     SetPitch(m_pitch);
                 }
-               
+
                 // update previous positions
                 camera_position_previous = camera_position;
                 position_previous        = sound_position;
             }
         }
-       
-        FeedAudioChunk();
+
+        // check if inside any volume that has reverb enabled
+        {
+            Vector3 source_position      = GetEntity()->GetPosition();
+            bool found_reverb_volume     = false;
+
+            for (Entity* entity : World::GetEntities())
+            {
+                Volume* volume = entity->GetComponent<Volume>();
+                if (!volume || !volume->GetReverbEnabled())
+                    continue;
+
+                // transform the volume's local bounding box into world space
+                BoundingBox transformed_box = volume->GetBoundingBox() * entity->GetMatrix();
+                if (transformed_box.Contains(source_position))
+                {
+                    // allocate reverb buffers if they haven't been yet
+                    if (m_reverb_buffer_l.empty())
+                    {
+                        m_reverb_buffer_l.assign(reverb_buffer_size, 0.0f);
+                        m_reverb_buffer_r.assign(reverb_buffer_size, 0.0f);
+                        m_reverb_write_pos = 0;
+                    }
+
+                    // derive reverb parameters from the volume's physical size
+                    // larger volumes produce longer, more resonant reverb
+                    Vector3 size       = transformed_box.GetSize();
+                    float longest_axis = max({ size.x, size.y, size.z });
+                    float size_factor  = clamp(longest_axis / 50.0f, 0.0f, 1.0f); // 50m+ = full scale
+
+                    m_reverb_enabled   = true;
+                    m_reverb_room_size = 0.6f + size_factor * 0.4f;               // [0.6, 1.0]
+                    m_reverb_decay     = 0.7f + size_factor * 0.28f;              // [0.7, 0.98]
+                    m_reverb_wet       = 0.6f + size_factor * 0.35f;              // [0.6, 0.95]
+                    found_reverb_volume = true;
+                    break;
+                }
+            }
+
+            // leaving a reverb volume, disable the override
+            if (!found_reverb_volume && m_volume_reverb_active)
+            {
+                m_reverb_enabled = false;
+            }
+
+            m_volume_reverb_active = found_reverb_volume;
+        }
+
+        // feed audio based on mode
+        if (m_synthesis_mode)
+            FeedSynthesizedChunk();
+        else
+            FeedAudioChunk();
+    }
+
+    void AudioSource::SetSynthesisMode(bool enabled, SynthesisCallback callback)
+    {
+        // stop any current playback when changing modes
+        if (m_is_playing && enabled != m_synthesis_mode)
+        {
+            if (m_synthesis_mode)
+                StopSynthesis();
+            else
+                StopClip();
+        }
+
+        m_synthesis_mode     = enabled;
+        m_synthesis_callback = callback;
+    }
+
+    void AudioSource::StartSynthesis()
+    {
+        if (!m_synthesis_mode || !m_synthesis_callback)
+        {
+            SP_LOG_ERROR("synthesis mode not enabled or no callback set");
+            return;
+        }
+
+        // create stream for synthesis: stereo float32 at 48khz
+        SDL_AudioSpec src_spec = {};
+        src_spec.freq          = 48000;
+        src_spec.format        = SDL_AUDIO_F32;
+        src_spec.channels      = 2;
+        m_stream = SDL_CreateAudioStream(&src_spec, &audio_device::spec);
+        if (!m_stream)
+        {
+            SP_LOG_ERROR("%s", SDL_GetError());
+            return;
+        }
+
+        CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
+
+        // initialize reverb buffers
+        m_reverb_buffer_l.assign(reverb_buffer_size, 0.0f);
+        m_reverb_buffer_r.assign(reverb_buffer_size, 0.0f);
+        m_reverb_write_pos = 0;
+
+        // start playing
+        CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
+        m_is_playing = true;
+    }
+
+    void AudioSource::StopSynthesis()
+    {
+        if (!m_is_playing)
+            return;
+
+        if (m_stream)
+        {
+            SDL_ClearAudioStream(m_stream);
+            SDL_DestroyAudioStream(m_stream);
+            m_stream = nullptr;
+        }
+        m_is_playing = false;
+    }
+
+    void AudioSource::FeedSynthesizedChunk()
+    {
+        if (!m_stream || !m_is_playing || !m_synthesis_callback)
+            return;
+
+        int queued               = SDL_GetAudioStreamQueued(m_stream);
+        const int low_water_mark = 16384;
+        if (queued >= low_water_mark)
+            return;
+
+        const uint32_t num_samples = 2048;
+        m_stereo_chunk.resize(num_samples * 2);
+
+        // call the synthesis callback to generate samples
+        m_synthesis_callback(m_stereo_chunk.data(), num_samples);
+
+        // apply volume and panning
+        float gain         = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
+        float left_factor  = sqrt(0.5f * (1.0f - m_pan));
+        float right_factor = sqrt(0.5f * (1.0f + m_pan));
+        float left_gain    = gain * left_factor;
+        float right_gain   = gain * right_factor;
+
+        for (uint32_t i = 0; i < num_samples; ++i)
+        {
+            m_stereo_chunk[2 * i]     *= left_gain;
+            m_stereo_chunk[2 * i + 1] *= right_gain;
+        }
+
+        // apply reverb effect using a feedback delay network
+        // 6 taps with long delays for large-space character (tunnels, halls)
+        if (m_reverb_enabled && !m_reverb_buffer_l.empty())
+        {
+            const uint32_t base_delays[6] = { 4799, 6907, 8893, 10007, 11903, 13313 };
+            const float room_scale        = 0.3f + m_reverb_room_size * 0.7f;
+            uint32_t delays[6];
+            for (int d = 0; d < 6; ++d)
+                delays[d] = static_cast<uint32_t>(base_delays[d] * room_scale);
+
+            const float tap_gain = 1.0f / 6.0f;
+            const float feedback = m_reverb_decay * 0.85f;
+            const float wet      = m_reverb_wet;
+            const float dry      = 1.0f - wet * 0.4f;
+
+            for (uint32_t i = 0; i < num_samples; ++i)
+            {
+                float dry_l = m_stereo_chunk[2 * i];
+                float dry_r = m_stereo_chunk[2 * i + 1];
+
+                float reverb_l = 0.0f;
+                float reverb_r = 0.0f;
+                for (int d = 0; d < 6; ++d)
+                {
+                    uint32_t read_pos_l = (m_reverb_write_pos + reverb_buffer_size - delays[d]) % reverb_buffer_size;
+                    uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 181) % reverb_buffer_size;
+                    reverb_l += m_reverb_buffer_l[read_pos_l] * tap_gain;
+                    reverb_r += m_reverb_buffer_r[read_pos_r] * tap_gain;
+                }
+
+                m_reverb_buffer_l[m_reverb_write_pos] = dry_l + reverb_l * feedback;
+                m_reverb_buffer_r[m_reverb_write_pos] = dry_r + reverb_r * feedback;
+
+                m_stereo_chunk[2 * i]     = dry_l * dry + reverb_l * wet;
+                m_stereo_chunk[2 * i + 1] = dry_r * dry + reverb_r * wet;
+
+                m_reverb_write_pos = (m_reverb_write_pos + 1) % reverb_buffer_size;
+            }
+        }
+
+        if (!SDL_PutAudioStreamData(m_stream, m_stereo_chunk.data(), static_cast<int>(m_stereo_chunk.size() * sizeof(float))))
+        {
+            SP_LOG_ERROR("%s", SDL_GetError());
+        }
     }
 
     void AudioSource::Save(pugi::xml_node& node)
     {
-        node.append_attribute("path")          = m_file_path.c_str();
-        node.append_attribute("is_3d")         = m_is_3d;
-        node.append_attribute("mute")          = m_mute;
-        node.append_attribute("loop")          = m_loop;
-        node.append_attribute("play_on_start") = m_play_on_start;
-        node.append_attribute("volume")        = m_volume;
-        node.append_attribute("pitch")         = m_pitch;
+        node.append_attribute("path")              = m_file_path.c_str();
+        node.append_attribute("is_3d")             = m_is_3d;
+        node.append_attribute("mute")              = m_mute;
+        node.append_attribute("loop")              = m_loop;
+        node.append_attribute("play_on_start")     = m_play_on_start;
+        node.append_attribute("volume")            = m_volume;
+        node.append_attribute("pitch")             = m_pitch;
+        node.append_attribute("reverb_enabled")    = m_reverb_enabled;
+        node.append_attribute("reverb_room_size")  = m_reverb_room_size;
+        node.append_attribute("reverb_decay")      = m_reverb_decay;
+        node.append_attribute("reverb_wet")        = m_reverb_wet;
     }
 
     void AudioSource::Load(pugi::xml_node& node)
     {
-        m_file_path     = node.attribute("path").as_string("N/A");
-        m_is_3d         = node.attribute("is_3d").as_bool(false);
-        m_mute          = node.attribute("mute").as_bool(false);
-        m_loop          = node.attribute("loop").as_bool(true);
-        m_play_on_start = node.attribute("play_on_start").as_bool(true);
-        m_volume        = node.attribute("volume").as_float(1.0f);
-        m_pitch         = node.attribute("pitch").as_float(1.0f);
+        m_file_path        = node.attribute("path").as_string("N/A");
+        m_is_3d            = node.attribute("is_3d").as_bool(false);
+        m_mute             = node.attribute("mute").as_bool(false);
+        m_loop             = node.attribute("loop").as_bool(true);
+        m_play_on_start    = node.attribute("play_on_start").as_bool(true);
+        m_volume           = node.attribute("volume").as_float(1.0f);
+        m_pitch            = node.attribute("pitch").as_float(1.0f);
+        m_reverb_enabled   = node.attribute("reverb_enabled").as_bool(false);
+        m_reverb_room_size = node.attribute("reverb_room_size").as_float(0.5f);
+        m_reverb_decay     = node.attribute("reverb_decay").as_float(0.5f);
+        m_reverb_wet       = node.attribute("reverb_wet").as_float(0.3f);
 
         SetAudioClip(m_file_path);
+    }
+
+    sol::reference AudioSource::AsLua(sol::state_view state)
+    {
+        return sol::make_reference(state, this);
     }
 
     void AudioSource::SetAudioClip(const string& file_path)
@@ -307,6 +534,11 @@ namespace spartan
         }
 
         CHECK_SDL_ERROR(SDL_BindAudioStream(audio_device::id, m_stream));
+
+        // initialize reverb buffers
+        m_reverb_buffer_l.assign(reverb_buffer_size, 0.0f);
+        m_reverb_buffer_r.assign(reverb_buffer_size, 0.0f);
+        m_reverb_write_pos = 0;
 
         // start playing
         CHECK_SDL_ERROR(SDL_ResumeAudioStreamDevice(m_stream));
@@ -354,12 +586,27 @@ namespace spartan
     void AudioSource::SetPitch(const float pitch)
     {
         m_pitch = clamp(pitch, 0.01f, 5.0f);
-   
+
         if (m_is_playing && m_stream)
         {
             const float effective_pitch = m_pitch * m_doppler_ratio;
             CHECK_SDL_ERROR(SDL_SetAudioStreamFrequencyRatio(m_stream, effective_pitch));
         }
+    }
+
+    void AudioSource::SetReverbRoomSize(const float room_size)
+    {
+        m_reverb_room_size = clamp(room_size, 0.0f, 1.0f);
+    }
+
+    void AudioSource::SetReverbDecay(const float decay)
+    {
+        m_reverb_decay = clamp(decay, 0.0f, 0.99f); // cap at 0.99 to prevent infinite buildup
+    }
+
+    void AudioSource::SetReverbWet(const float wet)
+    {
+        m_reverb_wet = clamp(wet, 0.0f, 1.0f);
     }
 
     void AudioSource::FeedAudioChunk()
@@ -395,7 +642,7 @@ namespace spartan
 
         uint32_t num_samples = bytes_to_add / sizeof(float);
         float* mono_samples  = reinterpret_cast<float*>(m_clip->buffer + m_position);
-        vector<float> stereo_chunk(num_samples * 2);
+        m_stereo_chunk.resize(num_samples * 2); // reuses capacity, no allocation if size fits
         float gain           = m_volume * m_attenuation * (m_mute ? 0.0f : 1.0f);
 
         // constant power panning
@@ -406,11 +653,53 @@ namespace spartan
         for (uint32_t i = 0; i < num_samples; ++i)
         {
             float sample = mono_samples[i];
-            stereo_chunk[2 * i] = sample * left_gain;
-            stereo_chunk[2 * i + 1]= sample * right_gain;
+            m_stereo_chunk[2 * i] = sample * left_gain;
+            m_stereo_chunk[2 * i + 1]= sample * right_gain;
         }
 
-        if (!SDL_PutAudioStreamData(m_stream, stereo_chunk.data(), static_cast<int>(stereo_chunk.size() * sizeof(float))))
+        // apply reverb effect using a feedback delay network
+        // 6 taps with long delays for large-space character (tunnels, halls)
+        if (m_reverb_enabled && !m_reverb_buffer_l.empty())
+        {
+            const uint32_t base_delays[6] = { 4799, 6907, 8893, 10007, 11903, 13313 };
+            const float room_scale        = 0.3f + m_reverb_room_size * 0.7f;
+            uint32_t delays[6];
+            for (int d = 0; d < 6; ++d)
+            {
+                delays[d] = static_cast<uint32_t>(base_delays[d] * room_scale);
+            }
+
+            const float tap_gain = 1.0f / 6.0f;
+            const float feedback = m_reverb_decay * 0.85f;
+            const float wet      = m_reverb_wet;
+            const float dry      = 1.0f - wet * 0.4f;
+
+            for (uint32_t i = 0; i < num_samples; ++i)
+            {
+                float dry_l = m_stereo_chunk[2 * i];
+                float dry_r = m_stereo_chunk[2 * i + 1];
+
+                float reverb_l = 0.0f;
+                float reverb_r = 0.0f;
+                for (int d = 0; d < 6; ++d)
+                {
+                    uint32_t read_pos_l = (m_reverb_write_pos + reverb_buffer_size - delays[d]) % reverb_buffer_size;
+                    uint32_t read_pos_r = (m_reverb_write_pos + reverb_buffer_size - delays[d] - 181) % reverb_buffer_size;
+                    reverb_l += m_reverb_buffer_l[read_pos_l] * tap_gain;
+                    reverb_r += m_reverb_buffer_r[read_pos_r] * tap_gain;
+                }
+
+                m_reverb_buffer_l[m_reverb_write_pos] = dry_l + reverb_l * feedback;
+                m_reverb_buffer_r[m_reverb_write_pos] = dry_r + reverb_r * feedback;
+
+                m_stereo_chunk[2 * i]     = dry_l * dry + reverb_l * wet;
+                m_stereo_chunk[2 * i + 1] = dry_r * dry + reverb_r * wet;
+
+                m_reverb_write_pos = (m_reverb_write_pos + 1) % reverb_buffer_size;
+            }
+        }
+
+        if (!SDL_PutAudioStreamData(m_stream, m_stereo_chunk.data(), static_cast<int>(m_stereo_chunk.size() * sizeof(float))))
         {
             SP_LOG_ERROR("%s", SDL_GetError());
         }

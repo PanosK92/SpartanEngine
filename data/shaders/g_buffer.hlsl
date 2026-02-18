@@ -113,8 +113,16 @@ float3 compute_flower_color(float height_percent, uint instance_id)
     return lerp(flower_base, tip, smoothstep(0.2f, 1.0f, height_percent));
 }
 
+#ifdef INDIRECT_DRAW
+gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, [[vk::builtin("DrawIndex")]] uint draw_id : DRAW_INDEX)
+{
+    _draw = indirect_draw_data_out[draw_id];
+#else
 gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
 {
+    _draw = draw_data[buffer_pass.draw_index];
+#endif
+
     MaterialParameters material = GetMaterial();
     Surface surface;
     surface.flags = material.flags;
@@ -128,7 +136,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
         const float tile_size = pass_values.z;
         const float2 tile_local_uv = ocean_get_world_space_uvs(input.uv, tile_xz_pos, tile_size);
         
-        const float2 world_pos = mul(input.position, buffer_pass.transform).xz;
+        const float2 world_pos = mul(input.position, _draw.transform).xz;
         
         const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
 
@@ -146,15 +154,17 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     
     float3 position_world          = 0.0f;
     float3 position_world_previous = 0.0f;
-    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, buffer_pass.transform, position_world, position_world_previous);
-    vertex = transform_to_clip_space(vertex, position_world, position_world_previous);
-    vertex.tile_position = pos;
-    
-    return vertex;
+    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
+    vertex.material_index          = _draw.material_index;
+    vertex.tile_position           = pos;
+    return transform_to_clip_space(vertex, position_world, position_world_previous);
 }
 
 gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
 {
+    // restore material index from vertex output (works for both indirect and cpu-driven draws)
+    pass_load_draw_data_from_vertex(vertex.material_index);
+
     // material setup
     MaterialParameters material = GetMaterial();
     Surface surface;

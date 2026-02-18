@@ -90,6 +90,7 @@ namespace spartan
         uint32_t m_width                = 0;
         uint32_t m_height               = 0;
         RHI_Format m_format             = RHI_Format::Max;
+        RHI_Format m_format_pending     = RHI_Format::Max; // pending format change, applied in Create()
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
 
         // misc

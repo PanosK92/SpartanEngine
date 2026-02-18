@@ -140,6 +140,9 @@ namespace spartan
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayMiss))       ? VK_SHADER_STAGE_MISS_BIT_KHR                : 0;
                     push_constant_range.stageFlags          |= (descriptor.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayHit))        ? VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR         : 0;
 
+                    // store the stages for use in PushConstants calls
+                    m_push_constant_stages |= push_constant_range.stageFlags;
+
                     push_constant_ranges.emplace_back(push_constant_range);
                 }
             }
@@ -158,11 +161,6 @@ namespace spartan
 
             // name
             RHI_Device::SetResourceName(m_rhi_resource_layout, RHI_Resource_Type::PipelineLayout, pipeline_state.name);
-        }
-
-        if (m_state.name == "light_integration_brdf_specular_lut")
-        {
-            bool test = true;
         }
 
         if (pipeline_state.IsCompute())

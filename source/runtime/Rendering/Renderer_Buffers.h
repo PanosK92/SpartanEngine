@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
 #include "../Math/Matrix.h"
 #include "Color.h"
 //==========================
@@ -81,14 +82,11 @@ namespace spartan
         math::Vector3 camera_right;
         float camera_exposure;
 
-        // weather/clouds
+        // clouds
         float cloud_coverage;
-        float cloud_type;
         float cloud_shadows;
-        float cloud_darkness;
-
-        math::Vector3 cloud_color;
-        float cloud_seed;
+        float padding3;
+        float padding4;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -96,72 +94,36 @@ namespace spartan
         }
     };
 
-    // 128 byte push constant buffer - updates per pass/draw
+    // push constant buffer - updates per pass/draw
+    // draw_index references a Sb_DrawData entry in the bindless draw data buffer,
+    // which holds per-draw transforms and material info. material_index and
+    // is_transparent are pass-level state used by compute shaders (lighting, composition)
+    // that don't have per-draw data. the float array carries generic per-pass parameters.
     struct Pcb_Pass
     {
-        math::Matrix transform = math::Matrix::Identity;
-        math::Matrix m_value   = math::Matrix::Identity;
+        uint32_t draw_index     = 0;
+        uint32_t material_index = 0;
+        uint32_t is_transparent = 0;
+        uint32_t padding        = 0;
 
-        void set_transform_previous(const math::Matrix& transform_previous)
-        {
-            m_value = transform_previous;
-        }
+        // generic per-pass parameters, laid out as 3 x float4:
+        // v[0..2]  = f3_value  (e.g. light count, fog, mip level)
+        // v[3]     = f2_value.x
+        // v[4..6]  = f3_value2 (e.g. light index, texel size)
+        // v[7]     = f2_value.y
+        // v[8..11] = f4_value  (e.g. light coordinate, color)
+        float v[12] = {};
 
-        void set_f2_value(float x, float y)
-        {
-            m_value.m23 = x;
-            m_value.m30 = y;
-        }
+        void set_f3_value(const math::Vector3& value) { v[0] = value.x; v[1] = value.y; v[2] = value.z; }
+        void set_f3_value(float x, float y = 0.0f, float z = 0.0f) { v[0] = x; v[1] = y; v[2] = z; }
 
-        void set_f3_value(const math::Vector3& value)
-        {
-            m_value.m00 = value.x;
-            m_value.m01 = value.y;
-            m_value.m02 = value.z;
-        };
+        void set_f3_value2(const math::Vector3& value) { v[4] = value.x; v[5] = value.y; v[6] = value.z; }
+        void set_f3_value2(float x, float y, float z) { v[4] = x; v[5] = y; v[6] = z; }
 
-        void set_f3_value(const float x, const float y = 0.0f, const float z = 0.0f)
-        {
-            m_value.m00 = x;
-            m_value.m01 = y;
-            m_value.m02 = z;
-        };
+        void set_f4_value(const Color& color) { v[8] = color.r; v[9] = color.g; v[10] = color.b; v[11] = color.a; }
+        void set_f4_value(float x, float y, float z, float w) { v[8] = x; v[9] = y; v[10] = z; v[11] = w; }
 
-        void set_f3_value2(const math::Vector3& value)
-        {
-            m_value.m20 = value.x;
-            m_value.m21 = value.y;
-            m_value.m31 = value.z;
-        };
-
-        void set_f3_value2(const float x, const float y, const float z)
-        {
-            m_value.m20 = x;
-            m_value.m21 = y;
-            m_value.m31 = z;
-        };
-
-        void set_f4_value(const Color& color)
-        {
-            m_value.m10 = color.r;
-            m_value.m11 = color.g;
-            m_value.m12 = color.b;
-            m_value.m33 = color.a;
-        };
-
-        void set_f4_value(const float x, const float y, const float z, const float w)
-        {
-            m_value.m10 = x;
-            m_value.m11 = y;
-            m_value.m12 = z;
-            m_value.m33 = w;
-        };
-
-        void set_is_transparent_and_material_index(const bool is_transparent, const uint32_t material_index = 0)
-        {
-            m_value.m03 = static_cast<float>(material_index);
-            m_value.m13 = is_transparent ? 1.0f : 0.0f;
-        }
+        void set_f2_value(float x, float y) { v[3] = x; v[7] = y; }
     };
 
     struct Sb_Material
@@ -262,5 +224,61 @@ namespace spartan
         uint32_t index_offset;
         uint32_t vertex_count;
         uint32_t index_count;
+    };
+
+    // gpu-driven indirect draw arguments (matches VkDrawIndexedIndirectCommand layout)
+    struct Sb_IndirectDrawArgs
+    {
+        uint32_t index_count    = 0;
+        uint32_t instance_count = 0;
+        uint32_t first_index    = 0;
+        int32_t  vertex_offset  = 0;
+        uint32_t first_instance = 0;
+    };
+
+    // per-draw data for gpu-driven rendering (indexed by draw_id in shaders)
+    struct Sb_DrawData
+    {
+        math::Matrix transform;          // current world transform
+        math::Matrix transform_previous; // previous frame world transform
+        uint32_t material_index = 0;     // index into the bindless material parameters array
+        uint32_t is_transparent = 0;     // transparency flag
+        uint32_t aabb_index     = 0;     // index into the aabb buffer for culling
+        uint32_t padding        = 0;
+    };
+
+    // gpu particle (matches hlsl Particle struct, 64 bytes)
+    struct Sb_Particle
+    {
+        math::Vector3 position;
+        float lifetime      = 0.0f; // remaining lifetime
+        math::Vector3 velocity;
+        float max_lifetime  = 0.0f; // initial lifetime
+        math::Vector4 color;        // current rgba
+        float size          = 0.0f; // current size
+        float padding1      = 0.0f;
+        float padding2      = 0.0f;
+        float padding3      = 0.0f;
+    };
+
+    // gpu emitter parameters (matches hlsl EmitterParams struct)
+    struct Sb_EmitterParams
+    {
+        math::Vector3 position;
+        float emission_rate   = 0.0f;
+        float lifetime        = 0.0f;
+        float start_speed     = 0.0f;
+        float start_size      = 0.0f;
+        float end_size        = 0.0f;
+        Color start_color;
+        Color end_color;
+        float gravity_modifier = 0.0f;
+        float radius           = 0.0f;
+        float delta_time       = 0.0f;
+        uint32_t max_particles = 0;
+        uint32_t frame         = 0;
+        uint32_t emitter_count = 0; // number of active emitters this frame
+        float padding1         = 0.0f;
+        float padding2         = 0.0f;
     };
 }

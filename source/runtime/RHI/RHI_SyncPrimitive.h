@@ -48,6 +48,7 @@ namespace spartan
         bool IsSignaled();
         void Reset();
         uint64_t GetNextSignalValue() { return ++m_value; }
+        uint64_t GetValue() const     { return m_value; }
         void* GetRhiResource()        { return m_rhi_resource; }
 
         // signaler command list

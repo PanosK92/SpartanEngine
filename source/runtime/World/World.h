@@ -23,12 +23,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "../Math/BoundingBox.h"
+#include <string>
+#include <sol/sol.hpp>
 //==============================
 
 namespace spartan
 {
     class Camera;
     class Light;
+
+    // metadata structure for reading world info without fully loading
+    struct WorldMetadata
+    {
+        std::string file_path;
+        std::string name;
+        std::string description;
+    };
 
     class World
     {
@@ -43,16 +53,20 @@ namespace spartan
         static bool LoadFromFile(const std::string& file_path);
 
         // entities
+        static sol::state_view GetLuaState();
         static Entity* CreateEntity();
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(Entity* entity);
+        static void RemoveEntityImmediate(Entity* entity);
         static void GetRootEntities(std::vector<Entity*>& entities);
+        static void MoveEntityToIndex(Entity* entity, uint32_t index);
+        static void MoveRootEntityNear(Entity* entity_to_move, Entity* target_entity, bool insert_after);
         static Entity* GetEntityById(uint64_t id);
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
 
         // misc
-        static std::string GetName();
+        static const std::string& GetName();
         static const std::string& GetFilePath();
         static math::BoundingBox& GetBoundingBox();
         static Camera* GetCamera();
@@ -65,6 +79,13 @@ namespace spartan
         // world time: 0.0 = midnight, 0.5 = noon, 1.0 = next midnight
         static float GetTimeOfDay(bool use_real_world_time = false);
         static void SetTimeOfDay(float time_of_day);
+
+        // world metadata
+        static const std::string& GetDescription();
+        static void SetDescription(const std::string& description);
+
+        // read metadata from a world file without fully loading it
+        static bool ReadMetadata(const std::string& world_file_path, WorldMetadata& metadata);
 
     private:
         static void ProcessPendingRemovals();
