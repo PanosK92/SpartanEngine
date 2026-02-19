@@ -363,7 +363,7 @@ namespace spartan
                     material->SetObjectName("material_ocean");
                     material->SetResourceFilePath("ocean" + string(EXTENSION_MATERIAL));
 
-                    //material->LoadFromFile(material->GetResourceFilePath());
+                    material->LoadFromFile(material->GetResourceFilePath());
                     material->SetOceanTileCount(grid_size);
 
                     material->SetOceanTileSize(tile_size);

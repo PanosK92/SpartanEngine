@@ -157,6 +157,8 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
     vertex.tile_position           = pos;
+    vertex.tile_xz_pos             = _draw.tile_xz_pos;
+    vertex.tile_size               = _draw.tile_size;
     return transform_to_clip_space(vertex, position_world, position_world_previous);
 }
 
@@ -304,18 +306,19 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         //const float2 tile_xz_pos = pass_values.xy;
         //const float tile_size = pass_values.z;
         
-        const float2 tile_local_uv = ocean_get_world_space_uvs(vertex.uv_misc.xy, _draw.tile_xz_pos, _draw.tile_size);
+        const float2 tile_local_uv = ocean_get_world_space_uvs(vertex.uv_misc.xy, vertex.tile_xz_pos, vertex.tile_size);
         
         float4 slope = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        synthesize(tex3, slope, tile_local_uv);
+        synthesize(tex3, slope, tile_local_uv, true);
         //synthesize_with_flow(tex3, slope, tex5, vertex.tile_position, material.ocean_parameters.windDirection, tile_local_uv);
         
-        slope = slope * material.ocean_parameters.slopeScale;
+        slope.rgb = slope.rgb * material.ocean_parameters.slopeScale;
         normal = normalize(float3(-slope.x, vertex.normal.y, -slope.y));
 
         // apply foam (foam mask is stored in the alpha channel of slope map)
         //const float foam_noise = compute_foam_noise(vertex.uv_misc.xy, buffer_frame.time);
         albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
+        roughness = lerp(roughness, 1.0f, slope.a);
 
         if (material.ocean_parameters.debugDisplacement == 1.0f) // displacement
         {
@@ -393,7 +396,6 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     gbuffer g_buffer;
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pass_get_material_index());
-    g_buffer.normal   = float4(_draw.tile_xz_pos.x, _draw.tile_xz_pos.y, _draw.tile_size, pass_get_material_index());
     g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity;
     return g_buffer;

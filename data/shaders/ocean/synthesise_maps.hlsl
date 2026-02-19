@@ -77,7 +77,7 @@ void preserve_variance(out float4 linear_color, float4 mean_color, float moment2
     linear_color = (linear_color - mean_color) / sqrt(moment2) + mean_color;
 }
 
-void synthesize(Texture2D example, out float4 output, float2 uv)
+void synthesize(Texture2D example, out float4 output, float2 uv, bool preserve_foam = false)
 {
     const float tex_freq = 1.0f;
     const float tile_freq = 2.0f;
@@ -94,8 +94,17 @@ void synthesize(Texture2D example, out float4 output, float2 uv)
     }
     // assumes example is a mip mapped 512x512 texture and samples lowest mip (1x1)
     const float4 mean_example = example.SampleLevel(samplers[sampler_point_clamp], uv, 9);
-    
-    preserve_variance(output, mean_example, moment2);
+
+    if (preserve_foam)
+    {
+        const float foam = saturate(output.a);
+        preserve_variance(output, mean_example, moment2);
+        output.a = foam;
+    }
+    else
+    {
+        preserve_variance(output, mean_example, moment2);
+    }
 }
 
 void synthesize_with_flow(Texture2D example, out float4 output, Texture2D flowmap, float2 tile_xz_pos, float wind_dir_deg, float2 tile_local_uv, bool debug_flow = false)
