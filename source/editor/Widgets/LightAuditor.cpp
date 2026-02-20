@@ -157,9 +157,9 @@ void LightAuditor::OnTickVisible()
                 case 2: return sort_direction == ImGuiSortDirection_Ascending // Active
                                 ? a->GetActive() < b->GetActive()
                                 : a->GetActive() > b->GetActive();
-                case 3: return sort_direction == ImGuiSortDirection_Ascending // Color
-                                ? light_a->GetColor() < light_b->GetColor()
-                                : light_a->GetColor() > light_b->GetColor();
+                case 3: return sort_direction == ImGuiSortDirection_Ascending // Color (sort based on luminance values)
+                                ? light_a->GetColor().GetLuminance() < light_b->GetColor().GetLuminance()
+                                : light_a->GetColor().GetLuminance() > light_b->GetColor().GetLuminance();
                 case 4: return sort_direction == ImGuiSortDirection_Ascending // Temperature
                                 ? light_a->GetTemperature() < light_b->GetTemperature()
                                 : light_a->GetTemperature() > light_b->GetTemperature();

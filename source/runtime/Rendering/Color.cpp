@@ -96,6 +96,11 @@ namespace spartan
         this->a = a;
     }
 
+    float Color::GetLuminance() const
+    {
+        return 0.21216f * r + 0.7152f * g + 0.04152f * b;
+    }
+
     // standard
     const Color Color::standard_black           = Color(0.0f, 0.0f, 0.0f, 1.0f);
     const Color Color::standard_white           = Color(1.0f, 1.0f, 1.0f, 1.0f);
