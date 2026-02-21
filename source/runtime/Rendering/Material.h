@@ -196,12 +196,8 @@ namespace spartan
         // ocean
         bool ShouldComputeSpectrum() const { return m_should_compute_spectrum; }
         void MarkSpectrumAsComputed(const bool flag) { m_should_compute_spectrum = !flag; }
-        void SetOceanTileCount(const uint32_t count) { m_ocean_tiles = count; }
-        uint32_t GetOceanTileCount() const { return m_ocean_tiles; }
-        void SetOceanVerticesCount(const uint32_t count) { m_ocean_vertices_count = count; }
-        uint32_t GetOceanVerticesCount() const { return m_ocean_vertices_count; }
-        void SetOceanTileSize(const float size) { m_ocean_tile_size = size; }
-        float GetOceanTileSize() const { return m_ocean_tile_size; }
+        uint32_t GetClipmapTileRes() const { return m_clipmap_tile_res; }
+        void SetClipmapTileRes(const uint32_t res) { m_clipmap_tile_res = res; }
         bool IsOcean() const { return GetProperty(MaterialProperty::IsOcean) == 1.0f; }
 
         const std::array<float, static_cast<uint32_t>(MaterialProperty::Max)>& GetProperties() const { return m_properties; }
@@ -218,9 +214,8 @@ namespace spartan
         bool m_needs_repack     = true; // starts true so first PrepareForGpu() packs textures
         std::mutex m_mutex;
 
+        // ocean
         bool m_should_compute_spectrum = false;
-        uint32_t m_ocean_tiles = 1;
-        uint32_t m_ocean_vertices_count = 0;
-        float m_ocean_tile_size = 0.0f;
+        uint32_t m_clipmap_tile_res = 0;
     };
 }

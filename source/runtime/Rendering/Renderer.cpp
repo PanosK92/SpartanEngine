@@ -1508,8 +1508,9 @@ namespace spartan
                 data.material_index     = material->GetIndex();
                 data.is_transparent     = 0;
                 data.aabb_index         = m_draw_calls_prepass_count + idx;
-                data.tile_size          = material->GetOceanTileSize();
-                data.tile_xz_pos        = { ent_pos.x, ent_pos.z };
+                data.tile_size          = renderable->GetOceanClipmapTileScale();
+                data.tile_world_pos     = renderable->GetOceanClipmapTilePos();
+                data.tile_res           = material->GetClipmapTileRes();
                 data.padding            = 0;
             }
         }

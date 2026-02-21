@@ -303,8 +303,9 @@ struct DrawData
     uint   is_transparent;
     uint   aabb_index;
     float  tile_size;
-    float2 tile_xz_pos;
-    float2 padding;
+    float2 tile_world_pos;
+    uint   tile_res;
+    float  padding;
 };
 
 // bindless draw data - per-draw transforms, material indices, etc.

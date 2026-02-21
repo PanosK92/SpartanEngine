@@ -244,9 +244,10 @@ namespace spartan
         uint32_t material_index = 0;     // index into the bindless material parameters array
         uint32_t is_transparent = 0;     // transparency flag
         uint32_t aabb_index     = 0;     // index into the aabb buffer for culling
-        float tile_size         = 0.0f;  // used for the ocean synthesis
-        math::Vector2 tile_xz_pos;       // used for the ocean synthesis
-        math::Vector2 padding;
+        float tile_size         = 0.0f;  // used for ocean clipmap
+        math::Vector2 tile_world_pos;    // used for ocean clipmap
+        uint32_t tile_res       = 0;     // used for ocean clipmap
+        uint32_t padding;
     };
 
     // gpu particle (matches hlsl Particle struct, 64 bytes)

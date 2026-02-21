@@ -1621,27 +1621,6 @@ void Properties::ShowMaterial(Material* material) const
             show_jonswap_params("Slope Scale", "", OceanParameters::SlopeScale);
             show_jonswap_params("Length Scale", "", OceanParameters::LengthScale);
 
-            int tile_count = material->GetOceanTileCount();
-            ImGui::InputInt("Ocean Tiles", &tile_count);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-            {
-                material->SetOceanTileCount(tile_count);
-            }
-
-            float tile_size = material->GetOceanTileSize();
-            ImGui::InputFloat("Ocean Tile Size", &tile_size);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-            {
-                material->SetOceanTileSize(tile_size);
-            }
-
-            int vertices_count = material->GetOceanVerticesCount();
-            ImGui::InputInt("Ocean Vertices Count", &vertices_count);
-            if (ImGui::IsItemDeactivatedAfterEdit())
-            {
-                material->SetOceanVerticesCount(vertices_count);
-            }
-
             bool show_displacement = material->GetOceanProperty(OceanParameters::DebugDisplacement) == 1.0f ? true : false;
             ImGui::Checkbox("Show Displacement Map", &show_displacement);
             material->SetOceanProperty(OceanParameters::DebugDisplacement, show_displacement ? 1.0f : 0.0f);

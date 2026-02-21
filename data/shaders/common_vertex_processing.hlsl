@@ -51,9 +51,7 @@ struct gbuffer_vertex
     float4 uv_misc           : TEXCOORD;  // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
     float width_percent      : TEXCOORD2; // temp, will remove
     nointerpolation uint material_index : TEXCOORD3; // for indirect draws, material index passed from vs
-    float2 tile_position     : TILE_POS;
-    float2 tile_xz_pos       : TILE_XZ_POS;
-    float tile_size          : TILE_SIZE;
+    float2 synth_uv       : TEXCOORD4;
 };
 
 float4x4 compose_instance_transform(min16float instance_position_x, min16float instance_position_y, min16float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)

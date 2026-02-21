@@ -110,6 +110,39 @@ namespace spartan::geometry_generation
         indices->emplace_back(1);
     }
 
+    static void generate_tile(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t resolution)
+    {
+        using namespace math;
+
+        for (uint32_t z = 0; z <= resolution; z++)
+        {
+            for (uint32_t x = 0; x <= resolution; x++)
+            {
+                // Normalized [0,1] coordinates within the tile
+                const Vector3 pos     = Vector3((float)x / resolution, 0.0f, (float)z / resolution );
+                const Vector2 uv      = Vector2((float)x / resolution, (float)z / resolution);
+                const Vector3 normal  = Vector3(0, 1, 0);
+                const Vector3 tangent = Vector3(0, 0, 0);
+
+                vertices->emplace_back(pos, uv, normal, tangent);
+            }
+        }
+
+        for (uint32_t z = 0; z < resolution; z++)
+        {
+            for (uint32_t x = 0; x < resolution; x++)
+            {
+                const uint32_t i = z * (resolution + 1u) + x;
+                indices->emplace_back(i);
+                indices->emplace_back(i + resolution + 1u);
+                indices->emplace_back(i + 1u);
+                indices->emplace_back(i + 1u);
+                indices->emplace_back(i + resolution + 1u);
+                indices->emplace_back(i + resolution + 2u);
+            }
+        }
+    }
+
     static void generate_grid(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices, uint32_t grid_points_per_dimension, float extent)
     {
         using namespace math;

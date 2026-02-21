@@ -39,37 +39,27 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     Surface surface;
     surface.flags = material.flags;
 
-    float2 pos = float2(0.0f, 0.0f);
+    // transform to world space
+    float3 position_world = 0.0f;
+    float3 position_world_previous = 0.0f;
+    gbuffer_vertex vertex = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     
     if (surface.is_ocean() && material.ocean_parameters.displacementScale > -1.0f)
     {
-        //const float3 pass_values = pass_get_f3_value2();
-        //const float2 tile_xz_pos = pass_values.xy;
-        //const float tile_size = pass_values.z;
-        const float2 tile_local_uv = ocean_get_world_space_uvs(input.uv, _draw.tile_xz_pos, _draw.tile_size);
-        
-        const float2 world_pos = mul(input.position, _draw.transform).xz;
-        
-        const float2 uv = (world_pos - (-3069.0f)) / (3069.0f - (-3069.0f));
+        // 1. Snap to this LOD's vertex grid to prevent swimming
+        const float vertex_spacing = _draw.tile_size / _draw.tile_res;
+        position_world.xz = round(position_world.xz / vertex_spacing) * vertex_spacing;
 
+        // 2. Synthesize displacement
+        const float2 disp_uv = position_world.xz / material.ocean_parameters.lengthScale;
         float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        synthesize(tex2, displacement, tile_local_uv);
-        //synthesize_with_flow(tex2, displacement, tex5, world_pos, material.ocean_parameters.windDirection, tile_local_uv);
+        synthesize(tex2, displacement, disp_uv);
 
-        const float height = tex4.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
-        
-        input.position.y += height <= 0.0f ? 0.0f : height + 3.0f;
-        input.position.xyz += displacement.xyz * material.ocean_parameters.displacementScale;
-
-        pos = world_pos;
+        // 3. Apply displacement
+        position_world.xyz += displacement.xyz;
+        position_world_previous = position_world;
     }
-    
-    // transform to world space
-    float3 position_world          = 0.0f;
-    float3 position_world_previous = 0.0f;
-    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
-    vertex.material_index          = _draw.material_index;
-    vertex.tile_position           = pos;
+    vertex.material_index = _draw.material_index;
     return transform_to_clip_space(vertex, position_world, position_world_previous);
 }
 
