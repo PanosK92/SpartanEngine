@@ -169,13 +169,25 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 1);
     Reservoir combined = create_empty_reservoir();
 
-    // evaluate current sample - luminance-based target for consistency
-    float target_pdf_current = calculate_target_pdf(current.sample.radiance);
+    float target_pdf_current;
+    if (is_sky_sample(current.sample))
+    {
+        target_pdf_current = calculate_target_pdf_sky(current.sample.radiance,
+            current.sample.direction, normal_ws, view_dir, albedo, roughness, metallic);
+    }
+    else
+    {
+        target_pdf_current = calculate_target_pdf_with_geometry(current.sample.radiance,
+            pos_ws, normal_ws, view_dir, current.sample.hit_position, current.sample.hit_normal,
+            albedo, roughness, metallic);
+    }
+    if (target_pdf_current <= 0.0f)
+        target_pdf_current = calculate_target_pdf(current.sample.radiance);
 
     // initialize combined reservoir with current sample
     float weight_current     = target_pdf_current * current.W;
     combined.weight_sum      = weight_current;
-    combined.M               = 1.0f;
+    combined.M               = current.M;
     combined.sample          = current.sample;
     combined.target_pdf      = target_pdf_current;
 
@@ -204,13 +216,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
             if (is_reservoir_valid(temporal) && temporal.M > 0 && temporal.W > 0)
             {
-                // clamp old reservoir radiance to match current path tracer limits
-                // this flushes outlier samples that were generated before clamping was tightened
-                float max_rad = (temporal.sample.path_length > 1) ? 10.0f : 15.0f;
-                temporal.sample.radiance = min(temporal.sample.radiance, float3(max_rad, max_rad, max_rad));
                 float temp_lum = dot(temporal.sample.radiance, float3(0.299f, 0.587f, 0.114f));
-                if (temp_lum > max_rad)
-                    temporal.sample.radiance *= max_rad / temp_lum;
+                if (temp_lum > 50.0f)
+                    temporal.sample.radiance *= 50.0f / temp_lum;
 
                 // apply temporal decay and aging
                 temporal.M          *= RESTIR_TEMPORAL_DECAY;
@@ -224,11 +232,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
                 if (is_sky_sample(temporal.sample))
                 {
-                    // sky sample reuse - still check direction validity
                     float n_dot_sky = dot(normal_ws, temporal.sample.direction);
                     if (n_dot_sky > 0.0f)
                     {
-                        float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
+                        float target_pdf_temporal = calculate_target_pdf_sky(temporal.sample.radiance,
+                            temporal.sample.direction, normal_ws, view_dir, albedo, roughness, metallic);
 
                         if (target_pdf_temporal > 0.0f)
                         {
@@ -247,7 +255,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 }
                 else
                 {
-                    // surface sample reuse with visibility check
                     float3 prev_pos_ws = get_position(prev_uv);
 
                     bool temporal_visible = temporal.sample.path_length == 0 ||
@@ -256,23 +263,22 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
                     if (temporal_visible)
                     {
-                        // use jacobian as a validity/quality gate, not as a weight multiplier
-                        // the target PDF re-evaluation already accounts for the geometry shift
                         float jacobian = compute_jacobian(temporal.sample.hit_position, prev_pos_ws, pos_ws, temporal.sample.hit_normal, normal_ws);
 
                         if (jacobian > 0.0f)
                         {
-                            // reject samples whose hit point is in the wrong hemisphere
                             float3 dir_to_hit = normalize(temporal.sample.hit_position - pos_ws);
                             float n_dot_l = dot(normal_ws, dir_to_hit);
 
                             if (n_dot_l > 0.0f)
                             {
-                                float target_pdf_temporal = calculate_target_pdf(temporal.sample.radiance);
+                                float target_pdf_temporal = calculate_target_pdf_with_geometry(temporal.sample.radiance,
+                                    pos_ws, normal_ws, view_dir, temporal.sample.hit_position, temporal.sample.hit_normal,
+                                    albedo, roughness, metallic);
 
                                 if (target_pdf_temporal > 0.0f)
                                 {
-                                    float weight_temporal = target_pdf_temporal * temporal.W * temporal.M;
+                                    float weight_temporal = target_pdf_temporal * jacobian * temporal.W * temporal.M;
 
                                     combined.weight_sum += weight_temporal;
                                     combined.M += temporal.M;
@@ -291,10 +297,22 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    // finalize reservoir using luminance-based target PDF
     clamp_reservoir_M(combined, RESTIR_M_CAP);
 
-    float final_target_pdf = calculate_target_pdf(combined.sample.radiance);
+    float final_target_pdf;
+    if (is_sky_sample(combined.sample))
+    {
+        final_target_pdf = calculate_target_pdf_sky(combined.sample.radiance,
+            combined.sample.direction, normal_ws, view_dir, albedo, roughness, metallic);
+    }
+    else
+    {
+        final_target_pdf = calculate_target_pdf_with_geometry(combined.sample.radiance,
+            pos_ws, normal_ws, view_dir, combined.sample.hit_position, combined.sample.hit_normal,
+            albedo, roughness, metallic);
+    }
+    if (final_target_pdf <= 0.0f)
+        final_target_pdf = calculate_target_pdf(combined.sample.radiance);
     combined.target_pdf = final_target_pdf;
 
     if (final_target_pdf > 0 && combined.M > 0)

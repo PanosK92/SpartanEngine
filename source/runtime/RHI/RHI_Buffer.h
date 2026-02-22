@@ -99,6 +99,7 @@ namespace spartan
         void* GetMappedData() const         { return m_data_gpu; }
         void* GetRhiResource() const        { return m_rhi_resource; }
         RHI_Buffer_Type GetType() const     { return m_type; }
+        void DestroyResourceImmediate();
         uint64_t GetDeviceAddress() const   { return m_device_address; }
 
     private:

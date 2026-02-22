@@ -2203,6 +2203,31 @@ namespace spartan
                     }
                 }
 
+                // compute queues only support a subset of pipeline stages; filter out graphics-only stages
+                if (m_queue->GetType() == RHI_Queue_Type::Compute)
+                {
+                    auto sanitize = [](VkPipelineStageFlags2 stages) -> VkPipelineStageFlags2
+                    {
+                        const VkPipelineStageFlags2 compute_valid =
+                            VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT    |
+                            VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT |
+                            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                            VK_PIPELINE_STAGE_2_TRANSFER_BIT       |
+                            VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT   |
+                            VK_PIPELINE_STAGE_2_HOST_BIT           |
+                            VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+                        VkPipelineStageFlags2 filtered = stages & compute_valid;
+                        return filtered ? filtered : VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                    };
+
+                    for (auto& b : vk_barriers)
+                    {
+                        b.srcStageMask = sanitize(b.srcStageMask);
+                        b.dstStageMask = sanitize(b.dstStageMask);
+                    }
+                }
+
                 // immediate execution
                 VkDependencyInfo dependency_info        = {};
                 dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;

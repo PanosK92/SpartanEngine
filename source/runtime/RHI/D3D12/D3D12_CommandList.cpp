@@ -713,11 +713,27 @@ namespace spartan
         // todo: implement texture to buffer copy
     }
 
+    namespace immediate_execution
+    {
+        static mutex mutex_execution;
+        static condition_variable condition_var;
+        static bool is_executing = false;
+    }
+
     RHI_CommandList* RHI_CommandList::ImmediateExecutionBegin(const RHI_Queue_Type queue_type)
     {
+        // serialize immediate submissions so parallel texture loading doesn't race on the queue
+        unique_lock<mutex> lock(immediate_execution::mutex_execution);
+        immediate_execution::condition_var.wait(lock, [] { return !immediate_execution::is_executing; });
+        immediate_execution::is_executing = true;
+
         RHI_Queue* queue = RHI_Device::GetQueue(queue_type);
         if (!queue)
+        {
+            immediate_execution::is_executing = false;
+            immediate_execution::condition_var.notify_one();
             return nullptr;
+        }
 
         RHI_CommandList* cmd_list = queue->NextCommandList();
         cmd_list->Begin();
@@ -730,6 +746,9 @@ namespace spartan
         {
             cmd_list->Submit(nullptr, true);
         }
+
+        immediate_execution::is_executing = false;
+        immediate_execution::condition_var.notify_one();
     }
 
     void RHI_CommandList::ImmediateExecutionShutdown()

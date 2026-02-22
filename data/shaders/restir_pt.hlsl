@@ -270,9 +270,8 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             float3 emission_contribution = throughput * payload.emission;
 
             float emission_lum = dot(emission_contribution, float3(0.299f, 0.587f, 0.114f));
-            float max_emission_per_bounce = 10.0f / float(bounce + 1);
-            if (emission_lum > max_emission_per_bounce)
-                emission_contribution *= max_emission_per_bounce / emission_lum;
+            if (emission_lum > 50.0f)
+                emission_contribution *= 50.0f / emission_lum;
 
             sample.radiance += emission_contribution;
         }
@@ -409,15 +408,14 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             float3 light_contribution = throughput * brdf * Li * mis_weight / max(light_pdf, 1e-6f);
 
             float light_lum = dot(light_contribution, float3(0.299f, 0.587f, 0.114f));
-            float max_light_per_bounce = 15.0f / float(bounce + 1);
-            if (light_lum > max_light_per_bounce)
-                light_contribution *= max_light_per_bounce / light_lum;
+            if (light_lum > 50.0f)
+                light_contribution *= 50.0f / light_lum;
 
             sample.radiance += light_contribution;
         }
 
-        // explicit environment sampling for non-specular surfaces
-        // sample in surface-local hemisphere to avoid sky bias in enclosed spaces
+        // emissive geometry probe + environment sampling
+        // trace a cosine-weighted hemisphere ray to find emissive surfaces and sky
         did_env_sample = false;
         if (payload.roughness > RESTIR_SPECULAR_THRESHOLD || payload.metallic < 0.5f)
         {
@@ -427,10 +425,53 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
             float3 env_dir   = local_to_world(env_local, payload.hit_normal);
 
             float env_n_dot_l = dot(payload.hit_normal, env_dir);
-            if (env_n_dot_l > 0.0f)
+            if (env_n_dot_l > 0.0f && env_pdf > 1e-6f)
             {
-                if (trace_shadow_ray(shading_pos, env_dir, 10000.0f))
+                RayDesc probe_ray;
+                probe_ray.Origin    = shading_pos;
+                probe_ray.Direction = env_dir;
+                probe_ray.TMin      = RESTIR_RAY_T_MIN;
+                probe_ray.TMax      = 10000.0f;
+
+                RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
+                probe_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, probe_ray);
+                probe_query.Proceed();
+
+                if (probe_query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
                 {
+                    // hit geometry - check if emissive
+                    uint probe_instance = probe_query.CommittedInstanceID();
+                    MaterialParameters probe_mat = material_parameters[probe_instance];
+
+                    float3 probe_emission = float3(0, 0, 0);
+                    if (probe_mat.emissive_from_albedo())
+                    {
+                        probe_emission = probe_mat.color.rgb * 10.0f;
+                    }
+                    if (probe_mat.has_texture_emissive())
+                    {
+                        probe_emission += probe_mat.color.rgb * 10.0f;
+                    }
+
+                    if (luminance(probe_emission) > 0.0f)
+                    {
+                        float brdf_pdf_probe;
+                        float3 brdf_probe = evaluate_brdf(payload.albedo, payload.roughness, payload.metallic,
+                                                          payload.hit_normal, view_dir, env_dir, brdf_pdf_probe);
+
+                        float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
+                        float3 emissive_contribution = throughput * brdf_probe * probe_emission * mis_weight / env_pdf;
+
+                        float em_lum = dot(emissive_contribution, float3(0.299f, 0.587f, 0.114f));
+                        if (em_lum > 50.0f)
+                            emissive_contribution *= 50.0f / em_lum;
+
+                        sample.radiance += emissive_contribution;
+                    }
+                }
+                else
+                {
+                    // missed all geometry - sky contribution
                     did_env_sample = true;
 
                     float2 env_uv       = direction_sphere_uv(env_dir);
@@ -442,13 +483,11 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
                                                     payload.hit_normal, view_dir, env_dir, brdf_pdf_env);
 
                     float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
-
                     float3 env_contribution = throughput * brdf_env * env_radiance * mis_weight_env / max(env_pdf, 1e-6f);
 
                     float env_lum = dot(env_contribution, float3(0.299f, 0.587f, 0.114f));
-                    float max_env_per_bounce = 10.0f / float(bounce + 1);
-                    if (env_lum > max_env_per_bounce)
-                        env_contribution *= max_env_per_bounce / env_lum;
+                    if (env_lum > 50.0f)
+                        env_contribution *= 50.0f / env_lum;
 
                     sample.radiance += env_contribution;
                 }
@@ -482,21 +521,18 @@ PathSample trace_path(float3 origin, float3 direction, inout uint seed)
         prev_brdf_pdf = pdf;
         prev_specular = (payload.roughness < RESTIR_SPECULAR_THRESHOLD);
 
-        float clamp_limit    = lerp(20.0f, 8.0f, float(bounce) / float(RESTIR_MAX_PATH_LENGTH));
         float max_throughput = max(max(throughput.r, throughput.g), throughput.b);
-        if (max_throughput > clamp_limit)
-            throughput *= clamp_limit / max_throughput;
+        if (max_throughput > 50.0f)
+            throughput *= 50.0f / max_throughput;
 
         ray_origin = payload.hit_position + payload.hit_normal * RESTIR_RAY_NORMAL_OFFSET;
         ray_dir    = new_dir;
     }
 
-    // final radiance clamp before returning (luminance + per-channel)
-    float max_radiance = (sample.path_length > 1) ? 10.0f : 15.0f;
-    sample.radiance = min(sample.radiance, float3(max_radiance, max_radiance, max_radiance));
+    // final radiance clamp
     float final_lum = dot(sample.radiance, float3(0.299f, 0.587f, 0.114f));
-    if (final_lum > max_radiance)
-        sample.radiance *= max_radiance / final_lum;
+    if (final_lum > 50.0f)
+        sample.radiance *= 50.0f / final_lum;
 
     return sample;
 }
@@ -561,21 +597,38 @@ void ray_gen()
         candidate.direction   = ray_dir;
         candidate.pdf         = pdf;
 
-        // clamp candidate radiance at source
-        float radiance_clamp = (candidate.path_length > 1) ? 8.0f : 12.0f;
         float candidate_lum = dot(candidate.radiance, float3(0.299f, 0.587f, 0.114f));
-        if (candidate_lum > radiance_clamp)
-            candidate.radiance *= radiance_clamp / candidate_lum;
+        if (candidate_lum > 50.0f)
+            candidate.radiance *= 50.0f / candidate_lum;
 
-        float target_pdf = calculate_target_pdf(candidate.radiance);
-        float weight     = target_pdf / max(pdf, 1e-6f);
+        // weight includes the primary surface BRDF response for the sampled direction
+        // this makes RIS prefer candidates that actually contribute light to this pixel
+        float brdf_eval_pdf;
+        float3 brdf_response = evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, ray_dir, brdf_eval_pdf);
+        float brdf_lum       = dot(brdf_response, float3(0.299f, 0.587f, 0.114f));
+        float target_pdf     = calculate_target_pdf(candidate.radiance) * max(brdf_lum, 0.01f);
+        float weight         = target_pdf / max(pdf, 1e-6f);
 
         update_reservoir(reservoir, candidate, weight, random_float(seed));
     }
 
-    // finalize using the same target PDF as the initial RIS weighting (luminance-based)
-    // consistency is critical: the same target function must be used everywhere
-    finalize_reservoir(reservoir);
+    // finalize with BRDF-weighted target to match the initial RIS weighting
+    {
+        float brdf_eval_pdf;
+        float3 brdf_response = evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir,
+                                              reservoir.sample.direction, brdf_eval_pdf);
+        float brdf_lum = dot(brdf_response, float3(0.299f, 0.587f, 0.114f));
+        float target   = calculate_target_pdf(reservoir.sample.radiance) * max(brdf_lum, 0.01f);
+
+        reservoir.target_pdf = target;
+        if (target > 0 && reservoir.M > 0)
+            reservoir.W = reservoir.weight_sum / (target * reservoir.M);
+        else
+            reservoir.W = 0;
+
+        float w_clamp = get_w_clamp_for_sample(reservoir.sample);
+        reservoir.W = min(reservoir.W, w_clamp);
+    }
 
     // compute confidence metric
     float radiance_quality = saturate(luminance(reservoir.sample.radiance) / 10.0f);

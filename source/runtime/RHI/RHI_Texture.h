@@ -52,7 +52,7 @@ namespace spartan
         RHI_Texture_Srgb              = 1U << 8,
         RHI_Texture_Mappable          = 1U << 9,
         RHI_Texture_ConcurrentSharing = 1U << 10, // shared between graphics and compute queue families
-        RHI_Texture_Compress    = 1U << 10
+        RHI_Texture_Compress          = 1U << 11
     };
 
     struct RHI_Texture_Mip

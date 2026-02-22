@@ -49,6 +49,11 @@ namespace spartan
         }
     }
 
+    void RHI_Buffer::DestroyResourceImmediate()
+    {
+        RHI_DestroyResource();
+    }
+
     void RHI_Buffer::RHI_CreateResource(const void* data)
     {
         SP_ASSERT(RHI_Context::device != nullptr);

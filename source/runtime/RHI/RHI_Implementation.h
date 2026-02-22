@@ -383,7 +383,7 @@ static const char* vkresult_to_string(const VkResult result)
     {                                                      \
         Log::SetLogToFile(true);                           \
         SP_LOG_ERROR("%s", vkresult_to_string(vk_result)); \
-        SP_ASSERT(vk_result);                              \
+        SP_ASSERT(vk_result == VK_SUCCESS);                \
     }                                                      \
     
 #endif // API_GRAPHICS_VULKAN

@@ -882,25 +882,24 @@ namespace spartan
         // lerp
         if (m_lerp_to_target_p || m_lerp_to_target_r)
         {
-            // lerp duration in seconds
-            // 2.0 seconds + [0.0 - 2.0] seconds based on distance
-            // Something is not right with the duration...
+            // lerp duration: 2.0 seconds + [0.0 - 2.0] seconds based on distance
             const float lerp_duration = 2.0f + clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
 
             // alpha
             m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeSec()) / lerp_duration;
+            float alpha = clamp(m_lerp_to_target_alpha, 0.0f, 1.0f);
 
-            // position
+            // position - interpolate between the stored start and target (fixed endpoints)
             if (m_lerp_to_target_p)
             {
-                const Vector3 interpolated_position = Vector3::Lerp(GetEntity()->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
+                const Vector3 interpolated_position = Vector3::Lerp(m_lerp_from_position, m_lerp_to_target_position, alpha);
                 GetEntity()->SetPosition(interpolated_position);
             }
 
-            // rotation
+            // rotation - interpolate between the stored start and target (fixed endpoints)
             if (m_lerp_to_target_r)
             {
-                const Quaternion interpolated_rotation = Quaternion::Lerp(GetEntity()->GetRotation(), m_lerp_to_target_rotation, clamp(m_lerp_to_target_alpha, 0.0f, 1.0f));
+                const Quaternion interpolated_rotation = Quaternion::Lerp(m_lerp_from_rotation, m_lerp_to_target_rotation, alpha);
                 GetEntity()->SetRotation(interpolated_rotation);
             }
 
@@ -940,10 +939,14 @@ namespace spartan
             }
             SP_ASSERT(!isnan(m_lerp_to_target_distance));
 
+            // store start state so the lerp interpolates between two fixed endpoints
+            m_lerp_from_position      = GetEntity()->GetPosition();
+            m_lerp_from_rotation      = GetEntity()->GetRotation();
+            m_lerp_to_target_alpha    = 0.0f;
             m_lerp_to_target_rotation = Quaternion::FromLookRotation(entity->GetPosition() - m_lerp_to_target_position).Normalized();
-            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, GetEntity()->GetPosition());
+            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, m_lerp_from_position);
 
-            const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), GetEntity()->GetRotation().Normalized())) * rad_to_deg;
+            const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), m_lerp_from_rotation.Normalized())) * rad_to_deg;
 
             m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f ? true : false;
             m_lerp_to_target_r = lerp_angle > 1.0f ? true : false;

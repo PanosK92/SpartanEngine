@@ -219,10 +219,16 @@ namespace spartan
             RHI_Device::MemoryUnmap(staging_buffer);
         }
 
+        static mutex stage_mutex;
+
         void stage(RHI_Texture* texture)
         {
             SP_ASSERT(texture->HasData());
-        
+
+            // only one staging buffer at a time to avoid exhausting host-visible memory
+            // (pcie bar, typically 256 mb) when many textures are uploaded in parallel
+            lock_guard<mutex> lock(stage_mutex);
+
             void* staging_buffer = nullptr;
         
             // determine region count
