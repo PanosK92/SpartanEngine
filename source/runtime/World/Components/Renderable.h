@@ -79,6 +79,8 @@ namespace spartan
         // ocean clipmap
         void SetOceanClipmapTilePos(const math::Vector2 pos) { m_tile_world_pos = pos; }
         math::Vector2 GetOceanClipmapTilePos() const { return m_tile_world_pos; }
+        void SetOceanClipmapTileSnapCenter(const math::Vector2 snap) { m_tile_snap_center = snap; }
+        math::Vector2 GetOceanClipmapTileSnapCenter() const { return m_tile_snap_center; }
         void SetOceanClipmapTileScale(const float scale) { m_tile_size = scale; }
         float GetOceanClipmapTileScale() const { return m_tile_size; }
 
@@ -132,6 +134,7 @@ namespace spartan
 
         // ocean clipmap
         math::Vector2 m_tile_world_pos;
+        math::Vector2 m_tile_snap_center;
         float m_tile_size;
 
         // material

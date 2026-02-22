@@ -69,7 +69,7 @@ float4 get_texture_sample(Texture2D texture, float2 pos, float freq, float2 node
     const float3 hash = hash33(float3(node_point.xy, 0.0f));
 
     const float2 uv = pos * freq + hash.yz;
-    return texture.SampleLevel(samplers[sampler_anisotropic_wrap], uv, 0);
+    return texture.SampleLevel(samplers[sampler_bilinear_wrap], uv, 0);
 }
 
 void preserve_variance(out float4 linear_color, float4 mean_color, float moment2)

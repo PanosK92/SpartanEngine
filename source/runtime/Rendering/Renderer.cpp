@@ -816,7 +816,7 @@ namespace spartan
         entry.material_index     = material_index;
         entry.is_transparent     = is_transparent;
         entry.aabb_index         = 0;
-        entry.padding            = 0;
+        entry.padding            = math::Vector3::Zero;
 
         // write directly to the mapped gpu buffer
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
@@ -1267,8 +1267,9 @@ namespace spartan
                 data.aabb_index         = m_draw_calls_prepass_count + idx;
                 data.tile_size          = renderable->GetOceanClipmapTileScale();
                 data.tile_world_pos     = renderable->GetOceanClipmapTilePos();
+                data.tile_snap_center   = renderable->GetOceanClipmapTileSnapCenter();
                 data.tile_res           = material->GetClipmapTileRes();
-                data.padding            = 0;
+                data.padding            = math::Vector3::Zero;
             }
         }
 

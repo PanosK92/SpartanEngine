@@ -1604,23 +1604,22 @@ namespace spartan
             std::vector<uint32_t> tile_indices {};
             struct TileInstance
             {
-                Vector2  world_offset; // world-space XZ origin of this tile
-                float    tile_scale;   // world-space size of this tile
-                uint32_t lod_level;    // which LOD level (for transition blending)
+                Vector2  world_offset;   // world-space XZ origin of this tile
+                Vector2  snapped_center; // used for per lod level snapping and vertex morphing
+                float    tile_scale;     // world-space size of this tile
+                uint32_t lod_level;      // which LOD level (for transition blending)
             };
             std::vector<TileInstance> instances {};
             std::vector<Entity*> tile_entities {};
             uint32_t tile_resolution = 128;   // vertices per tile side (one tile = res^2 vertices)
             float base_tile_size     = 32.0f; // world-space units for LOD0 tile
-            uint32_t lod_levels      = 2;
+            uint32_t lod_levels      = 6;
 
             static void build_clipmap(Vector3 camera_pos)
             {
                 instances.clear();
 
-                // Snap once, using the finest level's grid spacing.
-                // Since every coarser level's spacing is a power-of-two multiple
-                // of this, the center sits on every level's grid.
+                // Single snap from finest level - guarantees alignment across all LODs
                 float finest_snap = base_tile_size / tile_resolution * 2.0f;
                 Vector2 snapped_center = {
                     floor(camera_pos.x / finest_snap) * finest_snap,
@@ -1635,17 +1634,17 @@ namespace spartan
                     {
                         for (int tx = -2; tx < 2; tx++)
                         {
-                            // Skip center tiles (except for lod 0 ofc)
                             if (lod > 0 && tx >= -1 && tx <= 0 && tz >= -1 && tz <= 0)
                                 continue;
 
-                            TileInstance inst {};
+                            TileInstance inst{};
                             inst.world_offset = {
                                 snapped_center.x + tx * tile_size,
                                 snapped_center.y + tz * tile_size
                             };
                             inst.tile_scale = tile_size;
                             inst.lod_level = lod;
+                            inst.snapped_center = snapped_center;
                             instances.push_back(inst);
                         }
                     }
@@ -1705,7 +1704,8 @@ namespace spartan
                 if (!material)
                     return;
 
-                const Vector3 camera_pos = default_camera->GetPosition();
+                Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
+                const Vector3 camera_pos = camera->GetEntity()->GetPosition();
                 build_clipmap(camera_pos);
 
                 for (size_t i = 0; i < instances.size(); i++)
