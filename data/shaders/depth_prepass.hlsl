@@ -47,7 +47,7 @@ void main_ps(gbuffer_vertex vertex)
 
     // distance based alpha threshold
     const bool has_albedo       = pass_get_f3_value().y == 1.0f;
-    const float2 screen_uv      = vertex.position.xy / buffer_frame.resolution_render;
+    const float2 screen_uv      = vertex.position.xy / (buffer_frame.resolution_render * buffer_frame.resolution_scale);
     const float3 position_world = get_position(vertex.position.z, screen_uv);
     const float alpha_threshold = get_alpha_threshold(position_world);
 
