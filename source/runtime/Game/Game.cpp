@@ -56,6 +56,7 @@ namespace spartan
         namespace cornell       { void create(); }
         namespace san_miguel    { void create(); }
         namespace basic         { void create(); }
+        namespace ocean         { void create(); void tick(); }
     }
     //=========================================================
 
@@ -77,6 +78,7 @@ namespace spartan
         Entity* default_light_directional = nullptr;
         Entity* default_metal_cube        = nullptr;
         Entity* default_water             = nullptr;
+        Entity* default_ocean             = nullptr;
         std::vector<std::shared_ptr<Mesh>> meshes;
         //==========================================
 
@@ -94,6 +96,7 @@ namespace spartan
             worlds::cornell::create,
             worlds::san_miguel::create,
             worlds::basic::create,
+            worlds::ocean::create,
         };
 
         constexpr tick_fn world_tick[] =
@@ -105,6 +108,7 @@ namespace spartan
             nullptr,
             nullptr,
             nullptr,
+            worlds::ocean::tick,
         };
 
         static_assert(size(world_create) == static_cast<size_t>(DefaultWorld::Max), "world_create out of sync with DefaultWorld enum");
@@ -343,6 +347,61 @@ namespace spartan
                     }
                 }
 
+                return water;
+            }
+
+            Entity* ocean(std::shared_ptr<Material> material, const Vector3& position)
+            {
+                // entity
+                Entity* water = World::CreateEntity();
+                water->SetObjectName("ocean");
+                water->SetPosition(position);
+                water->SetScale({ 1.0f, 1.0f, 1.0f });
+
+                // material
+                {
+                    material->SetObjectName("material_ocean");
+                    material->SetResourceFilePath("ocean" + string(EXTENSION_MATERIAL));
+
+                    material->LoadFromFile(material->GetResourceFilePath());
+
+                    material->MarkSpectrumAsComputed(false);
+                    //material->SetTexture(MaterialTextureType::Flowmap, "project\\materials\\water\\flowmap.png");
+
+                    // if material fails to load from file
+                    if (material->GetProperty(MaterialProperty::IsOcean) != 1.0f)
+                    {
+                        material->SetColor(Color(0.0f, 142.0f / 255.0f, 229.0f / 255.0f, 255.0f / 255.0f));
+                        material->SetProperty(MaterialProperty::IsOcean, 1.0f);
+
+                        material->SetOceanProperty(OceanParameters::Angle, 0.0f); //handled internally
+                        material->SetOceanProperty(OceanParameters::Alpha, 0.0f); // handled internally
+                        material->SetOceanProperty(OceanParameters::PeakOmega, 0.0f); // handled internally
+
+                        material->SetOceanProperty(OceanParameters::Scale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::SpreadBlend, 0.9f);
+                        material->SetOceanProperty(OceanParameters::Swell, 1.0f);
+                        material->SetOceanProperty(OceanParameters::Fetch, 1280000.0f);
+                        material->SetOceanProperty(OceanParameters::WindDirection, 135.0f);
+                        material->SetOceanProperty(OceanParameters::WindSpeed, 2.8f);
+                        material->SetOceanProperty(OceanParameters::Gamma, 3.3f);
+                        material->SetOceanProperty(OceanParameters::ShortWavesFade, 0.0f);
+                        material->SetOceanProperty(OceanParameters::RepeatTime, 200.0f);
+
+                        material->SetOceanProperty(OceanParameters::Depth, 20.0f);
+                        material->SetOceanProperty(OceanParameters::LowCutoff, 0.001f);
+                        material->SetOceanProperty(OceanParameters::HighCutoff, 1000.0f);
+
+                        material->SetOceanProperty(OceanParameters::FoamDecayRate, 3.0f);
+                        material->SetOceanProperty(OceanParameters::FoamThreshold, 0.5f);
+                        material->SetOceanProperty(OceanParameters::FoamBias, 1.2f);
+                        material->SetOceanProperty(OceanParameters::FoamAdd, 1.0f);
+
+                        material->SetOceanProperty(OceanParameters::DisplacementScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::SlopeScale, 1.0f);
+                        material->SetOceanProperty(OceanParameters::LengthScale, 128.0f);
+                    }
+                }
                 return water;
             }
         }
@@ -1535,6 +1594,150 @@ namespace spartan
         }
         //====================================================================================
 
+         //== Ocean ===========================================================================
+        namespace ocean
+        {
+            shared_ptr<Material> material = make_shared<Material>();
+
+            // Clipmap
+            std::vector<RHI_Vertex_PosTexNorTan> tile_vertices {};
+            std::vector<uint32_t> tile_indices {};
+            struct TileInstance
+            {
+                Vector2  world_offset;   // world-space XZ origin of this tile
+                Vector2  snapped_center; // used for per lod level snapping and vertex morphing
+                float    tile_scale;     // world-space size of this tile
+                uint32_t lod_level;      // which LOD level (for transition blending)
+            };
+            std::vector<TileInstance> instances {};
+            std::vector<Entity*> tile_entities {};
+            uint32_t tile_resolution = 128;   // vertices per tile side (one tile = res^2 vertices)
+            float base_tile_size     = 32.0f; // world-space units for LOD0 tile
+            uint32_t lod_levels      = 6;
+
+            static void build_clipmap(Vector3 camera_pos)
+            {
+                instances.clear();
+
+                // Single snap from finest level - guarantees alignment across all LODs
+                float finest_snap = base_tile_size / tile_resolution * 2.0f;
+                Vector2 snapped_center = {
+                    floor(camera_pos.x / finest_snap) * finest_snap,
+                    floor(camera_pos.z / finest_snap) * finest_snap
+                };
+
+                for (uint32_t lod = 0; lod < lod_levels; lod++)
+                {
+                    float tile_size = base_tile_size * (float)(1 << lod);
+
+                    for (int tz = -2; tz < 2; tz++)
+                    {
+                        for (int tx = -2; tx < 2; tx++)
+                        {
+                            if (lod > 0 && tx >= -1 && tx <= 0 && tz >= -1 && tz <= 0)
+                                continue;
+
+                            TileInstance inst{};
+                            inst.world_offset = {
+                                snapped_center.x + tx * tile_size,
+                                snapped_center.y + tz * tile_size
+                            };
+                            inst.tile_scale = tile_size;
+                            inst.lod_level = lod;
+                            inst.snapped_center = snapped_center;
+                            instances.push_back(inst);
+                        }
+                    }
+                }
+            }
+
+            void create()
+            {
+                entities::camera(false);
+                entities::sun(LightPreset::day, true);
+
+                default_camera->RemoveComponent<Physics>();
+
+                default_ocean = entities::ocean(material, { 0.0f, 0.0f, 0.0f });
+
+                geometry_generation::generate_tile(&tile_vertices, &tile_indices, tile_resolution);
+
+                // create mesh if it doesn't exist
+                shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
+                mesh->SetObjectName("Clipmap Tile Test");
+                mesh->SetRootEntity(default_ocean);
+                mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+                mesh->AddGeometry(tile_vertices, tile_indices, false);
+                mesh->CreateGpuBuffers();
+
+                build_clipmap(default_camera->GetPosition());
+
+                for (const auto& tile_inst : instances)
+                {
+                    Entity* entity_tile = World::CreateEntity();
+                    entity_tile->SetParent(default_ocean);
+
+                    const Vector3 tile_position = { tile_inst.world_offset.x, 0.0f, tile_inst.world_offset.y };
+                    entity_tile->SetPosition(tile_position);
+                    entity_tile->SetScale({ tile_inst.tile_scale, 1.0f, tile_inst.tile_scale });
+
+                    material->SetClipmapTileRes(tile_resolution);
+
+                    if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
+                    {
+                        renderable->SetMesh(mesh.get());
+                        renderable->SetMaterial(material);
+                        renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                        renderable->SetOceanClipmapTileScale(tile_inst.tile_scale);
+                        renderable->SetOceanClipmapTilePos(tile_inst.world_offset);
+                    }
+
+                    tile_entities.emplace_back(entity_tile);
+                }
+
+                default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
+            }
+
+            void tick()
+            {
+                if (!material)
+                    return;
+
+                Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
+                const Vector3 camera_pos = camera->GetEntity()->GetPosition();
+                build_clipmap(camera_pos);
+
+                for (size_t i = 0; i < instances.size(); i++)
+                {
+                    const auto& inst = instances[i];
+                    Entity* entity = tile_entities[i];
+
+                    entity->SetPosition({ inst.world_offset.x, 0.0f, inst.world_offset.y });
+                    entity->SetScale({ inst.tile_scale, 1.0f, inst.tile_scale });
+
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    {
+                        renderable->SetOceanClipmapTileScale(inst.tile_scale);
+                        renderable->SetOceanClipmapTilePos(inst.world_offset);
+                    }
+                }
+            }
+
+            void shutdown()
+            {
+                if (!default_ocean)
+                    return;
+
+                if (!material)
+                    SP_ASSERT_MSG(false, "Failed to get ocean material");
+
+                material->SaveToFile(material->GetResourceFilePath());
+
+                default_ocean = nullptr;
+            }
+        }
+        //========================================================================================
     }
     //========================================================================================
 
@@ -1549,15 +1752,23 @@ namespace spartan
         default_terrain           = nullptr;
         default_car               = nullptr;
         default_metal_cube        = nullptr;
+        default_water             = nullptr;
 
         // reset world-specific state
         worlds::showroom::texture_brand_logo = nullptr;
+        worlds::ocean::shutdown();
         Car::ShutdownAll();
         meshes.clear();
     }
 
     void Game::Tick()
     {
+        // ocean-specific tick
+        //if (loaded_world == DefaultWorld::Ocean)
+        //{
+        //    worlds::ocean::tick();
+        //}
+
         // world-specific tick
         if (loaded_world != DefaultWorld::Max)
         {

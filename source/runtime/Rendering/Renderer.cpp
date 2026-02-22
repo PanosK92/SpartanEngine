@@ -787,7 +787,8 @@ namespace spartan
         bool is_instanced    = draw_call.instance_count > 1;
         bool is_alpha_tested = material->IsAlphaTested();
         bool is_non_standard_cull = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
-        return is_tessellated || is_instanced || is_alpha_tested || is_non_standard_cull;
+        //bool is_ocean = material->IsOcean(); // TEMP: for now, ocean is cpu driven. Might wanna move it to gpu driven
+        return is_tessellated || is_instanced || is_alpha_tested || is_non_standard_cull; //|| is_ocean;
     }
 
     void Renderer::SetCommonTextures(RHI_CommandList* cmd_list)
@@ -815,7 +816,7 @@ namespace spartan
         entry.material_index     = material_index;
         entry.is_transparent     = is_transparent;
         entry.aabb_index         = 0;
-        entry.padding            = 0;
+        entry.padding            = math::Vector3::Zero;
 
         // write directly to the mapped gpu buffer
         RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
@@ -867,6 +868,33 @@ namespace spartan
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
                 properties[count].world_space_uv        = material->GetProperty(MaterialProperty::WorldSpaceUv);
 
+                // ocean
+                properties[count].jonswap_parameters.alpha              = material->GetOceanProperty(OceanParameters::Alpha);
+                properties[count].jonswap_parameters.angle              = material->GetOceanProperty(OceanParameters::Angle);
+                properties[count].jonswap_parameters.fetch              = material->GetOceanProperty(OceanParameters::Fetch);
+                properties[count].jonswap_parameters.gamma              = material->GetOceanProperty(OceanParameters::Gamma);
+                properties[count].jonswap_parameters.peakOmega          = material->GetOceanProperty(OceanParameters::PeakOmega);
+                properties[count].jonswap_parameters.repeatTime         = material->GetOceanProperty(OceanParameters::RepeatTime);
+                properties[count].jonswap_parameters.scale              = material->GetOceanProperty(OceanParameters::Scale);
+                properties[count].jonswap_parameters.shortWavesFade     = material->GetOceanProperty(OceanParameters::ShortWavesFade);
+                properties[count].jonswap_parameters.spreadBlend        = material->GetOceanProperty(OceanParameters::SpreadBlend);
+                properties[count].jonswap_parameters.swell              = material->GetOceanProperty(OceanParameters::Swell);
+                properties[count].jonswap_parameters.windDirection      = material->GetOceanProperty(OceanParameters::WindDirection);
+                properties[count].jonswap_parameters.windSpeed          = material->GetOceanProperty(OceanParameters::WindSpeed);
+                properties[count].jonswap_parameters.depth              = material->GetOceanProperty(OceanParameters::Depth);
+                properties[count].jonswap_parameters.lowCutoff          = material->GetOceanProperty(OceanParameters::LowCutoff);
+                properties[count].jonswap_parameters.highCutoff         = material->GetOceanProperty(OceanParameters::HighCutoff);
+                properties[count].jonswap_parameters.foamDecayRate      = material->GetOceanProperty(OceanParameters::FoamDecayRate);
+                properties[count].jonswap_parameters.foamBias           = material->GetOceanProperty(OceanParameters::FoamBias);
+                properties[count].jonswap_parameters.foamThreshold      = material->GetOceanProperty(OceanParameters::FoamThreshold);
+                properties[count].jonswap_parameters.foamAdd            = material->GetOceanProperty(OceanParameters::FoamAdd);
+                properties[count].jonswap_parameters.displacementScale  = material->GetOceanProperty(OceanParameters::DisplacementScale);
+                properties[count].jonswap_parameters.slopeScale         = material->GetOceanProperty(OceanParameters::SlopeScale);
+                properties[count].jonswap_parameters.lengthScale        = material->GetOceanProperty(OceanParameters::LengthScale);
+                properties[count].jonswap_parameters.debugDisplacement  = material->GetOceanProperty(OceanParameters::DebugDisplacement);
+                properties[count].jonswap_parameters.debugSlope         = material->GetOceanProperty(OceanParameters::DebugSlope);
+                properties[count].jonswap_parameters.debugSynthesised   = material->GetOceanProperty(OceanParameters::DebugSynthesised);
+
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;
                 properties[count].flags |= material->HasTextureOfType(MaterialTextureType::Normal)             ? (1U << 1)  : 0;
@@ -884,6 +912,7 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::IsWater)                    ? (1U << 13) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 14) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
+                properties[count].flags |= material->GetProperty(MaterialProperty::IsOcean)                    ? (1U << 16) : 0;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
     
@@ -1230,12 +1259,17 @@ namespace spartan
                 // per-draw data (aabb_index sits after prepass aabbs)
                 Sb_DrawData& data       = m_indirect_draw_data[idx];
                 Entity* entity          = renderable->GetEntity();
+                math::Vector3 ent_pos   = entity->GetPosition();
                 data.transform          = entity->GetMatrix();
                 data.transform_previous = entity->GetMatrixPrevious();
                 data.material_index     = material->GetIndex();
                 data.is_transparent     = 0;
                 data.aabb_index         = m_draw_calls_prepass_count + idx;
-                data.padding            = 0;
+                data.tile_size          = renderable->GetOceanClipmapTileScale();
+                data.tile_world_pos     = renderable->GetOceanClipmapTilePos();
+                data.tile_snap_center   = renderable->GetOceanClipmapTileSnapCenter();
+                data.tile_res           = material->GetClipmapTileRes();
+                data.padding            = math::Vector3::Zero;
             }
         }
 

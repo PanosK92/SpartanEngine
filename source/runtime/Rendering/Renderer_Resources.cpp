@@ -363,6 +363,23 @@ namespace spartan
                 render_target(Renderer_RenderTarget::light_volumetric) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_volumetric");
             }
 
+            // ocean
+            {
+                const uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv;
+                const uint32_t texture_size = 512;
+                const RHI_Format texture_format = RHI_Format::R16G16B16A16_Float;
+
+                render_target(Renderer_RenderTarget::ocean_initial_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, texture_format, flags, "ocean_initial_spectrum");
+
+                render_target(Renderer_RenderTarget::ocean_displacement_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, texture_format, flags, "ocean_displacement_spectrum");
+
+                render_target(Renderer_RenderTarget::ocean_slope_spectrum) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 1, texture_format, flags, "ocean_slope_spectrum");
+
+                render_target(Renderer_RenderTarget::ocean_displacement_map) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 10, texture_format, flags | RHI_Texture_PerMipViews, "ocean_displacement_map");
+
+                render_target(Renderer_RenderTarget::ocean_slope_map) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, texture_size, texture_size, 1, 10, texture_format, flags | RHI_Texture_PerMipViews, "ocean_slope_map");
+            }
+
             // occlusion
             {
                 // amd depth format restrictions: separate texture for uav + manual blit
@@ -530,6 +547,27 @@ namespace spartan
             // image based
             shader(Renderer_Shader::light_image_based_c) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::light_image_based_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "light_image_based.hlsl", async);
+        }
+
+        // ocean
+        {
+            shader(Renderer_Shader::ocean_initial_spectrum_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_initial_spectrum_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\initial_spectrum.hlsl", false);
+
+            shader(Renderer_Shader::ocean_pack_spectrum_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_pack_spectrum_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\pack_spectrum.hlsl", false);
+
+            shader(Renderer_Shader::ocean_advance_spectrum_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_advance_spectrum_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\advance_spectrum.hlsl", false);
+
+            shader(Renderer_Shader::ocean_horizontal_fft_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_horizontal_fft_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\horizontal_fft.hlsl", false);
+
+            shader(Renderer_Shader::ocean_vertical_fft_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_vertical_fft_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\vertical_fft.hlsl", false);
+
+            shader(Renderer_Shader::ocean_generate_maps_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ocean_generate_maps_c)->Compile(RHI_Shader_Type::Compute, shader_dir + "ocean\\generate_maps.hlsl", false);
         }
 
         // blur

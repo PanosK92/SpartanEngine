@@ -139,6 +139,37 @@ namespace spartan
         {
             Pass_VariableRateShading(cmd_list_graphics_present);
 
+            // Ocean Passes
+            Material* prev_material = nullptr;
+            for (uint32_t i = 0; i < m_draw_call_count; i++)
+            {
+                const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                Renderable* renderable = draw_call.renderable;
+                Material* material = renderable->GetMaterial();
+
+                // get ocean material
+                if (!material->IsOcean() || material == prev_material)
+                    continue;
+
+                prev_material = material;
+
+                if (material->ShouldComputeSpectrum())
+                {
+                    //SP_LOG_INFO("Computing Ocean Spectrum...");
+                    Pass_ComputeInitialSpectrum(cmd_list_graphics_present);
+                    // calculates conjugate and stores it in BA channels of the initial spectrum
+                    Pass_PackSpectrum(cmd_list_graphics_present);
+
+                    material->MarkSpectrumAsComputed(true);
+                }
+
+                // computes displacement and slope maps
+                Pass_AdvanceSpectrum(cmd_list_graphics_present);
+                Pass_ApplyHorizontalFFT(cmd_list_graphics_present);
+                Pass_ApplyVerticalFFT(cmd_list_graphics_present);
+                Pass_GenerateMaps(cmd_list_graphics_present);
+            }
+
             // graphics phase 1: geometry
             {
                 bool is_transparent = false;
@@ -208,6 +239,7 @@ namespace spartan
             if (m_transparents_present)
             {
                 bool is_transparent = true;
+
                 Pass_GBuffer(cmd_list_graphics_present, is_transparent);
                 Pass_Light(cmd_list_graphics_present, is_transparent);
                 Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
@@ -220,6 +252,7 @@ namespace spartan
             Pass_Light_Reflections(cmd_list_graphics_present);
             
             Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
+
             Pass_AA_Upscale(cmd_list_graphics_present);
             Pass_PostProcess(cmd_list_graphics_present);
         }
@@ -514,6 +547,31 @@ namespace spartan
                 cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data_out, GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
                 cmd_list->SetCullMode(RHI_CullMode::Back);
 
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                {
+                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                    Renderable* renderable = draw_call.renderable;
+                    Material* material = renderable->GetMaterial();
+                    if (!material || !draw_call.camera_visible)
+                        continue;
+
+                    Entity* entity = renderable->GetEntity();
+
+                    //if (material->IsOcean())
+                    //{
+                    //    const Vector3 tile_pos = renderable->GetEntity()->GetPosition();
+                    //    m_pcb_pass_cpu.set_f3_value2(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                    //}
+
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    if (material->IsOcean())
+                    {
+                        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+                    }
+                }
+
                 cmd_list->DrawIndexedIndirectCount(
                     GetBuffer(Renderer_Buffer::IndirectDrawArgsOut),
                     0,
@@ -572,6 +630,13 @@ namespace spartan
                         m_pcb_pass_cpu.is_transparent = 0;
                         m_pcb_pass_cpu.material_index = material->GetIndex();
                         m_pcb_pass_cpu.set_f3_value(0.0f, has_color_texture ? 1.0f : 0.0f, static_cast<float>(i));
+
+                        //if (material->IsOcean())
+                        //{
+                        //    const Vector3 tile_pos = renderable->GetEntity()->GetPosition();
+                        //    m_pcb_pass_cpu.set_f3_value2(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                        //}
+
                         cmd_list->PushConstants(m_pcb_pass_cpu);
                     }
 
@@ -581,6 +646,12 @@ namespace spartan
                         cmd_list->SetCullMode(cull_mode);
                         cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                         cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+
+                        if (material->IsOcean())
+                        {
+                            RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+                        }
 
                         cmd_list->DrawIndexed(
                             renderable->GetIndexCount(draw_call.lod_index),
@@ -644,6 +715,41 @@ namespace spartan
                 cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data_out, GetBuffer(Renderer_Buffer::IndirectDrawDataOut));
                 cmd_list->SetCullMode(RHI_CullMode::Back);
 
+                for (uint32_t i = 0; i < m_draw_call_count; i++)
+                {
+                    const Renderer_DrawCall& draw_call = m_draw_calls[i];
+                    Renderable* renderable = draw_call.renderable;
+                    Material* material = renderable->GetMaterial();
+                    if (!material || !draw_call.camera_visible)
+                        continue;
+
+                    Entity* entity = renderable->GetEntity();
+
+                    //if (material->IsOcean())
+                    //{
+                    //    const Vector3 tile_pos = entity->GetPosition();
+                    //    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                    //}
+
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    if (material->IsOcean())
+                    {
+                        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+
+                        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
+
+                        RHI_Texture* heightmap = material->GetTexture(MaterialTextureType::Height);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex4, heightmap);
+
+                        RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Flowmap);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::tex5, flowmap);
+                    }
+                }
+
+                // single indirect draw call replaces the entire opaque draw loop
                 cmd_list->DrawIndexedIndirectCount(
                     GetBuffer(Renderer_Buffer::IndirectDrawArgsOut),
                     0,
@@ -727,6 +833,13 @@ namespace spartan
                         m_pcb_pass_cpu.draw_index     = draw_call.draw_data_index;
                         m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
                         m_pcb_pass_cpu.material_index = material->GetIndex();
+
+                        //if (material->IsOcean())
+                        //{
+                        //    const Vector3 tile_pos = entity->GetPosition();
+                        //    m_pcb_pass_cpu.set_f3_value(tile_pos.x, tile_pos.z, material->GetOceanTileSize());
+                        //}
+
                         cmd_list->PushConstants(m_pcb_pass_cpu);
 
                         entity->SetMatrixPrevious(entity->GetMatrix());
@@ -736,6 +849,21 @@ namespace spartan
                         cmd_list->SetCullMode(cvar_wireframe.GetValueAs<bool>() ? RHI_CullMode::None : static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)));
                         cmd_list->SetBufferVertex(renderable->GetVertexBuffer(), renderable->GetInstanceBuffer());
                         cmd_list->SetBufferIndex(renderable->GetIndexBuffer());
+
+                        if (material->IsOcean())
+                        {
+                            RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, displacement_map);
+
+                            RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, slope_map);
+
+                            RHI_Texture* heightmap = material->GetTexture(MaterialTextureType::Height);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex4, heightmap);
+
+                            RHI_Texture* flowmap = material->GetTexture(MaterialTextureType::Flowmap);
+                            cmd_list->SetTexture(Renderer_BindingsSrv::tex5, flowmap);
+                        }
 
                         cmd_list->DrawIndexed(
                             renderable->GetIndexCount(draw_call.lod_index),
@@ -1455,6 +1583,7 @@ namespace spartan
     {
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
 
         cmd_list->BeginTimeblock("light_image_based");
         {
@@ -1624,6 +1753,141 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_shadow);
 
             cmd_list->Dispatch(tex_shadow);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ComputeInitialSpectrum(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* initial_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+        RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
+        
+        cmd_list->BeginTimeblock("ocean_intial_spectrum");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_initial_spectrum";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_initial_spectrum_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, tex_normal);
+            cmd_list->Dispatch(initial_spectrum);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_PackSpectrum(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* initial_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_pack_spectrum");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_pack_spectrum";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_pack_spectrum_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum, initial_spectrum);
+            cmd_list->Dispatch(initial_spectrum);
+
+            // for the lifetime of the engine, this will be read as an srv, so transition here
+            initial_spectrum->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_AdvanceSpectrum(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* initial_spectrum      = GetRenderTarget(Renderer_RenderTarget::ocean_initial_spectrum);
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum        = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+        RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
+
+        cmd_list->BeginTimeblock("ocean_advance_spectrum");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_advance_spectrum";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_advance_spectrum_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_initial_spectrum,      initial_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum,        slope_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, tex_normal);
+            cmd_list->Dispatch(initial_spectrum);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ApplyHorizontalFFT(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_horizontal_fft");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_horizontal_fft";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_horizontal_fft_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->Dispatch(1, displacement_spectrum->GetHeight(), 1);
+
+            displacement_spectrum->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
+            slope_spectrum->SetLayout(RHI_Image_Layout::Attachment, cmd_list);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ApplyVerticalFFT(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        cmd_list->BeginTimeblock("ocean_vertical_fft");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_vertical_fft";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_vertical_fft_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->Dispatch(1, displacement_spectrum->GetHeight(), 1);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_GenerateMaps(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* displacement_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_spectrum);
+        RHI_Texture* slope_spectrum = GetRenderTarget(Renderer_RenderTarget::ocean_slope_spectrum);
+
+        RHI_Texture* displacement_map = GetRenderTarget(Renderer_RenderTarget::ocean_displacement_map);
+        RHI_Texture* slope_map = GetRenderTarget(Renderer_RenderTarget::ocean_slope_map);
+
+        RHI_Texture* tex_normal = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
+
+        cmd_list->BeginTimeblock("ocean_map_generation");
+        {
+            RHI_PipelineState pso;
+            pso.name = "ocean_map_generation";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::ocean_generate_maps_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_spectrum, displacement_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_spectrum, slope_spectrum);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_displacement_map, displacement_map);
+            cmd_list->SetTexture(Renderer_BindingsUav::ocean_slope_map, slope_map);
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, tex_normal);
+            cmd_list->Dispatch(displacement_map);
+
+            Pass_Downscale(cmd_list, displacement_map, Renderer_DownsampleFilter::Average);
+            Pass_Downscale(cmd_list, slope_map, Renderer_DownsampleFilter::Average);
+
+            slope_map->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
     }

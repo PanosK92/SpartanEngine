@@ -56,7 +56,8 @@ namespace
         { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      2600 },
         { "Cornell Box",       "Classic ray tracing test scene",                                     "Complete" , "Light",          2100 },
         { "San Miguel",        "Detailed courtyard scene with complex geometry and lighting",        "Complete" , "Demanding",      2600 },
-        { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          2100 }
+        { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          2100 },
+        { "Ocean",             "Light, camera, ocean",                                               "WIP"      , "Light",          2100 }
     };
     constexpr int default_world_count = sizeof(default_worlds) / sizeof(default_worlds[0]);
 

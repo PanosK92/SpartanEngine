@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "common.hlsl"
 #include "common_tessellation.hlsl"
+#include "ocean/synthesise_maps.hlsl"
 //=================================
 
 #ifdef INDIRECT_DRAW
@@ -34,10 +35,47 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     _draw = draw_data[buffer_pass.draw_index];
 #endif
 
-    float3 position_world          = 0.0f;
+    MaterialParameters material = GetMaterial();
+    Surface surface;
+    surface.flags = material.flags;
+
+    // transform to world space
+    float3 position_world = 0.0f;
     float3 position_world_previous = 0.0f;
-    gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
-    vertex.material_index          = _draw.material_index;
+    gbuffer_vertex vertex = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
+    
+    if (surface.is_ocean() && material.ocean_parameters.displacementScale > -1.0f)
+    {
+        // Snap to this LOD's vertex grid to prevent swimming
+        const float vertex_spacing = _draw.tile_size / _draw.tile_res;
+        position_world.xz = round(position_world.xz / vertex_spacing) * vertex_spacing;
+
+        // Epsilon expansion to close gaps from floating point precision
+        float2 tile_center = _draw.tile_world_pos + _draw.tile_size * 0.5;
+        float epsilon = vertex_spacing * 0.1f;
+        float scale = 1.0f + epsilon / (_draw.tile_size * 0.5f);
+        position_world.xz = tile_center + (position_world.xz - tile_center) * scale;
+
+        // Morph toward coarser grid near LOD boundaries
+        float2 from_center = abs(position_world.xz - _draw.tile_snap_center);
+        float half_extent = _draw.tile_size * 2.0f;
+        float edge = max(from_center.x, from_center.y) / half_extent;
+        float morph = smoothstep(0.7f, 1.0f, edge);
+
+        float coarse_spacing = vertex_spacing * 2.0f;
+        float2 coarse_xz = round(position_world.xz / coarse_spacing) * coarse_spacing;
+        position_world.xz = lerp(position_world.xz, coarse_xz, morph);
+
+        // Synthesize
+        float2 synth_uv = position_world.xz / material.ocean_parameters.lengthScale;
+        float4 displacement = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        synthesize(tex2, displacement, synth_uv);
+
+        // Apply displacement
+        position_world.xyz += displacement.xyz;
+        position_world_previous = position_world;
+    }
+    vertex.material_index = _draw.material_index;
     return transform_to_clip_space(vertex, position_world, position_world_previous);
 }
 

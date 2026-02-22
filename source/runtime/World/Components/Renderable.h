@@ -76,6 +76,14 @@ namespace spartan
         const math::BoundingBox& GetBoundingBox() const     { return m_bounding_box; }
         const math::BoundingBox& GetBoundingBoxMesh() const { return m_bounding_box_mesh; }
 
+        // ocean clipmap
+        void SetOceanClipmapTilePos(const math::Vector2 pos) { m_tile_world_pos = pos; }
+        math::Vector2 GetOceanClipmapTilePos() const { return m_tile_world_pos; }
+        void SetOceanClipmapTileSnapCenter(const math::Vector2 snap) { m_tile_snap_center = snap; }
+        math::Vector2 GetOceanClipmapTileSnapCenter() const { return m_tile_snap_center; }
+        void SetOceanClipmapTileScale(const float scale) { m_tile_size = scale; }
+        float GetOceanClipmapTileScale() const { return m_tile_size; }
+
         // material
         void SetMaterial(const std::shared_ptr<Material>& material);
         void SetMaterial(const std::string& file_path);
@@ -123,6 +131,11 @@ namespace spartan
         bool m_bounding_box_dirty             = true;
         math::BoundingBox m_bounding_box_mesh = math::BoundingBox::Unit;
         math::BoundingBox m_bounding_box      = math::BoundingBox::Unit;
+
+        // ocean clipmap
+        math::Vector2 m_tile_world_pos;
+        math::Vector2 m_tile_snap_center;
+        float m_tile_size;
 
         // material
         bool m_material_default = false;

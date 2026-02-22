@@ -1558,6 +1558,82 @@ void Properties::ShowMaterial(Material* material) const
             ImGui::PopItemWidth();
         }
 
+        // ocean properties
+        if (material->GetProperty(MaterialProperty::IsOcean))
+        {
+            const auto show_jonswap_params = [this, &material](const char* name, const char* tooltip, const OceanParameters params)
+                {
+                    bool show_modifier = params != OceanParameters::Max;
+
+                    // name
+                    if (name)
+                    {
+                        ImGui::Text(name);
+
+                        if (tooltip)
+                        {
+                            ImGuiSp::tooltip(tooltip);
+                        }
+
+                        if (show_modifier)
+                        {
+                            ImGui::SameLine();
+                        }
+                    }
+
+                    if (show_modifier)
+                    {
+                        // constrain width to available space
+                        const float available_width = ImGui::GetContentRegionAvail().x;
+                        const float slider_width = ImMin(available_width, 120.0f);
+
+                        float value = material->GetOceanProperty(params);
+
+                        ImGui::PushItemWidth(slider_width);
+                        if (ImGuiSp::draw_float_wrap("##val", &value, 0.004f, 0.0f))
+                        {
+                            material->SetOceanProperty(params, value);
+                        }
+                        ImGui::PopItemWidth();
+                    }
+                };
+
+            show_jonswap_params("Alpha", "", OceanParameters::Alpha);
+            show_jonswap_params("Angle", "", OceanParameters::Angle);
+            show_jonswap_params("Fetch", "", OceanParameters::Fetch);
+            show_jonswap_params("Gamma", "", OceanParameters::Gamma);
+            show_jonswap_params("Peak Omega", "", OceanParameters::PeakOmega);
+            show_jonswap_params("Repeat Time", "", OceanParameters::RepeatTime);
+            show_jonswap_params("Scale", "", OceanParameters::Scale);
+            show_jonswap_params("Short Waves Fade", "", OceanParameters::ShortWavesFade);
+            show_jonswap_params("Spread Blend", "", OceanParameters::SpreadBlend);
+            show_jonswap_params("Swell", "", OceanParameters::Swell);
+            show_jonswap_params("Wind Direction", "", OceanParameters::WindDirection);
+            show_jonswap_params("Wind Speed", "", OceanParameters::WindSpeed);
+            show_jonswap_params("Depth", "", OceanParameters::Depth);
+            show_jonswap_params("Low Cutoff", "", OceanParameters::LowCutoff);
+            show_jonswap_params("High Cutoff", "", OceanParameters::HighCutoff);
+            show_jonswap_params("Foam Decay Rate", "", OceanParameters::FoamDecayRate);
+            show_jonswap_params("Foam Bias", "", OceanParameters::FoamBias);
+            show_jonswap_params("Foam Threshold", "", OceanParameters::FoamThreshold);
+            show_jonswap_params("Foam Add", "", OceanParameters::FoamAdd);
+            show_jonswap_params("Displacement Scale", "", OceanParameters::DisplacementScale);
+            show_jonswap_params("Slope Scale", "", OceanParameters::SlopeScale);
+            show_jonswap_params("Length Scale", "", OceanParameters::LengthScale);
+
+            bool show_displacement = material->GetOceanProperty(OceanParameters::DebugDisplacement) == 1.0f ? true : false;
+            ImGui::Checkbox("Show Displacement Map", &show_displacement);
+            material->SetOceanProperty(OceanParameters::DebugDisplacement, show_displacement ? 1.0f : 0.0f);
+
+            bool show_slope = material->GetOceanProperty(OceanParameters::DebugSlope) == 1.0f ? true : false;
+            ImGui::Checkbox("Show Slope Map", &show_slope);
+            material->SetOceanProperty(OceanParameters::DebugSlope, show_slope ? 1.0f : 0.0f);
+
+            bool show_synthesised = material->GetOceanProperty(OceanParameters::DebugSynthesised) == 1.0f ? true : false;
+            ImGui::Checkbox("Show Synthesised Version", &show_synthesised);
+            material->SetOceanProperty(OceanParameters::DebugSynthesised, show_synthesised ? 1.0f : 0.0f);
+        }
+
         // offset
         {
             layout::begin_property("Offset", "texture offset");
