@@ -50,12 +50,14 @@ namespace spartan
     #ifdef _WIN32
     namespace common
     {
-        uint32_t resolution_render_width  = 0;
-        uint32_t resolution_render_height = 0;
-        uint32_t resolution_output_width  = 0;
-        uint32_t resolution_output_height = 0;
-        bool reset_history                = false;
-        float resolution_scale            = 1.0f; // baked into resolution_render_width and resolution_render_height
+        uint32_t resolution_render_width      = 0; // scaled (render * scale), used for per-frame dispatch
+        uint32_t resolution_render_height     = 0;
+        uint32_t resolution_render_max_width  = 0; // unscaled base render resolution, used for context creation
+        uint32_t resolution_render_max_height = 0;
+        uint32_t resolution_output_width      = 0;
+        uint32_t resolution_output_height     = 0;
+        bool reset_history                    = false;
+        float resolution_scale                = 1.0f;
     }
 
     namespace intel
@@ -122,8 +124,8 @@ namespace spartan
             context_destroy();
             SP_ASSERT(xessVKCreateContext(RHI_Context::instance, RHI_Context::device_physical, RHI_Context::device, &context) == xess_result_t::XESS_RESULT_SUCCESS);
 
-            // calculate the scaling factor
-            uint32_t render_area = common::resolution_render_width * common::resolution_render_height;
+            // calculate the scaling factor using the base (unscaled) render resolution
+            uint32_t render_area = common::resolution_render_max_width * common::resolution_render_max_height;
             uint32_t output_area = common::resolution_output_width * common::resolution_output_height;
             float scale_factor   = static_cast<float>(render_area) / static_cast<float>(output_area);
 
@@ -518,9 +520,9 @@ namespace spartan
             {
                 context_destroy();
 
-            // description
-            description_context.maxRenderSize.width    = common::resolution_render_width;
-            description_context.maxRenderSize.height   = common::resolution_render_height;
+            // description - use the unscaled base resolution as max since dynamic resolution is enabled
+            description_context.maxRenderSize.width    = common::resolution_render_max_width;
+            description_context.maxRenderSize.height   = common::resolution_render_max_height;
             description_context.maxUpscaleSize.width   = common::resolution_output_width;
             description_context.maxUpscaleSize.height  = common::resolution_output_height;
             description_context.flags                  = FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
@@ -1092,26 +1094,33 @@ namespace spartan
         {
             common::resolution_scale = resolution_scale;
 
-            // calculate actual render resolution from target render res and scale
-            uint32_t render_width =  static_cast<uint32_t>(resolution_render.x * resolution_scale);
-            uint32_t render_height = static_cast<uint32_t>(resolution_render.y * resolution_scale);
+            // update per-frame scaled render dimensions (used by dispatch)
+            common::resolution_render_width  = static_cast<uint32_t>(resolution_render.x * resolution_scale);
+            common::resolution_render_height = static_cast<uint32_t>(resolution_render.y * resolution_scale);
 
-            // check for changes
-            bool resolution_render_changed = render_width != common::resolution_render_width || render_height != common::resolution_render_height;
-            bool resolution_output_changed = static_cast<uint32_t>(resolution_output.x) != common::resolution_output_width ||
-                static_cast<uint32_t>(resolution_output.y) != common::resolution_output_height;
+            // check if the base (unscaled) render or output resolution changed
+            // scale changes don't require context recreation since FSR3 has dynamic resolution enabled
+            uint32_t base_render_width  = static_cast<uint32_t>(resolution_render.x);
+            uint32_t base_render_height = static_cast<uint32_t>(resolution_render.y);
+            uint32_t output_width       = static_cast<uint32_t>(resolution_output.x);
+            uint32_t output_height      = static_cast<uint32_t>(resolution_output.y);
 
-            // update common resolutions
-            common::resolution_render_width  = render_width;
-            common::resolution_render_height = render_height;
-            common::resolution_output_width  = static_cast<uint32_t>(resolution_output.x);
-            common::resolution_output_height = static_cast<uint32_t>(resolution_output.y);
+            bool base_render_changed = base_render_width  != common::resolution_render_max_width ||
+                                       base_render_height != common::resolution_render_max_height;
+            bool output_changed      = output_width  != common::resolution_output_width ||
+                                       output_height != common::resolution_output_height;
+
+            common::resolution_render_max_width  = base_render_width;
+            common::resolution_render_max_height = base_render_height;
+            common::resolution_output_width      = output_width;
+            common::resolution_output_height     = output_height;
 
             // re-create resolution dependent contexts
             {
                 // todo: make these mutually exlusive
-                if ((resolution_render_changed || resolution_output_changed))
+                if (base_render_changed || output_changed)
                 {
+                    RHI_Device::QueueWaitAll();
                     amd::upscaler::context_create();
                     intel::context_create();
                 }

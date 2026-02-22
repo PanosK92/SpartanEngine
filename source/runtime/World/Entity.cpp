@@ -679,7 +679,10 @@ namespace spartan
         }
         else
         {
-            SetPositionLocal(m_position_local + GetParent()->GetMatrix().Inverted() * delta);
+            // go through SetPosition so the world-space point (not direction) is correctly
+            // converted to local space - Matrix * Vector3 treats the vector as a point (w=1),
+            // so we must not pass a displacement directly through the inverse parent matrix
+            SetPosition(GetPosition() + delta);
         }
     }
 

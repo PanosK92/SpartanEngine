@@ -759,8 +759,9 @@ namespace spartan
             physics_body->Crouch(is_crouching);
         }
         
-        // behavior: apply movement
-        if (m_movement_speed != Vector3::Zero || (has_physics_body && is_playing && is_grounded))
+        // behavior: apply movement (skip during focus lerp - the lerp controls the camera)
+        bool is_focus_lerping = m_lerp_to_target_p || m_lerp_to_target_r;
+        if (!is_focus_lerping && (m_movement_speed != Vector3::Zero || (has_physics_body && is_playing && is_grounded)))
         {
             if (has_physics_body && is_playing)
             {
@@ -910,6 +911,7 @@ namespace spartan
                 m_lerp_to_target_r        = false;
                 m_lerp_to_target_alpha    = 0.0f;
                 m_lerp_to_target_position = Vector3::Zero;
+                m_movement_speed          = Vector3::Zero;
             }
         }
     }
@@ -943,6 +945,7 @@ namespace spartan
             m_lerp_from_position      = GetEntity()->GetPosition();
             m_lerp_from_rotation      = GetEntity()->GetRotation();
             m_lerp_to_target_alpha    = 0.0f;
+            m_movement_speed          = Vector3::Zero;
             m_lerp_to_target_rotation = Quaternion::FromLookRotation(entity->GetPosition() - m_lerp_to_target_position).Normalized();
             m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, m_lerp_from_position);
 
