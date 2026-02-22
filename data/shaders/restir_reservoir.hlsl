@@ -35,7 +35,7 @@ static const float RESTIR_RAY_T_MIN          = 0.01f;
 
 // sky/environment
 static const float RESTIR_SKY_RADIANCE_CLAMP = 5.0f;
-static const float RESTIR_SKY_W_CLAMP        = 1.5f;
+static const float RESTIR_SKY_W_CLAMP        = 15.0f;
 static const float RESTIR_SKY_DIR_THRESHOLD  = 0.95f;
 static const float RESTIR_ENV_SAMPLE_PROB    = 0.3f;
 static const float RESTIR_SKY_DISTANCE       = 1e10f;
@@ -49,7 +49,7 @@ static const float RESTIR_VIS_PLANE_MIN      = 0.001f;
 // BRDF thresholds
 static const float RESTIR_MIN_ROUGHNESS      = 0.04f;
 static const float RESTIR_MIN_PDF            = 1e-6f;
-static const float RESTIR_W_CLAMP_DEFAULT    = 5.0f;
+static const float RESTIR_W_CLAMP_DEFAULT    = 50.0f;
 static const float RESTIR_SPECULAR_THRESHOLD = 0.2f;
 
 // firefly suppression
@@ -192,9 +192,7 @@ Reservoir create_empty_reservoir()
 float calculate_target_pdf(float3 radiance)
 {
     float lum = dot(radiance, float3(0.299, 0.587, 0.114));
-    lum = clamp(lum, 0.0f, 65504.0f);
-    float compressed = log(1.0f + lum) / (1.0f + log(1.0f + lum) * 0.5f);
-    return max(compressed, 1e-6f);
+    return max(lum, 1e-6f);
 }
 
 float calculate_target_pdf_with_brdf(float3 radiance, float3 sample_dir, float3 shading_normal, float3 view_dir,
@@ -517,12 +515,7 @@ float compute_jacobian(float3 sample_pos, float3 original_shading_pos, float3 ne
 
     float jacobian = (cos_new * dist_original_sq) / max(cos_original * dist_new_sq, 1e-4f);
 
-    float dist_ratio   = dist_original / dist_new;
-    float base_max     = lerp(2.0f, 4.0f, saturate(dist_ratio));
-    float distance_factor = saturate(avg_dist / 100.0f);
-    float max_jacobian = lerp(base_max, min(base_max, 1.5f), distance_factor);
-
-    return clamp(jacobian, 0.0f, max_jacobian);
+    return clamp(jacobian, 0.0f, 10.0f);
 }
 
 float power_heuristic(float pdf_a, float pdf_b)
@@ -575,17 +568,7 @@ float3 soft_clamp_gi(float3 gi, PathSample sample)
 
     float lum = dot(gi, float3(0.299f, 0.587f, 0.114f));
 
-    // soft clamp based on sample type
-    float soft_clamp;
-    if (is_sky_sample(sample))
-    {
-        soft_clamp = 8.0f;
-    }
-    else
-    {
-        float bounce_factor = saturate(float(sample.path_length - 1) / 2.0f);
-        soft_clamp = lerp(8.0f, 4.0f, bounce_factor);
-    }
+    float soft_clamp = is_sky_sample(sample) ? 40.0f : 50.0f;
 
     if (lum > soft_clamp)
     {
@@ -595,7 +578,7 @@ float3 soft_clamp_gi(float3 gi, PathSample sample)
     }
 
     // hard clamp
-    float max_lum = 15.0f;
+    float max_lum = 100.0f;
     float final_lum = dot(gi, float3(0.299f, 0.587f, 0.114f));
     if (final_lum > max_lum)
         gi *= max_lum / final_lum;

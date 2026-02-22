@@ -48,7 +48,7 @@ namespace spartan
         class Frustum;
     }
 
-    // console varibales
+    // console variables
     extern TConsoleVar<float> cvar_aabb;
     extern TConsoleVar<float> cvar_picking_ray;
     extern TConsoleVar<float> cvar_grid;
@@ -111,8 +111,7 @@ namespace spartan
         static void Shutdown();
         static void Tick();
 
-        // primitive rendering (development & debugging)
-        // duration_sec: 0.0f = single frame, > 0.0 = seconds to display, FLT_MAX = infinite
+        // debug primitives (duration: 0 = one frame, > 0 = seconds, FLT_MAX = forever)
         static void DrawLine(const math::Vector3& from, const math::Vector3& to, const Color& color_from = Color::standard_renderer_lines, const Color& color_to = Color::standard_renderer_lines, float duration_sec = 0.0f);
         static void DrawTriangle(const math::Vector3& v0, const math::Vector3& v1, const math::Vector3& v2, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
         static void DrawBox(const math::BoundingBox& box, const Color& color = Color::standard_renderer_lines, float duration_sec = 0.0f);
@@ -178,6 +177,8 @@ namespace spartan
         static void ClearMaterialTextureReferences();
     private:
         static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);
+        static bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources,
+                                  bool create_render, bool create_output, const char* label);
 
         // resources
         static void CreateBuffers();
@@ -230,17 +231,12 @@ namespace spartan
         // passes - post-process
         static void Pass_PostProcess(RHI_CommandList* cmd_list);
         static void Pass_Output(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_FilmGrain(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Vhs(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_ChromaticAberration(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_MotionBlur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Sharpening(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Dithering(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_AA_Upscale(RHI_CommandList* cmd_list);
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
+        template<typename F = std::nullptr_t>
+        static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum,
+                                 RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
         // passes - utility
         static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
@@ -252,10 +248,9 @@ namespace spartan
         // bindless
         static void UpdateMaterials(RHI_CommandList* cmd_list);
         static void UpdateLights(RHI_CommandList* cmd_lis);
-        static void UpdatedBoundingBoxes(RHI_CommandList* cmd_list);
+        static void UpdateBoundingBoxes(RHI_CommandList* cmd_list);
 
-        // returns true if a draw must go through the cpu-driven path (tessellated, instanced, alpha-tested, double-sided)
-        // the gpu-driven indirect path only handles opaque, back-face-culled, non-instanced, non-tessellated draws
+        // true if this draw can't go through the gpu-driven indirect path
         static bool IsCpuDrivenDraw(const Renderer_DrawCall& draw_call, Material* material);
 
         // misc
@@ -266,7 +261,7 @@ namespace spartan
         static void UpdateShadowAtlas();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);
         static void UpdateAccelerationStructures(RHI_CommandList* cmd_list);
-        static void RotateDrawDataBuffer();
+        static void RotateFrameBuffers();
 
         // draw calls
         static std::array<Renderer_DrawCall, renderer_max_draw_calls> m_draw_calls;
@@ -279,11 +274,23 @@ namespace spartan
         static std::array<Sb_DrawData, rhi_max_array_size> m_indirect_draw_data;
         static uint32_t m_indirect_draw_count;
 
-        // bindless draw data (per-draw transforms, material indices, etc.)
+        // per-frame gpu buffers, rotated so in-flight frames never race
+        struct FrameResource
+        {
+            std::shared_ptr<RHI_Buffer> draw_data;
+            std::shared_ptr<RHI_Buffer> indirect_draw_args;
+            std::shared_ptr<RHI_Buffer> indirect_draw_data;
+            std::shared_ptr<RHI_Buffer> indirect_draw_args_out;
+            std::shared_ptr<RHI_Buffer> indirect_draw_data_out;
+            std::shared_ptr<RHI_Buffer> indirect_draw_count;
+            std::shared_ptr<RHI_Buffer> aabbs;
+        };
+        static std::array<FrameResource, renderer_draw_data_buffer_count> m_frame_resources;
+        static uint32_t m_frame_resource_index;
+
+        // cpu-side draw data staging
         static std::array<Sb_DrawData, renderer_max_draw_calls> m_draw_data_cpu;
         static uint32_t m_draw_data_count;
-        static std::array<std::shared_ptr<RHI_Buffer>, renderer_draw_data_buffer_count> m_draw_data_buffers;
-        static uint32_t m_draw_data_buffer_index;
 
         // bindless
         static std::array<RHI_Texture*, rhi_max_array_size> m_bindless_textures;
@@ -291,7 +298,7 @@ namespace spartan
         static std::array<Sb_Aabb, rhi_max_array_size> m_bindless_aabbs;
         static bool m_bindless_samplers_dirty;
 
-        // one-shot and feature-toggle state, consolidated for easy reset on reinitialize
+        // one-shot and feature-toggle state
         struct PassState
         {
             // one-shot initialization (run once, never again unless reset)
@@ -332,6 +339,7 @@ namespace spartan
         static std::atomic<bool> m_initialized_resources;
         static std::mutex m_mutex_renderables;
         static bool m_transparents_present;
+        static bool m_is_hiz_suppressed;
         static RHI_CommandList* m_cmd_list_present;
         static RHI_CommandList* m_cmd_list_compute;
         static std::vector<ShadowSlice> m_shadow_slices;

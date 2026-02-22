@@ -78,7 +78,7 @@ The renderer is built around a single principle: **the GPU owns the data**. Ever
 - **Uber shaders**, minimal pipeline state object (PSO) permutations eliminate draw call state changes
 - **Universal HLSL**, all shaders are written once in HLSL and compiled for both Vulkan (via SPIR-V) and DirectX 12
 - **Tightly packed 10-byte instance format** for hundreds of millions of instances (procedural grass, foliage)
-- **On-the-fly GPU mip generation** (FidelityFX SPD) **and texture compression** (FidelityFX Compressonator), assets are processed on the GPU at load time, not baked offline
+- **On-the-fly GPU mip generation** (FidelityFX SPD) **and GPU texture compression** (Compressonator compute shaders), assets are compressed on the GPU at load time in milliseconds, not baked offline
 - **Unified deferred rendering with transparency**, opaque and transparent surfaces share the same BSDF and render path, no separate forward pass
 - **Async compute**, SSAO, screen-space shadows, and cloud shadows run on the compute queue in parallel with shadow map rasterization, synchronized via timeline semaphores
 
@@ -111,20 +111,21 @@ The renderer is built around a single principle: **the GPU owns the data**. Ever
 
 ## Car Simulation
 
-A full vehicle dynamics simulation running at **200Hz** for precise tire and suspension response.
+A full vehicle dynamics simulation running at **200Hz** within the PhysX fixed-timestep loop.
 
 | System | Details |
 |--------|---------|
-| **Tires** | Pacejka magic formula, combined slip, load sensitivity, temperature model, camber thrust, relaxation length, multiple surfaces (asphalt, concrete, wet, gravel, grass, ice) |
-| **Suspension** | 7-ray contact patch per wheel, spring-damper with bump/rebound split, anti-roll bars, camber/toe alignment, bump steer |
-| **Drivetrain** | Piecewise engine torque curve, 7-speed gearbox (auto/manual), rev-match downshifts, LSD with preload, turbo with wastegate, engine braking |
-| **Brakes** | Thermal model (cold/optimal/fade zones), front/rear bias, ABS with configurable slip threshold |
-| **Aerodynamics** | Drag with frontal/side area, front/rear downforce, ground effect, yaw-dependent forces, pitch-dependent balance, rolling resistance |
-| **Steering** | Ackermann geometry, high-speed reduction, non-linear response, self-aligning torque |
-| **Assists** | ABS, traction control, handbrake lock |
-| **Input** | Controllers with analog throttle/brake/steering, haptic feedback (tire slip, ABS, drifting) |
+| **Tires** | Pacejka magic formula with MF 5.2 combined slip, load sensitivity, 3-zone surface + core thermal model, tire pressure, wear, per-axle dimensions, relaxation length, camber thrust, multiple surfaces |
+| **Suspension** | Convex hull sweep contact, spring-damper with separate front/rear damping, anti-roll bars, progressive bump stops, bump steer, camber/toe alignment |
+| **Weight transfer** | Geometric + elastic lateral split via roll center heights, roll-stiffness-based front/rear distribution |
+| **Drivetrain** | Engine torque curve, turbo/wastegate, 7-speed auto/manual gearbox, rev-match downshifts, driveshaft torsional compliance, open/locked/LSD differentials, RWD/FWD/AWD |
+| **Brakes** | Thermal model with fade, front/rear bias, ABS with slip-threshold modulation |
+| **Aerodynamics** | Drag, front/rear downforce, ground effect, DRS, pitch/yaw sensitivity, rolling resistance |
+| **Steering** | Ackermann geometry, high-speed reduction, self-aligning torque |
+| **Assists** | ABS, traction control, handbrake |
+| **Integration** | Semi-implicit Euler for wheel spin, consolidated net-torque per wheel |
+| **Input** | Controllers with analog throttle/brake/steering, haptic feedback |
 | **Camera** | GT7-inspired chase camera with speed-based dynamics and orbit controls |
-| **Debug** | Raycast, suspension, and aero force visualization with telemetry logging |
 
 ---
 

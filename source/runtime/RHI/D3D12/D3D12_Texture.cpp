@@ -215,9 +215,13 @@ namespace spartan
             d3d12_utility::debug::set_name(texture, m_object_name.c_str());
         }
 
-        // upload texture data if provided
+        // upload texture data if provided - serialized so only one upload heap buffer
+        // exists at a time, preventing upload heap (host-visible) memory exhaustion
         if (HasData())
         {
+            static mutex upload_mutex;
+            lock_guard<mutex> upload_lock(upload_mutex);
+
             uint32_t subresource_count = m_mip_count * array_length;
 
             // create upload buffer

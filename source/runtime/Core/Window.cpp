@@ -540,6 +540,21 @@ namespace spartan
         SDL_DestroyWindow(m_splash_screen_window);
     }
 
+    void Window::SetSplashScreenVisible(bool visible)
+    {
+        if (!m_splash_screen_window)
+            return;
+
+        if (visible)
+        {
+            SDL_ShowWindow(m_splash_screen_window);
+        }
+        else
+        {
+            SDL_HideWindow(m_splash_screen_window);
+        }
+    }
+
     void Window::PumpEvents()
     {
         SDL_PumpEvents();

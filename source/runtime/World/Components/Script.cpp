@@ -126,6 +126,27 @@ void Script::Save(pugi::xml_node& node)
 
     if (script.valid())
     {
+        for (auto& [key, value] : script)
+        {
+            std::string_view key_name = key.as<std::string_view>();
+            if (value.is<int>())
+            {
+                node.append_attribute(key_name.data()) = value.as<int>();
+            }
+            else if (value.is<float>() || value.is<double>())
+            {
+                node.append_attribute(key_name.data()) = value.as<float>();
+            }
+            else if (value.is<bool>())
+            {
+                node.append_attribute(key_name.data()) = value.as<bool>();
+            }
+            else if (value.is<std::string>())
+            {
+                node.append_attribute(key_name.data()) = value.as<std::string>().c_str();
+            }
+        }
+
         sol::protected_function TickFunction = script["Save"];
         if (TickFunction.valid())
         {
@@ -146,6 +167,33 @@ void Script::Load(pugi::xml_node& node)
 
     if (script.valid())
     {
+        for (auto& [key, value] : script)
+        {
+            std::string_view key_name = key.as<std::string_view>();
+            auto attr = node.attribute(key_name.data());
+            if (attr.empty())
+            {
+                continue;
+            }
+
+            if (value.is<int>())
+            {
+                script[key_name] = attr.as_int();
+            }
+            else if (value.is<float>() || value.is<double>())
+            {
+                script[key_name] = attr.as_float();
+            }
+            else if (value.is<bool>())
+            {
+                script[key_name] = attr.as_bool();
+            }
+            else if (value.is<std::string>())
+            {
+                script[key_name] = attr.as_string();
+            }
+        }
+
         sol::protected_function TickFunction = script["Load"];
         if (TickFunction.valid())
         {

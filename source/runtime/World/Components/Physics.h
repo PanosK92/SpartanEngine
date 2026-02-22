@@ -192,10 +192,14 @@ namespace spartan
         float GetWheelLongitudinalForce(WheelIndex wheel) const;
         float GetWheelAngularVelocity(WheelIndex wheel) const;  // rad/s
         float GetWheelRPM(WheelIndex wheel) const;              // revolutions per minute
-        float GetWheelTemperature(WheelIndex wheel) const;      // celsius
-        float GetWheelTempGripFactor(WheelIndex wheel) const;   // 0.85-1.0 multiplier
-        float GetWheelBrakeTemp(WheelIndex wheel) const;        // brake temperature in celsius
-        float GetWheelBrakeEfficiency(WheelIndex wheel) const;  // 0.6-1.0 multiplier based on brake temp
+        float GetWheelTemperature(WheelIndex wheel) const;
+        float GetWheelTempGripFactor(WheelIndex wheel) const;
+        float GetWheelBrakeTemp(WheelIndex wheel) const;
+        float GetWheelBrakeEfficiency(WheelIndex wheel) const;
+        float GetWheelSurfaceTemp(WheelIndex wheel, int zone) const;
+        float GetWheelCoreTemp(WheelIndex wheel) const;
+        float GetTirePressure() const;
+        float GetTirePressureOptimal() const;
 
         // driver assists
         void SetAbsEnabled(bool enabled);

@@ -42,6 +42,15 @@ namespace spartan
         }
     }
 
+    void RHI_Buffer::DestroyResourceImmediate()
+    {
+        if (m_rhi_resource)
+        {
+            RHI_Device::MemoryBufferDestroy(m_rhi_resource);
+            m_data_gpu = nullptr;
+        }
+    }
+
     void RHI_Buffer::RHI_CreateResource(const void* data)
     {
         RHI_DestroyResource();
@@ -76,7 +85,7 @@ namespace spartan
                 RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | flags_usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
 
                 // if initial data is provided, upload it via a staging buffer
-                if (data)
+                if (data && m_rhi_resource)
                 {
                     void* staging_buffer = nullptr;
                     RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, data, m_object_name.c_str());
@@ -93,7 +102,7 @@ namespace spartan
             }
             
             // save device address for ray tracing vertex/index buffer access
-            if (RHI_Device::IsSupportedRayTracing() && (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index))
+            if (m_rhi_resource && RHI_Device::IsSupportedRayTracing() && (m_type == RHI_Buffer_Type::Vertex || m_type == RHI_Buffer_Type::Index))
             {
                 m_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource);
             }
@@ -146,7 +155,9 @@ namespace spartan
             VkBufferUsageFlags flags_usage     = VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, nullptr, m_object_name.c_str());
-        
+            if (!m_rhi_resource)
+                return;
+
             m_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource);
         
             // now align offsets based on device_address
@@ -165,7 +176,12 @@ namespace spartan
             m_object_size = m_hit_offset + m_aligned_handle_size + extra_groups * m_aligned_handle_size;
         }
 
-        SP_ASSERT_MSG(m_rhi_resource != nullptr, "Failed to create buffer");
+        if (!m_rhi_resource)
+        {
+            SP_LOG_WARNING("failed to create buffer '%s' (%llu bytes)", m_object_name.c_str(), m_object_size);
+            return;
+        }
+
         m_data_gpu = m_mappable ? RHI_Device::MemoryGetMappedDataFromBuffer(m_rhi_resource) : nullptr;
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name.c_str());
     }
@@ -198,7 +214,8 @@ namespace spartan
             copy_region.dstOffset       = offset_bytes;
             copy_region.size            = size_bytes;
 
-            RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
+            // use graphics queue to avoid a cross-queue sync hazard with draw commands that read the same buffer
+            RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
             vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
             RHI_CommandList::ImmediateExecutionEnd(cmd_list);
 

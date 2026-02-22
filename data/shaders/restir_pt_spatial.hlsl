@@ -219,8 +219,20 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     Reservoir combined = create_empty_reservoir();
 
-    // evaluate center sample - luminance-based target for consistency
-    float target_pdf_center = calculate_target_pdf(center.sample.radiance);
+    float target_pdf_center;
+    if (is_sky_sample(center.sample))
+    {
+        target_pdf_center = calculate_target_pdf_sky(center.sample.radiance,
+            center.sample.direction, normal_ws, view_dir, albedo, roughness, metallic);
+    }
+    else
+    {
+        target_pdf_center = calculate_target_pdf_with_geometry(center.sample.radiance,
+            pos_ws, normal_ws, view_dir, center.sample.hit_position, center.sample.hit_normal,
+            albedo, roughness, metallic);
+    }
+    if (target_pdf_center <= 0.0f)
+        target_pdf_center = calculate_target_pdf(center.sample.radiance);
 
     float weight_center = target_pdf_center * center.W * center.M;
     combined.weight_sum = weight_center;
@@ -230,11 +242,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float base_angle = random_float(seed) * 2.0f * PI;
 
-    // track neighbor radiance as fallback for dark pixels
-    float3 neighbor_radiance_sum = float3(0, 0, 0);
-    float  neighbor_radiance_count = 0;
-
-    // spatial reuse loop
     for (uint i = 0; i < RESTIR_SPATIAL_SAMPLES; i++)
     {
         float rotation_angle = base_angle + float(i) * 2.39996323f;
@@ -274,20 +281,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (all(neighbor.sample.radiance <= 0.0f))
             continue;
 
-        // accumulate neighbor gi for fallback
-        float3 nb_gi = neighbor.sample.radiance * neighbor.W;
-        if (!any(isnan(nb_gi)) && !any(isinf(nb_gi)) && dot(nb_gi, float3(0.299f, 0.587f, 0.114f)) > 0.0f)
-        {
-            neighbor_radiance_sum   += nb_gi;
-            neighbor_radiance_count += 1.0f;
-        }
-
-        // clamp neighbor radiance to match current path tracer limits
-        float max_rad = (neighbor.sample.path_length > 1) ? 10.0f : 15.0f;
-        neighbor.sample.radiance = min(neighbor.sample.radiance, float3(max_rad, max_rad, max_rad));
         float nb_lum = dot(neighbor.sample.radiance, float3(0.299f, 0.587f, 0.114f));
-        if (nb_lum > max_rad)
-            neighbor.sample.radiance *= max_rad / nb_lum;
+        if (nb_lum > 50.0f)
+            neighbor.sample.radiance *= 50.0f / nb_lum;
 
         float target_pdf_at_center = 0.0f;
         float jacobian = 1.0f;
@@ -298,7 +294,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             if (n_dot_sky <= 0.0f)
                 continue;
 
-            target_pdf_at_center = calculate_target_pdf(neighbor.sample.radiance);
+            target_pdf_at_center = calculate_target_pdf_sky(neighbor.sample.radiance,
+                neighbor.sample.direction, normal_ws, view_dir, albedo, roughness, metallic);
             jacobian = 1.0f;
         }
         else
@@ -306,7 +303,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             if (neighbor.sample.path_length == 0)
                 continue;
 
-            // reject samples whose hit point is in the wrong hemisphere relative to center surface
             float3 dir_to_hit = normalize(neighbor.sample.hit_position - pos_ws);
             float n_dot_l = dot(normal_ws, dir_to_hit);
             if (n_dot_l <= 0.0f)
@@ -320,14 +316,16 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             if (jacobian <= 0.0f)
                 continue;
 
-            target_pdf_at_center = calculate_target_pdf(neighbor.sample.radiance);
+            target_pdf_at_center = calculate_target_pdf_with_geometry(neighbor.sample.radiance,
+                pos_ws, normal_ws, view_dir, neighbor.sample.hit_position, neighbor.sample.hit_normal,
+                albedo, roughness, metallic);
         }
 
         if (target_pdf_at_center <= 0.0f)
             continue;
 
         float effective_M = min(neighbor.M, max(center.M * 2.0f, 4.0f));
-        float weight = target_pdf_at_center * neighbor.W * effective_M;
+        float weight = target_pdf_at_center * jacobian * neighbor.W * effective_M;
 
         combined.weight_sum += weight;
         combined.M += effective_M;
@@ -341,8 +339,20 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     clamp_reservoir_M(combined, RESTIR_M_CAP);
 
-    // finalize using luminance-based target PDF
-    float final_target_pdf = calculate_target_pdf(combined.sample.radiance);
+    float final_target_pdf;
+    if (is_sky_sample(combined.sample))
+    {
+        final_target_pdf = calculate_target_pdf_sky(combined.sample.radiance,
+            combined.sample.direction, normal_ws, view_dir, albedo, roughness, metallic);
+    }
+    else
+    {
+        final_target_pdf = calculate_target_pdf_with_geometry(combined.sample.radiance,
+            pos_ws, normal_ws, view_dir, combined.sample.hit_position, combined.sample.hit_normal,
+            albedo, roughness, metallic);
+    }
+    if (final_target_pdf <= 0.0f)
+        final_target_pdf = calculate_target_pdf(combined.sample.radiance);
     combined.target_pdf = final_target_pdf;
 
     if (final_target_pdf > 0 && combined.M > 0)
@@ -366,15 +376,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float3 gi = combined.sample.radiance * combined.W;
     gi = soft_clamp_gi(gi, combined.sample);
-
-    // if the pixel ended up nearly black, use the average neighbor gi as fallback
-    float gi_lum = dot(gi, float3(0.299f, 0.587f, 0.114f));
-    if (gi_lum < 0.001f && neighbor_radiance_count > 0.0f)
-    {
-        float3 fallback = neighbor_radiance_sum / neighbor_radiance_count;
-        fallback = soft_clamp_gi(fallback, combined.sample);
-        gi = fallback;
-    }
 
     tex_uav[pixel] = float4(gi, 1.0f);
 }

@@ -67,6 +67,9 @@ namespace spartan
         static void SetTitleBarHovered(bool hovered);
         static void PumpEvents();
 
+        // splash screen
+        static void SetSplashScreenVisible(bool visible);
+
     private:
         static void CreateAndShowSplashScreen();
         static void OnFirstFrameCompleted();

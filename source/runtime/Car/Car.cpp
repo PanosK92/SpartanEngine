@@ -1697,7 +1697,7 @@ namespace spartan
             // car dimensions for visualization
             float car_length = car::cfg.length;
             float car_width = car::cfg.width;
-            float car_height = car::cfg.height + car::cfg.wheel_radius * 2.0f;
+            float car_height = car::cfg.height + (car::cfg.front_wheel_radius + car::cfg.rear_wheel_radius);
             
             // get shape data for drawing (convex hull from actual mesh)
             const car::shape_2d& shape = car::get_shape_data();
@@ -2222,44 +2222,65 @@ namespace spartan
                 draw_legend_item(color_slip_ratio, "slip ratio - wheel spin vs vehicle speed");
             }
 
+            // tire pressure
+            if (ImGui::CollapsingHeader("Tire Pressure", ImGuiTreeNodeFlags_DefaultOpen))
+            {
+                float psi     = physics->GetTirePressure();
+                float psi_opt = physics->GetTirePressureOptimal();
+                float delta   = psi - psi_opt;
+                ImVec4 psi_col = (fabsf(delta) < 0.1f) ? ImVec4(0.2f, 1, 0.2f, 1) :
+                                 (fabsf(delta) < 0.3f) ? ImVec4(1, 0.8f, 0.2f, 1) :
+                                                          ImVec4(1, 0.3f, 0.3f, 1);
+                ImGui::TextColored(psi_col, "%.2f bar", psi);
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1), "(optimal %.2f)", psi_opt);
+            }
+
             // temperature table
             if (ImGui::CollapsingHeader("Temperature", ImGuiTreeNodeFlags_DefaultOpen))
             {
-                if (ImGui::BeginTable("temps", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+                auto temp_color = [](float t) -> ImVec4
+                {
+                    if (t > 110) return ImVec4(1, 0.5f, 0, 1);
+                    if (t < 70)  return ImVec4(0.5f, 0.5f, 1, 1);
+                    return ImVec4(0.2f, 1, 0.2f, 1);
+                };
+
+                if (ImGui::BeginTable("temps", 7, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
                 {
                     ImGui::TableSetupColumn("Wheel");
-                    ImGui::TableSetupColumn("Tire C");
+                    ImGui::TableSetupColumn("In");
+                    ImGui::TableSetupColumn("Mid");
+                    ImGui::TableSetupColumn("Out");
+                    ImGui::TableSetupColumn("Core");
                     ImGui::TableSetupColumn("Grip %");
-                    ImGui::TableSetupColumn("Brake C");
-                    ImGui::TableSetupColumn("Brake Eff %");
+                    ImGui::TableSetupColumn("Brake");
                     ImGui::TableHeadersRow();
 
                     for (int i = 0; i < 4; i++)
                     {
                         WheelIndex wheel = static_cast<WheelIndex>(i);
-                        float tire_temp  = physics->GetWheelTemperature(wheel);
-                        float grip       = physics->GetWheelTempGripFactor(wheel);
-                        float brake_temp = physics->GetWheelBrakeTemp(wheel);
-                        float brake_eff  = physics->GetWheelBrakeEfficiency(wheel);
+                        float s_in   = physics->GetWheelSurfaceTemp(wheel, 0);
+                        float s_mid  = physics->GetWheelSurfaceTemp(wheel, 1);
+                        float s_out  = physics->GetWheelSurfaceTemp(wheel, 2);
+                        float core   = physics->GetWheelCoreTemp(wheel);
+                        float grip   = physics->GetWheelTempGripFactor(wheel);
+                        float brake  = physics->GetWheelBrakeTemp(wheel);
 
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn(); ImGui::Text("%s", wheel_names[i]);
-                        ImGui::TableNextColumn();
-                        {
-                            ImVec4 col = (tire_temp > 110) ? ImVec4(1, 0.5f, 0, 1) :
-                                         (tire_temp < 70)  ? ImVec4(0.5f, 0.5f, 1, 1) :
-                                         ImVec4(0.2f, 1, 0.2f, 1);
-                            ImGui::TextColored(col, "%.0f", tire_temp);
-                        }
+                        ImGui::TableNextColumn(); ImGui::TextColored(temp_color(s_in),  "%.0f", s_in);
+                        ImGui::TableNextColumn(); ImGui::TextColored(temp_color(s_mid), "%.0f", s_mid);
+                        ImGui::TableNextColumn(); ImGui::TextColored(temp_color(s_out), "%.0f", s_out);
+                        ImGui::TableNextColumn(); ImGui::TextColored(temp_color(core),  "%.0f", core);
                         ImGui::TableNextColumn(); ImGui::Text("%.0f", grip * 100.0f);
                         ImGui::TableNextColumn();
                         {
-                            ImVec4 col = (brake_temp > 700) ? ImVec4(1, 0, 0, 1) :
-                                         (brake_temp > 400) ? ImVec4(1, 0.5f, 0, 1) :
+                            ImVec4 col = (brake > 700) ? ImVec4(1, 0, 0, 1) :
+                                         (brake > 400) ? ImVec4(1, 0.5f, 0, 1) :
                                          ImVec4(0.8f, 0.8f, 0.8f, 1);
-                            ImGui::TextColored(col, "%.0f", brake_temp);
+                            ImGui::TextColored(col, "%.0f", brake);
                         }
-                        ImGui::TableNextColumn(); ImGui::Text("%.0f", brake_eff * 100.0f);
                     }
                     ImGui::EndTable();
                 }

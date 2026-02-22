@@ -36,6 +36,7 @@ namespace spartan
         string log_file_name = "log.txt";
         ILogger* logger      = nullptr;
         bool log_to_file     = true;
+        mutex log_output_mutex;
 
         void write_to_file(string text, const LogType type)
         {
@@ -51,15 +52,12 @@ namespace spartan
             }
 
             // open/create a log file to write the log into
-            static ofstream fout;
+            ofstream fout;
             fout.open(log_file_name, ofstream::out | ofstream::app);
 
             if (fout.is_open())
             {
-                // write out the error message
                 fout << text << endl;
-
-                // close the file
                 fout.close();
             }
         }
@@ -77,19 +75,18 @@ namespace spartan
 
     void Log::SetLogger(ILogger* logger_in)
     {
+        lock_guard<mutex> guard(log_output_mutex);
+
         logger = logger_in;
 
         // flush the log buffer, if needed
         if (logger && !logs.empty())
         {
-            if (!logs.empty())
+            for (const LogCmd& log : logs)
             {
-                for (const LogCmd& log : logs)
-                {
-                    logger->Log(log.text, static_cast<uint32_t>(log.type));
-                }
-                logs.clear();
+                logger->Log(log.text, static_cast<uint32_t>(log.type));
             }
+            logs.clear();
         }
     }
 
@@ -100,18 +97,13 @@ namespace spartan
 
     void Log::Clear()
     {
-        // lock mutex to ensure thread safety
-        static std::mutex log_mutex;
-        std::lock_guard<std::mutex> guard(log_mutex);
+        lock_guard<mutex> guard(log_output_mutex);
 
-        // clear the in-memory logs
         logs.clear();
 
-        // clear the file if logging to file is enabled
         if (log_to_file || Debugging::IsLoggingToFileEnabled())
         {
-            // open the file in truncate mode to clear its contents
-            std::ofstream file("log.txt", std::ios::out | std::ios::trunc);
+            ofstream file("log.txt", ios::out | ios::trunc);
             if (file.is_open())
             {
                 file.close();
@@ -146,16 +138,20 @@ namespace spartan
         // append text to buffer after timestamp
         strncpy_s(buffer + timestamp_len, available_len + 1, text, _TRUNCATE);
     
-        // log to file if requested or if an in-engine logger is not available
-        if (log_to_file || !logger || Debugging::IsLoggingToFileEnabled())
+        // serialize access to the shared log vector, file, and logger
         {
-            logs.emplace_back(buffer, type);
-            write_to_file(buffer, type);
-        }
-    
-        if (logger)
-        {
-            logger->Log(buffer, static_cast<uint32_t>(type));
+            lock_guard<mutex> output_guard(log_output_mutex);
+
+            if (log_to_file || !logger || Debugging::IsLoggingToFileEnabled())
+            {
+                logs.emplace_back(buffer, type);
+                write_to_file(buffer, type);
+            }
+
+            if (logger)
+            {
+                logger->Log(buffer, static_cast<uint32_t>(type));
+            }
         }
     }
 

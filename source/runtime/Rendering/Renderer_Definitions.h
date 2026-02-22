@@ -150,7 +150,6 @@ namespace spartan
         tex4          = 3,
         tex3d         = 4,
         tex_sss       = 5,
-        visibility_unused = 6, // slot preserved to keep enum values stable
         sb_spd        = 7,
         tex_spd       = 8,
         geometry_info = 20, // ray tracing geometry info buffer
@@ -178,6 +177,9 @@ namespace spartan
         particle_buffer_b      = 37,
         particle_counter       = 38,
         particle_emitter       = 39,
+        // gpu texture compression
+        compress_input         = 40,
+        compress_output        = 41,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -229,7 +231,6 @@ namespace spartan
         ffx_spd_min_c,
         ffx_spd_max_c,
         blit_c,
-        occlusion_c_unused, // slot preserved to keep enum values stable
         icon_c,
         dithering_c,
         transparency_reflection_refraction_c,
@@ -263,6 +264,8 @@ namespace spartan
         particle_emit_c,
         particle_simulate_c,
         particle_render_c,
+        // gpu texture compression
+        texture_compress_bc3_c,
         max
     };
     
@@ -346,7 +349,7 @@ namespace spartan
         Point_clamp_border,
         Point_wrap,
         Bilinear_clamp_edge,
-        Bilienar_clamp_border,
+        Bilinear_clamp_border,
         Bilinear_wrap,
         Trilinear_clamp,
         Anisotropic_wrap,
@@ -361,9 +364,6 @@ namespace spartan
         LightParameters,
         DummyInstance,
         AABBs,
-        Visibility_unused,         // slot preserved to keep enum values stable
-        VisibilityPrev_unused,     // slot preserved to keep enum values stable
-        VisibilityReadback_unused, // slot preserved to keep enum values stable
         GeometryInfo,
         IndirectDrawArgs,
         IndirectDrawData,

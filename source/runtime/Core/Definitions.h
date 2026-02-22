@@ -136,11 +136,10 @@ namespace spartan::version
 #define WIDE_STR(x) WIDE_STR_HELPER(x)
 
 #if defined(_WIN32)
-    #define SP_INFO_WINDOW(text_message)                                                      \
-    {                                                                                         \
-        MessageBeep(MB_ICONINFORMATION);                                                      \
-        HWND hwnd = GetConsoleWindow();                                                       \
-        MessageBoxW(hwnd, L##text_message, L"Info", MB_OK | MB_TOPMOST | MB_ICONINFORMATION); \
+    #define SP_INFO_WINDOW(text_message)                                                                        \
+    {                                                                                                           \
+        MessageBeep(MB_ICONINFORMATION);                                                                        \
+        MessageBoxW(NULL, L##text_message, L"Info", MB_OK | MB_TOPMOST | MB_SETFOREGROUND | MB_ICONINFORMATION); \
     }
 #else
     #define SP_INFO_WINDOW(text_message)    \
@@ -150,11 +149,10 @@ namespace spartan::version
 #endif
 
 #if defined(_WIN32)
-    #define SP_WARNING_WINDOW(text_message)                                                  \
-    {                                                                                        \
-        MessageBeep(MB_ICONWARNING);                                                         \
-        HWND hwnd = GetConsoleWindow();                                                      \
-        MessageBoxW(hwnd, L##text_message, L"Warning", MB_OK | MB_TOPMOST | MB_ICONWARNING); \
+    #define SP_WARNING_WINDOW(text_message)                                                                    \
+    {                                                                                                          \
+        MessageBeep(MB_ICONWARNING);                                                                           \
+        MessageBoxW(NULL, L##text_message, L"Warning", MB_OK | MB_TOPMOST | MB_SETFOREGROUND | MB_ICONWARNING); \
     }
 #else
     #define SP_WARNING_WINDOW(text_message)    \
@@ -164,12 +162,11 @@ namespace spartan::version
 #endif
 
 #if defined(_WIN32)
-    #define SP_ERROR_WINDOW(text_message)                                                \
-    {                                                                                    \
-        MessageBeep(MB_ICONERROR);                                                       \
-        HWND hwnd = GetConsoleWindow();                                                  \
-        MessageBoxW(hwnd, L##text_message, L"Error", MB_OK | MB_TOPMOST | MB_ICONERROR); \
-        SP_DEBUG_BREAK();                                                                \
+    #define SP_ERROR_WINDOW(text_message)                                                                  \
+    {                                                                                                      \
+        MessageBeep(MB_ICONERROR);                                                                         \
+        MessageBoxW(NULL, L##text_message, L"Error", MB_OK | MB_TOPMOST | MB_SETFOREGROUND | MB_ICONERROR); \
+        SP_DEBUG_BREAK();                                                                                  \
     }
 #else
     #define SP_ERROR_WINDOW(text_message)    \
