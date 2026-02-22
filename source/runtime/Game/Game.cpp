@@ -1608,10 +1608,11 @@ namespace spartan
                 float    tile_scale;   // world-space size of this tile
                 uint32_t lod_level;    // which LOD level (for transition blending)
             };
-            std::vector<TileInstance> instances{};
-            uint32_t tile_resolution = 128;    // vertices per tile side (one tile = res^2 vertices)
+            std::vector<TileInstance> instances {};
+            std::vector<Entity*> tile_entities {};
+            uint32_t tile_resolution = 128;   // vertices per tile side (one tile = res^2 vertices)
             float base_tile_size     = 32.0f; // world-space units for LOD0 tile
-            uint32_t lod_levels      = 6;
+            uint32_t lod_levels      = 2;
 
             static void build_clipmap(Vector3 camera_pos)
             {
@@ -1656,7 +1657,7 @@ namespace spartan
                 entities::camera(false);
                 entities::sun(LightPreset::day, true);
 
-                auto entity = World::CreateEntity();
+                default_camera->RemoveComponent<Physics>();
 
                 default_ocean = entities::ocean(material, { 0.0f, 0.0f, 0.0f });
 
@@ -1692,6 +1693,8 @@ namespace spartan
                         renderable->SetOceanClipmapTileScale(tile_inst.tile_scale);
                         renderable->SetOceanClipmapTilePos(tile_inst.world_offset);
                     }
+
+                    tile_entities.emplace_back(entity_tile);
                 }
 
                 default_light_directional->GetComponent<Light>()->SetFlag(LightFlags::ShadowsScreenSpace, false);
@@ -1702,7 +1705,23 @@ namespace spartan
                 if (!material)
                     return;
 
-                Vector3 camera_pos = default_camera->GetPosition();
+                const Vector3 camera_pos = default_camera->GetPosition();
+                build_clipmap(camera_pos);
+
+                for (size_t i = 0; i < instances.size(); i++)
+                {
+                    const auto& inst = instances[i];
+                    Entity* entity = tile_entities[i];
+
+                    entity->SetPosition({ inst.world_offset.x, 0.0f, inst.world_offset.y });
+                    entity->SetScale({ inst.tile_scale, 1.0f, inst.tile_scale });
+
+                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    {
+                        renderable->SetOceanClipmapTileScale(inst.tile_scale);
+                        renderable->SetOceanClipmapTilePos(inst.world_offset);
+                    }
+                }
             }
 
             void shutdown()
@@ -1745,10 +1764,10 @@ namespace spartan
     void Game::Tick()
     {
         // ocean-specific tick
-        if (loaded_world == DefaultWorld::Ocean)
-        {
-            worlds::ocean::tick();
-        }
+        //if (loaded_world == DefaultWorld::Ocean)
+        //{
+        //    worlds::ocean::tick();
+        //}
 
         // world-specific tick
         if (loaded_world != DefaultWorld::Max)
