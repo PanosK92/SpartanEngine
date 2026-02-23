@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "World.h"
 
+#include <algorithm>
 #include <sol/sol.hpp>
 
 #include "Entity.h"
@@ -39,6 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Renderer.h"
 #include "Components/Physics.h"
+#include "Time/DateTime.h"
+#include "Time/Calendar.h"
 SP_WARNINGS_OFF
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -143,15 +146,15 @@ namespace spartan
         {
             // check if the world is in the project directory (has local assets alongside it)
             string normalized_path = world_file_path;
-            replace(normalized_path.begin(), normalized_path.end(), '\\', '/');
+            std::ranges::replace(normalized_path, '\\', '/');
 
             string project_dir = ResourceCache::GetProjectDirectory();
-            replace(project_dir.begin(), project_dir.end(), '\\', '/');
+            std::ranges::replace(project_dir, '\\', '/');
 
             // world is in project if path starts with project directory or contains /project/
             return normalized_path.find(project_dir) != string::npos ||
                    normalized_path.find("/project/") != string::npos ||
-                   normalized_path.rfind("project/", 0) == 0;
+                   normalized_path.starts_with("project/");
         }
 
         string world_file_path_to_resource_directory(const string& world_file_path)
@@ -171,7 +174,7 @@ namespace spartan
             }
 
             // normalize to forward slashes
-            replace(result.begin(), result.end(), '\\', '/');
+            std::ranges::replace(result, '\\', '/');
 
             SP_LOG_INFO("World resource directory: %s (from world: %s)", result.c_str(), world_file_path.c_str());
             return result;
@@ -301,6 +304,13 @@ namespace spartan
             WorldTable["GetTimeOfDay"]              = &World::GetTimeOfDay;
             WorldTable["SetTimeOfDay"]              = &World::SetTimeOfDay;
             WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
+            WorldTable["GetCurrentYear"]            = &Calendar::GetCurrentYear;
+            WorldTable["GetCurrentMonth"]           = &Calendar::GetCurrentMonth;
+            WorldTable["GetCurrentDay"]             = &Calendar::GetCurrentDay;
+            WorldTable["GetMonthName"]              = &Calendar::GetMonthName;
+            WorldTable["GetDayName"]                = &Calendar::GetDayName;
+            WorldTable["GetSeasonName"]             = &Calendar::GetSeasonName;
+            WorldTable["GetDayCycleName"]           = &Calendar::GetDayCycleName;
 
 
             lua_state.new_usertype<Vector2>("Vector2",
@@ -1408,6 +1418,16 @@ namespace spartan
         return audio_source_count;
     }
 
+    float World::GetTimeOfDay(const bool use_real_world_time)
+    {
+        return DateTime::GetTimeOfDay(use_real_world_time);
+    }
+
+    void World::SetTimeOfDay(const float time_of_day)
+    {
+        DateTime::SetTimeOfDay(time_of_day);
+    }
+
     bool World::HaveMaterialsChangedThisFrame()
     {
         lock_guard<mutex> lock(entity_access_mutex);
@@ -1455,20 +1475,6 @@ namespace spartan
         }
 
         return false;
-    }
-
-    float World::GetTimeOfDay(bool use_real_world_time)
-    {
-        return world_time::get_time_of_day(use_real_world_time);
-    }
-
-    void World::SetTimeOfDay(float time_of_day)
-    {
-        if (time_of_day < 0.0f)
-            time_of_day = 0.0f;
-        else if (time_of_day > 1.0f)
-            time_of_day = 1.0f;
-        world_time::time_of_day = time_of_day;
     }
 
     const string& World::GetDescription()
