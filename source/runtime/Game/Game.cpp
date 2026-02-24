@@ -1599,36 +1599,61 @@ namespace spartan
         {
             shared_ptr<Material> material = make_shared<Material>();
 
-            // Clipmap
-            std::vector<RHI_Vertex_PosTexNorTan> tile_vertices {};
-            std::vector<uint32_t> tile_indices {};
+            // Edge flag bitmask
+            namespace EdgeFlags
+            {
+                constexpr uint32_t None  = 0;
+                constexpr uint32_t Left  = 1 << 0; // tx == -2
+                constexpr uint32_t Right = 1 << 1; // tx ==  1
+                constexpr uint32_t Back  = 1 << 2; // tz == -2
+                constexpr uint32_t Front = 1 << 3; // tz ==  1
+            };
+
             struct TileInstance
             {
                 Vector2  world_offset;   // world-space XZ origin of this tile
                 Vector2  snapped_center; // used for per lod level snapping and vertex morphing
                 float    tile_scale;     // world-space size of this tile
                 uint32_t lod_level;      // which LOD level (for transition blending)
+                uint32_t edge = EdgeFlags::None; // used when generating skirt geometry
             };
             std::vector<TileInstance> instances {};
             std::vector<Entity*> tile_entities {};
             uint32_t tile_resolution = 128;   // vertices per tile side (one tile = res^2 vertices)
             float base_tile_size     = 32.0f; // world-space units for LOD0 tile
-            uint32_t lod_levels      = 6;
+            uint32_t lod_levels      = 4;
+
+            static void apply_skirt(std::vector<RHI_Vertex_PosTexNorTan>* vertices, uint32_t resolution, uint32_t edge_flags, float skirt = 100000.0f)
+            {
+                for (uint32_t z = 0; z <= resolution; z++)
+                {
+                    for (uint32_t x = 0; x <= resolution; x++)
+                    {
+                        auto& v = (*vertices)[z * (resolution + 1) + x];
+
+                        if (x == 0 && (edge_flags & EdgeFlags::Left))  v.pos[0] -= skirt;
+                        if (x == resolution && (edge_flags & EdgeFlags::Right)) v.pos[0] += skirt;
+                        if (z == 0 && (edge_flags & EdgeFlags::Back))  v.pos[2] -= skirt;
+                        if (z == resolution && (edge_flags & EdgeFlags::Front)) v.pos[2] += skirt;
+                    }
+                }
+            }
 
             static void build_clipmap(Vector3 camera_pos)
             {
                 instances.clear();
 
                 // Single snap from finest level - guarantees alignment across all LODs
-                float finest_snap = base_tile_size / tile_resolution * 2.0f;
-                Vector2 snapped_center = {
+                const float finest_snap = base_tile_size / tile_resolution * 2.0f;
+                const Vector2 snapped_center = {
                     floor(camera_pos.x / finest_snap) * finest_snap,
                     floor(camera_pos.z / finest_snap) * finest_snap
                 };
 
                 for (uint32_t lod = 0; lod < lod_levels; lod++)
                 {
-                    float tile_size = base_tile_size * (float)(1 << lod);
+                    const float tile_size = base_tile_size * (float)(1 << lod);
+                    const bool is_outermost = (lod == lod_levels - 1);
 
                     for (int tz = -2; tz < 2; tz++)
                     {
@@ -1645,6 +1670,15 @@ namespace spartan
                             inst.tile_scale = tile_size;
                             inst.lod_level = lod;
                             inst.snapped_center = snapped_center;
+
+                            inst.edge = EdgeFlags::None;
+                            if (is_outermost)
+                            {
+                                if (tx == -2) inst.edge |= EdgeFlags::Left;
+                                if (tx == 1) inst.edge |= EdgeFlags::Right;
+                                if (tz == -2) inst.edge |= EdgeFlags::Back;
+                                if (tz == 1) inst.edge |= EdgeFlags::Front;
+                            }
                             instances.push_back(inst);
                         }
                     }
@@ -1660,37 +1694,71 @@ namespace spartan
 
                 default_ocean = entities::ocean(material, { 0.0f, 0.0f, 0.0f });
 
-                geometry_generation::generate_tile(&tile_vertices, &tile_indices, tile_resolution);
+                //geometry_generation::generate_tile(&tile_vertices, &tile_indices, tile_resolution);
+                // Generate normal tile
+                std::vector<RHI_Vertex_PosTexNorTan> normal_verts{};
+                std::vector<uint32_t> normal_indices{};
+                geometry_generation::generate_tile(&normal_verts, &normal_indices, tile_resolution);
 
-                // create mesh if it doesn't exist
-                shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
-                mesh->SetObjectName("Clipmap Tile Test");
-                mesh->SetRootEntity(default_ocean);
-                mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
-                mesh->AddGeometry(tile_vertices, tile_indices, false);
-                mesh->CreateGpuBuffers();
+                auto make_mesh = [&](const std::string& name,
+                    std::vector<RHI_Vertex_PosTexNorTan>& verts,
+                    std::vector<uint32_t>& indices) -> shared_ptr<Mesh>
+                    {
+                        auto mesh = meshes.emplace_back(make_shared<Mesh>());
+                        mesh->SetObjectName(name);
+                        mesh->SetRootEntity(default_ocean);
+                        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessNormalizeScale), false);
+                        mesh->AddGeometry(verts, indices, false);
+                        mesh->CreateGpuBuffers();
+                        return mesh;
+                    };
 
+                auto make_skirt_mesh = [&](uint32_t flags) -> shared_ptr<Mesh>
+                {
+                    auto verts = normal_verts;
+                    apply_skirt(&verts, tile_resolution, flags);
+                    return make_mesh("Clipmap Skirt Tile", verts, normal_indices);
+                };
+
+                // Create meshes
+                shared_ptr<Mesh> mesh_normal = make_mesh("Clipmap Tile", normal_verts, normal_indices);
+
+                std::unordered_map<uint32_t, shared_ptr<Mesh>> skirt_meshes;
+                skirt_meshes[EdgeFlags::Left] = make_skirt_mesh(EdgeFlags::Left);
+                skirt_meshes[EdgeFlags::Right] = make_skirt_mesh(EdgeFlags::Right);
+                skirt_meshes[EdgeFlags::Back] = make_skirt_mesh(EdgeFlags::Back);
+                skirt_meshes[EdgeFlags::Front] = make_skirt_mesh(EdgeFlags::Front);
+                skirt_meshes[EdgeFlags::Left | EdgeFlags::Back] = make_skirt_mesh(EdgeFlags::Left | EdgeFlags::Back);
+                skirt_meshes[EdgeFlags::Left | EdgeFlags::Front] = make_skirt_mesh(EdgeFlags::Left | EdgeFlags::Front);
+                skirt_meshes[EdgeFlags::Right | EdgeFlags::Back] = make_skirt_mesh(EdgeFlags::Right | EdgeFlags::Back);
+                skirt_meshes[EdgeFlags::Right | EdgeFlags::Front] = make_skirt_mesh(EdgeFlags::Right | EdgeFlags::Front);
+
+                // Build initial clipmap and create entities
                 build_clipmap(default_camera->GetPosition());
 
                 for (const auto& tile_inst : instances)
                 {
                     Entity* entity_tile = World::CreateEntity();
                     entity_tile->SetParent(default_ocean);
-
-                    const Vector3 tile_position = { tile_inst.world_offset.x, 0.0f, tile_inst.world_offset.y };
-                    entity_tile->SetPosition(tile_position);
+                    entity_tile->SetPosition({ tile_inst.world_offset.x, 0.0f, tile_inst.world_offset.y });
                     entity_tile->SetScale({ tile_inst.tile_scale, 1.0f, tile_inst.tile_scale });
+
+                    Mesh* mesh = (tile_inst.edge != EdgeFlags::None)
+                        ? skirt_meshes[tile_inst.edge].get()
+                        : mesh_normal.get();
 
                     material->SetClipmapTileRes(tile_resolution);
 
                     if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
                     {
-                        renderable->SetMesh(mesh.get());
+                        renderable->SetMesh(mesh);
                         renderable->SetMaterial(material);
                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                         renderable->SetOceanClipmapTileScale(tile_inst.tile_scale);
                         renderable->SetOceanClipmapTilePos(tile_inst.world_offset);
+                        renderable->SetOceanClipmapTileSnapCenter(tile_inst.snapped_center);
+                        //renderable->SetOceanClipmapLodLevel(tile_inst.lod_level);
                     }
 
                     tile_entities.emplace_back(entity_tile);
@@ -1706,6 +1774,7 @@ namespace spartan
 
                 Camera* camera = default_camera->GetChildByIndex(0)->GetComponent<Camera>();
                 const Vector3 camera_pos = camera->GetEntity()->GetPosition();
+
                 build_clipmap(camera_pos);
 
                 for (size_t i = 0; i < instances.size(); i++)
@@ -1720,6 +1789,7 @@ namespace spartan
                     {
                         renderable->SetOceanClipmapTileScale(inst.tile_scale);
                         renderable->SetOceanClipmapTilePos(inst.world_offset);
+                        renderable->SetOceanClipmapTileSnapCenter(inst.snapped_center);
                     }
                 }
             }
