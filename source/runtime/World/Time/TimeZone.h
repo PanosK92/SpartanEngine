@@ -28,6 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    /* TODO: The two structs should be refactored into a single struct with const char* members, and the TimeZoneInfo can be
+     * constructed from the TimeZoneDbEntry when needed. This would reduce code duplication and memory usage. */
     struct TimeZoneInfo
     {
         float offset_hours = 0.0f;  // UTC offset in fractional hours (e.g. 5.5 for +05:30)
@@ -37,6 +39,18 @@ namespace spartan
         std::string country_code;   // ISO 3166-1 alpha-2 country code
         std::string tz_code;        // Time zone database identifier (e.g. "America/New_York")
         std::string tz_name;        // Human-readable label (e.g. "United States - Eastern Time")
+    };
+
+    // Consolidated timezone entry - merged from https://www.iana.org/time-zones
+    struct TimeZoneDbEntry
+    {
+        float       offset_hours;   // UTC offset in fractional hours (e.g. 5.5 for +05:30)
+        const char* tz_id;          // IANA tz database identifier (e.g. "EST, CST")
+        float       latitude;       // decimal degrees (south is negative)
+        float       longitude;      // decimal degrees (west is negative)
+        const char* country_code;   // ISO 3166-1 alpha-2
+        const char* tz_code;        // IANA tz database identifier (e.g. "America/New_York")
+        const char* tz_name;        // human-readable label
     };
 
     class TimeZone
@@ -151,6 +165,22 @@ namespace spartan
          * parsing was successful, false otherwise
          */
         static bool ParseTimeZoneOffsetHours(const std::string& text, float& offset_hours);
+
+        // find the first entry whose tz_code matches exactly (nullptr if not found)
+        static const TimeZoneDbEntry* FindByZoneCode(const char* zone_code);
+
+        // find the first entry whose country_code matches exactly (nullptr if not found)
+        static const TimeZoneDbEntry* FindByCountryCode(const char* cc);
+
+        // return all entries that share the given UTC offset (within epsilon)
+        static std::vector<const TimeZoneDbEntry*> FindByOffset(float offset_hours, float epsilon = 0.01f);
+
+        // return all entries for a given country code
+        static std::vector<const TimeZoneDbEntry*> FindAllByCountry(const char* cc);
+
+        // find the entry closest to a given lat/lon (Euclidean approximation)
+        static const TimeZoneDbEntry* FindNearest(float latitude, float longitude);
+
 
     private:
         /**

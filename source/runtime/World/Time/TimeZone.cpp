@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "pch.h"
 #include "TimeZone.h"
-#include "TimeZone_db.cpp"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -52,16 +51,16 @@ namespace spartan
 
         std::string StripWhitespace(std::string value)
         {
-            value.erase(std::remove_if(value.begin(), value.end(), [](unsigned char c)
+            std::erase_if(value, [](unsigned char c)
             {
                 return std::isspace(c) != 0;
-            }), value.end());
+            });
             return value;
         }
 
         std::string ToUpper(std::string value)
         {
-            std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
+            std::ranges::transform(value, value.begin(), [](unsigned char c)
             {
                 return static_cast<char>(std::toupper(c));
             });
@@ -71,7 +70,9 @@ namespace spartan
         bool TryParseOffsetToken(const std::string& value, float& offset_hours)
         {
             if (value.empty())
+            {
                 return false;
+            }
 
             char sign = '+';
             size_t start = 0;
@@ -82,27 +83,36 @@ namespace spartan
             }
 
             if (start >= value.size())
+            {
                 return false;
+            }
 
             std::string token = value.substr(start);
-            size_t colon_index = token.find(':');
-            if (colon_index != std::string::npos)
+            if (size_t colon_index = token.find(':'); colon_index != std::string::npos)
             {
                 std::string hours_text = token.substr(0, colon_index);
                 std::string minutes_text = token.substr(colon_index + 1);
                 if (hours_text.empty() || minutes_text.empty())
+                {
                     return false;
+                }
 
                 char* hours_end = nullptr;
                 char* minutes_end = nullptr;
                 long hours = std::strtol(hours_text.c_str(), &hours_end, 10);
                 long minutes = std::strtol(minutes_text.c_str(), &minutes_end, 10);
                 if (hours_end == hours_text.c_str() || *hours_end != '\0')
+                {
                     return false;
+                }
                 if (minutes_end == minutes_text.c_str() || *minutes_end != '\0')
+                {
                     return false;
+                }
                 if (minutes < 0 || minutes >= 60)
+                {
                     return false;
+                }
 
                 offset_hours = static_cast<float>(hours) + static_cast<float>(minutes) / 60.0f;
             }
@@ -111,7 +121,9 @@ namespace spartan
                 char* end = nullptr;
                 float parsed = std::strtof(token.c_str(), &end);
                 if (end == token.c_str() || *end != '\0')
+                {
                     return false;
+                }
 
                 offset_hours = parsed;
             }
@@ -145,7 +157,7 @@ namespace spartan
     std::string TimeZone::GetTimeZoneName(const float offset_hours)
     {
         // use the compiled-in database to find a matching timezone name
-        auto matches = timezone_db_find_by_offset(offset_hours);
+        auto matches = FindByOffset(offset_hours);
         if (!matches.empty())
         {
             return matches[0]->tz_code;
@@ -199,13 +211,12 @@ namespace spartan
             return false;
         }
 
-        const TimeZoneDbEntry* entry = timezone_db_find_by_zone_code(zone_code.c_str());
-        if (!entry)
+        if (!FindByZoneCode(zone_code.c_str()))
         {
             return false;
         }
 
-        info = ToTimeZoneInfo(*entry);
+        info = ToTimeZoneInfo(*FindByZoneCode(zone_code.c_str()));
         return true;
     }
 
@@ -216,13 +227,12 @@ namespace spartan
             return false;
         }
 
-        const TimeZoneDbEntry* entry = timezone_db_find_by_country_code(country_code.c_str());
-        if (!entry)
+        if (!FindByCountryCode(country_code.c_str()))
         {
             return false;
         }
 
-        info = ToTimeZoneInfo(*entry);
+        info = ToTimeZoneInfo(*FindByCountryCode(country_code.c_str()));
         return true;
     }
 
@@ -234,7 +244,7 @@ namespace spartan
             return results;
         }
 
-        const std::vector<const TimeZoneDbEntry*> matches = timezone_db_find_all_by_country(country_code.c_str());
+        const std::vector<const TimeZoneDbEntry*> matches = FindAllByCountry(country_code.c_str());
         results.reserve(matches.size());
         for (const TimeZoneDbEntry* entry : matches)
         {
@@ -247,7 +257,7 @@ namespace spartan
     std::vector<TimeZoneInfo> TimeZone::GetTimeZonesByOffsetHours(const float offset_hours, const float epsilon)
     {
         std::vector<TimeZoneInfo> results;
-        const std::vector<const TimeZoneDbEntry*> matches = timezone_db_find_by_offset(offset_hours, epsilon);
+        const std::vector<const TimeZoneDbEntry*> matches = FindByOffset(offset_hours, epsilon);
         results.reserve(matches.size());
         for (const TimeZoneDbEntry* entry : matches)
         {
@@ -259,7 +269,7 @@ namespace spartan
 
     bool TimeZone::GetTimeZoneInfoByLocation(const float latitude, const float longitude, TimeZoneInfo& info)
     {
-        const TimeZoneDbEntry* entry = timezone_db_find_nearest(latitude, longitude);
+        const TimeZoneDbEntry* entry = FindNearest(latitude, longitude);
         if (!entry)
         {
             return false;
@@ -299,7 +309,7 @@ namespace spartan
             return true;
         }
 
-        const TimeZoneDbEntry* entry = timezone_db_find_by_zone_code(normalized.c_str());
+        const TimeZoneDbEntry* entry = FindByZoneCode(normalized.c_str());
         if (!entry)
         {
             return false;

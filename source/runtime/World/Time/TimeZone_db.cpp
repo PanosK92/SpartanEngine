@@ -19,32 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====
+//= INCLUDES ========
 #include "pch.h"
 #include "TimeZone.h"
 #include <cmath>
 #include <cstring>
 #include <string>
 #include <vector>
-//================
+//===================
 
 namespace spartan
 {
-    // Consolidated timezone entry - merged from https://www.iana.org/time-zones
-    struct TimeZoneDbEntry
-    {
-        float       offset_hours;   // UTC offset in fractional hours (e.g. 5.5 for +05:30)
-        const char* tz_id;          // IANA tz database identifier (e.g. "EST, CST")
-        float       latitude;       // decimal degrees (south is negative)
-        float       longitude;      // decimal degrees (west is negative)
-        const char* country_code;   // ISO 3166-1 alpha-2
-        const char* tz_code;        // IANA tz database identifier (e.g. "America/New_York")
-        const char* tz_name;        // human-readable label
-    };
-
-    static constexpr size_t k_timezone_db_count = 418;
-
-    static const TimeZoneDbEntry k_timezone_db[] =
+    const TimeZoneDbEntry k_timezone_db[] =
     {
         {    -11.0f, "SST",     28.2167f,   -177.3667f, "UM", "Pacific/Midway", "US minor outlying islands - Midway Islands" },
         {    -11.0f, "NUT",    -19.0167f,   -169.9167f, "NU", "Pacific/Niue", "Niue - Niue" },
@@ -469,7 +455,7 @@ namespace spartan
     // ── lookup helpers ────────────────────────────────────────────────────
 
     // find the first entry whose tz_code matches exactly (nullptr if not found)
-    static const TimeZoneDbEntry* timezone_db_find_by_zone_code(const char* zone_code)
+    const TimeZoneDbEntry* TimeZone::FindByZoneCode(const char* zone_code)
     {
         for (const auto& i : k_timezone_db)
         {
@@ -482,7 +468,7 @@ namespace spartan
     }
 
     // find the first entry whose country_code matches exactly (nullptr if not found)
-    static const TimeZoneDbEntry* timezone_db_find_by_country_code(const char* cc)
+    const TimeZoneDbEntry* TimeZone::FindByCountryCode(const char* cc)
     {
         for (const auto& i : k_timezone_db)
         {
@@ -495,7 +481,7 @@ namespace spartan
     }
 
     // return all entries that share the given UTC offset (within epsilon)
-    static std::vector<const TimeZoneDbEntry*> timezone_db_find_by_offset(const float offset_hours, float epsilon = 0.01f)
+    std::vector<const TimeZoneDbEntry*> TimeZone::FindByOffset(float offset_hours, float epsilon)
     {
         std::vector<const TimeZoneDbEntry*> results;
         for (const auto& i : k_timezone_db)
@@ -509,7 +495,7 @@ namespace spartan
     }
 
     // return all entries for a given country code
-    static std::vector<const TimeZoneDbEntry*> timezone_db_find_all_by_country(const char* cc)
+    std::vector<const TimeZoneDbEntry*> TimeZone::FindAllByCountry(const char* cc)
     {
         std::vector<const TimeZoneDbEntry*> results;
         for (const auto& i : k_timezone_db)
@@ -523,7 +509,7 @@ namespace spartan
     }
 
     // find the entry closest to a given lat/lon (Euclidean approximation)
-    static const TimeZoneDbEntry* timezone_db_find_nearest(float latitude, float longitude)
+    const TimeZoneDbEntry* TimeZone::FindNearest(float latitude, float longitude)
     {
         const TimeZoneDbEntry* best = nullptr;
         float best_dist = 1e30f;
