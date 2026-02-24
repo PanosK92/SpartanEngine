@@ -37,13 +37,30 @@ namespace spartan
 
         virtual ~Calendar() = default;
 
+        /**
+         * @brief Advances the in-game time by a specified duration. This method should be called regularly (e.g., every frame) to
+         * update the calendar's internal time state.
+         * @param delta The amount of time to advance, typically in milliseconds. The actual time progression in the game world
+         * will depend on how this delta is calculated (e.g., based on real time or a fixed time step).
+         */
         virtual void AdvanceTime(std::chrono::milliseconds delta);
+
+        /**
+         * @brief Retrieves the current in-game time.
+         * @return The current time point representing the in-game time.
+         */
         [[nodiscard]] virtual TimePoint GetCurrentTime() const;
 
+        /**
+         * @brief Retrieves the singleton instance of the Calendar.
+         * @return A reference to the singleton Calendar
+         * instance.
+         */
         static Calendar& Instance();
         static void SetInstance(std::shared_ptr<Calendar> calendar);
         static void DestroyInstance();
         static void ResetInstance();
+        static void SetCurrentTimeOffset(std::chrono::seconds offset);
 
         static bool IsLeapYear(int year);
         static int  GetDaysInMonth(int year, int month);
@@ -51,14 +68,22 @@ namespace spartan
         static int  GetCurrentYear();
         static int  GetCurrentMonth();
         static int  GetCurrentDay();
+        static unsigned int GetLengthOfMonth(int month, bool leap);
 
         static double GetTimeInDays(int year, int month, int day, int hour, int minute, int second);
         [[nodiscard]] virtual double GetTimeInSeconds(int year, int month, int day, int hour, int minute, int second) const;
         [[nodiscard]] virtual double GetTimeInHours(int year, int month, int day, int hour, int minute, int second) const;
 
-        static bool IsValidDate(int year, int month, int day);
+        /**
+         * @brief Checks if the given date is valid according to the calendar rules.
+         * @param year The year to check.
 
-        static unsigned int GetLengthOfMonth(int month, bool leap);
+         * * @param month The month to check.
+         * @param day The day to check.
+         * @return True if the date is
+         * valid, false otherwise.
+         */
+        static bool IsValidDate(int year, int month, int day);
 
         static std::string GetMonthName(int month);
         static std::string GetDayName(int day);
@@ -83,7 +108,11 @@ namespace spartan
         [[nodiscard]] double GetDateInDays(int year, int month, int day) const;
 
     private:
-	TimePoint currentTime;
+        TimePoint m_current_time;
+        int m_months = 12;
+        int m_days_in_year = 365;
+        bool m_is_leap_year = false;
+        int m_year = 0;
     };
 
 }  // namespace spartan

@@ -38,30 +38,15 @@ namespace spartan
         std::shared_ptr<Calendar> calendar_instance;
     }
 
-    double Calendar::GetDateInDays(const int year, const int month, const int day) const
+    void Calendar::AdvanceTime(const milliseconds delta)
     {
-        SP_ASSERT_MSG(year > 0, "Year must be greater than 0");
-        SP_ASSERT_MSG(month >= 1 && month <= 12, "Month must be in range 1..12");
-        SP_ASSERT_MSG(day >= 1 && day <= GetDaysInMonthImpl(year, month), "Day must be in valid range");
-
-    int totalDays = 0;
-    for (int y = 1; y < year; ++y)
-    {
-        totalDays += IsLeapYearImpl(y) ? 366 : 365;
+        m_current_time += delta;
     }
 
-        for (int m = 1; m < month; ++m)
-        {
-            totalDays += GetDaysInMonthImpl(year, m);
-        }
-        totalDays += day - 1;
-
-    return static_cast<double>(totalDays);
+    Calendar::TimePoint Calendar::GetCurrentTime() const
+    {
+        return m_current_time;
     }
-
-    void Calendar::AdvanceTime(const milliseconds delta) { currentTime += delta; }
-
-    Calendar::TimePoint Calendar::GetCurrentTime() const { return currentTime; }
 
     Calendar& Calendar::Instance()
     {
@@ -91,17 +76,40 @@ namespace spartan
         calendar_instance = std::make_shared<Calendar>();
     }
 
-    bool Calendar::IsLeapYear(const int year) { return Instance().IsLeapYearImpl(year); }
+    void Calendar::SetCurrentTimeOffset(const seconds offset)
+    {
+        Instance().m_current_time = TimePoint(offset);
+    }
 
-    int Calendar::GetDaysInMonth(const int year, const int month) { return Instance().GetDaysInMonthImpl(year, month); }
+    bool Calendar::IsLeapYear(const int year)
+    {
+        return Instance().IsLeapYearImpl(year);
+    }
 
-    int Calendar::GetDaysInYear(const int year) { return Instance().GetDaysInYearImpl(year); }
+    int Calendar::GetDaysInMonth(const int year, const int month)
+    {
+        return Instance().GetDaysInMonthImpl(year, month);
+    }
 
-    int Calendar::GetCurrentYear() { return Instance().GetCurrentYearImpl(); }
+    int Calendar::GetDaysInYear(const int year)
+    {
+        return Instance().GetDaysInYearImpl(year);
+    }
 
-    int Calendar::GetCurrentMonth() { return Instance().GetCurrentMonthImpl(); }
+    int Calendar::GetCurrentYear()
+    {
+        return Instance().GetCurrentYearImpl();
+    }
 
-    int Calendar::GetCurrentDay() { return Instance().GetCurrentDayImpl(); }
+    int Calendar::GetCurrentMonth()
+    {
+        return Instance().GetCurrentMonthImpl();
+    }
+
+    int Calendar::GetCurrentDay()
+    {
+        return Instance().GetCurrentDayImpl();
+    }
 
     double Calendar::GetTimeInDays(const int year, const int month, const int day, const int hour, const int minute, const int second)
     {
@@ -152,7 +160,10 @@ namespace spartan
     {
         if (year % 4 == 0)
         {
-            if (year % 100 == 0) { return year % 400 == 0; }
+            if (year % 100 == 0)
+            {
+                return year % 400 == 0;
+            }
 
             return true;
         }
@@ -224,15 +235,23 @@ namespace spartan
             return false;
 
         if (int daysInMonth = GetDaysInMonthImpl(year, month); day < 1 || day > daysInMonth)
+        {
             return false;
+        }
 
         return true;
     }
 
     unsigned int Calendar::GetLengthOfMonthImpl(const int month, const bool leap) const
     {
+        SP_ASSERT_MSG(month >= 1 && month <= 12, "Month must be in range 1..12");
         switch (month)
         {
+            case 2: return leap ? 29 : 28;
+            case 4: 
+            case 6:
+            case 9:
+            case 11:return 30;
             case 1:
             case 3:
             case 5:
@@ -240,18 +259,31 @@ namespace spartan
             case 8:
             case 10:
             case 12: return 31;
-            case 2: return leap ? 29 : 28;
-            default: throw std::invalid_argument("Month must be in range 1..12");
         }
-        return 30;
+        return 0;
     }
 
     std::string Calendar::GetMonthNameImpl(const int month) const
     {
         SP_ASSERT_MSG(month >= 1 && month <= 12, "Month must be in range 1..12");
-        static const char* monthNames[12] = {"January", "February", "March",     "April",   "May",      "June",
-                                             "July",    "August",   "September", "October", "November", "December"};
-        if (month < 1 || month > 12) { throw std::invalid_argument("Month must be in range 1..12"); }
+        static const char* monthNames[12] = {
+            "January", 
+            "February", 
+            "March",     
+            "April",   
+            "May",      
+            "June",
+            "July",    
+            "August",   
+            "September", 
+            "October", 
+            "November", 
+            "December"
+        };
+        if (month < 1 || month > 12)
+        {
+            SP_ASSERT_MSG(false, "Month must be in range 1..12");
+        }
         return monthNames[month - 1];
     }
 
@@ -267,7 +299,7 @@ namespace spartan
     {
         SP_ASSERT_MSG(month >= 1 && month <= 12, "Month must be in range 1..12");
         static const char* seasonNames[4] = {"Winter", "Spring", "Summer", "Fall"};
-        const char* season = nullptr;
+        const char* season                = nullptr;
         switch (month)
         {
             case 12:
@@ -282,7 +314,7 @@ namespace spartan
             case 9:
             case 10:
             case 11: season = seasonNames[3]; break;
-            default: throw std::invalid_argument("Month must be in range 1..12");
+            default: SP_LOG_ERROR("Month must be in range 1..12");
         }
 
         return season;
@@ -291,8 +323,16 @@ namespace spartan
     std::string Calendar::GetDayCycleNameImpl(const float timeOfDay) const
     {
         SP_ASSERT_MSG(timeOfDay >= 0.0f && timeOfDay < 24.0f, "Time of day must be in range 0..24");
-        static const char* dayCycleNames[4] = {"Night", "Morning", "Afternoon", "Evening"};
-        const char* dayCycle = nullptr;
+
+        static const char* dayCycleNames[4] = {
+            "Night", 
+            "Morning", 
+            "Afternoon", 
+            "Evening"
+        };
+
+        const char* dayCycle                = nullptr;
+
         if (timeOfDay >= 0.0f && timeOfDay < 6.0f)
         {
             dayCycle = dayCycleNames[0];
@@ -311,10 +351,32 @@ namespace spartan
         }
         else
         {
-            throw std::invalid_argument("Time of day must be in range 0..24");
+            SP_LOG_ERROR("Time of day must be in range 0..24");
         }
 
         return dayCycle;
+    }
+
+    double Calendar::GetDateInDays(const int year, const int month, const int day) const
+    {
+        SP_ASSERT_MSG(year > 0, "Year must be greater than 0");
+        SP_ASSERT_MSG(month >= 1 && month <= 12, "Month must be in range 1..12");
+        SP_ASSERT_MSG(day >= 1 && day <= GetDaysInMonthImpl(year, month), "Day must be in valid range");
+
+        int totalDays = 0;
+        for (int y = 1; y < year; ++y)
+        {
+            totalDays += IsLeapYearImpl(y) ? 366 : 365;
+        }
+
+        for (int m = 1; m < month; ++m)
+        {
+            totalDays += GetDaysInMonthImpl(year, m);
+        }
+
+        totalDays += day - 1;
+
+        return totalDays;
     }
 
 }

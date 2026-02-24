@@ -609,51 +609,6 @@ namespace spartan
 
     }
 
-    namespace world_time
-    {
-        // simulated time
-        float time_of_day = 0.25f; // 6 AM
-        float time_scale = 200.0f; // 200x real time
-
-        // tick simulated time every frame
-        void tick()
-        {
-            time_of_day += (static_cast<float>(Timer::GetDeltaTimeSec()) * time_scale) / 86400.0f;
-            if (time_of_day >= 1.0f)
-            {
-                time_of_day -= 1.0f;
-            }
-            else if (time_of_day < 0.0f)
-            {
-                time_of_day = 0.0f;
-            }
-        }
-
-        // get current time of day based on boolean
-        float get_time_of_day(bool use_real_world_time)
-        {
-            if (use_real_world_time)
-            {
-                using namespace std::chrono;
-                auto now = system_clock::now();
-                time_t t = system_clock::to_time_t(now);
-                tm local_time = {};
-            #if defined(_WIN32)
-                localtime_s(&local_time, &t);
-            #else
-                localtime_r(&t, &local_time);
-            #endif
-                float hours = static_cast<float>(local_time.tm_hour);
-                float minutes = static_cast<float>(local_time.tm_min);
-                float seconds = static_cast<float>(local_time.tm_sec);
-                return (hours + minutes / 60.0f + seconds / 3600.0f) / 24.0f;
-            }
-
-            // return simulated time if not using real-world time
-            return time_of_day;
-        }
-    }
-
     void World::ProcessPendingRemovals()
     {
         lock_guard<mutex> lock(entity_access_mutex);
@@ -759,7 +714,7 @@ namespace spartan
                     play_mode_snapshot[entity->GetObjectId()] = snapshot;
                 }
             }
-            play_mode_time_of_day = world_time::time_of_day;
+            play_mode_time_of_day = DateTime::GetTimeOfDay();
 
             for (Entity* entity : entities)
             {
@@ -788,7 +743,7 @@ namespace spartan
                 }
             }
             play_mode_snapshot.clear();
-            world_time::time_of_day = play_mode_time_of_day;
+            DateTime::SetTimeOfDay(play_mode_time_of_day);
         }
 
         ProcessPendingRemovals();
@@ -921,7 +876,7 @@ namespace spartan
 
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
-            world_time::tick();
+            DateTime::Tick();
             Game::Tick();
         }
     }
