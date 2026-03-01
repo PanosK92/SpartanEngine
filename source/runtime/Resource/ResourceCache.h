@@ -108,6 +108,7 @@ namespace spartan
         template <class T>
         static std::shared_ptr<T> GetByPath(const std::string& path)
         {
+            std::lock_guard<std::recursive_mutex> guard(GetMutex());
             for (std::shared_ptr<IResource>& resource : GetResources())
             {
                 if (path == resource->GetResourceFilePath())
@@ -129,13 +130,16 @@ namespace spartan
                 return nullptr;
             }
 
+            std::lock_guard<std::recursive_mutex> guard(GetMutex());
+
             // return cached resource if it already exists
-            std::shared_ptr<T> existing = GetByPath<T>(resource->GetResourceFilePath());
-            if (existing.get() != nullptr)
-                return existing;
+            for (std::shared_ptr<IResource>& existing : GetResources())
+            {
+                if (resource->GetResourceFilePath() == existing->GetResourceFilePath())
+                    return std::static_pointer_cast<T>(existing);
+            }
 
             // if not, cache it and return the cached resource
-            std::lock_guard<std::mutex> guard(GetMutex());
             return std::static_pointer_cast<T>(GetResources().emplace_back(resource));
         }
 
@@ -197,7 +201,7 @@ namespace spartan
 
         // misc
         static std::vector<std::shared_ptr<IResource>>& GetResources();
-        static std::mutex& GetMutex();
+        static std::recursive_mutex& GetMutex();
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
         static RHI_Texture* GetIcon(IconType type);

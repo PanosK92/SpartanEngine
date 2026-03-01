@@ -41,9 +41,6 @@ struct Vertex_PosUvNorTan
     uint instance_scale            : INSTANCE_SCALE;
 };
 
-// loads vertex data from the global geometry buffer instead of relying on fixed-function
-// input assembly. indirect draws always use identity instances since per-draw transforms
-// come from the indirect draw data buffer, so instance fields are zeroed.
 Vertex_PosUvNorTan pull_vertex(uint vertex_id)
 {
     PulledVertex pulled = geometry_vertices[vertex_id];

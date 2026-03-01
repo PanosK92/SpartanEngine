@@ -30,7 +30,7 @@ struct gbuffer
     float2 velocity : SV_Target3;
 };
 
-//= CONSTANTS =====================
+// constants
 static const float3 vegetation_greener  = float3(0.05f, 0.4f, 0.03f);
 static const float3 vegetation_yellower = float3(0.45f, 0.4f, 0.15f);
 static const float3 vegetation_browner  = float3(0.3f, 0.15f, 0.08f);
@@ -43,7 +43,6 @@ static const float3 flower_blue         = float3(0.529f, 0.808f, 0.922f);
 static const float3 flower_red          = float3(0.8f, 0.2f, 0.2f);
 static const float3 flower_yellow       = float3(0.9f, 0.8f, 0.1f);
 static const float3 snow_color          = float3(0.95f, 0.95f, 0.95f);
-//=================================
 
 // rotate uv around center (0.5, 0.5) by angle
 static float2 rotate_uv(float2 uv, float angle)

@@ -219,15 +219,15 @@ SamplerComparisonState samplers_comparison[]             : register(s0,  space6)
 SamplerState samplers[]                                  : register(s1,  space7);
 
 // storage textures/buffers (image_format unknown allows flexible format binding)
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav                                : register(u0);
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav2                               : register(u1);
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav3                               : register(u2);
-[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4                               : register(u3);
-[[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav                              : register(u4);
-[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss                       : register(u5);
-RWStructuredBuffer<uint> visibility                                                        : register(u6); // unused, kept for descriptor layout stability
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter                                 : register(u7); // used by FidelityFX SPD
-[[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u8); // used by FidelityFX SPD
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav                           : register(u0);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav2                          : register(u1);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav3                          : register(u2);
+[[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav4                          : register(u3);
+[[vk::image_format("unknown")]] RWTexture3D<float4> tex3d_uav                         : register(u4);
+[[vk::image_format("unknown")]] RWTexture2DArray<float4> tex_uav_sss                  : register(u5);
+RWStructuredBuffer<uint> visibility                                                   : register(u6); // unused, kept for descriptor layout stability
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter                            : register(u7); // used by FidelityFX SPD
+[[vk::image_format("unknown")]] globallycoherent RWTexture2D<float4> tex_uav_mips[12] : register(u8); // used by FidelityFX SPD
 // nrd denoiser output bindings
 [[vk::image_format("r16f")]]    RWTexture2D<float> tex_uav_nrd_viewz             : register(u26);
 [[vk::image_format("unknown")]] RWTexture2D<float4> tex_uav_nrd_normal_roughness : register(u27);
@@ -277,9 +277,9 @@ struct PackedInstance
     uint yaw_scale;  // yaw_packed (uint8) | scale_packed (uint8) | padding (uint16)
 };
 
-StructuredBuffer<PulledVertex> geometry_vertices         : register(t20, space8);
-StructuredBuffer<uint> geometry_indices                  : register(t22, space9);
-StructuredBuffer<PackedInstance> geometry_instances       : register(t23, space10);
+StructuredBuffer<PulledVertex> geometry_vertices    : register(t20, space8);
+StructuredBuffer<uint> geometry_indices             : register(t22, space9);
+StructuredBuffer<PackedInstance> geometry_instances : register(t23, space10);
 
 // gpu-driven indirect drawing uav bindings
 // input: populated by cpu, read by the cull compute shader
@@ -328,8 +328,8 @@ RWStructuredBuffer<EmitterParams> particle_emitter  : register(u39);
 
 // gpu texture compression
 RWStructuredBuffer<uint>  tex_compress_in      : register(u40);
-RWStructuredBuffer<uint4> tex_compress_out      : register(u41); // bc3, bc5 (16 bytes per block)
-RWStructuredBuffer<uint2> tex_compress_out_bc1  : register(u42); // bc1 (8 bytes per block)
+RWStructuredBuffer<uint4> tex_compress_out     : register(u41); // bc3, bc5 (16 bytes per block)
+RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u42); // bc1 (8 bytes per block)
 
 // buffers
 [[vk::push_constant]]

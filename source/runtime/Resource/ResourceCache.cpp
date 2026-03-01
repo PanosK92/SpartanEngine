@@ -43,7 +43,7 @@ namespace spartan
         array<string, 6> m_standard_resource_directories;
         char m_project_directory[256] = {};
         vector<shared_ptr<IResource>> m_resources;
-        mutex m_mutex;
+        recursive_mutex m_mutex;
         bool use_root_shader_directory = false;
         unordered_map<IconType, shared_ptr<RHI_Texture>> m_default_icons;
     }
@@ -137,7 +137,7 @@ namespace spartan
 
     shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
     {
-        lock_guard<mutex> guard(m_mutex);
+        lock_guard<recursive_mutex> guard(m_mutex);
         for (shared_ptr<IResource>& resource : m_resources)
         {
             if (name == resource->GetObjectName() && (type == ResourceType::Max || resource->GetResourceType() == type))
@@ -149,7 +149,7 @@ namespace spartan
 
     vector<shared_ptr<IResource>> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
     {
-        lock_guard<mutex> guard(m_mutex);
+        lock_guard<recursive_mutex> guard(m_mutex);
         vector<shared_ptr<IResource>> resources;
         for (shared_ptr<IResource>& resource : m_resources)
         {
@@ -163,7 +163,7 @@ namespace spartan
 
     uint64_t ResourceCache::GetMemoryUsage(ResourceType type /*= Resource_Unknown*/)
     {
-        lock_guard<mutex> guard(m_mutex);
+        lock_guard<recursive_mutex> guard(m_mutex);
         uint64_t size = 0;
         for (shared_ptr<IResource>& resource : m_resources)
         {
@@ -236,7 +236,7 @@ namespace spartan
         return m_resources;
     }
 
-    mutex& ResourceCache::GetMutex()
+    recursive_mutex& ResourceCache::GetMutex()
     {
         return m_mutex;
     }

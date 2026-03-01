@@ -1197,10 +1197,10 @@ namespace spartan
             // defer removal
             pending_remove.insert(ids_to_remove.begin(), ids_to_remove.end());
 
-            // if there was a parent, update it
+            // detach from parent so it won't hold a dangling pointer after deferred deletion
             if (Entity* parent = entity_to_remove->GetParent())
             {
-                parent->AcquireChildren();
+                parent->RemoveChild(entity_to_remove, false);
             }
         }
 
