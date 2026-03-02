@@ -124,6 +124,29 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     return light_radiance * sss_term * thickness_modulation * sss_strength * sss_color;
 }
 
+// Ocean subsurface scattering
+float3 ocean_subsurface(Surface surface, Light light, AngularInfo angular_info)
+{
+    // Subsurface scattering approximation
+    // Light that transmits through the wave crests
+    float3 scatter_color = float3(0.0f, 0.05f, 0.1f); // deep ocean scatter
+    
+    // View-dependent scattering: stronger when looking toward the light
+    // through thin wave crests
+    float v_dot_l = max(0.0f, dot(surface.camera_to_pixel, light.forward));
+    float sss_intensity = pow(saturate(v_dot_l), 4.0f) * 0.5f;
+    
+    // Height-dependent: thin wave crests scatter more
+    // Use the displacement Y to approximate wave height
+    float wave_height = surface.position.y;
+    sss_intensity *= wave_height;
+    
+    // Fresnel modulation: light that doesn't reflect enters the volume
+    float fresnel_transmit = 1.0f - F_Schlick(surface.F0, 1.0f, angular_info.n_dot_v);
+    
+    return scatter_color * sss_intensity * fresnel_transmit * light.radiance;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -207,7 +230,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 {
                     L_specular_sum += BRDF_Specular_Anisotropic(surface, angular_info);
                 }
-                else
+                else if (!surface.is_ocean())
                 {
                     L_specular_sum += BRDF_Specular_Isotropic(surface, angular_info);
                 }
@@ -228,6 +251,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 if (surface.subsurface_scattering > 0.0f)
                 {
                     L_subsurface += subsurface_scattering(surface, light, angular_info);
+                }
+
+                // ocean specific specular and subsurface
+                if (surface.is_ocean())
+                {
+                    L_specular_sum = BRDF_Specular_Isotropic(surface, angular_info);
+
+                    L_subsurface = ocean_subsurface(surface, light, angular_info);
                 }
             }
             

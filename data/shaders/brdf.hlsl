@@ -56,7 +56,10 @@ float3 Diffuse_Burley(float3 diffuse_color, float roughness, float n_dot_v, floa
 
 float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
 {
-    return Diffuse_Burley(surface.albedo, surface.roughness, angular_info.n_dot_v, angular_info.n_dot_l, angular_info.v_dot_h);
+    if (surface.is_ocean())
+        return Diffuse_Burley(surface.albedo, surface.roughness, angular_info.n_dot_v, angular_info.n_dot_l, angular_info.v_dot_h);
+    else
+        return float3(0.0f, 0.0f, 0.0f); // ocean diffuse comes from scattering, not albedo
 }
 
 /*------------------------------------------------------------------------------

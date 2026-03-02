@@ -133,7 +133,7 @@ struct Surface
         roughness             = sample_material.r;
         metallic              = sample_material.g;
         emissive              = sample_material.b;
-        F0                    = lerp(0.04f, albedo, metallic);
+        F0                    = flags & uint(1U << 16) ? 0.02f : lerp(0.04f, albedo, metallic);
         anisotropic           = material.anisotropic;
         anisotropic_rotation  = material.anisotropic_rotation;
         clearcoat             = material.clearcoat;
