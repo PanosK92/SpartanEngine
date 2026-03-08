@@ -378,7 +378,7 @@ namespace spartan
                 entities::sun(LightPreset::dusk, true);
                 entities::music("project/music/jake_chudnow_olive.wav");
                 entities::floor();
-                Renderer::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
+                World::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
                 const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
                 const float scale      = 1.5f;

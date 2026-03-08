@@ -80,6 +80,10 @@ namespace spartan
         static float GetTimeOfDay(bool use_real_world_time = false);
         static void SetTimeOfDay(float time_of_day);
 
+        // wind
+        static const math::Vector3& GetWind();
+        static void SetWind(const math::Vector3& wind);
+
         // world metadata
         static const std::string& GetDescription();
         static void SetDescription(const std::string& description);

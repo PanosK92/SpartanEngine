@@ -415,6 +415,14 @@ namespace spartan
         return m_mesh->HasBlas(m_sub_mesh_index);
     }
 
+    void Render::InvalidateAccelerationStructure()
+    {
+        if (m_mesh)
+        {
+            m_mesh->InvalidateBlas(m_sub_mesh_index);
+        }
+    }
+
     uint64_t Render::GetAccelerationStructureDeviceAddress() const
     {
         if (!m_mesh)

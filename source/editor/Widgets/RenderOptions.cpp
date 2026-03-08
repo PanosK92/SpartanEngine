@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Timer.h"
 #include "RHI/RHI_Device.h"
 #include "Rendering/Renderer.h"
+#include "World/World.h"
 #include "../ImGui/ImGui_Extension.h"
 //===================================
 
@@ -385,7 +386,7 @@ void RenderOptions::OnTickVisible()
 
                 if (option_header("Wind"))
                 {
-                    Vector3 wind = Renderer::GetWind();
+                    Vector3 wind = World::GetWind();
                     float strength = wind.Length();
                     float direction = atan2f(wind.x, wind.z) * (180.0f / 3.14159f);
 
@@ -398,10 +399,10 @@ void RenderOptions::OnTickVisible()
                         float radians = direction * (3.14159f / 180.0f);
                         wind.x = sinf(radians) * strength;
                         wind.z = cosf(radians) * strength;
-                        Renderer::SetWind(wind);
+                        World::SetWind(wind);
                     }
                     
-                    ImGuiSp::tooltip("Wind affects cloud movement and shape evolution");
+                    ImGuiSp::tooltip("Wind affects clouds, vegetation, and cloth simulation");
                 }
 
                 ImGui::EndTable();

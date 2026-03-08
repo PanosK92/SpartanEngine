@@ -300,6 +300,8 @@ namespace spartan
             WorldTable["GetAudioSourceCount"]       = &World::GetAudioSourceCount;
             WorldTable["GetTimeOfDay"]              = &World::GetTimeOfDay;
             WorldTable["SetTimeOfDay"]              = &World::SetTimeOfDay;
+            WorldTable["GetWind"]                   = &World::GetWind;
+            WorldTable["SetWind"]                   = &World::SetWind;
             WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
 
 
@@ -644,6 +646,18 @@ namespace spartan
         }
     }
 
+    namespace world_wind
+    {
+        Vector3 wind = Vector3::Zero;
+
+        void initialize()
+        {
+            float rotation_y      = 120.0f * math::deg_to_rad;
+            const float intensity = 3.0f;
+            wind = Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity;
+        }
+    }
+
     void World::ProcessPendingRemovals()
     {
         lock_guard<mutex> lock(entity_access_mutex);
@@ -688,6 +702,7 @@ namespace spartan
     void World::Initialize()
     {
         InitializeCoreLua();
+        world_wind::initialize();
     }
 
     void World::Shutdown()
@@ -1469,6 +1484,16 @@ namespace spartan
         else if (time_of_day > 1.0f)
             time_of_day = 1.0f;
         world_time::time_of_day = time_of_day;
+    }
+
+    const Vector3& World::GetWind()
+    {
+        return world_wind::wind;
+    }
+
+    void World::SetWind(const Vector3& wind)
+    {
+        world_wind::wind = wind;
     }
 
     const string& World::GetDescription()

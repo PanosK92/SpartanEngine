@@ -69,6 +69,7 @@ namespace spartan
         const std::string& GetMeshName() const;
         void BuildAccelerationStructure(RHI_CommandList* cmd_list);
         bool HasAccelerationStructure() const;
+        void InvalidateAccelerationStructure();
         uint64_t GetAccelerationStructureDeviceAddress() const;
 
         // bounding box

@@ -127,6 +127,7 @@ namespace spartan
         // acceleration structure - one blas per sub-mesh to avoid shared geometry issues
         RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const;
         bool HasBlas(uint32_t sub_mesh_index) const;
+        void InvalidateBlas(uint32_t sub_mesh_index);
 
     private:
         // geometry

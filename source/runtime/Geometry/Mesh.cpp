@@ -502,4 +502,12 @@ namespace spartan
 
         return m_blas[sub_mesh_index] != nullptr;
     }
+
+    void Mesh::InvalidateBlas(uint32_t sub_mesh_index)
+    {
+        if (sub_mesh_index < m_blas.size())
+        {
+            m_blas[sub_mesh_index].reset();
+        }
+    }
 }

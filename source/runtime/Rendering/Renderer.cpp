@@ -162,12 +162,7 @@ namespace spartan
             // default tonemapping
             ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
 
-            // default wind
-            {
-                float rotation_y      = 120.0f * math::deg_to_rad;
-                const float intensity = 3.0f; // meters per second
-                SetWind(Vector3(sin(rotation_y), 0.0f, cos(rotation_y)) * intensity);
-            }
+            // wind is owned by World, initialized in World::Initialize()
         }
 
         // resolution (settings or editor may override later)
@@ -710,6 +705,7 @@ namespace spartan
 
         m_cb_frame_cpu.cloud_coverage = cvar_cloud_coverage.GetValue();
         m_cb_frame_cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
+        m_cb_frame_cpu.wind           = World::GetWind();
         // feature bits (must match common_resources.hlsl)
         m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(), 1 << 0);
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
@@ -721,12 +717,12 @@ namespace spartan
 
     const Vector3& Renderer::GetWind()
     {
-        return m_cb_frame_cpu.wind;
+        return World::GetWind();
     }
 
     void Renderer::SetWind(const math::Vector3& wind)
     {
-        m_cb_frame_cpu.wind = wind;
+        World::SetWind(wind);
     }
 
     void Renderer::OnFullScreenToggled()
@@ -1389,11 +1385,6 @@ namespace spartan
                         }
                     }
                 }
-            }
-            
-            if (blas_built > 0 || blas_skipped > 0)
-            {
-                SP_LOG_INFO("Ray tracing: built %u BLAS, skipped %u (no sub-meshes)", blas_built, blas_skipped);
             }
         }
 

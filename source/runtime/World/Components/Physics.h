@@ -56,7 +56,7 @@ namespace spartan
         MeshConvex, // compound shape built from convex hulls of entity hierarchy meshes
         Controller,
         Vehicle,
-        Cloth, // deformable surface simulated via verlet integration
+        Cloth,      // deformable surface simulated via verlet integration
         Max
     };
 
@@ -283,6 +283,8 @@ namespace spartan
         void  SetClothDamping(float damping)       { m_cloth_damping = std::clamp(damping, 0.0f, 1.0f); }
         uint32_t GetClothIterations() const        { return m_cloth_iterations; }
         void     SetClothIterations(uint32_t count) { m_cloth_iterations = std::clamp(count, 1u, 32u); }
+        bool GetClothWindEnabled() const             { return m_cloth_wind_enabled; }
+        void SetClothWindEnabled(bool enabled)       { m_cloth_wind_enabled = enabled; }
 
     private:
         // tick helpers (broken out for readability)
@@ -362,10 +364,12 @@ namespace spartan
         std::vector<ClothConstraint> m_cloth_constraints;
         std::vector<uint32_t> m_cloth_indices;           // triangle indices for normal recalculation
         std::vector<RHI_Vertex_PosTexNorTan> m_cloth_base_vertices; // cached original vertices (for tex/tan preservation)
+        std::vector<uint32_t> m_cloth_weld_map;          // maps each vertex to its canonical (lowest-index coincident) vertex
         uint32_t m_cloth_global_vertex_offset = 0;       // offset into the global geometry buffer
         uint32_t m_cloth_vertex_count         = 0;
         float m_cloth_stiffness               = 0.9f;    // constraint stiffness (0-1)
         float m_cloth_damping                 = 0.01f;   // velocity damping (0-1)
         uint32_t m_cloth_iterations           = 8;       // constraint solver iterations per step
+        bool m_cloth_wind_enabled             = true;
     };
 }

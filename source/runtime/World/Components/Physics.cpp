@@ -227,6 +227,7 @@ namespace spartan
         m_cloth_constraints.clear();
         m_cloth_indices.clear();
         m_cloth_base_vertices.clear();
+        m_cloth_weld_map.clear();
         m_cloth_vertex_count         = 0;
         m_cloth_global_vertex_offset = 0;
     }
@@ -549,9 +550,10 @@ namespace spartan
         node.append_attribute("body_type")        = static_cast<int>(m_body_type);
 
         // cloth parameters
-        node.append_attribute("cloth_stiffness")  = m_cloth_stiffness;
-        node.append_attribute("cloth_damping")     = m_cloth_damping;
-        node.append_attribute("cloth_iterations")  = m_cloth_iterations;
+        node.append_attribute("cloth_stiffness")      = m_cloth_stiffness;
+        node.append_attribute("cloth_damping")         = m_cloth_damping;
+        node.append_attribute("cloth_iterations")      = m_cloth_iterations;
+        node.append_attribute("cloth_wind_enabled")    = m_cloth_wind_enabled;
     }
 
     void Physics::Load(pugi::xml_node& node)
@@ -574,9 +576,10 @@ namespace spartan
         m_body_type        = static_cast<BodyType>(node.attribute("body_type").as_int(static_cast<int>(BodyType::Max)));
 
         // cloth parameters
-        m_cloth_stiffness  = node.attribute("cloth_stiffness").as_float(0.9f);
-        m_cloth_damping    = node.attribute("cloth_damping").as_float(0.01f);
-        m_cloth_iterations = node.attribute("cloth_iterations").as_uint(8);
+        m_cloth_stiffness    = node.attribute("cloth_stiffness").as_float(0.9f);
+        m_cloth_damping      = node.attribute("cloth_damping").as_float(0.01f);
+        m_cloth_iterations   = node.attribute("cloth_iterations").as_uint(8);
+        m_cloth_wind_enabled = node.attribute("cloth_wind_enabled").as_bool(true);
 
         // defer creation until tick so that renderable component is available
         // (components load in enum order, and renderable comes after physics)
@@ -719,7 +722,9 @@ namespace spartan
             "GetClothDamping",              &Physics::GetClothDamping,
             "SetClothDamping",              &Physics::SetClothDamping,
             "GetClothIterations",           &Physics::GetClothIterations,
-            "SetClothIterations",           &Physics::SetClothIterations
+            "SetClothIterations",           &Physics::SetClothIterations,
+            "GetClothWindEnabled",          &Physics::GetClothWindEnabled,
+            "SetClothWindEnabled",          &Physics::SetClothWindEnabled
             );
 
     }
@@ -2837,19 +2842,55 @@ namespace spartan
             m_cloth_particles[i].inverse_mass      = 1.0f;
         }
 
-        // pin the top row: find the highest y and pin particles near it
-        float max_y = -FLT_MAX;
-        for (const auto& p : m_cloth_particles)
+        // build weld map: imported meshes duplicate vertices at uv seams and hard edges,
+        // so we need to identify coincident vertices and treat them as the same particle
+        // to keep the cloth connected across seams
         {
-            max_y = max(max_y, p.position.y);
+            const float weld_epsilon = 1e-4f;
+
+            m_cloth_weld_map.resize(vertices.size());
+            map<tuple<int32_t, int32_t, int32_t>, uint32_t> position_to_canonical;
+            const float quantize = 1.0f / weld_epsilon;
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+            {
+                const Vector3& pos = m_cloth_particles[i].position;
+                auto key = make_tuple(
+                    static_cast<int32_t>(roundf(pos.x * quantize)),
+                    static_cast<int32_t>(roundf(pos.y * quantize)),
+                    static_cast<int32_t>(roundf(pos.z * quantize))
+                );
+
+                auto it = position_to_canonical.find(key);
+                if (it != position_to_canonical.end())
+                {
+                    m_cloth_weld_map[i] = it->second;
+                    m_cloth_particles[i].inverse_mass = 0.0f; // slave: driven by canonical
+                }
+                else
+                {
+                    position_to_canonical[key] = i;
+                    m_cloth_weld_map[i] = i;
+                }
+            }
         }
 
-        const float pin_threshold = 0.05f; // pin particles within 5cm of the top
-        for (auto& p : m_cloth_particles)
+        // pin the top row: find the highest y and pin canonical particles near it
+        float max_y = -FLT_MAX;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
         {
-            if (p.position.y >= max_y - pin_threshold)
+            if (m_cloth_weld_map[i] == i)
             {
-                p.inverse_mass = 0.0f;
+                max_y = max(max_y, m_cloth_particles[i].position.y);
+            }
+        }
+
+        const float pin_threshold = 0.05f;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+        {
+            if (m_cloth_weld_map[i] == i && m_cloth_particles[i].position.y >= max_y - pin_threshold)
+            {
+                m_cloth_particles[i].inverse_mass = 0.0f;
             }
         }
 
@@ -2857,7 +2898,8 @@ namespace spartan
         m_cloth_indices = indices;
         m_cloth_base_vertices = vertices;
 
-        // build distance constraints from triangle edges (deduplicated)
+        // build distance constraints from triangle edges using welded (canonical) indices
+        // so constraints span across uv seams and hard edges
         auto edge_key = [](uint32_t a, uint32_t b) -> uint64_t
         {
             if (a > b) swap(a, b);
@@ -2870,10 +2912,12 @@ namespace spartan
             uint32_t tri[3] = { indices[i], indices[i + 1], indices[i + 2] };
             for (int e = 0; e < 3; e++)
             {
-                uint32_t a = tri[e];
-                uint32_t b = tri[(e + 1) % 3];
-                uint64_t key = edge_key(a, b);
+                uint32_t a = m_cloth_weld_map[tri[e]];
+                uint32_t b = m_cloth_weld_map[tri[(e + 1) % 3]];
+                if (a == b)
+                    continue;
 
+                uint64_t key = edge_key(a, b);
                 if (seen_edges.insert(key).second)
                 {
                     ClothConstraint c;
@@ -2885,8 +2929,16 @@ namespace spartan
             }
         }
 
-        SP_LOG_INFO("Cloth created: %zu particles, %zu constraints, %zu triangles",
-            m_cloth_particles.size(), m_cloth_constraints.size(), indices.size() / 3);
+        uint32_t canonical_count = 0;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_weld_map.size()); i++)
+        {
+            if (m_cloth_weld_map[i] == i)
+                canonical_count++;
+        }
+
+        SP_LOG_INFO("Cloth created: %u particles (%zu vertices, %u welded), %zu constraints, %zu triangles",
+            canonical_count, m_cloth_particles.size(), static_cast<uint32_t>(m_cloth_particles.size()) - canonical_count,
+            m_cloth_constraints.size(), indices.size() / 3);
     }
 
     void Physics::TickCloth(bool is_playing, float delta_time)
@@ -2907,6 +2959,31 @@ namespace spartan
             Vector3 velocity = (p.position - p.previous_position) * damping;
             p.previous_position = p.position;
             p.position += velocity + gravity * (dt * dt);
+        }
+
+        // wind
+        if (m_cloth_wind_enabled)
+        {
+            Vector3 wind            = World::GetWind();
+            float base_magnitude    = wind.Length();
+            if (base_magnitude > 0.0f)
+            {
+                Vector3 wind_dir = wind / base_magnitude;
+                float time       = static_cast<float>(Timer::GetTimeSec());
+
+                for (auto& p : m_cloth_particles)
+                {
+                    if (p.inverse_mass == 0.0f)
+                        continue;
+
+                    // per-particle phase offset from position for spatial variation
+                    float phase = p.position.x * 1.7f + p.position.y * 2.3f + p.position.z * 0.9f;
+                    float gust  = 1.0f + 0.4f * sinf(time * 3.0f + phase) + 0.2f * sinf(time * 7.1f + phase * 2.0f);
+
+                    Vector3 force = wind_dir * (base_magnitude * gust * p.inverse_mass);
+                    p.position += force * (dt * dt);
+                }
+            }
         }
 
         // constraint projection
@@ -2930,6 +3007,20 @@ namespace spartan
                 Vector3 correction = delta * (diff * m_cloth_stiffness / total_weight);
                 pa.position += correction * pa.inverse_mass;
                 pb.position -= correction * pb.inverse_mass;
+            }
+        }
+
+        // sync welded vertices: copy canonical positions to their duplicates
+        if (!m_cloth_weld_map.empty())
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+            {
+                uint32_t canonical = m_cloth_weld_map[i];
+                if (canonical != i)
+                {
+                    m_cloth_particles[i].position          = m_cloth_particles[canonical].position;
+                    m_cloth_particles[i].previous_position = m_cloth_particles[canonical].previous_position;
+                }
             }
         }
 
@@ -3024,5 +3115,11 @@ namespace spartan
 
         // push to gpu
         GeometryBuffer::UpdateVertices(updated_vertices.data(), m_cloth_global_vertex_offset, m_cloth_vertex_count);
+
+        // invalidate blas so ray-traced shadows rebuild with the deformed geometry
+        if (Render* renderable = GetEntity()->GetComponent<Render>())
+        {
+            renderable->InvalidateAccelerationStructure();
+        }
     }
 }

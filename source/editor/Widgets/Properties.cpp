@@ -1384,6 +1384,12 @@ void Properties::ShowPhysics(Physics* body) const
             property_float("Damping", &cloth_damping, 0.001f, 0.0f, 1.0f, "velocity damping factor", "%.3f");
             property_float("Iterations", &cloth_iterations, 1.0f, 1.0f, 32.0f, "constraint solver iterations per step", "%.0f");
 
+            bool cloth_wind = body->GetClothWindEnabled();
+            if (property_toggle("Wind", &cloth_wind, "allow wind to affect cloth simulation"))
+            {
+                body->SetClothWindEnabled(cloth_wind);
+            }
+
             if (cloth_stiffness != body->GetClothStiffness())                                      body->SetClothStiffness(cloth_stiffness);
             if (cloth_damping != body->GetClothDamping())                                          body->SetClothDamping(cloth_damping);
             if (static_cast<uint32_t>(cloth_iterations) != body->GetClothIterations()) body->SetClothIterations(static_cast<uint32_t>(cloth_iterations));
