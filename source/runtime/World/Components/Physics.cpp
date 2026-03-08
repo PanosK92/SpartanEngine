@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Car/CarSimulation.h"
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Rendering/Renderer.h"
+#include "../../Rendering/GeometryBuffer.h"
 SP_WARNINGS_OFF
 #ifdef DEBUG
     #define _DEBUG 1
@@ -220,6 +221,14 @@ namespace spartan
             static_cast<PxMaterial*>(m_material)->release();
             m_material = nullptr;
         }
+
+        // release cloth state
+        m_cloth_particles.clear();
+        m_cloth_constraints.clear();
+        m_cloth_indices.clear();
+        m_cloth_base_vertices.clear();
+        m_cloth_vertex_count         = 0;
+        m_cloth_global_vertex_offset = 0;
     }
 
     void Physics::PreTick()
@@ -246,6 +255,10 @@ namespace spartan
                 TickVehicle(is_playing, delta_time);
                 break;
 
+            case BodyType::Cloth:
+                TickCloth(is_playing, delta_time);
+                break;
+
             default:
                 if (!m_is_static)
                 {
@@ -258,7 +271,7 @@ namespace spartan
     void Physics::Tick()
     {
         // distance-based activation/deactivation for static actors
-        if (m_body_type != BodyType::Controller && m_is_static)
+        if (m_body_type != BodyType::Controller && m_body_type != BodyType::Cloth && m_is_static)
         {
             TickDistanceActivation();
         }
@@ -534,6 +547,11 @@ namespace spartan
         node.append_attribute("center_of_mass_y") = m_center_of_mass.y;
         node.append_attribute("center_of_mass_z") = m_center_of_mass.z;
         node.append_attribute("body_type")        = static_cast<int>(m_body_type);
+
+        // cloth parameters
+        node.append_attribute("cloth_stiffness")  = m_cloth_stiffness;
+        node.append_attribute("cloth_damping")     = m_cloth_damping;
+        node.append_attribute("cloth_iterations")  = m_cloth_iterations;
     }
 
     void Physics::Load(pugi::xml_node& node)
@@ -555,6 +573,11 @@ namespace spartan
         m_center_of_mass.z = node.attribute("center_of_mass_z").as_float(0.0f);
         m_body_type        = static_cast<BodyType>(node.attribute("body_type").as_int(static_cast<int>(BodyType::Max)));
 
+        // cloth parameters
+        m_cloth_stiffness  = node.attribute("cloth_stiffness").as_float(0.9f);
+        m_cloth_damping    = node.attribute("cloth_damping").as_float(0.01f);
+        m_cloth_iterations = node.attribute("cloth_iterations").as_uint(8);
+
         // defer creation until tick so that renderable component is available
         // (components load in enum order, and renderable comes after physics)
         m_needs_creation = true;
@@ -572,6 +595,7 @@ namespace spartan
             "MeshConvex",   BodyType::MeshConvex,
             "Controller",   BodyType::Controller,
             "Vehicle",      BodyType::Vehicle,
+            "Cloth",        BodyType::Cloth,
             "Max",          BodyType::Max);
 
 
@@ -688,7 +712,14 @@ namespace spartan
             "GetDrawSuspension",            &Physics::GetDrawSuspension,
             "DrawDebugVisualization",       &Physics::DrawDebugVisualization,
 
-            "SyncWheelOffsetsFromEntities", &Physics::SyncWheelOffsetsFromEntities
+            "SyncWheelOffsetsFromEntities", &Physics::SyncWheelOffsetsFromEntities,
+
+            "GetClothStiffness",            &Physics::GetClothStiffness,
+            "SetClothStiffness",            &Physics::SetClothStiffness,
+            "GetClothDamping",              &Physics::GetClothDamping,
+            "SetClothDamping",              &Physics::SetClothDamping,
+            "GetClothIterations",           &Physics::GetClothIterations,
+            "SetClothIterations",           &Physics::SetClothIterations
             );
 
     }
@@ -751,6 +782,22 @@ namespace spartan
                     else
                     {
                         volume = 1.0f; // fallback volume (1 m³)
+                    }
+                    break;
+                }
+                case BodyType::Cloth:
+                {
+                    // approximate using bounding box volume (thin surface)
+                    Render* renderable = GetEntity()->GetComponent<Render>();
+                    if (renderable)
+                    {
+                        BoundingBox bbox = renderable->GetBoundingBox();
+                        Vector3 extents  = bbox.GetExtents();
+                        volume = extents.x * extents.y * extents.z * 8.0f;
+                    }
+                    else
+                    {
+                        volume = 0.01f;
                     }
                     break;
                 }
@@ -2284,6 +2331,11 @@ namespace spartan
                 SP_LOG_ERROR("failed to create vehicle physics body");
             }
         }
+        else if (m_body_type == BodyType::Cloth)
+        {
+            CreateCloth();
+            return;
+        }
         else if (m_body_type == BodyType::MeshConvex)
         {
             // compound shape built from convex hulls of entity hierarchy meshes
@@ -2738,5 +2790,239 @@ namespace spartan
 
             m_actors[i] = actor;
         }
+    }
+
+    void Physics::CreateCloth()
+    {
+        Render* renderable = GetEntity()->GetComponent<Render>();
+        if (!renderable)
+        {
+            SP_LOG_ERROR("Cloth requires a Renderable component");
+            return;
+        }
+
+        // extract geometry from the renderable's mesh
+        vector<uint32_t> indices;
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        renderable->GetGeometry(&indices, &vertices);
+        if (vertices.empty() || indices.empty())
+        {
+            SP_LOG_ERROR("Cloth mesh has no geometry");
+            return;
+        }
+
+        // store the global geometry buffer offset so we can update vertices in-place later
+        m_cloth_global_vertex_offset = renderable->GetVertexOffset();
+        m_cloth_vertex_count         = renderable->GetVertexCount();
+
+        // entity transform for converting local-space vertices to world space
+        Vector3 entity_pos   = GetEntity()->GetPosition();
+        Quaternion entity_rot = GetEntity()->GetRotation();
+        Vector3 entity_scale  = GetEntity()->GetScale();
+
+        // initialize particles from mesh vertices (local space, pre-scaled)
+        m_cloth_particles.resize(vertices.size());
+        for (size_t i = 0; i < vertices.size(); i++)
+        {
+            Vector3 local_pos(
+                vertices[i].pos[0] * entity_scale.x,
+                vertices[i].pos[1] * entity_scale.y,
+                vertices[i].pos[2] * entity_scale.z
+            );
+
+            Vector3 world_pos = entity_pos + entity_rot * local_pos;
+
+            m_cloth_particles[i].position          = world_pos;
+            m_cloth_particles[i].previous_position = world_pos;
+            m_cloth_particles[i].inverse_mass      = 1.0f;
+        }
+
+        // pin the top row: find the highest y and pin particles near it
+        float max_y = -FLT_MAX;
+        for (const auto& p : m_cloth_particles)
+        {
+            max_y = max(max_y, p.position.y);
+        }
+
+        const float pin_threshold = 0.05f; // pin particles within 5cm of the top
+        for (auto& p : m_cloth_particles)
+        {
+            if (p.position.y >= max_y - pin_threshold)
+            {
+                p.inverse_mass = 0.0f;
+            }
+        }
+
+        // store triangle indices and original vertices for normal recalculation + tex/tan preservation
+        m_cloth_indices = indices;
+        m_cloth_base_vertices = vertices;
+
+        // build distance constraints from triangle edges (deduplicated)
+        auto edge_key = [](uint32_t a, uint32_t b) -> uint64_t
+        {
+            if (a > b) swap(a, b);
+            return (static_cast<uint64_t>(a) << 32) | static_cast<uint64_t>(b);
+        };
+
+        unordered_set<uint64_t> seen_edges;
+        for (size_t i = 0; i < indices.size(); i += 3)
+        {
+            uint32_t tri[3] = { indices[i], indices[i + 1], indices[i + 2] };
+            for (int e = 0; e < 3; e++)
+            {
+                uint32_t a = tri[e];
+                uint32_t b = tri[(e + 1) % 3];
+                uint64_t key = edge_key(a, b);
+
+                if (seen_edges.insert(key).second)
+                {
+                    ClothConstraint c;
+                    c.index_a     = a;
+                    c.index_b     = b;
+                    c.rest_length = (m_cloth_particles[a].position - m_cloth_particles[b].position).Length();
+                    m_cloth_constraints.push_back(c);
+                }
+            }
+        }
+
+        SP_LOG_INFO("Cloth created: %zu particles, %zu constraints, %zu triangles",
+            m_cloth_particles.size(), m_cloth_constraints.size(), indices.size() / 3);
+    }
+
+    void Physics::TickCloth(bool is_playing, float delta_time)
+    {
+        if (!is_playing || m_cloth_particles.empty())
+            return;
+
+        const float dt         = delta_time;
+        const float damping    = 1.0f - m_cloth_damping;
+        const Vector3 gravity  = PhysicsWorld::GetGravity();
+
+        // verlet integration
+        for (auto& p : m_cloth_particles)
+        {
+            if (p.inverse_mass == 0.0f)
+                continue;
+
+            Vector3 velocity = (p.position - p.previous_position) * damping;
+            p.previous_position = p.position;
+            p.position += velocity + gravity * (dt * dt);
+        }
+
+        // constraint projection
+        for (uint32_t iter = 0; iter < m_cloth_iterations; iter++)
+        {
+            for (const auto& c : m_cloth_constraints)
+            {
+                ClothParticle& pa = m_cloth_particles[c.index_a];
+                ClothParticle& pb = m_cloth_particles[c.index_b];
+
+                Vector3 delta       = pb.position - pa.position;
+                float current_length = delta.Length();
+                if (current_length < 1e-7f)
+                    continue;
+
+                float diff         = (current_length - c.rest_length) / current_length;
+                float total_weight = pa.inverse_mass + pb.inverse_mass;
+                if (total_weight == 0.0f)
+                    continue;
+
+                Vector3 correction = delta * (diff * m_cloth_stiffness / total_weight);
+                pa.position += correction * pa.inverse_mass;
+                pb.position -= correction * pb.inverse_mass;
+            }
+        }
+
+        // ground collision (simple y=0 plane)
+        const float ground_y = 0.0f;
+        for (auto& p : m_cloth_particles)
+        {
+            if (p.position.y < ground_y)
+            {
+                p.position.y = ground_y;
+            }
+        }
+
+        // write updated positions back to render vertices and recalculate normals
+        if (m_cloth_base_vertices.empty())
+            return;
+
+        // copy cached vertices to preserve tex/tan attributes
+        vector<RHI_Vertex_PosTexNorTan> updated_vertices = m_cloth_base_vertices;
+
+        // get the entity's inverse transform to convert world-space particles back to local space
+        Vector3 entity_pos    = GetEntity()->GetPosition();
+        Quaternion entity_rot = GetEntity()->GetRotation();
+        Quaternion inv_rot    = entity_rot.Conjugate();
+        Vector3 entity_scale  = GetEntity()->GetScale();
+        Vector3 inv_scale(
+            entity_scale.x != 0.0f ? 1.0f / entity_scale.x : 0.0f,
+            entity_scale.y != 0.0f ? 1.0f / entity_scale.y : 0.0f,
+            entity_scale.z != 0.0f ? 1.0f / entity_scale.z : 0.0f
+        );
+
+        // copy particle positions into vertex buffer (convert back to local space)
+        for (uint32_t i = 0; i < m_cloth_vertex_count && i < static_cast<uint32_t>(m_cloth_particles.size()); i++)
+        {
+            Vector3 local_pos = inv_rot * (m_cloth_particles[i].position - entity_pos);
+            local_pos.x *= inv_scale.x;
+            local_pos.y *= inv_scale.y;
+            local_pos.z *= inv_scale.z;
+
+            updated_vertices[i].pos[0] = local_pos.x;
+            updated_vertices[i].pos[1] = local_pos.y;
+            updated_vertices[i].pos[2] = local_pos.z;
+        }
+
+        // recalculate normals from triangle faces
+        for (auto& v : updated_vertices)
+        {
+            v.nor[0] = 0.0f;
+            v.nor[1] = 0.0f;
+            v.nor[2] = 0.0f;
+        }
+
+        for (size_t i = 0; i + 2 < m_cloth_indices.size(); i += 3)
+        {
+            uint32_t i0 = m_cloth_indices[i];
+            uint32_t i1 = m_cloth_indices[i + 1];
+            uint32_t i2 = m_cloth_indices[i + 2];
+
+            if (i0 >= m_cloth_vertex_count || i1 >= m_cloth_vertex_count || i2 >= m_cloth_vertex_count)
+                continue;
+
+            Vector3 v0(updated_vertices[i0].pos[0], updated_vertices[i0].pos[1], updated_vertices[i0].pos[2]);
+            Vector3 v1(updated_vertices[i1].pos[0], updated_vertices[i1].pos[1], updated_vertices[i1].pos[2]);
+            Vector3 v2(updated_vertices[i2].pos[0], updated_vertices[i2].pos[1], updated_vertices[i2].pos[2]);
+
+            Vector3 edge1  = v1 - v0;
+            Vector3 edge2  = v2 - v0;
+            Vector3 normal = Vector3::Cross(edge1, edge2);
+
+            // accumulate (area-weighted, no normalization yet)
+            for (uint32_t idx : { i0, i1, i2 })
+            {
+                updated_vertices[idx].nor[0] += normal.x;
+                updated_vertices[idx].nor[1] += normal.y;
+                updated_vertices[idx].nor[2] += normal.z;
+            }
+        }
+
+        // normalize accumulated normals
+        for (uint32_t i = 0; i < m_cloth_vertex_count; i++)
+        {
+            Vector3 n(updated_vertices[i].nor[0], updated_vertices[i].nor[1], updated_vertices[i].nor[2]);
+            float len = n.Length();
+            if (len > 1e-7f)
+            {
+                n /= len;
+                updated_vertices[i].nor[0] = n.x;
+                updated_vertices[i].nor[1] = n.y;
+                updated_vertices[i].nor[2] = n.z;
+            }
+        }
+
+        // push to gpu
+        GeometryBuffer::UpdateVertices(updated_vertices.data(), m_cloth_global_vertex_offset, m_cloth_vertex_count);
     }
 }

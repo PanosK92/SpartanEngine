@@ -1289,11 +1289,11 @@ void Properties::ShowPhysics(Physics* body) const
         // body type
         static vector<string> body_types = {
             "Box", "Sphere", "Plane", "Capsule",
-            "Mesh", "Mesh (Convex)", "Controller", "Vehicle"
+            "Mesh", "Mesh (Convex)", "Controller", "Vehicle", "Cloth"
         };
 
         uint32_t body_type_index = static_cast<uint32_t>(body->GetBodyType());
-        if (property_combo("Shape", body_types, &body_type_index, "collision shape type"))
+        if (property_combo("Type", body_types, &body_type_index, "body type"))
         {
             body->SetBodyType(static_cast<BodyType>(body_type_index));
         }
@@ -1369,6 +1369,25 @@ void Properties::ShowPhysics(Physics* body) const
         layout::section_header("Center of Mass");
 
         property_vector3("Offset", center_of_mass, "center of mass offset");
+
+        // cloth-specific properties
+        if (body->GetBodyType() == BodyType::Cloth)
+        {
+            layout::separator();
+            layout::section_header("Cloth Simulation");
+
+            float cloth_stiffness  = body->GetClothStiffness();
+            float cloth_damping    = body->GetClothDamping();
+            float cloth_iterations = static_cast<float>(body->GetClothIterations());
+
+            property_float("Stiffness", &cloth_stiffness, 0.01f, 0.0f, 1.0f, "constraint stiffness per iteration", "%.2f");
+            property_float("Damping", &cloth_damping, 0.001f, 0.0f, 1.0f, "velocity damping factor", "%.3f");
+            property_float("Iterations", &cloth_iterations, 1.0f, 1.0f, 32.0f, "constraint solver iterations per step", "%.0f");
+
+            if (cloth_stiffness != body->GetClothStiffness())                                      body->SetClothStiffness(cloth_stiffness);
+            if (cloth_damping != body->GetClothDamping())                                          body->SetClothDamping(cloth_damping);
+            if (static_cast<uint32_t>(cloth_iterations) != body->GetClothIterations()) body->SetClothIterations(static_cast<uint32_t>(cloth_iterations));
+        }
 
         // map values back
         if (mass != body->GetMass())                        body->SetMass(mass);

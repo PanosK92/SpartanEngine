@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
+#include "../../RHI/RHI_Vertex.h"
 //=================================
 
 namespace sol
@@ -55,6 +56,7 @@ namespace spartan
         MeshConvex, // compound shape built from convex hulls of entity hierarchy meshes
         Controller,
         Vehicle,
+        Cloth, // deformable surface simulated via verlet integration
         Max
     };
 
@@ -274,16 +276,26 @@ namespace spartan
         void SetMeshConvexSourceEntity(Entity* entity);
         Entity* GetMeshConvexSourceEntity() const { return m_mesh_convex_source; }
 
+        // cloth simulation parameters (only applies when body type is Cloth)
+        float GetClothStiffness() const            { return m_cloth_stiffness; }
+        void  SetClothStiffness(float stiffness)   { m_cloth_stiffness = std::clamp(stiffness, 0.0f, 1.0f); }
+        float GetClothDamping() const              { return m_cloth_damping; }
+        void  SetClothDamping(float damping)       { m_cloth_damping = std::clamp(damping, 0.0f, 1.0f); }
+        uint32_t GetClothIterations() const        { return m_cloth_iterations; }
+        void     SetClothIterations(uint32_t count) { m_cloth_iterations = std::clamp(count, 1u, 32u); }
+
     private:
         // tick helpers (broken out for readability)
         void TickController(bool is_playing, float delta_time);
         void TickVehicle(bool is_playing, float delta_time);
+        void TickCloth(bool is_playing, float delta_time);
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
 
         void UpdateWheelTransforms();
         void Create();
         void CreateBodies();
+        void CreateCloth();
         void BuildChassisConvexShapes(Entity* chassis_entity, const std::vector<Entity*>& entities_to_exclude); // builds convex shapes from chassis mesh hierarchy
 
         float m_mass                   = 1.0f;
@@ -330,5 +342,30 @@ namespace spartan
 
         // car owner (ticked automatically through entity system)
         class Car* m_car = nullptr;
+
+        // cloth simulation state
+        struct ClothParticle
+        {
+            math::Vector3 position;
+            math::Vector3 previous_position;
+            float inverse_mass = 1.0f; // 0 = pinned
+        };
+
+        struct ClothConstraint
+        {
+            uint32_t index_a = 0;
+            uint32_t index_b = 0;
+            float rest_length = 0.0f;
+        };
+
+        std::vector<ClothParticle> m_cloth_particles;
+        std::vector<ClothConstraint> m_cloth_constraints;
+        std::vector<uint32_t> m_cloth_indices;           // triangle indices for normal recalculation
+        std::vector<RHI_Vertex_PosTexNorTan> m_cloth_base_vertices; // cached original vertices (for tex/tan preservation)
+        uint32_t m_cloth_global_vertex_offset = 0;       // offset into the global geometry buffer
+        uint32_t m_cloth_vertex_count         = 0;
+        float m_cloth_stiffness               = 0.9f;    // constraint stiffness (0-1)
+        float m_cloth_damping                 = 0.01f;   // velocity damping (0-1)
+        uint32_t m_cloth_iterations           = 8;       // constraint solver iterations per step
     };
 }

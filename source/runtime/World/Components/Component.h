@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <functional>
 #include <sol/sol.hpp>
-
 #include "../../Core/SpartanObject.h"
 //===================================
 
@@ -50,7 +49,7 @@ namespace spartan
         X(Camera,           camera)              \
         X(Light,            light)               \
         X(Physics,          physics)             \
-        X(Render,           rende)               \
+        X(Render,           render)              \
         X(Spline,           spline)              \
         X(SplineFollower,   spline_follower)     \
         X(Terrain,          terrain)             \

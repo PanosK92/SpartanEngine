@@ -45,6 +45,9 @@ namespace spartan
         // append indices to the global buffer, returns the base index offset
         static uint32_t AppendIndices(const uint32_t* data, uint32_t count);
 
+        // update existing vertices in-place (cpu + gpu), used by deformable meshes like cloth
+        static void UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count);
+
         // synchronize gpu buffers with cpu data:
         //  - if no gpu buffer exists, create one with headroom and upload everything
         //  - if new data fits within existing capacity, upload only the new portion

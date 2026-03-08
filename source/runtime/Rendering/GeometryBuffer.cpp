@@ -66,6 +66,21 @@ namespace spartan
         return base_offset;
     }
 
+    void GeometryBuffer::UpdateVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t offset, uint32_t count)
+    {
+        lock_guard<mutex> lock(m_mutex);
+
+        SP_ASSERT(offset + count <= static_cast<uint32_t>(m_vertices.size()));
+        memcpy(m_vertices.data() + offset, data, count * sizeof(RHI_Vertex_PosTexNorTan));
+
+        if (m_vertex_buffer && offset + count <= m_vertex_count_committed)
+        {
+            uint64_t byte_offset = static_cast<uint64_t>(offset) * sizeof(RHI_Vertex_PosTexNorTan);
+            uint64_t byte_size   = static_cast<uint64_t>(count) * sizeof(RHI_Vertex_PosTexNorTan);
+            m_vertex_buffer->UploadSubRegion(data, byte_offset, byte_size);
+        }
+    }
+
     void GeometryBuffer::BuildIfDirty()
     {
         lock_guard<mutex> lock(m_mutex);
