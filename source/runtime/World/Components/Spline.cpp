@@ -160,7 +160,7 @@ namespace spartan
         // save the material name first so it can be restored after regeneration
         if (m_needs_road_regeneration && m_entity_ptr)
         {
-            if (Renderable* renderable = m_entity_ptr->GetComponent<Renderable>())
+            if (Render* renderable = m_entity_ptr->GetComponent<Render>())
             {
                 if (Material* material = renderable->GetMaterial())
                 {
@@ -168,7 +168,7 @@ namespace spartan
                 }
             }
 
-            m_entity_ptr->RemoveComponent<Renderable>();
+            m_entity_ptr->RemoveComponent<Render>();
             m_entity_ptr->RemoveComponent<Physics>();
         }
     }
@@ -280,7 +280,7 @@ namespace spartan
         // preserve the user-assigned material before clearing the old mesh
         if (m_saved_material_name.empty() && m_entity_ptr)
         {
-            if (Renderable* renderable = m_entity_ptr->GetComponent<Renderable>())
+            if (Render* renderable = m_entity_ptr->GetComponent<Render>())
             {
                 if (Material* material = renderable->GetMaterial())
                 {
@@ -306,7 +306,7 @@ namespace spartan
             if (m_entity_ptr)
             {
                 m_entity_ptr->RemoveComponent<Physics>();
-                m_entity_ptr->RemoveComponent<Renderable>();
+                m_entity_ptr->RemoveComponent<Render>();
             }
 
             m_mesh.reset();
@@ -373,7 +373,7 @@ namespace spartan
                 }
 
                 // add a renderable with a default cylinder mesh (useful for posts, pillars, etc.)
-                Renderable* renderable = instance->AddComponent<Renderable>();
+                Render* renderable = instance->AddComponent<Render>();
                 renderable->SetMesh(MeshType::Cylinder);
                 renderable->SetDefaultMaterial();
 
@@ -674,10 +674,10 @@ namespace spartan
         m_mesh->CreateGpuBuffers();
 
         // attach to a renderable component on this entity
-        Renderable* renderable = m_entity_ptr->GetComponent<Renderable>();
+        Render* renderable = m_entity_ptr->GetComponent<Render>();
         if (!renderable)
         {
-            renderable = m_entity_ptr->AddComponent<Renderable>();
+            renderable = m_entity_ptr->AddComponent<Render>();
         }
         renderable->SetMesh(m_mesh.get(), 0);
 

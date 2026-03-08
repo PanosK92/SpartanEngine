@@ -958,7 +958,7 @@ namespace spartan
             {
                 if (entity->GetActive())
                 {
-                    if (Renderable* renderable = entity->GetComponent<Renderable>())
+                    if (Render* renderable = entity->GetComponent<Render>())
                     {
                         if (Material* material = renderable->GetMaterial())
                         {
@@ -1115,7 +1115,7 @@ namespace spartan
         for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-            Renderable* renderable             = draw_call.renderable;
+            Render* renderable             = draw_call.renderable;
             const BoundingBox& aabb            = renderable->GetBoundingBox();
             m_bindless_aabbs[i].min            = aabb.GetMin();
             m_bindless_aabbs[i].max            = aabb.GetMax();
@@ -1173,7 +1173,7 @@ namespace spartan
                 if (!entity->GetActive())
                     continue;
 
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                if (Render* renderable = entity->GetComponent<Render>())
                 {
                     Material* material = renderable->GetMaterial();
                     if (!material)
@@ -1260,7 +1260,7 @@ namespace spartan
             for (uint32_t i = 0; i < m_draw_call_count; i++)
             {
                 const Renderer_DrawCall& dc = m_draw_calls[i];
-                Renderable* renderable      = dc.renderable;
+                Render* renderable      = dc.renderable;
                 Material* material          = renderable->GetMaterial();
 
                 if (!material || material->IsTransparent())
@@ -1294,7 +1294,7 @@ namespace spartan
 
         // select occluders (top N by screen area, with temporal hysteresis)
         {
-            static unordered_set<Renderable*> previous_occluders;
+            static unordered_set<Render*> previous_occluders;
 
             auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
             {
@@ -1319,7 +1319,7 @@ namespace spartan
             for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
             {
                 Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-                Renderable* renderable = draw_call.renderable;
+                Render* renderable = draw_call.renderable;
                 Material* material = renderable->GetMaterial();
 
                 if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
@@ -1374,7 +1374,7 @@ namespace spartan
                 if (!entity->GetActive())
                     continue;
 
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                if (Render* renderable = entity->GetComponent<Render>())
                 {
                     if (!renderable->HasAccelerationStructure())
                     {
@@ -1416,7 +1416,7 @@ namespace spartan
                 if (!entity->GetActive())
                     continue;
     
-               if (Renderable* renderable = entity->GetComponent<Renderable>())
+               if (Render* renderable = entity->GetComponent<Render>())
                 {
                     if (Material* material = renderable->GetMaterial())
                     {

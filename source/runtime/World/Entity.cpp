@@ -464,8 +464,8 @@ namespace spartan
         case ComponentType::Physics:
             component = std::make_shared<Physics>(this);
             break;
-        case ComponentType::Renderable:
-            component = std::make_shared<Renderable>(this);
+        case ComponentType::Render:
+            component = std::make_shared<Render>(this);
             break;
         case ComponentType::Spline:
             component = std::make_shared<Spline>(this);

@@ -39,7 +39,7 @@ namespace pugi
 
 namespace spartan
 {
-    class Renderable;
+    class Render;
 
     class Entity : public SpartanObject
     {

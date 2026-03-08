@@ -34,18 +34,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class Material;
-    class RHI_CommandList;
 
     enum RenderableFlags : uint32_t
     {
         CastsShadows = 1U << 0
     };
 
-    class Renderable : public Component
+    class Render : public Component
     {
     public:
-        Renderable(Entity* entity);
-        ~Renderable();
+        Render(Entity* entity);
+        ~Render();
 
         // icomponent
         void Save(pugi::xml_node& node) override;

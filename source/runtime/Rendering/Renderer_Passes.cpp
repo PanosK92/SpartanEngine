@@ -318,7 +318,7 @@ namespace spartan
                     for (uint32_t i = 0; i < m_draw_call_count; i++)
                     {
                         const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                        Renderable* renderable             = draw_call.renderable;
+                        Render* renderable             = draw_call.renderable;
                         Material* material                 = renderable->GetMaterial();
                         const float shadow_distance        = renderable->GetMaxShadowDistance();
                         if (!material || material->IsTransparent() || !renderable->HasFlag(RenderableFlags::CastsShadows) || draw_call.distance_squared > shadow_distance * shadow_distance)
@@ -417,7 +417,7 @@ namespace spartan
                     if (!draw_call.is_occluder)
                         continue;
 
-                    Renderable* renderable = draw_call.renderable;
+                    Render* renderable = draw_call.renderable;
                     RHI_CullMode cull_mode = static_cast<RHI_CullMode>(renderable->GetMaterial()->GetProperty(MaterialProperty::CullMode));
                     cull_mode              = (pso.rasterizer_state->GetPolygonMode() == RHI_PolygonMode::Wireframe) ? RHI_CullMode::None : cull_mode;
                     cmd_list->SetCullMode(cull_mode);
@@ -540,7 +540,7 @@ namespace spartan
                 for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
                 {
                     const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-                    Renderable* renderable             = draw_call.renderable;
+                    Render* renderable             = draw_call.renderable;
                     Material* material                 = renderable->GetMaterial();
                     if (!material || material->IsTransparent() || !draw_call.camera_visible)
                         continue;
@@ -687,7 +687,7 @@ namespace spartan
                 for (uint32_t i = 0; i < m_draw_call_count; i++)
                 {
                     const Renderer_DrawCall& draw_call = m_draw_calls[i];
-                    Renderable* renderable             = draw_call.renderable;
+                    Render* renderable             = draw_call.renderable;
                     Material* material                 = renderable->GetMaterial();
                     if (!material || !draw_call.camera_visible)
                         continue;
@@ -2313,7 +2313,7 @@ namespace spartan
                             if (!entity_selected)
                                 continue;
                                 
-                            Renderable* renderable = entity_selected->GetComponent<Renderable>();
+                            Render* renderable = entity_selected->GetComponent<Render>();
                             if (!renderable)
                                 continue;
                                 

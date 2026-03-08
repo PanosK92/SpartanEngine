@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES ===============================
 #include "pch.h"
 #include "Properties.h"
 #include "Window.h"
@@ -43,7 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Script.h"
 #include "World/Components/ParticleSystem.h"
 #include "World/Prefab.h"
-//=======================================
+//==========================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -643,7 +643,7 @@ void Properties::OnTickVisible()
             ShowAudioSource(entity->GetComponent<AudioSource>());
 
             // re-fetch after ShowSpline since clearing a road mesh removes the renderable
-            Renderable* renderable = entity->GetComponent<Renderable>();
+            Render* renderable = entity->GetComponent<Render>();
             Material* material     = renderable ? renderable->GetMaterial() : nullptr;
             ShowRenderable(renderable);
             ShowMaterial(material);
@@ -1063,7 +1063,7 @@ void Properties::ShowLight(spartan::Light* light) const
     component_end();
 }
 
-void Properties::ShowRenderable(spartan::Renderable* renderable) const
+void Properties::ShowRenderable(spartan::Render* renderable) const
 {
     if (!renderable)
         return;
@@ -2563,9 +2563,9 @@ void Properties::ComponentContextMenu_Add() const
                 entity->AddComponent<Camera>();
             }
 
-            if (ImGui::MenuItem("Renderable"))
+            if (ImGui::MenuItem("Render"))
             {
-                entity->AddComponent<Renderable>();
+                entity->AddComponent<Render>();
             }
 
             if (ImGui::MenuItem("Terrain"))

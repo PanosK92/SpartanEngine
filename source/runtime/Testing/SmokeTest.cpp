@@ -437,7 +437,7 @@ namespace spartan
     {
         Entity* entity = World::CreateEntity();
         entity->SetObjectName(name);
-        Renderable* renderable = entity->AddComponent<Renderable>();
+        Render* renderable = entity->AddComponent<Render>();
         renderable->SetMesh(MeshType::Cube);
         renderable->SetMaterial(Renderer::GetStandardMaterial());
         entity->SetPositionLocal(position);

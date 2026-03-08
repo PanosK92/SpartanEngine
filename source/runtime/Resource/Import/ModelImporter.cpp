@@ -737,7 +737,7 @@ namespace spartan
         ctx.mesh->AddGeometry(vertices, indices, true, &sub_mesh_index);
 
         // set the geometry
-        entity_parent->AddComponent<Renderable>()->SetMesh(ctx.mesh, sub_mesh_index);
+        entity_parent->AddComponent<Render>()->SetMesh(ctx.mesh, sub_mesh_index);
 
         // material
         if (ctx.scene->HasMaterials())
@@ -750,7 +750,7 @@ namespace spartan
             material->SetResourceFilePath(spartan_asset_path);
 
             // add a renderable and set the material to it
-            entity_parent->AddComponent<Renderable>()->SetMaterial(material);
+            entity_parent->AddComponent<Render>()->SetMaterial(material);
         }
     }
 }

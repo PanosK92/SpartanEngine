@@ -808,7 +808,7 @@ namespace spartan
         }
     }
 
-    bool Light::IsInViewFrustum(Renderable* renderable, const uint32_t array_index) const
+    bool Light::IsInViewFrustum(Render* renderable, const uint32_t array_index) const
     {
         const BoundingBox& bounding_box = renderable->GetBoundingBox();
         const Vector3 center            = bounding_box.GetCenter();

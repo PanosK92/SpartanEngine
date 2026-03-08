@@ -42,7 +42,7 @@ using namespace spartan::math;
 
 namespace spartan
 {
-    Renderable::Renderable(Entity* entity) : Component(entity)
+    Render::Render(Entity* entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material, Material*);
@@ -63,12 +63,12 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_previous_lights, uint64_t);
     }
 
-    Renderable::~Renderable()
+    Render::~Render()
     {
         m_mesh = nullptr;
     }
 
-    void Renderable::Save(pugi::xml_node& node)
+    void Render::Save(pugi::xml_node& node)
     {
         // mesh
         node.append_attribute("mesh_name")      = m_mesh ? m_mesh->GetObjectName().c_str() : "";
@@ -100,7 +100,7 @@ namespace spartan
         }
     }
 
-    void Renderable::Load(pugi::xml_node& node)
+    void Render::Load(pugi::xml_node& node)
     {
         // mesh
         const string mesh_name = node.attribute("mesh_name").as_string();
@@ -216,7 +216,7 @@ namespace spartan
         }
     }
 
-    void Renderable::Tick()
+    void Render::Tick()
     {
         // deferred default material assignment (renderer may not be ready during load)
         if (m_needs_default_material)
@@ -233,20 +233,20 @@ namespace spartan
         UpdateLodIndices();
     }
 
-    void Renderable::RegisterForScripting(sol::state_view State)
+    void Render::RegisterForScripting(sol::state_view State)
     {
-        State.new_usertype<Renderable>("Renderable",
+        State.new_usertype<Render>("Renderable",
         sol::base_classes,              sol::bases<Component>()
         );
 
     }
 
-    sol::reference Renderable::AsLua(sol::state_view state)
+    sol::reference Render::AsLua(sol::state_view state)
     {
         return sol::make_reference(state, this);
     }
 
-    void Renderable::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
+    void Render::SetMesh(Mesh* mesh, const uint32_t sub_mesh_index)
     {
         if (!mesh)
         {
@@ -269,12 +269,12 @@ namespace spartan
         Tick(); // update bounding boxes, frustum and distance culling
     }
 
-    void Renderable::SetMesh(const MeshType type)
+    void Render::SetMesh(const MeshType type)
     {
         SetMesh(Renderer::GetStandardMesh(type).get());
     }
 
-    void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
+    void Render::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
         if (!m_mesh)
         {
@@ -284,7 +284,7 @@ namespace spartan
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
     }
 
-    void Renderable::SetMaterial(const shared_ptr<Material>& material)
+    void Render::SetMaterial(const shared_ptr<Material>& material)
     {
         SP_ASSERT(material != nullptr);
 
@@ -332,7 +332,7 @@ namespace spartan
         }
     }
 
-    void Renderable::SetMaterial(const string& file_path)
+    void Render::SetMaterial(const string& file_path)
     {
         auto material = make_shared<Material>();
 
@@ -341,40 +341,40 @@ namespace spartan
         SetMaterial(material);
     }
 
-    void Renderable::SetDefaultMaterial()
+    void Render::SetDefaultMaterial()
     {
         SetMaterial(Renderer::GetStandardMaterial());
         m_material_default = true;
     }
 
-    string Renderable::GetMaterialName() const
+    string Render::GetMaterialName() const
     {
         return m_material ? m_material->GetObjectName() : "";
     }
 
-    uint32_t Renderable::GetIndexOffset(const uint32_t lod) const
+    uint32_t Render::GetIndexOffset(const uint32_t lod) const
     {
         // global base offset + lod-relative offset within the mesh
         return m_mesh->GetGlobalIndexOffset() + m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_offset;
     }
 
-    uint32_t Renderable::GetIndexCount(const uint32_t lod) const
+    uint32_t Render::GetIndexCount(const uint32_t lod) const
     {
         return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].index_count;
     }
 
-    uint32_t Renderable::GetVertexOffset(const uint32_t lod) const
+    uint32_t Render::GetVertexOffset(const uint32_t lod) const
     {
         // global base offset + lod-relative offset within the mesh
         return m_mesh->GetGlobalVertexOffset() + m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_offset;
     }
 
-    uint32_t Renderable::GetVertexCount(const uint32_t lod) const
+    uint32_t Render::GetVertexCount(const uint32_t lod) const
     {
         return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].vertex_count;
     }
 
-    RHI_Buffer* Renderable::GetIndexBuffer() const
+    RHI_Buffer* Render::GetIndexBuffer() const
 	{
         if (!m_mesh)
             return nullptr;
@@ -382,7 +382,7 @@ namespace spartan
         return m_mesh->GetIndexBuffer();
 	}
 
-    RHI_Buffer* Renderable::GetVertexBuffer() const
+    RHI_Buffer* Render::GetVertexBuffer() const
     {
         if (!m_mesh)
             return nullptr;
@@ -390,7 +390,7 @@ namespace spartan
         return m_mesh->GetVertexBuffer();
     }
 
-    const string& Renderable::GetMeshName() const
+    const string& Render::GetMeshName() const
     {
         static string no_mesh = "N/A";
         if (!m_mesh)
@@ -399,7 +399,7 @@ namespace spartan
         return m_mesh->GetObjectName();
     }
 
-    void Renderable::BuildAccelerationStructure(RHI_CommandList* cmd_list)
+    void Render::BuildAccelerationStructure(RHI_CommandList* cmd_list)
     {
         if (!m_mesh)
             return;
@@ -407,7 +407,7 @@ namespace spartan
         m_mesh->BuildAccelerationStructure(cmd_list);
     }
 
-    bool Renderable::HasAccelerationStructure() const
+    bool Render::HasAccelerationStructure() const
     {
         if (!m_mesh)
             return false;
@@ -415,7 +415,7 @@ namespace spartan
         return m_mesh->HasBlas(m_sub_mesh_index);
     }
 
-    uint64_t Renderable::GetAccelerationStructureDeviceAddress() const
+    uint64_t Render::GetAccelerationStructureDeviceAddress() const
     {
         if (!m_mesh)
             return 0;
@@ -427,12 +427,12 @@ namespace spartan
         return blas->GetDeviceAddress();
     }
 
-    Matrix Renderable::GetInstance(const uint32_t index, const bool to_world)
+    Matrix Render::GetInstance(const uint32_t index, const bool to_world)
     {
         return to_world ? m_instances[index].GetMatrix() * GetEntity()->GetMatrix() : m_instances[index].GetMatrix();
     }
 
-    void Renderable::SetInstances(const vector<Instance>& instances)
+    void Render::SetInstances(const vector<Instance>& instances)
     {
         if (instances.empty())
         {
@@ -457,7 +457,7 @@ namespace spartan
         Tick(); // update bounding boxes, frustum and distance culling
     }
 
-    void Renderable::SetInstances(const vector<Matrix>& transforms)
+    void Render::SetInstances(const vector<Matrix>& transforms)
     {
         if (transforms.empty())
         {
@@ -479,7 +479,7 @@ namespace spartan
         SetInstances(instances);
     }
 
-    uint32_t Renderable::GetLodCount() const
+    uint32_t Render::GetLodCount() const
     {
         if (!m_mesh)
             return 0;
@@ -487,7 +487,7 @@ namespace spartan
         return static_cast<uint32_t>(m_mesh->GetSubMesh(m_sub_mesh_index).lods.size());
     }
 
-    void Renderable::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
+    void Render::SetFlag(const RenderableFlags flag, const bool enable /*= true*/)
     {
         bool enabled      = false;
         bool disabled     = false;
@@ -506,7 +506,7 @@ namespace spartan
         }
     }
 
-    void Renderable::UpdateAabb()
+    void Render::UpdateAabb()
     {
         const Matrix transform = (GetEntity() && GetEntity()->GetActive()) ? GetEntity()->GetMatrix() : Matrix::Identity;
         if (m_bounding_box_dirty || m_transform_previous != transform)
@@ -529,7 +529,7 @@ namespace spartan
         }
     }
 
-    void Renderable::UpdateFrustumAndDistanceCulling()
+    void Render::UpdateFrustumAndDistanceCulling()
     {
         if (Camera* camera = World::GetCamera())
         {
@@ -557,7 +557,7 @@ namespace spartan
         }
     }
 
-    void Renderable::UpdateLodIndices()
+    void Render::UpdateLodIndices()
     {
         // screen-space coverage based lod selection
         // this approach (used by unreal, unity, cryengine, frostbite) naturally handles:

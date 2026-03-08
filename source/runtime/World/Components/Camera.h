@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spartan
 {
     class Entity;
-    class Renderable;
+    class Render;
     class Renderer;
     class Physics;
 
@@ -134,7 +134,7 @@ namespace spartan
   
         // frustum
         bool IsInViewFrustum(const math::BoundingBox& bounding_box) const;
-        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable) const;
+        bool IsInViewFrustum(std::shared_ptr<Render> renderable) const;
 
         // flags
         bool GetFlag(const CameraFlags flag) { return m_flags & flag; }

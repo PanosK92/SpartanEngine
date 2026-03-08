@@ -41,7 +41,7 @@ namespace spartan
     class Entity;
     class Camera;
     class Light;
-    class Renderable;
+    class Render;
     namespace math
     {
         class BoundingBox;

@@ -195,7 +195,7 @@ namespace spartan
                 default_floor->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
                 default_floor->SetScale(Vector3(1000.0f, 1.0f, 1000.0f));
 
-                Renderable* renderable = default_floor->AddComponent<Renderable>();
+                Render* renderable = default_floor->AddComponent<Render>();
                 renderable->SetMesh(MeshType::Quad);
                 renderable->SetDefaultMaterial();
 
@@ -221,7 +221,7 @@ namespace spartan
                 material->SetProperty(MaterialProperty::Tessellation, 1.0f);
                 material->SetResourceName("crate_space" + string(EXTENSION_MATERIAL));
 
-                Renderable* renderable = default_metal_cube->AddComponent<Renderable>();
+                Render* renderable = default_metal_cube->AddComponent<Render>();
                 renderable->SetMesh(MeshType::Cube);
                 renderable->SetMaterial(material);
 
@@ -334,7 +334,7 @@ namespace spartan
                         entity_tile->SetParent(water);
                         entity_tile->SetPosition(tile_offsets[tile_index]);
 
-                        if (Renderable* renderable = entity_tile->AddComponent<Renderable>())
+                        if (Render* renderable = entity_tile->AddComponent<Render>())
                         {
                             renderable->SetMesh(mesh.get());
                             renderable->SetMaterial(material);
@@ -402,7 +402,7 @@ namespace spartan
                     entity->GetDescendants(&entities);
                     for (Entity* entity_it : entities)
                     {
-                        if (entity_it->GetActive() && entity_it->GetComponent<Renderable>() != nullptr)
+                        if (entity_it->GetActive() && entity_it->GetComponent<Render>() != nullptr)
                         {
                             Physics* physics_body = entity_it->AddComponent<Physics>();
                             physics_body->SetBodyType(BodyType::Mesh);
@@ -422,7 +422,7 @@ namespace spartan
                     const char* curtain_parts[] = {"curtain_03_2", "curtain_03_3", "curtain_hanging_06_3"};
                     for (const char* part : curtain_parts)
                     {
-                        if (Material* material = entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
+                        if (Material* material = entity->GetDescendantByName(part)->GetComponent<Render>()->GetMaterial())
                         {
                             material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         }
@@ -440,7 +440,7 @@ namespace spartan
                     // leaf material
                     if (Entity* leaves = entity->GetDescendantByName("IvySim_Leaves"))
                     { 
-                        if (Material* material = leaves->GetComponent<Renderable>()->GetMaterial())
+                        if (Material* material = leaves->GetComponent<Render>()->GetMaterial())
                         {
                             material->SetProperty(MaterialProperty::CullMode,                   static_cast<float>(RHI_CullMode::None));
                             material->SetProperty(MaterialProperty::SubsurfaceScattering,       1.0f);
@@ -451,7 +451,7 @@ namespace spartan
                     // stem material
                     if (Entity* stems = entity->GetDescendantByName("IvySim_Stems"))
                     { 
-                        if (Material* material = stems->GetComponent<Renderable>()->GetMaterial())
+                        if (Material* material = stems->GetComponent<Render>()->GetMaterial())
                         {
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         }
@@ -486,7 +486,7 @@ namespace spartan
                     // make the ceiling panel emissive so it lights the scene via path tracing
                     if (Entity* light_entity = entity->GetDescendantByName("light"))
                     {
-                        if (Renderable* renderable = light_entity->GetComponent<Renderable>())
+                        if (Render* renderable = light_entity->GetComponent<Render>())
                         {
                             if (Material* material = renderable->GetMaterial())
                             {
@@ -500,7 +500,7 @@ namespace spartan
                     entity->GetDescendants(&entities);
                     for (Entity* entity_it : entities)
                     {
-                        if (entity_it->GetComponent<Renderable>() != nullptr)
+                        if (entity_it->GetComponent<Render>() != nullptr)
                         {
                             Physics* physics_body = entity_it->AddComponent<Physics>();
                             physics_body->SetBodyType(BodyType::Mesh);
@@ -839,7 +839,7 @@ namespace spartan
 
                                 if (Entity* trunk = entity->GetChildByIndex(0))
                                 {
-                                    Renderable* renderable = trunk->GetComponent<Renderable>();
+                                    Render* renderable = trunk->GetComponent<Render>();
                                     renderable->SetInstances(transforms);
                                     renderable->SetMaxRenderDistance(render_distance_trees);
                                     renderable->SetMaxShadowDistance(shadow_distance);
@@ -851,7 +851,7 @@ namespace spartan
 
                                 if (Entity* leafs = entity->GetChildByIndex(1))
                                 {
-                                    Renderable* renderable = leafs->GetComponent<Renderable>();
+                                    Render* renderable = leafs->GetComponent<Render>();
                                     renderable->SetInstances(transforms);
                                     renderable->SetMaxRenderDistance(render_distance_trees);
                                     renderable->SetMaxShadowDistance(shadow_distance);
@@ -870,7 +870,7 @@ namespace spartan
 
                                 if (Entity* rock_entity = entity->GetDescendantByName("untitled"))
                                 {
-                                    Renderable* renderable = rock_entity->GetComponent<Renderable>();
+                                    Render* renderable = rock_entity->GetComponent<Render>();
                                     renderable->SetInstances(transforms);
                                     renderable->SetMaxRenderDistance(render_distance_trees);
                                     renderable->SetMaxShadowDistance(shadow_distance);
@@ -900,7 +900,7 @@ namespace spartan
 
                                         vector<Matrix> far_transforms(all_transforms.begin(), all_transforms.begin() + split_1);
 
-                                        Renderable* renderable = entity->AddComponent<Renderable>();
+                                        Render* renderable = entity->AddComponent<Render>();
                                         renderable->SetMesh(mesh_grass_blade.get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(far_transforms);
@@ -916,7 +916,7 @@ namespace spartan
 
                                         vector<Matrix> mid_transforms(all_transforms.begin() + split_1, all_transforms.begin() + split_2);
 
-                                        Renderable* renderable = entity->AddComponent<Renderable>();
+                                        Render* renderable = entity->AddComponent<Render>();
                                         renderable->SetMesh(mesh_grass_blade.get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(mid_transforms);
@@ -932,7 +932,7 @@ namespace spartan
 
                                         vector<Matrix> near_transforms(all_transforms.begin() + split_2, all_transforms.end());
 
-                                        Renderable* renderable = entity->AddComponent<Renderable>();
+                                        Render* renderable = entity->AddComponent<Render>();
                                         renderable->SetMesh(mesh_grass_blade.get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                         renderable->SetInstances(near_transforms);
@@ -951,7 +951,7 @@ namespace spartan
                                 vector<Matrix> transforms;
                                 terrain->FindTransforms(tile_index, TerrainProp::Flower, entity, per_triangle_density_flower, 0.64f, transforms);
 
-                                Renderable* renderable = entity->AddComponent<Renderable>();
+                                Render* renderable = entity->AddComponent<Render>();
                                 renderable->SetMesh(mesh_flower.get());
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                 renderable->SetInstances(transforms);
@@ -1059,7 +1059,7 @@ namespace spartan
                         {
                             if (Entity* entity_tube_light = floor_tube_lights->GetDescendantByName(descendant_name))
                             {
-                                Renderable* renderable = entity_tube_light->GetComponent<Renderable>();
+                                Render* renderable = entity_tube_light->GetComponent<Render>();
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
                                 if (Material* material = renderable->GetMaterial())
                                 {
@@ -1106,7 +1106,7 @@ namespace spartan
                         floor_tube_lights->GetDescendants(&descendants);
                         for (Entity* descendant : descendants)
                         {
-                            if (descendant->GetComponent<Renderable>())
+                            if (descendant->GetComponent<Render>())
                             {
                                 descendant->AddComponent<Physics>()->SetBodyType(BodyType::Mesh);
                             }
@@ -1117,7 +1117,7 @@ namespace spartan
                         {
                             const float scale = 100.0f;
                             entity_floor->SetScale(scale);
-                            if (Material* material = entity_floor->GetComponent<Renderable>()->GetMaterial())
+                            if (Material* material = entity_floor->GetComponent<Render>()->GetMaterial())
                             {
                                 material->SetProperty(MaterialProperty::TextureTilingX, scale);
                                 material->SetProperty(MaterialProperty::TextureTilingY, scale);
@@ -1133,7 +1133,7 @@ namespace spartan
                             default_car->SetScaleLocal(1.0f);
                             turn_table->SetPositionLocal(0.0f);
                             turn_table->SetRotation(Quaternion::FromEulerAngles(0.0f, 142.9024f, 0.0f));
-                            if (Material* material = turn_table->GetComponent<Renderable>()->GetMaterial())
+                            if (Material* material = turn_table->GetComponent<Render>()->GetMaterial())
                             {
                                 material->SetColor(Color::standard_black);
                             }
@@ -1244,7 +1244,7 @@ namespace spartan
                     material_metal->SetResourceName("material_metal" + string(EXTENSION_MATERIAL));
                     material_metal->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_metal->SetProperty(MaterialProperty::Metalness, 1.0f);
-                    entity_pool_light->GetChildByName("Circle")->GetComponent<Renderable>()->SetMaterial(material_metal);
+                    entity_pool_light->GetChildByName("Circle")->GetComponent<Render>()->SetMaterial(material_metal);
 
                     // inner light paraboloid
                     shared_ptr<Material> material_paraboloid = make_shared<Material>();
@@ -1252,7 +1252,7 @@ namespace spartan
                     material_paraboloid->SetTexture(MaterialTextureType::Emission, "project/models/pool_light/emissive.png");
                     material_paraboloid->SetProperty(MaterialProperty::Roughness, 0.5f);
                     material_paraboloid->SetProperty(MaterialProperty::Metalness, 1.0f);
-                    entity_pool_light->GetChildByName("Circle.001")->GetComponent<Renderable>()->SetMaterial(material_paraboloid);
+                    entity_pool_light->GetChildByName("Circle.001")->GetComponent<Render>()->SetMaterial(material_paraboloid);
                 }
 
                 // renderer
@@ -1318,7 +1318,7 @@ namespace spartan
                     entity->SetScale(scale);
                     entity->SetParent(parent);
 
-                    auto renderable = entity->AddComponent<Renderable>();
+                    auto renderable = entity->AddComponent<Render>();
                     renderable->SetMesh(MeshType::Cube);
                     renderable->SetMaterial(tile_material);
 

@@ -145,7 +145,7 @@ namespace spartan
 
     BodyType Physics::DetectBodyType()
     {
-        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        Render* renderable = GetEntity()->GetComponent<Render>();
         if (renderable)
         {
             // check if the mesh is a simple primitive shape (case-insensitive)
@@ -410,7 +410,7 @@ namespace spartan
 
     void Physics::TickDynamicBodies(bool is_playing)
     {
-        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        Render* renderable = GetEntity()->GetComponent<Render>();
         if (!renderable)
             return;
 
@@ -477,7 +477,7 @@ namespace spartan
     void Physics::TickDistanceActivation()
     {
         Camera* camera = World::GetCamera();
-        Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+        Render* renderable = GetEntity()->GetComponent<Render>();
         if (!camera || !renderable)
             return;
 
@@ -741,7 +741,7 @@ namespace spartan
                 case BodyType::Mesh:
                 {
                     // approximate using bounding box volume
-                    Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+                    Render* renderable = GetEntity()->GetComponent<Render>();
                     if (renderable)
                     {
                         BoundingBox bbox = renderable->GetBoundingBox();
@@ -1264,7 +1264,7 @@ namespace spartan
 
                     // try to get the actual mesh center from the renderable's bounding box
                     Vector3 wheel_world_pos = entity->GetPosition();
-                    Renderable* renderable = entity->GetComponent<Renderable>();
+                    Render* renderable = entity->GetComponent<Render>();
                     if (renderable)
                     {
                         renderable->Tick();
@@ -1349,7 +1349,7 @@ namespace spartan
         };
 
         // filter to only entities with renderable components, excluding specified entities
-        vector<pair<Entity*, Renderable*>> renderable_entities;
+        vector<pair<Entity*, Render*>> renderable_entities;
         for (Entity* ent : mesh_entities)
         {
             // skip inactive entities and excluded entities
@@ -1358,7 +1358,7 @@ namespace spartan
             if (should_exclude(ent))
                 continue;
 
-            if (Renderable* renderable = ent->GetComponent<Renderable>())
+            if (Render* renderable = ent->GetComponent<Render>())
             {
                 renderable_entities.push_back({ent, renderable});
             }
@@ -1544,7 +1544,7 @@ namespace spartan
         }
 
         // get the renderable component to access the bounding box
-        Renderable* renderable = wheel_entity->GetComponent<Renderable>();
+        Render* renderable = wheel_entity->GetComponent<Render>();
         if (!renderable)
         {
             SP_LOG_WARNING("ComputeWheelRadiusFromEntity: wheel entity has no Renderable component");
@@ -2084,7 +2084,7 @@ namespace spartan
             // this handles meshes where the origin is not at the geometric center
             Vector3 wheel_world_pos = wheel_entity->GetPosition();
 
-            Renderable* renderable = wheel_entity->GetComponent<Renderable>();
+            Render* renderable = wheel_entity->GetComponent<Render>();
             if (renderable)
             {
                 renderable->Tick(); // ensure bounding box is up to date
@@ -2302,10 +2302,10 @@ namespace spartan
             source_entity->GetDescendants(&mesh_entities);
 
             // filter to only entities with renderable components
-            vector<pair<Entity*, Renderable*>> renderable_entities;
+            vector<pair<Entity*, Render*>> renderable_entities;
             for (Entity* entity : mesh_entities)
             {
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                if (Render* renderable = entity->GetComponent<Render>())
                 {
                     renderable_entities.push_back({entity, renderable});
                 }
@@ -2477,7 +2477,7 @@ namespace spartan
             // mesh
             if (m_body_type == BodyType::Mesh)
             {
-                Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+                Render* renderable = GetEntity()->GetComponent<Render>();
                 if (!renderable)
                 {
                     SP_LOG_ERROR("No Renderable component found for mesh shape");
@@ -2628,7 +2628,7 @@ namespace spartan
     void Physics::CreateBodies()
     {
         PxPhysics* physics      = static_cast<PxPhysics*>(PhysicsWorld::GetPhysics());
-        Renderable* renderable  = GetEntity()->GetComponent<Renderable>();
+        Render* renderable  = GetEntity()->GetComponent<Render>();
 
         // determine instance count - use renderable if available, otherwise single instance
         const uint32_t instance_count = renderable ? renderable->GetInstanceCount() : 1;

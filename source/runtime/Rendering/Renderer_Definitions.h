@@ -428,10 +428,10 @@ namespace spartan
         Average
     };
 
-    class Renderable;
+    class Render;
     struct Renderer_DrawCall
     {
-        Renderable* renderable   = nullptr;
+        Render* renderable   = nullptr;
         uint32_t instance_index  = 0;
         uint32_t instance_count  = 0;
         uint32_t lod_index       = 0;

@@ -318,7 +318,7 @@ namespace spartan
         
         if (cvar_aabb.GetValueAs<bool>())
         {
-            auto get_color = [](Renderable* renderable)
+            auto get_color = [](Render* renderable)
             {
                 const Color color_visible  = Color::standard_renderer_lines;
                 const Color color_occluded = Color(1.0f, 0.0f, 0.0f, 1.0f);
@@ -332,7 +332,7 @@ namespace spartan
                     continue;
 
                 // meshes
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                if (Render* renderable = entity->GetComponent<Render>())
                 {
                     if (Camera* camera = World::GetCamera())
                     {

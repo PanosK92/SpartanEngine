@@ -163,7 +163,7 @@ namespace spartan
         return m_frustum.IsVisible(center, extents);
     }
 
-    bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
+    bool Camera::IsInViewFrustum(shared_ptr<Render> renderable) const
     {
         const BoundingBox& box = renderable->GetBoundingBox();
         return IsInViewFrustum(box);
@@ -193,10 +193,10 @@ namespace spartan
         const vector<Entity*>& entities = World::GetEntities();
         for (Entity* entity : entities)
         {
-            if (!entity->GetComponent<Renderable>())
+            if (!entity->GetComponent<Render>())
                 continue;
 
-            const BoundingBox& aabb = entity->GetComponent<Renderable>()->GetBoundingBox();
+            const BoundingBox& aabb = entity->GetComponent<Render>()->GetBoundingBox();
             float distance          = ray.HitDistance(aabb);
             if (distance == numeric_limits<float>::infinity())
                 continue;
@@ -214,7 +214,7 @@ namespace spartan
         {
             for (RayHitResult& broad_hit : m_pick_hits)
             {
-                Renderable* renderable = broad_hit.m_entity->GetComponent<Renderable>();
+                Render* renderable = broad_hit.m_entity->GetComponent<Render>();
 
                 // query mesh size first to reserve exact capacity and avoid allocations
                 uint32_t index_count  = renderable->GetIndexCount();
@@ -856,7 +856,7 @@ namespace spartan
             entity->SetPosition(GetEntity()->GetPosition() + spawn_offset);
 
             // give it a mesh and a material
-            Renderable* renderable = entity->AddComponent<Renderable>();
+            Render* renderable = entity->AddComponent<Render>();
             renderable->SetMesh(MeshType::Cube);
             renderable->SetDefaultMaterial();
 
@@ -931,7 +931,7 @@ namespace spartan
 
             // if the entity has a renderable component, we can get a more accurate target position
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
-            if (Renderable* renderable = entity->GetComponent<Renderable>())
+            if (Render* renderable = entity->GetComponent<Render>())
             {
                 m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox().GetExtents().Length() * 2.0f;
             }

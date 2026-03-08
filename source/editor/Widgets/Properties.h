@@ -29,7 +29,7 @@ namespace spartan
 {
     class Entity;
     class Light;
-    class Renderable;
+    class Render;
     class Physics;
     class Material;
     class Camera;
@@ -60,7 +60,7 @@ private:
     void ShowEntity(spartan::Entity* transform) const;
     void ShowScript(spartan::Script* script) const;
     void ShowLight(spartan::Light* light) const;
-    void ShowRenderable(spartan::Renderable* renderable) const;
+    void ShowRenderable(spartan::Render* renderable) const;
     void ShowPhysics(spartan::Physics* rigid_body) const;
     void ShowMaterial(spartan::Material* material) const;
     void ShowCamera(spartan::Camera* camera) const;

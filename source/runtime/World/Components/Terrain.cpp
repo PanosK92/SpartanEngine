@@ -1457,7 +1457,7 @@ namespace spartan
             entity->SetParent(GetEntity());
             entity->SetPosition(m_tile_offsets[tile_index]);
 
-            if (Renderable* renderable = entity->AddComponent<Renderable>())
+            if (Render* renderable = entity->AddComponent<Render>())
             {
                 renderable->SetMesh(m_mesh.get(), sub_mesh_index);
                 renderable->SetMaterial(m_material);
@@ -1488,7 +1488,7 @@ namespace spartan
 
         for (Entity* child : m_entity_ptr->GetChildren())
         {
-            if (Renderable* renderable = child->AddComponent<Renderable>())
+            if (Render* renderable = child->AddComponent<Render>())
                 renderable->SetMesh(nullptr);
         }
     }

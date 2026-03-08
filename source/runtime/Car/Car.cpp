@@ -103,7 +103,7 @@ namespace spartan
                     car->m_body_entity->GetDescendants(&car_parts);
                     for (Entity* car_part : car_parts)
                     {
-                        if (car_part->GetComponent<Renderable>())
+                        if (car_part->GetComponent<Render>())
                         {
                             Physics* physics_body = car_part->AddComponent<Physics>();
                             physics_body->SetKinematic(true);
@@ -481,7 +481,7 @@ namespace spartan
 
         for (Entity* entity : descendants)
         {
-            if (Renderable* renderable = entity->GetComponent<Renderable>())
+            if (Render* renderable = entity->GetComponent<Render>())
             {
                 combined.Merge(renderable->GetBoundingBox());
             }
@@ -538,7 +538,7 @@ namespace spartan
         // material tweaks
         {
             // body main - red clearcoat paint
-            if (Material* material = car_entity->GetDescendantByName("Object_12")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_12")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetResourceName("car_paint" + std::string(EXTENSION_MATERIAL));
                 material->SetProperty(MaterialProperty::Roughness, 0.0f);
@@ -551,7 +551,7 @@ namespace spartan
             }
 
             // body metallic/carbon parts
-            if (Material* material = car_entity->GetDescendantByName("Object_10")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_10")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::Roughness, 0.4f);
                 material->SetProperty(MaterialProperty::Metalness, 1.0f);
@@ -562,7 +562,7 @@ namespace spartan
                 const char* tire_parts[] = {"Object_127", "Object_142", "Object_157", "Object_172"};
                 for (const char* part : tire_parts)
                 {
-                    if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
+                    if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Render>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Roughness, 0.7f);
                     }
@@ -570,40 +570,40 @@ namespace spartan
             }
 
             // rims - polished metal
-            if (Material* material = car_entity->GetDescendantByName("Object_180")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_180")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::Metalness, 1.0f);
                 material->SetProperty(MaterialProperty::Roughness, 0.3f);
             }
-            if (Material* material = car_entity->GetDescendantByName("Object_150")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_150")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::Metalness, 1.0f);
                 material->SetProperty(MaterialProperty::Roughness, 0.3f);
             }
 
             // headlight and taillight glass
-            if (Material* material = car_entity->GetDescendantByName("Object_38")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_38")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::Roughness, 0.5f);
                 material->SetProperty(MaterialProperty::Metalness, 1.0f);
             }
 
             // windshield and engine glass
-            if (Material* material = car_entity->GetDescendantByName("Object_58")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_58")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::Roughness, 0.0f);
                 material->SetProperty(MaterialProperty::Metalness, 0.0f);
             }
 
             // side mirror glass
-            if (Material* material = car_entity->GetDescendantByName("Object_98")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_98")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::Roughness, 0.0f);
                 material->SetProperty(MaterialProperty::Metalness, 1.0f);
             }
 
             // engine block
-            if (Material* material = car_entity->GetDescendantByName("Object_14")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_14")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::Roughness, 0.4f);
                 material->SetProperty(MaterialProperty::Metalness, 1.0f);
@@ -614,7 +614,7 @@ namespace spartan
                 const char* brake_parts[] = {"Object_129", "Object_144", "Object_174", "Object_159"};
                 for (const char* part : brake_parts)
                 {
-                    if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Renderable>()->GetMaterial())
+                    if (Material* material = car_entity->GetDescendantByName(part)->GetComponent<Render>()->GetMaterial())
                     {
                         material->SetProperty(MaterialProperty::Metalness, 1.0f);
                         material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
@@ -624,7 +624,7 @@ namespace spartan
             }
 
             // interior leather
-            if (Material* material = car_entity->GetDescendantByName("Object_90")->GetComponent<Renderable>()->GetMaterial())
+            if (Material* material = car_entity->GetDescendantByName("Object_90")->GetComponent<Render>()->GetMaterial())
             {
                 material->SetProperty(MaterialProperty::Roughness, 0.75f);
             }
@@ -656,7 +656,7 @@ namespace spartan
         mesh->SetRootEntity(nullptr);
         wheel_base->SetScale(0.2f);
 
-        if (Renderable* renderable = wheel_base->GetComponent<Renderable>())
+        if (Render* renderable = wheel_base->GetComponent<Render>())
         {
             Material* material = renderable->GetMaterial();
             material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
