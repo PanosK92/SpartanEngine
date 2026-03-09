@@ -19,11 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES ============================
 #include "pch.h"
 #include "Spline.h"
 #include "Physics.h"
-#include "Renderable.h"
+#include "Render.h"
 #include "../Entity.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/Material.h"
@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #include "../../IO/pugixml.hpp"
 SP_WARNINGS_ON
-//===================================
+//=======================================
 
 //= NAMESPACES ===============
 using namespace std;

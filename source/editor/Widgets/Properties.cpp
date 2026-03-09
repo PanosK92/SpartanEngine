@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "World/Entity.h"
 #include "Rendering/Material.h"
-#include "World/Components/Renderable.h"
+#include "World/Components/Render.h"
 #include "World/Components/Physics.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
@@ -642,10 +642,10 @@ void Properties::OnTickVisible()
             ShowSplineFollower(entity->GetComponent<SplineFollower>());
             ShowAudioSource(entity->GetComponent<AudioSource>());
 
-            // re-fetch after ShowSpline since clearing a road mesh removes the renderable
-            Render* renderable = entity->GetComponent<Render>();
-            Material* material     = renderable ? renderable->GetMaterial() : nullptr;
-            ShowRenderable(renderable);
+            // re-fetch after ShowSpline since clearing a road mesh removes the render
+            Render* render = entity->GetComponent<Render>();
+            Material* material = render ? render->GetMaterial() : nullptr;
+            ShowRender(render);
             ShowMaterial(material);
             ShowPhysics(entity->GetComponent<Physics>());
             ShowVolume(entity->GetComponent<Volume>());
@@ -1063,12 +1063,12 @@ void Properties::ShowLight(spartan::Light* light) const
     component_end();
 }
 
-void Properties::ShowRenderable(spartan::Render* renderable) const
+void Properties::ShowRender(spartan::Render* renderable) const
 {
     if (!renderable)
         return;
 
-    if (component_begin("Renderable", design::accent_renderable(), renderable))
+    if (component_begin("Render", design::accent_renderable(), renderable))
     {
         //= REFLECT ========================================================================================================
         string& name_mesh                 = const_cast<string&>(renderable->GetMeshName());

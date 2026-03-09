@@ -270,7 +270,7 @@ void RenderOptions::OnTickVisible()
                         "Off",   // AA_Off_Upscale_Linear
                         "FXAA",  // AA_Fxaa_Upscale_Linear
                         "FSR 3", // AA_Fsr_Upscale_Fsr
-                        "XeSS 2" // AA_Xess_Upscale_Xess
+                        "XeSS 3" // AA_Xess_Upscale_Xess
                     };
 
                     Vector2 res_render = Renderer::GetResolutionRender();

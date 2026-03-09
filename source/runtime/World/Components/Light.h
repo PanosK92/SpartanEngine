@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <array>
 #include "Component.h"
-#include "Renderable.h"
+#include "Render.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Frustum.h"
 #include "../../Math/Rectangle.h"

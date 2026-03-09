@@ -22,16 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "World.h"
-
 #include <sol/sol.hpp>
-
 #include "Entity.h"
 #include "Prefab.h"
 #include "../Game/Game.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/ProgressTracker.h"
 #include "../Core/ThreadPool.h"
-#include "Components/Renderable.h"
+#include "Components/Render.h"
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"

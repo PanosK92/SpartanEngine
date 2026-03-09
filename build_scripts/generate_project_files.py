@@ -86,8 +86,8 @@ def main():
     file_utilities.copy(Path("build_scripts") / "7z.dll", "binaries")
 
     print("\n2. Download and extract libraries...")
-    library_url           = 'https://www.dropbox.com/scl/fi/4er6uorq7ndv9nq1etm9o/libraries.7z?rlkey=uq1bnrrfd2xwi2gjm3iixu7lx&st=4d8bh50g&dl=1'
-    library_expected_hash = '8901a27ff8384bfbe06f49b3162818fff9f0d60baadb714348f7118d4471a7e0'
+    library_url           = 'https://www.dropbox.com/scl/fi/bqm5ds2jgal9i4xqlq9p7/libraries.7z?rlkey=2tjj312w4jd0sxavdrpzt7aru&st=kkutkjir&dl=1'
+    library_expected_hash = 'd84b0e2c9bf3622f48f3a0f7b3a00d0f9cf11925b75067879923081516eedf15'
     library_destination   = Path("third_party") / "libraries" / "libraries.7z"
     file_utilities.download_file(library_url, str(library_destination), library_expected_hash)
     file_utilities.extract_archive(str(library_destination), str(Path("third_party") / "libraries"))
