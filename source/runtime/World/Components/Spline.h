@@ -70,6 +70,10 @@ namespace spartan
         void ClearRoadMesh();
         bool HasRoadMesh() const { return m_mesh != nullptr; }
 
+        // mesh generation toggle
+        bool GetMeshEnabled() const       { return m_mesh_enabled; }
+        void SetMeshEnabled(bool enabled) { m_mesh_enabled = enabled; }
+
         // instanced mesh placement along the spline
         void SpawnInstances();
         void ClearInstances();
@@ -92,6 +96,30 @@ namespace spartan
         uint32_t GetTubeSides() const                 { return m_tube_sides; }
         void SetTubeSides(uint32_t sides)             { m_tube_sides = sides; }
 
+        // width variation (interpolated from start to end along the spline)
+        float GetRoadWidthEnd() const                 { return m_road_width_end; }
+        void SetRoadWidthEnd(float width)             { m_road_width_end = width; }
+
+        // uv tiling
+        float GetUvTilingU() const                    { return m_uv_tiling_u; }
+        void SetUvTilingU(float tiling)               { m_uv_tiling_u = tiling; }
+        float GetUvTilingV() const                    { return m_uv_tiling_v; }
+        void SetUvTilingV(float tiling)               { m_uv_tiling_v = tiling; }
+
+        // sidewalk/curb (road profile only)
+        bool GetSidewalkEnabled() const               { return m_sidewalk_enabled; }
+        void SetSidewalkEnabled(bool enabled)         { m_sidewalk_enabled = enabled; }
+        float GetSidewalkWidth() const                { return m_sidewalk_width; }
+        void SetSidewalkWidth(float width)            { m_sidewalk_width = width; }
+        float GetCurbHeight() const                   { return m_curb_height; }
+        void SetCurbHeight(float height)              { m_curb_height = height; }
+
+        // terrain conforming
+        bool GetConformToTerrain() const              { return m_conform_to_terrain; }
+        void SetConformToTerrain(bool conform)        { m_conform_to_terrain = conform; }
+        float GetTerrainOffset() const                { return m_terrain_offset; }
+        void SetTerrainOffset(float offset)           { m_terrain_offset = offset; }
+
         // instancing properties
         float GetInstanceSpacing() const                        { return m_instance_spacing; }
         void SetInstanceSpacing(float spacing)                  { m_instance_spacing = spacing; }
@@ -99,6 +127,16 @@ namespace spartan
         void SetAlignInstancesToSpline(bool align)              { m_align_instances_to_spline = align; }
         const std::string& GetInstanceMeshPath() const          { return m_instance_mesh_path; }
         void SetInstanceMeshPath(const std::string& path)       { m_instance_mesh_path = path; }
+
+        // procedural placement randomization
+        float GetInstanceRandomOffset() const                   { return m_instance_random_offset; }
+        void SetInstanceRandomOffset(float offset)              { m_instance_random_offset = offset; }
+        float GetInstanceRandomScaleMin() const                 { return m_instance_random_scale_min; }
+        void SetInstanceRandomScaleMin(float scale)             { m_instance_random_scale_min = scale; }
+        float GetInstanceRandomScaleMax() const                 { return m_instance_random_scale_max; }
+        void SetInstanceRandomScaleMax(float scale)             { m_instance_random_scale_max = scale; }
+        float GetInstanceRandomYaw() const                      { return m_instance_random_yaw; }
+        void SetInstanceRandomYaw(float degrees)                { m_instance_random_yaw = degrees; }
 
     private:
         // gather control point world positions from child entities
@@ -109,6 +147,7 @@ namespace spartan
 
         // resolve the current profile into a set of 2d cross-section points (in right-up plane)
         std::vector<math::Vector2> GetProfilePoints() const;
+        std::vector<math::Vector2> GetProfilePointsForWidth(float width) const;
 
         // whether the current profile forms a closed loop cross-section (e.g. tube)
         bool IsProfileClosed() const;
@@ -139,9 +178,10 @@ namespace spartan
 
         // spline
         bool m_closed_loop             = false;
-        uint32_t m_resolution          = 20; // line segments per span
+        uint32_t m_resolution          = 20;
         float m_road_width             = 8.0f;
         bool m_needs_road_regeneration = false;
+        bool m_mesh_enabled            = false;
 
         // profile
         SplineProfile m_profile  = SplineProfile::Road;
@@ -149,15 +189,53 @@ namespace spartan
         float m_thickness        = 0.3f;
         uint32_t m_tube_sides    = 12;
 
+        // width variation
+        float m_road_width_end = 8.0f;
+
+        // uv tiling
+        float m_uv_tiling_u = 1.0f;
+        float m_uv_tiling_v = 1.0f;
+
+        // sidewalk/curb
+        bool m_sidewalk_enabled  = false;
+        float m_sidewalk_width   = 2.0f;
+        float m_curb_height      = 0.15f;
+
+        // terrain conforming
+        bool m_conform_to_terrain = false;
+        float m_terrain_offset    = 0.01f;
+
         // instancing
         float m_instance_spacing              = 5.0f;
         bool m_align_instances_to_spline      = true;
         std::string m_instance_mesh_path;
+        float m_instance_random_offset        = 0.0f;
+        float m_instance_random_scale_min     = 1.0f;
+        float m_instance_random_scale_max     = 1.0f;
+        float m_instance_random_yaw           = 0.0f;
 
         // material name to restore after mesh regeneration
         std::string m_saved_material_name;
 
         // generated mesh
         std::shared_ptr<Mesh> m_mesh;
+
+        // snapshot of previous state for auto-regeneration
+        bool m_prev_closed_loop                         = false;
+        uint32_t m_prev_resolution                      = 0;
+        float m_prev_road_width                         = 0.0f;
+        float m_prev_road_width_end                     = 0.0f;
+        SplineProfile m_prev_profile                    = SplineProfile::Road;
+        float m_prev_height                             = 0.0f;
+        float m_prev_thickness                          = 0.0f;
+        uint32_t m_prev_tube_sides                      = 0;
+        float m_prev_uv_tiling_u                        = 0.0f;
+        float m_prev_uv_tiling_v                        = 0.0f;
+        bool m_prev_sidewalk_enabled                    = false;
+        float m_prev_sidewalk_width                     = 0.0f;
+        float m_prev_curb_height                        = 0.0f;
+        bool m_prev_conform_to_terrain                  = false;
+        float m_prev_terrain_offset                     = 0.0f;
+        std::vector<math::Vector3> m_prev_control_points;
     };
 }

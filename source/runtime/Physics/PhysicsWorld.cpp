@@ -360,4 +360,26 @@ namespace spartan
     {
         return interpolation::alpha;
     }
+
+    bool PhysicsWorld::RaycastStatic(const Vector3& origin, const Vector3& direction, float max_distance, Vector3& hit_position)
+    {
+        if (!scene)
+            return false;
+
+        PxVec3 px_origin(origin.x, origin.y, origin.z);
+        PxVec3 px_direction(direction.x, direction.y, direction.z);
+        px_direction.normalize();
+
+        PxRaycastBuffer hit;
+        PxQueryFilterData filter_data(PxQueryFlag::eSTATIC);
+
+        lock_guard<mutex> lock(scene_mutex);
+        if (scene->raycast(px_origin, px_direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data) && hit.hasBlock)
+        {
+            hit_position = Vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z);
+            return true;
+        }
+
+        return false;
+    }
 }

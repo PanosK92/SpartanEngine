@@ -23,138 +23,176 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// static constants
-static const float2 vhs_resolution           = float2(320.0, 240.0);
-static const int samples                     = 2;
-static const float crease_noise              = 1.0;
-static const float crease_opacity            = 0.5;
-static const float filter_intensity          = 0.0001;
-static const float tape_crease_smear         = 0.1;
-static const float tape_crease_intensity     = 0.2;
-static const float tape_crease_jitter        = 0.10;
-static const float tape_crease_speed         = 0.3;
-static const float tape_crease_discoloration = 0.1;
-static const float bottom_border_thickness   = 6.0;
-static const float bottom_border_jitter      = 3.0;
-static const float noise_intensity           = 0.04;
-static const float tape_wave_speed           = 0.5;
-static const float switching_noise_speed     = 0.5;
-static const float image_jiggle_intensity    = 0.01;
-static const float image_jiggle_speed        = 1.0;
-static const float noise_scale               = 200.0;
+// ntsc yiq color space - this is how composite video actually encodes color,
+// and the limited bandwidth of the chroma channels is what gives vhs its look
+static const float3x3 rgb_to_yiq_matrix = float3x3(
+    0.299f,  0.587f,  0.114f,
+    0.596f, -0.274f, -0.322f,
+    0.211f, -0.523f,  0.312f
+);
 
-// helper functions
-float v2random(float2 uv)
+static const float3x3 yiq_to_rgb_matrix = float3x3(
+    1.0f,  0.956f,  0.621f,
+    1.0f, -0.272f, -0.647f,
+    1.0f, -1.107f,  1.704f
+);
+
+float3 rgb_to_yiq(float3 rgb) { return mul(rgb_to_yiq_matrix, rgb); }
+float3 yiq_to_rgb(float3 yiq) { return mul(yiq_to_rgb_matrix, yiq); }
+
+// tape wobble - the slow, wavy horizontal distortion you see on worn tapes
+float get_tape_wobble(float y, float time)
 {
-    return noise_perlin(uv * noise_scale);
+    float wobble  = sin(y * 1.2f + time * 0.5f) * 0.4f;
+    wobble       += sin(y * 4.7f + time * 1.3f) * 0.2f;
+    wobble       += noise_perlin(y * 8.0f + time * 0.8f) * 0.3f;
+    return wobble;
 }
 
-float2x2 rotate2D(float t)
+// per-scanline tracking noise - the jittery horizontal displacement
+float get_tracking_noise(float y, float time)
 {
-    float c = cos(t), s = sin(t);
-    return float2x2(c, s, -s, c);
+    float noise  = noise_perlin(y * 40.0f + time * 2.5f) * 0.5f;
+    noise       += noise_perlin(y * 120.0f + time * 6.0f) * 0.3f;
+
+    // sporadic tracking glitches - bigger displacement that comes and goes
+    float glitch_time = floor(time * 1.5f);
+    float glitch_prob = hash(glitch_time);
+    float glitch_band = smoothstep(0.0f, 0.05f, abs(y - frac(glitch_time * 0.37f))) *
+                        smoothstep(0.15f, 0.0f, abs(y - frac(glitch_time * 0.37f)));
+    noise += step(0.85f, glitch_prob) * glitch_band * noise_perlin(y * 200.0f + time * 20.0f) * 6.0f;
+
+    return noise;
 }
 
-float3 rgb2yiq(float3 rgb)
-{
-    float3x3 mat = float3x3(
-        0.299, 0.587, 0.114, // Y
-        0.596, -0.274, -0.322, // I
-        0.211, -0.523, 0.312  // Q
-    );
-    return mul(rgb, mat);
-}
-
-float3 yiq2rgb(float3 yiq)
-{
-    float3x3 mat = float3x3(
-        1.0, 0.956, 0.621,   // R
-        1.0, -0.272, -0.647, // G
-        1.0, -1.106, 1.703   // B
-    );
-    return mul(yiq, mat);
-}
-
-float3 vhx_tex_2D(float2 uv, float rot)
-{
-    float3 yiq = 0.0;
-    float2 resolution;
-    tex.GetDimensions(resolution.x, resolution.y);
-    for (int i = 0; i < samples; i++)
-    {
-        float2 offset = float2(float(i), 0.0) / vhs_resolution;
-        float2 texel = uv * resolution - offset * resolution;
-        yiq += rgb2yiq(tex.Load(int3(int2(texel), 0)).xyz) *
-               float3(float(samples - 1 - i), float(i), float(i)) / float(samples - 1) / float(samples) * 2.0;
-    }
-    if (rot != 0.0)
-    {
-        yiq.yz = mul(rotate2D(rot * tape_crease_discoloration), yiq.yz);
-    }
-    return yiq2rgb(yiq);
-}
-
-// compute shader entry point
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // compute uv and resolution
-    float2 resolution_out;
-    tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    float2 uvn = thread_id.xy / resolution_out;
+    float2 resolution;
+    tex_uav.GetDimensions(resolution.x, resolution.y);
+    float2 uv    = (thread_id.xy + 0.5f) / resolution;
+    float2 texel = 1.0f / resolution;
+    float  time  = (float)buffer_frame.time;
 
-    // initialize color
-    float3 col = 0.0;
+    // =========================================================================
+    // tape transport distortion
+    // =========================================================================
 
-    float time = (float)buffer_frame.time;
+    // slow tape wobble + fast tracking noise, both horizontal only
+    float wobble   = get_tape_wobble(uv.y * 6.0f, time) * 0.003f;
+    float tracking = get_tracking_noise(uv.y, time) * 0.002f;
+    float2 uv_displaced = float2(uv.x + wobble + tracking, uv.y);
 
-    // image jiggle
-    uvn += (v2random(float2(time * image_jiggle_speed, uvn.y)) - 0.5) * image_jiggle_intensity / vhs_resolution;
+    // head switching - the bottom strip of the frame where the drum head switches,
+    // causing a visible band of distorted, noisy garbage
+    float head_switch = smoothstep(1.0f - 0.04f, 1.0f - 0.005f, uv.y);
+    uv_displaced.x += head_switch * sin(uv.y * 600.0f + time * 30.0f) * 0.02f;
 
-    // tape wave
-    uvn.x += (v2random(float2(uvn.y / 10.0, time / 10.0 * tape_wave_speed)) - 0.5) / vhs_resolution.x;
-    uvn.x += (v2random(float2(uvn.y, time * 10.0 * tape_wave_speed)) - 0.5) / vhs_resolution.x;
+    // =========================================================================
+    // luma channel - sample with slight horizontal softening
+    // vhs resolves about 240 lines of horizontal luma, so it's noticeably soft
+    // =========================================================================
 
-    // tape crease
-    float tc_phase = smoothstep(0.9, 0.96, sin(uvn.y * 8.0 - (time * tape_crease_speed + tape_crease_jitter * v2random(time * float2(0.67, 0.59))) * 3.14159 * 1.2));
-    float tc_noise = smoothstep(0.3, 1.0, v2random(float2(uvn.y * 4.77, time)));
-    float tc = tc_phase * tc_noise;
-    uvn.x -= tc / vhs_resolution.x * 8.0 * tape_crease_smear;
-
-    // switching noise
-    float sn_phase = smoothstep(1.0 - bottom_border_thickness / vhs_resolution.y, 1.0, uvn.y);
-    uvn.x += sn_phase * (v2random(float2(uvn.y * 100.0, time * 10.0 * switching_noise_speed)) - 0.5) / vhs_resolution.x * bottom_border_jitter;
-
-    // fetch color
-    col = vhx_tex_2D(uvn, tc_phase * 0.2 + sn_phase * 2.0);
-
-    // crease noise
-    float cn = tc_noise * crease_noise * (0.7 * tc_phase * tape_crease_intensity + 0.3);
-    if (cn > 0.29)
+    float3 center_rgb = float3(0.0f, 0.0f, 0.0f);
+    float luma_weights = 0.0f;
+    for (int l = -2; l <= 2; l++)
     {
-        float2 V = float2(0.0, crease_opacity);
-        float2 uvt = (uvn + V.yx * v2random(float2(uvn.y, time))) * float2(0.1, 1.0);
-        float n0 = v2random(uvt);
-        float n1 = v2random(uvt + V.yx / vhs_resolution.x);
-        if (n1 < n0)
-        {
-            col = lerp(col, 2.0 * V.yyy, pow(n0, 10.0));
-        }
+        float2 tap_uv = uv_displaced + float2(float(l) * texel.x * 0.8f, 0.0f);
+        float w = exp(-0.5f * float(l * l) / 1.5f);
+        center_rgb += tex.SampleLevel(samplers[sampler_bilinear_clamp], tap_uv, 0).rgb * w;
+        luma_weights += w;
+    }
+    center_rgb /= luma_weights;
+
+    float3 center_yiq = rgb_to_yiq(center_rgb);
+
+    // =========================================================================
+    // chroma smearing - the defining vhs artifact
+    // the color (I/Q) channels have roughly 1/6th the bandwidth of luma,
+    // so color bleeds heavily to the right (asymmetric, like real vhs)
+    // =========================================================================
+
+    static const int   chroma_taps   = 15;
+    static const float chroma_spread = 24.0f; // pixels - this is the real deal
+
+    float2 chroma_sum   = float2(0.0f, 0.0f);
+    float  chroma_total = 0.0f;
+
+    for (int c = 0; c < chroma_taps; c++)
+    {
+        // asymmetric kernel: biased to the right (trailing smear)
+        float t      = float(c) / float(chroma_taps - 1);
+        float offset = lerp(-chroma_spread * 0.3f, chroma_spread * 0.7f, t);
+
+        float2 tap_uv  = uv_displaced + float2(offset * texel.x, 0.0f);
+        float3 tap_yiq = rgb_to_yiq(tex.SampleLevel(samplers[sampler_bilinear_clamp], tap_uv, 0).rgb);
+
+        // exponential falloff from center, heavier on the left side
+        float sigma = (offset < 0.0f) ? chroma_spread * 0.15f : chroma_spread * 0.35f;
+        float w = exp(-0.5f * (offset * offset) / (sigma * sigma + 0.001f));
+
+        chroma_sum   += tap_yiq.yz * w;
+        chroma_total += w;
     }
 
-    // ac beat
-    col *= 1.0 + 0.1 * smoothstep(0.4, 0.6, v2random(float2(0.0, 0.1 * (uvn.y + time * 0.2)) / 10.0));
+    chroma_sum /= chroma_total;
 
-    // color noise
-    float noise = v2random(fmod(uvn * float2(1.0, 1.0) + time * float2(5.97, 4.45), 1.0));
-    col *= 1.0 - noise_intensity * 0.5 + noise_intensity * noise;
-    col = clamp(col, 0.0, 1.0);
+    float3 color = yiq_to_rgb(float3(center_yiq.x, chroma_sum));
 
-    // yiq color adjustment
-    col = rgb2yiq(col);
-   col = float3(0.8, 1.1, 1.2) * col  + float3(0.1, -0.1, 0.2) * filter_intensity; // bluish tint
-    col = yiq2rgb(col);
+    // =========================================================================
+    // composite artifact ringing - the luma overshoot/undershoot halos you see
+    // around sharp horizontal edges on ntsc composite signals
+    // =========================================================================
 
-    // write to output
-    tex_uav[thread_id.xy] = float4(col, 1.0);
+    float y_left  = rgb_to_yiq(tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_displaced + float2(-texel.x * 3.0f, 0.0f), 0).rgb).x;
+    float y_right = rgb_to_yiq(tex.SampleLevel(samplers[sampler_bilinear_clamp], uv_displaced + float2( texel.x * 3.0f, 0.0f), 0).rgb).x;
+    float ringing = (center_yiq.x * 2.0f - y_left - y_right) * 0.12f;
+    color += ringing;
+
+    // =========================================================================
+    // scanlines - ntsc is 480i, so at 1080p each scanline pair is ~4.5 pixels.
+    // we darken alternating bands and alternate the phase each frame for flicker
+    // =========================================================================
+
+    float ntsc_line_height = resolution.y / 240.0f;
+    float scanline_pos     = frac(thread_id.y / ntsc_line_height + float(buffer_frame.frame % 2u) * 0.5f);
+    float scanline_dark    = smoothstep(0.3f, 0.5f, scanline_pos) * smoothstep(0.8f, 0.6f, scanline_pos);
+    color *= lerp(1.0f, 0.82f, scanline_dark);
+
+    // slight brightness variation per scanline to break up uniformity
+    float line_brightness = 1.0f + noise_perlin(float(thread_id.y) * 0.5f + time * 0.3f) * 0.02f;
+    color *= line_brightness;
+
+    // =========================================================================
+    // tape noise - the static/snow that covers the whole image,
+    // plus the bright horizontal streaks that flash across randomly
+    // =========================================================================
+
+    // broad-spectrum luma noise (the graininess of vhs)
+    float grain_seed = hash(float2(thread_id.xy) + frac(time * 7.13f));
+    float grain = (grain_seed - 0.5f) * 0.08f;
+    color += grain;
+
+    // horizontal noise lines - bright streaks that appear for single frames
+    float streak_seed = hash(float2(floor(uv.y * 480.0f), floor(time * 12.0f)));
+    float streak = step(0.975f, streak_seed) * hash(float2(uv.y * 2000.0f, time * 50.0f));
+    color += streak * 0.15f;
+
+    // head switching band - heavy noise and brightness in the bottom strip
+    float head_noise = head_switch * (hash(float2(uv.x * 200.0f, time * 40.0f)) * 0.5f + 0.2f);
+    color = lerp(color, float3(head_noise, head_noise, head_noise), head_switch * 0.7f);
+
+    // =========================================================================
+    // color degradation
+    // =========================================================================
+
+    // vhs tapes lose color fidelity - desaturate toward a slightly warm tone
+    float luma_final = dot(color, float3(0.299f, 0.587f, 0.114f));
+    float3 warm_gray = float3(luma_final * 1.02f, luma_final * 1.0f, luma_final * 0.95f);
+    color = lerp(color, warm_gray, 0.18f);
+
+    // slight contrast reduction - black level doesn't go fully black on vhs
+    color = color * 0.92f + 0.03f;
+
+    tex_uav[thread_id.xy] = float4(saturate(color), 1.0f);
 }

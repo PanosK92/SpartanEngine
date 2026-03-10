@@ -29,7 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Material.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Math/Quaternion.h"
+#include "../../Math/Helper.h"
 #include "../../RHI/RHI_Definitions.h"
+#include "../../Physics/PhysicsWorld.h"
 SP_WARNINGS_OFF
 #include "../../IO/pugixml.hpp"
 SP_WARNINGS_ON
@@ -67,12 +69,64 @@ namespace spartan
         if (m_needs_road_regeneration)
         {
             m_needs_road_regeneration = false;
-            GenerateRoadMesh();
+            if (m_mesh_enabled)
+            {
+                GenerateRoadMesh();
+            }
         }
 
         // only draw spline visualization in edit mode
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
+
+        // auto-regenerate mesh when any property or control point position changes
+        if (m_mesh_enabled && GetControlPointCount() >= 2)
+        {
+            vector<Vector3> current_points = GetControlPointsLocal();
+
+            bool dirty = (m_closed_loop        != m_prev_closed_loop)
+                      || (m_resolution         != m_prev_resolution)
+                      || (m_road_width         != m_prev_road_width)
+                      || (m_road_width_end     != m_prev_road_width_end)
+                      || (m_profile            != m_prev_profile)
+                      || (m_height             != m_prev_height)
+                      || (m_thickness          != m_prev_thickness)
+                      || (m_tube_sides         != m_prev_tube_sides)
+                      || (m_uv_tiling_u        != m_prev_uv_tiling_u)
+                      || (m_uv_tiling_v        != m_prev_uv_tiling_v)
+                      || (m_sidewalk_enabled   != m_prev_sidewalk_enabled)
+                      || (m_sidewalk_width     != m_prev_sidewalk_width)
+                      || (m_curb_height        != m_prev_curb_height)
+                      || (m_conform_to_terrain != m_prev_conform_to_terrain)
+                      || (m_terrain_offset     != m_prev_terrain_offset)
+                      || (current_points       != m_prev_control_points);
+
+            if (dirty)
+            {
+                GenerateRoadMesh();
+
+                m_prev_closed_loop        = m_closed_loop;
+                m_prev_resolution         = m_resolution;
+                m_prev_road_width         = m_road_width;
+                m_prev_road_width_end     = m_road_width_end;
+                m_prev_profile            = m_profile;
+                m_prev_height             = m_height;
+                m_prev_thickness          = m_thickness;
+                m_prev_tube_sides         = m_tube_sides;
+                m_prev_uv_tiling_u        = m_uv_tiling_u;
+                m_prev_uv_tiling_v        = m_uv_tiling_v;
+                m_prev_sidewalk_enabled   = m_sidewalk_enabled;
+                m_prev_sidewalk_width     = m_sidewalk_width;
+                m_prev_curb_height        = m_curb_height;
+                m_prev_conform_to_terrain = m_conform_to_terrain;
+                m_prev_terrain_offset     = m_terrain_offset;
+                m_prev_control_points     = current_points;
+            }
+        }
+        else if (m_mesh_enabled && GetControlPointCount() < 2 && HasRoadMesh())
+        {
+            ClearRoadMesh();
+        }
 
         vector<Vector3> points = GetControlPoints();
         if (points.size() < 2)
@@ -124,18 +178,37 @@ namespace spartan
         node.append_attribute("closed_loop")   = m_closed_loop;
         node.append_attribute("resolution")    = m_resolution;
         node.append_attribute("road_width")    = m_road_width;
+        node.append_attribute("mesh_enabled")  = m_mesh_enabled;
         node.append_attribute("has_road_mesh") = HasRoadMesh();
 
         // profile
-        node.append_attribute("profile")   = static_cast<uint32_t>(m_profile);
-        node.append_attribute("height")    = m_height;
-        node.append_attribute("thickness") = m_thickness;
-        node.append_attribute("tube_sides") = m_tube_sides;
+        node.append_attribute("profile")       = static_cast<uint32_t>(m_profile);
+        node.append_attribute("height")        = m_height;
+        node.append_attribute("thickness")     = m_thickness;
+        node.append_attribute("tube_sides")    = m_tube_sides;
+        node.append_attribute("road_width_end") = m_road_width_end;
+
+        // uv tiling
+        node.append_attribute("uv_tiling_u") = m_uv_tiling_u;
+        node.append_attribute("uv_tiling_v") = m_uv_tiling_v;
+
+        // sidewalk
+        node.append_attribute("sidewalk_enabled") = m_sidewalk_enabled;
+        node.append_attribute("sidewalk_width")   = m_sidewalk_width;
+        node.append_attribute("curb_height")      = m_curb_height;
+
+        // terrain conforming
+        node.append_attribute("conform_to_terrain") = m_conform_to_terrain;
+        node.append_attribute("terrain_offset")     = m_terrain_offset;
 
         // instancing
-        node.append_attribute("instance_spacing")    = m_instance_spacing;
-        node.append_attribute("align_instances")     = m_align_instances_to_spline;
-        node.append_attribute("instance_mesh_path")  = m_instance_mesh_path.c_str();
+        node.append_attribute("instance_spacing")          = m_instance_spacing;
+        node.append_attribute("align_instances")           = m_align_instances_to_spline;
+        node.append_attribute("instance_mesh_path")        = m_instance_mesh_path.c_str();
+        node.append_attribute("instance_random_offset")    = m_instance_random_offset;
+        node.append_attribute("instance_random_scale_min") = m_instance_random_scale_min;
+        node.append_attribute("instance_random_scale_max") = m_instance_random_scale_max;
+        node.append_attribute("instance_random_yaw")       = m_instance_random_yaw;
     }
 
     void Spline::Load(pugi::xml_node& node)
@@ -144,17 +217,36 @@ namespace spartan
         m_resolution              = node.attribute("resolution").as_uint(20);
         m_road_width              = node.attribute("road_width").as_float(8.0f);
         m_needs_road_regeneration = node.attribute("has_road_mesh").as_bool(false);
+        m_mesh_enabled            = node.attribute("mesh_enabled").as_bool(m_needs_road_regeneration);
 
-        // profile (defaults to road for backward compatibility)
-        m_profile   = static_cast<SplineProfile>(node.attribute("profile").as_uint(static_cast<uint32_t>(SplineProfile::Road)));
-        m_height    = node.attribute("height").as_float(3.0f);
-        m_thickness = node.attribute("thickness").as_float(0.3f);
-        m_tube_sides = node.attribute("tube_sides").as_uint(12);
+        // profile
+        m_profile        = static_cast<SplineProfile>(node.attribute("profile").as_uint(static_cast<uint32_t>(SplineProfile::Road)));
+        m_height         = node.attribute("height").as_float(3.0f);
+        m_thickness      = node.attribute("thickness").as_float(0.3f);
+        m_tube_sides     = node.attribute("tube_sides").as_uint(12);
+        m_road_width_end = node.attribute("road_width_end").as_float(m_road_width);
+
+        // uv tiling
+        m_uv_tiling_u = node.attribute("uv_tiling_u").as_float(1.0f);
+        m_uv_tiling_v = node.attribute("uv_tiling_v").as_float(1.0f);
+
+        // sidewalk
+        m_sidewalk_enabled = node.attribute("sidewalk_enabled").as_bool(false);
+        m_sidewalk_width   = node.attribute("sidewalk_width").as_float(2.0f);
+        m_curb_height      = node.attribute("curb_height").as_float(0.15f);
+
+        // terrain conforming
+        m_conform_to_terrain = node.attribute("conform_to_terrain").as_bool(false);
+        m_terrain_offset     = node.attribute("terrain_offset").as_float(0.01f);
 
         // instancing
         m_instance_spacing           = node.attribute("instance_spacing").as_float(5.0f);
         m_align_instances_to_spline  = node.attribute("align_instances").as_bool(true);
         m_instance_mesh_path         = node.attribute("instance_mesh_path").as_string("");
+        m_instance_random_offset     = node.attribute("instance_random_offset").as_float(0.0f);
+        m_instance_random_scale_min  = node.attribute("instance_random_scale_min").as_float(1.0f);
+        m_instance_random_scale_max  = node.attribute("instance_random_scale_max").as_float(1.0f);
+        m_instance_random_yaw        = node.attribute("instance_random_yaw").as_float(0.0f);
 
         // if a mesh was saved, remove the renderable and physics as they will be recreated
         // save the material name first so it can be restored after regeneration
@@ -358,21 +450,45 @@ namespace spartan
 
             if (accumulated_distance >= next_spawn_distance)
             {
-                // spawn an instance entity as a child of the spline
                 Entity* instance = World::CreateEntity();
                 instance->SetObjectName(prefix_instance + to_string(spawned));
                 instance->SetParent(m_entity_ptr);
-                instance->SetPositionLocal(position);
 
-                // align to spline tangent if enabled
+                // apply random lateral offset perpendicular to the spline
+                Vector3 final_position = position;
+                if (m_instance_random_offset > 0.0f)
+                {
+                    Vector3 tangent_dir = EvaluateTangent(points, t);
+                    tangent_dir.Normalize();
+                    Vector3 lateral = tangent_dir.Cross(Vector3::Up);
+                    lateral.Normalize();
+                    float offset = math::random<float>(-m_instance_random_offset, m_instance_random_offset);
+                    final_position = final_position + lateral * offset;
+                }
+                instance->SetPositionLocal(final_position);
+
+                // rotation: align to spline + optional random yaw
+                Quaternion rotation = Quaternion::Identity;
                 if (m_align_instances_to_spline)
                 {
                     Vector3 tangent = EvaluateTangent(points, t);
                     tangent.Normalize();
-                    instance->SetRotationLocal(Quaternion::FromLookRotation(tangent, Vector3::Up));
+                    rotation = Quaternion::FromLookRotation(tangent, Vector3::Up);
+                }
+                if (m_instance_random_yaw > 0.0f)
+                {
+                    float yaw = math::random<float>(-m_instance_random_yaw, m_instance_random_yaw);
+                    rotation = rotation * Quaternion::FromAxisAngle(Vector3::Up, yaw * math::deg_to_rad);
+                }
+                instance->SetRotationLocal(rotation);
+
+                // random scale
+                if (m_instance_random_scale_min != 1.0f || m_instance_random_scale_max != 1.0f)
+                {
+                    float scale = math::random<float>(m_instance_random_scale_min, m_instance_random_scale_max);
+                    instance->SetScaleLocal(Vector3(scale, scale, scale));
                 }
 
-                // add a renderable with a default cylinder mesh (useful for posts, pillars, etc.)
                 Render* renderable = instance->AddComponent<Render>();
                 renderable->SetMesh(MeshType::Cylinder);
                 renderable->SetDefaultMaterial();
@@ -462,20 +578,38 @@ namespace spartan
 
     vector<Vector2> Spline::GetProfilePoints() const
     {
+        return GetProfilePointsForWidth(m_road_width);
+    }
+
+    vector<Vector2> Spline::GetProfilePointsForWidth(float width) const
+    {
         vector<Vector2> profile;
-        float half_width     = m_road_width * 0.5f;
+        float half_width     = width * 0.5f;
         float half_thickness = m_thickness * 0.5f;
 
         switch (m_profile)
         {
         case SplineProfile::Road:
-            // flat strip from left to right
-            profile.emplace_back(-half_width, 0.0f);
-            profile.emplace_back( half_width, 0.0f);
+            if (m_sidewalk_enabled)
+            {
+                // left sidewalk outer -> curb drop -> road -> curb rise -> right sidewalk outer
+                float outer_left  = -(half_width + m_sidewalk_width);
+                float outer_right =  (half_width + m_sidewalk_width);
+                profile.emplace_back(outer_left,   m_curb_height);
+                profile.emplace_back(-half_width,  m_curb_height);
+                profile.emplace_back(-half_width,  0.0f);
+                profile.emplace_back( half_width,  0.0f);
+                profile.emplace_back( half_width,  m_curb_height);
+                profile.emplace_back(outer_right,  m_curb_height);
+            }
+            else
+            {
+                profile.emplace_back(-half_width, 0.0f);
+                profile.emplace_back( half_width, 0.0f);
+            }
             break;
 
         case SplineProfile::Wall:
-            // vertical quad: bottom-left, top-left, top-right, bottom-right
             profile.emplace_back(-half_thickness, 0.0f);
             profile.emplace_back(-half_thickness, m_height);
             profile.emplace_back( half_thickness, m_height);
@@ -484,7 +618,6 @@ namespace spartan
 
         case SplineProfile::Tube:
         {
-            // circular cross-section
             uint32_t sides = max(3u, m_tube_sides);
             for (uint32_t i = 0; i < sides; i++)
             {
@@ -497,7 +630,6 @@ namespace spartan
         }
 
         case SplineProfile::Fence:
-            // thin tall rectangle
             profile.emplace_back(-half_thickness, 0.0f);
             profile.emplace_back(-half_thickness, m_height);
             profile.emplace_back( half_thickness, m_height);
@@ -505,7 +637,6 @@ namespace spartan
             break;
 
         case SplineProfile::Channel:
-            // u-shape: left wall top, left wall bottom, right wall bottom, right wall top
             profile.emplace_back(-half_width, m_height);
             profile.emplace_back(-half_width, 0.0f);
             profile.emplace_back( half_width, 0.0f);
@@ -513,7 +644,6 @@ namespace spartan
             break;
 
         default:
-            // fallback to road
             profile.emplace_back(-half_width, 0.0f);
             profile.emplace_back( half_width, 0.0f);
             break;
@@ -532,12 +662,16 @@ namespace spartan
         if (spline_points.size() < 2 || profile_points.size() < 2)
             return;
 
+        bool width_varies = (m_road_width_end != m_road_width);
+
         uint32_t span_count    = m_closed_loop ? static_cast<uint32_t>(spline_points.size()) : static_cast<uint32_t>(spline_points.size()) - 1;
         uint32_t total_samples = span_count * m_resolution;
         uint32_t profile_count = static_cast<uint32_t>(profile_points.size());
+        uint32_t edge_count    = close_profile ? profile_count : profile_count - 1;
 
-        // for closed profiles (e.g. tube), edges connect last point back to first
-        uint32_t edge_count = close_profile ? profile_count : profile_count - 1;
+        // world transform for terrain conforming (local -> world and back)
+        Matrix world_matrix   = m_entity_ptr ? m_entity_ptr->GetMatrix() : Matrix::Identity;
+        Matrix inverse_matrix = world_matrix.Inverted();
 
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
@@ -545,17 +679,6 @@ namespace spartan
         uint32_t sample_count = total_samples + 1;
         vertices.reserve(sample_count * profile_count);
 
-        // compute total perimeter of the profile for uv mapping
-        float profile_perimeter = 0.0f;
-        for (uint32_t j = 0; j < edge_count; j++)
-        {
-            uint32_t j_next = (j + 1) % profile_count;
-            profile_perimeter += Vector2::Distance(profile_points[j], profile_points[j_next]);
-        }
-        if (profile_perimeter < 0.001f)
-            profile_perimeter = 1.0f;
-
-        // accumulate distance along the spline for the v coordinate
         float accumulated_distance = 0.0f;
         Vector3 prev_position;
 
@@ -563,15 +686,24 @@ namespace spartan
         {
             float t = static_cast<float>(i) / static_cast<float>(total_samples);
 
-            // evaluate position and tangent on the spline
             Vector3 position = EvaluatePoint(spline_points, t);
             Vector3 tangent  = EvaluateTangent(spline_points, t);
             tangent.Normalize();
 
-            // build a coordinate frame: forward (tangent), right, up
-            Vector3 up = Vector3::Up;
+            // terrain conforming: raycast downward from this sample to snap to ground
+            if (m_conform_to_terrain)
+            {
+                Vector3 world_pos = world_matrix * position;
+                Vector3 ray_origin(world_pos.x, world_pos.y + 500.0f, world_pos.z);
+                Vector3 hit_pos;
+                if (PhysicsWorld::RaycastStatic(ray_origin, Vector3::Down, 1000.0f, hit_pos))
+                {
+                    hit_pos.y += m_terrain_offset;
+                    position = inverse_matrix * hit_pos;
+                }
+            }
 
-            // handle near-vertical tangents: fall back to world forward
+            Vector3 up = Vector3::Up;
             if (abs(tangent.Dot(Vector3::Up)) > 0.99f)
             {
                 up = Vector3::Forward;
@@ -579,51 +711,55 @@ namespace spartan
 
             Vector3 right = tangent.Cross(up);
             right.Normalize();
-
-            // recompute up to be perpendicular to both
             up = right.Cross(tangent);
             up.Normalize();
 
-            // accumulate distance for the v coordinate
             if (i > 0)
             {
                 accumulated_distance += position.Distance(prev_position);
             }
             prev_position = position;
 
-            // v tiles along the spline proportionally to the road width
-            float v = accumulated_distance / m_road_width;
+            // interpolate width if it varies along the spline
+            float current_width         = width_varies ? (m_road_width + (m_road_width_end - m_road_width) * t) : m_road_width;
+            vector<Vector2> cur_profile = width_varies ? GetProfilePointsForWidth(current_width) : profile_points;
+            uint32_t cur_profile_count  = static_cast<uint32_t>(cur_profile.size());
 
-            // emit one vertex per profile point at this cross-section
-            float accumulated_profile_distance = 0.0f;
-            for (uint32_t j = 0; j < profile_count; j++)
+            // recompute perimeter for the current cross-section
+            float cur_perimeter = 0.0f;
+            uint32_t cur_edge_count = close_profile ? cur_profile_count : cur_profile_count - 1;
+            for (uint32_t j = 0; j < cur_edge_count; j++)
             {
-                // transform profile point from 2d (right, up) to 3d world space
-                Vector3 vertex_pos = position + right * profile_points[j].x + up * profile_points[j].y;
+                uint32_t j_next = (j + 1) % cur_profile_count;
+                cur_perimeter += Vector2::Distance(cur_profile[j], cur_profile[j_next]);
+            }
+            if (cur_perimeter < 0.001f)
+                cur_perimeter = 1.0f;
 
-                // u coordinate: normalized distance along the profile perimeter
+            float v = (accumulated_distance / m_road_width) * m_uv_tiling_v;
+
+            float accumulated_profile_distance = 0.0f;
+            for (uint32_t j = 0; j < cur_profile_count; j++)
+            {
+                Vector3 vertex_pos = position + right * cur_profile[j].x + up * cur_profile[j].y;
+
                 if (j > 0)
                 {
-                    accumulated_profile_distance += Vector2::Distance(profile_points[j], profile_points[j - 1]);
+                    accumulated_profile_distance += Vector2::Distance(cur_profile[j], cur_profile[j - 1]);
                 }
-                float u = accumulated_profile_distance / profile_perimeter;
+                float u = (accumulated_profile_distance / cur_perimeter) * m_uv_tiling_u;
 
-                // compute a per-vertex normal from the profile shape
-                // approximate using the perpendicular to the local profile edge direction, projected into the right-up plane
                 Vector3 normal;
-                if (profile_count == 2)
+                if (cur_profile_count == 2)
                 {
-                    // simple case: flat strip, normal is up
                     normal = up;
                 }
                 else
                 {
-                    // general case: normal is outward-facing from the profile edge
-                    uint32_t j_prev = (j == 0) ? (close_profile ? profile_count - 1 : 0) : j - 1;
-                    uint32_t j_next = (j == profile_count - 1) ? (close_profile ? 0 : profile_count - 1) : j + 1;
+                    uint32_t j_prev = (j == 0) ? (close_profile ? cur_profile_count - 1 : 0) : j - 1;
+                    uint32_t j_next = (j == cur_profile_count - 1) ? (close_profile ? 0 : cur_profile_count - 1) : j + 1;
 
-                    Vector2 edge = profile_points[j_next] - profile_points[j_prev];
-                    // perpendicular in 2d (rotate 90 degrees to face outward)
+                    Vector2 edge = cur_profile[j_next] - cur_profile[j_prev];
                     Vector2 perp = Vector2(edge.y, -edge.x);
                     float perp_len = sqrtf(perp.x * perp.x + perp.y * perp.y);
                     if (perp_len > 0.001f)
@@ -641,24 +777,25 @@ namespace spartan
         }
 
         // generate triangle indices connecting adjacent cross-sections
-        indices.reserve(total_samples * edge_count * 6);
+        // profile point count is constant regardless of width, so profile_count is always valid
+        uint32_t idx_edge_count = close_profile ? profile_count : profile_count - 1;
+
+        indices.reserve(total_samples * idx_edge_count * 6);
         for (uint32_t i = 0; i < total_samples; i++)
         {
-            for (uint32_t j = 0; j < edge_count; j++)
+            for (uint32_t j = 0; j < idx_edge_count; j++)
             {
                 uint32_t j_next = (j + 1) % profile_count;
 
-                uint32_t bl = i * profile_count + j;           // bottom-left
-                uint32_t br = i * profile_count + j_next;      // bottom-right
-                uint32_t tl = (i + 1) * profile_count + j;     // top-left
-                uint32_t tr = (i + 1) * profile_count + j_next; // top-right
+                uint32_t bl = i * profile_count + j;
+                uint32_t br = i * profile_count + j_next;
+                uint32_t tl = (i + 1) * profile_count + j;
+                uint32_t tr = (i + 1) * profile_count + j_next;
 
-                // first triangle
                 indices.push_back(bl);
                 indices.push_back(br);
                 indices.push_back(tl);
 
-                // second triangle
                 indices.push_back(br);
                 indices.push_back(tr);
                 indices.push_back(tl);
@@ -710,7 +847,6 @@ namespace spartan
         }
 
         // attach a physics component so the mesh is collidable
-        // remove any existing one first to force recreation with the new mesh data
         if (m_entity_ptr->GetComponent<Physics>())
         {
             m_entity_ptr->RemoveComponent<Physics>();
@@ -718,9 +854,9 @@ namespace spartan
         Physics* physics = m_entity_ptr->AddComponent<Physics>();
         physics->SetBodyType(BodyType::Mesh);
 
-        SP_LOG_INFO("generated spline mesh: %u vertices, %u indices, %.1f m long, %.1f m wide",
+        SP_LOG_INFO("generated spline mesh: %u vertices, %u indices, %.1f m long",
             static_cast<uint32_t>(vertices.size()), static_cast<uint32_t>(indices.size()),
-            accumulated_distance, m_road_width);
+            accumulated_distance);
     }
 
     Vector3 Spline::CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t)

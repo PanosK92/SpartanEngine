@@ -1829,28 +1829,39 @@ void Properties::ShowSpline(spartan::Spline* spline) const
 
     if (component_begin("Spline", design::accent_spline(), spline))
     {
-        //= REFLECT =======================================
-        bool closed_loop     = spline->GetClosedLoop();
-        uint32_t resolution  = spline->GetResolution();
-        uint32_t point_count = spline->GetControlPointCount();
-        float road_width     = spline->GetRoadWidth();
-        uint32_t profile     = static_cast<uint32_t>(spline->GetProfile());
-        float height         = spline->GetHeight();
-        float thickness      = spline->GetThickness();
-        uint32_t tube_sides  = spline->GetTubeSides();
-        float inst_spacing   = spline->GetInstanceSpacing();
-        bool inst_align      = spline->GetAlignInstancesToSpline();
-        //=================================================
+        //= REFLECT ===============================================
+        bool closed_loop            = spline->GetClosedLoop();
+        uint32_t resolution         = spline->GetResolution();
+        uint32_t point_count        = spline->GetControlPointCount();
+        float road_width            = spline->GetRoadWidth();
+        float road_width_end        = spline->GetRoadWidthEnd();
+        uint32_t profile            = static_cast<uint32_t>(spline->GetProfile());
+        float height                = spline->GetHeight();
+        float thickness             = spline->GetThickness();
+        uint32_t tube_sides         = spline->GetTubeSides();
+        float uv_tiling_u           = spline->GetUvTilingU();
+        float uv_tiling_v           = spline->GetUvTilingV();
+        bool sidewalk_enabled       = spline->GetSidewalkEnabled();
+        float sidewalk_width        = spline->GetSidewalkWidth();
+        float curb_height           = spline->GetCurbHeight();
+        bool conform_to_terrain     = spline->GetConformToTerrain();
+        float terrain_offset        = spline->GetTerrainOffset();
+        bool mesh_enabled           = spline->GetMeshEnabled();
+        float inst_spacing          = spline->GetInstanceSpacing();
+        bool inst_align             = spline->GetAlignInstancesToSpline();
+        float inst_random_offset    = spline->GetInstanceRandomOffset();
+        float inst_random_scale_min = spline->GetInstanceRandomScaleMin();
+        float inst_random_scale_max = spline->GetInstanceRandomScaleMax();
+        float inst_random_yaw       = spline->GetInstanceRandomYaw();
+        //=========================================================
 
         layout::section_header("Spline");
 
-        // closed loop toggle
         if (property_toggle("Closed Loop", &closed_loop, "connect the last point back to the first"))
         {
             spline->SetClosedLoop(closed_loop);
         }
 
-        // resolution (segments per span)
         float resolution_f = static_cast<float>(resolution);
         if (property_float("Resolution", &resolution_f, 1.0f, 2.0f, 100.0f, "line segments per span", "%.0f"))
         {
@@ -1860,12 +1871,10 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         layout::separator();
         layout::section_header("Control Points");
 
-        // point count
         char stat_buf[64];
         std::snprintf(stat_buf, sizeof(stat_buf), "%u", point_count);
         property_text("Count", stat_buf);
 
-        // length
         if (point_count >= 2)
         {
             std::snprintf(stat_buf, sizeof(stat_buf), "%.2f m", spline->GetLength());
@@ -1874,18 +1883,15 @@ void Properties::ShowSpline(spartan::Spline* spline) const
 
         layout::group_spacing();
 
-        // add/remove point buttons
         float button_width = 100.0f * spartan::Window::GetDpiScale();
         float total_width  = button_width * 2.0f + design::spacing_md;
         ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total_width) * 0.5f + ImGui::GetCursorPosX());
 
         if (ImGuiSp::button("+ Add Point", ImVec2(button_width, 0)))
         {
-            // place new point offset from the last one, or at origin if no points exist
             math::Vector3 position = math::Vector3::Zero;
             if (point_count > 0)
             {
-                // find the last control point child by walking children in reverse
                 spartan::Entity* parent = spline->GetEntity();
                 for (uint32_t i = parent->GetChildrenCount(); i > 0; i--)
                 {
@@ -1914,20 +1920,37 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         layout::separator();
         layout::section_header("Mesh Generation");
 
-        // profile type selector
+        if (property_toggle("Enabled", &mesh_enabled, "automatically generate a mesh along the spline"))
+        {
+            spline->SetMeshEnabled(mesh_enabled);
+            if (!mesh_enabled)
+            {
+                spline->ClearRoadMesh();
+            }
+        }
+
+        ImGui::BeginDisabled(!mesh_enabled);
+
+        // profile type
         static vector<string> profile_names = { "Road", "Wall", "Tube", "Fence", "Channel" };
         if (property_combo("Profile", profile_names, &profile, "cross-section shape extruded along the spline"))
         {
             spline->SetProfile(static_cast<spartan::SplineProfile>(profile));
         }
 
-        // width (used by all profiles)
-        if (property_float("Width", &road_width, 0.1f, 0.5f, 100.0f, "width in meters", "%.1f m"))
+        // width (start)
+        if (property_float("Width (Start)", &road_width, 0.1f, 0.5f, 100.0f, "width at the start of the spline", "%.1f m"))
         {
             spline->SetRoadWidth(road_width);
         }
 
-        // height (used by wall, fence, channel)
+        // width (end)
+        if (property_float("Width (End)", &road_width_end, 0.1f, 0.5f, 100.0f, "width at the end of the spline", "%.1f m"))
+        {
+            spline->SetRoadWidthEnd(road_width_end);
+        }
+
+        // profile-specific properties
         spartan::SplineProfile current_profile = static_cast<spartan::SplineProfile>(profile);
         bool needs_height = current_profile == spartan::SplineProfile::Wall ||
                             current_profile == spartan::SplineProfile::Fence ||
@@ -1940,7 +1963,6 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             }
         }
 
-        // thickness (used by wall, fence)
         bool needs_thickness = current_profile == spartan::SplineProfile::Wall ||
                                current_profile == spartan::SplineProfile::Fence;
         if (needs_thickness)
@@ -1951,7 +1973,6 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             }
         }
 
-        // tube sides (only for tube)
         if (current_profile == spartan::SplineProfile::Tube)
         {
             float tube_sides_f = static_cast<float>(tube_sides);
@@ -1961,41 +1982,81 @@ void Properties::ShowSpline(spartan::Spline* spline) const
             }
         }
 
-        layout::group_spacing();
-
-        // generate / clear mesh buttons
-        float gen_button_width = 120.0f * spartan::Window::GetDpiScale();
-        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - gen_button_width) * 0.5f + ImGui::GetCursorPosX());
-
-        ImGui::BeginDisabled(point_count < 2);
-        if (ImGuiSp::button("Generate", ImVec2(gen_button_width, 0)))
+        // uv tiling
+        if (property_float("UV Tiling U", &uv_tiling_u, 0.01f, 0.01f, 100.0f, "texture tiling across the profile", "%.2f"))
         {
-            spline->GenerateRoadMesh();
+            spline->SetUvTilingU(uv_tiling_u);
         }
-        ImGui::EndDisabled();
-
-        if (spline->HasRoadMesh())
+        if (property_float("UV Tiling V", &uv_tiling_v, 0.01f, 0.01f, 100.0f, "texture tiling along the spline", "%.2f"))
         {
-            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - gen_button_width) * 0.5f + ImGui::GetCursorPosX());
-            if (ImGuiSp::button("Clear", ImVec2(gen_button_width, 0)))
+            spline->SetUvTilingV(uv_tiling_v);
+        }
+
+        // sidewalk/curb (road profile only)
+        if (current_profile == spartan::SplineProfile::Road)
+        {
+            if (property_toggle("Sidewalks", &sidewalk_enabled, "add raised sidewalks on both sides of the road"))
             {
-                spline->ClearRoadMesh();
+                spline->SetSidewalkEnabled(sidewalk_enabled);
+            }
+
+            if (sidewalk_enabled)
+            {
+                if (property_float("Sidewalk Width", &sidewalk_width, 0.1f, 0.1f, 20.0f, "width of each sidewalk", "%.1f m"))
+                {
+                    spline->SetSidewalkWidth(sidewalk_width);
+                }
+                if (property_float("Curb Height", &curb_height, 0.01f, 0.01f, 2.0f, "height of the curb above the road", "%.2f m"))
+                {
+                    spline->SetCurbHeight(curb_height);
+                }
             }
         }
+
+        // terrain conforming
+        if (property_toggle("Conform to Terrain", &conform_to_terrain, "snap the mesh to the terrain surface"))
+        {
+            spline->SetConformToTerrain(conform_to_terrain);
+        }
+        if (conform_to_terrain)
+        {
+            if (property_float("Terrain Offset", &terrain_offset, 0.001f, 0.0f, 10.0f, "vertical offset above the terrain", "%.3f m"))
+            {
+                spline->SetTerrainOffset(terrain_offset);
+            }
+        }
+
+        ImGui::EndDisabled();
 
         layout::separator();
         layout::section_header("Instancing");
 
-        // instance spacing
         if (property_float("Spacing", &inst_spacing, 0.1f, 0.5f, 100.0f, "distance between instances in meters", "%.1f m"))
         {
             spline->SetInstanceSpacing(inst_spacing);
         }
 
-        // align instances to spline
         if (property_toggle("Align to Spline", &inst_align, "rotate instances to follow the spline direction"))
         {
             spline->SetAlignInstancesToSpline(inst_align);
+        }
+
+        // procedural placement randomization
+        if (property_float("Random Offset", &inst_random_offset, 0.1f, 0.0f, 50.0f, "random lateral offset from the spline", "%.1f m"))
+        {
+            spline->SetInstanceRandomOffset(inst_random_offset);
+        }
+        if (property_float("Random Scale Min", &inst_random_scale_min, 0.01f, 0.01f, 10.0f, "minimum random scale", "%.2f"))
+        {
+            spline->SetInstanceRandomScaleMin(inst_random_scale_min);
+        }
+        if (property_float("Random Scale Max", &inst_random_scale_max, 0.01f, 0.01f, 10.0f, "maximum random scale", "%.2f"))
+        {
+            spline->SetInstanceRandomScaleMax(inst_random_scale_max);
+        }
+        if (property_float("Random Yaw", &inst_random_yaw, 1.0f, 0.0f, 360.0f, "random rotation around the up axis in degrees", "%.0f\xc2\xb0"))
+        {
+            spline->SetInstanceRandomYaw(inst_random_yaw);
         }
 
         layout::group_spacing();
