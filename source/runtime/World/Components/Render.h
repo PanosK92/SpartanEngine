@@ -68,9 +68,16 @@ namespace spartan
         RHI_Buffer* GetVertexBuffer() const;
         const std::string& GetMeshName() const;
         void BuildAccelerationStructure(RHI_CommandList* cmd_list);
+        void RefitAccelerationStructure(RHI_CommandList* cmd_list);
         bool HasAccelerationStructure() const;
         void InvalidateAccelerationStructure();
         uint64_t GetAccelerationStructureDeviceAddress() const;
+
+        // blas refit (for deformable meshes like cloth)
+        void SetNeedsBlasRefit(bool v)  { m_needs_blas_refit = v; }
+        bool NeedsBlasRefit() const     { return m_needs_blas_refit; }
+        void SetAllowBlasUpdate(bool v) { m_allow_blas_update = v; }
+        bool GetAllowBlasUpdate() const { return m_allow_blas_update; }
 
         // bounding box
         const math::BoundingBox& GetBoundingBox() const     { return m_bounding_box; }
@@ -131,6 +138,10 @@ namespace spartan
         // instancing
         std::vector<Instance> m_instances;
         std::shared_ptr<RHI_Buffer> m_instance_buffer;
+
+        // blas refit
+        bool m_needs_blas_refit  = false;
+        bool m_allow_blas_update = false;
 
         // misc
         math::Matrix m_transform_previous = math::Matrix::Identity;

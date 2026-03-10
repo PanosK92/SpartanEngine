@@ -104,7 +104,7 @@ namespace spartan
 
         // gpu buffers
         void CreateGpuBuffers();
-        void BuildAccelerationStructure(RHI_CommandList* cmd_list);
+        void BuildAccelerationStructure(RHI_CommandList* cmd_list, bool allow_update = false);
         RHI_Buffer* GetIndexBuffer();
         RHI_Buffer* GetVertexBuffer();
 
@@ -128,6 +128,8 @@ namespace spartan
         RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const;
         bool HasBlas(uint32_t sub_mesh_index) const;
         void InvalidateBlas(uint32_t sub_mesh_index);
+        void RefitBlas(RHI_CommandList* cmd_list, uint32_t sub_mesh_index);
+        bool CanRefitBlas(uint32_t sub_mesh_index) const;
 
     private:
         // geometry

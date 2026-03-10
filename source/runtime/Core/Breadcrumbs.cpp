@@ -137,11 +137,13 @@ namespace spartan
         // collect gpu marker states
         uint32_t* gpu_data                 = m_gpu_buffer ? static_cast<uint32_t*>(m_gpu_buffer->GetMappedData()) : nullptr;
         std::string gpu_crash_marker_name;
+        std::string last_completed_name;
+        std::string first_incomplete_name;
         bool has_any_gpu_marker            = false;
 
-        // gpu completed markers first (these finished before the crash)
         if (gpu_data)
         {
+            // gpu completed markers (these finished before the crash)
             for (uint32_t i = 0; i < m_gpu_marker_count; i++)
             {
                 if (!m_gpu_marker_names[i])
@@ -150,7 +152,34 @@ namespace spartan
                 if (gpu_data[i] == gpu_marker_completed)
                 {
                     report += "  [completed]   " + std::string(m_gpu_marker_names[i]) + "\n";
-                    has_any_gpu_marker = true;
+                    last_completed_name = m_gpu_marker_names[i];
+                    has_any_gpu_marker  = true;
+                }
+            }
+
+            // gpu in-progress markers (where the gpu actually stopped mid-pass)
+            for (uint32_t i = 0; i < m_gpu_marker_count; i++)
+            {
+                if (!m_gpu_marker_names[i] || gpu_data[i] == 0 || gpu_data[i] == gpu_marker_completed)
+                    continue;
+
+                report += "  [gpu crash]   " + std::string(m_gpu_marker_names[i]) + "\n";
+                gpu_crash_marker_name = m_gpu_marker_names[i];
+                has_any_gpu_marker    = true;
+            }
+
+            // gpu not-reached markers (registered but the gpu never got to them)
+            for (uint32_t i = 0; i < m_gpu_marker_count; i++)
+            {
+                if (!m_gpu_marker_names[i] || gpu_data[i] != 0)
+                    continue;
+
+                report += "  [incomplete]  " + std::string(m_gpu_marker_names[i]) + "\n";
+                has_any_gpu_marker = true;
+
+                if (first_incomplete_name.empty())
+                {
+                    first_incomplete_name = m_gpu_marker_names[i];
                 }
             }
         }
@@ -176,25 +205,15 @@ namespace spartan
             report += " | " + std::to_string(elapsed.count()) + "ms\n";
         }
 
-        // gpu in-progress markers (where the gpu stopped)
-        if (gpu_data)
-        {
-            for (uint32_t i = 0; i < m_gpu_marker_count; i++)
-            {
-                if (!m_gpu_marker_names[i] || gpu_data[i] == 0 || gpu_data[i] == gpu_marker_completed)
-                    continue;
-
-                report += "  [gpu crash]   " + std::string(m_gpu_marker_names[i]) + "\n";
-                gpu_crash_marker_name = m_gpu_marker_names[i];
-                has_any_gpu_marker    = true;
-            }
-        }
-
         // deduce crash point
         report += "\n---------------------------------------------------------------------\n";
         if (!gpu_crash_marker_name.empty())
         {
             report += "crash point: " + gpu_crash_marker_name + " (gpu stopped executing here)\n";
+        }
+        else if (!last_completed_name.empty() && !first_incomplete_name.empty())
+        {
+            report += "crash point: between " + last_completed_name + " (completed) and " + first_incomplete_name + " (incomplete)\n";
         }
         else if (!incomplete_markers.empty())
         {
@@ -203,6 +222,10 @@ namespace spartan
         else if (!has_any_gpu_marker)
         {
             report += "no markers were reached, the crash occurred before any tracked operation.\n";
+        }
+        else
+        {
+            report += "all tracked passes completed, the crash occurred after the last tracked operation.\n";
         }
         report += "=====================================================================\n";
 

@@ -1361,6 +1361,8 @@ namespace spartan
 
         // blas
         {
+            cmd_list->BeginMarker("blas_build");
+
             uint32_t blas_built   = 0;
             uint32_t blas_skipped = 0;
             for (Entity* entity : World::GetEntities())
@@ -1384,10 +1386,30 @@ namespace spartan
                     }
                 }
             }
+
+            // refit blas for deformable meshes (cloth, skinned, etc.)
+            for (Entity* entity : World::GetEntities())
+            {
+                if (!entity->GetActive())
+                    continue;
+
+                if (Render* renderable = entity->GetComponent<Render>())
+                {
+                    if (renderable->NeedsBlasRefit() && renderable->HasAccelerationStructure())
+                    {
+                        renderable->RefitAccelerationStructure(cmd_list);
+                        renderable->SetNeedsBlasRefit(false);
+                    }
+                }
+            }
+
+            cmd_list->EndMarker();
         }
 
         // tlas
         {
+            cmd_list->BeginMarker("tlas_build");
+
             if (!m_tlas)
             {
                 m_tlas = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Top, "world_tlas");
@@ -1461,6 +1483,8 @@ namespace spartan
                 m_tlas = nullptr;
                 last_instance_count = 0;
             }
+
+            cmd_list->EndMarker();
         }
     }
 

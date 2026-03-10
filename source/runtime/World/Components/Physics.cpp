@@ -2936,6 +2936,11 @@ namespace spartan
                 canonical_count++;
         }
 
+        // the renderer may have already built this entity's blas without the update bit,
+        // so invalidate it to force a rebuild with ALLOW_UPDATE_BIT on the next frame
+        renderable->SetAllowBlasUpdate(true);
+        renderable->InvalidateAccelerationStructure();
+
         SP_LOG_INFO("Cloth created: %u particles (%zu vertices, %u welded), %zu constraints, %zu triangles",
             canonical_count, m_cloth_particles.size(), static_cast<uint32_t>(m_cloth_particles.size()) - canonical_count,
             m_cloth_constraints.size(), indices.size() / 3);
@@ -2946,9 +2951,13 @@ namespace spartan
         if (!is_playing || m_cloth_particles.empty())
             return;
 
-        const float dt         = delta_time;
-        const float damping    = 1.0f - m_cloth_damping;
-        const Vector3 gravity  = PhysicsWorld::GetGravity();
+        // sub-step with a fixed maximum dt to prevent simulation explosion from frame spikes
+        // (the synchronous gpu upload in UpdateVertices can stall the cpu, causing large delta_time values)
+        const float max_dt      = 1.0f / 60.0f;
+        const float clamped_dt  = min(delta_time, max_dt);
+        const float dt          = clamped_dt;
+        const float damping     = 1.0f - m_cloth_damping;
+        const Vector3 gravity   = PhysicsWorld::GetGravity();
 
         // verlet integration
         for (auto& p : m_cloth_particles)
@@ -3032,6 +3041,23 @@ namespace spartan
             {
                 p.position.y = ground_y;
             }
+        }
+
+        // clamp particle positions to a sane world-space bound to prevent diverged
+        // particles from producing nan/inf vertex data that crashes the gpu
+        const float position_limit = 10000.0f;
+        for (auto& p : m_cloth_particles)
+        {
+            if (p.inverse_mass == 0.0f)
+                continue;
+
+            p.position.x = clamp(p.position.x, -position_limit, position_limit);
+            p.position.y = clamp(p.position.y, -position_limit, position_limit);
+            p.position.z = clamp(p.position.z, -position_limit, position_limit);
+
+            p.previous_position.x = clamp(p.previous_position.x, -position_limit, position_limit);
+            p.previous_position.y = clamp(p.previous_position.y, -position_limit, position_limit);
+            p.previous_position.z = clamp(p.previous_position.z, -position_limit, position_limit);
         }
 
         // write updated positions back to render vertices and recalculate normals
@@ -3177,10 +3203,10 @@ namespace spartan
         // push to gpu
         GeometryBuffer::UpdateVertices(updated_vertices.data(), m_cloth_global_vertex_offset, m_cloth_vertex_count);
 
-        // invalidate blas so ray-traced shadows rebuild with the deformed geometry
+        // signal that the blas needs an in-place refit so ray-traced shadows track the deformed mesh
         if (Render* renderable = GetEntity()->GetComponent<Render>())
         {
-            renderable->InvalidateAccelerationStructure();
+            renderable->SetNeedsBlasRefit(true);
         }
     }
 }

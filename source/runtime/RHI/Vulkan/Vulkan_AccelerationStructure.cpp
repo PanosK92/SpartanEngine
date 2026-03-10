@@ -103,13 +103,14 @@ namespace spartan
         m_size = 0;
     }
 
-    void RHI_AccelerationStructure::BuildBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
+    void RHI_AccelerationStructure::BuildBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts, bool allow_update)
     {
         SP_ASSERT(m_type == RHI_AccelerationStructureType::Bottom);
         SP_ASSERT(geometries.size() == primitive_counts.size());
         SP_ASSERT(!geometries.empty());
 
         Destroy();
+        m_allow_update = allow_update;
 
         // define geometry
         vector<VkAccelerationStructureGeometryKHR> vk_geometries;
@@ -140,9 +141,13 @@ namespace spartan
         VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
         build_info.type                                        = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
         build_info.flags                                       = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-        build_info.mode                                        = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
-        build_info.geometryCount                               = static_cast<uint32_t>(vk_geometries.size());
-        build_info.pGeometries                                 = vk_geometries.data();
+        if (allow_update)
+        {
+            build_info.flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        }
+        build_info.mode          = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+        build_info.geometryCount = static_cast<uint32_t>(vk_geometries.size());
+        build_info.pGeometries   = vk_geometries.data();
 
         // get build sizes
         VkDevice device = static_cast<VkDevice>(RHI_Context::device);
@@ -163,24 +168,18 @@ namespace spartan
         as_create(device, &create_info, nullptr, reinterpret_cast<VkAccelerationStructureKHR*>(&m_rhi_resource));
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::AccelerationStructure, m_object_name.c_str());
 
-        // create scratch buffer
-        void* scratch_buffer = nullptr;
+        // create scratch buffer - persistent when allow_update is set so refits can reuse it
         const uint64_t alignment = RHI_Device::PropertyGetMinAccelerationBufferOffsetAlignment();
-        uint64_t scratch_size = (size_info.buildScratchSize + alignment - 1) & ~(alignment - 1); // align size
-        usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-        properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        RHI_Device::MemoryBufferCreate(
-            scratch_buffer,
-            scratch_size,
-            usage,
-            properties,
-            nullptr,
-            (m_object_name + "_scratch").c_str()
-        );
+        uint64_t scratch_size    = max(size_info.buildScratchSize, size_info.updateScratchSize);
+        scratch_size             = (scratch_size + alignment - 1) & ~(alignment - 1);
+        usage                    = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        properties               = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        RHI_Device::MemoryBufferCreate(m_scratch_buffer, scratch_size, usage, properties, nullptr, (m_object_name + "_scratch").c_str());
+        m_scratch_buffer_size = scratch_size;
 
         // set up build
-        build_info.dstAccelerationStructure = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
-        build_info.scratchData.deviceAddress = RHI_Device::GetBufferDeviceAddress(scratch_buffer);
+        build_info.dstAccelerationStructure  = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
+        build_info.scratchData.deviceAddress = RHI_Device::GetBufferDeviceAddress(m_scratch_buffer);
 
         // build
         vector<VkAccelerationStructureBuildRangeInfoKHR> range_infos(geometries.size());
@@ -216,8 +215,91 @@ namespace spartan
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &dependency_info);
         }
 
-        // destroy temp buffer
-        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, scratch_buffer);
+        // for static meshes, the scratch buffer is only needed during the build, so release it
+        if (!allow_update)
+        {
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_scratch_buffer);
+            m_scratch_buffer      = nullptr;
+            m_scratch_buffer_size = 0;
+        }
+    }
+
+    void RHI_AccelerationStructure::RefitBottomLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureGeometry>& geometries, const vector<uint32_t>& primitive_counts)
+    {
+        SP_ASSERT(m_type == RHI_AccelerationStructureType::Bottom);
+        SP_ASSERT(m_allow_update && m_rhi_resource && m_scratch_buffer);
+        SP_ASSERT(geometries.size() == primitive_counts.size());
+        SP_ASSERT(!geometries.empty());
+
+        // define geometry (same topology, updated vertex positions)
+        vector<VkAccelerationStructureGeometryKHR> vk_geometries;
+        vk_geometries.reserve(geometries.size());
+
+        for (const RHI_AccelerationStructureGeometry& geo : geometries)
+        {
+            VkAccelerationStructureGeometryTrianglesDataKHR triangles_data = {};
+            triangles_data.sType                                           = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+            triangles_data.vertexFormat                                    = vulkan_format[static_cast<uint32_t>(geo.vertex_format)];
+            triangles_data.vertexData.deviceAddress                        = geo.vertex_buffer_address;
+            triangles_data.vertexStride                                    = geo.vertex_stride;
+            triangles_data.maxVertex                                       = geo.max_vertex;
+            triangles_data.indexType                                       = geo.index_format == RHI_Format::R32_Uint ? VK_INDEX_TYPE_UINT32 : (geo.index_format == RHI_Format::R16_Uint ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_NONE_KHR);
+            triangles_data.indexData.deviceAddress                         = geo.index_buffer_address;
+            triangles_data.transformData.deviceAddress                     = 0;
+
+            VkAccelerationStructureGeometryKHR geometry = {};
+            geometry.sType                              = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+            geometry.flags                              = geo.transparent ? 0 : VK_GEOMETRY_OPAQUE_BIT_KHR;
+            geometry.geometryType                       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+            geometry.geometry.triangles                 = triangles_data;
+
+            vk_geometries.emplace_back(geometry);
+        }
+
+        VkAccelerationStructureKHR as_handle = static_cast<VkAccelerationStructureKHR>(m_rhi_resource);
+
+        // in-place update: src and dst point to the same acceleration structure
+        VkAccelerationStructureBuildGeometryInfoKHR build_info = { VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR };
+        build_info.type                      = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        build_info.flags                     = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        build_info.mode                      = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+        build_info.srcAccelerationStructure  = as_handle;
+        build_info.dstAccelerationStructure  = as_handle;
+        build_info.geometryCount             = static_cast<uint32_t>(vk_geometries.size());
+        build_info.pGeometries               = vk_geometries.data();
+        build_info.scratchData.deviceAddress = RHI_Device::GetBufferDeviceAddress(m_scratch_buffer);
+
+        // build ranges
+        vector<VkAccelerationStructureBuildRangeInfoKHR> range_infos(geometries.size());
+        for (uint32_t i = 0; i < static_cast<uint32_t>(geometries.size()); ++i)
+        {
+            range_infos[i].primitiveCount  = primitive_counts[i];
+            range_infos[i].primitiveOffset = 0;
+            range_infos[i].firstVertex     = 0;
+            range_infos[i].transformOffset = 0;
+        }
+
+        vector<VkAccelerationStructureBuildRangeInfoKHR*> p_range_infos;
+        for (auto& range : range_infos) { p_range_infos.push_back(&range); }
+
+        as_build(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), 1, &build_info, p_range_infos.data());
+
+        // barrier: ensure refit completes before use
+        {
+            VkMemoryBarrier2 memory_barrier = {};
+            memory_barrier.sType            = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+            memory_barrier.srcStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+            memory_barrier.srcAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+            memory_barrier.dstStageMask     = VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+            memory_barrier.dstAccessMask    = VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT;
+
+            VkDependencyInfo dependency_info   = {};
+            dependency_info.sType              = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+            dependency_info.memoryBarrierCount = 1;
+            dependency_info.pMemoryBarriers    = &memory_barrier;
+
+            vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &dependency_info);
+        }
     }
 
     void RHI_AccelerationStructure::BuildTopLevel(RHI_CommandList* cmd_list, const vector<RHI_AccelerationStructureInstance>& instances)

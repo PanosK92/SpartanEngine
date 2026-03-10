@@ -64,13 +64,15 @@ namespace spartan
         RHI_AccelerationStructure(const RHI_AccelerationStructureType type, const char* name);
         ~RHI_AccelerationStructure();
 
-        void BuildBottomLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts);
+        void BuildBottomLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts, bool allow_update = false);
+        void RefitBottomLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureGeometry>& geometries, const std::vector<uint32_t>& primitive_counts);
         void BuildTopLevel(RHI_CommandList* cmd_list, const std::vector<RHI_AccelerationStructureInstance>& instances);
 
         // misc
         uint64_t GetDeviceAddress();
         void* GetRhiResource() const                  { return m_rhi_resource; }
         RHI_AccelerationStructureType GetType() const { return m_type; }
+        bool CanRefit() const                         { return m_allow_update && m_rhi_resource; }
 
     private:
         void Destroy();
@@ -78,6 +80,7 @@ namespace spartan
         // misc
         RHI_AccelerationStructureType m_type = RHI_AccelerationStructureType::Max;
         uint64_t m_size                      = 0;
+        bool m_allow_update                  = false;
 
         // rhi
         void* m_rhi_resource         = nullptr;

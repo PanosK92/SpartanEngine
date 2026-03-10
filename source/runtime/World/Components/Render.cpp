@@ -404,7 +404,15 @@ namespace spartan
         if (!m_mesh)
             return;
 
-        m_mesh->BuildAccelerationStructure(cmd_list);
+        m_mesh->BuildAccelerationStructure(cmd_list, m_allow_blas_update);
+    }
+
+    void Render::RefitAccelerationStructure(RHI_CommandList* cmd_list)
+    {
+        if (!m_mesh)
+            return;
+
+        m_mesh->RefitBlas(cmd_list, m_sub_mesh_index);
     }
 
     bool Render::HasAccelerationStructure() const

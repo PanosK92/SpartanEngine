@@ -434,7 +434,7 @@ namespace spartan
         return GeometryBuffer::GetIndexBuffer();
     }
 
-    void Mesh::BuildAccelerationStructure(RHI_CommandList* cmd_list)
+    void Mesh::BuildAccelerationStructure(RHI_CommandList* cmd_list, bool allow_update)
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
 
@@ -483,7 +483,7 @@ namespace spartan
             // create and build blas for this sub-mesh
             string blas_name = m_object_name + "_blas_" + to_string(i);
             m_blas[i] = make_unique<RHI_AccelerationStructure>(RHI_AccelerationStructureType::Bottom, blas_name.c_str());
-            m_blas[i]->BuildBottomLevel(cmd_list, geometries, primitive_counts);
+            m_blas[i]->BuildBottomLevel(cmd_list, geometries, primitive_counts, allow_update);
         }
     }
 
@@ -509,5 +509,43 @@ namespace spartan
         {
             m_blas[sub_mesh_index].reset();
         }
+    }
+
+    void Mesh::RefitBlas(RHI_CommandList* cmd_list, uint32_t sub_mesh_index)
+    {
+        if (sub_mesh_index >= m_blas.size() || !m_blas[sub_mesh_index] || !m_blas[sub_mesh_index]->CanRefit())
+            return;
+
+        RHI_Buffer* vertex_buffer = GeometryBuffer::GetVertexBuffer();
+        RHI_Buffer* index_buffer  = GeometryBuffer::GetIndexBuffer();
+        if (!vertex_buffer || !index_buffer)
+            return;
+
+        const auto& lod = m_sub_meshes[sub_mesh_index].lods[0];
+
+        uint32_t global_vertex_offset = m_global_vertex_offset + lod.vertex_offset;
+        uint32_t global_index_offset  = m_global_index_offset + lod.index_offset;
+
+        RHI_AccelerationStructureGeometry geo;
+        geo.transparent           = false;
+        geo.vertex_format         = RHI_Format::R32G32B32_Float;
+        geo.vertex_buffer_address = RHI_Device::GetBufferDeviceAddress(vertex_buffer->GetRhiResource()) + global_vertex_offset * vertex_buffer->GetStride();
+        geo.vertex_stride         = vertex_buffer->GetStride();
+        geo.max_vertex            = lod.vertex_count - 1;
+        geo.index_format          = RHI_Format::R32_Uint;
+        geo.index_buffer_address  = RHI_Device::GetBufferDeviceAddress(index_buffer->GetRhiResource()) + global_index_offset * sizeof(uint32_t);
+
+        vector<RHI_AccelerationStructureGeometry> geometries = { geo };
+        vector<uint32_t> primitive_counts                    = { lod.index_count / 3 };
+
+        m_blas[sub_mesh_index]->RefitBottomLevel(cmd_list, geometries, primitive_counts);
+    }
+
+    bool Mesh::CanRefitBlas(uint32_t sub_mesh_index) const
+    {
+        if (sub_mesh_index >= m_blas.size() || !m_blas[sub_mesh_index])
+            return false;
+
+        return m_blas[sub_mesh_index]->CanRefit();
     }
 }
