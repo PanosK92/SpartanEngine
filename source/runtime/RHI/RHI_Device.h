@@ -63,6 +63,7 @@ namespace spartan
         // pipelines
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
         static uint32_t GetPipelineCount();
+        static void* GetPipelineCache();
 
         // deletion queue
         static void DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource);
@@ -80,6 +81,11 @@ namespace spartan
         static uint64_t MemoryGetAllocatedMb();
         static uint64_t MemoryGetAvailableMb();
         static uint64_t MemoryGetTotalMb();
+
+        // staging buffer pool - avoids per-upload allocation churn
+        static void* StagingBufferAcquire(uint64_t size);
+        static void StagingBufferRelease(void* buffer);
+        static void StagingBufferPoolDestroy();
 
         // properties (actual silicon properties)
         static float PropertyGetTimestampPeriod()                         { return m_timestamp_period; }

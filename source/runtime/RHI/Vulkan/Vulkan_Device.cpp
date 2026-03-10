@@ -65,7 +65,14 @@ namespace spartan
     {
         mutex mutex_allocation;
         mutex mutex_deletion_queue;
-        unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
+        struct DeletionEntry
+        {
+            RHI_Resource_Type type;
+            void*             resource;
+            uint64_t          frame;
+        };
+        vector<DeletionEntry> deletion_queue;
+        uint64_t              deletion_queue_frame = 0;
 
         VkImageUsageFlags get_image_usage_flags(const RHI_Texture* texture)
         {
@@ -677,7 +684,8 @@ namespace spartan
     {
         mutex descriptor_pipeline_mutex;
         uint32_t allocated_descriptor_sets = 0;
-        VkDescriptorPool descriptor_pool   = nullptr;
+        vector<VkDescriptorPool> descriptor_pools;
+        VkPipelineCache pipeline_cache     = nullptr;
 
         // cache
         unordered_map<uint64_t, RHI_DescriptorSet> sets;
@@ -685,7 +693,60 @@ namespace spartan
         unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
         unordered_map<uint64_t, vector<RHI_Descriptor>> descriptor_cache;
 
-        void create_pool()
+        const string pipeline_cache_path = "pipeline_cache.bin";
+
+        void create_pipeline_cache()
+        {
+            VkPipelineCacheCreateInfo create_info = {};
+            create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+            // try to load a previously saved cache from disk
+            vector<uint8_t> cache_data;
+            {
+                ifstream file(pipeline_cache_path, ios::binary | ios::ate);
+                if (file.is_open())
+                {
+                    size_t size = static_cast<size_t>(file.tellg());
+                    if (size > 0)
+                    {
+                        cache_data.resize(size);
+                        file.seekg(0, ios::beg);
+                        file.read(reinterpret_cast<char*>(cache_data.data()), size);
+                    }
+                }
+            }
+
+            if (!cache_data.empty())
+            {
+                create_info.initialDataSize = cache_data.size();
+                create_info.pInitialData    = cache_data.data();
+            }
+
+            SP_ASSERT_VK(vkCreatePipelineCache(RHI_Context::device, &create_info, nullptr, &pipeline_cache));
+        }
+
+        void save_pipeline_cache()
+        {
+            if (!pipeline_cache)
+                return;
+
+            size_t data_size = 0;
+            SP_ASSERT_VK(vkGetPipelineCacheData(RHI_Context::device, pipeline_cache, &data_size, nullptr));
+
+            if (data_size > 0)
+            {
+                vector<uint8_t> data(data_size);
+                SP_ASSERT_VK(vkGetPipelineCacheData(RHI_Context::device, pipeline_cache, &data_size, data.data()));
+
+                ofstream file(pipeline_cache_path, ios::binary);
+                if (file.is_open())
+                {
+                    file.write(reinterpret_cast<const char*>(data.data()), data_size);
+                }
+            }
+        }
+
+        VkDescriptorPool create_descriptor_pool()
         {
             static array<VkDescriptorPoolSize, 7> pool_sizes =
             {
@@ -698,7 +759,6 @@ namespace spartan
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, 32 * rhi_max_descriptor_set_count }
             };
 
-            // describe
             VkDescriptorPoolCreateInfo pool_create_info = {};
             pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
             pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
@@ -706,10 +766,14 @@ namespace spartan
             pool_create_info.pPoolSizes                 = pool_sizes.data();
             pool_create_info.maxSets                    = rhi_max_descriptor_set_count;
 
-            // create
-            SP_ASSERT(descriptors::descriptor_pool == nullptr);
-            SP_ASSERT_VK(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool));
+            VkDescriptorPool pool = nullptr;
+            SP_ASSERT_VK(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &pool));
+            return pool;
+        }
 
+        void create_pool()
+        {
+            descriptors::descriptor_pools.push_back(create_descriptor_pool());
             Profiler::m_rhi_descriptor_set_count = 0;
         }
 
@@ -850,12 +914,13 @@ namespace spartan
             size_t descriptor_count = 0;
             get_descriptors_from_pipeline_state(pipeline_state, descriptors, descriptor_count);
 
-            // compute a hash for the descriptors
+            // compute a hash for the descriptors (only valid entries, including type to avoid collisions)
             uint64_t hash = 0;
-            for (RHI_Descriptor& descriptor : descriptors)
+            for (size_t i = 0; i < descriptor_count; ++i)
             {
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.slot));
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.stage));
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptors[i].slot));
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptors[i].stage));
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptors[i].type));
             }
 
             // search for a descriptor set layout which matches this hash
@@ -962,7 +1027,7 @@ namespace spartan
 
                 VkDescriptorSetAllocateInfo alloc_info = {};
                 alloc_info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-                alloc_info.descriptorPool     = descriptors::descriptor_pool;
+                alloc_info.descriptorPool     = descriptors::descriptor_pools.front();
                 alloc_info.descriptorSetCount = 1;
                 alloc_info.pSetLayouts        = &layouts[index];
                 alloc_info.pNext              = &count_info;
@@ -1655,6 +1720,7 @@ namespace spartan
 
         vulkan_memory_allocator::initialize();
         descriptors::create_pool();
+        descriptors::create_pipeline_cache();
         descriptors::bindless::initialize();
     }
 
@@ -1674,9 +1740,20 @@ namespace spartan
         QueueWaitAll();
         queues::destroy();
 
-        // descriptor pool
-        vkDestroyDescriptorPool(RHI_Context::device, descriptors::descriptor_pool, nullptr);
-        descriptors::descriptor_pool = nullptr;
+        // pipeline cache - save to disk before destroying
+        descriptors::save_pipeline_cache();
+        if (descriptors::pipeline_cache)
+        {
+            vkDestroyPipelineCache(RHI_Context::device, descriptors::pipeline_cache, nullptr);
+            descriptors::pipeline_cache = nullptr;
+        }
+
+        // descriptor pools
+        for (VkDescriptorPool pool : descriptors::descriptor_pools)
+        {
+            vkDestroyDescriptorPool(RHI_Context::device, pool, nullptr);
+        }
+        descriptors::descriptor_pools.clear();
 
         // debug messenger
         if (Debugging::IsValidationLayerEnabled())
@@ -1687,8 +1764,12 @@ namespace spartan
         // descriptors
         descriptors::release();
 
-        // the destructor of all the resources enqueues it's vk buffer memory for de-allocation
-        // this is where we actually go through them and de-allocate them
+        // release pooled staging buffers
+        StagingBufferPoolDestroy();
+
+        // the destructor of all the resources enqueues it's vk buffer memory for de-allocation;
+        // the gpu is fully idle after QueueWaitAll(), so force-retire everything regardless of age
+        deletion_queue_frame += renderer_draw_data_buffer_count + 2;
         RHI_Device::DeletionQueueParse();
 
         // destroy the allocator itself and assert if any allocations are left
@@ -1755,6 +1836,7 @@ namespace spartan
         }
     }
 
+
     // deletion queue
 
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
@@ -1763,116 +1845,114 @@ namespace spartan
             return;
 
         lock_guard<mutex> guard(mutex_deletion_queue);
-        deletion_queue[resource_type].emplace_back(resource);
+        deletion_queue.push_back({ resource_type, resource, deletion_queue_frame });
     }
 
     void RHI_Device::DeletionQueueParse()
     {
         lock_guard<mutex> guard(mutex_deletion_queue);
 
-        for (auto& it : deletion_queue)
+        deletion_queue_frame++;
+
+        // retire resources that are old enough for the gpu to have finished using them;
+        // with renderer_draw_data_buffer_count command lists rotating per queue, anything
+        // older than that many frames is guaranteed to be no longer in flight
+        const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
+
+        auto it = deletion_queue.begin();
+        while (it != deletion_queue.end())
         {
-            RHI_Resource_Type resource_type = it.first;
-
-            for (uint32_t i = 0; i < static_cast<uint32_t>(it.second.size()); i++)
+            if ((deletion_queue_frame - it->frame) < safe_age)
             {
-                void* resource = it.second[i];
+                ++it;
+                continue;
+            }
 
-                switch (resource_type)
-                {
-                    case RHI_Resource_Type::Image:                 MemoryTextureDestroy(resource);                                                                                            break;
-                    case RHI_Resource_Type::ImageView:             vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                                      break;
-                    case RHI_Resource_Type::Sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                                     break;
-                    case RHI_Resource_Type::Buffer:                MemoryBufferDestroy(resource);                                                                                             break;
-                    case RHI_Resource_Type::Shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);                                break;
-                    case RHI_Resource_Type::Semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                                      break;
-                    case RHI_Resource_Type::Fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                                              break;
-                    case RHI_Resource_Type::DescriptorSetLayout:   vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr);                  break;
-                    case RHI_Resource_Type::QueryPool:             vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                                      break;
-                    case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                                        break;
-                    case RHI_Resource_Type::PipelineLayout:        vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);                            break;
-                    case RHI_Resource_Type::AccelerationStructure: functions::destroy_acceleration_structure(RHI_Context::device,static_cast<VkAccelerationStructureKHR>(resource), nullptr); break;
-                    default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                                  break;
-                }
+            void* resource                  = it->resource;
+            RHI_Resource_Type resource_type = it->type;
 
-                // delete descriptor sets which are now invalid (because they are referring to a deleted resource)
-                if (resource_type == RHI_Resource_Type::ImageView || resource_type == RHI_Resource_Type::Buffer)
+            switch (resource_type)
+            {
+                case RHI_Resource_Type::Image:                 MemoryTextureDestroy(resource);                                                                                            break;
+                case RHI_Resource_Type::ImageView:             vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                                      break;
+                case RHI_Resource_Type::Sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                                     break;
+                case RHI_Resource_Type::Buffer:                MemoryBufferDestroy(resource);                                                                                             break;
+                case RHI_Resource_Type::Shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);                                break;
+                case RHI_Resource_Type::Semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                                      break;
+                case RHI_Resource_Type::Fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                                              break;
+                case RHI_Resource_Type::DescriptorSetLayout:   vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr);                  break;
+                case RHI_Resource_Type::QueryPool:             vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                                      break;
+                case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                                        break;
+                case RHI_Resource_Type::PipelineLayout:        vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);                            break;
+                case RHI_Resource_Type::AccelerationStructure: functions::destroy_acceleration_structure(RHI_Context::device,static_cast<VkAccelerationStructureKHR>(resource), nullptr); break;
+                default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                                  break;
+            }
+
+            // invalidate descriptor sets that referenced the destroyed resource
+            if (resource_type == RHI_Resource_Type::ImageView || resource_type == RHI_Resource_Type::Buffer)
+            {
+                for (auto set_it = descriptors::sets.begin(); set_it != descriptors::sets.end();)
                 {
-                    for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
+                    if (set_it->second.IsReferingToResource(resource))
                     {
-                        if (it->second.IsReferingToResource(resource))
-                        {
-                            it = descriptors::sets.erase(it);
-                            // ideally the descriptor set pool is not oblivious to the fact that we don't use this set anymore
-                            // maybe after a certain number of deletions we reset the entire pool to free memory
-                        }
-                        else
-                        {
-                            ++it;
-                        }
+                        set_it = descriptors::sets.erase(set_it);
+                    }
+                    else
+                    {
+                        ++set_it;
                     }
                 }
-
-                // samplers are bindless so they just update the set again
             }
-        }
 
-        deletion_queue.clear();
+            it = deletion_queue.erase(it);
+        }
     }
 
     bool RHI_Device::DeletionQueueNeedsToParse()
     {
-        static uint32_t frames_equilibrium         = 0;
-        static uint32_t objects_to_delete_previous = 0;
-    
-        // count deletions in the queue
-        uint32_t objects_to_delete = 0;
-        for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Resource_Type::Max); i++)
-        {
-            objects_to_delete += static_cast<uint32_t>(deletion_queue[static_cast<RHI_Resource_Type>(i)].size());
-        }
-    
-        // check if the number of objects to delete has remained unchanged
-        if (objects_to_delete > 0 && objects_to_delete == objects_to_delete_previous)
-        {
-            frames_equilibrium++;
+        lock_guard<mutex> guard(mutex_deletion_queue);
 
-            // if it’s been stable for frame_selflife frames, reset counter and delete
-            if (frames_equilibrium >= renderer_resource_frame_lifetime)
-            {
-                frames_equilibrium = 0;
-                return true;
-            }
-        }
-        else
+        if (deletion_queue.empty())
+            return false;
+
+        const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
+        for (const auto& entry : deletion_queue)
         {
-            // reset counter if the count changed or if nothing is in the queue
-            frames_equilibrium = 0;
+            if ((deletion_queue_frame + 1 - entry.frame) >= safe_age)
+                return true;
         }
-    
-        // update the previous object count to the current count
-        objects_to_delete_previous = objects_to_delete;
-    
+
         return false;
     }
 
     // descriptors
 
-    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors)
+    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors_vec)
     {
-        // describe
+        SP_ASSERT(resource == nullptr);
+        SP_ASSERT(!descriptors::descriptor_pools.empty());
+
         array<void*, 1> descriptor_set_layouts    = { descriptor_set_layout->GetRhiResource() };
         VkDescriptorSetAllocateInfo allocate_info = {};
         allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(descriptors::descriptor_pool);
         allocate_info.descriptorSetCount          = 1;
         allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
 
-        // allocate
-        SP_ASSERT(resource == nullptr);
-        SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)));
+        // try the most recent pool first; if full, create a new pool and retry
+        allocate_info.descriptorPool = descriptors::descriptor_pools.back();
+        VkResult result = vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource));
 
-        // track allocations
+        if (result == VK_ERROR_OUT_OF_POOL_MEMORY || result == VK_ERROR_FRAGMENTED_POOL)
+        {
+            descriptors::descriptor_pools.push_back(descriptors::create_descriptor_pool());
+            allocate_info.descriptorPool = descriptors::descriptor_pools.back();
+            SP_ASSERT_VK(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)));
+        }
+        else
+        {
+            SP_ASSERT_VK(result);
+        }
+
         descriptors::allocated_descriptor_sets++;
         Profiler::m_rhi_descriptor_set_count++;
     }
@@ -2008,6 +2088,11 @@ namespace spartan
     uint32_t RHI_Device::GetPipelineCount()
     {
         return static_cast<uint32_t>(descriptors::pipelines.size());
+    }
+
+    void* RHI_Device::GetPipelineCache()
+    {
+        return static_cast<void*>(descriptors::pipeline_cache);
     }
 
     // memory
@@ -2313,6 +2398,31 @@ namespace spartan
         }
 
         return bytes / (1024ull * 1024ull);
+    }
+
+    // staging buffers
+
+    void* RHI_Device::StagingBufferAcquire(uint64_t size)
+    {
+        void* buffer = nullptr;
+        MemoryBufferCreate(buffer, size,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            nullptr, "staging");
+        return buffer;
+    }
+
+    void RHI_Device::StagingBufferRelease(void* buffer)
+    {
+        if (!buffer)
+            return;
+
+        MemoryBufferDestroy(buffer);
+    }
+
+    void RHI_Device::StagingBufferPoolDestroy()
+    {
+        // no-op: buffers are destroyed immediately on release
     }
 
     // markers

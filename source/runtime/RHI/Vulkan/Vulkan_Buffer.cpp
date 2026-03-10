@@ -90,8 +90,13 @@ namespace spartan
                 // if initial data is provided, upload it via a staging buffer
                 if (data && m_rhi_resource)
                 {
-                    void* staging_buffer = nullptr;
-                    RHI_Device::MemoryBufferCreate(staging_buffer, m_object_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, data, m_object_name.c_str());
+                    void* staging_buffer = RHI_Device::StagingBufferAcquire(m_object_size);
+
+                    // copy data into the staging buffer
+                    void* mapped = nullptr;
+                    RHI_Device::MemoryMap(staging_buffer, mapped);
+                    memcpy(mapped, data, m_object_size);
+                    RHI_Device::MemoryUnmap(staging_buffer);
 
                     VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
                     VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
@@ -100,7 +105,7 @@ namespace spartan
                     RHI_CommandList* cmd_list   = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Copy);
                     vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
                     RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-                    RHI_Device::MemoryBufferDestroy(staging_buffer);
+                    RHI_Device::StagingBufferRelease(staging_buffer);
                 }
             }
             
@@ -202,13 +207,12 @@ namespace spartan
         else
         {
             // for device-local buffers, stage and copy at the specified offset
-            void* staging_buffer = nullptr;
-            RHI_Device::MemoryBufferCreate(
-                staging_buffer, size_bytes,
-                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                data, "staging_sub_region"
-            );
+            void* staging_buffer = RHI_Device::StagingBufferAcquire(size_bytes);
+
+            void* mapped = nullptr;
+            RHI_Device::MemoryMap(staging_buffer, mapped);
+            memcpy(mapped, data, size_bytes);
+            RHI_Device::MemoryUnmap(staging_buffer);
 
             VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
             VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
@@ -222,7 +226,7 @@ namespace spartan
             vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
             RHI_CommandList::ImmediateExecutionEnd(cmd_list);
 
-            RHI_Device::MemoryBufferDestroy(staging_buffer);
+            RHI_Device::StagingBufferRelease(staging_buffer);
         }
     }
 

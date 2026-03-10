@@ -3113,6 +3113,67 @@ namespace spartan
             }
         }
 
+        // recalculate tangents from triangle uvs and deformed positions
+        for (uint32_t i = 0; i < m_cloth_vertex_count; i++)
+        {
+            updated_vertices[i].tan[0] = 0.0f;
+            updated_vertices[i].tan[1] = 0.0f;
+            updated_vertices[i].tan[2] = 0.0f;
+        }
+
+        for (size_t i = 0; i + 2 < m_cloth_indices.size(); i += 3)
+        {
+            uint32_t i0 = m_cloth_indices[i];
+            uint32_t i1 = m_cloth_indices[i + 1];
+            uint32_t i2 = m_cloth_indices[i + 2];
+
+            if (i0 >= m_cloth_vertex_count || i1 >= m_cloth_vertex_count || i2 >= m_cloth_vertex_count)
+                continue;
+
+            Vector3 p0(updated_vertices[i0].pos[0], updated_vertices[i0].pos[1], updated_vertices[i0].pos[2]);
+            Vector3 p1(updated_vertices[i1].pos[0], updated_vertices[i1].pos[1], updated_vertices[i1].pos[2]);
+            Vector3 p2(updated_vertices[i2].pos[0], updated_vertices[i2].pos[1], updated_vertices[i2].pos[2]);
+
+            Vector3 edge1 = p1 - p0;
+            Vector3 edge2 = p2 - p0;
+
+            float du1 = updated_vertices[i1].tex[0] - updated_vertices[i0].tex[0];
+            float dv1 = updated_vertices[i1].tex[1] - updated_vertices[i0].tex[1];
+            float du2 = updated_vertices[i2].tex[0] - updated_vertices[i0].tex[0];
+            float dv2 = updated_vertices[i2].tex[1] - updated_vertices[i0].tex[1];
+
+            float denom = du1 * dv2 - du2 * dv1;
+            if (fabsf(denom) < 1e-7f)
+                continue;
+
+            float inv_denom = 1.0f / denom;
+            Vector3 tangent = (edge1 * dv2 - edge2 * dv1) * inv_denom;
+
+            for (uint32_t idx : { i0, i1, i2 })
+            {
+                updated_vertices[idx].tan[0] += tangent.x;
+                updated_vertices[idx].tan[1] += tangent.y;
+                updated_vertices[idx].tan[2] += tangent.z;
+            }
+        }
+
+        // orthogonalize and normalize tangents (gram-schmidt against the updated normal)
+        for (uint32_t i = 0; i < m_cloth_vertex_count; i++)
+        {
+            Vector3 n(updated_vertices[i].nor[0], updated_vertices[i].nor[1], updated_vertices[i].nor[2]);
+            Vector3 t(updated_vertices[i].tan[0], updated_vertices[i].tan[1], updated_vertices[i].tan[2]);
+
+            t = t - n * Vector3::Dot(n, t);
+            float len = t.Length();
+            if (len > 1e-7f)
+            {
+                t /= len;
+                updated_vertices[i].tan[0] = t.x;
+                updated_vertices[i].tan[1] = t.y;
+                updated_vertices[i].tan[2] = t.z;
+            }
+        }
+
         // push to gpu
         GeometryBuffer::UpdateVertices(updated_vertices.data(), m_cloth_global_vertex_offset, m_cloth_vertex_count);
 

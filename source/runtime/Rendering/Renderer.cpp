@@ -366,20 +366,18 @@ namespace spartan
                 UpdateAccelerationStructures(m_cmd_list_compute);
             }
     
-            // periodic resource cleanup
+            // resource cleanup - frame-based retirement, no gpu stall required
+            if (RHI_Device::DeletionQueueNeedsToParse())
+            {
+                RHI_Device::DeletionQueueParse();
+            }
+
+            // reset constant buffer offset periodically
             {
                 m_resource_index++;
-                bool is_sync_point = m_resource_index == renderer_resource_frame_lifetime;
-                if (is_sync_point)
+                if (m_resource_index == renderer_draw_data_buffer_count)
                 {
                     m_resource_index = 0;
-    
-                    if (RHI_Device::DeletionQueueNeedsToParse())
-                    {
-                        RHI_Device::QueueWaitAll();
-                        RHI_Device::DeletionQueueParse();
-                    }
-    
                     GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
                 }
             }

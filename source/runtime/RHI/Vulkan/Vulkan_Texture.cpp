@@ -191,8 +191,8 @@ namespace spartan
                 }
             }
         
-            // create staging buffer with aligned size
-            RHI_Device::MemoryBufferCreate(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
+            // acquire a staging buffer from the pool
+            staging_buffer = RHI_Device::StagingBufferAcquire(buffer_offset);
         
             void* mapped_data = nullptr;
             buffer_offset = 0;
@@ -283,8 +283,7 @@ namespace spartan
             }
             Breadcrumbs::EndMarker(); // buffer_to_image
         
-            if (staging_buffer)
-                RHI_Device::MemoryBufferDestroy(staging_buffer);
+            RHI_Device::StagingBufferRelease(staging_buffer);
 
             Breadcrumbs::EndMarker(); // texture_stage
         }
