@@ -79,10 +79,12 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
-        // auto-regenerate mesh when any property or control point position changes
-        if (m_mesh_enabled && GetControlPointCount() >= 2)
+        // auto-regenerate mesh when any property/control point changes, or when mesh is enabled but missing
+        uint32_t control_point_count = GetControlPointCount();
+        if (m_mesh_enabled && control_point_count >= 2)
         {
             vector<Vector3> current_points = GetControlPointsLocal();
+            bool mesh_missing              = !HasRoadMesh();
 
             bool dirty = (m_closed_loop        != m_prev_closed_loop)
                       || (m_resolution         != m_prev_resolution)
@@ -101,7 +103,7 @@ namespace spartan
                       || (m_terrain_offset     != m_prev_terrain_offset)
                       || (current_points       != m_prev_control_points);
 
-            if (dirty)
+            if (dirty || mesh_missing)
             {
                 GenerateRoadMesh();
 
@@ -123,7 +125,7 @@ namespace spartan
                 m_prev_control_points     = current_points;
             }
         }
-        else if (m_mesh_enabled && GetControlPointCount() < 2 && HasRoadMesh())
+        else if (m_mesh_enabled && control_point_count < 2 && HasRoadMesh())
         {
             ClearRoadMesh();
         }
@@ -394,6 +396,18 @@ namespace spartan
     {
         if (m_mesh)
         {
+            // preserve the current material so it can be restored on next regeneration
+            if (m_saved_material_name.empty() && m_entity_ptr)
+            {
+                if (Render* renderable = m_entity_ptr->GetComponent<Render>())
+                {
+                    if (Material* material = renderable->GetMaterial())
+                    {
+                        m_saved_material_name = material->GetObjectName();
+                    }
+                }
+            }
+
             // remove the renderable and physics components to avoid dangling mesh pointers
             if (m_entity_ptr)
             {
@@ -760,7 +774,10 @@ namespace spartan
                     uint32_t j_next = (j == cur_profile_count - 1) ? (close_profile ? 0 : cur_profile_count - 1) : j + 1;
 
                     Vector2 edge = cur_profile[j_next] - cur_profile[j_prev];
-                    Vector2 perp = Vector2(edge.y, -edge.x);
+
+                    // open profiles (road/wall/fence/channel) need the opposite winding
+                    // from closed profiles (tube) to keep normals facing outward/upward.
+                    Vector2 perp = close_profile ? Vector2(edge.y, -edge.x) : Vector2(-edge.y, edge.x);
                     float perp_len = sqrtf(perp.x * perp.x + perp.y * perp.y);
                     if (perp_len > 0.001f)
                     {
