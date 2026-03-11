@@ -41,6 +41,12 @@ float F_Schlick(float f0, float f90, float v_dot_h)
     return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
 }
 
+// Inspired by Atlas talk @ GDC19 - https://youtu.be/Dqld965-Vv0?t=1590
+float F_Ocean(float n_dot_v, float roughness, float f0)
+{
+    return lerp(pow(1.0f - n_dot_v, 5.0f * exp(-2.69f * roughness)) / (1.0f + 22.7f * pow(roughness, 1.5f)), 1.0f, f0);
+}
+
 /*------------------------------------------------------------------------------
     DIFFUSE
 ------------------------------------------------------------------------------*/
@@ -56,7 +62,7 @@ float3 Diffuse_Burley(float3 diffuse_color, float roughness, float n_dot_v, floa
 
 float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
 {
-    if (surface.is_ocean())
+    if (!surface.is_ocean())
         return Diffuse_Burley(surface.albedo, surface.roughness, angular_info.n_dot_v, angular_info.n_dot_l, angular_info.v_dot_h);
     else
         return float3(0.0f, 0.0f, 0.0f); // ocean diffuse comes from scattering, not albedo
@@ -117,6 +123,12 @@ float V_Kelemen(float v_dot_h)
 float V_Neubelt(float n_dot_v, float n_dot_l)
 {
     return saturate_16(1.0 / (4.0 * (n_dot_l + n_dot_v - n_dot_l * n_dot_v)));
+}
+
+// single-direction smith G1 for ocean SSS masking, takes alpha^2
+float V1_SmithGGX(float n_dot_l, float a2)
+{
+    return 2.0f * n_dot_l / (n_dot_l + sqrt(n_dot_l * n_dot_l * (1.0f - a2) + a2) + FLT_MIN);
 }
 
 /*------------------------------------------------------------------------------

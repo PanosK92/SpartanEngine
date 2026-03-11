@@ -58,12 +58,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     float foam = slope_map[thread_id.xy].a;
     foam *= exp(-params.foamDecayRate);
-    foam = saturate(foam);
     
     float biasedJacobian = max(0.0f, -(jacobian - params.foamBias));
     
     if (biasedJacobian > params.foamThreshold)
         foam += params.foamAdd * biasedJacobian;
+    
+    foam = saturate(foam);
 
     displacement_map[thread_id.xy] = float4(displacement, 1.0f);
     slope_map[thread_id.xy] = float4(slopes, 0.0f, foam);

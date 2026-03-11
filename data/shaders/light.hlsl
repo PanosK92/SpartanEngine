@@ -125,26 +125,36 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
 }
 
 // Ocean subsurface scattering
+static const float3 SSS_MODIFIER = float3(0.9f, 1.15f, 0.85f);
 float3 ocean_subsurface(Surface surface, Light light, AngularInfo angular_info)
 {
-    // Subsurface scattering approximation
-    // Light that transmits through the wave crests
-    float3 scatter_color = float3(0.0f, 0.05f, 0.1f); // deep ocean scatter
-    
-    // View-dependent scattering: stronger when looking toward the light
-    // through thin wave crests
-    float v_dot_l = max(0.0f, dot(surface.camera_to_pixel, light.forward));
-    float sss_intensity = pow(saturate(v_dot_l), 4.0f) * 0.5f;
-    
-    // Height-dependent: thin wave crests scatter more
-    // Use the displacement Y to approximate wave height
-    float wave_height = surface.position.y;
-    sss_intensity *= wave_height;
-    
-    // Fresnel modulation: light that doesn't reflect enters the volume
-    float fresnel_transmit = 1.0f - F_Schlick(surface.F0, 1.0f, angular_info.n_dot_v);
-    
-    return scatter_color * sss_intensity * fresnel_transmit * light.radiance;
+    float a = D_GGX_Alpha(surface.roughness);
+    float a2 = a * a;
+
+    float n_dot_l = angular_info.n_dot_l;
+    float n_dot_v = angular_info.n_dot_v;
+    float fresnel = F_Ocean(n_dot_v, surface.roughness, surface.F0.x);
+
+    // masking for SSS attenuation
+    float v1_light = V1_SmithGGX(n_dot_l, a2);
+
+    // view-to-light alignment
+    float v_dot_l = max(dot(-surface.camera_to_pixel, light.forward), 0.0f);
+    float l_dot_n = dot(light.forward, surface.normal);
+
+    // forward scattering through wave crests
+    float sss_height = max(0.0f, surface.wave_height + 2.5f)
+                     * pow(v_dot_l, 4.0f)
+                     * pow(0.5f - 0.5f * l_dot_n, 3.0f);
+
+    // near-field ambient scattering
+    float sss_near = 0.5f * pow(n_dot_v, 2.0f);
+
+    // lambertian fallback
+    float lambertian = 0.5f * n_dot_l;
+
+    // combine
+    return lerp((sss_height + sss_near) * SSS_MODIFIER / (1.0f + v1_light) + lambertian, float3(1.0f, 1.0f, 1.0f), surface.foam_mask) * (1.0f - fresnel) * light.radiance;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -225,40 +235,42 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
             // compute specular brdf lobes
             {
-                // main specular lobe (anisotropic or isotropic)
-                if (surface.anisotropic > 0.0f)
-                {
-                    L_specular_sum += BRDF_Specular_Anisotropic(surface, angular_info);
-                }
-                else if (!surface.is_ocean())
-                {
-                    L_specular_sum += BRDF_Specular_Isotropic(surface, angular_info);
-                }
-                
-                // clearcoat layer (secondary specular)
-                if (surface.clearcoat > 0.0f)
-                {
-                    L_specular_sum += BRDF_Specular_Clearcoat(surface, angular_info);
-                }
-                
-                // sheen layer (cloth-like materials)
-                if (surface.sheen > 0.0f)
-                {
-                    L_specular_sum += BRDF_Specular_Sheen(surface, angular_info);
-                }
-                
-                // subsurface scattering (translucent materials)
-                if (surface.subsurface_scattering > 0.0f)
-                {
-                    L_subsurface += subsurface_scattering(surface, light, angular_info);
-                }
-
                 // ocean specific specular and subsurface
                 if (surface.is_ocean())
                 {
                     L_specular_sum = BRDF_Specular_Isotropic(surface, angular_info);
 
                     L_subsurface = ocean_subsurface(surface, light, angular_info);
+                }
+                else
+                {
+                    // main specular lobe (anisotropic or isotropic)
+                    if (surface.anisotropic > 0.0f)
+                    {
+                        L_specular_sum += BRDF_Specular_Anisotropic(surface, angular_info);
+                    }
+                    else if (!surface.is_ocean())
+                    {
+                        L_specular_sum += BRDF_Specular_Isotropic(surface, angular_info);
+                    }
+                
+                // clearcoat layer (secondary specular)
+                    if (surface.clearcoat > 0.0f)
+                    {
+                        L_specular_sum += BRDF_Specular_Clearcoat(surface, angular_info);
+                    }
+                
+                // sheen layer (cloth-like materials)
+                    if (surface.sheen > 0.0f)
+                    {
+                        L_specular_sum += BRDF_Specular_Sheen(surface, angular_info);
+                    }
+                
+                // subsurface scattering (translucent materials)
+                    if (surface.subsurface_scattering > 0.0f)
+                    {
+                        L_subsurface += subsurface_scattering(surface, light, angular_info);
+                    }
                 }
             }
             

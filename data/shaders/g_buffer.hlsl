@@ -318,8 +318,13 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
         
         // apply foam (foam mask is stored in the alpha channel of slope map)
         albedo.rgb = lerp(albedo.rgb, float3(1.0f, 1.0f, 1.0f), slope.a);
-        roughness = lerp(roughness, 1.0f, slope.a);
 
+        // store fp16 wave height in metallnes and emission channels of material gbuffer
+        uint half_val = f32tof16(position_world.y);
+        metalness = (half_val >> 8u) / 255.0f;
+        emission = (half_val & 0xFFu) / 255.0f;
+        occlusion = slope.a; // store foam mask in occlusion channel
+        
         if (material.ocean_parameters.debugDisplacement == 1.0f) // displacement
         {
             if (material.ocean_parameters.debugSynthesised == 1.0f) // show synthesised version

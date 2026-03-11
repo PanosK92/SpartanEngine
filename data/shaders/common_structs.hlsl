@@ -89,6 +89,8 @@ struct Surface
     float3 diffuse_energy;
 
     OceanParameters ocean_parameters;
+    float wave_height;
+    float foam_mask;
 
     // easy access to certain properties
     bool has_texture_height()            { return flags & uint(1U << 0);  }
@@ -168,7 +170,23 @@ struct Surface
         ocean_parameters.debugDisplacement = material.ocean_parameters.debugDisplacement;
         ocean_parameters.debugSlope        = material.ocean_parameters.debugSlope;
         ocean_parameters.debugSynthesised  = material.ocean_parameters.debugSynthesised;
+        // if we are an ocean, wave height is stored in the metallnes and emissive channels of the material gbuffer
+        // unpack the wave height and reset the metallic and emissive to 0.0f (expected values for an ocean surface)
+        // additionally, we store the foam mask in the occlusion channel of the material gbuffer as well
+        if (flags & uint(1U << 16))
+        {
+            // Unpacking 
+            uint high = (uint)(metallic * 255.0f + 0.5f);
+            uint low = (uint)(emissive * 255.0f + 0.5f);
+            wave_height = f16tof32((high << 8u) | low);
+            metallic = 0.0f;
+            emissive = 0.0f;
 
+            foam_mask = sample_material.a;
+            occlusion = 0.0f;
+        }
+        
+        
         // roughness is authored as perceptual roughness, as is convention
         roughness_alpha = roughness * roughness;
 
