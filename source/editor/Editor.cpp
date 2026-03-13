@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
 #include "Widgets/ScriptEditor.h"
+#include "Widgets/Shadows.h"
 //===============================================
 
 //= NAMESPACES =====
@@ -106,6 +107,7 @@ Editor::Editor(const vector<string>& args)
     SP_SUBSCRIBE_TO_EVENT(spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
 
     GeneralWindows::Initialize(this);
+    Modal::Initialize(this);
 }
 
 Editor::~Editor()
@@ -154,6 +156,13 @@ void Editor::Tick()
 
                 // various windows that don't belong to a certain widget
                 GeneralWindows::Tick();
+
+                // Modal popup system (draws on top of everything when shown)
+                Modal::Tick();
+
+                // Draw all pending shadows AFTER widgets queue them, but BEFORE ImGui::Render()
+                // This draws to the background draw list so shadows appear behind windows
+                spartan::Shadow::FlushPendingShadows();
             }
         }
 
