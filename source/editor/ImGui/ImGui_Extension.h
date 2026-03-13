@@ -73,7 +73,13 @@ namespace ImGuiSp
 
     static const ImVec4 default_tint(1, 1, 1, 1);
 
-    // Collapsing header
+    /**
+     * @brief Draw a collapsing header.
+     *
+     * @param label The label of the collapsing header.
+     * @param flags The flags for the collapsing header.
+     * @return True if the collapsing header is open, false otherwise.
+     */
     static bool collapsing_header(const char* label, ImGuiTreeNodeFlags flags = 0)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -82,7 +88,13 @@ namespace ImGuiSp
         return result;
     }
 
-    // Button
+    /**
+     * @brief Draw a button.
+     *
+     * @param label The label of the button.
+     * @param size The size of the button.
+     * @return True if the button was clicked, false otherwise.
+     */
     static bool button(const char* label, const ImVec2& size = ImVec2(0, 0))
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -93,6 +105,13 @@ namespace ImGuiSp
         return result;
     }
 
+    /**
+     * @brief Draw a button centered on the current line.
+     *
+     * @param label The label of the button.
+     * @param alignment The alignment of the button (0.0 = left, 0.5 = center, 1.0 = right).
+     * @return True if the button was clicked, false otherwise.
+     */
     static bool button_centered_on_line(const char* label, float alignment = 0.5f)
     {
         ImGuiStyle& style = ImGui::GetStyle();
@@ -109,6 +128,15 @@ namespace ImGuiSp
         return ImGui::Button(label);
     }
 
+    /**
+     * @brief Draw an image button from a texture.
+     *
+     * @param texture The texture to draw.
+     * @param size The size of the image button.
+     * @param border Whether to draw a border around the image button.
+     * @param tint The tint color to apply to the image button.
+     * @return True if the image button was clicked, false otherwise.
+     */
     static bool image_button(spartan::RHI_Texture* texture, const spartan::math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
     {
         if (!border)
@@ -140,6 +168,13 @@ namespace ImGuiSp
         return result;
     }
 
+    /**
+     * @brief Draw an image from a texture.
+     *
+     * @param texture The texture to draw.
+     * @param size The size of the image.
+     * @param border Whether to draw a border around the image.
+     */
     static void image(spartan::RHI_Texture* texture, const spartan::math::Vector2& size, bool border = false)
     {
         if (!border)
@@ -162,6 +197,17 @@ namespace ImGuiSp
         }
     }
 
+    /**
+     * @brief Draw an image from a texture with a tint color. 
+     *
+     * The tint color can be used to change the image color or apply
+     * transparency.
+     *
+     * @param texture The texture to draw.
+     * @param size The size of the image.
+     * @param tint The tint color to apply to the image.
+     * @param border The border color to apply to the image.
+     */
     static void image(spartan::RHI_Texture* texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
     {
         ImGui::Image(
@@ -174,6 +220,15 @@ namespace ImGuiSp
         );
     }
 
+    /**
+     * @brief Draw an icon from the resource cache.
+     *
+     * The icon is drawn with a `default_tint` color of white (1, 1, 1, 1) and no border. The size parameter specifies the width
+     * and height of the icon in pixels. 
+     *
+     * @param icon The icon type to draw.
+     * @param size The size of the icon.
+     */
     static void image(const spartan::IconType icon, const float size)
     {
         ImGui::Image(
@@ -186,6 +241,16 @@ namespace ImGuiSp
         );
     }
 
+    /**
+     * @brief Draw an icon from the resource cache with a tint color. 
+     * 
+     * The tint color can be used to change the icon color or apply
+     * transparency.
+     *
+     * @param icon The icon type to draw.
+     * @param size The size of the icon.
+     * @param tint The tint color to apply to the icon.
+     */
     static void image(const spartan::IconType icon, const float size,const ImVec4 tint)
     {
         ImGui::Image(
@@ -196,6 +261,92 @@ namespace ImGuiSp
             tint,       // tint
             ImColor(0, 0, 0, 0) // border
         );
+    }
+    
+    //= Rectangle =============================================================================
+
+    /**
+     * @brief Get the rectangle of the last item.
+     *
+     * @return The rectangle of the last item.
+     */
+    inline ImRect get_item_rect()
+    {
+        return {
+            ImGui::GetItemRectMin(), 
+            ImGui::GetItemRectMax()
+        };
+    }
+
+    /**
+     * @brief Expand a rectangle by a certain amount in the x and y directions.
+     *
+     * @param rect The rectangle to expand.
+     * @param x The amount to expand in the x direction.
+     * @param y The amount to expand in the y direction.
+     * @return The expanded rectangle.
+     */
+    inline ImRect rectangle_expanded(const ImRect& rect, float x, float y)
+    {
+        ImRect result = rect;
+        result.Min.x -= x;
+        result.Min.y -= y;
+        result.Max.x += x;
+        result.Max.y += y;
+        return result;
+    }
+
+    /**
+     * @brief Offset a rectangle by a certain amount in the x and y directions.
+     *
+     * @param rect The rectangle to offset.
+     * @param x The amount to offset in the x direction.
+     * @param y The
+     * amount to offset in the y direction.
+     * @return The offset rectangle.
+     */
+    inline ImRect rectangle_offset(const ImRect& rect, float x, float y)
+    {
+        ImRect result = rect;
+        result.Min.x += x;
+        result.Min.y += y;
+        result.Max.x += x;
+        result.Max.y += y;
+        return result;
+    }
+
+    /**
+     * @brief Offset a rectangle by a certain amount in the x and y directions.
+     *
+     * @param rect The rectangle to offset.
+     * @param xy The amount to offset in the x and y directions.
+     * @return
+     * The offset rectangle.
+     */
+    inline ImRect rectangle_offset(const ImRect& rect, ImVec2 xy)
+    {
+        return rectangle_offset(rect, xy.x, xy.y);
+    }
+
+    /**
+     * @brief Draw a hyperlink.
+     *
+     * @param label The label of the hyperlink.
+     * @param lineColor The color of the underline.
+     * @param lineThickness The thickness of the underline.
+     * @return True if the hyperlink was clicked, false otherwise.
+     */
+    static bool hyper_link(const char* label, ImU32 lineColor = IM_COL32(186, 66, 30, 255), float lineThickness = GImGui->Style.FrameBorderSize)
+    {
+        ImGui::Text(label);
+        const ImRect rect = rectangle_expanded(get_item_rect(), lineThickness, lineThickness);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::GetWindowDrawList()->AddLine({rect.Min.x, rect.Max.y}, rect.Max, lineColor, lineThickness);
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+            return ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+        }
+        return false;
     }
 
     struct DragDropPayload
@@ -212,11 +363,22 @@ namespace ImGuiSp
         const char* path_relative;      // relative path
     };
 
+    /**
+     * @brief Create a drag and drop payload.
+     *
+     * @param payload The payload to create.
+     */
     static void create_drag_drop_payload(const DragDropPayload& payload)
     {
         ImGui::SetDragDropPayload(GDragDropTypes[(int)payload.type].data(), &payload, sizeof(payload), ImGuiCond_Once);
     }
 
+    /**
+     * @brief Receive a drag and drop payload.
+     *
+     * @param type The type of the payload to receive.
+     * @return A pointer to the received payload, or nullptr if no payload was received.
+     */
     static DragDropPayload* receive_drag_drop_payload(DragPayloadType type)
     {
         if (ImGui::BeginDragDropTarget())
@@ -231,7 +393,18 @@ namespace ImGuiSp
         return nullptr;
     }
 
-    // image slot - returns true if the user clicked on the slot (for browse functionality)
+    /**
+     * @brief Draw an image slot that can be used to display a texture. 
+     * 
+     * The slot supports clicking to browse for a new texture,
+     * and drag-and-drop to assign a texture. An "X" button appears in the 
+     * top-right corner of the slot when a texture is
+     * assigned, allowing the user to clear the slot.
+     *
+     * @param texture_in The texture to display in the slot.
+     * @param setter A function to set the texture.
+     * @return True if the slot was clicked for browsing, false otherwise.
+    */
     static bool image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter)
     {
         const ImVec2 slot_size  = ImVec2(80 * spartan::Window::GetDpiScale());
@@ -319,6 +492,11 @@ namespace ImGuiSp
         return clicked_for_browse;
     }
 
+    /**
+     * @brief Display a tooltip with the given text when the item is hovered.
+     *
+     * @param text The text to display in the tooltip.
+     */
     static void tooltip(const char* text)
     {
         SP_ASSERT_MSG(text != nullptr, "Text is null");
@@ -331,7 +509,20 @@ namespace ImGuiSp
         }
     }
 
-    // a drag float which will wrap the mouse cursor around the edges of the screen
+    /**
+     * @brief Draw a drag float widget that wraps the mouse cursor around the edges of the screen.
+     *
+     * This allows for continuous dragging without hitting screen boundaries.
+     *
+     * @param label The label for the drag float widget.
+     * @param v Pointer to the float value.
+     * @param v_speed The speed at which the value changes.
+     * @param v_min The minimum value.
+     * @param v_max The maximum value.
+     * @param format The format string for displaying the value.
+     * @param flags The ImGuiSliderFlags for the drag float widget.
+     * @return True if the value was changed, false otherwise.
+     */
     static bool draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
         static const uint32_t screen_edge_padding = 10;
@@ -382,6 +573,18 @@ namespace ImGuiSp
         return changed;
     }
 
+    /**
+     * @brief Draw a combo box with the given options and selection index.
+     *
+     * The combo box displays the currently selected option
+     * and allows the user to choose from a list of options.
+     *
+     * @param label The label for the combo box.
+     * @param options The options to display in the combo box.
+     * @param selection_index The index of the currently selected
+     * option.
+     * @return True if a selection was made, false otherwise.
+     */
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
     {
         const uint32_t option_count = static_cast<uint32_t>(options.size());
@@ -418,6 +621,13 @@ namespace ImGuiSp
         return selection_made;
     }
 
+    /**
+     * @brief Draw a 3D vector input with optional vertical layout.
+     *
+     * @param label The label for the vector input.
+     * @param vector The vector to modify.
+     * @param vertical Whether to layout the components vertically.
+     */
     static void vector3(const char* label, spartan::math::Vector3& vector, bool vertical = true)
     {
         // configuration
@@ -490,7 +700,13 @@ namespace ImGuiSp
         ImGui::PopID();
     }
 
-    // toggle switch - ios style toggle that replaces checkbox
+    /**
+     * @brief Draw a toggle switch (iOS style) that replaces a checkbox.
+     *
+     * @param label The label for the toggle switch.
+     * @param v The boolean value to modify.
+     * @return True if the value was changed, false otherwise.
+     */
     static bool toggle_switch(const char* label, bool* v)
     {
         ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -582,6 +798,14 @@ namespace ImGuiSp
         return pressed;
     }
 
+    /**
+     * @brief Display a modal window with "Yes" and "No" buttons.
+     *
+     * @param title The title of the window.
+     * @param text The text to display in the window.
+     * @return The
+     * button that was pressed.
+     */
     inline ButtonPress window_yes_no(const char* title, const char* text)
     {
         // Set position

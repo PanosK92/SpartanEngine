@@ -38,6 +38,7 @@ namespace spartan
         std::string file_path;
         std::string name;
         std::string description;
+        std::string preview_image;
     };
 
     class World
@@ -87,6 +88,9 @@ namespace spartan
         // world metadata
         static const std::string& GetDescription();
         static void SetDescription(const std::string& description);
+
+        static const std::string& GetPreviewImage();
+        static void SetPreviewImage(const std::string& image);
 
         // read metadata from a world file without fully loading it
         static bool ReadMetadata(const std::string& world_file_path, WorldMetadata& metadata);
