@@ -496,7 +496,7 @@ namespace spartan
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
 
-        std::shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags);
+        std::shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project/models/ferrari_laferrari/scene.gltf", mesh_flags);
         if (!mesh_car)
             return nullptr;
 
@@ -639,7 +639,7 @@ namespace spartan
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessOptimize);
         mesh_flags          &= ~static_cast<uint32_t>(MeshFlags::PostProcessGenerateLods);
 
-        std::shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend", mesh_flags);
+        std::shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/wheel/model.blend", mesh_flags);
         if (!mesh)
             return;
 
@@ -659,10 +659,10 @@ namespace spartan
         if (Render* renderable = wheel_base->GetComponent<Render>())
         {
             Material* material = renderable->GetMaterial();
-            material->SetTexture(MaterialTextureType::Color,     "project\\models\\wheel\\albedo.jpeg");
-            material->SetTexture(MaterialTextureType::Metalness, "project\\models\\wheel\\metalness.png");
-            material->SetTexture(MaterialTextureType::Normal,    "project\\models\\wheel\\normal.png");
-            material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
+            material->SetTexture(MaterialTextureType::Color,     "project/models/wheel/albedo.jpeg");
+            material->SetTexture(MaterialTextureType::Metalness, "project/models/wheel/metalness.png");
+            material->SetTexture(MaterialTextureType::Normal,    "project/models/wheel/normal.png");
+            material->SetTexture(MaterialTextureType::Roughness, "project/models/wheel/roughness.png");
         }
 
         physics->ComputeWheelRadiusFromEntity(wheel_base);
@@ -717,7 +717,7 @@ namespace spartan
             sound->SetParent(parent_entity);
 
             AudioSource* audio_source = sound->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\car_start.wav");
+            audio_source->SetAudioClip("project/music/car_start.wav");
             audio_source->SetLoop(false);
             audio_source->SetPlayOnStart(false);
         }
@@ -741,7 +741,7 @@ namespace spartan
             sound->SetParent(parent_entity);
 
             AudioSource* audio_source = sound->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\car_door.wav");
+            audio_source->SetAudioClip("project/music/car_door.wav");
             audio_source->SetLoop(false);
             audio_source->SetPlayOnStart(false);
         }

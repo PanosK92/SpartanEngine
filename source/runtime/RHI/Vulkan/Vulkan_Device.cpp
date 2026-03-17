@@ -36,6 +36,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
+#include <SDL3/SDL_vulkan.h>
+#ifdef __linux__
+#include <sys/stat.h>
+#endif
 SP_WARNINGS_ON
 //=====================================
 
@@ -250,14 +254,18 @@ namespace spartan
 
         vector<const char*> extensions_instance = {
             "VK_KHR_surface",
+#if defined(_WIN32)
             "VK_KHR_win32_surface",
+#endif
             "VK_EXT_swapchain_colorspace",
+
             // openxr requirements
             "VK_KHR_external_memory_capabilities",
             "VK_KHR_external_fence_capabilities",
             "VK_KHR_get_physical_device_properties2",
         };
-        vector<const char*> extensions_device   = {
+
+        vector<const char*> extensions_device = {
             "VK_KHR_swapchain",
             "VK_EXT_memory_budget",          // to obtain precise memory usage information from Vulkan Memory Allocator
             "VK_KHR_fragment_shading_rate",
@@ -272,10 +280,18 @@ namespace spartan
             // openxr requirements
             "VK_KHR_external_memory",
             "VK_KHR_external_semaphore",
+
+        #ifdef _WIN32
             "VK_KHR_external_memory_win32",
             "VK_KHR_win32_keyed_mutex",
+        #elif defined(__linux__)
+            "VK_KHR_external_memory_fd",
+            "VK_KHR_external_semaphore_fd",
+        #endif
+
             "VK_KHR_timeline_semaphore",
             "VK_KHR_dedicated_allocation",
+
             // ray tracing
             "VK_KHR_acceleration_structure",
             "VK_KHR_ray_tracing_pipeline",
@@ -321,18 +337,35 @@ namespace spartan
 
         vector<const char*> get_extensions_instance()
         {
+            vector<const char*> requested_extensions = extensions_instance;
+
+            uint32_t sdl_extension_count = 0;
+            const char* const* sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_extension_count);
+            if (sdl_extensions && sdl_extension_count > 0)
+            {
+                for (uint32_t i = 0; i < sdl_extension_count; i++)
+                {
+                    requested_extensions.emplace_back(sdl_extensions[i]);
+                }
+            }
+            else
+            {
+                SP_LOG_ERROR("Failed to get Vulkan instance extensions from SDL");
+            }
+
+            // validation layer messaging/logging
             if (Debugging::IsValidationLayerEnabled())
             {
-                extensions_instance.emplace_back("VK_EXT_debug_report");
-                extensions_instance.emplace_back("VK_EXT_debug_utils");
-                extensions_instance.emplace_back("VK_EXT_layer_settings");
-                extensions_instance.emplace_back("VK_EXT_validation_features");
+                requested_extensions.emplace_back("VK_EXT_debug_report");
+                requested_extensions.emplace_back("VK_EXT_debug_utils");
+                requested_extensions.emplace_back("VK_EXT_layer_settings");
+                requested_extensions.emplace_back("VK_EXT_validation_features");
             }
 
             // gpu markers (also uses debug utils, but it's already added above if validation is on)
             if (Debugging::IsGpuMarkingEnabled() && !Debugging::IsValidationLayerEnabled())
             {
-                extensions_instance.emplace_back("VK_EXT_debug_utils");
+                requested_extensions.emplace_back("VK_EXT_debug_utils");
             }
 
             // enumerate all available instance extensions (loader + ICD)
@@ -357,8 +390,20 @@ namespace spartan
 
             // check each requested extension against the enumerated list
             vector<const char*> extensions_supported;
-            for (const auto& requested : extensions_instance)
+            for (const auto& requested : requested_extensions)
             {
+                bool already_added = false;
+                for (const char* existing : extensions_supported)
+                {
+                    if (strcmp(existing, requested) == 0)
+                    {
+                        already_added = true;
+                        break;
+                    }
+                }
+                if (already_added)
+                    continue;
+
                 bool found = false;
                 for (const auto& ext : available)
                 {

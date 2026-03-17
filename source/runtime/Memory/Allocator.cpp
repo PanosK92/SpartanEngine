@@ -23,7 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "pch.h"
 #include "Allocator.h"
+#include <algorithm>
+#include <atomic>
 #include <cstring>
+#include <cstdlib>
 #if defined(_WIN32)
 #include <Windows.h>
 #include <psapi.h>
@@ -245,7 +248,7 @@ namespace spartan
 #if defined(_MSC_VER)
             _aligned_free(raw);
 #else
-            free(raw);
+            ::free(raw);
 #endif
         }
     }
@@ -298,6 +301,7 @@ namespace spartan
             SP_ASSERT(false && "double-free detected");
             return;
         }
+
         if (header->magic != allocation_magic_active)
         {
             SP_LOG_ERROR("Memory corruption detected at address %p (magic: 0x%08X)", ptr, header->magic);
@@ -328,6 +332,7 @@ namespace spartan
             }
             // cache full - restore magic and fall through to actual free
             header->magic = allocation_magic_active;
+
         }
 
         free_internal(ptr);

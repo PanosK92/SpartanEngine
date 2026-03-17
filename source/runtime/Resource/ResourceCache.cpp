@@ -195,7 +195,7 @@ namespace spartan
         {
             if (resource_directory_type == ResourceDirectory::Shaders)
             {
-                directory = "..\\" + directory;
+                directory = "../" + directory;
             }
         }
         return directory;
