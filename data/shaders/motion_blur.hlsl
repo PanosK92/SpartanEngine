@@ -36,11 +36,12 @@ static const float TARGET_FRAME_TIME = 1.0f / 60.0f;
 
 // artistic control - prevents excessive blur from slow shutter speeds
 // without this, dark scenes with 1/30s shutter would have 2x blur which looks bad
-static const float MAX_SHUTTER_RATIO = 1.5f;
+static const float MAX_SHUTTER_RATIO = 0.8f;
 
-// velocity filtering parameters
-static const int   VELOCITY_FILTER_SAMPLES = 5;   // samples for velocity filtering
-static const float VELOCITY_FILTER_RADIUS  = 3.0f; // radius in pixels
+// tile-based velocity: the screen is divided into tiles and the dominant (maximum)
+// velocity within each tile is used for blur. this stabilizes blur length because
+// the max over a region is much less sensitive to per-pixel noise than the raw value.
+static const float TILE_SIZE = 16.0f;
 
 // soft depth comparison (guerrilla games / killzone approach)
 // returns 1 when depth_a is behind or equal to depth_b
@@ -67,110 +68,66 @@ float velocity_weight(float sample_velocity_length, float center_velocity_length
     return saturate(coverage / (center_velocity_length + FLT_MIN));
 }
 
-// filter velocity to reduce noise from jittery mouse/input
-// uses a small neighborhood to find the dominant velocity direction
-float2 filter_velocity(float2 uv, float2 texel_size, float2 center_velocity)
+// find the dominant velocity in the tile containing this pixel.
+// by taking the maximum velocity over a tile, we get a stable blur length that
+// doesn't oscillate with per-pixel noise - the max of a neighborhood changes
+// much less frame-to-frame than any individual pixel's velocity.
+float2 get_tile_max_velocity(float2 uv, float2 texel_size, float2 resolution)
 {
-    float center_length = length(center_velocity);
+    float2 tile_texel = TILE_SIZE * texel_size;
+    float2 tile_center = (floor(uv / tile_texel) + 0.5f) * tile_texel;
 
-    // for very low velocities, don't bother filtering
-    if (center_length < 0.001f)
-        return center_velocity;
+    float2 best_velocity = float2(0.0f, 0.0f);
+    float  best_length   = 0.0f;
 
-    float2 velocity_sum = center_velocity;
-    float weight_sum = 1.0f;
-
-    // sample pattern: cross + diagonals for good coverage
-    static const float2 offsets[8] =
-    {
-        float2(-1.0f,  0.0f),
-        float2( 1.0f,  0.0f),
-        float2( 0.0f, -1.0f),
-        float2( 0.0f,  1.0f),
-        float2(-0.7f, -0.7f),
-        float2( 0.7f, -0.7f),
-        float2(-0.7f,  0.7f),
-        float2( 0.7f,  0.7f)
-    };
-
-    float2 center_dir = center_velocity / (center_length + FLT_MIN);
-
+    // sample a 3x3 grid of points within the tile for a representative max
     [unroll]
-    for (int i = 0; i < 8; ++i)
+    for (int y = -1; y <= 1; ++y)
     {
-        float2 sample_uv = uv + offsets[i] * texel_size * VELOCITY_FILTER_RADIUS;
-        float2 sample_vel = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv * buffer_frame.resolution_scale, 0).xy;
-        float sample_len = length(sample_vel);
-
-        if (sample_len > 0.001f)
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
         {
-            float2 sample_dir = sample_vel / sample_len;
+            float2 sample_uv  = tile_center + float2(x, y) * tile_texel * 0.4f;
+            float2 sample_vel  = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv * buffer_frame.resolution_scale, 0).xy;
+            float  sample_len  = length(sample_vel);
 
-            // weight by direction similarity - prefer velocities pointing same way
-            float dir_weight = max(0.0f, dot(center_dir, sample_dir));
-
-            // weight by magnitude similarity - prefer similar speeds
-            float mag_ratio = min(center_length, sample_len) / (max(center_length, sample_len) + FLT_MIN);
-
-            // spatial weight - closer samples matter more
-            float spatial_weight = 1.0f / (1.0f + length(offsets[i]));
-
-            float weight = dir_weight * mag_ratio * spatial_weight;
-
-            velocity_sum += sample_vel * weight;
-            weight_sum += weight;
+            if (sample_len > best_length)
+            {
+                best_velocity = sample_vel;
+                best_length   = sample_len;
+            }
         }
     }
 
-    return velocity_sum / weight_sum;
+    return best_velocity;
 }
 
-// compute velocity confidence - how consistent is motion in the neighborhood
-// returns 0-1 where 1 = very consistent, 0 = chaotic/jittery
-float compute_velocity_confidence(float2 uv, float2 velocity, float2 texel_size)
+// sky pixels have no geometry so the g-buffer velocity is zero - reconstruct
+// camera-rotation velocity by reprojecting the view direction with the previous
+// frame's view-projection matrix. only rotation matters since the sky is at
+// infinity - camera translation (wasd) should not produce sky velocity.
+float2 compute_sky_velocity(float2 uv)
 {
-    float vel_length = length(velocity);
-    if (vel_length < 0.001f)
-        return 1.0f;
+    // reconstruct view direction from the pixel's ndc position
+    float2 ndc = uv_to_ndc(uv);
+    float4 clip = float4(ndc, 0.0001f, 1.0f);
+    float4 world = mul(clip, buffer_frame.view_projection_inverted);
+    float3 view_dir = normalize(world.xyz / world.w - buffer_frame.camera_position);
 
-    float2 vel_dir = velocity / vel_length;
-    float confidence = 0.0f;
+    // place the direction at a fixed large distance from each frame's camera position
+    // this cancels out any translation between frames, isolating pure rotation
+    static const float sky_distance = 10000.0f;
+    float3 sky_point_curr = buffer_frame.camera_position          + view_dir * sky_distance;
+    float3 sky_point_prev = buffer_frame.camera_position_previous + view_dir * sky_distance;
 
-    // check velocity consistency at a few points along the motion direction
-    [unroll]
-    for (int i = 0; i < VELOCITY_FILTER_SAMPLES; ++i)
-    {
-        float t = (float)(i + 1) / (float)(VELOCITY_FILTER_SAMPLES + 1);
-        float2 offset = vel_dir * t * VELOCITY_FILTER_RADIUS * 2.0f;
-        float2 sample_uv = uv + offset * texel_size;
+    // project through each frame's unjittered matrix
+    float4 curr_clip = mul(float4(sky_point_curr, 1.0f), buffer_frame.view_projection_unjittered);
+    float2 curr_ndc  = curr_clip.xy / curr_clip.w;
 
-        float2 sample_vel = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv * buffer_frame.resolution_scale, 0).xy;
-        float sample_len = length(sample_vel);
+    float4 prev_clip = mul(float4(sky_point_prev, 1.0f), buffer_frame.view_projection_previous_unjittered);
+    float2 prev_ndc  = prev_clip.xy / prev_clip.w;
 
-        if (sample_len > 0.001f)
-        {
-            float2 sample_dir = sample_vel / sample_len;
-
-            // direction consistency
-            float dir_match = dot(vel_dir, sample_dir);
-
-            // magnitude consistency (don't penalize too harshly)
-            float mag_ratio = min(vel_length, sample_len) / (max(vel_length, sample_len) + FLT_MIN);
-            mag_ratio = lerp(mag_ratio, 1.0f, 0.5f); // soften magnitude requirement
-
-            confidence += max(0.0f, dir_match) * mag_ratio;
-        }
-        else
-        {
-            // static neighbor - partial confidence
-            confidence += 0.3f;
-        }
-    }
-
-    confidence /= (float)VELOCITY_FILTER_SAMPLES;
-
-    // apply curve - be forgiving of slight variations
-    return smoothstep(0.2f, 0.8f, confidence);
+    return curr_ndc - prev_ndc;
 }
 
 // main reconstruction filter
@@ -189,9 +146,36 @@ float4 motion_blur_reconstruction(
     float2 render_uv    = uv * buffer_frame.resolution_scale;
     float  center_depth = get_linear_depth(render_uv);
 
-    // get and filter velocity for smoother results
-    float2 raw_velocity = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], render_uv, 0).xy;
-    float2 velocity = filter_velocity(uv, texel_size, raw_velocity);
+    // per-pixel velocity - for sky pixels (no geometry), derive from camera rotation
+    float  raw_depth      = get_depth(render_uv);
+    float2 pixel_velocity = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], render_uv, 0).xy;
+    bool   is_sky         = raw_depth < 0.0001f;
+    if (is_sky)
+    {
+        pixel_velocity = compute_sky_velocity(uv);
+    }
+    float pixel_speed = length(pixel_velocity * resolution);
+
+    // tile-based dominant velocity - stable across frames because the max over a
+    // region doesn't fluctuate with per-pixel jitter from erratic mouse movement
+    float2 tile_velocity = get_tile_max_velocity(uv, texel_size, resolution);
+    float  tile_speed    = length(tile_velocity * resolution);
+
+    // use the pixel's own direction but blend the magnitude toward the tile max.
+    // this keeps directional accuracy per-pixel while stabilizing the blur length.
+    // for camera rotation (where all pixels move similarly), this effectively
+    // smooths out the frame-to-frame magnitude oscillation.
+    float2 velocity;
+    if (pixel_speed > MIN_BLUR_THRESHOLD)
+    {
+        float2 pixel_dir = pixel_velocity / (length(pixel_velocity) + FLT_MIN);
+        float  stable_speed = lerp(pixel_speed, max(pixel_speed, tile_speed), 0.7f);
+        velocity = pixel_dir * (stable_speed / resolution);
+    }
+    else
+    {
+        velocity = pixel_velocity;
+    }
 
     // convert to pixels
     float2 velocity_pixels = velocity * resolution;
@@ -201,12 +185,8 @@ float4 motion_blur_reconstruction(
     if (blur_length_raw < MIN_BLUR_THRESHOLD)
         return center_color;
 
-    // compute velocity confidence to reduce blur for jittery motion
-    float confidence = compute_velocity_confidence(uv, velocity, texel_size);
-
-    // apply shutter ratio and confidence
-    // confidence scales the blur - jittery motion = less blur
-    float blur_length = blur_length_raw * shutter_ratio * lerp(0.3f, 1.0f, confidence);
+    // apply shutter ratio
+    float blur_length = blur_length_raw * shutter_ratio;
 
     // exit if blur became too small after adjustments
     if (blur_length < MIN_BLUR_THRESHOLD)
