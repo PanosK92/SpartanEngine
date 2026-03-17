@@ -31,7 +31,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define SP_PROFILE_CPU_START(name) spartan::Profiler::TimeBlockStart(name, spartan::TimeBlockType::Cpu, nullptr);
 #define SP_PROFILE_CPU_END()       spartan::Profiler::TimeBlockEnd();
-#define SP_PROFILE_CPU()           ScopedTimeBlock time_block = ScopedTimeBlock(__FUNCTION__);
+
+// msvc's __FUNCTION__ already includes the class name (e.g. "World::Tick")
+// gcc/clang's __FUNCTION__ doesn't, so we use __PRETTY_FUNCTION__ there instead
+#ifdef _MSC_VER
+    #define SP_PROFILE_CPU() ScopedTimeBlock time_block = ScopedTimeBlock(__FUNCTION__)
+#else
+    #define SP_PROFILE_CPU() ScopedTimeBlock time_block = ScopedTimeBlock(__PRETTY_FUNCTION__)
+#endif
 
 namespace spartan
 {

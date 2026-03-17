@@ -195,12 +195,11 @@ namespace spartan
             cmd_list_graphics_present->Begin();
             m_cmd_list_present = cmd_list_graphics_present;
 
-            bool xr_stereo    = Xr::IsSessionRunning() && Xr::GetStereoMode();
+            // for each eye
+            bool xr_stereo     = Xr::IsSessionRunning() && Xr::GetStereoMode();
             uint32_t eye_count = xr_stereo ? Xr::eye_count : 1;
-
             for (uint32_t eye = 0; eye < eye_count; eye++)
             {
-                // when stereo, bind per-layer g-buffer views for this eye
                 uint32_t eye_layer = xr_stereo ? eye : rhi_all_mips;
 
                 {
