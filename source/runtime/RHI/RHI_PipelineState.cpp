@@ -137,6 +137,7 @@ namespace spartan
                 }
 
                 hash = rhi_hash_combine(hash, pso.render_target_array_index);
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.is_multiview));
             }
 
             return hash;

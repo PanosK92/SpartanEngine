@@ -100,7 +100,7 @@ namespace spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetTexture(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range)
+    void RHI_DescriptorSetLayout::SetTexture(uint32_t slot, RHI_Texture* texture, uint32_t mip_index, uint32_t mip_range, uint32_t array_layer /*= rhi_all_mips*/)
     {
         bool mip_specified      = mip_index != rhi_all_mips;
         RHI_Image_Layout layout = texture->GetLayout(mip_specified ? mip_index : 0);
@@ -113,10 +113,11 @@ namespace spartan
 
         if (RHI_DescriptorBinding* binding = FindBinding(actual_slot))
         {
-            binding->resource  = static_cast<void*>(texture);
-            binding->layout    = layout;
-            binding->mip       = mip_index;
-            binding->mip_range = mip_range;
+            binding->resource    = static_cast<void*>(texture);
+            binding->layout      = layout;
+            binding->mip         = mip_index;
+            binding->mip_range   = mip_range;
+            binding->array_layer = array_layer;
             m_dirty = true;
         }
     }

@@ -513,7 +513,8 @@ namespace spartan
 
         if (xr_should_render && can_render)
         {
-            BlitToXrSwapchain(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
+            RHI_Texture* stereo_output = GetRenderTarget(Renderer_RenderTarget::frame_output_stereo);
+            BlitToXrSwapchain(m_cmd_list_present, stereo_output ? stereo_output : GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
 
         if (Xr::IsSessionRunning())
@@ -621,6 +622,18 @@ namespace spartan
         }
     }
 
+    void Renderer::RecreateRenderTargets()
+    {
+        if (m_cb_frame_cpu.frame > 1)
+        {
+            bool flush = true;
+            RHI_Device::QueueWaitAll(flush);
+        }
+
+        CreateRenderTargets(true, true, true);
+        CreateSamplers();
+    }
+
     void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
     {
         // matrices
@@ -709,6 +722,30 @@ namespace spartan
         m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                   1 << 1);
         m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>(),     1 << 2);
         m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>(),              1 << 3);
+
+        // vr stereo: override primary matrices with left eye and populate right eye
+        if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+        {
+            // left eye -> primary matrices
+            m_cb_frame_cpu.view       = Xr::GetViewMatrix(0);
+            m_cb_frame_cpu.view_inv   = Matrix::Invert(m_cb_frame_cpu.view);
+            m_cb_frame_cpu.projection = Xr::GetProjectionMatrix(0);
+            m_cb_frame_cpu.projection_inv = Matrix::Invert(m_cb_frame_cpu.projection);
+            m_cb_frame_cpu.view_projection     = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
+            m_cb_frame_cpu.view_projection_inv = Matrix::Invert(m_cb_frame_cpu.view_projection);
+
+            // right eye
+            m_cb_frame_cpu.view_right                      = Xr::GetViewMatrix(1);
+            m_cb_frame_cpu.projection_right                = Xr::GetProjectionMatrix(1);
+            m_cb_frame_cpu.view_projection_right           = m_cb_frame_cpu.view_right * m_cb_frame_cpu.projection_right;
+            m_cb_frame_cpu.view_projection_inv_right       = Matrix::Invert(m_cb_frame_cpu.view_projection_right);
+            m_cb_frame_cpu.view_projection_previous_right  = m_cb_frame_cpu.view_projection_right; // todo: track per-eye previous
+            m_cb_frame_cpu.is_multiview                    = 1;
+        }
+        else
+        {
+            m_cb_frame_cpu.is_multiview = 0;
+        }
 
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
     }
@@ -829,14 +866,14 @@ namespace spartan
         return is_tessellated || is_instanced || is_alpha_tested || is_non_standard_cull;
     }
 
-    void Renderer::SetCommonTextures(RHI_CommandList* cmd_list)
+    void Renderer::SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        // gbuffer
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTarget::gbuffer_color));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTarget::gbuffer_material));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+        // gbuffer (when eye_layer is specified, bind per-layer 2d views for compute passes)
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_albedo),   GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_normal),   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),   rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_material), GetRenderTarget(Renderer_RenderTarget::gbuffer_material), rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_depth),    GetRenderTarget(Renderer_RenderTarget::gbuffer_depth),    rhi_all_mips, 0, false, eye_layer);
 
         // ssao (white = no occlusion when disabled)
         RHI_Texture* tex_ssao = GetRenderTarget(Renderer_RenderTarget::ssao);

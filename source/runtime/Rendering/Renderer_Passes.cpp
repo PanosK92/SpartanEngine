@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Queue.h"
 #include "../RHI/RHI_SyncPrimitive.h"
 #include "../Core/Window.h"
+#include "../XR/Xr.h"
 SP_WARNINGS_OFF
 #include "bend_sss_cpu.h"
 SP_WARNINGS_ON
@@ -194,34 +195,56 @@ namespace spartan
             cmd_list_graphics_present->Begin();
             m_cmd_list_present = cmd_list_graphics_present;
 
+            bool xr_stereo    = Xr::IsSessionRunning() && Xr::GetStereoMode();
+            uint32_t eye_count = xr_stereo ? Xr::eye_count : 1;
+
+            for (uint32_t eye = 0; eye < eye_count; eye++)
             {
-                bool is_transparent = false;
-                Pass_Light(cmd_list_graphics_present, is_transparent);
-                Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
-                cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+                // when stereo, bind per-layer g-buffer views for this eye
+                uint32_t eye_layer = xr_stereo ? eye : rhi_all_mips;
+
+                {
+                    bool is_transparent = false;
+                    Pass_Light(cmd_list_graphics_present, is_transparent, eye_layer);
+                    Pass_Light_Composition(cmd_list_graphics_present, is_transparent, eye_layer);
+                    cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+                }
+
+                // particles (only on first eye to avoid double-simulation)
+                if (eye == 0)
+                {
+                    Pass_Particles(cmd_list_graphics_present);
+                }
+
+                // transparents
+                if (m_transparents_present)
+                {
+                    bool is_transparent = true;
+                    Pass_GBuffer(cmd_list_graphics_present, is_transparent);
+                    Pass_Light(cmd_list_graphics_present, is_transparent, eye_layer);
+                    Pass_Light_Composition(cmd_list_graphics_present, is_transparent, eye_layer);
+                }
+
+                Pass_Light_ImageBased(cmd_list_graphics_present, eye_layer);
+                
+                // rt reflections (after transparents so depth includes glass)
+                Pass_RayTracedReflections(cmd_list_graphics_present, eye_layer);
+                Pass_Light_Reflections(cmd_list_graphics_present, eye_layer);
+                
+                Pass_TransparencyReflectionRefraction(cmd_list_graphics_present, eye_layer);
+                Pass_AA_Upscale(cmd_list_graphics_present, eye_layer);
+                Pass_PostProcess(cmd_list_graphics_present, eye_layer);
+
+                // copy post-processed result to the stereo output array
+                if (xr_stereo)
+                {
+                    cmd_list_graphics_present->BlitToArrayLayer(
+                        GetRenderTarget(Renderer_RenderTarget::frame_output),
+                        GetRenderTarget(Renderer_RenderTarget::frame_output_stereo),
+                        eye
+                    );
+                }
             }
-
-            // particles
-            Pass_Particles(cmd_list_graphics_present);
-
-            // transparents
-            if (m_transparents_present)
-            {
-                bool is_transparent = true;
-                Pass_GBuffer(cmd_list_graphics_present, is_transparent);
-                Pass_Light(cmd_list_graphics_present, is_transparent);
-                Pass_Light_Composition(cmd_list_graphics_present, is_transparent);
-            }
-
-            Pass_Light_ImageBased(cmd_list_graphics_present);
-            
-            // rt reflections (after transparents so depth includes glass)
-            Pass_RayTracedReflections(cmd_list_graphics_present);
-            Pass_Light_Reflections(cmd_list_graphics_present);
-            
-            Pass_TransparencyReflectionRefraction(cmd_list_graphics_present);
-            Pass_AA_Upscale(cmd_list_graphics_present);
-            Pass_PostProcess(cmd_list_graphics_present);
         }
         else
         {
@@ -489,6 +512,7 @@ namespace spartan
         RHI_Texture* tex_depth_output = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output);
 
         bool is_wireframe                     = cvar_wireframe.GetValueAs<bool>();
+        bool xr_multiview                     = Xr::IsSessionRunning() && Xr::GetStereoMode();
         RHI_RasterizerState* rasterizer_state = GetRasterizerState(Renderer_RasterizerState::Solid);
         rasterizer_state                      = is_wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : rasterizer_state;
 
@@ -507,6 +531,7 @@ namespace spartan
                 pso.render_target_depth_texture      = tex_depth;
                 pso.resolution_scale                 = true;
                 pso.clear_depth                      = 0.0f;
+                pso.is_multiview                     = xr_multiview;
                 cmd_list->SetPipelineState(pso);
 
                 cmd_list->SetBufferIndex(GeometryBuffer::GetIndexBuffer());
@@ -533,6 +558,7 @@ namespace spartan
                 pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
                 pso.render_target_depth_texture      = tex_depth;
                 pso.resolution_scale                 = true;
+                pso.is_multiview                     = xr_multiview;
                 pso.clear_depth                      = rhi_depth_load; // load since indirect already wrote depth
 
                 bool pipeline_set = false;
@@ -613,6 +639,7 @@ namespace spartan
         RHI_Texture* tex_material = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
         RHI_Texture* tex_velocity = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
         RHI_Texture* tex_depth    = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+        bool xr_multiview         = Xr::IsSessionRunning() && Xr::GetStereoMode();
     
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
         {
@@ -632,6 +659,7 @@ namespace spartan
                 pso.render_target_color_textures[2]  = tex_material;
                 pso.render_target_color_textures[3]  = tex_velocity;
                 pso.render_target_depth_texture      = tex_depth;
+                pso.is_multiview                     = xr_multiview;
                 pso.clear_color[0]                   = Color::standard_transparent;
                 pso.clear_color[1]                   = Color::standard_transparent;
                 pso.clear_color[2]                   = Color::standard_transparent;
@@ -677,6 +705,7 @@ namespace spartan
                 pso.render_target_color_textures[2]  = tex_material;
                 pso.render_target_color_textures[3]  = tex_velocity;
                 pso.render_target_depth_texture      = tex_depth;
+                pso.is_multiview                     = xr_multiview;
                 pso.clear_color[0]                   = rhi_color_load;
                 pso.clear_color[1]                   = rhi_color_load;
                 pso.clear_color[2]                   = rhi_color_load;
@@ -781,7 +810,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list)
+    void Renderer::Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* tex_frame             = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_ssr               = GetRenderTarget(Renderer_RenderTarget::reflections);
@@ -806,7 +835,7 @@ namespace spartan
                 pso.shaders[Compute] = GetShader(Renderer_Shader::transparency_reflection_refraction_c);
 
                 cmd_list->SetPipelineState(pso);
-                SetCommonTextures(cmd_list);
+                SetCommonTextures(cmd_list, eye_layer);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_ssr);               // in - reflection
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_refraction_source); // in - refraction
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
@@ -819,7 +848,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list)
+    void Renderer::Pass_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         const uint32_t min_rt_dimension = 64;
         if (Window::IsMinimized())
@@ -868,7 +897,7 @@ namespace spartan
             pso.shaders[RayHit]        = GetShader(Renderer_Shader::reflections_ray_hit_r);
             cmd_list->SetPipelineState(pso);
 
-            SetCommonTextures(cmd_list);
+            SetCommonTextures(cmd_list, eye_layer);
             cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             
             RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere);
@@ -893,7 +922,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
     
-    void Renderer::Pass_Light_Reflections(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Light_Reflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         if (!cvar_ray_traced_reflections.GetValueAs<bool>())
             return;
@@ -924,7 +953,7 @@ namespace spartan
             pso.shaders[Compute] = GetShader(Renderer_Shader::light_reflections_c);
             cmd_list->SetPipelineState(pso);
             
-            SetCommonTextures(cmd_list);
+            SetCommonTextures(cmd_list, eye_layer);
             
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_reflections_position);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_reflections_normal);
@@ -1379,7 +1408,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
+    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
         RHI_Texture* light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
@@ -1393,7 +1422,7 @@ namespace spartan
         {
             cmd_list->SetPipelineState(pso);
     
-            SetCommonTextures(cmd_list);
+            SetCommonTextures(cmd_list, eye_layer);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,     GetRenderTarget(Renderer_RenderTarget::skysphere));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
@@ -1414,7 +1443,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
     
-    void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass)
+    void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Shader* shader_c              = GetShader(Renderer_Shader::light_composition_c);
         RHI_Texture* tex_out              = GetRenderTarget(Renderer_RenderTarget::frame_render);
@@ -1437,7 +1466,7 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue(), 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            SetCommonTextures(cmd_list);
+            SetCommonTextures(cmd_list, eye_layer);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_skysphere);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_light_diffuse);
@@ -1449,7 +1478,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Shader* shader   = GetShader(Renderer_Shader::light_image_based_c);
         RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::frame_render);
@@ -1461,7 +1490,7 @@ namespace spartan
             pso.shaders[Compute] = shader;
             cmd_list->SetPipelineState(pso);
 
-            SetCommonTextures(cmd_list);
+            SetCommonTextures(cmd_list, eye_layer);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,     tex_out);
             cmd_list->SetTexture(Renderer_BindingsUav::tex_sss, GetRenderTarget(Renderer_RenderTarget::sss));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2,    GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
@@ -1626,7 +1655,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
+    void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* rt_frame_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
         RHI_Texture* rt_frame_output_scratch = GetRenderTarget(Renderer_RenderTarget::frame_output_2);
@@ -1641,7 +1670,7 @@ namespace spartan
         {
             Pass_Compute(cmd_list, "depth_of_field", Renderer_Shader::depth_of_field_c, tex_in, tex_out, [&]()
             {
-                SetCommonTextures(cmd_list);
+                SetCommonTextures(cmd_list, eye_layer);
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetAperture(), 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
@@ -1654,7 +1683,7 @@ namespace spartan
         {
             Pass_Compute(cmd_list, "motion_blur", Renderer_Shader::motion_blur_c, tex_in, tex_out, [&]()
             {
-                SetCommonTextures(cmd_list);
+                SetCommonTextures(cmd_list, eye_layer);
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetShutterSpeed(), 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
@@ -1924,7 +1953,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_AA_Upscale(RHI_CommandList* cmd_list)
+    void Renderer::Pass_AA_Upscale(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* tex_in          = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* tex_out         = GetRenderTarget(Renderer_RenderTarget::frame_output);
@@ -1937,8 +1966,11 @@ namespace spartan
             cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
             cmd_list->FlushBarriers();
 
+            bool is_stereo = eye_layer != rhi_all_mips;
             Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
-            if (method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
+
+            // fsr3/xess don't support array textures, fall back to fxaa or blit in stereo
+            if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
                     cmd_list,
@@ -1948,7 +1980,7 @@ namespace spartan
                     tex_out
                 );
             }
-            else if (method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+            else if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
             {
                 RHI_VendorTechnology::FSR3_Dispatch(
                     cmd_list,

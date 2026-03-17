@@ -456,6 +456,7 @@ namespace spartan
                     pipeline_rendering_create_info.pColorAttachmentFormats = attachment_formats_color.data();
                     pipeline_rendering_create_info.depthAttachmentFormat   = attachment_format_depth;
                     pipeline_rendering_create_info.stencilAttachmentFormat = attachment_format_stencil;
+                    pipeline_rendering_create_info.viewMask                = m_state.is_multiview ? 0b11 : 0;
                 }
                 
                 // create

@@ -127,6 +127,34 @@ namespace spartan
             SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)) == VK_SUCCESS, "Failed to create image view");
         }
 
+        // creates a 2d view of a single layer from an array texture (for per-layer srv binding)
+        void create_image_view_2d_layer(
+            void* image,
+            void*& image_view,
+            const RHI_Texture* texture,
+            const uint32_t array_index,
+            const uint32_t mip_index,
+            const uint32_t mip_count
+        )
+        {
+            VkImageViewCreateInfo create_info           = {};
+            create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+            create_info.image                           = static_cast<VkImage>(image);
+            create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+            create_info.format                          = vulkan_format[rhi_format_to_index(texture->GetFormat())];
+            create_info.subresourceRange.aspectMask     = get_aspect_mask(texture, texture->IsDepthFormat(), false);
+            create_info.subresourceRange.baseMipLevel   = mip_index;
+            create_info.subresourceRange.levelCount     = mip_count;
+            create_info.subresourceRange.baseArrayLayer = array_index;
+            create_info.subresourceRange.layerCount     = 1;
+            create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+            create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+            SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)) == VK_SUCCESS, "Failed to create per-layer image view");
+        }
+
         void set_debug_name(RHI_Texture* texture)
         {
             const char* name = texture->GetObjectName().c_str();
@@ -365,6 +393,15 @@ namespace spartan
                         create_image_view(m_rhi_resource, m_rhi_srv_mips[i], this, 0, m_depth, i, 1);
                     }
                 }
+
+                // per-layer 2d views for array textures (used by compute passes to sample individual layers)
+                if (m_type == RHI_Texture_Type::Type2DArray && m_depth > 1)
+                {
+                    for (uint32_t i = 0; i < m_depth; i++)
+                    {
+                        create_image_view_2d_layer(m_rhi_resource, m_rhi_srv_layers[i], this, i, 0, m_mip_count);
+                    }
+                }
             }
 
             // render target views
@@ -381,6 +418,20 @@ namespace spartan
                     if (IsDsv())
                     {
                         create_image_view(m_rhi_resource, m_rhi_dsv[i], this, i, 1, 0, 1);
+                    }
+                }
+
+                // full-array views for multiview rendering (covers all layers in a single view)
+                if (m_type == RHI_Texture_Type::Type2DArray && m_depth > 1)
+                {
+                    if (IsRtv())
+                    {
+                        create_image_view(m_rhi_resource, m_rhi_rtv_multiview, this, 0, m_depth, 0, 1);
+                    }
+
+                    if (IsDsv())
+                    {
+                        create_image_view(m_rhi_resource, m_rhi_dsv_multiview, this, 0, m_depth, 0, 1);
                     }
                 }
             }
@@ -419,6 +470,12 @@ namespace spartan
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_srv_mips[i]);
                 m_rhi_srv_mips[i] = nullptr;
             }
+
+            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+            {
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_srv_layers[i]);
+                m_rhi_srv_layers[i] = nullptr;
+            }
         }
 
         // rtv and dsv
@@ -430,6 +487,12 @@ namespace spartan
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_rtv[i]);
             m_rhi_rtv[i] = nullptr;
         }
+
+        // multiview full-array views
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_rtv_multiview);
+        m_rhi_rtv_multiview = nullptr;
+        RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_dsv_multiview);
+        m_rhi_dsv_multiview = nullptr;
 
         // rhi resource
         RHI_CommandList::RemoveLayout(m_rhi_resource);

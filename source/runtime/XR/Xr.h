@@ -92,8 +92,8 @@ namespace spartan
         static bool IsMultiviewSupported();
 
         // stereo mode (2D uses center pose for both eyes, 3D uses per-eye poses)
-        static void SetStereoMode(bool enabled) { m_stereo_3d = enabled; }
-        static bool GetStereoMode()             { return m_stereo_3d; }
+        static void SetStereoMode(bool enabled);
+        static bool GetStereoMode() { return m_stereo_3d; }
 
     private:
         static bool CreateSession();

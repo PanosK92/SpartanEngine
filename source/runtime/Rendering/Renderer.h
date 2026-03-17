@@ -155,6 +155,9 @@ namespace spartan
         static const math::Vector2& GetResolutionOutput();
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
 
+        // force render target recreation (e.g. when xr stereo mode changes)
+        static void RecreateRenderTargets();
+
         // get all
         static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
@@ -203,18 +206,18 @@ namespace spartan
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
-        static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list);
-        static void Pass_RayTracedReflections(RHI_CommandList* cmd_list);
+        static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
         static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
         static void Pass_Denoiser(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Light_Reflections(RHI_CommandList* cmd_list);
+        static void Pass_Light_Reflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting
-        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
-        static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass);
-        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list);
+        static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
         static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
         // passes - particles
@@ -229,10 +232,10 @@ namespace spartan
         static void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         // passes - post-process
-        static void Pass_PostProcess(RHI_CommandList* cmd_list);
+        static void Pass_PostProcess(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Output(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_AA_Upscale(RHI_CommandList* cmd_list);
+        static void Pass_AA_Upscale(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         template<typename F = std::nullptr_t>
         static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum,
@@ -256,7 +259,7 @@ namespace spartan
         // misc
         static void AddLinesToBeRendered();
         static void UpdatePersistentLines();
-        static void SetCommonTextures(RHI_CommandList* cmd_list);
+        static void SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void DestroyResources();
         static void UpdateShadowAtlas();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);

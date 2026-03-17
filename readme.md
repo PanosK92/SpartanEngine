@@ -140,6 +140,7 @@ A full vehicle dynamics simulation running at **200Hz** within the PhysX fixed-t
 | **Input** | Keyboard, mouse, controllers, and steering wheels with haptic feedback |
 | **Entity system** | Component-based architecture with transform hierarchies, prefabs, and XML serialization |
 | **Threading** | Custom thread pool with hardware-aware scaling, parallel loops, nested parallelism detection, and progress tracking |
+| **VR (WIP)** | OpenXR with Vulkan multiview single-pass stereo rendering, per-eye view/projection matrices, full pipeline coverage (geometry, lighting, reflections, post-processing) |
 | **Profiling** | Nsight/RGP-style timeline profiler with separate graphics and async compute lanes, CPU and GPU scoped time blocks, zoom and pan, draw call and binding stats, stutter detection, and RenderDoc integration |
 | **Asset import** | 40+ model formats (via Assimp), 30+ image formats (via FreeImage), 10+ font formats (via FreeType), mesh optimization (via meshoptimizer) |
 | **Editor** | ImGui-based editor with world hierarchy, asset browser, property inspector, script and shader editors, texture viewer, viewport with transform gizmos, profiler, and console |

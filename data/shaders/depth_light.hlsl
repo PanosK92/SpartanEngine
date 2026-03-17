@@ -45,6 +45,7 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceI
     float3 position_world_previous = 0.0f;
     gbuffer_vertex vertex          = transform_to_world_space(input, instance_id, _draw.transform, position_world, position_world_previous);
     vertex.material_index          = _draw.material_index;
+    vertex.view_id                 = 0;
     vertex.position                = mul(float4(position_world, 1.0f), light.transform[index_array]);
 
     return vertex;

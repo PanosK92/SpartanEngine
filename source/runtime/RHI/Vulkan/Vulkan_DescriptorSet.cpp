@@ -196,7 +196,15 @@ namespace spartan
 
                         if (texture)
                         {
-                            view = mip_specified ? texture->GetRhiSrvMip(binding.mip) : texture->GetRhiSrv();
+                            bool layer_specified = binding.array_layer != rhi_all_mips;
+                            if (layer_specified && texture->GetRhiSrvLayer(binding.array_layer))
+                            {
+                                view = texture->GetRhiSrvLayer(binding.array_layer);
+                            }
+                            else
+                            {
+                                view = mip_specified ? texture->GetRhiSrvMip(binding.mip) : texture->GetRhiSrv();
+                            }
                             img_layout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(mip_specified ? binding.mip : 0))];
                         }
                         else if (layout.type == RHI_Descriptor_Type::Image)

@@ -1274,6 +1274,10 @@ namespace spartan
                     SP_ASSERT(support_1_1.shaderDrawParameters == VK_TRUE);
                     features_1_1.shaderDrawParameters = VK_TRUE;
 
+                    // multiview for vr stereo rendering (core in vulkan 1.1)
+                    SP_ASSERT(support_1_1.multiview == VK_TRUE);
+                    features_1_1.multiview = VK_TRUE;
+
                     // storage buffer access from vertex and fragment shaders (needed for bindless draw data)
                     SP_ASSERT(support.features.vertexPipelineStoresAndAtomics == VK_TRUE);
                     features.features.vertexPipelineStoresAndAtomics = VK_TRUE;

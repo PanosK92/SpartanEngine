@@ -110,6 +110,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     vertex.uv_misc.xy        = barycentric(patch[0].uv_misc.xy, patch[1].uv_misc.xy, patch[2].uv_misc.xy, bary_coords);
     vertex.uv_misc.z         = barycentric(patch[0].uv_misc.z, patch[1].uv_misc.z, patch[2].uv_misc.z, bary_coords);
     vertex.uv_misc.w         = patch[0].uv_misc.w; // instance_id is constant per patch
+    vertex.view_id           = patch[0].view_id;    // view_id is constant per patch
 
     // reconstruct world positions from interpolated clip
     float clip_w             = vertex.position.w;
@@ -150,9 +151,11 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
         }
     }
 
-    // write final clip space
-    vertex.position          = mul(float4(position, 1.0f), buffer_frame.view_projection);
-    vertex.position_previous = mul(float4(position_previous, 1.0f), buffer_frame.view_projection_previous);
+    // write final clip space (select per-eye matrices for multiview stereo)
+    matrix vp      = (buffer_frame.is_multiview && vertex.view_id == 1) ? buffer_frame.view_projection_right          : buffer_frame.view_projection;
+    matrix vp_prev = (buffer_frame.is_multiview && vertex.view_id == 1) ? buffer_frame.view_projection_previous_right : buffer_frame.view_projection_previous;
+    vertex.position          = mul(float4(position, 1.0f), vp);
+    vertex.position_previous = mul(float4(position_previous, 1.0f), vp_prev);
 
     return vertex;
 }

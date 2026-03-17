@@ -342,6 +342,8 @@ namespace spartan
         nrd_out_spec_radiance_hitdist,
         // debug
         debug_output,
+        // vr stereo
+        frame_output_stereo,
         max
     };
 

@@ -73,6 +73,7 @@ namespace spartan
         uint32_t dynamic_offset  = 0;
         uint32_t mip             = 0;
         uint32_t mip_range       = 0;
+        uint32_t array_layer     = rhi_all_mips; // rhi_all_mips = all layers (default), otherwise specific layer index
         RHI_Image_Layout layout  = RHI_Image_Layout::Max;
 
         bool IsBound() const { return resource != nullptr; }
@@ -84,6 +85,7 @@ namespace spartan
             dynamic_offset = 0;
             mip            = 0;
             mip_range      = 0;
+            array_layer    = rhi_all_mips;
             layout         = RHI_Image_Layout::Max;
         }
 
@@ -93,6 +95,7 @@ namespace spartan
             hash = rhi_hash_combine(hash, range);
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(mip));
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(mip_range));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(array_layer));
             return hash;
         }
     };

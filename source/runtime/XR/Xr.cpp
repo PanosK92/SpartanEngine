@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include "pch.h"
 #include "Xr.h"
+#include "../Rendering/Renderer.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Device.h"
 #if defined(API_GRAPHICS_VULKAN)
@@ -282,6 +283,13 @@ namespace spartan
             {
                 SP_LOG_ERROR("openxr: failed to create session");
             }
+
+            // enable stereo rendering when multiview is supported
+            if (IsMultiviewSupported())
+            {
+                SetStereoMode(true);
+                SP_LOG_INFO("openxr: multiview stereo rendering enabled");
+            }
         }
 
         m_initialized = true;
@@ -291,6 +299,8 @@ namespace spartan
     {
         if (!m_initialized)
             return;
+
+        SetStereoMode(false);
 
         DestroySwapchain();
         DestroySession();
@@ -976,6 +986,15 @@ namespace spartan
     bool Xr::IsHmdConnected()
     {
         return m_hmd_connected;
+    }
+
+    void Xr::SetStereoMode(bool enabled)
+    {
+        if (m_stereo_3d == enabled)
+            return;
+
+        m_stereo_3d = enabled;
+        Renderer::RecreateRenderTargets();
     }
 
     bool Xr::IsSessionRunning()

@@ -70,6 +70,7 @@ struct gbuffer_vertex
     float4 uv_misc           : TEXCOORD;  // xy = uv, z = height_percent, w = instance_id - packed together to reduced the interpolators (shader registers) the gpu needs to track
     float width_percent      : TEXCOORD2; // temp, will remove
     nointerpolation uint material_index : TEXCOORD3; // for indirect draws, material index passed from vs
+    nointerpolation uint view_id        : TEXCOORD4; // multiview eye index (0 = left, 1 = right)
 };
 
 float4x4 compose_instance_transform(min16float instance_position_x, min16float instance_position_y, min16float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
@@ -396,10 +397,16 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     return vertex;
 }
 
-gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex, float3 position, float3 position_previous)
+gbuffer_vertex transform_to_clip_space(gbuffer_vertex vertex, float3 position, float3 position_previous, uint view_id = 0)
 {
-    vertex.position          = mul(float4(position, 1.0f), buffer_frame.view_projection);
-    vertex.position_previous = mul(float4(position_previous, 1.0f), buffer_frame.view_projection_previous);
+    vertex.view_id = view_id;
+
+    // select per-eye matrices when rendering in multiview stereo
+    matrix vp      = (buffer_frame.is_multiview && view_id == 1) ? buffer_frame.view_projection_right           : buffer_frame.view_projection;
+    matrix vp_prev = (buffer_frame.is_multiview && view_id == 1) ? buffer_frame.view_projection_previous_right  : buffer_frame.view_projection_previous;
+
+    vertex.position          = mul(float4(position, 1.0f), vp);
+    vertex.position_previous = mul(float4(position_previous, 1.0f), vp_prev);
     
     return vertex;
 }

@@ -88,6 +88,17 @@ namespace spartan
         float padding3;
         float padding4;
 
+        // vr stereo - right eye matrices (left eye uses the primary matrices above)
+        math::Matrix view_right;
+        math::Matrix projection_right;
+        math::Matrix view_projection_right;
+        math::Matrix view_projection_inv_right;
+        math::Matrix view_projection_previous_right;
+        uint32_t is_multiview;
+        uint32_t padding_mv0;
+        uint32_t padding_mv1;
+        uint32_t padding_mv2;
+
         void set_bit(const bool set, const uint32_t bit)
         {
             options = set ? (options |= bit) : (options & ~bit);

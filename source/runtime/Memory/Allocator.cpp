@@ -67,10 +67,10 @@ namespace spartan
         // header stores allocation metadata
         struct allocation_header
         {
-            uint32_t  magic;  // magic number for corruption/double-free detection
-            uint32_t  offset; // bytes from raw allocation to user pointer (32-bit is enough)
-            size_t    size;   // requested size
-            MemoryTag tag;    // memory tag for tracking
+            uint32_t  magic;      // magic number for corruption/double-free detection
+            uint32_t  offset;     // bytes from raw allocation to user pointer (32-bit is enough)
+            size_t    size;       // requested size
+            MemoryTag tag;        // memory tag for tracking
             uint8_t   padding[7]; // pad to maintain alignment
         };
 
@@ -95,6 +95,7 @@ namespace spartan
         {
             if (size == 0)
                 return 0;
+
             return min((size - 1) / cache_size_granularity, cache_size_classes - 1);
         }
 

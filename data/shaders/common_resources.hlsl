@@ -78,6 +78,17 @@ struct FrameBufferData
     float cloud_shadows;
     float padding3;
     float padding4;
+
+    // vr stereo - right eye matrices (left eye uses the primary matrices above)
+    matrix view_right;
+    matrix projection_right;
+    matrix view_projection_right;
+    matrix view_projection_inverted_right;
+    matrix view_projection_previous_right;
+    uint   is_multiview;
+    uint   padding_mv0;
+    uint   padding_mv1;
+    uint   padding_mv2;
 };
 
 // push constant buffer - carries per-draw and per-pass data

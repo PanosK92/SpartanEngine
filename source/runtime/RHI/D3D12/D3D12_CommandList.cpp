@@ -414,6 +414,11 @@ namespace spartan
         // todo: implement blit to swapchain
     }
 
+    void RHI_CommandList::BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer)
+    {
+        // todo: implement blit to array layer for d3d12
+    }
+
     void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source)
     {
         // todo: implement xr swapchain blit for d3d12
@@ -543,7 +548,7 @@ namespace spartan
         // todo: implement buffer binding
     }
     
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= rhi_all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= rhi_all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/, const uint32_t array_layer /*= rhi_all_mips*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 

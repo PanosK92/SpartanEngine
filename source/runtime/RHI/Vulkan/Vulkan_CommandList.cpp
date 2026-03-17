@@ -1236,6 +1236,12 @@ namespace spartan
         rendering_info.pColorAttachments    = nullptr;
         rendering_info.pDepthAttachment     = nullptr;
         rendering_info.pStencilAttachment   = nullptr;
+
+        // multiview: viewMask selects which array layers to render into simultaneously
+        if (m_pso.is_multiview)
+        {
+            rendering_info.viewMask = 0b11;
+        }
     
         // color attachments
         array<VkRenderingAttachmentInfo, rhi_max_render_target_count> attachments_color;
@@ -1275,7 +1281,9 @@ namespace spartan
     
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                    color_attachment.imageView                 = static_cast<VkImageView>(rt->GetRhiRtv(m_pso.render_target_array_index));
+                    color_attachment.imageView                 = m_pso.is_multiview && rt->GetRhiRtvMultiview()
+                        ? static_cast<VkImageView>(rt->GetRhiRtvMultiview())
+                        : static_cast<VkImageView>(rt->GetRhiRtv(m_pso.render_target_array_index));
                     color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
                     color_attachment.loadOp                    = m_load_color_render_targets[i] ? VK_ATTACHMENT_LOAD_OP_LOAD : get_color_load_op(m_pso.clear_color[i]);
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1306,7 +1314,9 @@ namespace spartan
             rt->SetLayout(layout, this);
     
             attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-            attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetRhiDsv(m_pso.render_target_array_index));
+            attachment_depth_stencil.imageView                       = m_pso.is_multiview && rt->GetRhiDsvMultiview()
+                ? static_cast<VkImageView>(rt->GetRhiDsvMultiview())
+                : static_cast<VkImageView>(rt->GetRhiDsv(m_pso.render_target_array_index));
             attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
             attachment_depth_stencil.loadOp                          = m_load_depth_render_target ? VK_ATTACHMENT_LOAD_OP_LOAD : get_depth_load_op(m_pso.clear_depth);
             attachment_depth_stencil.storeOp                         = m_pso.depth_stencil_state->GetDepthWriteEnabled() ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_NONE;
@@ -1693,6 +1703,47 @@ namespace spartan
         }
     }
 
+    void RHI_CommandList::BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer)
+    {
+        SP_ASSERT(source && destination);
+        SP_ASSERT((source->GetFlags() & RHI_Texture_ClearBlit) != 0);
+        SP_ASSERT((destination->GetFlags() & RHI_Texture_ClearBlit) != 0);
+
+        RHI_Image_Layout src_layout_initial = source->GetLayout(0);
+        RHI_Image_Layout dst_layout_initial = destination->GetLayout(0);
+
+        source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
+        destination->SetLayout(RHI_Image_Layout::Transfer_Destination, this);
+        FlushBarriers();
+
+        VkImageBlit blit_region = {};
+        blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.srcSubresource.mipLevel       = 0;
+        blit_region.srcSubresource.baseArrayLayer = 0;
+        blit_region.srcSubresource.layerCount     = 1;
+        blit_region.srcOffsets[0]                 = { 0, 0, 0 };
+        blit_region.srcOffsets[1]                 = { static_cast<int32_t>(source->GetWidth()), static_cast<int32_t>(source->GetHeight()), 1 };
+        blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.dstSubresource.mipLevel       = 0;
+        blit_region.dstSubresource.baseArrayLayer = dst_layer;
+        blit_region.dstSubresource.layerCount     = 1;
+        blit_region.dstOffsets[0]                 = { 0, 0, 0 };
+        blit_region.dstOffsets[1]                 = { static_cast<int32_t>(destination->GetWidth()), static_cast<int32_t>(destination->GetHeight()), 1 };
+
+        vkCmdBlitImage(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkImage>(source->GetRhiResource()),
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            static_cast<VkImage>(destination->GetRhiResource()),
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1, &blit_region,
+            VK_FILTER_LINEAR
+        );
+
+        source->SetLayout(src_layout_initial, this);
+        destination->SetLayout(dst_layout_initial, this);
+    }
+
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination)
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
@@ -1831,13 +1882,15 @@ namespace spartan
             vkCmdPipelineBarrier2(static_cast<VkCommandBuffer>(m_rhi_resource), &dependency_info);
         }
 
-        // blit to both layers, stretching to fill entire swapchain
+        // blit to both layers - when source is a stereo array texture, copy each layer
+        // to the corresponding xr swapchain layer; otherwise blit the same image to both
+        bool source_is_array = source->GetType() == RHI_Texture_Type::Type2DArray;
         for (uint32_t layer = 0; layer < Xr::eye_count; layer++)
         {
             VkImageBlit blit_region = {};
             blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
             blit_region.srcSubresource.mipLevel       = 0;
-            blit_region.srcSubresource.baseArrayLayer = 0;
+            blit_region.srcSubresource.baseArrayLayer = source_is_array ? layer : 0;
             blit_region.srcSubresource.layerCount     = 1;
             blit_region.srcOffsets[0]                 = { 0, 0, 0 };
             blit_region.srcOffsets[1]                 = { static_cast<int32_t>(src_width), static_cast<int32_t>(src_height), 1 };
@@ -2207,7 +2260,7 @@ namespace spartan
         descriptor_sets::bind_dynamic = true;
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/, const uint32_t array_layer /*= rhi_all_mips*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -2279,7 +2332,7 @@ namespace spartan
         }
 
         // set (will only happen if it's not already set)
-        m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range);
+        m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range, array_layer);
 
         // todo: detect if there are changes, otherwise don't bother binding
         descriptor_sets::bind_dynamic = true;
