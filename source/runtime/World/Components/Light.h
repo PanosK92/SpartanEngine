@@ -84,7 +84,6 @@ namespace spartan
         ~Light();
 
         //= COMPONENT ================================
-        void PreTick() override;
         void Tick() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
@@ -94,7 +93,8 @@ namespace spartan
         sol::reference AsLua(sol::state_view state) override;
 
         // flags
-        bool GetFlag(const LightFlags flag) { return m_flags & flag; }
+        uint32_t GetFlags() const                    { return m_flags; }
+        bool GetFlag(const LightFlags flag)          { return m_flags & flag; }
         void SetFlag(const LightFlags flag, const bool enable = true);
 
         // type
@@ -152,7 +152,6 @@ namespace spartan
 
         // misc
         bool NeedsSkysphereUpdate() const;
-        bool HasChangedThisFrame() const { return m_changed_this_frame; }
         uint32_t GetSliceCount() const;
 
         // atlas
@@ -186,7 +185,6 @@ namespace spartan
         math::Vector3 m_far_cascade_min  = math::Vector3::Zero;
         math::Vector3 m_far_cascade_max  = math::Vector3::Zero;
         bool m_is_active_previous_frame  = false;
-        bool m_changed_this_frame        = false;
         float m_draw_distance            = 512.0f; // max distance at which light will affect objects (meters)
 
         // matrices/frustums per slice/face/cascade

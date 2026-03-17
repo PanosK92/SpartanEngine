@@ -66,6 +66,8 @@ namespace spartan
             {
                 swapchain->SetHdr(get<float>(value) != 0.0f);
             }
+
+            SP_FIRE_EVENT(EventType::HdrToggled);
         }
 
         void on_vsync_change(const CVarVariant& value)

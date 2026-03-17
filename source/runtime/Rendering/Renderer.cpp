@@ -388,7 +388,7 @@ namespace spartan
                 bool initialize = GetFrameNumber() == 0;
 
                 // lights
-                if (initialize || World::HaveLightsChangedThisFrame())
+                if (initialize || World::HaveLightsChanged())
                 {
                     UpdateShadowAtlas();
                     UpdateLights(m_cmd_list_present);

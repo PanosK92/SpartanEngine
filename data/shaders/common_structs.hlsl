@@ -392,6 +392,16 @@ struct Light
         return tex2.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
     }
 
+    // computes the roughness widening for area lights so that the specular
+    // highlight spreads to match the light's angular extent instead of
+    // collapsing into a point-like peak (Karis 2013)
+    float compute_area_roughness_modification(float roughness_alpha, float distance)
+    {
+        float area_size  = max(area_width, area_height) * 0.5f;
+        float solid_angle = saturate(area_size / (2.0f * max(distance, 0.01f)));
+        return saturate(roughness_alpha + solid_angle / (2.0f * roughness_alpha + solid_angle));
+    }
+
     void Build(uint index, Surface surface)
     {
         LightParameters light            = light_parameters[index];

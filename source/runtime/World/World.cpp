@@ -91,6 +91,9 @@ namespace spartan
         // material change tracking - things that change the nature of the material for rendering
         unordered_map<uint64_t, size_t> material_state_hashes;
 
+        // light change tracking - things that change the nature of the light for rendering
+        unordered_map<uint64_t, size_t> light_state_hashes;
+
         void mark_entity_changed(uint64_t id, EntityChange change)
         {
             entity_states[id] |= static_cast<uint32_t>(change);
@@ -118,6 +121,45 @@ namespace spartan
             {
                 hash = (hash * 31) ^ std::hash<float>{}(prop);
             }
+            return hash;
+        }
+
+        size_t compute_light_hash(Light* light, Entity* entity)
+        {
+            size_t hash = 17;
+
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetColor().r);
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetColor().g);
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetColor().b);
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetColor().a);
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetIntensityWatt());
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetRange());
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetAngle());
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetAreaWidth());
+            hash = (hash * 31) ^ std::hash<float>{}(light->GetAreaHeight());
+            hash = (hash * 31) ^ static_cast<size_t>(light->GetLightType());
+            hash = (hash * 31) ^ static_cast<size_t>(light->GetFlags());
+            hash = (hash * 31) ^ static_cast<size_t>(entity->GetActive());
+
+            const Vector3& pos = entity->GetPosition();
+            hash = (hash * 31) ^ std::hash<float>{}(pos.x);
+            hash = (hash * 31) ^ std::hash<float>{}(pos.y);
+            hash = (hash * 31) ^ std::hash<float>{}(pos.z);
+            const Vector3& fwd = entity->GetForward();
+            hash = (hash * 31) ^ std::hash<float>{}(fwd.x);
+            hash = (hash * 31) ^ std::hash<float>{}(fwd.y);
+            hash = (hash * 31) ^ std::hash<float>{}(fwd.z);
+
+            for (uint32_t i = 0; i < light->GetSliceCount(); i++)
+            {
+                const Matrix& vp       = light->GetViewProjectionMatrix(i);
+                const float* vp_data   = vp.Data();
+                for (uint32_t j = 0; j < 16; j++)
+                {
+                    hash = (hash * 31) ^ std::hash<float>{}(vp_data[j]);
+                }
+            }
+
             return hash;
         }
 
@@ -674,6 +716,7 @@ namespace spartan
                 {
                     material_state_hashes.erase(mat->GetObjectId());
                 }
+                light_state_hashes.erase(id);
                 delete *it;
                 it = entities.erase(it);
             }
@@ -728,6 +771,7 @@ namespace spartan
         // clear change tracking
         entity_states.clear();
         material_state_hashes.clear();
+        light_state_hashes.clear();
 
         // mark for resolve
         resolve = true;
@@ -1258,6 +1302,7 @@ namespace spartan
                 {
                     material_state_hashes.erase(mat->GetObjectId());
                 }
+                light_state_hashes.erase(id);
                 entities.erase(it);
             }
 
@@ -1454,20 +1499,32 @@ namespace spartan
         return changed;
     }
 
-    bool World::HaveLightsChangedThisFrame()
+    bool World::HaveLightsChanged()
     {
         lock_guard<mutex> lock(entity_access_mutex);
 
+        bool changed = false;
         for (Entity* entity : entities_lights)
         {
             if (Light* light = entity->GetComponent<Light>())
             {
-                if (light->HasChangedThisFrame())
-                    return true;
+                const uint64_t id   = entity->GetObjectId();
+                size_t current_hash = compute_light_hash(light, entity);
+                auto it = light_state_hashes.find(id);
+                if (it == light_state_hashes.end())
+                {
+                    light_state_hashes[id] = current_hash;
+                    changed = true;
+                }
+                else if (it->second != current_hash)
+                {
+                    it->second = current_hash;
+                    changed = true;
+                }
             }
         }
 
-        return false;
+        return changed;
     }
 
     float World::GetTimeOfDay(bool use_real_world_time)

@@ -71,6 +71,8 @@ namespace spartan
         // Window                      
         WindowResized,                 // The window has been resized
         WindowFullScreenToggled,       // The window has been toggled to full screen
+        // Display
+        HdrToggled,                    // HDR output has been toggled on or off
         // Max
         Max
     };

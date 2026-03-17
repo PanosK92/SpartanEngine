@@ -57,12 +57,10 @@ namespace
         {
             if (!visible) return;
 
-            // position below the world selection window so they don't overlap
-            ImVec2 viewport_center = editor->GetWidget<Viewport>()->GetCenter();
             ImGui::SetNextWindowPos(
-                ImVec2(viewport_center.x, viewport_center.y + 200.0f * spartan::Window::GetDpiScale()),
+                editor->GetWidget<Viewport>()->GetCenter(),
                 ImGuiCond_Appearing,
-                ImVec2(0.5f, 0.0f) // anchor at top-center so it extends downward
+                ImVec2(0.5f, 0.5f)
             );
 
             if (ImGui::Begin("Welcome", &visible, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize))
@@ -563,6 +561,28 @@ void GeneralWindows::Initialize(Editor* editor_in)
 
 void GeneralWindows::Tick()
 {
+    // show the world selector after the welcome window has been dismissed
+    static bool welcome_was_visible = welcome::visible;
+    if (welcome_was_visible && !welcome::visible)
+    {
+        welcome_was_visible = false;
+        if (!WorldSelector::GetVisible())
+        {
+            WorldSelector::SetVisible(true);
+        }
+    }
+
+    // if there was no welcome window at all, show the world selector on the first tick
+    static bool first_tick = true;
+    if (first_tick)
+    {
+        first_tick = false;
+        if (!welcome::visible && !WorldSelector::GetVisible())
+        {
+            WorldSelector::SetVisible(true);
+        }
+    }
+
     // windows
     {
         WorldSelector::Tick();

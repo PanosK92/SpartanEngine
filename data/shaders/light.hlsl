@@ -200,6 +200,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             AngularInfo angular_info;
             angular_info.Build(light, surface);
 
+            // for area lights, widen the specular distribution to match the light's angular
+            // extent - this prevents the highlight from collapsing into a concentrated point
+            float original_roughness       = surface.roughness;
+            float original_roughness_alpha = surface.roughness_alpha;
+            if (light.is_area())
+            {
+                surface.roughness_alpha = light.compute_area_roughness_modification(surface.roughness_alpha, light.distance_to_pixel);
+                surface.roughness       = sqrt(surface.roughness_alpha);
+            }
+
             // compute specular brdf lobes
             {
                 // main specular lobe (anisotropic or isotropic)
@@ -230,6 +240,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                     L_subsurface += subsurface_scattering(surface, light, angular_info);
                 }
             }
+
+            // restore original roughness so other lights aren't affected
+            surface.roughness       = original_roughness;
+            surface.roughness_alpha = original_roughness_alpha;
             
             // compute diffuse brdf term
             L_diffuse_term += BRDF_Diffuse(surface, angular_info);

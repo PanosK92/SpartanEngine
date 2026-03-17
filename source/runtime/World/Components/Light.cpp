@@ -104,7 +104,6 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_far_cascade_min, math::Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_far_cascade_max, math::Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_active_previous_frame, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_changed_this_frame, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_index, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_width, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_height, float);
@@ -123,11 +122,6 @@ namespace spartan
     Light::~Light()
     {
 
-    }
-
-    void Light::PreTick()
-    {
-        m_changed_this_frame = false;
     }
 
     void Light::Tick()
@@ -268,7 +262,6 @@ namespace spartan
             "SetLightType",                 &Light::SetLightType,
 
             "NeedsSkysphereUpdate",         &Light::NeedsSkysphereUpdate,
-            "HasChangedThisFrame",          &Light::HasChangedThisFrame,
             "GetSliceCount",                &Light::GetSliceCount,
 
             "GetAtlasOffset",               &Light::GetAtlasOffset,
@@ -314,8 +307,6 @@ namespace spartan
                     m_flags &= ~static_cast<uint32_t>(LightFlags::Volumetric);
                 }
             }
-
-            m_changed_this_frame = true;
         }
     }
 
@@ -336,8 +327,6 @@ namespace spartan
     {
         m_temperature_kelvin = temperature_kelvin;
         m_color_rgb          = Color(temperature_kelvin);
-
-        m_changed_this_frame = true;
     }
 
     void Light::SetColor(const Color& rgb)
@@ -366,8 +355,6 @@ namespace spartan
             m_temperature_kelvin = 2700.0f;
         else if (rgb == Color::light_photo_flash)
             m_temperature_kelvin = 5500.0f;
-
-        m_changed_this_frame = true;
     }
 
     void Light::SetIntensity(const LightIntensity intensity)
@@ -406,16 +393,12 @@ namespace spartan
         {
             m_intensity_lumens_lux = 0.0f;
         }
-
-        m_changed_this_frame = true;
     }
 
     void Light::SetIntensity(const float lumens_lux)
     {
         m_intensity_lumens_lux = lumens_lux;
         m_intensity            = LightIntensity::custom;
-
-        m_changed_this_frame = true;
     }
 
     void Light::SetPreset(const LightPreset preset)
@@ -492,8 +475,6 @@ namespace spartan
             GetEntity()->SetRotation(yaw * elevation);
             UpdateMatrices();
         }
-
-        m_changed_this_frame = true;
     }
 
     float Light::GetIntensityWatt() const
@@ -615,8 +596,6 @@ namespace spartan
         UpdateViewMatrix();
         UpdateProjectionMatrix();
         UpdateBoundingBox();
-
-        m_changed_this_frame = true;
     }
 
     void Light::UpdateViewMatrix()

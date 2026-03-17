@@ -99,6 +99,20 @@ namespace ImGui::RHI
     // forward declarations
     void initialize_platform_interface();
 
+    void on_hdr_toggled()
+    {
+        bool hdr = cvar_hdr.GetValueAs<bool>();
+
+        ImGuiPlatformIO& platform_io = GetPlatformIO();
+        for (int i = 1; i < platform_io.Viewports.Size; i++)
+        {
+            if (WindowData* window = static_cast<WindowData*>(platform_io.Viewports[i]->RendererUserData))
+            {
+                window->swapchain->SetHdr(hdr);
+            }
+        }
+    }
+
     void destroy_rhi_resources()
     {
         g_font_atlas          = nullptr;
@@ -185,6 +199,7 @@ namespace ImGui::RHI
         }
 
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
+        SP_SUBSCRIBE_TO_EVENT(EventType::HdrToggled, SP_EVENT_HANDLER_STATIC(on_hdr_toggled));
     }
 
     void shutdown()
@@ -443,7 +458,7 @@ namespace ImGui::RHI
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Present_Mode::Immediate,
             2,
-            spartan::Display::GetHdr(),
+            spartan::cvar_hdr.GetValueAs<bool>(),
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 
