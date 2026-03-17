@@ -33,4 +33,5 @@ public:
 
     void OnTick() override;
     void OnTickVisible() override;
+    void OnPreBegin() override;
 };

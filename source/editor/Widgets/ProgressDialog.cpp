@@ -19,11 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ====================
+//= INCLUDES ==============================
 #include "pch.h"
 #include "ProgressDialog.h"
+#include "Viewport.h"
+#include "../Editor.h"
+#include "../ImGui/Source/imgui_internal.h"
 #include "Core/ProgressTracker.h"
-//===============================
+//=========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -62,6 +65,21 @@ ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
         ImGuiWindowFlags_NoDocking        |
         ImGuiWindowFlags_NoTitleBar       |
         ImGuiWindowFlags_AlwaysAutoResize;
+}
+
+void ProgressDialog::OnPreBegin()
+{
+    if (Viewport* viewport = m_editor->GetWidget<Viewport>())
+    {
+        if (ImGuiWindow* window = viewport->GetWindow())
+        {
+            ImVec2 pos    = window->Pos;
+            ImVec2 sze    = window->Size;
+            ImVec2 center = ImVec2(pos.x + sze.x * 0.5f, pos.y + sze.y * 0.5f);
+
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        }
+    }
 }
 
 void ProgressDialog::OnTick()
