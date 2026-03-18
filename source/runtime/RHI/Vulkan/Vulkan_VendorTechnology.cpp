@@ -35,8 +35,8 @@ SP_WARNINGS_OFF
 #include <FidelityFX/host/backends/vk/ffx_vk.h>
 #include <FidelityFX/host/ffx_fsr3.h>
 #include <xess/xess_vk.h>
-#include <nrd/NRD.h>
 #endif
+#include <nrd/NRD.h>
 SP_WARNINGS_ON
 //=============================================
 
@@ -47,7 +47,6 @@ using namespace std;
 
 namespace spartan
 {
-    #ifdef _WIN32
     namespace common
     {
         uint32_t resolution_render_width      = 0; // scaled (render * scale), used for per-frame dispatch
@@ -60,6 +59,7 @@ namespace spartan
         float resolution_scale                = 1.0f;
     }
 
+#if defined(_WIN32)
     namespace intel
     {
         xess_context_handle_t context           = nullptr;
@@ -197,7 +197,9 @@ namespace spartan
             return info;
         }
     }
+#endif
 
+#if defined(_WIN32)
     namespace amd
     {
         FfxInterface ffx_interface             = {};
@@ -588,6 +590,7 @@ namespace spartan
         }
 
     }
+#endif
 
     namespace nvidia
     {
@@ -990,7 +993,6 @@ namespace spartan
             destroy_vulkan_resources();
         }
     }
-    #endif // _WIN32
 
     void RHI_VendorTechnology::Initialize()
     {
@@ -1307,7 +1309,6 @@ namespace spartan
 
     void RHI_VendorTechnology::NRD_Initialize(uint32_t width, uint32_t height)
     {
-    #ifdef _WIN32
         if (nvidia::nrd_initialized)
             return;
 
@@ -1358,12 +1359,10 @@ namespace spartan
         nvidia::nrd_initialized = true;
 
         SP_LOG_INFO("NRD initialized with RELAX denoiser for ReSTIR");
-    #endif
     }
 
     void RHI_VendorTechnology::NRD_Shutdown()
     {
-    #ifdef _WIN32
         if (!nvidia::nrd_initialized)
             return;
 
@@ -1376,12 +1375,10 @@ namespace spartan
         }
 
         nvidia::nrd_initialized = false;
-    #endif
     }
 
     void RHI_VendorTechnology::NRD_Resize(uint32_t width, uint32_t height)
     {
-    #ifdef _WIN32
         if (!nvidia::nrd_initialized || (nvidia::nrd_width == width && nvidia::nrd_height == height))
             return;
 
@@ -1390,7 +1387,6 @@ namespace spartan
 
         nvidia::destroy_resources();
         nvidia::create_resources(width, height);
-    #endif
     }
 
     void RHI_VendorTechnology::NRD_Denoise(
@@ -1409,7 +1405,6 @@ namespace spartan
         uint32_t frame_index
     )
     {
-    #ifdef _WIN32
         if (!nvidia::nrd_initialized || !nvidia::nrd_instance || !cmd_list)
             return;
 
@@ -1775,15 +1770,10 @@ namespace spartan
             cmd_list->InsertBarrier(tex_output, RHI_Image_Layout::Transfer_Destination);
             cmd_list->Blit(denoised_diff, tex_output, false);
         }
-    #endif
     }
 
     bool RHI_VendorTechnology::NRD_IsAvailable()
     {
-    #ifdef _WIN32
         return nvidia::nrd_initialized && nvidia::nrd_instance != nullptr;
-    #else
-        return false;
-    #endif
     }
 }

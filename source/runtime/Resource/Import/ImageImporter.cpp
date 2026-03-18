@@ -27,7 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #define FREEIMAGE_LIB
 #include <FreeImage/FreeImage.h>
+#if defined(__linux__)
+#include "FreeImageCompat.h"
+#else
 #include <FreeImage/Utilities.h>
+#endif
 #define TINYDDSLOADER_IMPLEMENTATION
 #include "tinyddsloader.h"
 SP_WARNINGS_ON

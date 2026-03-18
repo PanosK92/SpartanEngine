@@ -161,14 +161,24 @@ def download_file(url, destination, expected_hash, max_retries=3, chunk_size=102
         return False
 
 def extract_archive(archive_path, destination_path):
-    # Check if 7z.exe exists locally
-    current_dir_7z  = Path("7z.exe")
-    if current_dir_7z.exists():
-        seven_zip_exe = current_dir_7z
+    import platform
+
+    is_windows = platform.system() == 'Windows'
+
+    if is_windows:
+        # Check if 7z.exe exists locally
+        current_dir_7z  = Path("7z.exe")
+        if current_dir_7z.exists():
+            seven_zip_exe = current_dir_7z
+        else:
+            # define the path where 7z.exe should be if not in the current directory
+            seven_zip_exe = Path("build_scripts") / "7z.exe"
+            seven_zip_exe = seven_zip_exe.resolve()
     else:
-        # define the path where 7z.exe should be if not in the current directory
-        seven_zip_exe = Path("build_scripts") / "7z.exe"
-        seven_zip_exe = seven_zip_exe.resolve()
+        seven_zip_exe_path = shutil.which('7z')
+        if not seven_zip_exe_path:
+            raise FileNotFoundError("The 7z executable was not found. Please install p7zip or 7zip.")
+        seven_zip_exe = Path(seven_zip_exe_path)
 
     # check if the 7z executable exists
     if not os.path.exists(seven_zip_exe):

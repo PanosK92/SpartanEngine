@@ -42,6 +42,7 @@ namespace spartan
         static std::string ConvertToUppercase(const std::string& lower);
         static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
         static std::wstring StringToWstring(const std::string& str);
+        static std::wstring PathToWstring(const std::string& path);
 
         // supported files
         static bool IsSupportedAudioFile(const std::string& path);

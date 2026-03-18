@@ -19,7 +19,6 @@
 
 import os
 import shutil
-import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -47,11 +46,31 @@ paths = {
 }
 
 def generate_project_files():
+    args = list(sys.argv[1:])
+    if len(args) < 2:
+        if os.name == 'nt':
+            args = ['vs2026', 'vulkan']
+        else:
+            args = ['gmake2', 'vulkan']
+
     # determine if we're using Windows or another platform
-    is_windows = sys.argv[1].startswith("vs")  # Assuming 'vs' prefix for Visual Studio
+    action = args[0].strip('\"')
+    is_windows = action.startswith("vs")  # Assuming 'vs' prefix for Visual Studio
 
     # construct the command, stripping any surrounding quotes from arguments
-    premake_exe = Path.cwd() / "build_scripts" / ("premake5.exe" if is_windows else "premake5")
+    if is_windows:
+        premake_exe = Path.cwd() / "build_scripts" / "premake5.exe"
+        if not premake_exe.exists():
+            raise FileNotFoundError("premake5.exe executable not found in build_scripts/.")
+    else:
+        premake_from_path = shutil.which('premake5')
+        if premake_from_path:
+            premake_exe = Path(premake_from_path)
+        else:
+            premake_exe = Path.cwd() / "build_scripts" / "premake5"
+
+        if not premake_exe.exists():
+            raise FileNotFoundError("premake5 executable not found in PATH or build_scripts/.")
     premake_lua = Path("build_scripts") / "premake.lua"
 
     # remove quotes if they exist around sys.argv[1] and sys.argv[2]
@@ -70,7 +89,6 @@ def generate_project_files():
             print(result.stderr)
         if result.returncode != 0:
             print(f"\nPremake failed with exit code {result.returncode}")
-            input("\nPress Enter to exit...")
             sys.exit(1)
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
@@ -82,8 +100,11 @@ def main():
     
     print("\n1. Create binaries folder with the required data files...\n")
     file_utilities.copy("data", paths["binaries"]["data"])
-    file_utilities.copy(Path("build_scripts") / "7z.exe", "binaries")
-    file_utilities.copy(Path("build_scripts") / "7z.dll", "binaries")
+    file_utilities.copy(Path("build_scripts") / "file_utilities.py", "binaries")
+
+    if os.name == 'nt':
+        file_utilities.copy(Path("build_scripts") / "7z.exe", "binaries")
+        file_utilities.copy(Path("build_scripts") / "7z.dll", "binaries")
 
     print("\n2. Download and extract libraries...")
     library_url           = 'https://www.dropbox.com/scl/fi/bqm5ds2jgal9i4xqlq9p7/libraries.7z?rlkey=2tjj312w4jd0sxavdrpzt7aru&st=kkutkjir&dl=1'
@@ -93,8 +114,11 @@ def main():
     file_utilities.extract_archive(str(library_destination), str(Path("third_party") / "libraries"))
     
     print("3. Copying required DLLs to the binary directory...")
-    for lib in paths["third_party_libs"].values():
-        file_utilities.copy(lib, Path("binaries"))
+    if os.name == 'nt':
+        for lib in paths["third_party_libs"].values():
+            file_utilities.copy(lib, Path("binaries"))
+    else:
+        print("Skipping DLL copy on non-Windows platform.")
 
     print("\n4. Generate project files...\n")
     generate_project_files()

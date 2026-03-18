@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Allocator.h"
 //==========================
 
+#if !defined(__linux__)
 void* operator new(size_t size)
 {
     void* ptr = spartan::Allocator::Allocate(size);
@@ -95,3 +96,4 @@ void operator delete[](void* ptr, size_t, std::align_val_t) noexcept
 {
     spartan::Allocator::Free(ptr);
 }
+#endif

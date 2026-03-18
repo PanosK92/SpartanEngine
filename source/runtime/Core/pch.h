@@ -22,6 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // memory
 #include "../Memory/MemoryOverrides.h"
 
+#ifdef __linux__
+    #include "linux_compat.h"
+#endif
+
 // std
 #include <string>
 #include <algorithm>

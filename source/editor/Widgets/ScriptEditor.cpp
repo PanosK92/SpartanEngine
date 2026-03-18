@@ -21,8 +21,8 @@ ScriptEditor::ScriptEditor(Editor* editor)
     m_visible         = false;
     m_alpha           = 1.0f;
 
-    TextEditor.SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
-    TextEditor.SetReadOnly(false);
+    m_text_editor.SetLanguageDefinition(TextEditor::LanguageDefinition::Lua());
+    m_text_editor.SetReadOnly(false);
 }
 
 void ScriptEditor::OnTickVisible()
@@ -72,7 +72,7 @@ void ScriptEditor::OnTickVisible()
                     std::memset(m_buffer, 0, kBufferSize);
                     strncpy_s(m_buffer, kBufferSize, script_contents.c_str(), script_contents.size() < kBufferSize ? script_contents.size() : kBufferSize - 1);
 
-                    TextEditor.SetText(script_contents);
+                    m_text_editor.SetText(script_contents);
                 }
             }
         }
@@ -88,6 +88,6 @@ void ScriptEditor::OnTickVisible()
         return;
     }
 
-    TextEditor.SetReadOnly(false);
-    TextEditor.Render("Script Editor", ImGui::GetContentRegionAvail(), true);
+    m_text_editor.SetReadOnly(false);
+    m_text_editor.Render("Script Editor", ImGui::GetContentRegionAvail(), true);
 }

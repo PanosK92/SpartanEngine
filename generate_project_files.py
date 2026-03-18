@@ -26,7 +26,7 @@ from pathlib import Path
 configurations = [
     {"name": "Visual Studio 2026 - Vulkan",  "args": ["vs2026", "vulkan"]},
     {"name": "Visual Studio 2026 - D3D12 (WIP)",   "args": ["vs2026", "d3d12"]},
-    {"name": "GMake2 - Vulkan (Linux)",      "args": ["gmake2", "vulkan_linux"]},
+    {"name": "GMake2 - Vulkan (Linux)",      "args": ["gmake2", "vulkan"]},
 ]
 
 def print_menu():

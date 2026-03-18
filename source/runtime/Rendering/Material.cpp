@@ -599,7 +599,7 @@ namespace spartan
 
         const char* project_dir = ResourceCache::GetProjectDirectory();
         char file_path[512];
-        snprintf(file_path, sizeof(file_path), "%smaterials\\empty.xml", project_dir);
+        snprintf(file_path, sizeof(file_path), "%smaterials/empty.xml", project_dir);
         SetResourceFilePath(file_path);
     }
 
