@@ -21,10 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ====================================
 #include <string>
 #include "../Resource/IResource.h"
-//==============================
+#include "Animation/AnimationClip.h"
+//===============================================
 
 namespace spartan
 {
@@ -34,7 +35,13 @@ namespace spartan
         Animation();
         ~Animation() = default;
 
-        void SaveToFile(const std::string& filePath) override;
-        void LoadFromFile(const std::string& filePath) override;
+        void SaveToFile(const std::string& file_path) override;
+        void LoadFromFile(const std::string& file_path) override;
+
+        AnimationClip& GetClip()             { return m_clip; }
+        const AnimationClip& GetClip() const { return m_clip; }
+
+    private:
+        AnimationClip m_clip;
     };
 }

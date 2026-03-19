@@ -24,14 +24,16 @@ SOFTWARE.
 #include "pch.h"
 #include "AnimationAssetValidation.h"
 #include "BinaryIO.h"
-#include "AnimationLimits.h"
+#include "AnimationFileFormat.h"
 //===========================================
+
+//= NAMESPACES ================================
+using namespace spartan::BinaryIO;
+using namespace spartan::animation_limits;
+//=============================================
 
 namespace
 {
-    using namespace spartan::BinaryIO;
-    using namespace spartan::animation_limits;
-
     constexpr float quaternion_epsilon = 1e-5f;
 
     bool fail(std::string* error, const std::string& message)

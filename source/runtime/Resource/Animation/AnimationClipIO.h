@@ -21,16 +21,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
-#include "../../Rendering/Animation/Skeleton.h"
+//= INCLUDES ==================================
+#include "../../Rendering/Animation/AnimationClip.h"
 #include <string>
-//===============================
+//=============================================
 
 namespace spartan
 {
-    class SkeletonWriter
+    class AnimationClipReader
     {
     public:
-        static bool WriteToFile(const Skeleton& skeleton, const std::string& path);
+        static bool ReadFromFile(const std::string& path, AnimationClip& clip);
+    };
+
+    class AnimationClipWriter
+    {
+    public:
+        static bool WriteToFile(const AnimationClip& clip, const std::string& path);
     };
 }

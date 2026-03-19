@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "../../Rendering/Animation/Skeleton.h"
 #include <string>
-//===============================
+//=================================
 
 namespace spartan
 {
@@ -32,5 +32,11 @@ namespace spartan
     {
     public:
         static bool ReadFromFile(const std::string& path, Skeleton& skeleton);
+    };
+
+    class SkeletonWriter
+    {
+    public:
+        static bool WriteToFile(const Skeleton& skeleton, const std::string& path);
     };
 }

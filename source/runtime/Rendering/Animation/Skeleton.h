@@ -48,25 +48,30 @@ namespace spartan
             }
         }
 
-        // Root joint is always 0.
+        // root joint is always 0
         uint16_t joint_count = 0;
 
-        std::span<int16_t> parent_indices;
-        std::span<math::Vector3> bind_positions;
-        std::span<math::Quaternion> bind_rotations;
-        std::span<math::Vector3> bind_scales;
+        std::span<const int16_t> parent_indices;
+        std::span<const math::Vector3> bind_positions;
+        std::span<const math::Quaternion> bind_rotations;
+        std::span<const math::Vector3> bind_scales;
 
     private:
         friend class SkeletonReader;
+        friend class ModelImporter;
 
         void Clear()
         {
             m_storage.reset();
             joint_count = 0;
-            parent_indices = std::span<int16_t>{};
-            bind_positions = std::span<math::Vector3>{};
-            bind_rotations = std::span<math::Quaternion>{};
-            bind_scales = std::span<math::Vector3>{};
+            parent_indices          = {};
+            bind_positions          = {};
+            bind_rotations          = {};
+            bind_scales             = {};
+            m_mutable_parents       = {};
+            m_mutable_positions     = {};
+            m_mutable_rotations     = {};
+            m_mutable_scales        = {};
         }
 
         template <typename T>
@@ -93,10 +98,15 @@ namespace spartan
             m_storage = std::make_unique<std::byte[]>(total_bytes);
 
             std::byte* cursor = m_storage.get();
-            AssignSpan(cursor, parent_indices, joint_count);
-            AssignSpan(cursor, bind_positions, joint_count);
-            AssignSpan(cursor, bind_rotations, joint_count);
-            AssignSpan(cursor, bind_scales, joint_count);
+            AssignSpan(cursor, m_mutable_parents, joint_count);
+            AssignSpan(cursor, m_mutable_positions, joint_count);
+            AssignSpan(cursor, m_mutable_rotations, joint_count);
+            AssignSpan(cursor, m_mutable_scales, joint_count);
+
+            parent_indices = m_mutable_parents;
+            bind_positions = m_mutable_positions;
+            bind_rotations = m_mutable_rotations;
+            bind_scales    = m_mutable_scales;
         }
 
         template <typename T>
@@ -113,5 +123,9 @@ namespace spartan
         }
 
         std::unique_ptr<std::byte[]> m_storage;
+        std::span<int16_t> m_mutable_parents;
+        std::span<math::Vector3> m_mutable_positions;
+        std::span<math::Quaternion> m_mutable_rotations;
+        std::span<math::Vector3> m_mutable_scales;
     };
 }

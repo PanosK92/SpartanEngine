@@ -48,5 +48,7 @@ namespace spartan
         static void ParseNodeMeshes(ImportContext& ctx, const aiNode* node, Entity* new_entity);
         static void ParseNodeLight(ImportContext& ctx, const aiNode* node, Entity* new_entity);
         static void ParseMesh(ImportContext& ctx, aiMesh* mesh, Entity* entity_parent);
+        static void ParseSkeleton(ImportContext& ctx);
+        static void ParseAnimations(ImportContext& ctx);
     };
 }

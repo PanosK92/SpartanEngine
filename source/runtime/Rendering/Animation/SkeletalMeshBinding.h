@@ -82,9 +82,9 @@ namespace spartan
             return GetSectionBySubMeshIndexImpl(m_sections, sub_mesh_index);
         }
 
-        std::vector<SkeletalMeshSection>& GetSectionsUnsafeMutable()
+        void AddSection(SkeletalMeshSection section)
         {
-            return m_sections;
+            m_sections.push_back(std::move(section));
         }
 
         const std::vector<SkeletalMeshSection>& GetSections() const { return m_sections; }

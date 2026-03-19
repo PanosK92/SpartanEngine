@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Vertex.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
+#include "../Rendering/Animation/AnimationClip.h"
 #include "../Rendering/Animation/SkeletalMeshBinding.h"
 //================================
 
@@ -136,6 +137,11 @@ namespace spartan
         const SkeletalMeshBinding* GetSkeletalMeshBinding() const { return m_skeletal_mesh_binding.get(); }
         bool IsSkinned() const { return m_skeleton != nullptr && m_skeletal_mesh_binding != nullptr; }
 
+        // animation clips
+        void AddAnimationClip(AnimationClip clip)                          { m_animation_clips.push_back(std::move(clip)); }
+        const std::vector<AnimationClip>& GetAnimationClips() const        { return m_animation_clips; }
+        uint32_t GetAnimationClipCount() const                             { return static_cast<uint32_t>(m_animation_clips.size()); }
+
         // acceleration structure - one blas per sub-mesh to avoid shared geometry issues
         RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const;
         bool HasBlas(uint32_t sub_mesh_index) const;
@@ -162,5 +168,6 @@ namespace spartan
         MeshType m_type       = MeshType::Max;
         std::shared_ptr<Skeleton> m_skeleton;
         std::unique_ptr<SkeletalMeshBinding> m_skeletal_mesh_binding;
+        std::vector<AnimationClip> m_animation_clips;
     };
 }
