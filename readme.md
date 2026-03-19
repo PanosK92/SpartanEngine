@@ -134,6 +134,7 @@ A full vehicle dynamics simulation running at **200Hz** within the PhysX fixed-t
 | System | Details |
 |--------|---------|
 | **Particles** | GPU-driven particle system component with compute-shader emission, simulation, and rendering, screen-space depth-buffer collision, and soft blending |
+| **Animation** | Skeletal animation: hierarchical skeletons, keyframed clips (translation, rotation, scale), per-mesh skeletal binding with four-bone vertex skinning, binary engine asset format |
 | **Physics** | PhysX integration with rigid bodies, character kinematics, and vehicle physics |
 | **Scripting** | Lua 5.4 with full engine API access (entities, components, math, physics, audio) via Sol2 bindings with lifecycle callbacks (Start, Tick, Save, Load) |
 | **Audio** | 3D positional audio, streaming, reverb, and procedural synthesis via SDL3, supports WAV, OGG, MP3, FLAC, and more |
