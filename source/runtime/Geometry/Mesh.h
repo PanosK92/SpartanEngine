@@ -43,7 +43,7 @@ namespace spartan
     class RHI_Buffer;
     class RHI_AccelerationStructure;
     class RHI_CommandList;
-    class Skeleton;
+    struct Skeleton;
 
     enum class MeshFlags : uint32_t
     {

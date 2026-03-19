@@ -56,10 +56,7 @@ namespace spartan
         std::span<const math::Quaternion> bind_rotations;
         std::span<const math::Vector3> bind_scales;
 
-    private:
-        friend class SkeletonReader;
-        friend class ModelImporter;
-
+        // builder api - used by importers and deserialization to populate the skeleton
         void Clear()
         {
             m_storage.reset();
