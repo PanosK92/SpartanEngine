@@ -21,6 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#ifdef __linux__
+#include <cstddef>
+#include <new>
+#endif
 // global
 void* operator new(size_t size);
 void operator delete(void* ptr) noexcept;
