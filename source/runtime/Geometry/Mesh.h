@@ -24,9 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include <mutex>
+#include <memory>
 #include "../RHI/RHI_Vertex.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
+#include "../Rendering/Animation/SkeletalMeshBinding.h"
 //================================
 
 namespace sol
@@ -36,9 +38,11 @@ namespace sol
 
 namespace spartan
 {
+    class Entity;
     class RHI_Buffer;
     class RHI_AccelerationStructure;
     class RHI_CommandList;
+    class Skeleton;
 
     enum class MeshFlags : uint32_t
     {
@@ -124,6 +128,14 @@ namespace spartan
         uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
 
+        // skinning data model split
+        void SetSkeleton(const std::shared_ptr<Skeleton>& skeleton) { m_skeleton = skeleton; }
+        const std::shared_ptr<Skeleton>& GetSkeleton() const { return m_skeleton; }
+        void SetSkeletalMeshBinding(std::unique_ptr<SkeletalMeshBinding> binding) { m_skeletal_mesh_binding = std::move(binding); }
+        SkeletalMeshBinding* GetSkeletalMeshBinding() { return m_skeletal_mesh_binding.get(); }
+        const SkeletalMeshBinding* GetSkeletalMeshBinding() const { return m_skeletal_mesh_binding.get(); }
+        bool IsSkinned() const { return m_skeleton != nullptr && m_skeletal_mesh_binding != nullptr; }
+
         // acceleration structure - one blas per sub-mesh to avoid shared geometry issues
         RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const;
         bool HasBlas(uint32_t sub_mesh_index) const;
@@ -148,5 +160,7 @@ namespace spartan
         std::mutex m_mutex;
         Entity* m_root_entity = nullptr;
         MeshType m_type       = MeshType::Max;
+        std::shared_ptr<Skeleton> m_skeleton;
+        std::unique_ptr<SkeletalMeshBinding> m_skeletal_mesh_binding;
     };
 }
