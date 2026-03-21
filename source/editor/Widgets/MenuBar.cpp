@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Engine.h"
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
+#include "LightAuditor.h"
 #include "ScriptEditor.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
@@ -221,6 +222,7 @@ namespace
                     menu_entry<RenderOptions>();
                     menu_entry<TextureViewer>();
                     menu_entry<ResourceViewer>();
+                    menu_entry<LightAuditor>();
                     menu_entry<AssetBrowser>();
                     menu_entry<Console>();
                     menu_entry<Properties>();
@@ -501,6 +503,7 @@ void MenuBar::Initialize(Editor* _editor)
     file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 
     buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Profiler)]      = editor->GetWidget<Profiler>();
+    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Light)]         = editor->GetWidget<LightAuditor>();
     buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::ResourceCache)] = editor->GetWidget<ResourceViewer>();
     buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Shader)]        = editor->GetWidget<ShaderEditor>();
     buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Gear)]          = editor->GetWidget<RenderOptions>();

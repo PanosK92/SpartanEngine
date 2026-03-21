@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/Implementation/imgui_impl_sdl3.h"
 #include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
+#include "Widgets/LightAuditor.h"
 #include "Widgets/Style.h"
 #include "Widgets/ProgressDialog.h"
 #include "Widgets/Properties.h"
@@ -95,6 +96,7 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<ShaderEditor>(this));
     m_widgets.emplace_back(make_shared<ScriptEditor>(this));
     m_widgets.emplace_back(make_shared<RenderOptions>(this));
+    m_widgets.emplace_back(make_shared<LightAuditor>(this));
     m_widgets.emplace_back(make_shared<TextureViewer>(this));
     m_widgets.emplace_back(make_shared<Viewport>(this));
     m_widgets.emplace_back(make_shared<AssetBrowser>(this));
