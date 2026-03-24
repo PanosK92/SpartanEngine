@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
 #include "Widgets/ScriptEditor.h"
+#include "Widgets/Sequence/Sequencer.h"
 //===============================================
 
 //= NAMESPACES =====
@@ -100,6 +101,7 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<AssetBrowser>(this));
     m_widgets.emplace_back(make_shared<Properties>(this));
     m_widgets.emplace_back(make_shared<WorldViewer>(this));
+    m_widgets.emplace_back(make_shared<Sequencer>(this));
     MenuBar::Initialize(this);
 
     // allow imgui to get event's from the engine's event processing loop
@@ -241,6 +243,7 @@ void Editor::BeginWindow()
             ImGui::DockBuilderDockWindow("Console",    dock_down_id);
             ImGui::DockBuilderDockWindow("Assets",     dock_down_right_id);
             ImGui::DockBuilderDockWindow("Viewport",   dock_main_id);
+            ImGui::DockBuilderDockWindow("Sequencer",  dock_down_id);
 
             ImGui::DockBuilderFinish(dock_main_id);
         }

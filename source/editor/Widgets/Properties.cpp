@@ -287,7 +287,7 @@ namespace
     // component begin/end - styled component headers and content
     //----------------------------------------------------------
 
-    bool component_begin(const char* name, const ImVec4& accent_color, Component* component_instance, bool options = true, const bool removable = true)
+    bool component_begin(const char* name, const ImVec4& accent_color, Component* component_instance, bool options = true, const bool removable = true, bool default_open = false)
     {
         ImGui::PushID(name);
 
@@ -303,8 +303,14 @@ namespace
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
         // draw collapsing header
+        ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_AllowOverlap;
+        if (default_open)
+        {
+            flags |= ImGuiTreeNodeFlags_DefaultOpen;
+        }
+
         ImGui::PushFont(Editor::font_bold);
-        const bool is_expanded = ImGuiSp::collapsing_header(name, ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
+        const bool is_expanded = ImGuiSp::collapsing_header(name, flags);
         ImGui::PopFont();
 
         ImGui::PopStyleVar(2);
@@ -633,6 +639,9 @@ void Properties::OnTickVisible()
         }
         else if (Entity* entity = get_selected_entity())
         {
+            // push entity id so each entity gets its own collapse state for components
+            ImGui::PushID(static_cast<int>(entity->GetObjectId()));
+
             ShowEntity(entity);
             ShowScript(entity->GetComponent<Script>());
             ShowLight(entity->GetComponent<Light>());
@@ -652,6 +661,8 @@ void Properties::OnTickVisible()
             ShowParticleSystem(entity->GetComponent<ParticleSystem>());
 
             ShowAddComponentButton();
+
+            ImGui::PopID();
 
             // process deferred component removal now that all Show* calls are done
             if (pending_removal_owner && pending_removal_id != 0)
@@ -705,7 +716,7 @@ void Properties::Inspect(const shared_ptr<Material> material)
 
 void Properties::ShowEntity(Entity* entity) const
 {
-    if (component_begin("Entity", design::accent_entity(), nullptr, true, false))
+    if (component_begin("Entity", design::accent_entity(), nullptr, true, false, true))
     {
         // entity name display
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -2737,6 +2748,7 @@ void Properties::ComponentContextMenu_Add() const
                 }
                 ImGui::EndMenu();
             }
+
         }
 
         ImGui::EndPopup();

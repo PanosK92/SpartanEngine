@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
 #include "ScriptEditor.h"
+#include "Sequence/Sequencer.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
 #include "../GeneralWindows.h"
@@ -226,6 +227,7 @@ namespace
                     menu_entry<Properties>();
                     menu_entry<Viewport>();
                     menu_entry<WorldViewer>();
+                    menu_entry<Sequencer>();
 
                     ImGui::EndMenu();
                 }
