@@ -19,29 +19,23 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Console.h"
-
+#include <fstream>
 #include <ranges>
 #include <utility>
 #include "Window.h"
 #include "../ImGui/ImGui_Extension.h"
+#include "../ImGui/Source/imgui_internal.h"
 #include "Commands/Console/ConsoleCommands.h"
-//===================================
+//===========================================
 
 //= NAMESPACES =========
 using namespace std;
 using namespace spartan;
 using namespace math;
 //======================
-
-namespace
-{
-    // Uncomment to enable.
-    //TConsoleVar CVarConsoleTest_Int("console.test.int", 12, "int test console var");
-
-}
 
 Console::Console(Editor* editor) : Widget(editor)
 {
@@ -62,20 +56,24 @@ Console::~Console()
 
 void Console::OnTickVisible()
 {
-    // clear button
+    const float dpi = spartan::Window::GetDpiScale();
+
+    // toolbar: [clear] | [info] [warn] [error] | [timestamps] | [filter]
     if (ImGuiSp::button("Clear"))
     {
         Clear();
     }
+
+    ImGui::SameLine();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
     ImGui::SameLine();
 
-    // lambda for info, warning, error filter buttons
-    const auto button_log_type_visibility_toggle = [this](uint32_t index)
+    const auto button_log_type_visibility_toggle = [this, dpi](uint32_t index)
     {
         ImGui::PushID(static_cast<int>(index));
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Console), 15.0f * spartan::Window::GetDpiScale(), false, m_log_type_color[index]))
+        if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Console), 15.0f * dpi, false, m_log_type_color[index]))
         {
             visibility = !visibility;
         }
@@ -86,13 +84,14 @@ void Console::OnTickVisible()
         ImGui::PopID();
     };
 
-    // log category visibility buttons
     button_log_type_visibility_toggle(0);
     button_log_type_visibility_toggle(1);
     button_log_type_visibility_toggle(2);
 
-    // text filter
-    const float label_width = 37.0f * spartan::Window::GetDpiScale();
+    ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+    ImGui::SameLine();
+
+    const float label_width = 37.0f * dpi;
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
     ImGui::Separator();
 
@@ -118,6 +117,7 @@ void Console::OnTickVisible()
         }
         const auto& visible_logs = m_visible_logs;
 
+        const float gutter_width = 3.0f * dpi;
         const ImVec2 log_size = ImVec2(-1.0f, log_height);
         const float line_height = ImGui::GetTextLineHeightWithSpacing();
         const ImVec4 bg_color_even = ImGui::GetStyle().Colors[ImGuiCol_TableRowBg];
@@ -256,37 +256,48 @@ void Console::OnTickVisible()
                 for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
                 {
                     const LogPackage& log = *visible_logs[row].second;
+                    const char* display_text = log.text.c_str();
 
-                    // get current cursor position for this row
                     ImVec2 row_pos = ImGui::GetCursorScreenPos();
 
-                    // capture content origin from first rendered row for calculations
                     if (first_rendered_row < 0)
                     {
                         first_rendered_row = row;
                         content_origin_y = row_pos.y;
                     }
 
-                    // check if mouse is within this row's bounds
                     if (mouse_pos.y >= row_pos.y && mouse_pos.y < row_pos.y + line_height)
                     {
                         mouse_hover_row = row;
                         mouse_hover_row_x = row_pos.x;
                     }
 
-                    // draw alternating row background
+                    const float text_width = ImGui::CalcTextSize(display_text).x;
+                    const float row_width  = std::max(window_width, text_width + gutter_width + 8.0f);
+
+                    // alternating row background
                     const ImVec4& bg_color = (row % 2 == 0) ? bg_color_even : bg_color_odd;
                     draw_list->AddRectFilled(
                         row_pos,
-                        ImVec2(row_pos.x + std::max(window_width, ImGui::CalcTextSize(log.text.c_str()).x + 8.0f), row_pos.y + line_height),
+                        ImVec2(row_pos.x + row_width, row_pos.y + line_height),
                         ImGui::ColorConvertFloat4ToU32(bg_color)
                     );
 
-                    // draw selection highlight if this row is selected
+                    // severity gutter strip on the left edge (only for warnings and errors)
+                    if (log.error_level != 0)
+                    {
+                        draw_list->AddRectFilled(
+                            row_pos,
+                            ImVec2(row_pos.x + gutter_width, row_pos.y + line_height),
+                            ImGui::ColorConvertFloat4ToU32(m_log_type_color[log.error_level])
+                        );
+                    }
+
+                    // selection highlight
                     if (m_selection.HasSelection() && row >= sel_start_line && row <= sel_end_line)
                     {
                         float sel_x_start = row_pos.x;
-                        float sel_x_end = row_pos.x + ImGui::CalcTextSize(log.text.c_str()).x;
+                        float sel_x_end = row_pos.x + text_width;
 
                         if (row == sel_start_line && sel_start_char > 0)
                         {
@@ -300,7 +311,6 @@ void Console::OnTickVisible()
                             sel_x_end = row_pos.x + ImGui::CalcTextSize(prefix.c_str()).x;
                         }
 
-                        // only draw selection highlight if there's an actual range
                         if (sel_start_line != sel_end_line || sel_start_char != sel_end_char)
                         {
                             draw_list->AddRectFilled(
@@ -311,10 +321,9 @@ void Console::OnTickVisible()
                         }
                     }
 
-                    // draw text cursor (caret) - blinking vertical line at cursor position
+                    // blinking text cursor at selection endpoint
                     if (m_selection.HasSelection() && cursor_blink_time < 0.5f)
                     {
-                        // draw cursor at the end position (where the user is currently pointing/dragging)
                         if (row == m_selection.end_line)
                         {
                             float cursor_x = row_pos.x;
@@ -324,7 +333,7 @@ void Console::OnTickVisible()
                                 cursor_x += ImGui::CalcTextSize(prefix.c_str()).x;
                             }
 
-                            const float cursor_width = 1.0f * spartan::Window::GetDpiScale();
+                            const float cursor_width = 1.0f * dpi;
                             draw_list->AddRectFilled(
                                 ImVec2(cursor_x, row_pos.y + 2.0f),
                                 ImVec2(cursor_x + cursor_width, row_pos.y + line_height - 2.0f),
@@ -333,7 +342,8 @@ void Console::OnTickVisible()
                         }
                     }
 
-                    // draw text with appropriate color
+                    // indent past gutter, then draw text
+                    ImGui::SetCursorScreenPos(ImVec2(row_pos.x + gutter_width + 2.0f, row_pos.y));
                     ImGui::PushID(row);
                     {
                         if (log.error_level != 0)
@@ -341,11 +351,30 @@ void Console::OnTickVisible()
                             ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
                         }
 
-                        ImGui::TextUnformatted(log.text.c_str());
+                        ImGui::TextUnformatted(display_text);
 
                         if (log.error_level != 0)
                         {
                             ImGui::PopStyleColor(1);
+                        }
+
+                        // repeat count badge for collapsed duplicates
+                        if (log.repeat_count > 1)
+                        {
+                            char badge[16];
+                            snprintf(badge, sizeof(badge), "x%u", log.repeat_count);
+                            ImVec2 badge_size = ImGui::CalcTextSize(badge);
+                            float badge_pad   = 4.0f * dpi;
+                            float badge_x     = row_pos.x + gutter_width + 4.0f + text_width + badge_pad * 2.0f;
+                            float badge_y     = row_pos.y + (line_height - badge_size.y) * 0.5f;
+
+                            draw_list->AddRectFilled(
+                                ImVec2(badge_x - badge_pad, badge_y - 1.0f),
+                                ImVec2(badge_x + badge_size.x + badge_pad, badge_y + badge_size.y + 1.0f),
+                                ImGui::ColorConvertFloat4ToU32(ImVec4(0.4f, 0.4f, 0.4f, 0.5f)),
+                                3.0f * dpi
+                            );
+                            draw_list->AddText(ImVec2(badge_x, badge_y), ImGui::ColorConvertFloat4ToU32(ImGui::GetStyle().Colors[ImGuiCol_Text]), badge);
                         }
 
                         // right-click context menu
@@ -358,7 +387,6 @@ void Console::OnTickVisible()
 
                             if (m_selection.HasSelection() && ImGui::MenuItem("Copy Selection"))
                             {
-                                // copy selection (same logic as ctrl+c)
                                 std::string selected_text;
                                 for (int i = sel_start_line; i <= sel_end_line && i < static_cast<int>(visible_logs.size()); i++)
                                 {
@@ -376,6 +404,48 @@ void Console::OnTickVisible()
                                 }
                                 if (!selected_text.empty())
                                     ImGui::SetClipboardText(selected_text.c_str());
+                            }
+
+                            ImGui::Separator();
+
+                            if (ImGui::MenuItem("Copy All"))
+                            {
+                                std::string all_text;
+                                for (size_t i = 0; i < visible_logs.size(); i++)
+                                {
+                                    all_text += visible_logs[i].second->text;
+                                    if (i + 1 < visible_logs.size())
+                                        all_text += "\n";
+                                }
+                                if (!all_text.empty())
+                                    ImGui::SetClipboardText(all_text.c_str());
+                            }
+
+                            if (ImGui::MenuItem("Save to File"))
+                            {
+                                std::ofstream file("console_output.txt", std::ios::out | std::ios::trunc);
+                                if (file.is_open())
+                                {
+                                    for (size_t i = 0; i < visible_logs.size(); i++)
+                                    {
+                                        file << visible_logs[i].second->text;
+                                        if (i + 1 < visible_logs.size())
+                                            file << "\n";
+                                    }
+                                    file.close();
+                                    SP_LOG_INFO("Console output saved to console_output.txt")
+                                }
+                            }
+
+                            if (ImGui::MenuItem("Select All"))
+                            {
+                                if (!visible_logs.empty())
+                                {
+                                    m_selection.start_line = 0;
+                                    m_selection.start_char = 0;
+                                    m_selection.end_line   = static_cast<int>(visible_logs.size()) - 1;
+                                    m_selection.end_char   = static_cast<int>(visible_logs.back().second->text.size());
+                                }
                             }
 
                             ImGui::Separator();
@@ -454,11 +524,48 @@ void Console::OnTickVisible()
                 }
             }
 
-            // scroll to bottom when new logs arrive
+            // track whether the user has scrolled away from the bottom
+            float scroll_y     = ImGui::GetScrollY();
+            float scroll_max_y = ImGui::GetScrollMaxY();
+            m_user_scrolled_up = (scroll_max_y > 0.0f) && (scroll_y < scroll_max_y - line_height);
+
             if (m_scroll_to_bottom)
             {
                 ImGui::SetScrollHereY(1.0f);
                 m_scroll_to_bottom = false;
+            }
+
+            // floating "scroll to bottom" button (must be inside the child window to receive clicks)
+            if (m_user_scrolled_up)
+            {
+                float btn_size    = 24.0f * dpi;
+                ImVec2 child_min  = ImGui::GetWindowPos();
+                ImVec2 child_size = ImGui::GetWindowSize();
+                float btn_x       = child_min.x + child_size.x - btn_size - 14.0f * dpi;
+                float btn_y       = child_min.y + child_size.y - btn_size - 8.0f * dpi;
+
+                ImGui::SetCursorScreenPos(ImVec2(btn_x, btn_y));
+                ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, btn_size * 0.5f);
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.85f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 0.95f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+                if (ImGui::Button("##scroll_to_bottom", ImVec2(btn_size, btn_size)))
+                {
+                    m_scroll_to_bottom = true;
+                }
+
+                // draw a down-arrow glyph centered on the button
+                ImVec2 btn_center = ImVec2(btn_x + btn_size * 0.5f, btn_y + btn_size * 0.5f);
+                float arrow_half  = 4.0f * dpi;
+                ImGui::GetForegroundDrawList()->AddTriangleFilled(
+                    ImVec2(btn_center.x - arrow_half, btn_center.y - arrow_half * 0.5f),
+                    ImVec2(btn_center.x + arrow_half, btn_center.y - arrow_half * 0.5f),
+                    ImVec2(btn_center.x, btn_center.y + arrow_half * 0.5f),
+                    ImGui::ColorConvertFloat4ToU32(ImGui::GetStyle().Colors[ImGuiCol_Text])
+                );
+
+                ImGui::PopStyleColor(3);
+                ImGui::PopStyleVar();
             }
         }
         ImGui::EndChild();
@@ -467,9 +574,15 @@ void Console::OnTickVisible()
         ImGui::PopStyleVar();
     }
 
-    // input field
+    // input field with command prompt indicator
     ImGui::Separator();
-    ImGui::SetNextItemWidth(-1.0f);
+
+    // draw ">" prompt in accent color
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_accent_1);
+    ImGui::TextUnformatted(">");
+    ImGui::PopStyleColor();
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
 
     ImGuiInputTextFlags input_flags =
         ImGuiInputTextFlags_EnterReturnsTrue |
@@ -496,27 +609,16 @@ void Console::OnTickVisible()
 
     bool input_active = ImGui::IsItemActive();
 
-    if (input_active)
+    if (input_active && m_show_autocomplete && !m_filtered_cvars.empty())
     {
-        if (m_show_autocomplete && !m_filtered_cvars.empty())
+        if (ImGui::IsKeyPressed(ImGuiKey_Tab))
         {
-            if (ImGui::IsKeyPressed(ImGuiKey_DownArrow))
-            {
-                m_autocomplete_selection = (m_autocomplete_selection + 1) % static_cast<int>(m_filtered_cvars.size());
-            }
-            else if (ImGui::IsKeyPressed(ImGuiKey_UpArrow))
-            {
-                m_autocomplete_selection = (m_autocomplete_selection - 1 + static_cast<int>(m_filtered_cvars.size())) % static_cast<int>(m_filtered_cvars.size());
-            }
-            else if (ImGui::IsKeyPressed(ImGuiKey_Tab))
-            {
-                ApplyAutocomplete();
-                reclaim_focus = true;
-            }
-            else if (ImGui::IsKeyPressed(ImGuiKey_Escape))
-            {
-                m_show_autocomplete = false;
-            }
+            ApplyAutocomplete();
+            reclaim_focus = true;
+        }
+        else if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+        {
+            m_show_autocomplete = false;
         }
     }
 
@@ -529,9 +631,10 @@ void Console::OnTickVisible()
     if (m_show_autocomplete && !m_filtered_cvars.empty())
     {
         const float popup_max_height = 250.0f * spartan::Window::GetDpiScale();
-        const float row_height = ImGui::GetTextLineHeightWithSpacing();
-        const float header_height = row_height + ImGui::GetStyle().ItemSpacing.y;
-        const float content_height = std::min(popup_max_height, header_height + row_height * static_cast<float>(m_filtered_cvars.size()));
+        const float row_height      = ImGui::GetTextLineHeightWithSpacing();
+        const float header_height   = row_height + ImGui::GetStyle().ItemSpacing.y;
+        const float padding         = ImGui::GetStyle().WindowPadding.y * 2.0f + ImGui::GetStyle().ItemSpacing.y;
+        const float content_height  = std::min(popup_max_height, header_height + row_height * static_cast<float>(m_filtered_cvars.size()) + padding);
 
         // position popup above the input field
         ImVec2 popup_pos = ImVec2(input_pos.x, input_pos.y - content_height - ImGui::GetStyle().ItemSpacing.y);
@@ -622,10 +725,18 @@ void Console::AddLogPackage(const LogPackage& package)
 {
     std::scoped_lock lock(m_mutex);
 
-    m_logs.push_back(package);
-    if (static_cast<uint32_t>(m_logs.size()) > m_log_max_count)
+    // collapse consecutive identical messages into a single entry with a repeat count
+    if (!m_logs.empty() && m_logs.back().text == package.text && m_logs.back().error_level == package.error_level)
     {
-        m_logs.pop_front();
+        m_logs.back().repeat_count++;
+    }
+    else
+    {
+        m_logs.push_back(package);
+        if (static_cast<uint32_t>(m_logs.size()) > m_log_max_count)
+        {
+            m_logs.pop_front();
+        }
     }
 
     m_log_type_count[package.error_level]++;
@@ -653,16 +764,38 @@ void Console::Clear()
 
 void Console::UpdateAutocomplete()
 {
-    m_filtered_cvars.clear();
-    m_autocomplete_selection = 0;
+    // if the user is arrow-navigating, the input text matches the selected
+    // cvar name -- skip re-filtering so the full suggestion list stays open
+    if (m_autocomplete_navigating && m_show_autocomplete &&
+        m_autocomplete_selection >= 0 && m_autocomplete_selection < static_cast<int>(m_filtered_cvars.size()))
+    {
+        std::string input = m_input_buffer;
+        while (!input.empty() && input.back() == ' ')
+            input.pop_back();
+
+        if (input == m_filtered_cvars[m_autocomplete_selection])
+            return;
+
+        // text no longer matches the selected item -- the user typed something
+        m_autocomplete_navigating = false;
+    }
 
     std::string input = m_input_buffer;
 
+    // strip trailing space (appended by ApplyAutocomplete / Tab)
+    while (!input.empty() && input.back() == ' ')
+        input.pop_back();
+
     if (input.empty())
     {
+        m_filtered_cvars.clear();
+        m_autocomplete_selection = 0;
         m_show_autocomplete = false;
         return;
     }
+
+    m_filtered_cvars.clear();
+    m_autocomplete_selection = 0;
 
     std::string input_lower = input;
     ranges::transform(input_lower, input_lower.begin(), ::tolower);
@@ -704,35 +837,62 @@ int Console::InputCallback(ImGuiInputTextCallbackData* data)
     {
     case ImGuiInputTextFlags_CallbackHistory:
         {
-            const int prev_pos = m_history_position;
-            if (data->EventKey == ImGuiKey_UpArrow && !m_show_autocomplete)
+            if (m_show_autocomplete && !m_filtered_cvars.empty())
             {
-                if (m_history_position == -1)
+                // navigate the autocomplete list and fill the input with the selected name
+                if (data->EventKey == ImGuiKey_UpArrow)
                 {
-                    m_history_position = static_cast<int>(m_command_history.size()) - 1;
+                    m_autocomplete_selection = (m_autocomplete_selection - 1 + static_cast<int>(m_filtered_cvars.size())) % static_cast<int>(m_filtered_cvars.size());
                 }
-                else if (m_history_position > 0)
+                else if (data->EventKey == ImGuiKey_DownArrow)
                 {
-                    m_history_position--;
+                    m_autocomplete_selection = (m_autocomplete_selection + 1) % static_cast<int>(m_filtered_cvars.size());
+                }
+
+                // suppress re-filtering so the full suggestion list stays visible
+                m_autocomplete_navigating = true;
+
+                const ConsoleVariable* cvar = ConsoleRegistry::Get().Find(m_filtered_cvars[m_autocomplete_selection]);
+                if (cvar)
+                {
+                    std::string name = std::string(cvar->m_name) + " ";
+                    data->DeleteChars(0, data->BufTextLen);
+                    data->InsertChars(0, name.c_str());
                 }
             }
-            else if (data->EventKey == ImGuiKey_DownArrow && !m_show_autocomplete)
+            else
             {
-                if (m_history_position != -1)
+                // no autocomplete visible -- navigate command history
+                const int prev_pos = m_history_position;
+                if (data->EventKey == ImGuiKey_UpArrow)
                 {
-                    m_history_position++;
-                    if (std::cmp_greater_equal(m_history_position, m_command_history.size()))
+                    if (m_history_position == -1)
                     {
-                        m_history_position = -1;
+                        m_history_position = static_cast<int>(m_command_history.size()) - 1;
+                    }
+                    else if (m_history_position > 0)
+                    {
+                        m_history_position--;
                     }
                 }
-            }
+                else if (data->EventKey == ImGuiKey_DownArrow)
+                {
+                    if (m_history_position != -1)
+                    {
+                        m_history_position++;
+                        if (std::cmp_greater_equal(m_history_position, m_command_history.size()))
+                        {
+                            m_history_position = -1;
+                        }
+                    }
+                }
 
-            if (prev_pos != m_history_position)
-            {
-                const char* history_str = (m_history_position >= 0) ? m_command_history[m_history_position].c_str() : "";
-                data->DeleteChars(0, data->BufTextLen);
-                data->InsertChars(0, history_str);
+                if (prev_pos != m_history_position)
+                {
+                    const char* history_str = (m_history_position >= 0) ? m_command_history[m_history_position].c_str() : "";
+                    data->DeleteChars(0, data->BufTextLen);
+                    data->InsertChars(0, history_str);
+                }
             }
             break;
         }

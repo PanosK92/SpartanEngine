@@ -40,6 +40,7 @@ struct LogPackage
 {
     std::string text;
     unsigned int error_level = 0;
+    uint32_t repeat_count    = 1;
 };
 
 // Implementation of spartan::ILogger so the engine can log into the editor
@@ -127,8 +128,10 @@ private:
     int                                m_history_position   = -1;
     int                                m_autocomplete_selection = 0;
 
-    bool                               m_show_autocomplete  = false;
-    bool                               m_scroll_to_bottom   = false;
+    bool                               m_show_autocomplete       = false;
+    bool                               m_autocomplete_navigating = false;
+    bool                               m_scroll_to_bottom        = false;
+    bool                               m_user_scrolled_up        = false;
     bool                               m_log_type_visibility[3] = { true, true, true };
 };
 
