@@ -974,7 +974,7 @@ namespace spartan
             entity_states.clear();
         }
 
-        if (Engine::IsFlagSet(EngineMode::Playing))
+        if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
         {
             world_time::tick();
             Game::Tick();

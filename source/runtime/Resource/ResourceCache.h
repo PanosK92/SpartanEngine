@@ -64,6 +64,7 @@ namespace spartan
         Screenshot,
         Gear,
         Play,
+        Pause,
         Profiler,
         ResourceCache,
         RenderDoc,

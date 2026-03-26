@@ -269,13 +269,21 @@ namespace spartan
 
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
-            // simulation
+            // simulation (frozen while paused)
             {
                 const float fixed_time_step   = 1.0f / settings::hz;
                 static float accumulated_time = 0.0f;
 
+                if (Engine::IsFlagSet(EngineMode::Paused))
+                {
+                    accumulated_time = 0.0f;
+                }
+
                 // accumulate delta time
-                accumulated_time += static_cast<float>(Timer::GetDeltaTimeSec());
+                if (!Engine::IsFlagSet(EngineMode::Paused))
+                {
+                    accumulated_time += static_cast<float>(Timer::GetDeltaTimeSec());
+                }
 
                 // perform simulation steps
                 while (accumulated_time >= fixed_time_step)

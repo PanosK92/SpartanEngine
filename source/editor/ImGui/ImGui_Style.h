@@ -181,7 +181,7 @@ namespace ImGui::Style
         style.Colors[ImGuiCol_TitleBg]               = frame;
         style.Colors[ImGuiCol_TitleBgActive]         = frame;
         style.Colors[ImGuiCol_TitleBgCollapsed]      = frame;
-        style.Colors[ImGuiCol_MenuBarBg]             = frame;
+        style.Colors[ImGuiCol_MenuBarBg]             = lerp(bg_color_1, bg_color_2, 0.35f);
         style.Colors[ImGuiCol_Tab]                   = frame;
         style.Colors[ImGuiCol_TabDimmed]             = frame;
         style.Colors[ImGuiCol_TabHovered]            = frame_active;

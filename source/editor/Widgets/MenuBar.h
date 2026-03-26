@@ -35,5 +35,5 @@ public:
     static void ShowWorldLoadDialog();
 
     static float GetPaddingX() { return 14.0f; }
-    static float GetPaddingY() { return 8.0f; }
+    static float GetPaddingY() { return 10.0f; }
 };

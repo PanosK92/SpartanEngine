@@ -26,7 +26,8 @@ namespace spartan
     enum class EngineMode : uint32_t
     {
         EditorVisible = 1 << 0,
-        Playing       = 1 << 1
+        Playing       = 1 << 1,
+        Paused        = 1 << 2
     };
 
     class Engine
