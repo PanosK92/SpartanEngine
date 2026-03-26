@@ -649,17 +649,17 @@ namespace spartan
 
                 m_cb_frame_cpu.view_previous       = m_cb_frame_cpu.view;
                 m_cb_frame_cpu.view                = camera->GetViewMatrix();
-                m_cb_frame_cpu.view_inv            = Matrix::Invert(m_cb_frame_cpu.view);
+                m_cb_frame_cpu.view_inverted       = Matrix::Invert(m_cb_frame_cpu.view);
                 m_cb_frame_cpu.projection_previous = m_cb_frame_cpu.projection;
                 m_cb_frame_cpu.projection          = camera->GetProjectionMatrix();
-                m_cb_frame_cpu.projection_inv      = Matrix::Invert(m_cb_frame_cpu.projection);
+                m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
             }
 
             if (dirty_orthographic_projection)
             { 
                 // near = 0 for ortho (avoids NaN in [3,2] element)
                 Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
-                m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
+                m_cb_frame_cpu.view_projection_orthographic = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
                 dirty_orthographic_projection        = false;
             }
         }
@@ -685,7 +685,7 @@ namespace spartan
 
         m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
         m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-        m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
+        m_cb_frame_cpu.view_projection_inverted = Matrix::Invert(m_cb_frame_cpu.view_projection);
         if (Camera* camera = World::GetCamera())
         {
             m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
@@ -728,17 +728,17 @@ namespace spartan
         {
             // left eye -> primary matrices
             m_cb_frame_cpu.view       = Xr::GetViewMatrix(0);
-            m_cb_frame_cpu.view_inv   = Matrix::Invert(m_cb_frame_cpu.view);
+            m_cb_frame_cpu.view_inverted   = Matrix::Invert(m_cb_frame_cpu.view);
             m_cb_frame_cpu.projection = Xr::GetProjectionMatrix(0);
-            m_cb_frame_cpu.projection_inv = Matrix::Invert(m_cb_frame_cpu.projection);
-            m_cb_frame_cpu.view_projection     = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-            m_cb_frame_cpu.view_projection_inv = Matrix::Invert(m_cb_frame_cpu.view_projection);
+            m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
+            m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
+            m_cb_frame_cpu.view_projection_inverted = Matrix::Invert(m_cb_frame_cpu.view_projection);
 
             // right eye
             m_cb_frame_cpu.view_right                      = Xr::GetViewMatrix(1);
             m_cb_frame_cpu.projection_right                = Xr::GetProjectionMatrix(1);
             m_cb_frame_cpu.view_projection_right           = m_cb_frame_cpu.view_right * m_cb_frame_cpu.projection_right;
-            m_cb_frame_cpu.view_projection_inv_right       = Matrix::Invert(m_cb_frame_cpu.view_projection_right);
+            m_cb_frame_cpu.view_projection_inverted_right   = Matrix::Invert(m_cb_frame_cpu.view_projection_right);
             m_cb_frame_cpu.view_projection_previous_right  = m_cb_frame_cpu.view_projection_right; // todo: track per-eye previous
             m_cb_frame_cpu.is_multiview                    = 1;
         }
@@ -928,16 +928,16 @@ namespace spartan
                 properties[count].color.y               = material->GetProperty(MaterialProperty::ColorG);
                 properties[count].color.z               = material->GetProperty(MaterialProperty::ColorB);
                 properties[count].color.w               = material->GetProperty(MaterialProperty::ColorA);
-                properties[count].tiling_uv.x           = material->GetProperty(MaterialProperty::TextureTilingX);
-                properties[count].tiling_uv.y           = material->GetProperty(MaterialProperty::TextureTilingY);
-                properties[count].offset_uv.x           = material->GetProperty(MaterialProperty::TextureOffsetX);
-                properties[count].offset_uv.y           = material->GetProperty(MaterialProperty::TextureOffsetY);
+                properties[count].tiling.x              = material->GetProperty(MaterialProperty::TextureTilingX);
+                properties[count].tiling.y              = material->GetProperty(MaterialProperty::TextureTilingY);
+                properties[count].offset.x              = material->GetProperty(MaterialProperty::TextureOffsetX);
+                properties[count].offset.y              = material->GetProperty(MaterialProperty::TextureOffsetY);
                 properties[count].invert_uv.x           = material->GetProperty(MaterialProperty::TextureInvertX);
                 properties[count].invert_uv.y           = material->GetProperty(MaterialProperty::TextureInvertY);
-                properties[count].roughness_mul         = material->GetProperty(MaterialProperty::Roughness);
-                properties[count].metallic_mul          = material->GetProperty(MaterialProperty::Metalness);
-                properties[count].normal_mul            = material->GetProperty(MaterialProperty::Normal);
-                properties[count].height_mul            = material->GetProperty(MaterialProperty::Height);
+                properties[count].roughness             = material->GetProperty(MaterialProperty::Roughness);
+                properties[count].metallness            = material->GetProperty(MaterialProperty::Metalness);
+                properties[count].normal                = material->GetProperty(MaterialProperty::Normal);
+                properties[count].height                = material->GetProperty(MaterialProperty::Height);
                 properties[count].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
                 properties[count].anisotropic_rotation  = material->GetProperty(MaterialProperty::AnisotropicRotation);
                 properties[count].clearcoat             = material->GetProperty(MaterialProperty::Clearcoat);
@@ -1029,10 +1029,10 @@ namespace spartan
     
             for (uint32_t i = 0; i < light_component->GetSliceCount(); i++)
             {
-                light_buffer_entry.view_projection[i] = light_component->GetViewProjectionMatrix(i);
+                light_buffer_entry.transform[i] = light_component->GetViewProjectionMatrix(i);
             }
     
-            light_buffer_entry.screen_space_shadows_slice_index  = light_component->GetScreenSpaceShadowsSliceIndex();
+            light_buffer_entry.screen_space_shadow_slice_index   = light_component->GetScreenSpaceShadowsSliceIndex();
             light_buffer_entry.intensity                         = light_component->GetIntensityWatt();
             light_buffer_entry.range                             = light_component->GetRange();
             light_buffer_entry.angle                             = light_component->GetAngle();

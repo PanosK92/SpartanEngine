@@ -22,152 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_COMMON_RESOURCES
 #define SPARTAN_COMMON_RESOURCES
 
-// a constant buffer that updates once per frame
-struct FrameBufferData
-{
-    matrix view;
-    matrix view_inverted;
-    matrix view_previous;
-    matrix projection;
-    matrix projection_inverted;
-    matrix projection_previous;
-    matrix view_projection;
-    matrix view_projection_inverted;
-    matrix view_projection_orthographic;
-    matrix view_projection_unjittered;
-    matrix view_projection_previous;
-    matrix view_projection_previous_unjittered;
-
-    float2 resolution_render;
-    float2 resolution_output;
-
-    float2 taa_jitter_current;
-    float2 taa_jitter_previous;
-    
-    float camera_aperture;
-    float delta_time;
-    uint frame;
-    uint options;
-    
-    float3 camera_position;
-    float camera_near;
-    
-    float3 camera_forward;
-    float camera_far;
-
-    float camera_last_movement_time;
-    float hdr_enabled;
-    float hdr_max_nits;
-    float padding;
-
-    float3 camera_position_previous;
-    float resolution_scale;
-    
-    double time;
-    float camera_fov;
-    float padding2;
-    
-    float3 wind;
-    float gamma;
-
-    float3 camera_right;
-    float camera_exposure;
-
-    // clouds
-    float cloud_coverage;
-    float cloud_shadows;
-    float padding3;
-    float padding4;
-
-    // vr stereo - right eye matrices (left eye uses the primary matrices above)
-    matrix view_right;
-    matrix projection_right;
-    matrix view_projection_right;
-    matrix view_projection_inverted_right;
-    matrix view_projection_previous_right;
-    uint   is_multiview;
-    uint   padding_mv0;
-    uint   padding_mv1;
-    uint   padding_mv2;
-};
-
-// push constant buffer - carries per-draw and per-pass data
-// draw_index indexes into the bindless draw data buffer for transforms and material info
-// material_index and is_transparent are pass-level state for compute shaders
-// values[] carries generic per-pass parameters (3 x float4)
-struct PassBufferData
-{
-    uint   draw_index;
-    uint   material_index;
-    uint   is_transparent;
-    uint   padding;
-    float4 values[3];
-};
-
-// struct which forms the bindless material parameters array
-struct MaterialParameters
-{
-    float4 color;
-
-    float2 tiling;
-    float2 offset;
-    float2 invert_uv;
-
-    float roughness;
-    float metallness;
-    float normal;
-    float height;
-
-    uint flags;
-    float local_width;
-    float padding;
-    float subsurface_scattering;
-    
-    float sheen;
-    float local_height;
-    float world_space_uv;
-    float padding2;
-    
-    float anisotropic;
-    float anisotropic_rotation;
-    float clearcoat;
-    float clearcoat_roughness;
-    
-    bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }
-    bool has_texture_normal()    { return (flags & (1 << 1))  != 0; }
-    bool has_texture_occlusion() { return (flags & (1 << 7))  != 0; }
-    bool has_texture_roughness() { return (flags & (1 << 3))  != 0; }
-    bool has_texture_metalness() { return (flags & (1 << 4))  != 0; }
-    bool has_texture_emissive()  { return (flags & (1 << 6))  != 0; }
-    bool emissive_from_albedo()  { return (flags & (1 << 15)) != 0; }
-};
-
-// struct which forms the bindless light parameters array
-struct LightParameters
-{
-    float4 color;
-    float3 position;
-    float intensity;
-    float3 direction;
-    float range;
-    float angle;
-    uint flags;
-    uint screen_space_shadow_slice_index;
-    float area_width;  // area light width in meters
-    float area_height; // area light height in meters
-    matrix transform[6];
-    float2 atlas_offsets[6];
-    float2 atlas_scales[6];
-    float2 atlas_texel_sizes[6];
-};
-
-struct aabb
-{
-    float3 min;
-    float is_occluder;
-    float3 max;
-    float padding2;
-};
+#include "shared_buffers.h"
 
 // g-buffer
 Texture2D tex_albedo   : register(t0);
@@ -203,13 +58,6 @@ Texture2D<float4> tex_reservoir_prev1 : register(t23);
 Texture2D<float4> tex_reservoir_prev2 : register(t24);
 Texture2D<float4> tex_reservoir_prev3 : register(t25);
 Texture2D<float4> tex_reservoir_prev4 : register(t26);
-
-// per-blas-instance offsets into the global geometry buffer (indexed by InstanceIndex() in rt shaders)
-struct GeometryInfo
-{
-    uint vertex_offset;
-    uint index_offset;
-};
 
 // geometry info buffer for ray tracing (per-blas-instance offsets)
 RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
@@ -248,45 +96,8 @@ globallycoherent RWStructuredBuffer<uint> g_atomic_counter                      
 // integer format textures (vrs, etc)
 RWTexture2D<uint> tex_uav_uint : register(u30);
 
-// gpu-driven indirect drawing
-struct IndirectDrawArgs
-{
-    uint index_count;
-    uint instance_count;
-    uint first_index;
-    int  vertex_offset;
-    uint first_instance;
-};
-
-struct DrawData
-{
-    matrix transform;
-    matrix transform_previous;
-    uint   material_index;
-    uint   is_transparent;
-    uint   aabb_index;
-    uint   padding;
-};
-
 // bindless draw data - per-draw transforms, material indices, etc.
 StructuredBuffer<DrawData> draw_data                     : register(t19, space5);
-
-// vertex pulling - global geometry buffer exposed as a structured buffer
-struct PulledVertex
-{
-    float3 position;
-    float2 uv;
-    float3 normal;
-    float3 tangent;
-};
-
-// vertex pulling - instance buffer exposed as packed uint data (10 bytes per instance)
-struct PackedInstance
-{
-    uint pos_xy;     // position_x (half16) | position_y (half16)
-    uint pos_z_norm; // position_z (half16) | normal_oct (uint16)
-    uint yaw_scale;  // yaw_packed (uint8) | scale_packed (uint8) | padding (uint16)
-};
 
 StructuredBuffer<PulledVertex> geometry_vertices    : register(t20, space8);
 StructuredBuffer<uint> geometry_indices             : register(t22, space9);
@@ -300,38 +111,6 @@ RWStructuredBuffer<DrawData> indirect_draw_data         : register(u32);
 RWStructuredBuffer<IndirectDrawArgs> indirect_draw_args_out : register(u33);
 RWStructuredBuffer<DrawData> indirect_draw_data_out         : register(u34);
 RWStructuredBuffer<uint> indirect_draw_count                : register(u35);
-
-// gpu-driven particle system
-struct Particle
-{
-    float3 position;
-    float  lifetime;     // remaining
-    float3 velocity;
-    float  max_lifetime; // initial
-    float4 color;        // current rgba
-    float  size;         // current
-    float3 padding;
-};
-
-struct EmitterParams
-{
-    float3 position;
-    float  emission_rate;
-    float  lifetime;
-    float  start_speed;
-    float  start_size;
-    float  end_size;
-    float4 start_color;
-    float4 end_color;
-    float  gravity_modifier;
-    float  radius;
-    float  delta_time;
-    uint   max_particles;
-    uint   frame;
-    uint   emitter_count;
-    float  padding1;
-    float  padding2;
-};
 
 RWStructuredBuffer<Particle>      particle_buffer_a : register(u36);
 RWStructuredBuffer<uint>          particle_counter  : register(u38);

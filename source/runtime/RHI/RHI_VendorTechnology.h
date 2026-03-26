@@ -26,10 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definitions.h"
 //==========================
 
+struct FrameBufferData;
+
 namespace spartan
 {
     class Camera;
-    struct Cb_Frame;
+    using Cb_Frame = FrameBufferData;
 
     class RHI_VendorTechnology
     {
