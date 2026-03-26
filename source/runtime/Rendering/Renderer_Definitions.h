@@ -32,48 +32,6 @@ namespace spartan
     const uint32_t renderer_max_instance_count        = 1024;
     const uint32_t renderer_draw_data_buffer_count    = 4; // matches the command list pool size to avoid cpu-gpu memcpy races
 
-    enum class Renderer_Option : uint32_t
-    {
-        Aabb,
-        PickingRay,
-        Grid,
-        TransformHandle,
-        SelectionOutline,
-        Lights,
-        AudioSources,
-        PerformanceMetrics,
-        Physics,
-        Wireframe,
-        Bloom,
-        Fog,
-        ScreenSpaceAmbientOcclusion,
-        ScreenSpaceReflections,
-        RayTracedReflections,
-        MotionBlur,
-        DepthOfField,
-        FilmGrain,
-        Vhs,
-        ChromaticAberration,
-        Anisotropy,
-        Tonemapping,
-        AntiAliasing_Upsampling,
-        Sharpness,
-        Dithering,
-        Hdr,
-        WhitePoint,
-        Gamma,
-        Vsync,
-        VariableRateShading,
-        ResolutionScale,
-        DynamicResolution,
-        OcclusionCulling,
-        AutoExposureAdaptationSpeed,
-        // volumetric clouds
-        CloudCoverage, // 0=clear sky, 1=overcast
-        CloudShadows,  // shadow intensity on ground
-        Max
-    };
-
     enum class Renderer_Tonemapping : uint32_t
     {
         Aces,

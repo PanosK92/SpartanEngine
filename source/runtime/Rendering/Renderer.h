@@ -338,7 +338,6 @@ namespace spartan
         static std::vector<std::tuple<RHI_Texture*, math::Vector3>> m_icons;
         static uint32_t m_resource_index;
         static std::atomic<bool> m_initialized_resources;
-        static std::mutex m_mutex_renderables;
         static bool m_transparents_present;
         static bool m_is_hiz_suppressed;
         static RHI_CommandList* m_cmd_list_present;

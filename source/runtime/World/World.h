@@ -64,6 +64,7 @@ namespace spartan
         static Entity* GetEntityById(uint64_t id);
         static const std::vector<Entity*>& GetEntities();
         static const std::vector<Entity*>& GetEntitiesLights();
+        static const std::vector<Entity*>& GetEntitiesRenderables();
 
         // misc
         static const std::string& GetName();

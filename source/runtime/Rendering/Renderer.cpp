@@ -985,17 +985,11 @@ namespace spartan
     
         auto update_entities = [update_material]()
         {
-            for (Entity* entity : World::GetEntities())
+            for (Entity* entity : World::GetEntitiesRenderables())
             {
-                if (entity->GetActive())
+                if (Material* material = entity->GetComponent<Render>()->GetMaterial())
                 {
-                    if (Render* renderable = entity->GetComponent<Render>())
-                    {
-                        if (Material* material = renderable->GetMaterial())
-                        {
-                            update_material(material);
-                        }
-                    }
+                    update_material(material);
                 }
             }
         };
@@ -1199,39 +1193,34 @@ namespace spartan
 
         // collect draw calls
         {
-            for (Entity* entity : World::GetEntities())
+            for (Entity* entity : World::GetEntitiesRenderables())
             {
-                if (!entity->GetActive())
+                Render* renderable = entity->GetComponent<Render>();
+                Material* material = renderable->GetMaterial();
+                if (!material)
                     continue;
 
-                if (Render* renderable = entity->GetComponent<Render>())
+                if (material->IsTransparent())
                 {
-                    Material* material = renderable->GetMaterial();
-                    if (!material)
-                        continue;
-
-                    if (material->IsTransparent())
-                    {
-                        m_transparents_present = true;
-                    }
-
-                    uint32_t draw_data_index = WriteDrawData(
-                        entity->GetMatrix(),
-                        entity->GetMatrixPrevious(),
-                        material->GetIndex(),
-                        material->IsTransparent() ? 1 : 0
-                    );
-
-                    Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
-                    draw_call.renderable         = renderable;
-                    draw_call.distance_squared   = renderable->GetDistanceSquared();
-                    draw_call.lod_index          = renderable->GetLodIndex();
-                    draw_call.is_occluder        = false;
-                    draw_call.camera_visible     = renderable->IsVisible();
-                    draw_call.instance_index     = 0;
-                    draw_call.instance_count     = renderable->GetInstanceCount();
-                    draw_call.draw_data_index    = draw_data_index;
+                    m_transparents_present = true;
                 }
+
+                uint32_t draw_data_index = WriteDrawData(
+                    entity->GetMatrix(),
+                    entity->GetMatrixPrevious(),
+                    material->GetIndex(),
+                    material->IsTransparent() ? 1 : 0
+                );
+
+                Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
+                draw_call.renderable         = renderable;
+                draw_call.distance_squared   = renderable->GetDistanceSquared();
+                draw_call.lod_index          = renderable->GetLodIndex();
+                draw_call.is_occluder        = false;
+                draw_call.camera_visible     = renderable->IsVisible();
+                draw_call.instance_index     = 0;
+                draw_call.instance_count     = renderable->GetInstanceCount();
+                draw_call.draw_data_index    = draw_data_index;
             }
 
             // sort: opaque before transparent, then material, then distance
@@ -1402,41 +1391,28 @@ namespace spartan
 
             uint32_t blas_built   = 0;
             uint32_t blas_skipped = 0;
-            for (Entity* entity : World::GetEntities())
+            for (Entity* entity : World::GetEntitiesRenderables())
             {
-                if (!entity->GetActive())
-                    continue;
+                Render* renderable = entity->GetComponent<Render>();
 
-                if (Render* renderable = entity->GetComponent<Render>())
+                if (!renderable->HasAccelerationStructure())
                 {
-                    if (!renderable->HasAccelerationStructure())
+                    renderable->BuildAccelerationStructure(cmd_list);
+                    if (renderable->HasAccelerationStructure())
                     {
-                        renderable->BuildAccelerationStructure(cmd_list);
-                        if (renderable->HasAccelerationStructure())
-                        {
-                            blas_built++;
-                        }
-                        else
-                        { 
-                            blas_skipped++;
-                        }
+                        blas_built++;
+                    }
+                    else
+                    { 
+                        blas_skipped++;
                     }
                 }
-            }
 
-            // refit blas for deformable meshes (cloth, skinned, etc.)
-            for (Entity* entity : World::GetEntities())
-            {
-                if (!entity->GetActive())
-                    continue;
-
-                if (Render* renderable = entity->GetComponent<Render>())
+                // refit blas for deformable meshes (cloth, skinned, etc.)
+                if (renderable->NeedsBlasRefit() && renderable->HasAccelerationStructure())
                 {
-                    if (renderable->NeedsBlasRefit() && renderable->HasAccelerationStructure())
-                    {
-                        renderable->RefitAccelerationStructure(cmd_list);
-                        renderable->SetNeedsBlasRefit(false);
-                    }
+                    renderable->RefitAccelerationStructure(cmd_list);
+                    renderable->SetNeedsBlasRefit(false);
                 }
             }
 
@@ -1459,47 +1435,43 @@ namespace spartan
             instances.clear();
             geometry_infos.clear();
 
-            for (Entity* entity : World::GetEntities())
+            for (Entity* entity : World::GetEntitiesRenderables())
             {
-                if (!entity->GetActive())
+                Render* renderable = entity->GetComponent<Render>();
+                Material* material = renderable->GetMaterial();
+                if (!material)
                     continue;
-    
-               if (Render* renderable = entity->GetComponent<Render>())
-                {
-                    if (Material* material = renderable->GetMaterial())
-                    {
-                        uint64_t device_address = renderable->GetAccelerationStructureDeviceAddress();
-                        if (device_address == 0)
-                            continue;
 
-                        RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
-                        RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
-                        if (!vertex_buffer || !index_buffer)
-                            continue;
+                uint64_t device_address = renderable->GetAccelerationStructureDeviceAddress();
+                if (device_address == 0)
+                    continue;
 
-                        RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
+                RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
+                RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
+                if (!vertex_buffer || !index_buffer)
+                    continue;
 
-                        RHI_AccelerationStructureInstance instance           = {};
-                        instance.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
-                        instance.mask                                        = 0xFF;                 // visible to all rays
-                        instance.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
-                        instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
-                        instance.device_address                              = device_address;
+                RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
 
-                        // row-major 3x4 transform (transpose 3x3 because vulkan uses column vectors)
-                        const Matrix& m = renderable->GetEntity()->GetMatrix();
-                        instance.transform[0]  = m.m00; instance.transform[1]  = m.m10; instance.transform[2]  = m.m20; instance.transform[3]  = m.m30;
-                        instance.transform[4]  = m.m01; instance.transform[5]  = m.m11; instance.transform[6]  = m.m21; instance.transform[7]  = m.m31;
-                        instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
+                RHI_AccelerationStructureInstance instance           = {};
+                instance.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
+                instance.mask                                        = 0xFF;                 // visible to all rays
+                instance.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
+                instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
+                instance.device_address                              = device_address;
 
-                        instances.push_back(instance);
+                // row-major 3x4 transform (transpose 3x3 because vulkan uses column vectors)
+                const Matrix& m = renderable->GetEntity()->GetMatrix();
+                instance.transform[0]  = m.m00; instance.transform[1]  = m.m10; instance.transform[2]  = m.m20; instance.transform[3]  = m.m30;
+                instance.transform[4]  = m.m01; instance.transform[5]  = m.m11; instance.transform[6]  = m.m21; instance.transform[7]  = m.m31;
+                instance.transform[8]  = m.m02; instance.transform[9]  = m.m12; instance.transform[10] = m.m22; instance.transform[11] = m.m32;
 
-                        Sb_GeometryInfo geo_info = {};
-                        geo_info.vertex_offset  = renderable->GetVertexOffset(0);
-                        geo_info.index_offset   = renderable->GetIndexOffset(0);
-                        geometry_infos.push_back(geo_info);
-                    }
-                }
+                instances.push_back(instance);
+
+                Sb_GeometryInfo geo_info = {};
+                geo_info.vertex_offset  = renderable->GetVertexOffset(0);
+                geo_info.index_offset   = renderable->GetIndexOffset(0);
+                geometry_infos.push_back(geo_info);
             }
     
             static uint32_t last_instance_count = 0;
@@ -1529,12 +1501,13 @@ namespace spartan
     {
         const uint32_t resolution_atlas = GetRenderTarget(Renderer_RenderTarget::shadow_atlas)->GetWidth();
         const uint32_t min_slice_res    = 256;
+        const uint32_t border           = 8;
 
         // collect slices
         m_shadow_slices.clear();
         for (const auto& entity : World::GetEntitiesLights())
         {
-            Light* light                = entity->GetComponent<Light>();
+            Light* light = entity->GetComponent<Light>();
             light->ClearAtlasRectangles();
             if (light->GetIndex() == numeric_limits<uint32_t>::max())
                 continue;
@@ -1545,99 +1518,67 @@ namespace spartan
         }
         if (m_shadow_slices.empty())
             return;
-    
-        uint32_t border = 8;
-        auto can_fit = [&](uint32_t test_res, uint32_t num_slices) -> bool
+
+        // row-based packing: lays out uniform-sized slices left-to-right, wrapping to the next row.
+        // when rects is null it only tests whether the layout fits; when non-null it writes the rectangles.
+        auto pack_row = [&](uint32_t slice_res, uint32_t num_slices, vector<ShadowSlice>* rects) -> bool
         {
-            if (test_res > resolution_atlas)
+            if (slice_res > resolution_atlas)
                 return false;
-    
-            uint32_t x     = 0;
-            uint32_t y     = 0;
-            uint32_t row_h = 0;
-    
+
+            uint32_t x = 0, y = 0, row_h = 0;
             for (uint32_t i = 0; i < num_slices; ++i)
             {
                 uint32_t left_pad = (x == 0) ? 0 : border;
                 uint32_t placed_x = x + left_pad;
-    
-                if (placed_x + test_res > resolution_atlas)
+
+                if (placed_x + slice_res > resolution_atlas)
                 {
                     y        += row_h + border;
                     x         = 0;
                     row_h     = 0;
                     placed_x  = 0;
                 }
-    
-                if (placed_x + test_res > resolution_atlas)
+
+                if (placed_x + slice_res > resolution_atlas || y + slice_res > resolution_atlas)
                     return false;
-    
-                uint32_t placed_y       = y;
-                if (placed_y + test_res > resolution_atlas)
-                    return false;
-    
-                x     = placed_x + test_res;
-                row_h = max(row_h, test_res);
+
+                if (rects)
+                {
+                    (*rects)[i].res  = slice_res;
+                    (*rects)[i].rect = math::Rectangle(
+                        static_cast<float>(placed_x), static_cast<float>(y),
+                        static_cast<float>(slice_res), static_cast<float>(slice_res));
+                }
+
+                x     = placed_x + slice_res;
+                row_h = max(row_h, slice_res);
             }
-    
             return true;
         };
-    
+
         // binary search for max uniform slice resolution
         uint32_t max_slice_res = resolution_atlas;
-        if (m_shadow_slices.size() > 1)
+        uint32_t num_slices    = static_cast<uint32_t>(m_shadow_slices.size());
+        if (num_slices > 1)
         {
             uint32_t low  = min_slice_res;
             uint32_t high = resolution_atlas;
             while (low < high)
             {
                 uint32_t mid = (low + high + 1) / 2;
-                if (can_fit(mid, static_cast<uint32_t>(m_shadow_slices.size())))
-                {
+                if (pack_row(mid, num_slices, nullptr))
                     low = mid;
-                }
                 else
-                {
                     high = mid - 1;
-                }
             }
             max_slice_res = low;
         }
         max_slice_res = max(max_slice_res, min_slice_res);
-    
-        for (auto& slice : m_shadow_slices)
-        {
-            slice.res = max_slice_res;
-        }
-    
-        // pack slices
-        uint32_t x     = 0;
-        uint32_t y     = 0;
-        uint32_t row_h = 0;
-        for (auto& slice : m_shadow_slices)
-        {
-            uint32_t left_pad = (x == 0) ? 0 : border;
-            uint32_t placed_x = x + left_pad;
-    
-            if (placed_x + slice.res > resolution_atlas)
-            {
-                y        += row_h + border;
-                x         = 0;
-                row_h     = 0;
-                placed_x  = 0;
-            }
-    
-            slice.rect = math::Rectangle(
-                static_cast<float>(placed_x),
-                static_cast<float>(y),
-                static_cast<float>(slice.res),
-                static_cast<float>(slice.res)
-            );
-    
-            x     = placed_x + slice.res;
-            row_h = max(row_h, slice.res);
-        }
-    
+
+        // assign rectangles
+        pack_row(max_slice_res, num_slices, &m_shadow_slices);
+
         for (const auto& slice : m_shadow_slices)
         {
             slice.light->SetAtlasRectangle(slice.slice_index, slice.rect);

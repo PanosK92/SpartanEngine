@@ -1663,41 +1663,43 @@ namespace spartan
         RHI_Texture* tex_in  = rt_frame_output;
         RHI_Texture* tex_out = rt_frame_output_scratch;
         bool any_pass_ran    = false;
-    
-        // depth of field
+
+        // helper: run a compute effect and ping-pong the buffers
+        auto run_effect = [&](const char* name, Renderer_Shader shader, auto setup)
+        {
+            Pass_Compute(cmd_list, name, shader, tex_in, tex_out, setup);
+            swap(tex_in, tex_out);
+            any_pass_ran = true;
+        };
+
+        // pre-tonemapping effects
         if (cvar_depth_of_field.GetValueAs<bool>())
         {
-            Pass_Compute(cmd_list, "depth_of_field", Renderer_Shader::depth_of_field_c, tex_in, tex_out, [&]()
+            run_effect("depth_of_field", Renderer_Shader::depth_of_field_c, [&]()
             {
                 SetCommonTextures(cmd_list, eye_layer);
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetAperture(), 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
-            swap(tex_in, tex_out);
-            any_pass_ran = true;
         }
-    
-        // motion blur
+
         if (cvar_motion_blur.GetValueAs<bool>())
         {
-            Pass_Compute(cmd_list, "motion_blur", Renderer_Shader::motion_blur_c, tex_in, tex_out, [&]()
+            run_effect("motion_blur", Renderer_Shader::motion_blur_c, [&]()
             {
                 SetCommonTextures(cmd_list, eye_layer);
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetShutterSpeed(), 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
-            swap(tex_in, tex_out);
-            any_pass_ran = true;
         }
-    
-        // bloom
+
         if (cvar_bloom.GetValueAs<bool>())
         {
             Pass_Bloom(cmd_list, tex_in, tex_out);
             swap(tex_in, tex_out);
             any_pass_ran = true;
         }
-    
+
         // auto-exposure
         if (cvar_auto_exposure_adaptation_speed.GetValue() > 0.0f)
         {
@@ -1709,75 +1711,66 @@ namespace spartan
                     tex_exposure = tex_out;
                     cmd_list->Blit(tex_in, tex_exposure, false);
                 }
-                
+
                 Pass_Downscale(cmd_list, tex_exposure, Renderer_DownsampleFilter::Average);
             }
-            
+
             Pass_AutoExposure(cmd_list, tex_exposure);
         }
-    
+
         // tone-mapping & gamma correction
         Pass_Output(cmd_list, tex_in, tex_out);
         swap(tex_in, tex_out);
-    
-        // dithering
+
+        // post-tonemapping effects
+        bool is_fsr = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>() == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
+
         if (cvar_dithering.GetValueAs<bool>())
         {
-            Pass_Compute(cmd_list, "dithering", Renderer_Shader::dithering_c, tex_in, tex_out, [&]()
+            run_effect("dithering", Renderer_Shader::dithering_c, [&]()
             {
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetStandardTexture(Renderer_StandardTexture::Noise_blue));
             });
-            swap(tex_in, tex_out);
         }
-    
-        // sharpening
-        Renderer_AntiAliasing_Upsampling aa_upsampling = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
-        bool is_fsr                                    = aa_upsampling == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
+
         if (cvar_sharpness.GetValueAs<bool>() && !is_fsr)
         {
-            Pass_Compute(cmd_list, "sharpening", Renderer_Shader::ffx_cas_c, tex_in, tex_out, [&]()
+            run_effect("sharpening", Renderer_Shader::ffx_cas_c, [&]()
             {
                 m_pcb_pass_cpu.set_f3_value(cvar_sharpness.GetValue(), 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
-            swap(tex_in, tex_out);
         }
-    
-        // film grain
+
         if (cvar_film_grain.GetValueAs<bool>())
         {
-            Pass_Compute(cmd_list, "film_grain", Renderer_Shader::film_grain_c, tex_in, tex_out, [&]()
+            run_effect("film_grain", Renderer_Shader::film_grain_c, [&]()
             {
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetIso(), 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
-            swap(tex_in, tex_out);
         }
-    
-        // chromatic aberration
+
         if (cvar_chromatic_aberration.GetValueAs<bool>())
         {
-            Pass_Compute(cmd_list, "chromatic_aberration", Renderer_Shader::chromatic_aberration_c, tex_in, tex_out, [&]()
+            run_effect("chromatic_aberration", Renderer_Shader::chromatic_aberration_c, [&]()
             {
                 m_pcb_pass_cpu.set_f3_value(World::GetCamera()->GetAperture(), 0.0f, 0.0f);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
             });
-            swap(tex_in, tex_out);
         }
-    
-        // vhs
+
         if (cvar_vhs.GetValueAs<bool>())
         {
-            Pass_Compute(cmd_list, "vhs", Renderer_Shader::vhs_c, tex_in, tex_out);
-            swap(tex_in, tex_out);
+            run_effect("vhs", Renderer_Shader::vhs_c, nullptr);
         }
-    
+
         // final output to rt_frame_output
         if (tex_in != rt_frame_output)
         {
             cmd_list->Copy(tex_in, rt_frame_output, false);
         }
-    
+
         // editor
         Pass_Grid(cmd_list, rt_frame_output);
         Pass_Lines(cmd_list, rt_frame_output);
