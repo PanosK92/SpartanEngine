@@ -749,11 +749,11 @@ namespace spartan
         }
         else if (m_light_type == LightType::Area)
         {
-            // area light bounding box extends from the light rectangle to its range
+            // area lights emit in a hemisphere so the influence volume fans out with distance,
+            // use the range as the lateral spread at the far end to avoid premature frustum culling
             const float half_width  = m_area_width * 0.5f;
             const float half_height = m_area_height * 0.5f;
 
-            // corners of the area light rectangle
             const Vector3 right   = GetEntity()->GetRight();
             const Vector3 up      = GetEntity()->GetUp();
             const Vector3 forward = GetEntity()->GetForward();
@@ -767,17 +767,18 @@ namespace spartan
                 max = Vector3::Max(max, p);
             };
 
-            // expand by corners of the light rectangle
+            // near end: the area light rectangle itself
             expand(position + right * half_width + up * half_height);
             expand(position - right * half_width + up * half_height);
             expand(position + right * half_width - up * half_height);
             expand(position - right * half_width - up * half_height);
 
-            // expand by the range in the forward direction
-            expand(position + forward * m_range + right * half_width + up * half_height);
-            expand(position + forward * m_range - right * half_width + up * half_height);
-            expand(position + forward * m_range + right * half_width - up * half_height);
-            expand(position + forward * m_range - right * half_width - up * half_height);
+            // far end: expand laterally by range to cover the hemispheric spread
+            const Vector3 far_center = position + forward * m_range;
+            expand(far_center + right * m_range + up * m_range);
+            expand(far_center - right * m_range + up * m_range);
+            expand(far_center + right * m_range - up * m_range);
+            expand(far_center - right * m_range - up * m_range);
 
             m_bounding_box = math::BoundingBox(min, max);
         }
