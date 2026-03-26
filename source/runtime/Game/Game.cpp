@@ -53,9 +53,9 @@ namespace spartan
         namespace forest        { void create(); void tick(); }
         namespace liminal_space { void create(); void tick(); }
         namespace sponza        { void create(); }
-        namespace cornell       { void create(); }
         namespace san_miguel    { void create(); }
         namespace basic         { void create(); }
+        namespace empty         { void create(); }
     }
     //=========================================================
 
@@ -91,9 +91,9 @@ namespace spartan
             worlds::forest::create,
             worlds::liminal_space::create,
             worlds::sponza::create,
-            worlds::cornell::create,
             worlds::san_miguel::create,
             worlds::basic::create,
+            worlds::empty::create,
         };
 
         constexpr tick_fn world_tick[] =
@@ -454,56 +454,6 @@ namespace spartan
                         if (Material* material = stems->GetComponent<Render>()->GetMaterial())
                         {
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
-                        }
-                    }
-                }
-            }
-        }
-        //====================================================================================
-
-        //= CORNELL ==========================================================================
-        namespace cornell
-        {
-            void create()
-            {
-                // the obj is 1 unit (~1 meter), scale it up to room size
-                const float room_scale = 2.0f;
-
-                entities::camera(false, Vector3(0.0f, 1.2f, -8.0f), Vector3(0.0f, 0.0f, 0.0f));
-                entities::sun(LightPreset::dusk, true);
-                entities::floor();
-
-                // bring the sun below the horizon so the scene is night-lit by the emissive panel
-                default_light_directional->SetRotation(Quaternion::FromEulerAngles(-30.0f, 0.0f, 0.0f));
-
-                if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/CornellBox/CornellBox-Original.obj"))
-                {
-                    Entity* entity = mesh->GetRootEntity();
-                    entity->SetObjectName("cornell_box");
-                    entity->SetPosition(Vector3(0.0f, 0.2f, 0.0f));
-                    entity->SetScale(room_scale);
-
-                    // make the ceiling panel emissive so it lights the scene via path tracing
-                    if (Entity* light_entity = entity->GetDescendantByName("light"))
-                    {
-                        if (Render* renderable = light_entity->GetComponent<Render>())
-                        {
-                            if (Material* material = renderable->GetMaterial())
-                            {
-                                material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
-                            }
-                        }
-                    }
-
-                    // physics for all meshes
-                    vector<Entity*> entities;
-                    entity->GetDescendants(&entities);
-                    for (Entity* entity_it : entities)
-                    {
-                        if (entity_it->GetComponent<Render>() != nullptr)
-                        {
-                            Physics* physics_body = entity_it->AddComponent<Physics>();
-                            physics_body->SetBodyType(BodyType::Mesh);
                         }
                     }
                 }
@@ -1527,10 +1477,64 @@ namespace spartan
         {
             void create()
             {
+                entities::camera(false, Vector3(0.0f, 1.2f, -8.0f), Vector3(0.0f, 0.0f, 0.0f));
+                entities::floor();
+                entities::sun(LightPreset::dusk, true);
+
+                // material test sphere
+                entities::material_ball(Vector3(-3.0f, 0.0f, 0.0f));
+
+                // cornell box
+                {
+                    const float room_scale = 2.0f;
+
+                    // bring the sun below the horizon so the scene is night-lit by the emissive panel
+                    default_light_directional->SetRotation(Quaternion::FromEulerAngles(-30.0f, 0.0f, 0.0f));
+
+                    if (shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project/models/CornellBox/CornellBox-Original.obj"))
+                    {
+                        Entity* entity = mesh->GetRootEntity();
+                        entity->SetObjectName("cornell_box");
+                        entity->SetPosition(Vector3(3.0f, 0.2f, 0.0f));
+                        entity->SetScale(room_scale);
+
+                        // make the ceiling panel emissive so it lights the scene via path tracing
+                        if (Entity* light_entity = entity->GetDescendantByName("light"))
+                        {
+                            if (Render* renderable = light_entity->GetComponent<Render>())
+                            {
+                                if (Material* material = renderable->GetMaterial())
+                                {
+                                    material->SetProperty(MaterialProperty::EmissiveFromAlbedo, 1.0f);
+                                }
+                            }
+                        }
+
+                        // physics for all meshes
+                        vector<Entity*> entities;
+                        entity->GetDescendants(&entities);
+                        for (Entity* entity_it : entities)
+                        {
+                            if (entity_it->GetComponent<Render>() != nullptr)
+                            {
+                                Physics* physics_body = entity_it->AddComponent<Physics>();
+                                physics_body->SetBodyType(BodyType::Mesh);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //====================================================================================
+
+        //= EMPTY ============================================================================
+        namespace empty
+        {
+            void create()
+            {
                 entities::camera(false);
                 entities::floor();
                 entities::sun(LightPreset::dusk, true);
-                entities::material_ball(Vector3::Zero);
             }
         }
         //====================================================================================

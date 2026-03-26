@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ====================
 #include "pch.h"
 #include "MenuBar.h"
 #include "Profiler.h"
@@ -43,7 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/ThreadPool.h"
 #include "../GeneralWindows.h"
 #include "../ImGui/ImGui_Style.h"
-//==============================
+//===============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -296,10 +296,9 @@ namespace
 
             bool is_active = get_visibility(widget);
 
-            // transparent button background -- active state shown via underline instead
-            ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,  ImVec4(1, 1, 1, 0.08f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,   ImVec4(1, 1, 1, 0.15f));
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImGui::GetStyle().Colors[ImGuiCol_Button]);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,  ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered]);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,   ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
 
             if (cursor_pos_x > 0.0f)
             {
@@ -702,20 +701,12 @@ void MenuBar::Tick()
             }
             ImGui::SetCursorPosY(menu_y);
             ImGui::MenuItem(title, nullptr, false, false);
-            ImGui::SameLine(0, padding_x * 1.5f);
+            ImGui::SameLine(0, padding_x * 2.0f);
 
-            // vertical separator between version and menus
-            {
-                float sep_x  = ImGui::GetCursorScreenPos().x;
-                float inset  = 8.0f * dpi;
-                float bar_top = ImGui::GetMainViewport()->Pos.y;
-                ImGui::GetWindowDrawList()->AddLine(
-                    ImVec2(sep_x, bar_top + inset),
-                    ImVec2(sep_x, bar_top + menubar_height - inset),
-                    IM_COL32(255, 255, 255, 30), 1.0f
-                );
-                ImGui::SameLine(0, padding_x * 1.5f);
-            }
+            // separator between version and menus
+            ImGui::SetCursorPosY(menu_y);
+            ImGui::TextDisabled("|");
+            ImGui::SameLine(0, padding_x * 2.0f);
 
             // menus
             ImGui::SetCursorPosY(menu_y);

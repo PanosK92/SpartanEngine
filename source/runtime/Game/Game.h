@@ -29,9 +29,9 @@ namespace spartan
         Forest,
         LiminalSpace,
         Sponza,
-        Cornell,
         SanMiguel,
         Basic,
+        Empty,
         Max
     };
 

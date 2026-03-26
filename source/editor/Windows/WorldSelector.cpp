@@ -55,9 +55,9 @@ namespace
         { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", 5600 },
         { "Liminal Space",     "Shifts your frequency to a nearby reality",                          "Prototype", "Light",          2100 },
         { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      2600 },
-        { "Cornell Box",       "Classic ray tracing test scene",                                     "Complete" , "Light",          2100 },
         { "San Miguel",        "Detailed courtyard scene with complex geometry and lighting",        "Complete" , "Demanding",      2600 },
-        { "Basic",             "Light, camera, floor",                                               "Complete" , "Light",          2100 }
+        { "Basic",             "Cornell box, material ball, light, camera, floor",                   "Complete" , "Light",          2100 },
+        { "Empty",             "Light, camera, floor",                                               "Complete" , "Light",          2100 }
     };
     constexpr int default_world_count = sizeof(default_worlds) / sizeof(default_worlds[0]);
 

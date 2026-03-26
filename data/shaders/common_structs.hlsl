@@ -290,7 +290,7 @@ struct Light
         
         if (is_directional())
         {
-            attenuation = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
+            attenuation = 1.0f;
         }
         else if (is_point())
         {
@@ -314,8 +314,7 @@ struct Light
 
         if (is_directional())
         {
-            // keep sun-elevation atten for consistency, as it's global (no dist)
-            atten = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
+            atten = 1.0f;
         }
         else if (is_point() || is_spot() || is_area())
         {

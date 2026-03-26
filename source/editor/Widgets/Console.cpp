@@ -91,8 +91,11 @@ void Console::OnTickVisible()
     ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
     ImGui::SameLine();
 
-    const float label_width = 37.0f * dpi;
-    m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
+    if (ImGui::InputTextWithHint("##console_filter", "Search...", m_log_filter.InputBuf, IM_ARRAYSIZE(m_log_filter.InputBuf)))
+    {
+        m_log_filter.Build();
+    }
     ImGui::Separator();
 
     // calculate split sizes - no longer reserving space for autocomplete (it's a popup now)
@@ -195,8 +198,8 @@ void Console::OnTickVisible()
                 // normalize selection (start should be before end)
                 int sel_start_line = m_selection.start_line;
                 int sel_start_char = m_selection.start_char;
-                int sel_end_line = m_selection.end_line;
-                int sel_end_char = m_selection.end_char;
+                int sel_end_line   = m_selection.end_line;
+                int sel_end_char   = m_selection.end_char;
 
                 if (sel_start_line > sel_end_line || (sel_start_line == sel_end_line && sel_start_char > sel_end_char))
                 {
@@ -595,7 +598,7 @@ void Console::OnTickVisible()
     ImVec2 input_pos = ImGui::GetCursorScreenPos();
     float input_width = ImGui::GetContentRegionAvail().x;
 
-    if (ImGui::InputText("##console_input", m_input_buffer, IM_ARRAYSIZE(m_input_buffer), input_flags, [](ImGuiInputTextCallbackData* data) -> int
+    if (ImGui::InputTextWithHint("##console_input", "Enter command...", m_input_buffer, IM_ARRAYSIZE(m_input_buffer), input_flags, [](ImGuiInputTextCallbackData* data) -> int
     {
         Console* console = static_cast<Console*>(data->UserData);
         return console->InputCallback(data);

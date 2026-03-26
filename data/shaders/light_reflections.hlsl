@@ -121,7 +121,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float attenuation = 1.0f;
         if (is_directional)
         {
-            attenuation = saturate(dot(-light_forward, float3(0.0f, 1.0f, 0.0f)));
+            attenuation = 1.0f;
         }
         else if (is_point || is_spot)
         {
