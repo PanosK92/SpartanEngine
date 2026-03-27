@@ -376,6 +376,7 @@ namespace spartan
                 // base setup
                 entities::camera(false, Vector3(19.2692f, 2.65f, 0.1677f), Vector3(-18.0f, -90.0f, 0.0f));
                 entities::sun(LightPreset::dusk, true);
+                default_light_directional->SetRotation(Quaternion::FromEulerAngles(75.0f, 180.0f, 180.0f));
                 entities::music("project/music/jake_chudnow_olive.wav");
                 entities::floor();
                 World::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
