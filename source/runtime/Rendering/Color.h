@@ -47,6 +47,8 @@ namespace spartan
         float b = 0.0f;
         float a = 0.0f;
 
+        float GetLuminance() const;
+
         const float* Data() const { return &r; }
 
         // standard
