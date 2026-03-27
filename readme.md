@@ -51,9 +51,9 @@ The most demanding world: **256 million** procedurally generated grass blades (i
 
 ### More Worlds
 
-| Sponza 4K | Cornell Box |
+| Sponza 4K | Basic |
 |:-:|:-:|
-| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>Classic Dubrovnik building—ideal for path tracing | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_cornell.jpg"/><br>Classic ray tracing test scene |
+| <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_sponza.png"/><br>Classic Dubrovnik building—ideal for path tracing | <img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/.github/images/world_cornell.jpg"/><br>Contains some render test objects |
 
 | San Miguel | Liminal Space |
 |:-:|:-:|

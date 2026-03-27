@@ -39,27 +39,142 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==========================================
 
 // vehicle dynamics simulation
+//
 // - runs within the physx 200 hz fixed-timestep loop
+//   all vehicle physics run inside the physx fixed-step update at 200 hz rather
+//   than at the variable render framerate. this keeps the simulation deterministic
+//   and stable regardless of fps, and avoids the jitter that comes from coupling
+//   stiff spring-damper systems to a variable timestep.
+//
 // - pacejka magic formula tires with MF 5.2 combined slip
+//   the pacejka model describes how tire grip varies with slip using empirical
+//   curve-fit coefficients (B, C, D, E). MF 5.2 combined slip means lateral and
+//   longitudinal forces share a friction circle via vector weighting, so braking
+//   mid-corner correctly reduces cornering grip and vice versa.
+//
 // - 3-zone surface + core tire thermal model
+//   each tire tracks three surface zones (inside, middle, outside) plus a core
+//   temperature. heat flows from friction work into the surface, then conducts
+//   into the core. grip peaks at an optimal temperature and falls off on either
+//   side, so driving style and camber affect grip through temperature.
+//
 // - tire pressure, wear, relaxation length, per-axle dimensions
+//   tire pressure affects cornering stiffness and heat generation — under-inflated
+//   tires flex more, build heat faster, and have lower peak grip. wear accumulates
+//   from slip and temperature, gradually reducing grip. relaxation length models
+//   the lag between a change in slip and the force response, preventing instant
+//   force spikes. front and rear axles can have different tire widths and radii.
+//
 // - load-sensitive grip with nonlinear Fz scaling
+//   real tires produce diminishing grip returns as vertical load increases — a tire
+//   at twice the load does not have twice the grip. this is modeled by scaling the
+//   pacejka output with a power-law function of load, so heavily loaded tires
+//   (outside wheels in a corner) are less efficient than lightly loaded ones.
+//
 // - spring-damper suspension with front/rear damping ratios
+//   each wheel has a spring and damper defined by natural frequency and damping
+//   ratio rather than raw stiffness values, making it easier to tune. front and
+//   rear axles have independent frequencies and ratios, and bump/rebound damping
+//   are split so compression can be softer than extension for better compliance.
+//
 // - anti-roll bars (displacement-based), progressive bump stops
+//   anti-roll bars connect left and right wheels on each axle and resist body roll
+//   by transferring load based on the difference in suspension compression. bump
+//   stops engage near full compression with a steep progressive stiffness curve,
+//   preventing metal-to-metal contact and limiting suspension travel.
+//
 // - lateral weight transfer: geometric + elastic split via roll center heights
+//   cornering forces shift load from inner to outer wheels. this transfer is split
+//   into a geometric component that acts instantly through the roll center, and an
+//   elastic component that passes through the springs and anti-roll bars. the ratio
+//   between front and rear transfer is governed by roll stiffness distribution,
+//   which directly controls the understeer/oversteer balance.
+//
 // - longitudinal weight transfer from body acceleration
+//   under acceleration, load shifts rearward onto the driven wheels; under braking,
+//   it shifts forward. the amount depends on the center of mass height and the
+//   wheelbase length. this changes tire grip per axle dynamically — rear tires gain
+//   grip under throttle while front tires gain grip under braking.
+//
 // - ackermann steering with bump steer and toe
+//   ackermann geometry turns the inner front wheel more than the outer so both
+//   follow concentric arcs, reducing scrub at low speed. bump steer adds small
+//   toe changes as the suspension compresses, simulating real steering geometry
+//   side effects. static toe settings (toe-in or toe-out) affect straight-line
+//   stability and turn-in response.
+//
 // - self-aligning torque via pneumatic trail
+//   the tire contact patch generates a restoring yaw moment because the resultant
+//   lateral force acts behind the steering axis by a distance called pneumatic
+//   trail. this creates a natural centering feel that fades as slip angle increases
+//   and the contact patch distorts, giving progressive feedback through the
+//   steering about how close the front tires are to their grip limit.
+//
 // - engine torque curve, turbo/wastegate, rev limiter
+//   engine output follows a torque-vs-rpm curve with a defined peak. turbo adds
+//   boost pressure that spools up with rpm and is capped by a wastegate threshold.
+//   the rev limiter cuts fuel delivery above max rpm, and engine inertia and
+//   internal friction affect how quickly the engine responds to throttle changes.
+//
 // - 7-speed auto/manual gearbox with rev-match downshifts
+//   the gearbox supports both automatic and manual shifting. automatic mode uses
+//   speed and rpm thresholds with hysteresis to decide shifts, and blocks upshifts
+//   during wheelspin. downshifts trigger a throttle blip to match engine rpm to
+//   wheel speed, reducing driveline shock and rear-end instability on corner entry.
+//
 // - driveshaft torsional compliance
+//   the driveshaft is modeled as a torsional spring rather than a rigid link. this
+//   introduces a small delay between engine torque changes and wheel response,
+//   smoothing out sudden throttle inputs and preventing unrealistic instant torque
+//   delivery that would cause abrupt weight shifts.
+//
 // - open/locked/lsd differentials, rwd/fwd/awd layouts
+//   open diffs split torque equally regardless of wheel speed. locked diffs force
+//   both wheels to the same speed, maximizing traction but causing understeer. lsd
+//   (limited-slip) diffs transfer torque toward the slower wheel based on preload
+//   and lock ratios for acceleration and deceleration independently. the drivetrain
+//   layout determines which axles receive power — rwd, fwd, or awd with a
+//   configurable front/rear torque split.
+//
 // - brake thermal model with front/rear bias and abs
+//   brakes generate heat proportional to rotational speed and applied torque, and
+//   cool via convection from airflow. brake efficiency drops as temperature exceeds
+//   an optimal range, simulating brake fade on long descents or repeated hard stops.
+//   front/rear bias controls the torque distribution. abs pulses brake pressure on
+//   individual wheels when slip ratio exceeds a threshold, preventing lockup.
+//
 // - traction control with slip-based power reduction
+//   traction control monitors driven wheel slip ratios and progressively reduces
+//   engine torque when they exceed a threshold. the response rate controls how
+//   aggressively it intervenes — too slow and the wheels spin, too fast and it
+//   feels intrusive. it only acts on engine output, not brakes.
+//
 // - aerodynamics: drag, downforce, ground effect, drs, pitch/yaw sensitivity
+//   drag opposes motion proportional to speed squared and frontal area. downforce
+//   pushes the car into the ground, increasing tire load and grip at speed, applied
+//   separately at front and rear aero centers. ground effect increases downforce as
+//   ride height decreases. drs reduces rear downforce for higher straight-line
+//   speed. yaw angle increases drag and reduces downforce, and pitch angle shifts
+//   the front/rear aero balance.
+//
 // - semi-implicit euler wheel spin integration
+//   wheel angular velocity is integrated using semi-implicit euler — the new
+//   velocity is computed from net torque first, then used to advance the rotation
+//   angle. this is more stable than explicit euler for stiff systems like brake
+//   lockup and clutch engagement where forces change rapidly within a single step.
+//
 // - convex hull sweep for ground contact
+//   each wheel casts a convex shape sweep downward from the suspension top mount
+//   to detect ground contact, rather than using a simple raycast. this handles
+//   curbs, bumps, and uneven terrain more accurately because the contact point
+//   and normal reflect the actual wheel shape interacting with the surface geometry.
+//
 // - multiple surface types (asphalt, concrete, wet, gravel, grass, ice)
+//   each surface type has a friction multiplier that scales the tire's peak grip.
+//   the wheel's ground contact query identifies which surface material it is on,
+//   allowing grip to change dynamically as the car moves across different terrain
+//   — for example, dropping two wheels onto grass mid-corner reduces grip on that
+//   side and induces a spin if the driver doesn't correct.
 
 namespace car
 {
@@ -256,6 +371,7 @@ namespace car
         // damping
         float linear_damping;
         float angular_damping;
+        float yaw_damping;
 
         // abs
         bool  abs_enabled;
@@ -357,7 +473,7 @@ namespace car
 
             load_B_scale_min    = 0.5f;
             pneumatic_trail_max  = 0.04f;
-            pneumatic_trail_peak = 0.08f;
+            pneumatic_trail_peak = 0.14f;
 
             // tire grip
             tire_friction       = 1.5f;
@@ -479,6 +595,7 @@ namespace car
             // damping
             linear_damping  = 0.001f;
             angular_damping = 0.05f;
+            yaw_damping     = 3500.0f;
 
             // abs
             abs_enabled         = false;
@@ -580,7 +697,7 @@ namespace car
 
             load_B_scale_min     = 0.5f;
             pneumatic_trail_max  = 0.04f;
-            pneumatic_trail_peak = 0.08f;
+            pneumatic_trail_peak = 0.14f;
 
             // tire grip - cup 2 r compound, slightly grippier
             tire_friction       = 1.6f;
@@ -702,6 +819,7 @@ namespace car
             // damping
             linear_damping  = 0.001f;
             angular_damping = 0.05f;
+            yaw_damping     = 4000.0f;
 
             // abs
             abs_enabled         = false;
@@ -802,7 +920,7 @@ namespace car
 
             load_B_scale_min     = 0.5f;
             pneumatic_trail_max  = 0.04f;
-            pneumatic_trail_peak = 0.09f;
+            pneumatic_trail_peak = 0.14f;
 
             // tire grip - 235/45r17 yokohama advan oem
             tire_friction       = 1.3f;
@@ -924,6 +1042,7 @@ namespace car
             // damping
             linear_damping  = 0.001f;
             angular_damping = 0.08f;
+            yaw_damping     = 3000.0f;
 
             // abs
             abs_enabled         = false;
@@ -1330,7 +1449,7 @@ namespace car
         // reverse to first
         if (current_gear == 0)
         {
-            if ((throttle > 0.1f && forward_speed > -2.0f) || forward_speed > 0.5f)
+            if (throttle > 0.1f || forward_speed > 0.5f)
             {
                 current_gear = 2;
                 is_shifting = true;
@@ -2167,12 +2286,12 @@ namespace car
                 {
                     float s_above = w.thermal.surface[z] - tuning::spec.tire_ambient_temp;
                     if (s_above > 0.0f)
-                        w.thermal.surface[z] -= tuning::spec.tire_cooling_rate * 3.0f * PxMin(s_above / 30.0f, 1.0f) * dt;
+                        w.thermal.surface[z] -= tuning::spec.tire_cooling_rate * 3.0f * s_above / 30.0f * dt;
                     w.thermal.surface[z] = PxMax(w.thermal.surface[z], tuning::spec.tire_ambient_temp);
                 }
                 float c_above = w.thermal.core - tuning::spec.tire_ambient_temp;
                 if (c_above > 0.0f)
-                    w.thermal.core -= tuning::spec.tire_cooling_rate * 1.0f * PxMin(c_above / 30.0f, 1.0f) * dt;
+                    w.thermal.core -= tuning::spec.tire_cooling_rate * 1.0f * c_above / 30.0f * dt;
                 w.thermal.core = PxMax(w.thermal.core, tuning::spec.tire_ambient_temp);
                 w.temperature = w.thermal.avg_surface();
                 w.rotation += w.angular_velocity * dt;
@@ -2314,7 +2433,8 @@ namespace car
             float force_magnitude = sqrtf(long_f * long_f + lat_f * lat_f);
             float normalized_force = force_magnitude / tuning::spec.load_reference;
             float slip_intensity_val = fabsf(w.slip_angle) + fabsf(w.slip_ratio);
-            float friction_work = normalized_force * (slip_intensity_val * pacejka_weight + 0.01f * (1.0f - pacejka_weight));
+            float speed_heat_scale = PxClamp(ground_speed / 2.0f, 0.0f, 1.0f);
+            float friction_work = normalized_force * slip_intensity_val * pacejka_weight * speed_heat_scale;
             float base_heat = friction_work * tuning::spec.tire_heat_from_slip * pressure_heat_mult + rolling_heat;
 
             // camber determines heat distribution across zones:
@@ -2333,7 +2453,7 @@ namespace car
             {
                 float s = w.thermal.surface[z];
                 float s_delta = s - tuning::spec.tire_ambient_temp;
-                float s_cooling = (s_delta > 0.0f) ? cooling_air * PxMin(s_delta / 30.0f, 1.0f) : 0.0f;
+                float s_cooling = (s_delta > 0.0f) ? cooling_air * s_delta / 30.0f : 0.0f;
                 float core_exchange = core_rate * (w.thermal.core - s);
                 w.thermal.surface[z] += (zone_heat[z] * surface_resp - s_cooling + core_exchange) * dt;
                 w.thermal.surface[z] = PxClamp(w.thermal.surface[z], tuning::spec.tire_min_temp, tuning::spec.tire_max_temp);
@@ -2342,7 +2462,7 @@ namespace car
             // core absorbs heat from surface average, cools slowly
             float avg_surf = w.thermal.avg_surface();
             float core_delta = w.thermal.core - tuning::spec.tire_ambient_temp;
-            float core_cooling = (core_delta > 0.0f) ? tuning::spec.tire_cooling_rate * 0.3f * PxMin(core_delta / 30.0f, 1.0f) : 0.0f;
+            float core_cooling = (core_delta > 0.0f) ? tuning::spec.tire_cooling_rate * 0.3f * core_delta / 30.0f : 0.0f;
             w.thermal.core += (core_rate * (avg_surf - w.thermal.core) - core_cooling) * dt;
             w.thermal.core = PxClamp(w.thermal.core, tuning::spec.tire_min_temp, tuning::spec.tire_max_temp);
 
@@ -2426,8 +2546,8 @@ namespace car
             float abs_sa = fabsf(wheels[i].slip_angle);
             float sa_norm = abs_sa / tuning::spec.pneumatic_trail_peak;
 
-            // trail profile: starts at max, linearly drops to zero at peak slip, then goes negative
-            float trail = tuning::spec.pneumatic_trail_max * (1.0f - sa_norm);
+            // trail profile: starts at max, linearly drops to zero at peak slip
+            float trail = PxMax(tuning::spec.pneumatic_trail_max * (1.0f - sa_norm), 0.0f);
 
             // front wheels contribute full SAT, rear wheels contribute yaw damping
             float weight = is_front(i) ? 1.0f : 0.4f;
@@ -2637,11 +2757,11 @@ namespace car
                 apply_drive_torque(rigid_torque, dt);
             }
         }
-        else if (input.throttle > tuning::spec.input_deadzone && current_gear == 0)
+        else if (input.brake > tuning::spec.input_deadzone && current_gear == 0)
         {
             float base_torque = get_engine_torque(engine_rpm);
             float boosted_torque = base_torque * (1.0f + boost_pressure * tuning::spec.boost_torque_mult);
-            float engine_torque = boosted_torque * input.throttle * tuning::spec.reverse_power_ratio;
+            float engine_torque = boosted_torque * input.brake * tuning::spec.reverse_power_ratio;
             float gear_ratio = tuning::spec.gear_ratios[0] * tuning::spec.final_drive;
             float wheel_torque = engine_torque * gear_ratio * clutch * tuning::spec.drivetrain_efficiency;
             last_engine_torque = engine_torque * clutch;
@@ -3018,6 +3138,16 @@ namespace car
 
         apply_tire_forces(wheel_angles, dt);
         apply_self_aligning_torque();
+
+        // speed-proportional yaw damping (tire scrub, suspension compliance, chassis flex)
+        {
+            PxVec3 up = pose.q.rotate(PxVec3(0, 1, 0));
+            float yaw_rate      = body->getAngularVelocity().dot(up);
+            float speed_scale   = PxClamp(speed_kmh / 60.0f, 0.0f, 1.0f);
+            float yaw_damp_torque = -yaw_rate * tuning::spec.yaw_damping * speed_scale;
+            body->addTorque(up * yaw_damp_torque, PxForceMode::eFORCE);
+        }
+
         apply_aero_and_resistance();
 
         body->addForce(PxVec3(0, -9.81f * cfg.mass, 0), PxForceMode::eFORCE);
