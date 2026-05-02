@@ -222,30 +222,17 @@ namespace car
             }
         }
 
-        // lateral weight transfer: geometric (instant, through roll center) + elastic (through springs/arbs)
-        float track_width = (cfg.track_front + cfg.track_rear) * 0.5f;
-        float total_lat_force = cfg.mass * lateral_accel;
+        // lateral weight transfer: only the geometric component is added explicitly
+        // the elastic component is already produced by the springs as the body rolls under lateral force
+        // adding it here would double count it and starve the inside wheels of load at high lateral g
+        float track_width      = (cfg.track_front + cfg.track_rear) * 0.5f;
+        float total_lat_force  = cfg.mass * lateral_accel;
         float max_lat_transfer = cfg.mass * 9.81f * 0.25f;
-
-        float front_roll_stiffness = spring_stiffness[front_left] + tuning::spec.front_arb_stiffness;
-        float rear_roll_stiffness  = spring_stiffness[rear_left]  + tuning::spec.rear_arb_stiffness;
-        float total_roll_stiffness = front_roll_stiffness + rear_roll_stiffness;
-        float front_roll_fraction  = (total_roll_stiffness > 0.0f) ? front_roll_stiffness / total_roll_stiffness : 0.5f;
-
-        // geometric component transfers instantly through the roll center
-        float wdf = get_weight_distribution_front();
-        float front_geo = total_lat_force * wdf * tuning::spec.front_roll_center_height / PxMax(track_width, 0.1f);
-        float rear_geo  = total_lat_force * (1.0f - wdf) * tuning::spec.rear_roll_center_height / PxMax(track_width, 0.1f);
-
-        // elastic component: moment arm from cg to roll axis, distributed by roll stiffness ratio
-        float roll_center_at_cg = tuning::spec.front_roll_center_height * (1.0f - wdf) + tuning::spec.rear_roll_center_height * wdf;
-        float elastic_moment_arm = com_height - roll_center_at_cg;
-        float total_elastic = total_lat_force * PxMax(elastic_moment_arm, 0.0f) / PxMax(track_width, 0.1f);
-        float front_elastic = total_elastic * front_roll_fraction;
-        float rear_elastic  = total_elastic * (1.0f - front_roll_fraction);
-
-        float front_lat_transfer = PxClamp(front_geo + front_elastic, -max_lat_transfer, max_lat_transfer);
-        float rear_lat_transfer  = PxClamp(rear_geo + rear_elastic, -max_lat_transfer, max_lat_transfer);
+        float wdf              = get_weight_distribution_front();
+        float front_geo        = total_lat_force * wdf          * tuning::spec.front_roll_center_height / PxMax(track_width, 0.1f);
+        float rear_geo         = total_lat_force * (1.0f - wdf) * tuning::spec.rear_roll_center_height  / PxMax(track_width, 0.1f);
+        float front_lat_transfer = PxClamp(front_geo, -max_lat_transfer, max_lat_transfer);
+        float rear_lat_transfer  = PxClamp(rear_geo,  -max_lat_transfer, max_lat_transfer);
         for (int i = 0; i < wheel_count; i++)
         {
             if (wheels[i].grounded)

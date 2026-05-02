@@ -378,11 +378,13 @@ namespace car
     // engine braking: torque pushed into net_torque and integrated once in apply_tire_forces
     inline void apply_engine_braking(int driven_count)
     {
+        engine_brake_torque = 0.0f;
         if (driven_count <= 0) return;
         if (input.throttle > tuning::spec.input_deadzone) return;
         if (clutch <= 0.5f || !is_in_forward_gear()) return;
 
         float eb_total = tuning::spec.engine_friction * engine_rpm * 0.1f * fabsf(tuning::spec.gear_ratios[current_gear]) * tuning::spec.final_drive;
+        engine_brake_torque = eb_total;
         float share = eb_total / (float)driven_count;
         for (int i = 0; i < wheel_count; i++)
         {

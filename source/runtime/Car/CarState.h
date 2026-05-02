@@ -228,6 +228,8 @@ namespace car
     inline static float           lateral_accel           = 0.0f;
     inline static float           road_bump_phase         = 0.0f;
     inline static PxVec3          prev_velocity           = PxVec3(0);
+    // total engine braking torque routed to the driven axle this tick before any per wheel split
+    inline static float           engine_brake_torque     = 0.0f;
 
     // telemetry: writes a per-tick csv of body + per-wheel state to car_telemetry.csv
     // in the working directory. opens lazily, closes when tuning::log_to_file is off,
@@ -283,7 +285,11 @@ namespace car
                 "fl_long_force,fr_long_force,rl_long_force,rr_long_force,"
                 "fl_tire_load,fr_tire_load,rl_tire_load,rr_tire_load,"
                 // per-wheel angular velocity
-                "fl_ang_vel,fr_ang_vel,rl_ang_vel,rr_ang_vel\n");
+                "fl_ang_vel,fr_ang_vel,rl_ang_vel,rr_ang_vel,"
+                // per wheel net torque accumulated this tick from engine, brakes, tire reaction and bearing
+                "fl_net_torque,fr_net_torque,rl_net_torque,rr_net_torque,"
+                // total engine braking torque applied to driven axle, key signal for liftoff oversteer
+                "engine_brake_torque\n");
             frame_counter = 0;
             elapsed_time  = 0.0f;
             return true;
@@ -328,7 +334,9 @@ namespace car
                 "%.1f,%.1f,%.1f,%.1f,"
                 "%.1f,%.1f,%.1f,%.1f,"
                 "%.1f,%.1f,%.1f,%.1f,"
-                "%.3f,%.3f,%.3f,%.3f\n",
+                "%.3f,%.3f,%.3f,%.3f,"
+                "%.1f,%.1f,%.1f,%.1f,"
+                "%.1f\n",
                 frame_counter, elapsed_time, dt,
                 pose.p.x, pose.p.y, pose.p.z,
                 speed_kmh, forward_speed, lateral_speed,
@@ -351,7 +359,10 @@ namespace car
                 wheels[front_left].tire_load,  wheels[front_right].tire_load,
                 wheels[rear_left].tire_load,   wheels[rear_right].tire_load,
                 wheels[front_left].angular_velocity,  wheels[front_right].angular_velocity,
-                wheels[rear_left].angular_velocity,   wheels[rear_right].angular_velocity);
+                wheels[rear_left].angular_velocity,   wheels[rear_right].angular_velocity,
+                wheels[front_left].net_torque,  wheels[front_right].net_torque,
+                wheels[rear_left].net_torque,   wheels[rear_right].net_torque,
+                engine_brake_torque);
 
             if (frame_counter % 200 == 0)
                 fflush(file);
