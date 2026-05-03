@@ -1208,14 +1208,18 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     // sun disc only, all night celestials are gathered below
     float3 sun_col = float3(0, 0, 0);
     
-    // ground fade for the bottom hemisphere, smoothly attenuates the mirrored sky so the sun
-    // mie peak does not project a vertical pillar straight down through the equirectangular pole
-    // 1 at horizon, 0 by orig_view.y reaches roughly negative one sixth
-    float ground_fade = below_horizon ? saturate(1.0 + orig_view.y * 6.0) : 1.0;
+    // ground fade for the bottom hemisphere, fully gone within ~7 degrees below the horizon
+    // hard cap on the luminance prevents the mie peak around the sun from producing a vertical
+    // pillar straight down through the equirectangular bottom pole
+    float ground_fade = below_horizon ? saturate(1.0 + orig_view.y * 8.0) : 1.0;
 
     if (below_horizon)
     {
-        luminance *= 0.25 * ground_fade;
+        // clamp the mirrored sky so an intense sun mie spike cannot punch through the fade
+        // dark warm grey ground tone, faded out away from the horizon
+        float lum_avg = (luminance.r + luminance.g + luminance.b) * 0.333;
+        float3 lum_capped = luminance * min(1.0, 1.0 / max(lum_avg, 1e-3));
+        luminance = lum_capped * 0.15 * ground_fade;
     }
     else if (sun_elev > -0.02)
     {

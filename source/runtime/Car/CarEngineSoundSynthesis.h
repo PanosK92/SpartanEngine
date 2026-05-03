@@ -19,6 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+// exhaust audio pipeline ported from engine-sim by ange yaghi, mit license
+// https://github.com/ange-yaghi/engine-sim
+// exhaust impulse response: smooth_05.wav from engine-sim sound library
+
 #pragma once
 
 //= INCLUDES ===============================
@@ -26,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
+#include <SDL3/SDL_audio.h>
 #include "../../editor/ImGui/Source/imgui.h"
 #include "CarTireSquealSynthesis.h"
 //==========================================
@@ -49,17 +55,31 @@ namespace engine_sound
         constexpr float combustion_hold    = 0.12f;
         constexpr float combustion_decay   = 0.35f;
 
-        // exhaust resonance peaks (hz), shift with rpm
-        constexpr float exhaust_res_1_idle = 120.0f;
-        constexpr float exhaust_res_1_high = 280.0f;
-        constexpr float exhaust_res_2_idle = 350.0f;
-        constexpr float exhaust_res_2_high = 800.0f;
-        constexpr float exhaust_res_3_idle = 1200.0f;
-        constexpr float exhaust_res_3_high = 2800.0f;
+        // exhaust convolution path (engine-sim style)
+        // 1024 taps at 48k = ~21 ms tail, short enough to avoid bathroom-room reverb character
+        constexpr int   convolution_taps   = 1024;
+        constexpr float df_f_mix           = 0.05f;
+        constexpr float air_noise          = 0.1f;
+        constexpr float convolution_wet    = 1.0f;
+        // 1 ms haas-style offset on right bank, just enough for stereo width
+        constexpr float stereo_offset      = 0.001f;
+        // bleed across banks so neither channel ever drops out, 0 = hard split, 1 = mono
+        constexpr float bank_cross_bleed   = 0.35f;
+
+        // auto leveler
+        constexpr float leveler_target     = 0.7f;
+        constexpr float leveler_max_gain   = 4.0f;
+        constexpr float leveler_min_gain   = 0.05f;
+        constexpr float leveler_attack     = 200.0f;
+        constexpr float leveler_release    = 4.0f;
+
+        // exhaust ir asset (the _short variant has had its 250ms pre-silence trimmed
+        // and a clean exponential decay tail applied, see binaries/trim_ir.py)
+        constexpr const char* exhaust_ir_path = "project\\music\\exhaust_ir_short.wav";
 
         // layer mix levels
-        constexpr float combustion_level   = 0.55f;
-        constexpr float exhaust_level      = 0.35f;
+        constexpr float combustion_level   = 0.18f;
+        constexpr float exhaust_level      = 1.0f;
         constexpr float mechanical_level   = 0.12f;
         constexpr float induction_level    = 0.05f;
 
@@ -111,11 +131,29 @@ namespace engine_sound
 
         static constexpr int waveform_size = 512;
         float waveform[waveform_size]      = {};
+        float waveform_cyl[waveform_size]  = {};
+        float waveform_vin[waveform_size]  = {};
+        float waveform_exh[waveform_size]  = {};
         int   waveform_write_pos           = 0;
+
+        // log-magnitude spectrum, fft_size/2 bins covering 0..nyquist
+        static constexpr int fft_size      = 512;
+        static constexpr int spectrum_bins = fft_size / 2;
+        float spectrum[spectrum_bins]      = {};
+
+        // leveler state
+        float leveler_gain     = 1.0f;
+        float leveler_envelope = 0.0f;
+
+        // wav dump state, 0 = idle, >0 = capturing/done
+        int   dump_total      = 0;
+        int   dump_progress   = 0;
+        bool  dump_ready      = false;
 
         uint64_t generate_calls    = 0;
         uint64_t samples_generated = 0;
         bool initialized           = false;
+        int  ir_taps               = 0;
     };
 
     // state variable filter
@@ -255,6 +293,168 @@ namespace engine_sound
         }
     };
 
+    // single-sample derivative
+    struct derivative_filter
+    {
+        float prev = 0.0f;
+        float dt   = 1.0f / (float)tuning::sample_rate;
+
+        void set_sample_rate(float sample_rate)
+        {
+            dt = 1.0f / sample_rate;
+        }
+
+        float process(float input)
+        {
+            float out = (input - prev) / dt;
+            prev = input;
+            return out;
+        }
+
+        void reset() { prev = 0.0f; }
+    };
+
+    // direct convolution with a fixed impulse response, ring-buffer shift register
+    struct convolution_filter
+    {
+        std::vector<float> shift;
+        std::vector<float> ir;
+        int                head = 0;
+
+        void initialize(const float* impulse, int sample_count)
+        {
+            ir.assign(impulse, impulse + sample_count);
+            shift.assign(sample_count, 0.0f);
+            head = 0;
+        }
+
+        float process(float input)
+        {
+            const int n = (int)ir.size();
+            if (n == 0) return input;
+
+            shift[head] = input;
+
+            float sum = 0.0f;
+            int idx = head;
+            for (int i = 0; i < n; ++i)
+            {
+                sum += shift[idx] * ir[i];
+                idx = (idx == 0) ? (n - 1) : (idx - 1);
+            }
+
+            head = (head + 1) % n;
+            return sum;
+        }
+
+        void reset()
+        {
+            std::fill(shift.begin(), shift.end(), 0.0f);
+            head = 0;
+        }
+    };
+
+    // slow auto-gain that keeps stereo balance, tracks max(|l|,|r|)
+    struct leveler
+    {
+        float gain      = 1.0f;
+        float envelope  = 0.0f;
+        float target    = tuning::leveler_target;
+        float gain_min  = tuning::leveler_min_gain;
+        float gain_max  = tuning::leveler_max_gain;
+        float a_attack  = 0.0f;
+        float a_release = 0.0f;
+
+        void set_sample_rate(float sample_rate)
+        {
+            a_attack  = expf(-tuning::leveler_attack  / sample_rate);
+            a_release = expf(-tuning::leveler_release / sample_rate);
+        }
+
+        void process(float& l, float& r)
+        {
+            float peak = std::max(fabsf(l), fabsf(r));
+            float a = (peak > envelope) ? a_attack : a_release;
+            envelope = peak + a * (envelope - peak);
+
+            float target_gain = (envelope > 1e-6f) ? (target / envelope) : gain_max;
+            target_gain = std::clamp(target_gain, gain_min, gain_max);
+
+            // smooth gain changes
+            gain += (target_gain - gain) * 0.001f;
+
+            l *= gain;
+            r *= gain;
+        }
+
+        void reset()
+        {
+            gain = 1.0f;
+            envelope = 0.0f;
+        }
+    };
+
+    // loads a wav file as mono float32 at target_sample_rate, peak-normalized, trimmed to max_taps
+    inline std::vector<float> load_impulse_response(const char* path, int max_taps, int target_sample_rate)
+    {
+        std::vector<float> ir_out;
+
+        SDL_AudioSpec wav_spec = {};
+        uint8_t* wav_buffer    = nullptr;
+        uint32_t wav_length    = 0;
+        if (!SDL_LoadWAV(path, &wav_spec, &wav_buffer, &wav_length))
+            return ir_out;
+
+        // resample to running sample rate so conv runs at the correct rate
+        SDL_AudioSpec target_spec = {};
+        target_spec.freq          = target_sample_rate;
+        target_spec.format        = SDL_AUDIO_F32;
+        target_spec.channels      = 1;
+        uint8_t* target_buffer    = nullptr;
+        int target_length         = 0;
+        if (!SDL_ConvertAudioSamples(&wav_spec, wav_buffer, (int)wav_length, &target_spec, &target_buffer, &target_length))
+        {
+            SDL_free(wav_buffer);
+            return ir_out;
+        }
+        SDL_free(wav_buffer);
+
+        const float* samples = reinterpret_cast<const float*>(target_buffer);
+        int num_samples = target_length / (int)sizeof(float);
+
+        // trim trailing low-energy tail (engine-sim does the same trick on int16 source)
+        const float silence_threshold = 1.0f / 32767.0f * 100.0f;
+        int trimmed = 0;
+        for (int i = 0; i < num_samples; ++i)
+        {
+            if (fabsf(samples[i]) > silence_threshold)
+                trimmed = i + 1;
+        }
+        int taps = std::min(max_taps, trimmed > 0 ? trimmed : num_samples);
+
+        ir_out.resize(taps);
+        for (int i = 0; i < taps; ++i)
+            ir_out[i] = samples[i];
+
+        SDL_free(target_buffer);
+
+        // l2-energy normalize so convolution gain is ~unity for white-noise input
+        // (peak-normalising made the convolution output ~50x too hot, which the leveler
+        //  could compensate for but only after destroying transients via tanh)
+        double sum_sq = 0.0;
+        for (float v : ir_out)
+            sum_sq += (double)v * (double)v;
+        float energy = (float)sqrt(sum_sq);
+        if (energy > 1e-6f)
+        {
+            float inv = 1.0f / energy;
+            for (float& v : ir_out)
+                v *= inv;
+        }
+
+        return ir_out;
+    }
+
     // cylinder combustion model
     struct cylinder
     {
@@ -264,6 +464,7 @@ namespace engine_sound
         float pressure      = 0.0f;
         float prev_pressure = 0.0f;
         bool  is_firing     = false;
+        bool  bank_left     = true;
         float fire_phase    = 0.0f;
         float timing_jitter = 0.0f;
         float intensity_var = 1.0f;
@@ -274,6 +475,9 @@ namespace engine_sound
             static const int firing_order_12[] = {0, 6, 4, 10, 2, 8, 5, 11, 1, 7, 3, 9};
             int order_pos = firing_order_12[index % 12];
             firing_offset = (float)order_pos / (float)total_cylinders;
+
+            // banks alternate firings (real v12 behaviour), cyl on even firing positions go left
+            bank_left = (order_pos & 1) == 0;
 
             // per-cylinder variation
             timing_jitter = ((index * 7 + 3) % 17) / 170.0f - 0.05f;
@@ -349,10 +553,109 @@ namespace engine_sound
         }
     };
 
+    // iterative radix-2 cooley-tukey fft, in-place on real/imag buffers, n must be power of two
+    inline void fft_radix2(float* re, float* im, int n)
+    {
+        for (int i = 1, j = 0; i < n; ++i)
+        {
+            int bit = n >> 1;
+            for (; (j & bit) != 0; bit >>= 1) j ^= bit;
+            j ^= bit;
+            if (i < j)
+            {
+                std::swap(re[i], re[j]);
+                std::swap(im[i], im[j]);
+            }
+        }
+
+        for (int len = 2; len <= n; len <<= 1)
+        {
+            float ang = -TWO_PI / (float)len;
+            float wlen_re = cosf(ang);
+            float wlen_im = sinf(ang);
+            int half = len >> 1;
+            for (int i = 0; i < n; i += len)
+            {
+                float w_re = 1.0f, w_im = 0.0f;
+                for (int k = 0; k < half; ++k)
+                {
+                    float u_re = re[i + k];
+                    float u_im = im[i + k];
+                    float v_re = re[i + k + half] * w_re - im[i + k + half] * w_im;
+                    float v_im = re[i + k + half] * w_im + im[i + k + half] * w_re;
+                    re[i + k]        = u_re + v_re;
+                    im[i + k]        = u_im + v_im;
+                    re[i + k + half] = u_re - v_re;
+                    im[i + k + half] = u_im - v_im;
+                    float nw_re = w_re * wlen_re - w_im * wlen_im;
+                    float nw_im = w_re * wlen_im + w_im * wlen_re;
+                    w_re = nw_re;
+                    w_im = nw_im;
+                }
+            }
+        }
+    }
+
+    // writes 16-bit pcm stereo wav, samples already interleaved float in -1..1
+    inline bool write_wav_int16_stereo(const char* path, const float* interleaved, int frames, int sample_rate)
+    {
+        FILE* f = nullptr;
+        fopen_s(&f, path, "wb");
+        if (!f) return false;
+
+        uint32_t data_bytes  = (uint32_t)(frames * 2 * sizeof(int16_t));
+        uint32_t riff_size   = 36 + data_bytes;
+        uint16_t channels    = 2;
+        uint16_t bits        = 16;
+        uint32_t byte_rate   = sample_rate * channels * (bits / 8);
+        uint16_t block_align = channels * (bits / 8);
+
+        fwrite("RIFF", 1, 4, f);
+        fwrite(&riff_size, 4, 1, f);
+        fwrite("WAVE", 1, 4, f);
+        fwrite("fmt ", 1, 4, f);
+        uint32_t fmt_size = 16;
+        uint16_t pcm_fmt  = 1;
+        fwrite(&fmt_size, 4, 1, f);
+        fwrite(&pcm_fmt, 2, 1, f);
+        fwrite(&channels, 2, 1, f);
+        fwrite(&sample_rate, 4, 1, f);
+        fwrite(&byte_rate, 4, 1, f);
+        fwrite(&block_align, 2, 1, f);
+        fwrite(&bits, 2, 1, f);
+        fwrite("data", 1, 4, f);
+        fwrite(&data_bytes, 4, 1, f);
+
+        for (int i = 0; i < frames * 2; ++i)
+        {
+            float s = std::clamp(interleaved[i], -1.0f, 1.0f);
+            int16_t v = (int16_t)lroundf(s * 32767.0f);
+            fwrite(&v, 2, 1, f);
+        }
+
+        fclose(f);
+        return true;
+    }
+
+    // tunable at runtime, defaults from tuning::*
+    struct runtime_params
+    {
+        float df_f_mix         = tuning::df_f_mix;
+        float air_noise        = tuning::air_noise;
+        float convolution_wet  = tuning::convolution_wet;
+        float combustion_level = tuning::combustion_level;
+        float exhaust_level    = tuning::exhaust_level;
+        float drive_extra      = 0.0f;
+        float leveler_target   = tuning::leveler_target;
+        float master_offset    = 0.0f;
+    };
+
     class synthesizer
     {
     public:
-        void initialize(int sample_rate = tuning::sample_rate)
+        runtime_params params;
+
+        void initialize(int sample_rate = tuning::sample_rate, const char* ir_path = tuning::exhaust_ir_path)
         {
             m_sample_rate = (float)sample_rate;
 
@@ -360,11 +663,32 @@ namespace engine_sound
             for (int i = 0; i < tuning::cylinder_count; i++)
                 m_cylinders[i].init(i, tuning::cylinder_count);
 
-            // exhaust filters
-            m_exhaust_res1.set_params(200.0f, 2.0f, m_sample_rate);
-            m_exhaust_res2.set_params(500.0f, 1.5f, m_sample_rate);
-            m_exhaust_res3.set_params(1500.0f, 1.2f, m_sample_rate);
-            m_exhaust_body.set_params(300.0f, 0.7f, m_sample_rate);
+            // exhaust convolution path (engine-sim style)
+            std::vector<float> ir = load_impulse_response(ir_path, tuning::convolution_taps, (int)m_sample_rate);
+            if (!ir.empty())
+            {
+                m_conv_l.initialize(ir.data(), (int)ir.size());
+
+                // tiny offset on right channel for stereo width
+                int offset = (int)(tuning::stereo_offset * m_sample_rate);
+                offset = std::clamp(offset, 0, (int)ir.size() - 1);
+                std::vector<float> ir_r(ir.size(), 0.0f);
+                for (int i = 0; i < (int)ir.size() - offset; ++i)
+                    ir_r[i + offset] = ir[i];
+                m_conv_r.initialize(ir_r.data(), (int)ir_r.size());
+
+                m_ir_loaded = true;
+                m_debug.ir_taps = (int)ir.size();
+            }
+            else
+            {
+                m_ir_loaded = false;
+                m_debug.ir_taps = 0;
+            }
+
+            m_deriv_l.set_sample_rate(m_sample_rate);
+            m_deriv_r.set_sample_rate(m_sample_rate);
+            m_leveler.set_sample_rate(m_sample_rate);
 
             // induction filters
             m_induction_res.set_params(400.0f, 3.0f, m_sample_rate);
@@ -436,16 +760,21 @@ namespace engine_sound
                 for (auto& cyl : m_cylinders)
                     cyl.set_rpm(rpm, m_sample_rate);
 
-                // combustion
+                // combustion + per-bank pressure sums for v12 left/right exhausts
                 float combustion_raw = 0.0f;
                 float combustion_derivative = 0.0f;
+                float bank_l = 0.0f;
+                float bank_r = 0.0f;
                 int firing_count = 0;
 
-                for (auto& cyl : m_cylinders)
+                for (size_t ci = 0; ci < m_cylinders.size(); ++ci)
                 {
+                    cylinder& cyl = m_cylinders[ci];
                     float pulse = cyl.tick(load, rpm_norm);
                     combustion_raw += pulse;
                     combustion_derivative += (pulse - cyl.prev_pressure);
+                    if (cyl.bank_left) bank_l += pulse;
+                    else               bank_r += pulse;
                     if (cyl.is_firing) firing_count++;
                 }
 
@@ -467,28 +796,30 @@ namespace engine_sound
                     combustion += edge * high_rpm_factor * 0.2f;
                 }
 
-                // exhaust
-                float res1_freq = tuning::exhaust_res_1_idle + rpm_norm * (tuning::exhaust_res_1_high - tuning::exhaust_res_1_idle);
-                float res2_freq = tuning::exhaust_res_2_idle + rpm_norm * (tuning::exhaust_res_2_high - tuning::exhaust_res_2_idle);
-                float res3_freq = tuning::exhaust_res_3_idle + rpm_norm * (tuning::exhaust_res_3_high - tuning::exhaust_res_3_idle);
+                // exhaust via convolution with real impulse response (engine-sim pipeline)
+                // bleed each bank into the other so left/right always see signal even when only one bank is firing
+                float bleed   = tuning::bank_cross_bleed;
+                float bank_li = bank_l * (1.0f - bleed) + bank_r * bleed;
+                float bank_ri = bank_r * (1.0f - bleed) + bank_l * bleed;
 
-                float q_mod = 1.5f + rpm_norm * 2.5f;
-                m_exhaust_res1.set_params(res1_freq, q_mod * 0.8f, m_sample_rate);
-                m_exhaust_res2.set_params(res2_freq, q_mod * 0.6f, m_sample_rate);
-                m_exhaust_res3.set_params(res3_freq, q_mod * 0.5f, m_sample_rate);
+                float lf       = m_dc_block_l.process(bank_li);
+                float lfp      = m_deriv_l.process(lf);
+                float rn_l     = m_noise.pink();
+                float rmixed_l = params.air_noise * rn_l + (1.0f - params.air_noise);
+                float v_in_l   = params.df_f_mix * lfp + (1.0f - params.df_f_mix) * lf * rmixed_l;
+                float wet_l    = m_ir_loaded ? m_conv_l.process(v_in_l) : v_in_l;
+                float exhaust_l = wet_l * params.convolution_wet + v_in_l * (1.0f - params.convolution_wet);
 
-                float exhaust_noise = m_noise.pink() * (0.15f + throttle * 0.1f);
-                float exhaust_input = combustion * 0.8f + exhaust_noise;
+                float rf       = m_dc_block_r.process(bank_ri);
+                float rfp      = m_deriv_r.process(rf);
+                float rn_r     = m_noise.pink();
+                float rmixed_r = params.air_noise * rn_r + (1.0f - params.air_noise);
+                float v_in_r   = params.df_f_mix * rfp + (1.0f - params.df_f_mix) * rf * rmixed_r;
+                float wet_r    = m_ir_loaded ? m_conv_r.process(v_in_r) : v_in_r;
+                float exhaust_r = wet_r * params.convolution_wet + v_in_r * (1.0f - params.convolution_wet);
 
-                float exhaust = 0.0f;
-                exhaust += m_exhaust_res1.bandpass(exhaust_input) * 0.5f;
-                exhaust += m_exhaust_res2.bandpass(exhaust_input) * 0.35f;
-                exhaust += m_exhaust_res3.bandpass(exhaust_input) * (0.2f + rpm_norm * 0.3f);
-
-                float body_freq = 150.0f + rpm_norm * 200.0f;
-                m_exhaust_body.set_params(body_freq, 0.7f, m_sample_rate);
-                exhaust += m_exhaust_body.lowpass(exhaust_input) * 0.4f;
-                exhaust = tanhf(exhaust * 2.0f);
+                // mono exhaust used by the debug meter and the mono output path
+                float exhaust = (exhaust_l + exhaust_r) * 0.5f;
 
                 // overrun crackle
                 float crackle = 0.0f;
@@ -670,61 +1001,77 @@ namespace engine_sound
                     turbo = tanhf(turbo * 1.5f);
                 }
 
-                // final mix
-                float output = 0.0f;
-                output += combustion * tuning::combustion_level;
-                output += exhaust * tuning::exhaust_level;
-                output += crackle;
-                output += induction * tuning::induction_level;
-                output += mechanical * tuning::mechanical_level;
-                output += turbo;
+                // mono additive layers (combustion attack, crackle, induction, mechanical, turbo)
+                float mono_layers = 0.0f;
+                mono_layers += combustion  * params.combustion_level;
+                mono_layers += crackle;
+                mono_layers += induction   * tuning::induction_level;
+                mono_layers += mechanical  * tuning::mechanical_level;
+                mono_layers += turbo;
+                mono_layers = m_dc_blocker.process(mono_layers);
 
-                // output processing
-                output = m_dc_blocker.process(output);
-                output = m_output_hp.highpass(output);
+                // per-channel mix, exhaust is stereo, layers are summed
+                // optional gentle drive but no hard tanh (it was squaring the signal)
+                float drive = 1.0f + throttle * 0.2f + rpm_norm * 0.1f + params.drive_extra;
+                float left  = (exhaust_l * params.exhaust_level + mono_layers) * drive;
+                float right = (exhaust_r * params.exhaust_level + mono_layers) * drive;
 
-                // saturation stage 1
-                output = tanhf(output * 1.5f);
+                // auto-leveler is the only loudness control, target is runtime-tweakable
+                m_leveler.target = params.leveler_target;
+                m_leveler.process(left, right);
 
-                // saturation stage 2
-                float drive = 1.5f + throttle * 1.0f + rpm_norm * 0.5f;
-                output = output * drive;
-                output = output / (1.0f + fabsf(output) * 0.3f);
+                // safety clamp only, no compression below 1.0
+                left  = std::clamp(left,  -1.0f, 1.0f);
+                right = std::clamp(right, -1.0f, 1.0f);
 
-                // limiter
-                output = tanhf(output * 1.2f) * 0.85f;
-                output = m_output_lp.lowpass(output);
+                float master = 0.7f + throttle * 0.2f + rpm_norm * 0.1f + params.master_offset;
+                left  *= master;
+                right *= master;
 
-                float master = 0.7f + throttle * 0.2f + rpm_norm * 0.1f;
-                output *= master;
+                float output = (left + right) * 0.5f;
 
                 // debug accumulators
                 combustion_sum += combustion * combustion;
-                exhaust_sum += exhaust * exhaust;
-                induction_sum += induction * induction;
+                exhaust_sum    += exhaust * exhaust;
+                induction_sum  += induction * induction;
                 mechanical_sum += mechanical * mechanical;
-                turbo_sum += turbo * turbo;
-                output_sum += output * output;
+                turbo_sum      += turbo * turbo;
+                output_sum     += output * output;
                 if (fabsf(output) > output_peak) output_peak = fabsf(output);
 
                 if ((i % 4) == 0)
                 {
-                    m_debug.waveform[m_debug.waveform_write_pos] = output;
-                    m_debug.waveform_write_pos = (m_debug.waveform_write_pos + 1) % debug_data::waveform_size;
+                    int wp = m_debug.waveform_write_pos;
+                    m_debug.waveform[wp]     = output;
+                    m_debug.waveform_cyl[wp] = bank_l;
+                    m_debug.waveform_vin[wp] = v_in_l;
+                    m_debug.waveform_exh[wp] = exhaust_l;
+                    m_debug.waveform_write_pos = (wp + 1) % debug_data::waveform_size;
+                }
+
+                // full-rate ring for fft input
+                m_spec_input[m_spec_pos] = output;
+                m_spec_pos = (m_spec_pos + 1) % debug_data::fft_size;
+
+                // wav dump capture
+                if (m_dump_active && m_dump_progress < m_dump_total)
+                {
+                    m_dump_buffer[(size_t)m_dump_progress * 2]     = left;
+                    m_dump_buffer[(size_t)m_dump_progress * 2 + 1] = right;
+                    m_dump_progress++;
+                    if (m_dump_progress >= m_dump_total)
+                    {
+                        m_dump_active = false;
+                        m_debug.dump_ready = true;
+                    }
+                    m_debug.dump_progress = m_dump_progress;
                 }
 
                 // stereo output
                 if (stereo)
                 {
-                    float stereo_diff = m_noise.white() * 0.015f;
-                    float left_bias = 1.0f + stereo_diff;
-                    float right_bias = 1.0f - stereo_diff;
-
-                    left_bias += exhaust * 0.05f;
-                    right_bias -= exhaust * 0.03f;
-
-                    output_buffer[i * 2]     = output * left_bias;
-                    output_buffer[i * 2 + 1] = output * right_bias;
+                    output_buffer[i * 2]     = left;
+                    output_buffer[i * 2 + 1] = right;
                 }
                 else
                 {
@@ -742,6 +1089,31 @@ namespace engine_sound
             m_debug.output_peak      = output_peak;
 
             m_debug.firing_freq = m_rpm_smooth.z1 / 60.0f * (tuning::cylinder_count / 2.0f);
+
+            // expose leveler state
+            m_debug.leveler_gain     = m_leveler.gain;
+            m_debug.leveler_envelope = m_leveler.envelope;
+
+            // fft of last fft_size output samples, hann window, log magnitude
+            const int n = debug_data::fft_size;
+            float re[debug_data::fft_size];
+            float im[debug_data::fft_size];
+            int read_pos = m_spec_pos;
+            for (int k = 0; k < n; ++k)
+            {
+                int idx = (read_pos + k) % n;
+                float w = 0.5f - 0.5f * cosf(TWO_PI * (float)k / (float)(n - 1));
+                re[k] = m_spec_input[idx] * w;
+                im[k] = 0.0f;
+            }
+            fft_radix2(re, im, n);
+            const float norm = 2.0f / (float)n;
+            for (int k = 0; k < debug_data::spectrum_bins; ++k)
+            {
+                float mag = sqrtf(re[k] * re[k] + im[k] * im[k]) * norm;
+                float db  = 20.0f * log10f(mag + 1e-9f);
+                m_debug.spectrum[k] = db;
+            }
         }
 
         void reset()
@@ -749,10 +1121,22 @@ namespace engine_sound
             for (auto& cyl : m_cylinders)
                 cyl.reset();
 
-            m_exhaust_res1.reset();
-            m_exhaust_res2.reset();
-            m_exhaust_res3.reset();
-            m_exhaust_body.reset();
+            m_conv_l.reset();
+            m_conv_r.reset();
+            m_deriv_l.reset();
+            m_deriv_r.reset();
+            m_dc_block_l.reset();
+            m_dc_block_r.reset();
+            m_leveler.reset();
+
+            std::fill(std::begin(m_spec_input), std::end(m_spec_input), 0.0f);
+            m_spec_pos = 0;
+
+            m_dump_active   = false;
+            m_dump_progress = 0;
+            m_dump_total    = 0;
+            m_dump_buffer.clear();
+
             m_induction_res.reset();
             m_induction_body.reset();
             m_mechanical_hp.reset();
@@ -786,6 +1170,36 @@ namespace engine_sound
         bool is_initialized() const { return m_initialized; }
         const debug_data& get_debug() const { return m_debug; }
 
+        // begin a fresh dump capture, returns false if one is already running
+        bool begin_dump(float seconds)
+        {
+            if (m_dump_active) return false;
+            int frames = (int)(seconds * m_sample_rate);
+            m_dump_buffer.assign((size_t)frames * 2, 0.0f);
+            m_dump_total       = frames;
+            m_dump_progress    = 0;
+            m_dump_active      = true;
+            m_debug.dump_total = frames;
+            m_debug.dump_progress = 0;
+            m_debug.dump_ready = false;
+            return true;
+        }
+
+        bool dump_ready() const { return m_debug.dump_ready; }
+
+        bool save_dump(const char* path)
+        {
+            if (!m_debug.dump_ready || m_dump_buffer.empty()) return false;
+            bool ok = write_wav_int16_stereo(path, m_dump_buffer.data(), m_dump_total, (int)m_sample_rate);
+            m_debug.dump_ready = false;
+            m_dump_buffer.clear();
+            m_dump_total = 0;
+            m_dump_progress = 0;
+            m_debug.dump_total = 0;
+            m_debug.dump_progress = 0;
+            return ok;
+        }
+
     private:
         bool  m_initialized = false;
         float m_sample_rate = tuning::sample_rate;
@@ -797,8 +1211,26 @@ namespace engine_sound
 
         std::vector<cylinder> m_cylinders;
 
-        svf_filter m_exhaust_res1, m_exhaust_res2, m_exhaust_res3;
-        svf_filter m_exhaust_body;
+        // exhaust convolution path
+        bool               m_ir_loaded = false;
+        convolution_filter m_conv_l;
+        convolution_filter m_conv_r;
+        derivative_filter  m_deriv_l;
+        derivative_filter  m_deriv_r;
+        dc_blocker         m_dc_block_l;
+        dc_blocker         m_dc_block_r;
+        leveler            m_leveler;
+
+        // full-rate ring buffer for fft input
+        float m_spec_input[debug_data::fft_size] = {};
+        int   m_spec_pos = 0;
+
+        // wav dump capture buffer (interleaved stereo float)
+        std::vector<float> m_dump_buffer;
+        int  m_dump_total    = 0;
+        int  m_dump_progress = 0;
+        bool m_dump_active   = false;
+
         svf_filter m_induction_res, m_induction_body;
         svf_filter m_mechanical_hp, m_mechanical_lp;
         svf_filter m_crackle_filter;
@@ -892,19 +1324,187 @@ namespace engine_sound
             ImGui::Text("%.4f", level);
         };
 
-        // ---- engine section ----
+        // draws one trace into a shared rect, auto-normalised by per-trace peak
+        auto draw_trace = [](ImVec2 pos, float width, float height, const float* buf, int count, int start, ImU32 color)
+        {
+            float peak = 1e-6f;
+            for (int i = 0; i < count; ++i) peak = std::max(peak, fabsf(buf[i]));
+            float scale = 0.45f / peak;
+
+            float center_y = pos.y + height * 0.5f;
+            float x_step   = width / (float)count;
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            for (int i = 0; i < count - 1; ++i)
+            {
+                int idx0 = (start + i) % count;
+                int idx1 = (start + i + 1) % count;
+                float x0 = pos.x + i * x_step;
+                float x1 = pos.x + (i + 1) * x_step;
+                float y0 = center_y - buf[idx0] * height * scale;
+                float y1 = center_y - buf[idx1] * height * scale;
+                draw_list->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), color, 1.5f);
+            }
+        };
+
         const debug_data& dbg = get_debug();
+        synthesizer& s        = get_synthesizer();
 
+        // ---- engine info ----
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.4f, 1.0f), "Engine");
+        ImGui::Text("  RPM: %.0f  |  Throttle: %.0f%%  |  Boost: %.2f bar  |  Firing: %.1f Hz",
+            dbg.rpm, dbg.throttle * 100.0f, dbg.boost, dbg.firing_freq);
 
-        ImGui::Text("  RPM: %.0f  |  Throttle: %.0f%%  |  Boost: %.2f bar",
-            dbg.rpm, dbg.throttle * 100.0f, dbg.boost);
+        if (dbg.ir_taps > 0)
+            ImGui::Text("  Exhaust IR: %d taps loaded @ %.0f Hz", dbg.ir_taps, (float)tuning::sample_rate);
+        else
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "  Exhaust IR: NOT LOADED (check binaries/project/music/exhaust_ir.wav)");
 
+        ImGui::Separator();
+
+        // ---- live tuning sliders ----
+        if (ImGui::CollapsingHeader("Live Tuning", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            ImGui::SliderFloat("df_f_mix",         &s.params.df_f_mix,         0.0f, 1.0f, "%.4f");
+            ImGui::SliderFloat("air_noise",        &s.params.air_noise,        0.0f, 1.0f, "%.3f");
+            ImGui::SliderFloat("convolution_wet",  &s.params.convolution_wet,  0.0f, 1.0f, "%.3f");
+            ImGui::SliderFloat("combustion_level", &s.params.combustion_level, 0.0f, 1.0f, "%.3f");
+            ImGui::SliderFloat("exhaust_level",    &s.params.exhaust_level,    0.0f, 4.0f, "%.3f");
+            ImGui::SliderFloat("drive_extra",      &s.params.drive_extra,     -2.0f, 4.0f, "%.2f");
+            ImGui::SliderFloat("leveler_target",   &s.params.leveler_target,   0.05f, 1.5f, "%.3f");
+            ImGui::SliderFloat("master_offset",    &s.params.master_offset,   -0.7f, 1.0f, "%.2f");
+            if (ImGui::Button("Reset to defaults"))
+                s.params = runtime_params();
+        }
+
+        ImGui::Separator();
+
+        // ---- per-layer levels ----
         draw_level_bar("Combustion", dbg.combustion_level, IM_COL32(255, 100, 100, 255));
         draw_level_bar("Exhaust",    dbg.exhaust_level,    IM_COL32(255, 180, 100, 255));
         draw_level_bar("Induction",  dbg.induction_level,  IM_COL32(100, 200, 255, 255));
-        draw_level_bar("Mechanical", dbg.mechanical_level,  IM_COL32(200, 200, 100, 255));
+        draw_level_bar("Mechanical", dbg.mechanical_level, IM_COL32(200, 200, 100, 255));
         draw_level_bar("Turbo",      dbg.turbo_level,      IM_COL32(100, 255, 200, 255));
+
+        ImGui::Separator();
+
+        // ---- leveler meter ----
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 1.0f, 1.0f), "Auto-Leveler");
+        draw_level_bar("Gain",     dbg.leveler_gain * 0.2f,     IM_COL32(220, 130, 255, 255));
+        ImGui::SameLine(); ImGui::Text(" (raw=%.3f)", dbg.leveler_gain);
+        draw_level_bar("Envelope", dbg.leveler_envelope,        IM_COL32(180, 100, 220, 255));
+
+        ImGui::Separator();
+
+        // ---- wav dump ----
+        ImGui::TextColored(ImVec4(0.7f, 0.9f, 1.0f, 1.0f), "WAV Dump (auto-saves to binaries/last_synth.wav)");
+        static double last_save_time = -1.0;
+        static bool   last_save_ok   = false;
+        double now = ImGui::GetTime();
+
+        // auto-save once capture is ready
+        if (dbg.dump_ready)
+        {
+            last_save_ok   = s.save_dump("last_synth.wav");
+            last_save_time = now;
+        }
+
+        if (dbg.dump_total == 0)
+        {
+            if (ImGui::Button("Dump 2s WAV"))  s.begin_dump(2.0f);
+            ImGui::SameLine();
+            if (ImGui::Button("Dump 5s WAV"))  s.begin_dump(5.0f);
+            ImGui::SameLine();
+            if (ImGui::Button("Dump 10s WAV")) s.begin_dump(10.0f);
+        }
+        else
+        {
+            float pct = (float)dbg.dump_progress / (float)dbg.dump_total;
+            ImGui::ProgressBar(pct, ImVec2(300, 0), "capturing...");
+        }
+
+        if (last_save_time > 0 && now - last_save_time < 6.0)
+        {
+            if (last_save_ok)
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f),
+                    "saved binaries/last_synth.wav (%.1fs ago)", now - last_save_time);
+            else
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
+                    "save FAILED (check working dir / permissions)");
+        }
+
+        ImGui::Separator();
+
+        // ---- multi-trace waveform ----
+        ImGui::Text("Engine Waveform (green=output, red=cyl bank L, orange=conv input, cyan=conv output)");
+        {
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            float width = 480.0f;
+            float height = 100.0f;
+            float center_y = pos.y + height * 0.5f;
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(20, 20, 25, 255));
+            draw_list->AddLine(ImVec2(pos.x, center_y), ImVec2(pos.x + width, center_y), IM_COL32(60, 60, 60, 255));
+
+            int start = dbg.waveform_write_pos;
+            int n     = debug_data::waveform_size;
+            draw_trace(pos, width, height, dbg.waveform_cyl, n, start, IM_COL32(255, 100, 100, 200));
+            draw_trace(pos, width, height, dbg.waveform_vin, n, start, IM_COL32(255, 180, 100, 200));
+            draw_trace(pos, width, height, dbg.waveform_exh, n, start, IM_COL32(100, 220, 255, 200));
+            draw_trace(pos, width, height, dbg.waveform,     n, start, IM_COL32(100, 255, 100, 255));
+
+            draw_list->AddRect(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(80, 80, 80, 255));
+            ImGui::Dummy(ImVec2(width, height));
+        }
+
+        // ---- spectrum ----
+        ImGui::Text("Spectrum (0..%.0f Hz, log mag, -80..0 dB)", (float)tuning::sample_rate * 0.5f);
+        {
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            float width = 480.0f;
+            float height = 100.0f;
+            int   bins = debug_data::spectrum_bins;
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(20, 20, 25, 255));
+
+            // grid lines at -20, -40, -60 db
+            for (int g = 1; g < 4; ++g)
+            {
+                float gy = pos.y + height * ((float)g / 4.0f);
+                draw_list->AddLine(ImVec2(pos.x, gy), ImVec2(pos.x + width, gy), IM_COL32(50, 50, 50, 255));
+            }
+
+            // grid lines at common frequencies (50,100,500,1k,2k,5k,10k Hz)
+            const float freqs[] = { 50.0f, 100.0f, 500.0f, 1000.0f, 2000.0f, 5000.0f, 10000.0f };
+            float nyquist = (float)tuning::sample_rate * 0.5f;
+            for (float f : freqs)
+            {
+                float fx = pos.x + width * (f / nyquist);
+                draw_list->AddLine(ImVec2(fx, pos.y), ImVec2(fx, pos.y + height), IM_COL32(50, 50, 60, 200));
+            }
+
+            float x_step = width / (float)bins;
+            for (int i = 0; i < bins - 1; ++i)
+            {
+                float db0 = std::clamp(dbg.spectrum[i],     -80.0f, 0.0f);
+                float db1 = std::clamp(dbg.spectrum[i + 1], -80.0f, 0.0f);
+                float y0 = pos.y + height * (1.0f - (db0 + 80.0f) / 80.0f);
+                float y1 = pos.y + height * (1.0f - (db1 + 80.0f) / 80.0f);
+                float x0 = pos.x + i * x_step;
+                float x1 = pos.x + (i + 1) * x_step;
+                draw_list->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(180, 220, 255, 220), 1.0f);
+            }
+
+            // mark firing fundamental
+            float fx = pos.x + width * (dbg.firing_freq / nyquist);
+            if (fx >= pos.x && fx <= pos.x + width)
+                draw_list->AddLine(ImVec2(fx, pos.y), ImVec2(fx, pos.y + height), IM_COL32(255, 200, 80, 220), 1.0f);
+
+            draw_list->AddRect(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(80, 80, 80, 255));
+            ImGui::Dummy(ImVec2(width, height));
+        }
 
         ImGui::Separator();
 
@@ -912,7 +1512,6 @@ namespace engine_sound
         const tire_squeal_sound::debug_data& tire_dbg = tire_squeal_sound::get_debug();
 
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Tire Squeal");
-
         ImGui::Text("  Intensity: %.0f%%  |  Speed: %.0f%%",
             tire_dbg.intensity * 100.0f, tire_dbg.speed_norm * 100.0f);
 
@@ -924,47 +1523,10 @@ namespace engine_sound
 
         // ---- combined output ----
         ImGui::TextColored(ImVec4(0.6f, 1.0f, 0.6f, 1.0f), "Output");
-
-        draw_level_bar("Engine",  dbg.output_level,       IM_COL32(100, 255, 100, 255));
-        draw_level_bar("Tire",    tire_dbg.output_level,   IM_COL32(180, 100, 255, 255));
-        draw_level_bar("Eng Peak", dbg.output_peak,        IM_COL32(255, 255, 100, 255));
-        draw_level_bar("Tire Peak", tire_dbg.output_peak,  IM_COL32(255, 200, 255, 255));
-
-        ImGui::Separator();
-
-        // ---- waveform (engine) ----
-        ImGui::Text("Engine Waveform:");
-        {
-            ImVec2 pos = ImGui::GetCursorScreenPos();
-            float width = 400.0f;
-            float height = 80.0f;
-            float center_y = pos.y + height * 0.5f;
-
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-            draw_list->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(20, 20, 25, 255));
-            draw_list->AddLine(ImVec2(pos.x, center_y), ImVec2(pos.x + width, center_y), IM_COL32(60, 60, 60, 255));
-
-            int start_idx = dbg.waveform_write_pos;
-            float x_step = width / (float)debug_data::waveform_size;
-
-            for (int i = 0; i < debug_data::waveform_size - 1; i++)
-            {
-                int idx0 = (start_idx + i) % debug_data::waveform_size;
-                int idx1 = (start_idx + i + 1) % debug_data::waveform_size;
-
-                float x0 = pos.x + i * x_step;
-                float x1 = pos.x + (i + 1) * x_step;
-                float y0 = center_y - dbg.waveform[idx0] * height * 0.45f;
-                float y1 = center_y - dbg.waveform[idx1] * height * 0.45f;
-
-                draw_list->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(100, 200, 100, 255), 1.5f);
-            }
-
-            draw_list->AddRect(pos, ImVec2(pos.x + width, pos.y + height), IM_COL32(80, 80, 80, 255));
-
-            ImGui::Dummy(ImVec2(width, height));
-        }
+        draw_level_bar("Engine",   dbg.output_level,        IM_COL32(100, 255, 100, 255));
+        draw_level_bar("Tire",     tire_dbg.output_level,   IM_COL32(180, 100, 255, 255));
+        draw_level_bar("Eng Peak", dbg.output_peak,         IM_COL32(255, 255, 100, 255));
+        draw_level_bar("Tire Peak", tire_dbg.output_peak,   IM_COL32(255, 200, 255, 255));
 
         ImGui::End();
     }
