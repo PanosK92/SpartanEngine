@@ -58,20 +58,28 @@ namespace engine_sound
         // exhaust convolution path (engine-sim style)
         // 1024 taps at 48k = ~21 ms tail, short enough to avoid bathroom-room reverb character
         constexpr int   convolution_taps   = 1024;
-        constexpr float df_f_mix           = 0.05f;
-        constexpr float air_noise          = 0.1f;
+        // 0.15 keeps firing transients prominent in the convolution input, gives the synth its bite
+        constexpr float df_f_mix           = 0.15f;
+        constexpr float air_noise          = 0.04f;
         constexpr float convolution_wet    = 1.0f;
         // 1 ms haas-style offset on right bank, just enough for stereo width
         constexpr float stereo_offset      = 0.001f;
         // bleed across banks so neither channel ever drops out, 0 = hard split, 1 = mono
         constexpr float bank_cross_bleed   = 0.35f;
+        // ir has mic/cabinet resonances out to 20 khz, gentle lp at load to kill 16-20 khz junk
+        // 9 khz / 2 poles preserves engine snarl in the 2-8 khz band, only nukes the inaudible buzz
+        constexpr float ir_lowpass_hz      = 9000.0f;
+        constexpr int   ir_lowpass_poles   = 2;
 
-        // auto leveler
+        // limiter-style auto leveler with asymmetric slew (slow attack on gain rise, fast catch on transients)
         constexpr float leveler_target     = 0.7f;
-        constexpr float leveler_max_gain   = 4.0f;
+        constexpr float leveler_max_gain   = 3.0f;
         constexpr float leveler_min_gain   = 0.05f;
-        constexpr float leveler_attack     = 200.0f;
+        constexpr float leveler_attack     = 800.0f;
         constexpr float leveler_release    = 4.0f;
+        // gain slew per sample: down (catch transients) fast, up (no pumping in quiet bits) slow
+        constexpr float leveler_gain_down  = 0.012f;
+        constexpr float leveler_gain_up    = 0.0006f;
 
         // exhaust ir asset (the _short variant has had its 250ms pre-silence trimmed
         // and a clean exponential decay tail applied, see binaries/trim_ir.py)
@@ -380,8 +388,9 @@ namespace engine_sound
             float target_gain = (envelope > 1e-6f) ? (target / envelope) : gain_max;
             target_gain = std::clamp(target_gain, gain_min, gain_max);
 
-            // smooth gain changes
-            gain += (target_gain - gain) * 0.001f;
+            // asymmetric slew: drop gain fast to catch transients, raise slowly to avoid pumping up the noise floor
+            float slew = (target_gain < gain) ? tuning::leveler_gain_down : tuning::leveler_gain_up;
+            gain += (target_gain - gain) * slew;
 
             l *= gain;
             r *= gain;
@@ -437,6 +446,21 @@ namespace engine_sound
             ir_out[i] = samples[i];
 
         SDL_free(target_buffer);
+
+        // kill out-of-band resonances baked into the recording (16-20 khz mic/cabinet artifacts)
+        // bidirectional one-pole cascade is zero-phase, no extra delay added to the ir
+        if (tuning::ir_lowpass_hz > 0 && tuning::ir_lowpass_hz < (float)target_sample_rate * 0.5f && taps > 4)
+        {
+            float b1 = expf(-TWO_PI * tuning::ir_lowpass_hz / (float)target_sample_rate);
+            float a0 = 1.0f - b1;
+            for (int pass = 0; pass < tuning::ir_lowpass_poles; ++pass)
+            {
+                float z = ir_out[0];
+                for (int i = 0; i < taps; ++i) { z = ir_out[i] * a0 + z * b1; ir_out[i] = z; }
+                z = ir_out[taps - 1];
+                for (int i = taps - 1; i >= 0; --i) { z = ir_out[i] * a0 + z * b1; ir_out[i] = z; }
+            }
+        }
 
         // l2-energy normalize so convolution gain is ~unity for white-noise input
         // (peak-normalising made the convolution output ~50x too hot, which the leveler
