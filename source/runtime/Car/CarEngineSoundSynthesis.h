@@ -71,15 +71,28 @@ namespace engine_sound
         constexpr float ir_lowpass_hz      = 9000.0f;
         constexpr int   ir_lowpass_poles   = 2;
 
+        // tames the ir's secondary 833 hz peak which gets blasted by the firing harmonics at high rpm
+        // (without it the 2nd harmonic of the firing fundamental at 4000 rpm lands exactly on the resonance)
+        constexpr float exhaust_notch_hz   = 830.0f;
+        constexpr float exhaust_notch_q    = 2.5f;
+        constexpr float exhaust_notch_depth = 0.5f;
+
+        // output dc blocker pole, 0.998 = 15 hz corner, tighter than per-bank blocker
+        constexpr float output_dc_blocker_r = 0.998f;
+
         // limiter-style auto leveler with asymmetric slew (slow attack on gain rise, fast catch on transients)
         constexpr float leveler_target     = 0.7f;
-        constexpr float leveler_max_gain   = 3.0f;
+        constexpr float leveler_max_gain   = 2.2f;
         constexpr float leveler_min_gain   = 0.05f;
         constexpr float leveler_attack     = 800.0f;
         constexpr float leveler_release    = 4.0f;
         // gain slew per sample: down (catch transients) fast, up (no pumping in quiet bits) slow
         constexpr float leveler_gain_down  = 0.012f;
         constexpr float leveler_gain_up    = 0.0006f;
+
+        // soft saturation knee, replaces hard clamp at +-1 to avoid clicks during transients
+        // tanh(x * drive) / drive gives ~unity gain at small signals, soft limiting near +-1
+        constexpr float output_soft_drive  = 1.15f;
 
         // exhaust ir asset (the _short variant has had its 250ms pre-silence trimmed
         // and a clean exponential decay tail applied, see binaries/trim_ir.py)
@@ -253,12 +266,14 @@ namespace engine_sound
         void reset() { z1 = 0.0f; }
     };
 
-    // dc blocker
+    // dc blocker, default corner ~38 hz at 48k, set_r() lets the output stage tighten this
     struct dc_blocker
     {
         float x1 = 0.0f;
         float y1 = 0.0f;
         float r  = 0.995f;
+
+        void set_r(float r_) { r = r_; }
 
         float process(float input)
         {
@@ -462,6 +477,16 @@ namespace engine_sound
             }
         }
 
+        // null the ir's dc gain by subtracting the mean, otherwise convolution adds a constant offset
+        // to the output (the original recording had ~-0.75 sum-of-taps after lp, causing dc drift)
+        double mean = 0.0;
+        for (float v : ir_out) mean += (double)v;
+        mean /= (double)ir_out.size();
+        if (fabs(mean) > 1e-9)
+        {
+            for (float& v : ir_out) v -= (float)mean;
+        }
+
         // l2-energy normalize so convolution gain is ~unity for white-noise input
         // (peak-normalising made the convolution output ~50x too hot, which the leveler
         //  could compensate for but only after destroying transients via tanh)
@@ -482,16 +507,27 @@ namespace engine_sound
     // cylinder combustion model
     struct cylinder
     {
-        float phase         = 0.0f;
-        float phase_inc     = 0.0f;
-        float firing_offset = 0.0f;
-        float pressure      = 0.0f;
-        float prev_pressure = 0.0f;
-        bool  is_firing     = false;
-        bool  bank_left     = true;
-        float fire_phase    = 0.0f;
-        float timing_jitter = 0.0f;
-        float intensity_var = 1.0f;
+        float    phase           = 0.0f;
+        float    phase_inc       = 0.0f;
+        float    firing_offset   = 0.0f;
+        float    pressure        = 0.0f;
+        float    prev_pressure   = 0.0f;
+        bool     is_firing       = false;
+        bool     bank_left       = true;
+        float    fire_phase      = 0.0f;
+        float    timing_jitter   = 0.0f;
+        float    intensity_var   = 1.0f;
+        float    cycle_intensity = 1.0f;
+        uint32_t rng_state       = 12345;
+
+        // xorshift32, tiny per-cylinder rng so each cyl varies independently across cycles
+        float rand01()
+        {
+            rng_state ^= rng_state << 13;
+            rng_state ^= rng_state >> 17;
+            rng_state ^= rng_state << 5;
+            return (float)rng_state / (float)0xFFFFFFFFu;
+        }
 
         void init(int index, int total_cylinders)
         {
@@ -506,6 +542,9 @@ namespace engine_sound
             // per-cylinder variation
             timing_jitter = ((index * 7 + 3) % 17) / 170.0f - 0.05f;
             intensity_var = 0.95f + ((index * 13 + 5) % 11) / 110.0f;
+
+            // independent rng seed per cylinder for cycle-to-cycle variation
+            rng_state = 0x9e3779b9u ^ (uint32_t)(index + 1) * 0x85ebca6bu;
         }
 
         void set_rpm(float rpm, float sample_rate)
@@ -521,6 +560,8 @@ namespace engine_sound
             {
                 phase -= 1.0f;
                 is_firing = false;
+                // new random intensity each cycle, gives the engine an organic, alive character
+                cycle_intensity = 0.90f + rand01() * 0.20f;
             }
 
             float effective_phase = fmodf(phase + firing_offset + timing_jitter * (1.0f - load * 0.5f), 1.0f);
@@ -556,7 +597,7 @@ namespace engine_sound
                 env = powf(env, 1.0f / rpm_sharpness);
 
                 prev_pressure = pressure;
-                pressure = env * load_factor * intensity_var;
+                pressure = env * load_factor * intensity_var * cycle_intensity;
             }
             else
             {
@@ -574,6 +615,7 @@ namespace engine_sound
             pressure = prev_pressure = 0.0f;
             is_firing = false;
             fire_phase = 0.0f;
+            cycle_intensity = 1.0f;
         }
     };
 
@@ -672,6 +714,7 @@ namespace engine_sound
         float drive_extra      = 0.0f;
         float leveler_target   = tuning::leveler_target;
         float master_offset    = 0.0f;
+        float notch_depth      = tuning::exhaust_notch_depth;
     };
 
     class synthesizer
@@ -713,6 +756,14 @@ namespace engine_sound
             m_deriv_l.set_sample_rate(m_sample_rate);
             m_deriv_r.set_sample_rate(m_sample_rate);
             m_leveler.set_sample_rate(m_sample_rate);
+
+            // notch filters tame the ir's secondary resonance that high-rpm harmonics excite
+            m_exhaust_notch_l.set_params(tuning::exhaust_notch_hz, tuning::exhaust_notch_q, m_sample_rate);
+            m_exhaust_notch_r.set_params(tuning::exhaust_notch_hz, tuning::exhaust_notch_q, m_sample_rate);
+
+            // output dc blockers run tighter than the pre-conv ones to fully kill drift
+            m_dc_block_out_l.set_r(tuning::output_dc_blocker_r);
+            m_dc_block_out_r.set_r(tuning::output_dc_blocker_r);
 
             // induction filters
             m_induction_res.set_params(400.0f, 3.0f, m_sample_rate);
@@ -841,6 +892,10 @@ namespace engine_sound
                 float v_in_r   = params.df_f_mix * rfp + (1.0f - params.df_f_mix) * rf * rmixed_r;
                 float wet_r    = m_ir_loaded ? m_conv_r.process(v_in_r) : v_in_r;
                 float exhaust_r = wet_r * params.convolution_wet + v_in_r * (1.0f - params.convolution_wet);
+
+                // notch out the ir's secondary 833 hz resonance that the firing harmonics keep blasting
+                exhaust_l -= params.notch_depth * m_exhaust_notch_l.bandpass(exhaust_l);
+                exhaust_r -= params.notch_depth * m_exhaust_notch_r.bandpass(exhaust_r);
 
                 // mono exhaust used by the debug meter and the mono output path
                 float exhaust = (exhaust_l + exhaust_r) * 0.5f;
@@ -1044,9 +1099,14 @@ namespace engine_sound
                 m_leveler.target = params.leveler_target;
                 m_leveler.process(left, right);
 
-                // safety clamp only, no compression below 1.0
-                left  = std::clamp(left,  -1.0f, 1.0f);
-                right = std::clamp(right, -1.0f, 1.0f);
+                // final-stage dc blocker per channel kills any residual offset from unipolar cylinder pulse trains
+                left  = m_dc_block_out_l.process(left);
+                right = m_dc_block_out_r.process(right);
+
+                // soft saturation, no hard edges, the knee starts kicking in around +-0.85
+                float drv = tuning::output_soft_drive;
+                left  = tanhf(left  * drv) / drv;
+                right = tanhf(right * drv) / drv;
 
                 float master = 0.7f + throttle * 0.2f + rpm_norm * 0.1f + params.master_offset;
                 left  *= master;
@@ -1151,6 +1211,10 @@ namespace engine_sound
             m_deriv_r.reset();
             m_dc_block_l.reset();
             m_dc_block_r.reset();
+            m_dc_block_out_l.reset();
+            m_dc_block_out_r.reset();
+            m_exhaust_notch_l.reset();
+            m_exhaust_notch_r.reset();
             m_leveler.reset();
 
             std::fill(std::begin(m_spec_input), std::end(m_spec_input), 0.0f);
@@ -1243,6 +1307,10 @@ namespace engine_sound
         derivative_filter  m_deriv_r;
         dc_blocker         m_dc_block_l;
         dc_blocker         m_dc_block_r;
+        dc_blocker         m_dc_block_out_l;
+        dc_blocker         m_dc_block_out_r;
+        svf_filter         m_exhaust_notch_l;
+        svf_filter         m_exhaust_notch_r;
         leveler            m_leveler;
 
         // full-rate ring buffer for fft input
@@ -1397,6 +1465,7 @@ namespace engine_sound
             ImGui::SliderFloat("drive_extra",      &s.params.drive_extra,     -2.0f, 4.0f, "%.2f");
             ImGui::SliderFloat("leveler_target",   &s.params.leveler_target,   0.05f, 1.5f, "%.3f");
             ImGui::SliderFloat("master_offset",    &s.params.master_offset,   -0.7f, 1.0f, "%.2f");
+            ImGui::SliderFloat("notch_depth",      &s.params.notch_depth,      0.0f, 1.0f, "%.2f");
             if (ImGui::Button("Reset to defaults"))
                 s.params = runtime_params();
         }
