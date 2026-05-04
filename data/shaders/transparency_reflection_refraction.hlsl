@@ -254,16 +254,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
     if (surface.is_transparent())
     {
-        // proper pbr glass composition, every reflection path already carries its own fresnel
-        // weighting (direct light specular in tex_uav from light_composition has F_Schlick inside
-        // the brdf, ibl from light_image_based has the split sum F0 * brdf.x + brdf.y, and the
-        // ssr / rt reflection added here uses the same split sum), so summing them at full
-        // strength gives the correct fresnel modulated reflection without alpha attenuation
-        // the refracted background is added with (1 - F) as the transmission weight so at near
-        // normal incidence around 96% of the interior shows through and the windshield becomes
-        // a mirror at grazing angles, the artist authored alpha drives an absorption tint so
-        // tinted glass colors what passes through without hiding it (alpha 0 = clear glass,
-        // alpha 1 = fully tinted, still see through, just colored)
+        // pbr glass: sum reflection paths at full strength, add (1 - F) refracted background tinted by alpha
         float3 reflection_total  = tex_uav[thread_id.xy].rgb + specular_reflection;
         float3 transmission_tint = lerp(float3(1.0f, 1.0f, 1.0f), surface.albedo, surface.alpha);
         float3 kT                = float3(1.0f, 1.0f, 1.0f) - F;
@@ -272,8 +263,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
     else
     {
-        // opaque path keeps the original additive composition so existing scene calibration
-        // is preserved, fresnel weighted background plus the ssr ibl specular contribution
         float3 kT            = float3(1.0f, 1.0f, 1.0f) - F;
         float3 surface_color = specular_reflection + refraction * kT;
         tex_uav[thread_id.xy] += float4(surface_color, 0.0f);

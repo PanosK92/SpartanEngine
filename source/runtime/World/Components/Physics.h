@@ -348,7 +348,7 @@ namespace spartan
         math::Quaternion m_current_rotation;                     // rotation at current physics step
         bool m_interpolation_initialized  = false;               // flag to track first-frame initialization
 
-        // vehicle render extrapolation offset, also used to keep debug shapes aligned with the visual mesh
+        // vehicle chassis render extrapolation offset, smooths motion between fixed physx steps
         math::Vector3 m_vehicle_render_offset = math::Vector3::Zero;
 
         // car owner (ticked automatically through entity system)

@@ -2072,21 +2072,34 @@ namespace spartan
         const Color color_susp_top   = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - suspension top
         const Color color_susp_bot   = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - suspension bottom/wheel
 
-        // shift debug shapes by the same render offset used for the chassis so wheel debug stays glued to the visual mesh
-        const PxVec3 render_offset(m_vehicle_render_offset.x, m_vehicle_render_offset.y, m_vehicle_render_offset.z);
+        // anchor debug shapes to the actual rendered mesh aabb of each wheel, this guarantees the cylinders are exactly where the wheels are drawn
+        Entity* vehicle_entity = GetEntity();
+        Quaternion vehicle_rot = vehicle_entity ? vehicle_entity->GetRotation() : Quaternion::Identity;
+        Vector3 vehicle_pos    = vehicle_entity ? vehicle_entity->GetPosition() : Vector3::Zero;
+        Vector3 vehicle_up     = vehicle_rot * Vector3::Up;
 
         for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
         {
-            PxVec3 top, bottom;
-            car::get_debug_suspension(w, top, bottom);
-            top    += render_offset;
-            bottom += render_offset;
-            math::Vector3 susp_top(top.x, top.y, top.z);
-            math::Vector3 wheel_center(bottom.x, bottom.y, bottom.z);
+            Entity* wheel_entity = m_wheel_entities[w];
+            if (!wheel_entity)
+                continue;
+
+            // get the wheel mesh aabb center, refreshing the renderable so it reflects the latest entity transform
+            Vector3 wheel_center_v = wheel_entity->GetPosition();
+            if (Render* wheel_render = wheel_entity->GetComponent<Render>())
+            {
+                wheel_render->Tick();
+                wheel_center_v = wheel_render->GetBoundingBox().GetCenter();
+            }
+
+            // suspension top mount on the chassis, computed from the wheel offset stored in the physics module
+            PxVec3 attach = car::get_wheel_offset(w);
+            attach.y     += car::cfg.suspension_travel;
+            Vector3 susp_top_v = vehicle_pos + vehicle_rot * Vector3(attach.x, attach.y, attach.z);
 
             // suspension line
             if (car::get_draw_suspension())
-                Renderer::DrawLine(susp_top, wheel_center, color_susp_top, color_susp_bot);
+                Renderer::DrawLine(susp_top_v, wheel_center_v, color_susp_top, color_susp_bot);
 
             // cylinder wireframe at wheel center
             if (car::get_draw_raycasts())
@@ -2094,12 +2107,15 @@ namespace spartan
                 float radius     = car::get_wheel_radius();
                 float half_width = car::get_wheel_width() * 0.5f;
 
-                PxTransform pose = car::get_body_pose();
-                PxVec3 right     = pose.q.rotate(PxVec3(1, 0, 0));
-                PxVec3 fwd       = pose.q.rotate(PxVec3(0, 0, 1));
-                PxVec3 up        = pose.q.rotate(PxVec3(0, 1, 0));
+                Vector3 right_v = vehicle_rot * Vector3::Right;
+                Vector3 fwd_v   = vehicle_rot * Vector3::Forward;
+                Vector3 up_v    = vehicle_up;
 
-                PxVec3 center = bottom + up * radius;
+                PxVec3 right(right_v.x, right_v.y, right_v.z);
+                PxVec3 fwd  (fwd_v.x,   fwd_v.y,   fwd_v.z);
+                PxVec3 up   (up_v.x,    up_v.y,    up_v.z);
+
+                PxVec3 center(wheel_center_v.x, wheel_center_v.y, wheel_center_v.z);
                 PxVec3 left_center  = center - right * half_width;
                 PxVec3 right_center = center + right * half_width;
 

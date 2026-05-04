@@ -1700,9 +1700,9 @@ namespace spartan
                 RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
 
                 RHI_AccelerationStructureInstance instance           = {};
-                instance.instance_custom_index                       = material->GetIndex(); // for hit shader material lookup
-                instance.mask                                        = 0xFF;                 // visible to all rays
-                instance.instance_shader_binding_table_record_offset = 0;                    // sbt hit group offset
+                instance.instance_custom_index                       = material->GetIndex();             // for hit shader material lookup
+                instance.mask                                        = material->IsTransparent() ? 0x02 : 0x01; // bit 0 = opaque, bit 1 = transparent, lets shadow rays exclude transparents
+                instance.instance_shader_binding_table_record_offset = 0;                                // sbt hit group offset
                 instance.flags                                       = cull_mode == RHI_CullMode::None ? RHI_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT : 0;
                 instance.device_address                              = device_address;
 

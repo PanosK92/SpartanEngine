@@ -232,8 +232,9 @@ float trace_inline_shadow_ray(Light light, Surface surface, float2 pixel_xy)
         ray.TMin      = 0.001f;
         ray.TMax      = max(t_max, 0.001f);
 
+        // mask 0x01 = opaque only, transparents do not block area/point/spot shadow rays
         RayQuery<RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> query;
-        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+        query.TraceRayInline(tlas, RAY_FLAG_NONE, 0x01, ray);
         query.Proceed();
 
         visibility_sum += query.CommittedStatus() == COMMITTED_NOTHING ? 1.0f : 0.0f;
@@ -317,16 +318,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 out_specular   = 0.0f;
     float3 out_volumetric = 0.0f;
 
-    // pre-compute common terms (alpha and occlusion)
-    // reflection (specular) for transparents is fresnel weighted via F_Schlick inside each
-    // brdf lobe, multiplying it again by surface.alpha would steal energy from the reflection
-    // path and make glass look dim under direct lights, only opaques use alpha as a generic
-    // coverage factor here, diffuse for transparents stays 0 since clear/tinted glass has no
-    // lambertian component, the apparent color of tinted glass comes from absorption during
-    // transmission which is applied in the refraction pass
+    // transparents skip alpha on specular (fresnel handles it) and zero diffuse (no lambertian on glass)
     bool   is_transparent       = surface.is_transparent();
-    float3 specular_precomputed = is_transparent ? float3(surface.occlusion, surface.occlusion, surface.occlusion) : float3(surface.alpha * surface.occlusion, surface.alpha * surface.occlusion, surface.alpha * surface.occlusion);
-    float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f)                                        : float3(surface.alpha * surface.occlusion, surface.alpha * surface.occlusion, surface.alpha * surface.occlusion);
+    float  alpha_occ            = surface.alpha * surface.occlusion;
+    float3 specular_precomputed = is_transparent ? float3(surface.occlusion, surface.occlusion, surface.occlusion) : float3(alpha_occ, alpha_occ, alpha_occ);
+    float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f)                                        : float3(alpha_occ, alpha_occ, alpha_occ);
     
     // loop over all lights and accumulate contributions
     uint light_count = pass_get_f3_value().x;
@@ -395,12 +391,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             AngularInfo angular_info;
             angular_info.Build(light, surface);
 
-            // for area lights widen the specular distribution to match the light's angular
-            // extent so the highlight does not collapse into a concentrated peak, the karis
-            // energy normalization factor is multiplied back into the brdf result so smooth
-            // surfaces do not produce a near lambertian glow that overwhelms everything else
-            // (this is critical for transparent surfaces like glass where the over bright
-            // specular smear would otherwise occlude the refracted background)
+            // area lights widen specular roughness, karis energy normalization keeps total energy correct
             float original_roughness       = surface.roughness;
             float original_roughness_alpha = surface.roughness_alpha;
             float area_specular_norm       = 1.0f;
@@ -442,9 +433,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             surface.roughness       = original_roughness;
             surface.roughness_alpha = original_roughness_alpha;
 
-            // diffuse for transparents is gated to 0 via diffuse_precomputed below so the
-            // brdf is evaluated unconditionally here, the apparent color of tinted glass
-            // comes from absorption during transmission handled in the refraction pass
+            // diffuse_precomputed is 0 for transparents so the brdf eval is harmless on glass
             L_diffuse_term += BRDF_Diffuse(surface, angular_info);
         }
 

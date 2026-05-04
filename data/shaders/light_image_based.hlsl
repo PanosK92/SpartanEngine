@@ -111,11 +111,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         diffuse_ibl *= 0.0f; // restir fully handles indirect diffuse
     }
 
-    // combine ibl
-    // for transparents the split sum already embeds fresnel via specular_energy = F0 * brdf.x + brdf.y
-    // and the diffuse_energy term already has (1 - F) * (1 - metallic), so dimming the result by
-    // surface.alpha would double attenuate the reflection path that fresnel already accounts for
-    // and starve the glass of environment reflections, only opaques use alpha as a coverage factor
+    // transparents take full ibl, fresnel inside the split sum already governs the reflection split
     float3 ibl  = diffuse_ibl + specular_ibl;
     ibl        *= surface.is_transparent() ? 1.0f : surface.alpha;
 
