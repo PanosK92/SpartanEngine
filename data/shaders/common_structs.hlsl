@@ -96,7 +96,10 @@ struct Surface
         roughness             = sample_material.r;
         metallic              = sample_material.g;
         emissive              = sample_material.b;
-        F0                    = lerp(0.04f, albedo, metallic);
+        // transparents are always dielectric since real glass has no metallic flavor and a colored f0 would swamp the refraction
+        bool alpha_transparent = (alpha > 0.0f && alpha < 1.0f);
+        metallic               = alpha_transparent ? 0.0f : metallic;
+        F0                     = lerp(0.04f, albedo, metallic);
         anisotropic           = material.anisotropic;
         anisotropic_rotation  = material.anisotropic_rotation;
         clearcoat             = material.clearcoat;
@@ -384,14 +387,19 @@ struct Light
         return tex2.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
     }
 
-    // computes the roughness widening for area lights so that the specular
-    // highlight spreads to match the light's angular extent instead of
-    // collapsing into a point-like peak (Karis 2013)
-    float compute_area_roughness_modification(float roughness_alpha, float distance)
+    // computes the roughness widening for area lights so the specular lobe spreads
+    // to match the light's angular extent instead of collapsing to a point peak (karis 2013)
+    // also returns an energy normalization factor (alpha_orig / alpha_widened)^2 so the
+    // widened lobe preserves total reflected energy, without it smooth surfaces lit by
+    // close area lights smear into a near lambertian glow that drowns out everything else
+    float compute_area_roughness_modification(float roughness_alpha, float distance, out float energy_normalization)
     {
-        float area_size  = max(area_width, area_height) * 0.5f;
-        float solid_angle = saturate(area_size / (2.0f * max(distance, 0.01f)));
-        return saturate(roughness_alpha + solid_angle / (2.0f * roughness_alpha + solid_angle));
+        float area_size      = max(area_width, area_height) * 0.5f;
+        float solid_angle    = saturate(area_size / (2.0f * max(distance, 0.01f)));
+        float widened        = saturate(roughness_alpha + solid_angle / (2.0f * roughness_alpha + solid_angle));
+        float ratio          = roughness_alpha / max(widened, 1e-4f);
+        energy_normalization = ratio * ratio;
+        return widened;
     }
 
     void Build(uint index, Surface surface)

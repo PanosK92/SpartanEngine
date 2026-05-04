@@ -318,7 +318,15 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 out_volumetric = 0.0f;
 
     // pre-compute common terms (alpha and occlusion)
-    float3 light_precomputed = surface.alpha * surface.occlusion;
+    // reflection (specular) for transparents is fresnel weighted via F_Schlick inside each
+    // brdf lobe, multiplying it again by surface.alpha would steal energy from the reflection
+    // path and make glass look dim under direct lights, only opaques use alpha as a generic
+    // coverage factor here, diffuse for transparents stays 0 since clear/tinted glass has no
+    // lambertian component, the apparent color of tinted glass comes from absorption during
+    // transmission which is applied in the refraction pass
+    bool   is_transparent       = surface.is_transparent();
+    float3 specular_precomputed = is_transparent ? float3(surface.occlusion, surface.occlusion, surface.occlusion) : float3(surface.alpha * surface.occlusion, surface.alpha * surface.occlusion, surface.alpha * surface.occlusion);
+    float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f)                                        : float3(surface.alpha * surface.occlusion, surface.alpha * surface.occlusion, surface.alpha * surface.occlusion);
     
     // loop over all lights and accumulate contributions
     uint light_count = pass_get_f3_value().x;
@@ -387,52 +395,56 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             AngularInfo angular_info;
             angular_info.Build(light, surface);
 
-            // for area lights, widen the specular distribution to match the light's angular
-            // extent - this prevents the highlight from collapsing into a concentrated point
+            // for area lights widen the specular distribution to match the light's angular
+            // extent so the highlight does not collapse into a concentrated peak, the karis
+            // energy normalization factor is multiplied back into the brdf result so smooth
+            // surfaces do not produce a near lambertian glow that overwhelms everything else
+            // (this is critical for transparent surfaces like glass where the over bright
+            // specular smear would otherwise occlude the refracted background)
             float original_roughness       = surface.roughness;
             float original_roughness_alpha = surface.roughness_alpha;
+            float area_specular_norm       = 1.0f;
             if (light.is_area())
             {
-                surface.roughness_alpha = light.compute_area_roughness_modification(surface.roughness_alpha, light.distance_to_pixel);
+                surface.roughness_alpha = light.compute_area_roughness_modification(surface.roughness_alpha, light.distance_to_pixel, area_specular_norm);
                 surface.roughness       = sqrt(surface.roughness_alpha);
             }
 
-            // compute specular brdf lobes
+            float3 L_specular_lobes = 0.0f;
             {
-                // main specular lobe (anisotropic or isotropic)
                 if (surface.anisotropic > 0.0f)
                 {
-                    L_specular_sum += BRDF_Specular_Anisotropic(surface, angular_info);
+                    L_specular_lobes += BRDF_Specular_Anisotropic(surface, angular_info);
                 }
                 else
                 {
-                    L_specular_sum += BRDF_Specular_Isotropic(surface, angular_info);
+                    L_specular_lobes += BRDF_Specular_Isotropic(surface, angular_info);
                 }
-                
-                // clearcoat layer (secondary specular)
+
                 if (surface.clearcoat > 0.0f)
                 {
-                    L_specular_sum += BRDF_Specular_Clearcoat(surface, angular_info);
+                    L_specular_lobes += BRDF_Specular_Clearcoat(surface, angular_info);
                 }
-                
-                // sheen layer (cloth-like materials)
+
                 if (surface.sheen > 0.0f)
                 {
-                    L_specular_sum += BRDF_Specular_Sheen(surface, angular_info);
+                    L_specular_lobes += BRDF_Specular_Sheen(surface, angular_info);
                 }
-                
-                // subsurface scattering (translucent materials)
+
                 if (surface.subsurface_scattering > 0.0f)
                 {
                     L_subsurface += subsurface_scattering(surface, light, angular_info);
                 }
             }
 
-            // restore original roughness so other lights aren't affected
+            L_specular_sum += L_specular_lobes * area_specular_norm;
+
             surface.roughness       = original_roughness;
             surface.roughness_alpha = original_roughness_alpha;
-            
-            // compute diffuse brdf term
+
+            // diffuse for transparents is gated to 0 via diffuse_precomputed below so the
+            // brdf is evaluated unconditionally here, the apparent color of tinted glass
+            // comes from absorption during transmission handled in the refraction pass
             L_diffuse_term += BRDF_Diffuse(surface, angular_info);
         }
 
@@ -443,8 +455,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // combine per-light terms with radiance and precomputed factors
-        float3 write_diffuse    = L_diffuse_term * light.radiance * light_precomputed * surface.diffuse_energy + L_subsurface;
-        float3 write_specular   = L_specular_sum * light.radiance * light_precomputed;
+        float3 write_diffuse    = L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy + L_subsurface;
+        float3 write_specular   = L_specular_sum * light.radiance * specular_precomputed;
         float  write_shadow     = L_shadow;
         float3 write_volumetric = L_volumetric;
 

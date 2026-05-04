@@ -1493,6 +1493,13 @@ namespace spartan
     {
         RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss);
 
+        // skip when ray traced shadows or restir pt own the directional shadow term
+        // light.hlsl does not sample tex_uav_sss in those branches so this pass is pure waste
+        bool tlas_available  = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
+        bool rt_owns_shadows = (cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available) || cvar_restir_pt.GetValueAs<bool>();
+        if (rt_owns_shadows)
+            return;
+
         cmd_list->BeginTimeblock("screen_space_shadows");
         {
             cmd_list->InsertBarrier(tex_sss, RHI_BarrierType::EnsureReadThenWrite);

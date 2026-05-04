@@ -378,61 +378,33 @@ namespace spartan
                 steps++;
             }
 
-            // get current physics state
+            // get the raw physx pose, this is the same pose used by the wheel debug shapes
             Vector3 physics_pos;
             Quaternion physics_rot;
             from_px_transform(actor->getGlobalPose(), physics_pos, physics_rot);
 
-            // get physics velocity for smooth extrapolation
-            PxRigidDynamic* dynamic = actor->is<PxRigidDynamic>();
-            Vector3 physics_vel = dynamic ? from_px_vec3(dynamic->getLinearVelocity()) : Vector3::Zero;
-            Vector3 physics_ang_vel = dynamic ? from_px_vec3(dynamic->getAngularVelocity()) : Vector3::Zero;
-
-            // initialize smoothed state on first frame
-            if (!m_interpolation_initialized)
+            // extrapolate forward by the unsimulated leftover time so the chassis stays smooth
+            // between fixed physx steps without lagging behind real time, the leftover is bounded
+            // by a single physx step so the offset is tiny even at very high speed
+            PxRigidDynamic* dynamic         = actor->is<PxRigidDynamic>();
+            Vector3 physics_vel             = dynamic ? from_px_vec3(dynamic->getLinearVelocity())  : Vector3::Zero;
+            Vector3 physics_ang_vel         = dynamic ? from_px_vec3(dynamic->getAngularVelocity()) : Vector3::Zero;
+            constexpr float physics_step    = 1.0f / 200.0f;
+            float leftover_time             = PhysicsWorld::GetInterpolationAlpha() * physics_step;
+            m_vehicle_render_offset         = physics_vel * leftover_time;
+            Vector3 render_pos              = physics_pos + m_vehicle_render_offset;
+            Quaternion render_rot           = physics_rot;
+            float ang_speed                 = physics_ang_vel.Length();
+            if (ang_speed > 0.001f)
             {
-                m_current_position          = physics_pos;
-                m_current_rotation          = physics_rot;
-                m_interpolation_initialized = true;
+                Vector3 axis         = physics_ang_vel / ang_speed;
+                float angle          = ang_speed * leftover_time;
+                Quaternion delta_rot = Quaternion::FromAxisAngle(axis, angle);
+                render_rot           = delta_rot * physics_rot;
+                render_rot.Normalize();
             }
-
-            // velocity-based extrapolation for smooth rendering
-            // physics position jumps discretely due to fixed timestep, but velocity is smooth
-            // we extrapolate using velocity and blend toward the real position to prevent drift
-            {
-                // extrapolate: move smoothed position forward by physics velocity
-                m_current_position = m_current_position + physics_vel * delta_time;
-
-                // blend toward real physics position to prevent drift
-                // higher correction_rate = faster correction but more jitter
-                // lower correction_rate = smoother but more drift
-                constexpr float correction_rate = 8.0f;
-                float blend = 1.0f - expf(-correction_rate * delta_time);
-                m_current_position = m_current_position + (physics_pos - m_current_position) * blend;
-            }
-
-            // rotation: use angular velocity for extrapolation
-            {
-                // extrapolate rotation using angular velocity
-                float ang_speed = physics_ang_vel.Length();
-                if (ang_speed > 0.001f)
-                {
-                    Vector3 axis = physics_ang_vel / ang_speed;
-                    float angle = ang_speed * delta_time;
-                    Quaternion delta_rot = Quaternion::FromAxisAngle(axis, angle);
-                    m_current_rotation = delta_rot * m_current_rotation;
-                    m_current_rotation.Normalize();
-                }
-
-                // blend toward real physics rotation
-                constexpr float rot_correction_rate = 10.0f;
-                float rot_blend = 1.0f - expf(-rot_correction_rate * delta_time);
-                m_current_rotation = Quaternion::Lerp(m_current_rotation, physics_rot, rot_blend);
-            }
-
-            // sync smoothed transform to entity
-            GetEntity()->SetPosition(m_current_position);
-            GetEntity()->SetRotation(m_current_rotation);
+            GetEntity()->SetPosition(render_pos);
+            GetEntity()->SetRotation(render_rot);
 
             // update wheel visuals
             UpdateWheelTransforms();
@@ -449,6 +421,7 @@ namespace spartan
             m_wheel_offsets_synced      = false;
             m_interpolation_initialized = false;
             m_vehicle_accumulated_time  = 0.0f;
+            m_vehicle_render_offset     = Vector3::Zero;
 
             actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
 
@@ -2099,10 +2072,15 @@ namespace spartan
         const Color color_susp_top   = Color(1.0f, 1.0f, 0.0f, 1.0f);   // yellow - suspension top
         const Color color_susp_bot   = Color(0.0f, 0.5f, 1.0f, 1.0f);   // blue - suspension bottom/wheel
 
+        // shift debug shapes by the same render offset used for the chassis so wheel debug stays glued to the visual mesh
+        const PxVec3 render_offset(m_vehicle_render_offset.x, m_vehicle_render_offset.y, m_vehicle_render_offset.z);
+
         for (int w = 0; w < static_cast<int>(car::wheel_count); w++)
         {
             PxVec3 top, bottom;
             car::get_debug_suspension(w, top, bottom);
+            top    += render_offset;
+            bottom += render_offset;
             math::Vector3 susp_top(top.x, top.y, top.z);
             math::Vector3 wheel_center(bottom.x, bottom.y, bottom.z);
 
@@ -2121,7 +2099,7 @@ namespace spartan
                 PxVec3 fwd       = pose.q.rotate(PxVec3(0, 0, 1));
                 PxVec3 up        = pose.q.rotate(PxVec3(0, 1, 0));
 
-                PxVec3 center = PxVec3(bottom.x, bottom.y, bottom.z) + up * radius;
+                PxVec3 center = bottom + up * radius;
                 PxVec3 left_center  = center - right * half_width;
                 PxVec3 right_center = center + right * half_width;
 

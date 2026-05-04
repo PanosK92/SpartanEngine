@@ -38,10 +38,9 @@ static const float TARGET_FRAME_TIME = 1.0f / 60.0f;
 // without this, dark scenes with 1/30s shutter would have 2x blur which looks bad
 static const float MAX_SHUTTER_RATIO = 0.8f;
 
-// tile-based velocity: the screen is divided into tiles and the dominant (maximum)
-// velocity within each tile is used for blur. this stabilizes blur length because
-// the max over a region is much less sensitive to per-pixel noise than the raw value.
-static const float TILE_SIZE = 16.0f;
+// neighborhood max search radius in pixels, used to stabilize blur length
+// without snapping to a fixed tile grid (which produces visible square artifacts)
+static const float NEIGHBORHOOD_RADIUS_PIXELS = 16.0f;
 
 // soft depth comparison (guerrilla games / killzone approach)
 // returns 1 when depth_a is behind or equal to depth_b
@@ -68,26 +67,32 @@ float velocity_weight(float sample_velocity_length, float center_velocity_length
     return saturate(coverage / (center_velocity_length + FLT_MIN));
 }
 
-// find the dominant velocity in the tile containing this pixel.
-// by taking the maximum velocity over a tile, we get a stable blur length that
-// doesn't oscillate with per-pixel noise - the max of a neighborhood changes
-// much less frame-to-frame than any individual pixel's velocity.
-float2 get_tile_max_velocity(float2 uv, float2 texel_size, float2 resolution)
+// find the dominant velocity in a neighborhood centered on this pixel
+// the search is anchored to the pixel position rather than a snapped tile grid,
+// so adjacent pixels see almost the same neighborhood and the result varies
+// smoothly across the screen instead of producing visible square tile boundaries
+float2 get_neighborhood_max_velocity(float2 uv, float2 texel_size, float jitter)
 {
-    float2 tile_texel = TILE_SIZE * texel_size;
-    float2 tile_center = (floor(uv / tile_texel) + 0.5f) * tile_texel;
+    float2 search_step = NEIGHBORHOOD_RADIUS_PIXELS * texel_size;
+
+    // small per-pixel rotation of the sample pattern breaks any residual grid
+    // alignment and lets taa average out the tiny remaining differences
+    float  angle = jitter * 6.2831853f;
+    float  cs    = cos(angle);
+    float  sn    = sin(angle);
+    float2x2 rot = float2x2(cs, -sn, sn, cs);
 
     float2 best_velocity = float2(0.0f, 0.0f);
     float  best_length   = 0.0f;
 
-    // sample a 3x3 grid of points within the tile for a representative max
     [unroll]
     for (int y = -1; y <= 1; ++y)
     {
         [unroll]
         for (int x = -1; x <= 1; ++x)
         {
-            float2 sample_uv  = tile_center + float2(x, y) * tile_texel * 0.4f;
+            float2 offset      = mul(rot, float2(x, y) * search_step);
+            float2 sample_uv   = uv + offset;
             float2 sample_vel  = tex_velocity.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv * buffer_frame.resolution_scale, 0).xy;
             float  sample_len  = length(sample_vel);
 
@@ -162,20 +167,27 @@ float4 motion_blur_reconstruction(
     }
     float pixel_speed = length(pixel_velocity * resolution);
 
-    // tile-based dominant velocity - stable across frames because the max over a
-    // region doesn't fluctuate with per-pixel jitter from erratic mouse movement
-    float2 tile_velocity = get_tile_max_velocity(uv, texel_size, resolution);
-    float  tile_speed    = length(tile_velocity * resolution);
+    // neighborhood dominant velocity, sampled around the pixel itself rather than
+    // snapped to a fixed tile grid, which avoids visible square boundaries
+    float2 neighborhood_velocity = get_neighborhood_max_velocity(uv, texel_size, noise);
+    float  neighborhood_speed    = length(neighborhood_velocity * resolution);
 
-    // use the pixel's own direction but blend the magnitude toward the tile max.
-    // this keeps directional accuracy per-pixel while stabilizing the blur length.
-    // for camera rotation (where all pixels move similarly), this effectively
-    // smooths out the frame-to-frame magnitude oscillation.
+    // use the pixel's own direction but blend the magnitude toward the neighborhood max
+    // the boost is gated by similarity to prevent silhouette pixels next to fast-moving
+    // backgrounds from inheriting the background's blur length and smearing across it
     float2 velocity;
     if (pixel_speed > MIN_BLUR_THRESHOLD)
     {
         float2 pixel_dir = pixel_velocity / (length(pixel_velocity) + FLT_MIN);
-        float  stable_speed = lerp(pixel_speed, max(pixel_speed, tile_speed), 0.7f);
+        float2 neigh_dir = neighborhood_velocity / (length(neighborhood_velocity) + FLT_MIN);
+
+        // motion is coherent when this pixel and its neighborhood agree on direction
+        // and have comparable speeds, opposite directions cannot stabilize each other
+        float dir_agreement = saturate(dot(pixel_dir, neigh_dir));
+        float speed_ratio   = pixel_speed / (neighborhood_speed + FLT_MIN);
+        float coherence     = dir_agreement * smoothstep(0.5f, 1.0f, speed_ratio);
+
+        float stable_speed = lerp(pixel_speed, neighborhood_speed, 0.7f * coherence);
         velocity = pixel_dir * (stable_speed / resolution);
     }
     else

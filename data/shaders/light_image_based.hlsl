@@ -112,8 +112,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // combine ibl
+    // for transparents the split sum already embeds fresnel via specular_energy = F0 * brdf.x + brdf.y
+    // and the diffuse_energy term already has (1 - F) * (1 - metallic), so dimming the result by
+    // surface.alpha would double attenuate the reflection path that fresnel already accounts for
+    // and starve the glass of environment reflections, only opaques use alpha as a coverage factor
     float3 ibl  = diffuse_ibl + specular_ibl;
-    ibl        *= surface.alpha;
+    ibl        *= surface.is_transparent() ? 1.0f : surface.alpha;
 
     // output
     tex_uav[thread_id.xy] += validate_output(float4(ibl, 0.0f));
