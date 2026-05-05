@@ -141,14 +141,7 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
 
     if (tessellated && fade_factor > 0.0f)
     {
-        // height displacement
-        if (surface.has_texture_height())
-        {
-            float height       = GET_TEXTURE(material_texture_index_packed).SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), vertex.uv_misc.xy, 0.0f).a * 0.04f;
-            float3 disp        = vertex.normal * height * material.height * fade_factor;
-            position          += disp;
-            position_previous += disp;
-        }
+        // height displacement is now handled by parallax occlusion mapping in g_buffer.hlsl
 
         // terrain noise
         if (surface.is_terrain())

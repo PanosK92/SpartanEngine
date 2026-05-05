@@ -387,15 +387,12 @@ struct Light
         return tex2.SampleLevel(samplers[sampler_bilinear_clamp_border], atlas_uv, 0).r;
     }
 
-    // karis 2013 area light roughness widening, returns (alpha_orig / alpha_widened)^2 for energy normalization
-    float compute_area_roughness_modification(float roughness_alpha, float distance, out float energy_normalization)
+    // karis 2013 area light roughness widening, spreads the specular lobe to match the light's angular extent
+    float compute_area_roughness_modification(float roughness_alpha, float distance)
     {
-        float area_size      = max(area_width, area_height) * 0.5f;
-        float solid_angle    = saturate(area_size / (2.0f * max(distance, 0.01f)));
-        float widened        = saturate(roughness_alpha + solid_angle / (2.0f * roughness_alpha + solid_angle));
-        float ratio          = roughness_alpha / max(widened, 1e-4f);
-        energy_normalization = ratio * ratio;
-        return widened;
+        float area_size   = max(area_width, area_height) * 0.5f;
+        float solid_angle = saturate(area_size / (2.0f * max(distance, 0.01f)));
+        return saturate(roughness_alpha + solid_angle / (2.0f * roughness_alpha + solid_angle));
     }
 
     void Build(uint index, Surface surface)

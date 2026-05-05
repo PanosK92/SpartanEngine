@@ -44,6 +44,13 @@ static const float3 flower_red          = float3(0.8f, 0.2f, 0.2f);
 static const float3 flower_yellow       = float3(0.9f, 0.8f, 0.1f);
 static const float3 snow_color          = float3(0.95f, 0.95f, 0.95f);
 
+// parallax occlusion mapping
+static const uint  POM_MAX_STEPS    = 64;
+static const uint  POM_MIN_STEPS    = 8;
+static const float POM_FADE_START   = 25.0f;
+static const float POM_FADE_END     = 50.0f;
+static const float POM_HEIGHT_SCALE = 0.08f;
+
 // rotate uv around center (0.5, 0.5) by angle
 static float2 rotate_uv(float2 uv, float angle)
 {
@@ -190,6 +197,62 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             uv_world = rotate_uv_90(uv_world, material.uv_rotation);
 
         vertex.uv_misc.xy = uv_world;
+    }
+
+    // parallax occlusion mapping, gated on height texture
+    // uses offset limiting (no v.z divide) and a grazing fade to kill the warp at glancing angles
+    if (surface.has_texture_height() && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water())
+    {
+        float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, vertex.tangent);
+        float3 v_tangent          = normalize(mul(-camera_to_pixel, world_to_tangent));
+
+        float distance_fade = saturate((POM_FADE_END - distance) / (POM_FADE_END - POM_FADE_START));
+        float n_dot_v       = saturate(v_tangent.z);
+        float grazing_fade  = smoothstep(0.1f, 0.4f, n_dot_v);
+        float fade          = distance_fade * grazing_fade;
+
+        if (fade > 0.0f)
+        {
+            float max_disp  = material.height * POM_HEIGHT_SCALE * fade;
+            uint  num_steps = (uint)lerp(POM_MAX_STEPS, POM_MIN_STEPS, n_dot_v);
+
+            float2 dx = ddx(vertex.uv_misc.xy);
+            float2 dy = ddy(vertex.uv_misc.xy);
+
+            // offset limited delta_uv, the total shift across the march is bounded by max_disp regardless of view angle
+            float2 delta_uv  = v_tangent.xy * max_disp / num_steps;
+            float  layer_h   = 1.0f / num_steps;
+            float2 cur_uv    = vertex.uv_misc.xy;
+            float  cur_layer = 1.0f;
+            float  cur_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), cur_uv, dx, dy).a;
+
+            // steep parallax linear search
+            [loop]
+            while (cur_layer > cur_samp && cur_layer > 0.0f)
+            {
+                cur_uv    -= delta_uv;
+                cur_layer -= layer_h;
+                cur_samp   = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), cur_uv, dx, dy).a;
+            }
+
+            // binary search refinement
+            float2 prev_uv    = cur_uv + delta_uv;
+            float  prev_layer = cur_layer + layer_h;
+            [unroll(5)]
+            for (uint i = 0; i < 5; ++i)
+            {
+                float2 mid_uv    = (cur_uv + prev_uv)       * 0.5f;
+                float  mid_layer = (cur_layer + prev_layer) * 0.5f;
+                float  mid_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), mid_uv, dx, dy).a;
+                bool   above     = mid_layer > mid_samp;
+                cur_uv     = above ? mid_uv     : cur_uv;
+                cur_layer  = above ? mid_layer  : cur_layer;
+                prev_uv    = above ? prev_uv    : mid_uv;
+                prev_layer = above ? prev_layer : mid_layer;
+            }
+
+            vertex.uv_misc.xy = cur_uv;
+        }
     }
 
     // albedo sampling

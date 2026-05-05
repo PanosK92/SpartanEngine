@@ -391,13 +391,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             AngularInfo angular_info;
             angular_info.Build(light, surface);
 
-            // area lights widen specular roughness, karis energy normalization keeps total energy correct
+            // area lights widen specular roughness so the highlight matches the light's angular extent
             float original_roughness       = surface.roughness;
             float original_roughness_alpha = surface.roughness_alpha;
-            float area_specular_norm       = 1.0f;
             if (light.is_area())
             {
-                surface.roughness_alpha = light.compute_area_roughness_modification(surface.roughness_alpha, light.distance_to_pixel, area_specular_norm);
+                surface.roughness_alpha = light.compute_area_roughness_modification(surface.roughness_alpha, light.distance_to_pixel);
                 surface.roughness       = sqrt(surface.roughness_alpha);
             }
 
@@ -428,7 +427,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                 }
             }
 
-            L_specular_sum += L_specular_lobes * area_specular_norm;
+            L_specular_sum += L_specular_lobes;
 
             surface.roughness       = original_roughness;
             surface.roughness_alpha = original_roughness_alpha;
