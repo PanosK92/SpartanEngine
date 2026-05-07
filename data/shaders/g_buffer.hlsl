@@ -45,11 +45,12 @@ static const float3 flower_yellow       = float3(0.9f, 0.8f, 0.1f);
 static const float3 snow_color          = float3(0.95f, 0.95f, 0.95f);
 
 // parallax occlusion mapping
-static const uint  POM_MAX_STEPS    = 64;
-static const uint  POM_MIN_STEPS    = 8;
-static const float POM_FADE_START   = 25.0f;
-static const float POM_FADE_END     = 50.0f;
-static const float POM_HEIGHT_SCALE = 0.08f;
+static const uint  POM_MAX_STEPS         = 96;
+static const uint  POM_MIN_STEPS         = 16;
+static const uint  POM_REFINE_ITERATIONS = 6;
+static const float POM_FADE_START        = 25.0f;
+static const float POM_FADE_END          = 50.0f;
+static const float POM_HEIGHT_SCALE      = 0.04f;
 
 // rotate uv around center (0.5, 0.5) by angle
 static float2 rotate_uv(float2 uv, float angle)
@@ -200,7 +201,8 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     }
 
     // parallax occlusion mapping, gated on height texture
-    // uses offset limiting (no v.z divide) and a grazing fade to kill the warp at glancing angles
+    // uses offset limiting (no v.z divide), a grazing fade to kill warp at glancing angles,
+    // and an analytical sub-step intersection that removes residual contour stepping
     if (surface.has_texture_height() && !surface.is_terrain() && !surface.is_grass_blade() && !surface.is_flower() && !surface.is_water())
     {
         float3x3 world_to_tangent = make_world_to_tangent_matrix(vertex.normal, vertex.tangent);
@@ -219,39 +221,54 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
             float2 dx = ddx(vertex.uv_misc.xy);
             float2 dy = ddy(vertex.uv_misc.xy);
 
-            // offset limited delta_uv, the total shift across the march is bounded by max_disp regardless of view angle
+            // offset limited delta_uv, total shift across the march is bounded by max_disp regardless of view angle
             float2 delta_uv  = v_tangent.xy * max_disp / num_steps;
             float  layer_h   = 1.0f / num_steps;
             float2 cur_uv    = vertex.uv_misc.xy;
             float  cur_layer = 1.0f;
             float  cur_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), cur_uv, dx, dy).a;
 
+            // track the previous straddling sample so we can solve the exact intersection at the end
+            float2 prev_uv    = cur_uv;
+            float  prev_layer = cur_layer;
+            float  prev_samp  = cur_samp;
+
             // steep parallax linear search
             [loop]
             while (cur_layer > cur_samp && cur_layer > 0.0f)
             {
+                prev_uv    = cur_uv;
+                prev_layer = cur_layer;
+                prev_samp  = cur_samp;
+
                 cur_uv    -= delta_uv;
                 cur_layer -= layer_h;
                 cur_samp   = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), cur_uv, dx, dy).a;
             }
 
-            // binary search refinement
-            float2 prev_uv    = cur_uv + delta_uv;
-            float  prev_layer = cur_layer + layer_h;
-            [unroll(5)]
-            for (uint i = 0; i < 5; ++i)
+            // binary search refinement, narrows the bracket while preserving the above/below invariant
+            [unroll(POM_REFINE_ITERATIONS)]
+            for (uint i = 0; i < POM_REFINE_ITERATIONS; ++i)
             {
                 float2 mid_uv    = (cur_uv + prev_uv)       * 0.5f;
                 float  mid_layer = (cur_layer + prev_layer) * 0.5f;
                 float  mid_samp  = GET_TEXTURE(material_texture_index_packed).SampleGrad(GET_SAMPLER(sampler_anisotropic_wrap), mid_uv, dx, dy).a;
                 bool   above     = mid_layer > mid_samp;
+
                 cur_uv     = above ? mid_uv     : cur_uv;
                 cur_layer  = above ? mid_layer  : cur_layer;
+                cur_samp   = above ? mid_samp   : cur_samp;
                 prev_uv    = above ? prev_uv    : mid_uv;
                 prev_layer = above ? prev_layer : mid_layer;
+                prev_samp  = above ? prev_samp  : mid_samp;
             }
 
-            vertex.uv_misc.xy = cur_uv;
+            // analytical intersection between the ray and the linear segment connecting the two samples,
+            // this is what eliminates the staircase that pure binary search leaves behind
+            float h_above_prev = max(prev_layer - prev_samp, 0.0f);
+            float h_below_cur  = max(cur_samp   - cur_layer, 0.0f);
+            float t            = h_above_prev / max(h_above_prev + h_below_cur, 1e-5f);
+            vertex.uv_misc.xy  = lerp(prev_uv, cur_uv, t);
         }
     }
 
