@@ -36,8 +36,8 @@ namespace spartan
         static bool IsBreadcrumbsEnabled()           { return m_breadcrumbs_enabled; }
 
     private:
-        inline static bool m_validation_layer_enabled        = true; // enables vulkan validation layers for api error detection and debug message reporting
-        inline static bool m_gpu_assisted_validation_enabled = true; // enables gpu-assisted validation to detect memory and synchronization errors during rendering
+        inline static bool m_validation_layer_enabled        = false; // enables vulkan validation layers for api error detection and debug message reporting
+        inline static bool m_gpu_assisted_validation_enabled = false; // enables gpu-assisted validation to detect memory and synchronization errors during rendering
         inline static bool m_logging_to_file_enabled         = false; // writes diagnostic and validation messages to a persistent log file
         inline static bool m_breadcrumbs_enabled             = false; // records gpu execution markers to help identify the cause of gpu crashes
         inline static bool m_renderdoc_enabled               = false; // enables integration with renderdoc for frame capture and gpu debugging
