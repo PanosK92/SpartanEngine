@@ -959,10 +959,12 @@ namespace spartan
             }
 
             // validate
+            // note, aiProcess_JoinIdenticalVertices is intentionally not set here, meshoptimizer's
+            // meshopt_generateVertexRemap in geometry_processing::optimize() welds identical vertices
+            // faster, so letting assimp do it as well is just duplicate work on big scenes
             if (ctx.mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData))
             {
                 import_flags |= aiProcess_RemoveRedundantMaterials;
-                import_flags |= aiProcess_JoinIdenticalVertices;
                 import_flags |= aiProcess_FindDegenerates;
                 import_flags |= aiProcess_FindInvalidData;
                 import_flags |= aiProcess_FindInstances;
