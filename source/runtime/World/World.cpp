@@ -1148,45 +1148,84 @@ namespace spartan
                         ProgressTracker::GetProgress(ProgressType::World).Start(resource_count, "Loading resources...");
                     }
 
-                    // load resources in dependency order: textures and meshes first, then materials
-                    // this ensures materials can find their textures when loading
-                    for (string& path : files)
+                    // bucket files by type so we can fan each bucket out across the thread pool
+                    // sequential loads here used to dominate world load time on texture heavy scenes
+                    vector<string> texture_paths;
+                    vector<string> mesh_paths;
+                    vector<string> material_paths;
+                    texture_paths.reserve(files.size());
+                    mesh_paths.reserve(files.size());
+                    material_paths.reserve(files.size());
+
+                    for (const string& path : files)
                     {
                         if (FileSystem::IsEngineTextureFile(path))
                         {
-                            if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(path))
-                            {
-                                texture->PrepareForGpu();
-                            }
-
-                            if (resource_count > 0)
-                            {
-                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                            }
+                            texture_paths.push_back(path);
                         }
                         else if (FileSystem::IsEngineMeshFile(path))
                         {
-                            ResourceCache::Load<Mesh>(path);
-
-                            if (resource_count > 0)
-                            {
-                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
-                            }
+                            mesh_paths.push_back(path);
+                        }
+                        else if (FileSystem::IsEngineMaterialFile(path))
+                        {
+                            material_paths.push_back(path);
                         }
                     }
 
-                    // second pass: load materials after textures are available
-                    for (string& path : files)
+                    // pass 1, textures and meshes are independent, run them in parallel
+                    // ResourceCache::Load uses a per-path in-flight lock so concurrent loads of the same path are deduplicated,
+                    // RHI_Texture::PrepareForGpu transitions state via compare_exchange_strong so it is safe across threads
+                    if (!texture_paths.empty())
                     {
-                        if (FileSystem::IsEngineMaterialFile(path))
+                        ThreadPool::ParallelLoop([&texture_paths, resource_count](uint32_t start, uint32_t end)
                         {
-                            ResourceCache::Load<Material>(path);
-
-                            if (resource_count > 0)
+                            for (uint32_t i = start; i < end; i++)
                             {
-                                ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                                if (shared_ptr<RHI_Texture> texture = ResourceCache::Load<RHI_Texture>(texture_paths[i]))
+                                {
+                                    texture->PrepareForGpu();
+                                }
+
+                                if (resource_count > 0)
+                                {
+                                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                                }
                             }
-                        }
+                        }, static_cast<uint32_t>(texture_paths.size()));
+                    }
+
+                    if (!mesh_paths.empty())
+                    {
+                        ThreadPool::ParallelLoop([&mesh_paths, resource_count](uint32_t start, uint32_t end)
+                        {
+                            for (uint32_t i = start; i < end; i++)
+                            {
+                                ResourceCache::Load<Mesh>(mesh_paths[i]);
+
+                                if (resource_count > 0)
+                                {
+                                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                                }
+                            }
+                        }, static_cast<uint32_t>(mesh_paths.size()));
+                    }
+
+                    // pass 2, materials reference textures by path so they must run after the texture pass completes
+                    if (!material_paths.empty())
+                    {
+                        ThreadPool::ParallelLoop([&material_paths, resource_count](uint32_t start, uint32_t end)
+                        {
+                            for (uint32_t i = start; i < end; i++)
+                            {
+                                ResourceCache::Load<Material>(material_paths[i]);
+
+                                if (resource_count > 0)
+                                {
+                                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                                }
+                            }
+                        }, static_cast<uint32_t>(material_paths.size()));
                     }
                 }
             }
