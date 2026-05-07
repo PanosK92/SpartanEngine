@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "pch.h"
+#include <fstream>
 #include "Style.h"
 #include "../ImGui/ImGui_Style.h"
 #include <Window.h>

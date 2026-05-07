@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "pch.h"
+#include <unordered_set>
 #include "Renderer.h"
 #include "Material.h"
 #include "GeometryBuffer.h"

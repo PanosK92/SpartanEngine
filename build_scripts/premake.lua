@@ -77,7 +77,11 @@ function solution_configuration()
             toolset "msc"
             systemversion "latest"
             architecture "x64"
-            buildoptions { "/arch:AVX2" }
+            -- /Zc:preprocessor: conformant preprocessor, faster on real workloads
+            -- /Zc:inline: drop unreferenced inline COMDATs at compile time, smaller objs and faster link
+            -- /permissive-: stricter standards conformance, stable across regenerations
+            -- /utf-8: avoids codepage-related preprocessor cost
+            buildoptions { "/arch:AVX2", "/Zc:preprocessor", "/Zc:inline", "/permissive-", "/utf-8" }
 
         filter { "system:linux" }
             platforms { "x64" }
@@ -173,7 +177,8 @@ function spartan_project_configuration()
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
             links { "dxcompiler" }
-            linkoptions { "/IGNORE:4099" }
+            -- /DEBUG:FASTLINK speeds up debug links by emitting a partial pdb
+            linkoptions { "/IGNORE:4099", "/DEBUG:FASTLINK" }
             
         filter { "configurations:debug", "system:windows" }
             links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug" }

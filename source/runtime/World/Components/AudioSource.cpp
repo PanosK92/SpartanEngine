@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World.h"
 #include "../../Core/Engine.h"
 SP_WARNINGS_OFF
+#include <sol/sol.hpp>
 #include <SDL3/SDL_audio.h>
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON

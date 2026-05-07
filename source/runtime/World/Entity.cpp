@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "pch.h"
+#include <sstream>
 #include "Entity.h"
 #include "Prefab.h"
 #include "Components/AudioSource.h"

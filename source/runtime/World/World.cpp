@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "World.h"
-#include <sol/sol.hpp>
 #include "Entity.h"
 #include "Prefab.h"
 #include "../Game/Game.h"
@@ -40,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Physics.h"
 #include "../Physics/PhysicsWorld.h"
 SP_WARNINGS_OFF
+#include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
 //====================================

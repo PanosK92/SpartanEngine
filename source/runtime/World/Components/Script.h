@@ -1,7 +1,9 @@
 ﻿#pragma once
 
 #include "Component.h"
+SP_WARNINGS_OFF
 #include "sol/sol.hpp"
+SP_WARNINGS_ON
 
 namespace spartan
 {

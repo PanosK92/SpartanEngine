@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "pch.h"
+#include <sstream>
 #include "Render.h"
 #include "Camera.h"
 #include "../Entity.h"
@@ -32,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Material.h"
 #include "../../Rendering/GeometryBuffer.h"
 SP_WARNINGS_OFF
+#include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
 //===========================================

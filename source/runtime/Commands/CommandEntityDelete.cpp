@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================
 #include "pch.h"
+#include <sstream>
 #include "CommandEntityDelete.h"
 #include "../World/Entity.h"
 #include "../World/World.h"

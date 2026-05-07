@@ -21,6 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================
 #include "pch.h"
+#include <fstream>
+#include <filesystem>
+#include <thread>
+#include <codecvt>
+#include <locale>
+#include <regex>
 SP_WARNINGS_OFF
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_iostream.h>

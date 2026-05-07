@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <map>
-#include <regex>
+#include <memory>
 #include <ImGui/Source/imgui.h>
 
 class TextEditor
@@ -266,7 +266,9 @@ public:
 	static const Palette& GetRetroBluePalette();
 
 private:
-	typedef std::vector<std::pair<std::regex, PaletteIndex>> RegexList;
+	// pimpl: hide std::regex behind an opaque struct, defined in TextEditor.cpp
+	// keeps <regex> out of this header
+	struct RegexListImpl;
 
 	struct EditorState
 	{
@@ -374,7 +376,7 @@ private:
 	Palette mPaletteBase;
 	Palette mPalette;
 	LanguageDefinition mLanguageDefinition;
-	RegexList mRegexList;
+	std::unique_ptr<RegexListImpl> mRegexListImpl;
 
 	bool mCheckComments;
 	Breakpoints mBreakpoints;

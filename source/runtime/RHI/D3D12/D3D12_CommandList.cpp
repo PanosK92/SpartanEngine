@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstring>
 #include <unordered_map>
 #include <mutex>
+#include <condition_variable>
 //====================================
 
 //= NAMESPACES ===============

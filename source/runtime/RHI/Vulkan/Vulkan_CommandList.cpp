@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "pch.h"
+#include <condition_variable>
 #include "../RHI_Device.h"
 #include "../RHI_Queue.h"
 #include "../RHI_Implementation.h"

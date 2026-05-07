@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include <filesystem>
 #include "ScriptEditor.h"
 #include "ImGui/TextEditor.h"
 #include "World/Entity.h"

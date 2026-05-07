@@ -23,13 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "FileSystem/FileSystem.h"
 #include "../ImGui/ImGui_Extension.h"
-#include <chrono>
 #include <vector>
 #include <string>
 #include <functional>
-#include <mutex>
 #include <filesystem>
 //===================================
+// chrono and mutex are provided via pch.h to keep this header lean
 
 enum FileDialog_Type
 {

@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../Rendering/Renderer.h"
 SP_WARNINGS_OFF
+#include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
 //===================================

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <vector>
 #include <functional>
-#include <sol/sol.hpp>
+#include <sol/forward.hpp>
 #include "../../Core/SpartanObject.h"
 //===================================
 
@@ -77,7 +77,8 @@ namespace spartan
         Component(Entity* entity);
         virtual ~Component() = default;
 
-        virtual sol::reference AsLua(sol::state_view state) { return sol::nil; }
+        // default returns a nil sol::reference, defined in Component.cpp where sol/sol.hpp is included
+        virtual sol::reference AsLua(sol::state_view state);
 
         // called when the component gets added
         virtual void Initialize() {}

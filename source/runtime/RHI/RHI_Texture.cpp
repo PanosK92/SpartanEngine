@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "pch.h"
+#include <fstream>
 #include "RHI_Texture.h"
 #include "RHI_Buffer.h"
 #include "RHI_Device.h"

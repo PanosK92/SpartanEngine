@@ -21,6 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "pch.h"
+#include <chrono>
+#include <filesystem>
 #include "FileDialog.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../ImGui/Source/imgui_stdlib.h"

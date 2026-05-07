@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==========================
 #include "pch.h"
+#include <fstream>
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
 #include "../Rendering/Renderer.h"

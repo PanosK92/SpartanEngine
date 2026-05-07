@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Entity.h"
 #include "World.h"
 #include "../FileSystem/FileSystem.h"
+SP_WARNINGS_OFF
+#include "../IO/pugixml.hpp"
+SP_WARNINGS_ON
 //====================================
 
 //= NAMESPACES =====

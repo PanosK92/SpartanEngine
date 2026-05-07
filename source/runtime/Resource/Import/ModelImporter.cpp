@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include <filesystem>
 #include "ModelImporter.h"
 #include "../../Core/ProgressTracker.h"
 #include "../../Core/ThreadPool.h"

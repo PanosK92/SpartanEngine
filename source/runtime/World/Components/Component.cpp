@@ -32,6 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Volume.h"
 #include "ParticleSystem.h"
 #include "SplineFollower.h"
+SP_WARNINGS_OFF
+#include <sol/sol.hpp>
+SP_WARNINGS_ON
 //=========================
 
 //= NAMESPACES =====
@@ -44,6 +47,11 @@ namespace spartan
     {
         m_entity_ptr = entity;
         m_enabled    = true;
+    }
+
+    sol::reference Component::AsLua(sol::state_view state)
+    {
+        return sol::nil;
     }
 
     template <typename T>

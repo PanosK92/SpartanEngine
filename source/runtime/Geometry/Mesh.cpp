@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ================================
 #include "pch.h"
+#include <fstream>
 #include "Mesh.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Device.h"
@@ -29,6 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/ModelImporter.h"
 #include "../Rendering/GeometryBuffer.h"
 #include "GeometryProcessing.h"
+SP_WARNINGS_OFF
+#include <sol/sol.hpp>
+SP_WARNINGS_ON
 //===========================================
 
 //= NAMESPACES ================

@@ -6,7 +6,10 @@
 #ifndef TINYDDSLOADER_H_
 #define TINYDDSLOADER_H_
 
-#include <iostream>
+// iosfwd is sufficient for the std::istream& parameter declaration below
+// the full <fstream> is only pulled in by the single TU that defines
+// TINYDDSLOADER_IMPLEMENTATION (see ImageImporter.cpp)
+#include <iosfwd>
 #include <vector>
 
 namespace tinyddsloader {

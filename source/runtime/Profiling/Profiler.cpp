@@ -31,6 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Display/Display.h"
 #include "../Memory/Allocator.h"
+#if defined(__linux__)
+    #include <fstream>
+#endif
 //====================================
 
 //= NAMESPACES =====

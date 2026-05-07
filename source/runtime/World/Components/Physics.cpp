@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "pch.h"
+#include <unordered_set>
 #include "Physics.h"
 #include "Render.h"
 #include "Camera.h"
@@ -34,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/GeometryBuffer.h"
 SP_WARNINGS_OFF
+#include <sol/sol.hpp>
 #ifdef DEBUG
     #define _DEBUG 1
     #undef NDEBUG

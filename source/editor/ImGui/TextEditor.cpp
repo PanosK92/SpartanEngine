@@ -7,6 +7,12 @@
 
 #include "TextEditor.h"
 
+// pimpl storage for the regex list, keeps <regex> out of TextEditor.h
+struct TextEditor::RegexListImpl
+{
+	std::vector<std::pair<std::regex, PaletteIndex>> list;
+};
+
 // TODO
 // - multiline comments vs single-line: latter is blocking start of a ML
 
@@ -46,6 +52,7 @@ TextEditor::TextEditor()
 	, mIgnoreImGuiChild(false)
 	, mShowWhitespaces(true)
 	, mStartTime(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
+	, mRegexListImpl(std::make_unique<RegexListImpl>())
 {
 	SetPalette(GetDarkPalette());
 	SetLanguageDefinition(LanguageDefinition::HLSL());
@@ -59,10 +66,10 @@ TextEditor::~TextEditor()
 void TextEditor::SetLanguageDefinition(const LanguageDefinition & aLanguageDef)
 {
 	mLanguageDefinition = aLanguageDef;
-	mRegexList.clear();
+	mRegexListImpl->list.clear();
 
 	for (auto& r : mLanguageDefinition.mTokenRegexStrings)
-		mRegexList.push_back(std::make_pair(std::regex(r.first, std::regex_constants::optimize), r.second));
+		mRegexListImpl->list.push_back(std::make_pair(std::regex(r.first, std::regex_constants::optimize), r.second));
 
 	Colorize();
 }
@@ -2188,7 +2195,7 @@ void TextEditor::ColorizeRange(int aFromLine, int aToLine)
 				// todo : remove
 				//printf("using regex for %.*s\n", first + 10 < last ? 10 : int(last - first), first);
 
-				for (auto& p : mRegexList)
+				for (auto& p : mRegexListImpl->list)
 				{
 					if (std::regex_search(first, last, results, p.first, std::regex_constants::match_continuous))
 					{

@@ -26,10 +26,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <unordered_map>
 #include <functional>
-SP_WARNINGS_OFF
-#include "../IO/pugixml.hpp"
-SP_WARNINGS_ON
 //=============================
+
+namespace pugi
+{
+    class xml_node;
+}
 
 namespace spartan
 {

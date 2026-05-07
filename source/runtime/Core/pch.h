@@ -22,40 +22,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // memory
 #include "../Memory/MemoryOverrides.h"
 
-// std
+// std (lean, ubiquitous-only)
 #include <string>
 #include <algorithm>
 #include <type_traits>
 #include <memory>
-#include <fstream>
-#include <sstream>
 #include <limits>
 #include <cassert>
 #include <cstdint>
 #include <atomic>
+#include <mutex>
 #include <map>
 #include <unordered_map>
-#include <cstdio>
-#include <filesystem>
-#include <regex>
-#include <locale>
-#include <codecvt>
-#include <array>
-#include <deque>
-#include <vector>
-#include <iostream>
-#include <cstdarg>
-#include <thread>
-#include <condition_variable>
 #include <set>
-#include <variant>
+#include <cstdio>
+#include <array>
+#include <vector>
+#include <cstdarg>
 #include <cstring>
-#include <unordered_set>
 #include <chrono>
-#include <random>
-#include <future>
 #include <utility>
-#include <numeric>
 //===========================
 
 // common

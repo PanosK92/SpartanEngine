@@ -26,13 +26,8 @@ connection with the software or the use or other dealings in the software.
 #include <string>
 #include <vector>
 #include <functional>
-#include <sol/sol.hpp>
+#include <sol/forward.hpp>
 //====================
-
-namespace sol
-{
-    class state_view;
-}
 
 struct SDL_AudioStream;
 struct SDL_AudioSpec;
