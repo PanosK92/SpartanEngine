@@ -45,6 +45,7 @@ namespace spartan
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
             arguments.emplace_back("-flegacy-macro-expansion"); // expand the operands before performing token-pasting operation (fxc behavior)
+            arguments.emplace_back("-Wno-ignored-attributes");  // silence vk::image_format and similar vulkan-only attributes on the d3d12 path
             // api define so shared hlsl can pick d3d12 specific register bindings
             arguments.emplace_back("-D"); arguments.emplace_back("API_D3D12=1");
             #ifdef DEBUG                                                    

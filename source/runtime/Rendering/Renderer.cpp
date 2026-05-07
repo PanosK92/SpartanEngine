@@ -288,11 +288,8 @@ namespace spartan
             swapchain->AcquireNextImage();
             RHI_Device::Tick(frame_num);
 
-            if (RHI_Context::api_type != RHI_Api_Type::D3d12)
-            {
-                RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
-                dynamic_resolution();
-            }
+            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
+            dynamic_resolution();
 
             // breadcrumbs
             if (Debugging::IsBreadcrumbsEnabled())
@@ -300,7 +297,6 @@ namespace spartan
                 Breadcrumbs::StartFrame();
             }
         }
-
         
         // recreate optional render targets when feature cvars change
         if (m_initialized_resources)
@@ -966,33 +962,11 @@ namespace spartan
 
             if (swapchain->IsImageAcquired())
             {
-                #if defined(API_GRAPHICS_D3D12)
-                if (RHI_Context::api_type == RHI_Api_Type::D3d12)
-                {
-                    m_cmd_list_present->RenderPassEnd();
+                m_cmd_list_present->RenderPassEnd();
+                m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
 
-                    ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_cmd_list_present->GetRhiResource());
-                    ID3D12Resource* backbuffer          = static_cast<ID3D12Resource*>(swapchain->GetRhiRt());
-
-                    D3D12_RESOURCE_BARRIER barrier = {};
-                    barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-                    barrier.Transition.pResource   = backbuffer;
-                    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-                    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-                    barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
-                    cmd_list->ResourceBarrier(1, &barrier);
-
-                    m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
-                    swapchain->Present(m_cmd_list_present);
-                }
-                else
-                #endif
-                {
-                    m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
-                    
-                    m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
-                    swapchain->Present(m_cmd_list_present);
-                }
+                m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
+                swapchain->Present(m_cmd_list_present);
             }
             else
             {

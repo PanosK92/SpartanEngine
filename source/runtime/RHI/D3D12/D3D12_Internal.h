@@ -91,3 +91,12 @@ namespace spartan::d3d12_root_slot
     constexpr uint32_t sampler_table      = 10; // s0 space6 + s1 space7
     constexpr uint32_t count              = 11;
 }
+
+// per-resource state tracker, used to compute the StateBefore field of d3d12 transition barriers
+// resources are seeded by their owners (texture creation, swapchain acquire) and freed on destroy
+namespace spartan::d3d12_state
+{
+    void SetState(ID3D12Resource* resource, D3D12_RESOURCE_STATES state);
+    D3D12_RESOURCE_STATES GetState(ID3D12Resource* resource);
+    void RemoveState(ID3D12Resource* resource);
+}

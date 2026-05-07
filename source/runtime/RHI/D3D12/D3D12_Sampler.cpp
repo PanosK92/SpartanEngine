@@ -38,7 +38,8 @@ namespace spartan
         sampler_desc.AddressW       = d3d12_sampler_address_mode[static_cast<uint32_t>(m_sampler_address_mode)];
         sampler_desc.MipLODBias     = m_mip_lod_bias;
         sampler_desc.MaxAnisotropy  = static_cast<UINT>(m_anisotropy);
-        sampler_desc.ComparisonFunc = d3d12_comparison_function[static_cast<uint32_t>(m_comparison_function)];
+        // d3d12 validation warns when comparisonfunc != never on non-comparison filters, so default to never unless this is an actual comparison sampler
+        sampler_desc.ComparisonFunc = m_comparison_enabled ? d3d12_comparison_function[static_cast<uint32_t>(m_comparison_function)] : D3D12_COMPARISON_FUNC_NEVER;
         sampler_desc.BorderColor[0] = 0;
         sampler_desc.BorderColor[1] = 0;
         sampler_desc.BorderColor[2] = 0;

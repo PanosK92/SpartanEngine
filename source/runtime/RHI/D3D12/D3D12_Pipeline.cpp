@@ -129,7 +129,12 @@ namespace spartan
             desc_rasterizer.DepthClipEnable = true;
         }
 
-        // blend state description
+        // for hdr swapchains (r10g10b10a2_unorm), dwm uses the alpha channel during compositing,
+        // imgui's standard alpha blending overwrites alpha to 0 which makes the window transparent on hdr displays,
+        // so for the imgui pso we strip alpha out of the write mask to keep the cleared alpha value (1)
+        const UINT8 imgui_write_mask = D3D12_COLOR_WRITE_ENABLE_RED | D3D12_COLOR_WRITE_ENABLE_GREEN | D3D12_COLOR_WRITE_ENABLE_BLUE;
+        const UINT8 write_mask       = pso_is_imgui(state) ? imgui_write_mask : D3D12_COLOR_WRITE_ENABLE_ALL;
+
         D3D12_BLEND_DESC desc_blend_state = {};
         if (state.blend_state)
         {
@@ -140,12 +145,12 @@ namespace spartan
             desc_blend_state.RenderTarget[0].SrcBlendAlpha         = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetSourceBlendAlpha())];
             desc_blend_state.RenderTarget[0].DestBlendAlpha        = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetDestBlendAlpha())];
             desc_blend_state.RenderTarget[0].BlendOpAlpha          = d3d12_blend_operation[static_cast<uint32_t>(state.blend_state->GetBlendOpAlpha())];
-            desc_blend_state.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+            desc_blend_state.RenderTarget[0].RenderTargetWriteMask = write_mask;
         }
         else
         {
             desc_blend_state.RenderTarget[0].BlendEnable           = false;
-            desc_blend_state.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+            desc_blend_state.RenderTarget[0].RenderTargetWriteMask = write_mask;
         }
 
         // depth-stencil state
@@ -292,7 +297,7 @@ namespace spartan
         sampler_desc.AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         sampler_desc.AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
         sampler_desc.AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        sampler_desc.ComparisonFunc   = D3D12_COMPARISON_FUNC_ALWAYS;
+        sampler_desc.ComparisonFunc   = D3D12_COMPARISON_FUNC_NEVER; // non-comparison sampler, validation warns on anything other than never
         sampler_desc.MinLOD           = 0.0f;
         sampler_desc.MaxLOD           = D3D12_FLOAT32_MAX;
         sampler_desc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;

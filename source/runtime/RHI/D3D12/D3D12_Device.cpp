@@ -43,6 +43,102 @@ using namespace spartan::math;
 
 namespace spartan
 {
+    namespace validation
+    {
+        ID3D12InfoQueue*  info_queue       = nullptr;
+        ID3D12InfoQueue1* info_queue1      = nullptr;
+        DWORD             callback_cookie  = 0;
+
+        static void __stdcall message_callback(
+            D3D12_MESSAGE_CATEGORY,
+            D3D12_MESSAGE_SEVERITY severity,
+            D3D12_MESSAGE_ID,
+            LPCSTR description,
+            void*)
+        {
+            switch (severity)
+            {
+                case D3D12_MESSAGE_SEVERITY_CORRUPTION:
+                case D3D12_MESSAGE_SEVERITY_ERROR:
+                    SP_LOG_ERROR("D3D12: %s", description);
+                    break;
+                case D3D12_MESSAGE_SEVERITY_WARNING:
+                    SP_LOG_WARNING("D3D12: %s", description);
+                    break;
+                case D3D12_MESSAGE_SEVERITY_INFO:
+                case D3D12_MESSAGE_SEVERITY_MESSAGE:
+                default:
+                    SP_LOG_INFO("D3D12: %s", description);
+                    break;
+            }
+        }
+
+        void initialize()
+        {
+            if (!Debugging::IsValidationLayerEnabled())
+                return;
+
+            if (!d3d12_utility::error::check(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&info_queue))))
+                return;
+
+            info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+            info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR,      TRUE);
+            info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING,    FALSE);
+
+            // suppress noisy or false-positive ids that aren't actionable
+            D3D12_MESSAGE_ID deny_ids[] =
+            {
+                D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+                D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
+                D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
+                D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE,
+            };
+
+            D3D12_INFO_QUEUE_FILTER filter = {};
+            filter.DenyList.NumIDs         = static_cast<UINT>(sizeof(deny_ids) / sizeof(deny_ids[0]));
+            filter.DenyList.pIDList        = deny_ids;
+            info_queue->AddStorageFilterEntries(&filter);
+
+            // prefer a callback (info queue 1) so messages flow into the engine log,
+            // fall back to the basic info queue when the runtime doesn't support it
+            if (SUCCEEDED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&info_queue1))))
+            {
+                if (!d3d12_utility::error::check(info_queue1->RegisterMessageCallback(
+                    &message_callback,
+                    D3D12_MESSAGE_CALLBACK_FLAG_NONE,
+                    nullptr,
+                    &callback_cookie)))
+                {
+                    info_queue1->Release();
+                    info_queue1     = nullptr;
+                    callback_cookie = 0;
+                }
+            }
+
+            SP_LOG_INFO("D3D12 info queue active (break-on-error enabled)");
+        }
+
+        void destroy()
+        {
+            if (info_queue1)
+            {
+                if (callback_cookie != 0)
+                {
+                    info_queue1->UnregisterMessageCallback(callback_cookie);
+                    callback_cookie = 0;
+                }
+                info_queue1->Release();
+                info_queue1 = nullptr;
+            }
+
+            if (info_queue)
+            {
+                info_queue->Release();
+                info_queue = nullptr;
+            }
+        }
+    }
+
     namespace queues
     {
         // raw d3d12 command queues
@@ -277,9 +373,21 @@ namespace spartan
             if (d3d12_utility::error::check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug_interface))))
             {
                 debug_interface->EnableDebugLayer();
-                debug_interface->SetEnableGPUBasedValidation(true);
                 dxgi_factory_flags |= DXGI_CREATE_FACTORY_DEBUG;
                 SP_LOG_INFO("D3D12 debug layer enabled");
+
+                // gpu-based validation requires the debug layer and adds significant overhead,
+                // so it is gated on its own flag and only enabled when explicitly requested
+                if (Debugging::IsGpuAssistedValidationEnabled())
+                {
+                    debug_interface->SetEnableGPUBasedValidation(TRUE);
+                    debug_interface->SetEnableSynchronizedCommandQueueValidation(TRUE);
+                    SP_LOG_INFO("D3D12 gpu-based validation enabled");
+                }
+            }
+            else
+            {
+                SP_LOG_WARNING("D3D12 debug layer requested but unavailable, install the graphics tools optional feature in windows");
             }
         }
 
@@ -307,6 +415,9 @@ namespace spartan
             minimum_feature_level,
             IID_PPV_ARGS(&RHI_Context::device)
         )), "Failed to create device");
+
+        // hook up the info queue so debug layer messages flow into the engine log
+        validation::initialize();
 
         // create command queues
         {
@@ -442,6 +553,9 @@ namespace spartan
         if (queues::graphics) { queues::graphics->Release(); queues::graphics = nullptr; }
         if (queues::compute)  { queues::compute->Release();  queues::compute  = nullptr; }
         if (queues::copy)     { queues::copy->Release();     queues::copy     = nullptr; }
+
+        // release info queue before the device, since it holds a reference to it
+        validation::destroy();
 
         if (RHI_Context::device)
         {

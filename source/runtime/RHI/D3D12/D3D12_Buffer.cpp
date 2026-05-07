@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_Queue.h"
+#include "D3D12_Internal.h"
 //================================
 
 //= NAMESPACES =====
@@ -44,6 +45,7 @@ namespace spartan
 
         if (m_rhi_resource)
         {
+            d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
             static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
             m_rhi_resource = nullptr;
         }
@@ -92,8 +94,10 @@ namespace spartan
         resource_desc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         resource_desc.Flags              = D3D12_RESOURCE_FLAG_NONE;
 
-        // storage buffers may be written by shaders so allow uav
-        if (m_type == RHI_Buffer_Type::Storage)
+        // d3d12 forbids combining allow_unordered_access with the upload or readback heaps,
+        // so uav is restricted to non-mappable storage buffers which live on the default heap,
+        // mappable storage buffers are bound as srvs and written from the cpu via the persistent map
+        if (m_type == RHI_Buffer_Type::Storage && !m_mappable)
         {
             resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -117,6 +121,9 @@ namespace spartan
 
         m_rhi_resource   = buffer;
         m_device_address = buffer->GetGPUVirtualAddress();
+
+        // seed the global state tracker so subsequent barrier transitions know the resource's starting state
+        d3d12_state::SetState(buffer, initial_state);
 
         if (!m_object_name.empty())
         {
@@ -205,11 +212,65 @@ namespace spartan
         if (m_data_gpu)
         {
             memcpy(static_cast<uint8_t*>(m_data_gpu) + offset_bytes, data, size_bytes);
+            return;
         }
-        else
+
+        // device-local buffer, stage on an upload heap and copy via an immediate command list
+        ID3D12Resource* dst     = static_cast<ID3D12Resource*>(m_rhi_resource);
+        ID3D12Resource* staging = static_cast<ID3D12Resource*>(RHI_Device::StagingBufferAcquire(size_bytes));
+        if (!staging)
         {
-            SP_LOG_WARNING("UploadSubRegion: buffer '%s' is not mapped", m_object_name.c_str());
+            SP_LOG_ERROR("UploadSubRegion: failed to acquire staging buffer for '%s'", m_object_name.c_str());
+            return;
         }
+
+        void* mapped = nullptr;
+        D3D12_RANGE read_range = { 0, 0 };
+        if (FAILED(staging->Map(0, &read_range, &mapped)) || !mapped)
+        {
+            SP_LOG_ERROR("UploadSubRegion: failed to map staging buffer for '%s'", m_object_name.c_str());
+            RHI_Device::StagingBufferRelease(staging);
+            return;
+        }
+        memcpy(mapped, data, size_bytes);
+        staging->Unmap(0, nullptr);
+
+        RHI_CommandList* cmd_list_rhi = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics);
+        if (cmd_list_rhi)
+        {
+            ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list_rhi->GetRhiResource());
+
+            // transition to copy_dest, copy, then back to whatever state the tracker had,
+            // so subsequent draws/dispatches see the buffer in a sane state
+            const D3D12_RESOURCE_STATES state_before = d3d12_state::GetState(dst);
+            if (state_before != D3D12_RESOURCE_STATE_COPY_DEST)
+            {
+                D3D12_RESOURCE_BARRIER barrier = {};
+                barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                barrier.Transition.pResource   = dst;
+                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                barrier.Transition.StateBefore = state_before;
+                barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_COPY_DEST;
+                cmd_list->ResourceBarrier(1, &barrier);
+            }
+
+            cmd_list->CopyBufferRegion(dst, offset_bytes, staging, 0, size_bytes);
+
+            if (state_before != D3D12_RESOURCE_STATE_COPY_DEST)
+            {
+                D3D12_RESOURCE_BARRIER barrier = {};
+                barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                barrier.Transition.pResource   = dst;
+                barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+                barrier.Transition.StateAfter  = state_before;
+                cmd_list->ResourceBarrier(1, &barrier);
+            }
+
+            RHI_CommandList::ImmediateExecutionEnd(cmd_list_rhi);
+        }
+
+        RHI_Device::StagingBufferRelease(staging);
     }
 
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)

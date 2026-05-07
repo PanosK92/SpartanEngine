@@ -188,6 +188,9 @@ namespace spartan
             d3d12_utility::debug::set_name(texture, m_object_name.c_str());
         }
 
+        // seed the d3d12 state tracker so future barriers know the StateBefore
+        d3d12_state::SetState(texture, initial_state);
+
         // set initial layout matching the initial state
         {
             RHI_Image_Layout layout = RHI_Image_Layout::General;
@@ -286,7 +289,9 @@ namespace spartan
 
                             RHI_Device::QueueWaitAll();
 
+                            // upload finished, reflect the post-copy state in both the rhi layout map and the d3d12 state tracker
                             SetLayoutDirect(0, m_mip_count, RHI_Image_Layout::Shader_Read);
+                            d3d12_state::SetState(texture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
                             temp_cmd_list->Release();
                         }
@@ -438,6 +443,7 @@ namespace spartan
     {
         if (m_rhi_resource)
         {
+            d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
             static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
             m_rhi_resource = nullptr;
         }

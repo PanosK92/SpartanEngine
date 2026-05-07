@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Queue.h"
 #include "../Core/Debugging.h"
 #include "../Core/Breadcrumbs.h"
+#include "D3D12_Internal.h"
 #include <wrl/client.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_properties.h>
@@ -67,7 +68,9 @@ namespace spartan
         {
             if (swapchain->GetRhiRtRaw(i))
             {
-                static_cast<ID3D12Resource*>(swapchain->GetRhiRtRaw(i))->Release();
+                ID3D12Resource* resource = static_cast<ID3D12Resource*>(swapchain->GetRhiRtRaw(i));
+                d3d12_state::RemoveState(resource);
+                resource->Release();
                 swapchain->SetRhiRt(i, nullptr);
             }
         }
@@ -154,6 +157,7 @@ namespace spartan
         swap_chain_desc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swap_chain_desc.SwapEffect            = get_swap_effect();
         swap_chain_desc.SampleDesc.Count      = 1;
+        swap_chain_desc.AlphaMode             = DXGI_ALPHA_MODE_IGNORE; // tell dwm not to use the alpha channel for compositing, matches vulkan's composite_alpha_opaque
         swap_chain_desc.Flags                 = (m_present_mode == RHI_Present_Mode::Immediate) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
         // get the graphics queue
@@ -213,6 +217,9 @@ namespace spartan
             rtv_handle.ptr += rtv_index * rtv_descriptor_size;
 
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
+
+            // backbuffers come out of dxgi in present state, seed the tracker so the first transition is correct
+            d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
 
             // store backbuffer and rtv info
             m_rhi_rt[i]       = backbuffer;
@@ -302,6 +309,8 @@ namespace spartan
             rtv_handle.ptr += s_rtv_indices[i] * rtv_descriptor_size;
 
             RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, rtv_handle);
+
+            d3d12_state::SetState(backbuffer, D3D12_RESOURCE_STATE_PRESENT);
 
             m_rhi_rt[i] = backbuffer;
         }
