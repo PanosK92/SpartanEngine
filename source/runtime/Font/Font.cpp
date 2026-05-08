@@ -166,51 +166,50 @@ namespace spartan
     void Font::UpdateVertexAndIndexBuffers(RHI_CommandList* cmd_list)
     {
         m_buffer_index = (m_buffer_index + 1) % buffer_count;
-    
-        // grow gpu buffers if needed
+
+        const uint32_t vertex_stride = static_cast<uint32_t>(sizeof(m_vertices[0]));
+        const uint32_t index_stride  = static_cast<uint32_t>(sizeof(m_indices[0]));
+
+        // grow gpu buffers if needed, capacity is tracked via element count, stride stays per-element
+        // so d3d12's IASetVertexBuffers receives a valid stride that fits within the 2048 byte limit
         {
-            // compute how many bytes we need
-            uint64_t vertex_data_size = static_cast<uint64_t>(m_vertices.size()) * sizeof(m_vertices[0]);
-            uint64_t index_data_size  = static_cast<uint64_t>(m_indices.size())  * sizeof(m_indices[0]);
-            
-            // grow vertex buffer if needed
-            if (vertex_data_size > m_buffers_vertex[m_buffer_index]->GetStride())
+            uint64_t vertex_capacity = static_cast<uint64_t>(m_buffers_vertex[m_buffer_index]->GetStride()) * m_buffers_vertex[m_buffer_index]->GetElementCount();
+            uint64_t vertex_needed   = static_cast<uint64_t>(m_vertices.size()) * vertex_stride;
+            if (vertex_needed > vertex_capacity)
             {
                 m_buffers_vertex[m_buffer_index] = make_shared<RHI_Buffer>(
                     RHI_Buffer_Type::Vertex,
-                    static_cast<uint32_t>(vertex_data_size), // stride = total size in bytes
-                    1,                                       // element count = 1
+                    vertex_stride,
+                    static_cast<uint32_t>(m_vertices.size()),
                     nullptr,
                     true,
                     "font_vertex"
                 );
             }
-            
-            // grow index buffer if needed
-            if (index_data_size > m_buffers_index[m_buffer_index]->GetStride())
+
+            uint64_t index_capacity = static_cast<uint64_t>(m_buffers_index[m_buffer_index]->GetStride()) * m_buffers_index[m_buffer_index]->GetElementCount();
+            uint64_t index_needed   = static_cast<uint64_t>(m_indices.size()) * index_stride;
+            if (index_needed > index_capacity)
             {
                 m_buffers_index[m_buffer_index] = make_shared<RHI_Buffer>(
                     RHI_Buffer_Type::Index,
-                    static_cast<uint32_t>(index_data_size), // stride = total size in bytes
-                    1,
+                    index_stride,
+                    static_cast<uint32_t>(m_indices.size()),
                     nullptr,
                     true,
                     "font_index"
                 );
             }
         }
-    
-        // map vertices and indices to gpu buffers
-        uint64_t vertex_data_size = static_cast<uint64_t>(m_vertices.size()) * sizeof(m_vertices[0]);
+
+        uint64_t vertex_data_size = static_cast<uint64_t>(m_vertices.size()) * vertex_stride;
         cmd_list->UpdateBuffer(m_buffers_vertex[m_buffer_index].get(), 0, vertex_data_size, m_vertices.data());
-        
-        uint64_t index_data_size = static_cast<uint64_t>(m_indices.size()) * sizeof(m_indices[0]);
+
+        uint64_t index_data_size = static_cast<uint64_t>(m_indices.size()) * index_stride;
         cmd_list->UpdateBuffer(m_buffers_index[m_buffer_index].get(), 0, index_data_size, m_indices.data());
-    
-        // store the used index count
+
         m_index_count[m_buffer_index] = static_cast<uint32_t>(m_indices.size());
-    
-        // clear vertices and indices
+
         m_vertices.clear();
         m_indices.clear();
     }

@@ -338,7 +338,7 @@ namespace spartan
     //   0: CBV b0 space0 (buffer_frame)
     //   1: 32-bit root constants b1 space0 (buffer_pass - 16 dwords = 64 bytes)
     //   2: SRV table t0..t26 space0
-    //   3: UAV table u0..u42 space0
+    //   3: UAV table u0..u44 space0
     //   4: SRV table t15 space1 unbounded (material_textures[])
     //   5: SRV table t16 space2 (material_parameters)
     //   6: SRV table t17 space3 (light_parameters)
@@ -376,10 +376,11 @@ namespace spartan
         params[2].DescriptorTable.pDescriptorRanges   = &srv0_range;
         params[2].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
-        // 3: UAV table u0..u42 space0
+        // 3: UAV table u0..u44 space0
+        // highest uav used is u44 (cull_tasks) in common_resources.hlsl, must cover the full range or compute psos that bind it fail validation
         static D3D12_DESCRIPTOR_RANGE uav0_range = {};
         uav0_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-        uav0_range.NumDescriptors                    = 43;
+        uav0_range.NumDescriptors                    = 45;
         uav0_range.BaseShaderRegister                = 0;
         uav0_range.RegisterSpace                     = 0;
         uav0_range.OffsetInDescriptorsFromTableStart = 0;

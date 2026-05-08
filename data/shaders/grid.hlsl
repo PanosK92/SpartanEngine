@@ -41,7 +41,7 @@ struct PixelInput
     float4 position_world : POSITION_WORLD;
 };
 
-PixelInput main_vs(Vertex_PosUvNorTan input)
+PixelInput main_vs(Vertex_PosUvNorTan_Cpu input)
 {
     PixelInput output;
 

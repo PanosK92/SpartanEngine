@@ -31,8 +31,9 @@ gbuffer_vertex main_vs(uint vertex_id : SV_VertexID, uint view_id : SV_ViewID)
     Vertex_PosUvNorTan input = pull_visible_triangle_vertex(vertex_id, mi);
     uint instance_id         = mi.instance_index;
 #else
-gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
+gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_InstanceID, uint view_id : SV_ViewID)
 {
+    Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
     _draw = draw_data[buffer_pass.draw_index];
 #endif
 

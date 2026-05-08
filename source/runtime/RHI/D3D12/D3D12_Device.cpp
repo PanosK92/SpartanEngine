@@ -45,9 +45,9 @@ namespace spartan
 {
     namespace validation
     {
-        ID3D12InfoQueue*  info_queue       = nullptr;
-        ID3D12InfoQueue1* info_queue1      = nullptr;
-        DWORD             callback_cookie  = 0;
+        ID3D12InfoQueue*  info_queue      = nullptr;
+        ID3D12InfoQueue1* info_queue1     = nullptr;
+        DWORD             callback_cookie = 0;
 
         static void __stdcall message_callback(
             D3D12_MESSAGE_CATEGORY,
@@ -92,6 +92,9 @@ namespace spartan
                 D3D12_MESSAGE_ID_CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE,
                 D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
                 D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE,
+                // imgui emits draws with fully-clipped (zero-area) scissor rects for hidden ui elements,
+                // d3d12 correctly draws nothing in that case so the warning is informational only
+                D3D12_MESSAGE_ID_DRAW_EMPTY_SCISSOR_RECTANGLE,
             };
 
             D3D12_INFO_QUEUE_FILTER filter = {};

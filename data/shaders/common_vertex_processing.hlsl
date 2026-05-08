@@ -26,21 +26,50 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // - the functions are shared between depth_prepass.hlsl, g_buffer.hlsl and depth_light.hlsl
 // - this is because the calculations have to be exactly the same and therefore produce identical values over time (motion vectors) and space (depth pre-pass vs g-buffer)
 
-// vertex buffer input (used by cpu-driven draw path via input assembly)
-// uv/normal/tangent come in packed (matches the 24-byte cpu vertex), decoded inside transform_to_world_space
+// shared in-shader vertex container
+// holds the 24-byte cpu vertex plus per-instance fields populated from the geometry_instances buffer in gpu-driven paths
+// this struct must NOT be used as a vertex shader input parameter, the cpu input layout only supplies the 4 base attributes
+// for cpu-driven entry points use Vertex_PosUvNorTan_Cpu and call to_full_vertex to fill the instance fields with zeros
 struct Vertex_PosUvNorTan
 {
-    float3 position                : POSITION;
-    uint   uv_packed               : TEXCOORD; // half2
-    uint   normal_packed           : NORMAL;   // oct snorm 16:16
-    uint   tangent_packed          : TANGENT;  // oct snorm 16:16
-    min16float instance_position_x : INSTANCE_POSITION_X;
-    min16float instance_position_y : INSTANCE_POSITION_Y;
-    min16float instance_position_z : INSTANCE_POSITION_Z;
-    uint instance_normal_oct       : INSTANCE_NORMAL_OCT;
-    uint instance_yaw              : INSTANCE_YAW;
-    uint instance_scale            : INSTANCE_SCALE;
+    float3 position;
+    uint   uv_packed;
+    uint   normal_packed;
+    uint   tangent_packed;
+    min16float instance_position_x;
+    min16float instance_position_y;
+    min16float instance_position_z;
+    uint instance_normal_oct;
+    uint instance_yaw;
+    uint instance_scale;
 };
+
+// matches the engine's input layout for RHI_Vertex_Type::PosUvNorTan, 24 bytes
+// uv/normal/tangent are R32_Uint and decoded in shader, the instance fields are not part of the input layout
+struct Vertex_PosUvNorTan_Cpu
+{
+    float3 position       : POSITION;
+    uint   uv_packed      : TEXCOORD;
+    uint   normal_packed  : NORMAL;
+    uint   tangent_packed : TANGENT;
+};
+
+// expands a cpu input to the in-shader vertex with zeroed instance fields, identity-instance is detected by compose_instance_transform
+Vertex_PosUvNorTan to_full_vertex(Vertex_PosUvNorTan_Cpu cpu_input)
+{
+    Vertex_PosUvNorTan v;
+    v.position            = cpu_input.position;
+    v.uv_packed           = cpu_input.uv_packed;
+    v.normal_packed       = cpu_input.normal_packed;
+    v.tangent_packed      = cpu_input.tangent_packed;
+    v.instance_position_x = (min16float)0;
+    v.instance_position_y = (min16float)0;
+    v.instance_position_z = (min16float)0;
+    v.instance_normal_oct = 0u;
+    v.instance_yaw        = 0u;
+    v.instance_scale      = 0u;
+    return v;
+}
 
 Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_offset)
 {

@@ -193,8 +193,10 @@ float3 prefilter_environment(float2 uv)
             float resolution_factor = log2(resolution / base_resolution);
             mip_sample              = max(0.0f, mip_sample - resolution_factor);
             
-            // clamp mip level to valid range
-            mip_sample = clamp(mip_sample, 0.0f, float(mip_count - 1));
+            // clamp to mips strictly below the one being written, the mip_level mip is in unordered_access during this dispatch
+            // and reading it via the srv would be a read-write conflict with d3d12 layout validation
+            float max_readable_mip = max(0.0f, float(mip_level) - 1.0f);
+            mip_sample             = clamp(mip_sample, 0.0f, max_readable_mip);
             
             // sample environment map at computed mip level
             float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), mip_sample).rgb;

@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Debugging.h"
 #include "../../Core/Breadcrumbs.h"
 #include "D3D12_Internal.h"
+#include "D3D12_BlitGraphics.h"
 #include <cstring>
 #include <unordered_map>
 #include <vector>
@@ -112,15 +113,46 @@ namespace spartan
     // per-cmd-list pending bindings state (srv/uav slots that SetTexture/SetBuffer wrote to)
     namespace cmd_state
     {
+        // per-subresource tracking, when per_subresource is empty the resource is uniform and uniform_state applies
+        // to every subresource, ALL_SUBRESOURCES transitions reset back to uniform, specific-subresource transitions
+        // expand into per_subresource on first use to record divergence (e.g. mip filtering passes that bind one
+        // mip as UAV while reading lower mips as SRV)
+        struct ResourceStateInfo
+        {
+            D3D12_RESOURCE_STATES uniform_state = D3D12_RESOURCE_STATE_COMMON;
+            std::vector<D3D12_RESOURCE_STATES> per_subresource;
+            bool initialized = false;
+        };
+
+        // states that aren't allowed on a compute command list barrier, transitions made on a compute queue must mask
+        // these out since the runtime rejects pixel_shader_resource, render_target and depth states on the compute queue
+        static constexpr D3D12_RESOURCE_STATES compute_invalid_states =
+            D3D12_RESOURCE_STATE_RENDER_TARGET            |
+            D3D12_RESOURCE_STATE_DEPTH_WRITE              |
+            D3D12_RESOURCE_STATE_DEPTH_READ               |
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE    |
+            D3D12_RESOURCE_STATE_STREAM_OUT               |
+            D3D12_RESOURCE_STATE_RESOLVE_DEST             |
+            D3D12_RESOURCE_STATE_RESOLVE_SOURCE;
+
+        // graphics-only state bits that, when stripped at submit time, leave the resource readable by both graphics and
+        // compute queues, render_target and depth_write are intentionally kept since their attachments are usually
+        // re-used by the next graphics frame and stripping them only adds round-trip transitions
+        static constexpr D3D12_RESOURCE_STATES submit_strip_states =
+            D3D12_RESOURCE_STATE_DEPTH_READ               |
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
         struct PendingBindings
         {
             // source cpu handles (from cpu staging heap) per slot - zero means null
             D3D12_CPU_DESCRIPTOR_HANDLE srv[27] = {};
-            D3D12_CPU_DESCRIPTOR_HANDLE uav[43] = {};
+            D3D12_CPU_DESCRIPTOR_HANDLE uav[45] = {};
             bool srv_dirty                       = false;
             bool uav_dirty                       = false;
             bool is_compute_bound                = false;
             bool is_bindless_pipeline            = false;
+            // recording on a compute queue, set in Begin() so push_transition can drop graphics-only state bits
+            bool is_compute_queue                = false;
             // d3d12 tracks graphics and compute root signatures separately, descriptor tables require the matching root sig
             bool has_root_signature_graphics     = false;
             bool has_root_signature_compute      = false;
@@ -135,6 +167,10 @@ namespace spartan
             std::vector<D3D12_RESOURCE_BARRIER> pending_barriers;
             // staging buffers acquired during recording, released on next Begin once gpu execution has finished
             std::vector<void*> staging_buffers_in_flight;
+            // per-cmd-list resource state, populated lazily on first use of each resource by snapshotting
+            // from the global tracker, this isolates concurrent cmd list recording from each other so
+            // the StateBefore in barriers reflects what the gpu will actually be in at execution time
+            std::unordered_map<ID3D12Resource*, ResourceStateInfo> resource_states;
         };
 
         unordered_map<const RHI_CommandList*, PendingBindings> bindings;
@@ -158,8 +194,10 @@ namespace spartan
             b.has_root_signature_graphics = false;
             b.has_root_signature_compute  = false;
             b.is_imgui_pipeline_bound    = false;
+            b.is_compute_queue           = false;
             b.swapchain_bb_transitioned  = nullptr;
             b.pending_barriers.clear();
+            b.resource_states.clear();
 
             // safe to release staging buffers now, Begin guarantees the previous submission completed on the gpu
             for (void* sb : b.staging_buffers_in_flight)
@@ -169,12 +207,166 @@ namespace spartan
             b.staging_buffers_in_flight.clear();
         }
 
-        // push a transition for resource into the pending list, updating the global state tracker
-        // returns true if a barrier was actually queued, false if it was a no-op
+        // total subresource count for a resource, mip count times array length, ignoring stencil planes
+        // since spartan currently does not transition depth and stencil planes independently
+        static uint32_t get_subresource_count(ID3D12Resource* resource)
+        {
+            D3D12_RESOURCE_DESC desc = resource->GetDesc();
+            uint32_t array_size      = (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) ? 1u : static_cast<uint32_t>(desc.DepthOrArraySize);
+            uint32_t mip_count       = static_cast<uint32_t>(desc.MipLevels);
+            return mip_count * array_size;
+        }
+
+        // get or create the state info for a resource, lazy-initializing from the global tracker on first use
+        static ResourceStateInfo& get_or_init_state(PendingBindings& b, ID3D12Resource* resource)
+        {
+            ResourceStateInfo& info = b.resource_states[resource];
+            if (!info.initialized)
+            {
+                info.uniform_state = d3d12_state::GetState(resource);
+                info.initialized   = true;
+            }
+            return info;
+        }
+
+        // publish all per-cmd-list resource state changes to the global tracker, called at submit time
+        // resources left non-uniform get unifying barriers emitted before close so the global tracker stays uniform
+        // and the actual gpu state matches it after execution
+        void commit_states_to_global(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
+        {
+            std::vector<D3D12_RESOURCE_BARRIER> unify;
+            for (auto& kv : b.resource_states)
+            {
+                ResourceStateInfo& info = kv.second;
+                if (!info.per_subresource.empty())
+                {
+                    // collapse to subresource 0's state, this is arbitrary but keeps the global tracker uniform
+                    // and produces a known starting state for the next cmd list
+                    D3D12_RESOURCE_STATES target = info.per_subresource[0];
+                    for (uint32_t i = 1; i < info.per_subresource.size(); i++)
+                    {
+                        if (info.per_subresource[i] == target)
+                            continue;
+
+                        D3D12_RESOURCE_BARRIER barrier = {};
+                        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                        barrier.Transition.pResource   = kv.first;
+                        barrier.Transition.Subresource = i;
+                        barrier.Transition.StateBefore = info.per_subresource[i];
+                        barrier.Transition.StateAfter  = target;
+                        unify.push_back(barrier);
+                    }
+                    info.per_subresource.clear();
+                    info.uniform_state = target;
+                }
+                // strip graphics-only shader_read bits on graphics queue submissions, the next cmd list may run on a
+                // compute queue which can not transition out of pixel_shader_resource or depth_read, leaving the resource
+                // in non_pixel_shader_resource keeps it readable in compute and ps reads on the next graphics cmd list
+                // re-add the stripped bits cheaply via the normal push_transition path
+                if (!b.is_compute_queue && (info.uniform_state & submit_strip_states))
+                {
+                    D3D12_RESOURCE_STATES stripped = info.uniform_state & ~submit_strip_states;
+                    // if stripping removed every read bit fall back to non_pixel_shader_resource so the resource still
+                    // has a valid shader_read state on the compute queue
+                    if (stripped == 0)
+                    {
+                        stripped = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+                    }
+                    if (stripped != info.uniform_state)
+                    {
+                        D3D12_RESOURCE_BARRIER barrier = {};
+                        barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                        barrier.Transition.pResource   = kv.first;
+                        barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                        barrier.Transition.StateBefore = info.uniform_state;
+                        barrier.Transition.StateAfter  = stripped;
+                        unify.push_back(barrier);
+                        info.uniform_state = stripped;
+                    }
+                }
+                d3d12_state::SetState(kv.first, info.uniform_state);
+            }
+            if (!unify.empty())
+            {
+                cmd_list->ResourceBarrier(static_cast<UINT>(unify.size()), unify.data());
+            }
+        }
+
+        // push a transition for resource into the pending list, updating the per-cmd-list state tracker
+        // when subresource is ALL_SUBRESOURCES and the resource is currently divergent, this emits per-subresource
+        // barriers for the subresources that differ from state_after, then collapses back to uniform
+        // returns true if any barrier was actually queued, false if all subresources were already in state_after
         bool push_transition(PendingBindings& b, ID3D12Resource* resource, D3D12_RESOURCE_STATES state_after, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
         {
             if (!resource) return false;
-            D3D12_RESOURCE_STATES state_before = d3d12_state::GetState(resource);
+
+            // on the compute queue strip graphics-only state bits from state_after, otherwise the runtime rejects the
+            // barrier, the (pixel|non_pixel) shader_read combo collapses to non_pixel only which is the valid compute
+            // equivalent, graphics-only states like render_target should not appear as targets in compute paths
+            if (b.is_compute_queue)
+            {
+                state_after &= ~compute_invalid_states;
+            }
+
+            ResourceStateInfo& info = get_or_init_state(b, resource);
+
+            if (subresource == D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
+            {
+                if (info.per_subresource.empty())
+                {
+                    if (info.uniform_state == state_after)
+                        return false;
+
+                    D3D12_RESOURCE_BARRIER barrier = {};
+                    barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    barrier.Transition.pResource   = resource;
+                    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+                    barrier.Transition.StateBefore = info.uniform_state;
+                    barrier.Transition.StateAfter  = state_after;
+                    b.pending_barriers.push_back(barrier);
+
+                    info.uniform_state = state_after;
+                    return true;
+                }
+
+                // currently divergent, emit per-subresource transitions for those that differ from the target
+                bool any = false;
+                for (uint32_t i = 0; i < info.per_subresource.size(); i++)
+                {
+                    if (info.per_subresource[i] == state_after)
+                        continue;
+
+                    D3D12_RESOURCE_BARRIER barrier = {};
+                    barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+                    barrier.Transition.pResource   = resource;
+                    barrier.Transition.Subresource = i;
+                    barrier.Transition.StateBefore = info.per_subresource[i];
+                    barrier.Transition.StateAfter  = state_after;
+                    b.pending_barriers.push_back(barrier);
+                    any = true;
+                }
+
+                info.per_subresource.clear();
+                info.uniform_state = state_after;
+                return any;
+            }
+
+            // specific subresource, expand to per-subresource if currently uniform
+            if (info.per_subresource.empty())
+            {
+                if (info.uniform_state == state_after)
+                    return false;
+
+                uint32_t count = get_subresource_count(resource);
+                if (count == 0)
+                    count = subresource + 1;
+                info.per_subresource.assign(count, info.uniform_state);
+            }
+
+            if (subresource >= info.per_subresource.size())
+                return false;
+
+            D3D12_RESOURCE_STATES state_before = info.per_subresource[subresource];
             if (state_before == state_after)
                 return false;
 
@@ -186,8 +378,7 @@ namespace spartan
             barrier.Transition.StateAfter  = state_after;
             b.pending_barriers.push_back(barrier);
 
-            // update the tracker eagerly so subsequent push_transition calls see the new state
-            d3d12_state::SetState(resource, state_after);
+            info.per_subresource[subresource] = state_after;
             return true;
         }
 
@@ -355,8 +546,8 @@ namespace spartan
 
         if (b.uav_dirty)
         {
-            uint32_t base = d3d12_descriptors::AllocateRing(43);
-            for (uint32_t i = 0; i < 43; i++)
+            uint32_t base = d3d12_descriptors::AllocateRing(45);
+            for (uint32_t i = 0; i < 45; i++)
             {
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base + i);
                 D3D12_CPU_DESCRIPTOR_HANDLE src = (b.uav[i].ptr != 0) ? b.uav[i] : cmd_state::ensure_null_uav(b);
@@ -473,6 +664,8 @@ namespace spartan
             cmd_list->SetDescriptorHeaps(1, heaps);
 
         cmd_state::reset(this);
+        // record the queue type so push_transition can mask compute-invalid state bits when recording on a compute queue
+        cmd_state::get(this).is_compute_queue = (m_queue && m_queue->GetType() == RHI_Queue_Type::Compute);
 
         m_state              = RHI_CommandListState::Recording;
         m_buffer_id_vertex   = 0;
@@ -491,10 +684,13 @@ namespace spartan
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
 
-        // flush any deferred barriers before closing
+        // flush any deferred barriers before closing, then publish the per-cmd-list state to the global
+        // tracker so the next cmd list sees the post-execution state of resources touched by this one
+        // commit emits unifying barriers for resources left in divergent per-subresource state
         {
             auto& b = cmd_state::get(this);
             cmd_state::flush(cmd_list, b);
+            cmd_state::commit_states_to_global(cmd_list, b);
         }
 
         // note: swapchain backbuffer render_target -> present transition is handled by Renderer::SubmitAndPresent
@@ -793,9 +989,16 @@ namespace spartan
             return;
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        auto& b = cmd_state::get(this);
+        ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
 
         if (texture->IsDepthStencilFormat() && texture->GetRhiDsv(0))
         {
+            // ClearDepthStencilView requires the resource to be in depth_write state
+            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+            texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Attachment);
+            cmd_state::flush(cmd_list, b);
+
             D3D12_CPU_DESCRIPTOR_HANDLE dsv = {};
             dsv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiDsv(0));
             D3D12_CLEAR_FLAGS flags = D3D12_CLEAR_FLAG_DEPTH;
@@ -807,13 +1010,18 @@ namespace spartan
         }
         else if (texture->GetRhiRtv(0))
         {
+            if (clear_color == rhi_color_load || clear_color == rhi_color_dont_care)
+                return;
+
+            // ClearRenderTargetView requires the resource to be in render_target state
+            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Attachment);
+            cmd_state::flush(cmd_list, b);
+
             D3D12_CPU_DESCRIPTOR_HANDLE rtv = {};
             rtv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiRtv(0));
-            if (clear_color != rhi_color_load && clear_color != rhi_color_dont_care)
-            {
-                float c[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
-                cmd_list->ClearRenderTargetView(rtv, c, 0, nullptr);
-            }
+            float c[4] = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
+            cmd_list->ClearRenderTargetView(rtv, c, 0, nullptr);
         }
     }
 
@@ -867,11 +1075,17 @@ namespace spartan
             RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
         }
 
+        // executeindirect requires args and count buffers in indirect_argument state, they were likely written by a prior compute pass and left as unordered_access
+        ID3D12Resource* args_resource  = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
+        ID3D12Resource* count_resource = static_cast<ID3D12Resource*>(count_buffer->GetRhiResource());
+        cmd_state::push_transition(b, args_resource,  D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+        cmd_state::push_transition(b, count_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
             command_signature, max_draw_count,
-            static_cast<ID3D12Resource*>(args_buffer->GetRhiResource()),  static_cast<UINT64>(args_offset),
-            static_cast<ID3D12Resource*>(count_buffer->GetRhiResource()), static_cast<UINT64>(count_offset)
+            args_resource,  static_cast<UINT64>(args_offset),
+            count_resource, static_cast<UINT64>(count_offset)
         );
         Profiler::m_rhi_draw++;
     }
@@ -912,10 +1126,14 @@ namespace spartan
             RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
         }
 
+        // executeindirect requires the args buffer in indirect_argument state, it was likely written by a prior compute pass and left as unordered_access
+        ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
+        cmd_state::push_transition(b, args_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
             command_signature, 1u,
-            static_cast<ID3D12Resource*>(args_buffer->GetRhiResource()), static_cast<UINT64>(args_offset),
+            args_resource, static_cast<UINT64>(args_offset),
             nullptr, 0
         );
         Profiler::m_rhi_draw++;
@@ -946,10 +1164,14 @@ namespace spartan
             RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
         }
 
+        // executeindirect requires the args buffer in indirect_argument state, it was likely written by a prior compute pass and left as unordered_access
+        ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
+        cmd_state::push_transition(b, args_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
         flush_pending_bindings(cmd_list, this, true);
         cmd_list->ExecuteIndirect(
             command_signature, 1u,
-            static_cast<ID3D12Resource*>(args_buffer->GetRhiResource()), static_cast<UINT64>(args_offset),
+            args_resource, static_cast<UINT64>(args_offset),
             nullptr, 0
         );
     }
@@ -966,16 +1188,77 @@ namespace spartan
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
         if (!src || !dst) return;
 
-        // transition both resources before the naive resource copy, format/extent are assumed compatible (callers blit between matching targets)
         auto& b = cmd_state::get(this);
-        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+
+        // when source and destination dimensions and formats match and no scaling is requested copyresource is the
+        // cheapest path, otherwise fall back to a fullscreen-triangle blit that samples the source srv into the destination
+        const bool dims_match  = source->GetWidth()  == destination->GetWidth()
+                              && source->GetHeight() == destination->GetHeight();
+        const bool format_match = source->GetFormat() == destination->GetFormat();
+        const bool no_scaling   = resolution_scale >= 1.0f - 1e-6f && resolution_scale <= 1.0f + 1e-6f;
+
+        if (dims_match && format_match && no_scaling)
+        {
+            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+            cmd_state::flush(cmd_list, b);
+
+            cmd_list->CopyResource(dst, src);
+
+            source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
+            destination->SetLayoutDirect(0, destination->GetMipCount(), RHI_Image_Layout::Transfer_Destination);
+            return;
+        }
+
+        // graphics pipeline blit, mirrors the vkCmdBlitImage scaling semantics that rhi callers expect
+        const bool dst_is_depth = destination->IsDepthStencilFormat();
+        const bool src_is_depth = source->IsDepthStencilFormat();
+
+        // depth resources additionally allow depth_read to coexist with shader_resource state
+        const D3D12_RESOURCE_STATES src_read_state = src_is_depth
+            ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+            : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        cmd_state::push_transition(b, src, src_read_state);
+        cmd_state::push_transition(b, dst, dst_is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmd_state::flush(cmd_list, b);
 
-        cmd_list->CopyResource(dst, src);
+        d3d12_blit::BlitParams params = {};
+        void* src_srv_ptr = source->GetRhiSrv();
+        if (!src_srv_ptr) return;
+        params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
 
-        source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
-        destination->SetLayoutDirect(0, destination->GetMipCount(), RHI_Image_Layout::Transfer_Destination);
+        if (dst_is_depth)
+        {
+            void* dsv_ptr = destination->GetRhiDsv(0);
+            if (!dsv_ptr) return;
+            params.destination_dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv_ptr);
+        }
+        else
+        {
+            void* rtv_ptr = destination->GetRhiRtv(0);
+            if (!rtv_ptr) return;
+            params.destination_rtv_handle.ptr = reinterpret_cast<SIZE_T>(rtv_ptr);
+        }
+
+        params.destination_format    = d3d12_format[rhi_format_to_index(destination->GetFormat())];
+        params.destination_width     = destination->GetWidth();
+        params.destination_height    = destination->GetHeight();
+        params.is_depth_destination  = dst_is_depth;
+        // resolution_scale shrinks the source extent that fills the destination, matches the vulkan semantics where
+        // source[0..w*scale, 0..h*scale] is mapped onto destination[0..dst_w, 0..dst_h]
+        params.source_uv_scale_x     = resolution_scale;
+        params.source_uv_scale_y     = resolution_scale;
+
+        d3d12_blit::blit(cmd_list, params);
+
+        // the blit changed the bound root signature and pipeline, mark cmd_state so the next graphics call rebinds
+        // the bindless layout cleanly, b.is_compute_bound stays untouched since this path never affects compute state
+        b.has_root_signature_graphics = false;
+        b.is_imgui_pipeline_bound     = false;
+
+        source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Shader_Read);
+        destination->SetLayoutDirect(0, destination->GetMipCount(), RHI_Image_Layout::Attachment);
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination)
@@ -1161,8 +1444,8 @@ namespace spartan
             return;
 
         // engine only declares a uav SetBuffer overload (Renderer_BindingsUav), so this path is uav-only
-        // slots beyond what the bindless root signature exposes (u0..u42) are skipped, this matches the editor-level limit
-        if (slot >= 43) return;
+        // slots beyond what the bindless root signature exposes (u0..u44) are skipped, this matches the editor-level limit
+        if (slot >= 45) return;
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
         desc.Format                     = DXGI_FORMAT_UNKNOWN;
@@ -1325,27 +1608,55 @@ namespace spartan
         // bindless path
         if (!texture)
         {
-            if (uav) { if (slot < 43) { b.uav[slot].ptr = 0; b.uav_dirty = true; } }
+            if (uav) { if (slot < 45) { b.uav[slot].ptr = 0; b.uav_dirty = true; } }
             else     { if (slot < 27) { b.srv[slot].ptr = 0; b.srv_dirty = true; } }
             return;
         }
 
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
         const bool mip_specified = mip_index != rhi_all_mips;
+        const uint32_t total_mips = texture->GetMipCount();
+        const uint32_t array_size = texture->GetArrayLength();
+        const uint32_t effective_mip_range = mip_range == 0 ? 1u : mip_range;
+
+        // helper, push a transition for either a specific subresource range or all subresources
+        // when mip_specified is true and mip_index > 0, only the specified mips for the chosen array layer(s) transition
+        // this keeps the rest of the texture in its existing state, required for passes that read other mips as srv
+        // while writing one mip as uav (e.g. mipmap filtering)
+        auto push_transition_for_view = [&](D3D12_RESOURCE_STATES state)
+        {
+            if (mip_specified && mip_index > 0)
+            {
+                const uint32_t array_first = (array_layer == rhi_all_mips) ? 0u : array_layer;
+                const uint32_t array_last  = (array_layer == rhi_all_mips) ? array_size : (array_layer + 1u);
+                for (uint32_t a = array_first; a < array_last; a++)
+                {
+                    for (uint32_t m = mip_index; m < mip_index + effective_mip_range && m < total_mips; m++)
+                    {
+                        uint32_t subresource = m + a * total_mips;
+                        cmd_state::push_transition(b, resource, state, subresource);
+                    }
+                }
+            }
+            else
+            {
+                cmd_state::push_transition(b, resource, state);
+            }
+        };
 
         if (uav)
         {
-            if (slot >= 43) return;
+            if (slot >= 45) return;
 
             // ensure the texture is in unordered_access for both reads and writes
-            cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::General);
+            push_transition_for_view(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::General);
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
             if (mip_specified && mip_index > 0)
             {
                 // create a transient mip-specific uav, the static all-mips uav at m_rhi_srv_mips[0] is the only one populated by Texture creation
-                h = create_transient_mip_view(texture, mip_index, mip_range == 0 ? 1u : mip_range, true, array_layer);
+                h = create_transient_mip_view(texture, mip_index, effective_mip_range, true, array_layer);
             }
             else
             {
@@ -1366,13 +1677,13 @@ namespace spartan
             D3D12_RESOURCE_STATES read_state = is_depth
                 ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
                 : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmd_state::push_transition(b, resource, read_state);
-            texture->SetLayoutDirect(0, texture->GetMipCount(), RHI_Image_Layout::Shader_Read);
+            push_transition_for_view(read_state);
+            texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::Shader_Read);
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
             if (mip_specified && mip_index > 0)
             {
-                h = create_transient_mip_view(texture, mip_index, mip_range == 0 ? 1u : mip_range, false, array_layer);
+                h = create_transient_mip_view(texture, mip_index, effective_mip_range, false, array_layer);
             }
             else
             {
@@ -1556,7 +1867,27 @@ namespace spartan
                 if (!resource) return;
 
                 D3D12_RESOURCE_STATES state_after = rhi_layout_to_d3d12_state(barrier.layout, is_depth);
-                cmd_state::push_transition(b, resource, state_after);
+
+                // honor mip_index and mip_range when supplied so per-mip transitions can be requested
+                // (e.g. mipmap filtering passes that need to flip a single mip back to shader_read between dispatches)
+                if (barrier.texture && barrier.mip_index != rhi_all_mips)
+                {
+                    const uint32_t total_mips = barrier.texture->GetMipCount();
+                    const uint32_t array_size = barrier.texture->GetArrayLength();
+                    const uint32_t mip_count  = barrier.mip_range == 0 ? 1u : barrier.mip_range;
+                    for (uint32_t a = 0; a < array_size; a++)
+                    {
+                        for (uint32_t m = barrier.mip_index; m < barrier.mip_index + mip_count && m < total_mips; m++)
+                        {
+                            uint32_t subresource = m + a * total_mips;
+                            cmd_state::push_transition(b, resource, state_after, subresource);
+                        }
+                    }
+                }
+                else
+                {
+                    cmd_state::push_transition(b, resource, state_after);
+                }
 
                 if (barrier.texture)
                 {

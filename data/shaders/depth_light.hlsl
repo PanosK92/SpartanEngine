@@ -23,8 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-gbuffer_vertex main_vs(Vertex_PosUvNorTan input, uint instance_id : SV_InstanceID)
+gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_InstanceID)
 {
+    Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
     _draw = draw_data[buffer_pass.draw_index];
 
     float3 f3_value_2 = pass_get_f3_value2();

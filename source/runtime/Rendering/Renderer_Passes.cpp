@@ -1633,6 +1633,8 @@ namespace spartan
                     const uint32_t resolution_y = tex_skysphere->GetHeight() >> mip_level;
                     cmd_list->Dispatch(tex_skysphere);
                     cmd_list->InsertBarrier(tex_skysphere, RHI_BarrierType::EnsureWriteThenRead);
+                    // flip the just-written mip back to shader_read so the next iteration's srv sample can read it
+                    cmd_list->InsertBarrier(tex_skysphere, RHI_Image_Layout::Shader_Read, mip_level, 1);
                 }
             }
         }

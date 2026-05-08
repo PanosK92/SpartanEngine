@@ -81,7 +81,7 @@ namespace spartan::d3d12_root_slot
     constexpr uint32_t cbv_frame          = 0;  // CBV b0 space0
     constexpr uint32_t push_constants     = 1;  // 32-bit root constants b1 space0
     constexpr uint32_t srv_table_space0   = 2;  // t0..t26 space0
-    constexpr uint32_t uav_table_space0   = 3;  // u0..u42 space0
+    constexpr uint32_t uav_table_space0   = 3;  // u0..u44 space0
     constexpr uint32_t srv_material_tex   = 4;  // t15 space1 unbounded
     constexpr uint32_t srv_material_param = 5;  // t16 space2
     constexpr uint32_t srv_light_param    = 6;  // t17 space3
