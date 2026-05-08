@@ -73,9 +73,15 @@ namespace spartan
     {
         SP_PROFILE_CPU();
 
+        // wait until every shader that is being compiled has finished, null entries mean the shader was never
+        // requested in the first place (e.g. ray tracing shaders on the d3d12 path) and are safe to skip
         for (const auto& shader : GetShaders())
         {
-            if (!shader || !shader->IsCompiled())
+            if (!shader)
+                continue;
+
+            const RHI_ShaderCompilationState state = shader->GetCompilationState();
+            if (state == RHI_ShaderCompilationState::Idle || state == RHI_ShaderCompilationState::Compiling)
                 return;
         }
 

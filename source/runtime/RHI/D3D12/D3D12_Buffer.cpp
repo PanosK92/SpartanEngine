@@ -71,8 +71,13 @@ namespace spartan
             m_object_size = size;
         }
 
-        D3D12_HEAP_TYPE heap_type = m_mappable ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
-        D3D12_RESOURCE_STATES initial_state = m_mappable ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
+        // d3d12 forbids combining allow_unordered_access with upload heaps, but the engine model assumes that
+        // any storage buffer can be bound as a uav, so storage buffers always live on the default heap with the
+        // uav flag, cpu updates go through staging via the command list (see RHI_CommandList::UpdateBuffer)
+        const bool force_default_heap_uav = (m_type == RHI_Buffer_Type::Storage);
+
+        D3D12_HEAP_TYPE heap_type = (m_mappable && !force_default_heap_uav) ? D3D12_HEAP_TYPE_UPLOAD : D3D12_HEAP_TYPE_DEFAULT;
+        D3D12_RESOURCE_STATES initial_state = (heap_type == D3D12_HEAP_TYPE_UPLOAD) ? D3D12_RESOURCE_STATE_GENERIC_READ : D3D12_RESOURCE_STATE_COMMON;
 
         D3D12_HEAP_PROPERTIES heap_props = {};
         heap_props.Type                  = heap_type;
@@ -94,10 +99,7 @@ namespace spartan
         resource_desc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
         resource_desc.Flags              = D3D12_RESOURCE_FLAG_NONE;
 
-        // d3d12 forbids combining allow_unordered_access with the upload or readback heaps,
-        // so uav is restricted to non-mappable storage buffers which live on the default heap,
-        // mappable storage buffers are bound as srvs and written from the cpu via the persistent map
-        if (m_type == RHI_Buffer_Type::Storage && !m_mappable)
+        if (force_default_heap_uav)
         {
             resource_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
         }
@@ -278,11 +280,11 @@ namespace spartan
         if (!data_cpu || size == 0)
             return;
 
-        SP_ASSERT_MSG(m_mappable, "Can't update unmapped buffer");
-
         // constant buffers are ring-allocated by advancing m_offset by the aligned stride per update
         if (m_type == RHI_Buffer_Type::Constant)
         {
+            SP_ASSERT_MSG(m_data_gpu, "constant buffer must be mapped");
+
             if (!first_update)
             {
                 m_offset += m_stride;
@@ -293,17 +295,20 @@ namespace spartan
             }
             first_update = false;
 
-            if (m_data_gpu)
-            {
-                memcpy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, min(static_cast<uint64_t>(size), static_cast<uint64_t>(m_stride)));
-            }
+            memcpy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, min(static_cast<uint64_t>(size), static_cast<uint64_t>(m_stride)));
             return;
         }
 
+        // mapped path, direct memcpy into the persistently mapped pointer
         if (m_data_gpu)
         {
             memcpy(m_data_gpu, data_cpu, min(static_cast<uint64_t>(size), m_object_size));
+            return;
         }
+
+        // unmapped path, storage buffers live on the default heap so route through cmd-list staging
+        SP_ASSERT(cmd_list);
+        cmd_list->UpdateBuffer(this, 0, size, data_cpu);
     }
 
     void RHI_Buffer::UpdateHandles(RHI_CommandList* cmd_list)

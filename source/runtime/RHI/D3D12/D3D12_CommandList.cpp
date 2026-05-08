@@ -121,6 +121,11 @@ namespace spartan
             bool uav_dirty                       = false;
             bool is_compute_bound                = false;
             bool is_bindless_pipeline            = false;
+            // d3d12 tracks graphics and compute root signatures separately, descriptor tables require the matching root sig
+            bool has_root_signature_graphics     = false;
+            bool has_root_signature_compute      = false;
+            // true only after the imgui graphics pso has been bound, gates the imgui path in SetTexture
+            bool is_imgui_pipeline_bound         = false;
             // lazily created null descriptors on first use
             D3D12_CPU_DESCRIPTOR_HANDLE null_srv_tex2d = {};
             D3D12_CPU_DESCRIPTOR_HANDLE null_uav_tex2d = {};
@@ -128,6 +133,8 @@ namespace spartan
             ID3D12Resource* swapchain_bb_transitioned = nullptr;
             // deferred barrier batch, flushed by FlushBarriers (or before draw/dispatch/render-pass-begin)
             std::vector<D3D12_RESOURCE_BARRIER> pending_barriers;
+            // staging buffers acquired during recording, released on next Begin once gpu execution has finished
+            std::vector<void*> staging_buffers_in_flight;
         };
 
         unordered_map<const RHI_CommandList*, PendingBindings> bindings;
@@ -144,12 +151,22 @@ namespace spartan
             auto& b = get(cmd);
             for (auto& h : b.srv) h.ptr = 0;
             for (auto& h : b.uav) h.ptr = 0;
-            b.srv_dirty               = false;
-            b.uav_dirty               = false;
-            b.is_compute_bound        = false;
-            b.is_bindless_pipeline    = false;
-            b.swapchain_bb_transitioned = nullptr;
+            b.srv_dirty                  = false;
+            b.uav_dirty                  = false;
+            b.is_compute_bound           = false;
+            b.is_bindless_pipeline       = false;
+            b.has_root_signature_graphics = false;
+            b.has_root_signature_compute  = false;
+            b.is_imgui_pipeline_bound    = false;
+            b.swapchain_bb_transitioned  = nullptr;
             b.pending_barriers.clear();
+
+            // safe to release staging buffers now, Begin guarantees the previous submission completed on the gpu
+            for (void* sb : b.staging_buffers_in_flight)
+            {
+                RHI_Device::StagingBufferRelease(sb);
+            }
+            b.staging_buffers_in_flight.clear();
         }
 
         // push a transition for resource into the pending list, updating the global state tracker
@@ -187,7 +204,50 @@ namespace spartan
         {
             if (b.pending_barriers.empty())
                 return;
-            cmd_list->ResourceBarrier(static_cast<UINT>(b.pending_barriers.size()), b.pending_barriers.data());
+
+            // dedup transitions, multiple push_transition calls on the same resource between flushes produce
+            // a chain like A->B then B->C in pending_barriers, d3d12 accepts this but warns about it,
+            // collapse them into a single A->C barrier per (resource, subresource) pair
+            std::vector<D3D12_RESOURCE_BARRIER> deduped;
+            deduped.reserve(b.pending_barriers.size());
+            for (const auto& barrier : b.pending_barriers)
+            {
+                if (barrier.Type != D3D12_RESOURCE_BARRIER_TYPE_TRANSITION)
+                {
+                    deduped.push_back(barrier);
+                    continue;
+                }
+
+                bool merged = false;
+                for (auto& existing : deduped)
+                {
+                    if (existing.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
+                        existing.Transition.pResource   == barrier.Transition.pResource &&
+                        existing.Transition.Subresource == barrier.Transition.Subresource)
+                    {
+                        // chain transitions, keep the original StateBefore and advance StateAfter
+                        existing.Transition.StateAfter = barrier.Transition.StateAfter;
+                        merged = true;
+                        break;
+                    }
+                }
+                if (!merged)
+                    deduped.push_back(barrier);
+            }
+
+            // drop any resulting no-op transitions where the chained Before == After
+            deduped.erase(std::remove_if(deduped.begin(), deduped.end(),
+                [](const D3D12_RESOURCE_BARRIER& barrier)
+                {
+                    return barrier.Type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
+                           barrier.Transition.StateBefore == barrier.Transition.StateAfter;
+                }),
+                deduped.end());
+
+            if (!deduped.empty())
+            {
+                cmd_list->ResourceBarrier(static_cast<UINT>(deduped.size()), deduped.data());
+            }
             b.pending_barriers.clear();
         }
 
@@ -274,6 +334,10 @@ namespace spartan
         if (!b.is_bindless_pipeline)
             return;
 
+        // skip table binds if the matching root signature was never bound, happens when a pipeline failed to compile
+        if (is_compute && !b.has_root_signature_compute)  return;
+        if (!is_compute && !b.has_root_signature_graphics) return;
+
         if (b.srv_dirty)
         {
             uint32_t base = d3d12_descriptors::AllocateRing(27);
@@ -346,7 +410,15 @@ namespace spartan
 
         {
             lock_guard<mutex> lock(cmd_state::bindings_mutex);
-            cmd_state::bindings.erase(this);
+            auto it = cmd_state::bindings.find(this);
+            if (it != cmd_state::bindings.end())
+            {
+                for (void* sb : it->second.staging_buffers_in_flight)
+                {
+                    RHI_Device::StagingBufferRelease(sb);
+                }
+                cmd_state::bindings.erase(it);
+            }
         }
 
         if (m_rhi_fence_event)
@@ -515,17 +587,34 @@ namespace spartan
         const bool is_compute = pso.IsCompute();
         const bool is_imgui   = pso_is_imgui(pso);
 
+        // route flags must always reflect the requested pso, even if the pipeline failed to bind
+        {
+            auto& b = cmd_state::get(this);
+            b.is_compute_bound        = is_compute;
+            b.is_bindless_pipeline    = !is_imgui;
+            b.is_imgui_pipeline_bound = false;
+        }
+
         if (pipeline && pipeline->GetRhiResource())
         {
             ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
 
             cmd_list->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline->GetRhiResource()));
 
+            auto& b = cmd_state::get(this);
             if (pipeline->GetRhiResourceLayout())
             {
                 ID3D12RootSignature* rs = static_cast<ID3D12RootSignature*>(pipeline->GetRhiResourceLayout());
-                if (is_compute) cmd_list->SetComputeRootSignature(rs);
-                else            cmd_list->SetGraphicsRootSignature(rs);
+                if (is_compute)
+                {
+                    cmd_list->SetComputeRootSignature(rs);
+                    b.has_root_signature_compute = true;
+                }
+                else
+                {
+                    cmd_list->SetGraphicsRootSignature(rs);
+                    b.has_root_signature_graphics = true;
+                }
             }
 
             if (!is_compute)
@@ -534,12 +623,11 @@ namespace spartan
                 cmd_list->IASetPrimitiveTopology(topo);
             }
 
-            auto& b = cmd_state::get(this);
-            b.is_compute_bound     = is_compute;
-            b.is_bindless_pipeline = !is_imgui;
+            b.is_imgui_pipeline_bound = is_imgui && !is_compute;
 
-            // bind all fixed bindless tables (they point at fixed zones; contents are updated by Device::UpdateBindless*)
-            if (!is_imgui)
+            // bind fixed bindless tables only when the matching root signature is live, otherwise the table sets fail
+            const bool root_sig_ready = is_compute ? b.has_root_signature_compute : b.has_root_signature_graphics;
+            if (!is_imgui && root_sig_ready)
             {
                 bind_bindless_tables(cmd_list, is_compute);
                 // mark srv/uav tables dirty so they get flushed before the next draw/dispatch
@@ -732,7 +820,11 @@ namespace spartan
     void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        // always flush queued transitions, otherwise they accumulate across failed psos and diverge from the actual gpu state
+        cmd_state::flush(cmd_list, b);
+        if (!b.has_root_signature_graphics) return;
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->DrawInstanced(vertex_count, 1, vertex_start_index, 0);
         Profiler::m_rhi_draw++;
@@ -741,7 +833,10 @@ namespace spartan
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset, const uint32_t instance_start_index, const uint32_t instance_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        cmd_state::flush(cmd_list, b);
+        if (!b.has_root_signature_graphics) return;
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->DrawIndexedInstanced(index_count, instance_count, index_offset, vertex_offset, instance_start_index);
         Profiler::m_rhi_draw++;
@@ -750,8 +845,14 @@ namespace spartan
     void RHI_CommandList::DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        auto& b = cmd_state::get(this);
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        cmd_state::flush(cmd_list, b);
+
         if (!args_buffer || !count_buffer)
             return;
+
+        if (!b.has_root_signature_graphics) return;
 
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
@@ -766,7 +867,6 @@ namespace spartan
             RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
         }
 
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
             command_signature, max_draw_count,
@@ -779,7 +879,10 @@ namespace spartan
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        cmd_state::flush(cmd_list, b);
+        if (!b.has_root_signature_compute) return;
         flush_pending_bindings(cmd_list, this, true);
         cmd_list->Dispatch(x, y, z);
     }
@@ -787,8 +890,14 @@ namespace spartan
     void RHI_CommandList::DrawIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        auto& b = cmd_state::get(this);
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        cmd_state::flush(cmd_list, b);
+
         if (!args_buffer)
             return;
+
+        if (!b.has_root_signature_graphics) return;
 
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
@@ -803,7 +912,6 @@ namespace spartan
             RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
         }
 
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->ExecuteIndirect(
             command_signature, 1u,
@@ -816,8 +924,14 @@ namespace spartan
     void RHI_CommandList::DispatchIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        auto& b = cmd_state::get(this);
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        cmd_state::flush(cmd_list, b);
+
         if (!args_buffer)
             return;
+
+        if (!b.has_root_signature_compute) return;
 
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
@@ -832,7 +946,6 @@ namespace spartan
             RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
         }
 
-        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         flush_pending_bindings(cmd_list, this, true);
         cmd_list->ExecuteIndirect(
             command_signature, 1u,
@@ -996,6 +1109,10 @@ namespace spartan
         if (!b.is_bindless_pipeline)
             return;
 
+        // skip when no matching root signature is bound, can happen if the pipeline failed to bind
+        if (b.is_compute_bound && !b.has_root_signature_compute)  return;
+        if (!b.is_compute_bound && !b.has_root_signature_graphics) return;
+
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         D3D12_GPU_VIRTUAL_ADDRESS addr = static_cast<ID3D12Resource*>(constant_buffer->GetRhiResource())->GetGPUVirtualAddress() + constant_buffer->GetOffset();
 
@@ -1015,13 +1132,20 @@ namespace spartan
         if (b.is_bindless_pipeline)
         {
             if (b.is_compute_bound)
+            {
+                if (!b.has_root_signature_compute) return;
                 cmd_list->SetComputeRoot32BitConstants(d3d12_root_slot::push_constants, num_32bit, data, offset / 4);
+            }
             else
+            {
+                if (!b.has_root_signature_graphics) return;
                 cmd_list->SetGraphicsRoot32BitConstants(d3d12_root_slot::push_constants, num_32bit, data, offset / 4);
+            }
         }
         else
         {
             // imgui root signature has constants at root param 0
+            if (!b.is_imgui_pipeline_bound) return;
             cmd_list->SetGraphicsRoot32BitConstants(0, num_32bit, data, offset / 4);
         }
     }
@@ -1172,9 +1296,10 @@ namespace spartan
 
         auto& b = cmd_state::get(this);
 
-        // imgui path: pso uses the imgui root signature, bind a single table at root param 1
+        // imgui path, only valid when an imgui graphics pso is currently bound
         if (!b.is_bindless_pipeline)
         {
+            if (!b.is_imgui_pipeline_bound) return;
             if (!texture || !texture->GetRhiSrv()) return;
 
             ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
@@ -1359,11 +1484,50 @@ namespace spartan
 
     void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
     {
-        // d3d12 path: upload heap buffers are mapped; write directly
-        if (buffer && buffer->GetMappedData() && data)
+        if (!buffer || !data || size == 0)
+            return;
+
+        // mapped path, persistently mapped upload heap buffers can be memcpyd directly
+        if (buffer->GetMappedData())
         {
             memcpy(static_cast<uint8_t*>(buffer->GetMappedData()) + offset, data, static_cast<size_t>(size));
+            return;
         }
+
+        // staged path, default-heap buffers are uploaded via a transient staging buffer copied on this cmd list
+        ID3D12Resource* dst = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
+        if (!dst)
+            return;
+
+        void* staging_ptr = RHI_Device::StagingBufferAcquire(size);
+        ID3D12Resource* staging = static_cast<ID3D12Resource*>(staging_ptr);
+        if (!staging)
+            return;
+
+        void* mapped = nullptr;
+        D3D12_RANGE rr = { 0, 0 };
+        if (FAILED(staging->Map(0, &rr, &mapped)) || !mapped)
+        {
+            RHI_Device::StagingBufferRelease(staging_ptr);
+            return;
+        }
+        memcpy(mapped, data, static_cast<size_t>(size));
+        staging->Unmap(0, nullptr);
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        auto& b = cmd_state::get(this);
+
+        // transition dst to copy_dest, copy, then back to a shader-read state so subsequent srv reads work
+        // a follow-up SetBuffer(uav) call pushes its own transition to unordered_access if needed
+        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmd_state::flush(cmd_list, b);
+
+        cmd_list->CopyBufferRegion(dst, offset, staging, 0, size);
+
+        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        // hold the staging buffer until this cmd list completes, Begin/destructor releases them back to the pool
+        b.staging_buffers_in_flight.push_back(staging_ptr);
     }
 
     void RHI_CommandList::InsertBarrier(const RHI_Barrier& barrier)

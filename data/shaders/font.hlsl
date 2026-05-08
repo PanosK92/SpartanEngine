@@ -23,21 +23,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-struct vertex
+struct vertex_in
+{
+    float3 position : POSITION;
+    float2 uv       : TEXCOORD;
+};
+
+struct vertex_out
 {
     float4 position : SV_POSITION;
     float2 uv       : TEXCOORD;
 };
 
-vertex main_vs(vertex input)
+vertex_out main_vs(vertex_in input)
 {
-    input.position.w = 1.0f;
-    input.position  = mul(input.position, buffer_frame.view_projection_orthographic);
-
-    return input;
+    vertex_out output;
+    output.position = mul(float4(input.position, 1.0f), buffer_frame.view_projection_orthographic);
+    output.uv       = input.uv;
+    return output;
 }
 
-float4 main_ps(vertex input) : SV_TARGET
+float4 main_ps(vertex_out input) : SV_TARGET
 {
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
     

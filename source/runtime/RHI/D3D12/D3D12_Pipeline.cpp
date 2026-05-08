@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SwapChain.h"
 #include "../RHI_Texture.h"
 #include "../Rendering/Renderer.h"
+#include "D3D12_Internal.h"
 #include <cstring>
 //===================================
 
@@ -469,18 +470,20 @@ namespace spartan
         params[9].DescriptorTable.pDescriptorRanges   = geo_ranges;
         params[9].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
 
-        // 10: Sampler table s0 space6 unbounded + s1 space7 unbounded
+        // 10: Sampler table s0 space6 (comparison) + s1 space7 (regular)
+        // d3d12 forbids OFFSET_APPEND after an unbounded range, and forbids any range after an unbounded one,
+        // so use bounded counts with explicit offsets that match the sampler heap zones (compare 0..63, regular 64..127)
         static D3D12_DESCRIPTOR_RANGE sampler_ranges[2] = {};
         sampler_ranges[0].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-        sampler_ranges[0].NumDescriptors                    = UINT_MAX;
+        sampler_ranges[0].NumDescriptors                    = d3d12_descriptors::GetSamplersCompareCount();
         sampler_ranges[0].BaseShaderRegister                = 0;
         sampler_ranges[0].RegisterSpace                     = 6;
         sampler_ranges[0].OffsetInDescriptorsFromTableStart = 0;
         sampler_ranges[1].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-        sampler_ranges[1].NumDescriptors                    = UINT_MAX;
+        sampler_ranges[1].NumDescriptors                    = d3d12_descriptors::GetSamplersCount();
         sampler_ranges[1].BaseShaderRegister                = 1;
         sampler_ranges[1].RegisterSpace                     = 7;
-        sampler_ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+        sampler_ranges[1].OffsetInDescriptorsFromTableStart = d3d12_descriptors::GetSamplersCompareCount();
         params[10].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
         params[10].DescriptorTable.NumDescriptorRanges = 2;
         params[10].DescriptorTable.pDescriptorRanges   = sampler_ranges;
