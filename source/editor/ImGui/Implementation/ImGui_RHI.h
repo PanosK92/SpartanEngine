@@ -24,12 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===========================
 #include <array>
 #include "../Source/imgui.h"
+#include "imgui_impl_sdl3.h"
 #include "../../Widgets/TextureViewer.h"
 #include "Core/Event.h"
 #include "Rendering/Renderer_Buffers.h"
 #include "Rendering/Renderer.h"
 #include "Math/Rectangle.h"
 #include "RHI/RHI_Device.h"
+#include "RHI/RHI_Implementation.h"
 #include "RHI/RHI_Shader.h"
 #include "RHI/RHI_Texture.h"
 #include "RHI/RHI_SwapChain.h"
@@ -94,15 +96,25 @@ namespace ImGui::RHI
         shared_ptr<RHI_BlendState>        g_blend_state;
         shared_ptr<RHI_Shader>            g_shader_vertex;
         shared_ptr<RHI_Shader>            g_shader_pixel;
-
-        struct imgui_d3d12_push_constants
-        {
-            Matrix transform;
-        };
     }
 
     // forward declarations
     void initialize_platform_interface();
+
+    // initialise the imgui sdl platform glue, picks the matching backend variant for the active rhi
+    // imgui ships separate sdl backends per graphics api, this is the one place that fans out
+    bool InitializePlatformBackend(void* sdl_window)
+    {
+        SDL_Window* window = static_cast<SDL_Window*>(sdl_window);
+
+        switch (spartan::RHI_Context::api_type)
+        {
+            case spartan::RHI_Api_Type::D3d12:  return ImGui_ImplSDL3_InitForD3D(window);
+            case spartan::RHI_Api_Type::Vulkan: return ImGui_ImplSDL3_InitForVulkan(window);
+        }
+
+        return false;
+    }
 
     void on_hdr_toggled()
     {
@@ -164,17 +176,9 @@ namespace ImGui::RHI
                 bool async = false;
 
                 g_shader_vertex = make_shared<RHI_Shader>();
-                if (Renderer::GetRhiApiType() == RHI_Api_Type::D3d12)
-                {
-                    g_shader_vertex->AddDefine("SPARTAN_D3D12_IMGUI", "1");
-                }
                 g_shader_vertex->Compile(RHI_Shader_Type::Vertex, shader_path, async, RHI_Vertex_Type::Pos2dUvCol8);
 
                 g_shader_pixel = make_shared<RHI_Shader>();
-                if (Renderer::GetRhiApiType() == RHI_Api_Type::D3d12)
-                {
-                    g_shader_pixel->AddDefine("SPARTAN_D3D12_IMGUI", "1");
-                }
                 g_shader_pixel->Compile(RHI_Shader_Type::Pixel, shader_path, async);
             }
         }
@@ -225,9 +229,7 @@ namespace ImGui::RHI
         // skip the first two frames to let the renderer fully initialize.
         // frame 0: pipeline layouts and descriptor sets are still being created.
         // frame 1: bindless draw_data buffer descriptor may not have been written yet.
-        const bool use_d3d12_imgui_path = Renderer::GetRhiApiType() == RHI_Api_Type::D3d12;
-        uint64_t frame = Renderer::GetFrameNumber();
-        if (!use_d3d12_imgui_path && frame < 2)
+        if (Renderer::GetFrameNumber() < 2)
             return;
 
         // get resources
@@ -321,23 +323,6 @@ namespace ImGui::RHI
         cmd_list->SetBufferIndex(index_buffer);
         cmd_list->SetCullMode(RHI_CullMode::None);
 
-        imgui_d3d12_push_constants push_constants_d3d12 = {};
-        if (use_d3d12_imgui_path)
-        {
-            const float left   = draw_data->DisplayPos.x;
-            const float right  = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-            const float top    = draw_data->DisplayPos.y;
-            const float bottom = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-
-            push_constants_d3d12.transform = Matrix
-            (
-                2.0f / (right - left), 0.0f, 0.0f, (right + left) / (left - right),
-                0.0f, 2.0f / (top - bottom), 0.0f, (top + bottom) / (bottom - top),
-                0.0f, 0.0f, 0.5f, 0.5f,
-                0.0f, 0.0f, 0.0f, 1.0f
-            );
-        }
-
         // render
         {
             uint32_t global_vtx_offset = 0;
@@ -367,105 +352,81 @@ namespace ImGui::RHI
                             cmd_list->SetScissorRectangle(rectangle);
                         }
 
-                        // push pass/draw call constants
-                        if (use_d3d12_imgui_path)
+                        // set texture and update texture viewer parameters
                         {
-                            bool texture_bound = false;
+                            float mip_level            = 0.0f;
+                            float array_level          = 0.0f;
+                            bool is_texture_visualised = false;
+                            bool is_frame_texture      = false;
+                            bool texture_bound         = false;
 
                             if (spartan::RHI_Texture* texture = reinterpret_cast<spartan::RHI_Texture*>(pcmd->TextureId))
                             {
+                                is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
+
+                                // during engine startup, some textures might be loading in different threads
                                 if (texture->GetResourceState() == ResourceState::PreparedForGpu)
                                 {
+                                    // update texture viewer parameters
+                                    is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
+                                    if (is_texture_visualised)
+                                    {
+                                        mip_level   = static_cast<float>(TextureViewer::GetMipLevel());
+                                        array_level = static_cast<float>(TextureViewer::GetArrayLevel());
+                                    }
+
                                     cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
                                     texture_bound = true;
                                 }
                             }
 
+                            // always bind a texture to avoid uninitialized descriptor errors
                             if (!texture_bound)
                             {
                                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, g_font_atlas.get());
                             }
 
-                            cmd_list->PushConstants(0, sizeof(imgui_d3d12_push_constants), &push_constants_d3d12);
+                            // pack booleans into uint bitfield
+                            uint32_t flags = 0;
+                            if (is_texture_visualised)
+                            {
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_R)    ? (1u << 0) : 0;
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_G)    ? (1u << 1) : 0;
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_B)    ? (1u << 2) : 0;
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_A)    ? (1u << 3) : 0;
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_GammaCorrect) ? (1u << 4) : 0;
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Pack)         ? (1u << 5) : 0;
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Boost)        ? (1u << 6) : 0;
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Abs)          ? (1u << 7) : 0;
+                                flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Sample_Point) ? (1u << 8) : 0;
+                            }
+                            flags |= is_texture_visualised ? (1u << 9) : 0;
+                            flags |= is_frame_texture      ? (1u << 10) : 0;
+
+                            // store bitfield in m00 and mip/array levels in m23, m30
+                            rhi_resources->push_constant_buffer_pass.set_f3_value(*reinterpret_cast<float*>(&flags), 0.0f, 0.0f);
+                            rhi_resources->push_constant_buffer_pass.set_f2_value(mip_level, array_level);
                         }
-                        else
+
+                        // compute transform matrix and write to the bindless draw data buffer
                         {
-                            // set texture and update texture viewer parameters
-                            {
-                                float mip_level            = 0.0f;
-                                float array_level          = 0.0f;
-                                bool is_texture_visualised = false;
-                                bool is_frame_texture      = false;
-                                bool texture_bound         = false;
-                                
-                                if (spartan::RHI_Texture* texture = reinterpret_cast<spartan::RHI_Texture*>(pcmd->TextureId))
-                                {
-                                    is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
-                                
-                                    // during engine startup, some textures might be loading in different threads
-                                    if (texture->GetResourceState() == ResourceState::PreparedForGpu)
-                                    {
-                                        // update texture viewer parameters
-                                        is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                                        if (is_texture_visualised)
-                                        {
-                                            mip_level   = static_cast<float>(TextureViewer::GetMipLevel());
-                                            array_level = static_cast<float>(TextureViewer::GetArrayLevel());
-                                        }
+                            const float L = draw_data->DisplayPos.x;
+                            const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+                            const float T = draw_data->DisplayPos.y;
+                            const float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
 
-                                        cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-                                        texture_bound = true;
-                                    }
-                                }
-                                
-                                // always bind a texture to avoid uninitialized descriptor errors
-                                if (!texture_bound)
-                                {
-                                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, g_font_atlas.get());
-                                }
-                                
-                                // pack booleans into uint bitfield
-                                uint32_t flags = 0;
-                                if (is_texture_visualised)
-                                {
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_R)    ? (1u << 0) : 0;
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_G)    ? (1u << 1) : 0;
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_B)    ? (1u << 2) : 0;
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Channel_A)    ? (1u << 3) : 0;
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_GammaCorrect) ? (1u << 4) : 0;
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Pack)         ? (1u << 5) : 0;
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Boost)        ? (1u << 6) : 0;
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Abs)          ? (1u << 7) : 0;
-                                    flags |= (TextureViewer::GetVisualisationFlags() & Visualise_Sample_Point) ? (1u << 8) : 0;
-                                }
-                                flags |= is_texture_visualised ? (1u << 9) : 0;
-                                flags |= is_frame_texture      ? (1u << 10) : 0;
-                                
-                                // store bitfield in m00 and mip/array levels in m23, m30
-                                rhi_resources->push_constant_buffer_pass.set_f3_value(*reinterpret_cast<float*>(&flags), 0.0f, 0.0f);
-                                rhi_resources->push_constant_buffer_pass.set_f2_value(mip_level, array_level);
-                            }
+                            Matrix projection
+                            (
+                                2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
+                                0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
+                                0.0f, 0.0f, 0.5f, 0.5f,
+                                0.0f, 0.0f, 0.0f, 1.0f
+                            );
 
-                            // compute transform matrix and write to the bindless draw data buffer
-                            {
-                                const float L = draw_data->DisplayPos.x;
-                                const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-                                const float T = draw_data->DisplayPos.y;
-                                const float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-
-                                Matrix projection
-                                (
-                                    2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
-                                    0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
-                                    0.0f, 0.0f, 0.5f, 0.5f,
-                                    0.0f, 0.0f, 0.0f, 1.0f
-                                );
-
-                                rhi_resources->push_constant_buffer_pass.draw_index = Renderer::WriteDrawData(projection);
-                            }
-
-                            cmd_list->PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
+                            rhi_resources->push_constant_buffer_pass.draw_index = Renderer::WriteDrawData(projection);
                         }
+
+                        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &rhi_resources->push_constant_buffer_pass);
 
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }

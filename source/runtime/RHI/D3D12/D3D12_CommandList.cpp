@@ -158,8 +158,6 @@ namespace spartan
             // d3d12 tracks graphics and compute root signatures separately, descriptor tables require the matching root sig
             bool has_root_signature_graphics     = false;
             bool has_root_signature_compute      = false;
-            // true only after the imgui graphics pso has been bound, gates the imgui path in SetTexture
-            bool is_imgui_pipeline_bound         = false;
             // lazily created null descriptors on first use
             D3D12_CPU_DESCRIPTOR_HANDLE null_srv_tex2d = {};
             D3D12_CPU_DESCRIPTOR_HANDLE null_uav_tex2d = {};
@@ -195,7 +193,6 @@ namespace spartan
             b.is_bindless_pipeline       = false;
             b.has_root_signature_graphics = false;
             b.has_root_signature_compute  = false;
-            b.is_imgui_pipeline_bound    = false;
             b.is_compute_queue           = false;
             b.swapchain_bb_transitioned  = nullptr;
             b.pending_barriers.clear();
@@ -606,8 +603,6 @@ namespace spartan
         }
     }
 
-    static bool pso_is_imgui(const RHI_PipelineState& pso) { return pso.name != nullptr && strcmp(pso.name, "imgui") == 0; }
-
     // bind all bindless descriptor tables at the fixed bindless zones
     static void bind_bindless_tables(ID3D12GraphicsCommandList* cmd_list, bool is_compute)
     {
@@ -650,9 +645,10 @@ namespace spartan
     {
         auto& b = cmd_state::get(cmd);
 
-        // pending barriers always flush, regardless of bindless vs imgui pipelines
+        // always flush pending barriers regardless of pipeline state
         cmd_state::flush(cmd_list, b);
 
+        // bail if no pipeline has ever been bound on this cmd list, no tables to sync
         if (!b.is_bindless_pipeline)
             return;
 
@@ -949,15 +945,13 @@ namespace spartan
 
         const bool is_compute    = pso.IsCompute();
         const bool is_raytracing = pso.IsRayTracing();
-        const bool is_imgui      = pso_is_imgui(pso);
 
         // route flags must always reflect the requested pso, even if the pipeline failed to bind
         // ray tracing dispatches go through the compute binding cycle, so it is treated as compute here
         {
             auto& b = cmd_state::get(this);
-            b.is_compute_bound        = is_compute || is_raytracing;
-            b.is_bindless_pipeline    = !is_imgui;
-            b.is_imgui_pipeline_bound = false;
+            b.is_compute_bound     = is_compute || is_raytracing;
+            b.is_bindless_pipeline = true;
         }
 
         if (pipeline && pipeline->GetRhiResource())
@@ -1002,13 +996,11 @@ namespace spartan
                 cmd_list->IASetPrimitiveTopology(topo);
             }
 
-            b.is_imgui_pipeline_bound = is_imgui && !is_compute && !is_raytracing;
-
             // bind fixed bindless tables only when the matching root signature is live, otherwise the table sets fail
             // ray tracing dispatches use the compute root sig
             const bool use_compute_sig = is_compute || is_raytracing;
             const bool root_sig_ready  = use_compute_sig ? b.has_root_signature_compute : b.has_root_signature_graphics;
-            if (!is_imgui && root_sig_ready)
+            if (root_sig_ready)
             {
                 bind_bindless_tables(cmd_list, use_compute_sig);
                 // mark srv/uav tables dirty so they get flushed before the next draw/dispatch
@@ -1027,7 +1019,7 @@ namespace spartan
 
         // bind the per-frame constant buffer and standard textures that every scene shader depends on
         // mirrors what Vulkan_CommandList does at the equivalent point in SetPipelineState
-        if (!is_imgui && pipeline && pipeline->GetRhiResource())
+        if (pipeline && pipeline->GetRhiResource())
         {
             Renderer::SetStandardResources(this);
         }
@@ -1525,7 +1517,6 @@ namespace spartan
         // the blit changed the bound root signature and pipeline, mark cmd_state so the next graphics call rebinds
         // the bindless layout cleanly, b.is_compute_bound stays untouched since this path never affects compute state
         b.has_root_signature_graphics = false;
-        b.is_imgui_pipeline_bound     = false;
 
         source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Shader_Read);
         destination->SetLayoutDirect(0, destination->GetMipCount(), RHI_Image_Layout::Attachment);
@@ -1733,24 +1724,15 @@ namespace spartan
         const uint32_t num_32bit = size / 4;
 
         auto& b = cmd_state::get(this);
-        if (b.is_bindless_pipeline)
+        if (b.is_compute_bound)
         {
-            if (b.is_compute_bound)
-            {
-                if (!b.has_root_signature_compute) return;
-                cmd_list->SetComputeRoot32BitConstants(d3d12_root_slot::push_constants, num_32bit, data, offset / 4);
-            }
-            else
-            {
-                if (!b.has_root_signature_graphics) return;
-                cmd_list->SetGraphicsRoot32BitConstants(d3d12_root_slot::push_constants, num_32bit, data, offset / 4);
-            }
+            if (!b.has_root_signature_compute) return;
+            cmd_list->SetComputeRoot32BitConstants(d3d12_root_slot::push_constants, num_32bit, data, offset / 4);
         }
         else
         {
-            // imgui root signature has constants at root param 0
-            if (!b.is_imgui_pipeline_bound) return;
-            cmd_list->SetGraphicsRoot32BitConstants(0, num_32bit, data, offset / 4);
+            if (!b.has_root_signature_graphics) return;
+            cmd_list->SetGraphicsRoot32BitConstants(d3d12_root_slot::push_constants, num_32bit, data, offset / 4);
         }
     }
 
@@ -1900,33 +1882,6 @@ namespace spartan
 
         auto& b = cmd_state::get(this);
 
-        // imgui path, only valid when an imgui graphics pso is currently bound
-        if (!b.is_bindless_pipeline)
-        {
-            if (!b.is_imgui_pipeline_bound) return;
-            if (!texture || !texture->GetRhiSrv()) return;
-
-            ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
-
-            // imgui-bound textures may currently be in render_target state from earlier passes, transition them to shader_read
-            ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
-            cmd_state::push_transition(b, resource,
-                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            cmd_state::flush(cmd_list, b);
-
-            // copy the cpu srv into the ring so the table is shader-visible
-            uint32_t ring_idx = d3d12_descriptors::AllocateRing(1);
-            D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(ring_idx);
-            D3D12_CPU_DESCRIPTOR_HANDLE src = {};
-            src.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiSrv());
-            RHI_Context::device->CopyDescriptorsSimple(1, dst, src, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-            D3D12_GPU_DESCRIPTOR_HANDLE gpu = d3d12_descriptors::GetCbvSrvUavGpuHandle(ring_idx);
-            cmd_list->SetGraphicsRootDescriptorTable(1, gpu);
-            return;
-        }
-
-        // bindless path
         if (!texture)
         {
             if (uav) { if (slot < 45) { b.uav[slot].ptr = 0; b.uav_dirty = true; } }

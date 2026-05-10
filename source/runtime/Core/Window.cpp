@@ -161,11 +161,8 @@ namespace spartan
         }
 
         // set window flags - borderless for custom title bar
-        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_BORDERLESS;
-        if (RHI_Context::api_type == RHI_Api_Type::Vulkan)
-        {
-            flags |= SDL_WINDOW_VULKAN;
-        }
+        // rhi-specific flags (e.g. SDL_WINDOW_VULKAN) come from RHI_Context, set at compile time per-api
+        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED | SDL_WINDOW_BORDERLESS | RHI_Context::sdl_window_flags;
 
         // create window
         window  = SDL_CreateWindow(

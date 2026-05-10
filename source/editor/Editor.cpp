@@ -70,10 +70,9 @@ Editor::Editor(const vector<string>& args)
 
     // configure ImGui
     ImGuiIO& io                      = ImGui::GetIO();
-    const bool is_d3d12             = spartan::Renderer::GetRhiApiType() == spartan::RHI_Api_Type::D3d12;
     io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
-    if (!is_d3d12)
+    if (spartan::RHI_Context::supports_imgui_multi_viewport)
     {
         io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     }
@@ -90,11 +89,8 @@ Editor::Editor(const vector<string>& args)
     font_bold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), font_size * spartan::Window::GetDpiScale(), &config);
     io.FontGlobalScale     = font_scale;
 
-    // initialize imgui backends
-    const bool imgui_sdl_initialized = is_d3d12 ?
-        ImGui_ImplSDL3_InitForD3D(static_cast<SDL_Window*>(spartan::Window::GetHandleSDL())) :
-        ImGui_ImplSDL3_InitForVulkan(static_cast<SDL_Window*>(spartan::Window::GetHandleSDL()));
-    SP_ASSERT_MSG(imgui_sdl_initialized, "Failed to initialize ImGui's SDL backend");
+    // initialize imgui backends, the rhi-aware sdl platform glue lives behind ImGui::RHI so the editor stays api-agnostic
+    SP_ASSERT_MSG(ImGui::RHI::InitializePlatformBackend(spartan::Window::GetHandleSDL()), "Failed to initialize ImGui's SDL backend");
     ImGui::RHI::Initialize();
 
     // create all imgui widgets

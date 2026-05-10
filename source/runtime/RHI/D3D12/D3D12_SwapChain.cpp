@@ -197,6 +197,45 @@ namespace spartan
         }
         swap_chain_temp->Release();
 
+        // set color space, mirrors vulkan's behavior of always declaring the swapchain's color space
+        // without this, hdr swapchains default to srgb in dxgi, causing the os compositor to apply sdr to hdr remapping which dims everything
+        {
+            DXGI_COLOR_SPACE_TYPE color_space = (m_format == format_hdr)
+                ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
+                : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+
+            UINT support = 0;
+            bool color_space_supported =
+                SUCCEEDED(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->CheckColorSpaceSupport(color_space, &support)) &&
+                (support & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT);
+
+            if (!color_space_supported && m_format == format_hdr)
+            {
+                SP_LOG_WARNING("HDR color space not supported by swapchain, falling back to SDR");
+                m_format = format_sdr;
+                color_space = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+
+                if (!d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->ResizeBuffers(
+                    m_buffer_count, m_width, m_height, d3d12_format[rhi_format_to_index(m_format)], swap_chain_desc.Flags)))
+                {
+                    SP_LOG_ERROR("Failed to fall back swapchain to SDR");
+                }
+
+                support = 0;
+                color_space_supported =
+                    SUCCEEDED(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->CheckColorSpaceSupport(color_space, &support)) &&
+                    (support & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT);
+            }
+
+            if (color_space_supported)
+            {
+                if (FAILED(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->SetColorSpace1(color_space)))
+                {
+                    SP_LOG_WARNING("SetColorSpace1 failed during swapchain creation");
+                }
+            }
+        }
+
         // disable alt+enter fullscreen toggle
         factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
 

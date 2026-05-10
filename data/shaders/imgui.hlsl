@@ -19,19 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#if defined(SPARTAN_D3D12_IMGUI)
-cbuffer push_constants : register(b0)
-{
-    float4x4 transform;
-};
-
-Texture2D tex : register(t0);
-SamplerState tex_sampler : register(s0);
-#else
 //= includes =========
 #include "common.hlsl"
 //====================
-#endif
 
 struct Vertex_Pos2dUvColor
 {
@@ -51,11 +41,7 @@ vertex main_vs(Vertex_Pos2dUvColor input)
 {
     vertex output;
 
-#if defined(SPARTAN_D3D12_IMGUI)
-    output.position = mul(transform, float4(input.position.x, input.position.y, 0.0f, 1.0f));
-#else
     output.position = mul(draw_data[buffer_pass.draw_index].transform, float4(input.position.x, input.position.y, 0.0f, 1.0f));
-#endif
     output.color    = input.color;
     output.uv       = input.uv;
 
@@ -96,9 +82,6 @@ float3 linear_to_hdr10(float3 color, float white_point)
 
 float4 main_ps(vertex input) : SV_Target
 {
-#if defined(SPARTAN_D3D12_IMGUI)
-    return input.color * tex.Sample(tex_sampler, input.uv);
-#else
     // extract push constant data
     float3 flags_packed = pass_get_f3_value();
     uint flags          = asuint(flags_packed.x); // m00 contains bitfield
@@ -158,5 +141,4 @@ float4 main_ps(vertex input) : SV_Target
     color.rgb           = lerp(color.rgb, color_hdr, apply_hdr);
 
     return color;
-#endif
 }

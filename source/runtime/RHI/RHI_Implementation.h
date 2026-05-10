@@ -408,6 +408,10 @@ namespace spartan
         static const char* api_version_cstr;
         static const char* api_type_str;
         static RHI_Api_Type api_type;
+
+        // platform integration metadata, set per-api at compile time so shared code can stay api-agnostic
+        static uint32_t sdl_window_flags;             // sdl window flags required by the active rhi (e.g. SDL_WINDOW_VULKAN)
+        static bool     supports_imgui_multi_viewport; // whether the active rhi supports imgui's multi-viewport feature
     };
 }
 

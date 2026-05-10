@@ -42,7 +42,6 @@ using namespace std;
 namespace spartan
 {
     // forward declarations
-    static void create_root_signature_imgui(RHI_Pipeline* pipeline);
     static void create_root_signature_bindless(RHI_Pipeline* pipeline);
     static void create_compute_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state);
     static void create_graphics_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state);
@@ -102,15 +101,8 @@ namespace spartan
 
     static void create_graphics_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state)
     {
-        // choose root sig based on pso type
-        if (pso_is_imgui(state))
-        {
-            create_root_signature_imgui(pipeline);
-        }
-        else
-        {
-            create_root_signature_bindless(pipeline);
-        }
+        // every graphics pso, including imgui, shares the unified bindless root signature
+        create_root_signature_bindless(pipeline);
 
         if (!pipeline->GetRhiResourceLayout())
         {
@@ -272,72 +264,6 @@ namespace spartan
             SP_LOG_ERROR("Failed to create graphics pipeline state '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));
         }
         pipeline->SetRhiResource(resource);
-    }
-
-    // imgui root signature - simple, matches the simplified imgui.hlsl d3d12 path
-    // param 0: root constants at b0 (transform matrix, 16 dwords)
-    // param 1: descriptor table - srv t0 (font texture)
-    // static sampler at s0
-    static void create_root_signature_imgui(RHI_Pipeline* pipeline)
-    {
-        D3D12_ROOT_PARAMETER root_params[2] = {};
-
-        root_params[0].ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-        root_params[0].Constants.ShaderRegister = 0;
-        root_params[0].Constants.RegisterSpace  = 0;
-        root_params[0].Constants.Num32BitValues = 32;
-        root_params[0].ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;
-
-        D3D12_DESCRIPTOR_RANGE srv_range = {};
-        srv_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srv_range.NumDescriptors                    = 1;
-        srv_range.BaseShaderRegister                = 0;
-        srv_range.RegisterSpace                     = 0;
-        srv_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-        root_params[1].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-        root_params[1].DescriptorTable.NumDescriptorRanges = 1;
-        root_params[1].DescriptorTable.pDescriptorRanges   = &srv_range;
-        root_params[1].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;
-
-        D3D12_STATIC_SAMPLER_DESC sampler_desc = {};
-        sampler_desc.Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-        sampler_desc.AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        sampler_desc.AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        sampler_desc.AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-        sampler_desc.ComparisonFunc   = D3D12_COMPARISON_FUNC_NEVER; // non-comparison sampler, validation warns on anything other than never
-        sampler_desc.MinLOD           = 0.0f;
-        sampler_desc.MaxLOD           = D3D12_FLOAT32_MAX;
-        sampler_desc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-        D3D12_ROOT_SIGNATURE_DESC root_sig_desc = {};
-        root_sig_desc.NumParameters     = 2;
-        root_sig_desc.pParameters       = root_params;
-        root_sig_desc.NumStaticSamplers = 1;
-        root_sig_desc.pStaticSamplers   = &sampler_desc;
-        root_sig_desc.Flags             = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-        ID3DBlob* signature_blob = nullptr;
-        ID3DBlob* error_blob     = nullptr;
-        HRESULT hr = D3D12SerializeRootSignature(&root_sig_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature_blob, &error_blob);
-        if (FAILED(hr))
-        {
-            if (error_blob)
-            {
-                SP_LOG_ERROR("Failed to serialize imgui root signature: %s", static_cast<char*>(error_blob->GetBufferPointer()));
-                error_blob->Release();
-            }
-            if (signature_blob) signature_blob->Release();
-            return;
-        }
-
-        void* layout = nullptr;
-        RHI_Context::device->CreateRootSignature(0, signature_blob->GetBufferPointer(), signature_blob->GetBufferSize(),
-            IID_PPV_ARGS(reinterpret_cast<ID3D12RootSignature**>(&layout)));
-        pipeline->SetRhiResourceLayout(layout);
-
-        if (signature_blob) signature_blob->Release();
-        if (error_blob) error_blob->Release();
     }
 
     // unified bindless root signature matching common_resources.hlsl layout
