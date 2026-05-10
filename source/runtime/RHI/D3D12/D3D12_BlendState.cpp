@@ -53,6 +53,16 @@ namespace spartan
         m_dest_blend_alpha   = dest_blend_alpha;
         m_blend_op_alpha     = blend_op_alpha;
         m_blend_factor       = blend_factor;
+
+        // hash, mirrors the vulkan path so pso lookup is stable across backends
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_blend_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_source_blend));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_dest_blend));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_blend_op));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_source_blend_alpha));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_dest_blend_alpha));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_blend_op_alpha));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_blend_factor));
     }
 
     RHI_BlendState::~RHI_BlendState()

@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Queue.h"
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
+#include "../RHI_SyncPrimitive.h"
+#include "../RHI_SwapChain.h"
 //================================
 
 //= NAMESPACES =====
@@ -169,17 +171,46 @@ namespace spartan
 
         ID3D12CommandQueue* d3d12_queue = static_cast<ID3D12CommandQueue*>(m_rhi_resource);
         ID3D12GraphicsCommandList* d3d12_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_buffer);
+        if (!d3d12_queue || !d3d12_cmd_list)
+            return;
 
-        if (d3d12_queue && d3d12_cmd_list)
+        // gpu-side wait, queue->Wait blocks the queue until the fence reaches value, mirrors vulkan binary/timeline waits
+        if (semaphore_wait && semaphore_wait->GetRhiResource())
         {
-            ID3D12CommandList* cmd_lists[] = { d3d12_cmd_list };
-            d3d12_queue->ExecuteCommandLists(1, cmd_lists);
+            d3d12_queue->Wait(static_cast<ID3D12Fence*>(semaphore_wait->GetRhiResource()), semaphore_wait->GetValue());
+        }
+        if (semaphore_timeline_wait && semaphore_timeline_wait->GetRhiResource() && timeline_wait_value > 0)
+        {
+            d3d12_queue->Wait(static_cast<ID3D12Fence*>(semaphore_timeline_wait->GetRhiResource()), timeline_wait_value);
+        }
+
+        ID3D12CommandList* cmd_lists[] = { d3d12_cmd_list };
+        d3d12_queue->ExecuteCommandLists(1, cmd_lists);
+
+        // gpu-side signal so downstream submits / presents can chain
+        if (semaphore_signal && semaphore_signal->GetRhiResource())
+        {
+            uint64_t next_value = semaphore_signal->GetNextSignalValue();
+            d3d12_queue->Signal(static_cast<ID3D12Fence*>(semaphore_signal->GetRhiResource()), next_value);
+        }
+        if (semaphore_timeline_signal && semaphore_timeline_signal->GetRhiResource())
+        {
+            uint64_t next_value = semaphore_timeline_signal->GetNextSignalValue();
+            d3d12_queue->Signal(static_cast<ID3D12Fence*>(semaphore_timeline_signal->GetRhiResource()), next_value);
         }
     }
 
     bool RHI_Queue::Present(void* swapchain, const uint32_t image_index, RHI_SyncPrimitive* semaphore_wait)
     {
-        // d3d12 doesn't use this - present is done directly on the swapchain
+        // d3d12 has no per-image-index Present, the swapchain owns its own back-buffer rotation
+        // we still respect the wait semaphore by issuing a queue->Wait before the present chain advances
+        ID3D12CommandQueue* d3d12_queue = static_cast<ID3D12CommandQueue*>(m_rhi_resource);
+        if (semaphore_wait && semaphore_wait->GetRhiResource() && d3d12_queue)
+        {
+            d3d12_queue->Wait(static_cast<ID3D12Fence*>(semaphore_wait->GetRhiResource()), semaphore_wait->GetValue());
+        }
+
+        // the swapchain implementation calls IDXGISwapChain3::Present from RHI_SwapChain::Present, so just pass through
         return true;
     }
 }

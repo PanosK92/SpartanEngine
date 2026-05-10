@@ -151,6 +151,14 @@ function spartan_project_configuration()
                 }
             end
 
+        -- D3D12-specific includes (Windows only) - xess for the d3d12 upscaler path
+        filter { "system:windows" }
+            if ARG_API_GRAPHICS == "d3d12" then
+                includedirs {
+                    "../third_party/xess"
+                }
+            end
+
         -- Release configuration
         filter { "configurations:release" }
             targetname(EXECUTABLE_NAME)
@@ -169,6 +177,8 @@ function spartan_project_configuration()
                         "ffx_backend_vk_x64", "ffx_frameinterpolation_x64", "ffx_fsr3_x64", "ffx_fsr3upscaler_x64",
                         "ffx_opticalflow_x64", "ffx_denoiser_x64", "libxess"
                     }
+                elseif ARG_API_GRAPHICS == "d3d12" then
+                    links { "libxess" }
                 end
 
         -- Debug configuration
@@ -192,6 +202,8 @@ function spartan_project_configuration()
                     "ffx_backend_vk_x64d", "ffx_frameinterpolation_x64d", "ffx_fsr3_x64d", "ffx_fsr3upscaler_x64d",
                     "ffx_opticalflow_x64d", "ffx_denoiser_x64d", "libxess"
                 }
+            elseif ARG_API_GRAPHICS == "d3d12" then
+                links { "libxess" }
             end
 
         filter { "configurations:debug", "system:linux" }

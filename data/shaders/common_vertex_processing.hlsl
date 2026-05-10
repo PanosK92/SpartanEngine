@@ -304,174 +304,167 @@ float3x3 rotation_matrix(float3 axis, float angle)
     );
 }
 
+// world-space tile period for the baked wind field, must match the artistic intent for gust scale
+// every wind_world_period meters the texture wraps once, smaller values give smaller, more chaotic gusts
+static const float wind_world_period = 80.0f;
+
+// shared wind sample for grass, flowers, and trees
+// reading from the once-per-frame baked wind_field texture: rg = flow vector, b = gust pressure, a = micro turbulence
+struct wind_sample
+{
+    float3 bend_dir_world; // unit vector in world xz plane the surface should bend toward
+    float  bend_strength;  // dimensionless bend amplitude, scales with wind magnitude and local gust pressure
+    float  gust;           // raw gust pressure 0..1, useful for non-rotational displacement
+    float  micro;          // signed high-frequency jitter, [-0.5, 0.5]
+};
+
+wind_sample evaluate_wind(float3 world_position)
+{
+    float3 wind_world = buffer_frame.wind;
+    float  wind_mag   = length(float2(wind_world.x, wind_world.z));
+    float2 wind_dir   = wind_mag > 1e-4f ? float2(wind_world.x, wind_world.z) / wind_mag : float2(0.0f, 1.0f);
+
+    float2 uv     = world_position.xz * (1.0f / wind_world_period);
+    float4 wf     = tex_wind_field.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uv, 0);
+
+    // bias the bend direction with the local flow vector so the field is not purely along the macro wind
+    float2 dir_xz = wind_dir + wf.rg * 0.55f;
+    float  dlen   = length(dir_xz);
+    dir_xz        = dlen > 1e-4f ? dir_xz / dlen : wind_dir;
+
+    wind_sample s;
+    s.bend_dir_world = float3(dir_xz.x, 0.0f, dir_xz.y);
+    s.bend_strength  = (0.20f + 0.80f * wf.b) * wind_mag;
+    s.gust           = wf.b;
+    s.micro          = wf.a - 0.5f;
+    return s;
+}
+
+// per-instance phase + natural frequency, derived from world-space base position
+// keeps blades from moving in lockstep, deterministic so motion vectors stay correct
+float2 wind_instance_phase_freq(float3 instance_pos)
+{
+    float h = frac(sin(dot(instance_pos, float3(12.9898f, 78.233f, 37.719f))) * 43758.5453f);
+    return float2(h * PI2, 2.0f + frac(h * 17.13f) * 1.5f);
+}
+
 struct vertex_processing
 {
     static void process_world_space(Surface surface, inout float3 position_world, inout gbuffer_vertex vertex, float3 position_local, float4x4 transform, uint instance_id, float time_offset)
     {
-        float time                = (float)buffer_frame.time + time_offset;
-        float3 wind               = buffer_frame.wind;
-        float base_wind_magnitude = length(wind);
-        float3 base_wind_dir      = normalize(wind + float3(1e-6f, 0.0f, 1e-6f));
-        float3 instance_up        = normalize(transform[1].xyz);
-        
+        float  time          = (float)buffer_frame.time + time_offset;
+        float3 instance_up   = normalize(transform[1].xyz);
+        float3 instance_pos  = float3(transform[3].x, transform[3].y, transform[3].z);
+
         // camera-facing bias for grass (ghost of tsushima technique)
         // rotates blades partially toward camera when edge-on to maintain visual density
         if (surface.is_grass_blade())
         {
-            const float camera_bias_strength = 0.7f; // 0 = no bias, 1 = full billboard
-            
-            // get camera direction in horizontal plane
+            const float camera_bias_strength = 0.7f;
+
             float3 to_camera    = buffer_frame.camera_position - position_world;
             float3 to_camera_xz = normalize(float3(to_camera.x, 0.0f, to_camera.z));
-            
-            // blade normal is the z-axis of the transform (perpendicular to blade surface)
+
             float3 blade_normal    = normalize(transform[2].xyz);
             float3 blade_normal_xz = normalize(float3(blade_normal.x, 0.0f, blade_normal.z) + float3(1e-6f, 0.0f, 1e-6f));
-            
-            // calculate how edge-on we are: 1 = facing camera, 0 = edge-on
+
             float facing_dot  = abs(dot(blade_normal_xz, to_camera_xz));
-            float edge_factor = 1.0f - facing_dot; // higher when more edge-on
-            
-            // apply bias - stronger when more edge-on
-            float bias_amount = edge_factor * edge_factor * camera_bias_strength; // squared for smooth falloff
-            
-            // calculate rotation to face camera
-            float3 cross_result = cross(blade_normal_xz, to_camera_xz);
-            float rotation_sign = sign(cross_result.y);
-            float angle_to_camera = acos(saturate(facing_dot));
-            float bias_angle = angle_to_camera * bias_amount * rotation_sign;
-            
-            // rotate around world up axis for horizontal rotation only
+            float edge_factor = 1.0f - facing_dot;
+            float bias_amount = edge_factor * edge_factor * camera_bias_strength;
+
+            float3 cross_result   = cross(blade_normal_xz, to_camera_xz);
+            float  rotation_sign  = sign(cross_result.y);
+            float  angle_to_camera = acos(saturate(facing_dot));
+            float  bias_angle     = angle_to_camera * bias_amount * rotation_sign;
+
             float3x3 bias_rot = rotation_matrix(float3(0.0f, 1.0f, 0.0f), bias_angle);
-            
-            // apply rotation - use instance base position from transform
-            float3 instance_pos = float3(transform[3].x, transform[3].y, transform[3].z);
-            float3 offset       = position_world - instance_pos;
-            position_world      = instance_pos + mul(bias_rot, offset);
-            vertex.normal       = normalize(mul(bias_rot, vertex.normal));
-            vertex.tangent      = normalize(mul(bias_rot, vertex.tangent));
+
+            float3 offset  = position_world - instance_pos;
+            position_world = instance_pos + mul(bias_rot, offset);
+            vertex.normal  = normalize(mul(bias_rot, vertex.normal));
+            vertex.tangent = normalize(mul(bias_rot, vertex.tangent));
         }
-        
-        // wind simulation
+
+        // grass and flower wind: cantilever bend with per-instance spring response
         if (surface.is_grass_blade() || surface.is_flower())
         {
-            const float base_scale    = 0.032f;                              // spatial scale for noise sampling (higher = more waves)
-            const float time_scale    = 0.06f * (1.0f + base_wind_magnitude); // animation speed scales with wind strength
-            const float sway_amp      = base_wind_magnitude * 2.5f;          // maximum bend angle multiplier
-            const float max_angle_deg = 75.0f;                               // maximum rotation angle to prevent ground intersection
-            
-            // height-based flexibility: stiffer at base, more flexible at tip
-            MaterialParameters material = GetMaterial();
-            float height_percent        = saturate(vertex.uv_misc.z / max(material.local_height, 0.001f));
-            float height_factor         = pow(height_percent, 1.5f);
-            
-            // per-instance variation: subtle intensity multiplier (preserves wave patterns)
-            float3 instance_pos  = float3(transform[3].x, transform[3].y, transform[3].z);
-            float instance_var   = frac(dot(instance_pos.xz, float2(12.9898f, 78.233f))) * 0.3f + 0.85f; // 0.85 to 1.15
-            
-            // layered noise for natural sway: broad base pattern + faster gust layer
-            float2 uv   = position_world.xz * base_scale + base_wind_dir.xz * time * time_scale;
-            float sway  = noise_perlin(uv) * 0.7f;
-            sway       += noise_perlin(uv * 1.5f + float2(time * 0.25f, 0.0f)) * 0.3f;
-            
-            // sharpen the wave transition for a more defined wave front
-            sway = sign(sway) * pow(abs(sway), 0.55f);
-            
-            sway = sway * sway_amp * height_factor * instance_var;
+            wind_sample ws = evaluate_wind(position_world);
 
-            // wind direction variation for natural randomness
-            float dir_var   = noise_perlin(position_world.xz * 0.016f + time * 0.025f) * (PI / 6.0f);
-            float3 bend_dir = normalize(base_wind_dir + float3(sin(dir_var), 0.0f, cos(dir_var)));
+            // height fraction along the blade, base = 0, tip = 1
+            float h          = saturate(vertex.uv_misc.z);
+            float h_cantilever = pow(h, 1.5f); // stiffer at the base than a linear taper
 
-            // calculate maximum allowed angle: ensure blade never goes below horizontal
-            // angle between blade up direction and vertical must be less than max_angle_deg degrees
-            static const float3 vertical      = float3(0.0f, 1.0f, 0.0f);
-            float up_dot_vertical             = dot(instance_up, vertical);
-            float current_angle_from_vertical = acos(saturate(up_dot_vertical));
-            float max_allowed_angle           = (max_angle_deg * DEG_TO_RAD) - current_angle_from_vertical;
-            max_allowed_angle                 = max(0.0f, max_allowed_angle);
+            // per-instance natural frequency and phase, two oscillation modes for soft overshoot
+            float2 inst          = wind_instance_phase_freq(instance_pos);
+            float  instance_phase = inst.x;
+            float  nat_freq       = inst.y;
+            float  spring         = sin(time * nat_freq + instance_phase) * 0.18f
+                                  + sin(time * nat_freq * 2.3f + instance_phase * 1.7f) * 0.07f;
 
-            // rotate blade around axis perpendicular to wind direction
-            // fallback to world right if instance_up is parallel to bend_dir
-            float3 raw_axis       = cross(instance_up, bend_dir);
-            float axis_length_sq  = dot(raw_axis, raw_axis);
+            // peak bend angle of 60 deg, modulated by the per-instance spring and a subtle micro jitter
+            float bend_amp     = ws.bend_strength * (1.0f + spring * 0.45f);
+            float micro_jitter = ws.micro * 0.10f;
+            float angle        = (bend_amp * (60.0f * DEG_TO_RAD) + micro_jitter) * h_cantilever;
+
+            // never let the blade rotate below horizontal
+            static const float3 vertical              = float3(0.0f, 1.0f, 0.0f);
+            float current_angle_from_vertical         = acos(saturate(dot(instance_up, vertical)));
+            float max_allowed_angle                   = max(0.0f, (75.0f * DEG_TO_RAD) - current_angle_from_vertical);
+            angle                                     = sign(angle) * min(abs(angle), max_allowed_angle);
+
+            // rotation axis perpendicular to bend direction in the horizontal plane
+            float3 raw_axis      = cross(instance_up, ws.bend_dir_world);
+            float  axis_length_sq = dot(raw_axis, raw_axis);
             float3 axis           = axis_length_sq > 0.0001f ? raw_axis * rsqrt(axis_length_sq) : float3(1.0f, 0.0f, 0.0f);
-            float angle           = sway * (50.0f * DEG_TO_RAD);
-            
-            // clamp angle to prevent ground intersection
-            float angle_abs     = abs(angle);
-            float clamped_angle = sign(angle) * min(angle_abs, max_allowed_angle);
-            
-            float3x3 rot = rotation_matrix(axis, clamped_angle);
 
-            // apply rotation around instance base position
-            float3 offset  = position_world - instance_pos;
-            position_world = instance_pos + mul(rot, offset);
-            vertex.normal  = normalize(mul(rot, vertex.normal));
-            vertex.tangent = normalize(mul(rot, vertex.tangent));
+            // each vertex rotates by angle * h^1.5, so the base stays put and the tip sweeps the full angle
+            // produces the cantilever silhouette without per-vertex pivot bookkeeping
+            float3x3 rot   = rotation_matrix(axis, angle);
+            float3   offset = position_world - instance_pos;
+            position_world  = instance_pos + mul(rot, offset);
+            vertex.normal   = normalize(mul(rot, vertex.normal));
+            vertex.tangent  = normalize(mul(rot, vertex.tangent));
         }
-        else if (surface.has_wind_animation()) // tree branch/leaf wind sway
+        else if (surface.has_wind_animation()) // tree branch / leaf wind sway, fed by the same wind field
         {
-            const float horizontal_amplitude = 0.15f; // maximum horizontal displacement
-            const float vertical_amplitude   = 0.1f;  // maximum vertical displacement
-            const float sway_frequency       = 1.5f;  // slow branch sway frequency
-            const float bob_frequency        = 3.0f;  // faster leaf flutter frequency
-            const float noise_scale          = 0.08f; // gust variation frequency
-            const float flutter_variation    = 0.5f;  // leaf flutter intensity
+            const float branch_amplitude = 0.18f;
+            const float leaf_amplitude   = 0.10f;
+            const float flutter_strength = 0.40f;
 
-            float height_factor = saturate(vertex.uv_misc.z); // 0 at trunk, 1 at branch tips
+            wind_sample ws = evaluate_wind(position_world);
 
-            // store original position before modifications for flutter calculation
-            float2 position_original_xz = position_world.xz;
+            float h = saturate(vertex.uv_misc.z); // 0 at trunk, 1 at branch tips
 
-            // per-instance and per-vertex phase offsets for natural variation
-            float instance_phase = float(instance_id) * 0.3f;
-            float vertex_phase   = (position_world.x + position_world.z) * 0.05f;
+            // per-instance phase and frequency, branches sway slower than grass blades
+            float2 inst          = wind_instance_phase_freq(instance_pos);
+            float  instance_phase = inst.x;
+            float  branch_freq    = inst.y * 0.55f;
 
-            // horizontal sway: sine wave modulated by wind gusts
-            float wind_phase    = time * sway_frequency + instance_phase;
-            float horizontal_wave = sin(wind_phase + vertex_phase) * 0.5f;
-    
-            // apply gust modulation: low-frequency noise varies intensity 0.7x-1.0x
-            float gust_noise = noise_perlin(float2(time * noise_scale, float(instance_id) * 0.1f));
-            horizontal_wave *= (0.7f + 0.3f * gust_noise) * base_wind_magnitude;
-
-            // apply horizontal displacement in wind direction, scaled by height
-            float3 horizontal_dir    = normalize(float3(base_wind_dir.x, 0.0f, base_wind_dir.z) + float3(1e-6f, 0.0f, 1e-6f));
-            float3 horizontal_offset = horizontal_dir * horizontal_wave * horizontal_amplitude * height_factor;
+            // gusts modulate the branch sway, sin gives it a soft heartbeat-like response
+            float gust_pulse        = sin(time * branch_freq + instance_phase) * 0.5f + 0.5f;
+            float horizontal_wave   = ws.bend_strength * (0.65f + 0.35f * gust_pulse);
+            float3 horizontal_offset = ws.bend_dir_world * horizontal_wave * branch_amplitude * h;
             position_world          += horizontal_offset;
 
-            // vertical oscillation: independent up-down motion
-            float bob_phase     = time * bob_frequency + instance_phase * 1.2f + vertex_phase * 2.0f;
-            float vertical_wave = sin(bob_phase) * 0.6f;
-
-            // add high-frequency flutter noise for leaf movement
-            float flutter_noise = noise_perlin(position_original_xz * 5.0f + time * 2.0f);
-            vertical_wave += flutter_noise * flutter_variation;
-
-            // amplify vertical motion based on horizontal sway intensity
-            vertical_wave *= (1.0f + 0.2f * base_wind_magnitude * abs(horizontal_wave));
-
-            // apply vertical displacement, scaled by height
-            float vertical_offset_y = vertical_wave * vertical_amplitude * height_factor * 0.8f;
+            // leaf flutter, faster than the branch sway, driven by the micro channel for spatial variation
+            float flutter_freq      = 3.5f + inst.y;
+            float vertical_wave     = sin(time * flutter_freq + instance_phase * 1.2f) * 0.6f
+                                    + ws.micro * 2.0f * flutter_strength;
+            float vertical_offset_y = vertical_wave * leaf_amplitude * h;
             position_world.y       += vertical_offset_y;
-            
-            // update normals and tangents to reflect bending
+
+            // bend the normals and tangents to roughly match the displacement, scaled by height for canopy detail
             float3 vertical_offset = float3(0.0f, vertical_offset_y, 0.0f);
             float3 total_offset    = horizontal_offset + vertical_offset;
-            
-            // check squared length to prevent division by zero (NaN) when offset is near zero
-            float offset_sq = dot(total_offset, total_offset);   
+
+            float offset_sq = dot(total_offset, total_offset);
             if (offset_sq > 0.000001f)
             {
-                float bend_amount = sqrt(offset_sq) * 0.5f * height_factor;
-                float3 bend_dir   = total_offset * rsqrt(offset_sq); // optimized normalize
-                
-                vertex.normal    += bend_dir * bend_amount;
-                vertex.normal     = normalize(vertex.normal);
-                
-                vertex.tangent   += bend_dir * bend_amount * 0.5f;
-                vertex.tangent    = normalize(vertex.tangent);
+                float  bend_amount = sqrt(offset_sq) * 0.5f * h;
+                float3 bend_dir    = total_offset * rsqrt(offset_sq);
+
+                vertex.normal  = normalize(vertex.normal  + bend_dir * bend_amount);
+                vertex.tangent = normalize(vertex.tangent + bend_dir * bend_amount * 0.5f);
             }
         }
     }

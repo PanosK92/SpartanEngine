@@ -58,7 +58,18 @@ namespace spartan
 
     RHI_Sampler::~RHI_Sampler()
     {
-        // cpu heap doesn't reclaim slots - the descriptor just stays; ok for now
-        m_rhi_resource = nullptr;
+        // route through the deletion queue, the actual slot reclaim happens once the gpu has finished
+        // sampling from any descriptor copies of this entry; mirrors vulkan deletion-queue parity
+        if (m_rhi_resource)
+        {
+            uint32_t index = d3d12_descriptors::SamplerHandleToIndex(reinterpret_cast<SIZE_T>(m_rhi_resource));
+            if (index != UINT32_MAX)
+            {
+                // we encode the slot index into the deferred entry by shifting it into a tagged pointer,
+                // d3d12_descriptors::FreeSamplerCpu will be invoked when the deletion queue retires it
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Sampler, reinterpret_cast<void*>((static_cast<uintptr_t>(index) << 1) | 0x1ull));
+            }
+            m_rhi_resource = nullptr;
+        }
     }
 }

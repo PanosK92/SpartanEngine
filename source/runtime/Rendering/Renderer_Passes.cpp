@@ -67,6 +67,15 @@ namespace spartan
     {
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
         cmd_list->SetTexture(Renderer_BindingsSrv::tex_perlin, GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
+
+        // wind field is the same texture that gets written by Pass_WindField as a UAV
+        // skip binding it as an SRV while it is in General layout, otherwise the descriptor
+        // would carry a stale shader-read layout into the dispatch and trip vulkan validation
+        RHI_Texture* tex_wind = GetRenderTarget(Renderer_RenderTarget::wind_field);
+        if (tex_wind && tex_wind->GetLayout(0) == RHI_Image_Layout::Shader_Read)
+        {
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex_wind_field, tex_wind);
+        }
     }
 
     void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute)
@@ -97,6 +106,9 @@ namespace spartan
 
         // cloud noise (once)
         Pass_CloudNoise(cmd_list_graphics_present);
+
+        // wind field (every frame, must be ready before any geometry pass that runs vertex_processing)
+        Pass_WindField(cmd_list_graphics_present);
 
         // skysphere (re-render on light/coverage changes, converge over several frames)
         bool clouds_visible = cvar_cloud_coverage.GetValue() > 0.0f;
@@ -1864,6 +1876,35 @@ namespace spartan
         cmd_list->EndTimeblock();
 
         m_pass_state.cloud_noise_produced = true;
+    }
+
+    void Renderer::Pass_WindField(RHI_CommandList* cmd_list)
+    {
+        RHI_Texture* tex_wind = GetRenderTarget(Renderer_RenderTarget::wind_field);
+        if (!tex_wind)
+            return;
+
+        RHI_Shader* shader = GetShader(Renderer_Shader::wind_field_c);
+        if (!shader || !shader->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("wind_field");
+        {
+            // pre-transition to General before the pipeline bind so SetStandardResources skips
+            // the SRV binding for this texture, avoiding a self-conflict during the compute dispatch
+            tex_wind->SetLayout(RHI_Image_Layout::General, cmd_list);
+
+            RHI_PipelineState pso;
+            pso.name             = "wind_field";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_wind);
+            cmd_list->Dispatch(tex_wind);
+
+            tex_wind->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        }
+        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_CloudShadow(RHI_CommandList* cmd_list)

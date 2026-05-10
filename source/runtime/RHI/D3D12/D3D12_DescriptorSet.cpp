@@ -34,6 +34,9 @@ namespace spartan
 {
     void RHI_DescriptorSet::Update(const vector<RHI_DescriptorWithBinding>& descriptors)
     {
-
+        // d3d12 uses the bindless heap + ring allocator path in D3D12_CommandList, so the descriptor set
+        // object itself doesn't write d3d12 descriptors here; we still stash the binding list so that
+        // RHI_DescriptorSet::IsReferingToResource works (it iterates m_descriptors)
+        m_descriptors = descriptors;
     }
 }

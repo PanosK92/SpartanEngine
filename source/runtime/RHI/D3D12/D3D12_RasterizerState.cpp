@@ -47,6 +47,16 @@ namespace spartan
         m_depth_bias_clamp        = depth_bias_clamp;
         m_depth_bias_slope_scaled = depth_bias_slope_scaled;
         m_line_width              = line_width;
+
+        // hash, mirrors the vulkan path so pso lookup is stable across backends
+        hash<float> hasher;
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_polygon_mode));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_depth_clip_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_line_width));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(m_depth_bias)));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(m_depth_bias_clamp)));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(m_depth_bias_slope_scaled)));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(m_line_width)));
     }
 
     RHI_RasterizerState::~RHI_RasterizerState()

@@ -102,6 +102,9 @@ namespace spartan
         reservoir_prev2    = 24,
         reservoir_prev3    = 25,
         reservoir_prev4    = 26,
+
+        // baked wind field, sampled by all wind-driven geometry
+        tex_wind_field     = 27,
     };
 
     enum class Renderer_BindingsUav
@@ -221,6 +224,8 @@ namespace spartan
         cloud_noise_shape_c,
         cloud_noise_detail_c,
         cloud_shadow_c,
+        // baked wind field
+        wind_field_c,
         light_reflections_c,
         // gpu-driven indirect rendering
         indirect_cull_c,
@@ -305,6 +310,8 @@ namespace spartan
         cloud_noise_shape,
         cloud_noise_detail,
         cloud_shadow,
+        // baked wind field, written each frame, sampled by depth_prepass/g_buffer/depth_light
+        wind_field,
         // debug
         debug_output,
         // vr stereo

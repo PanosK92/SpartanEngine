@@ -66,6 +66,8 @@ namespace spartan::d3d12_descriptors
     uint32_t AllocateDsv();
     uint32_t AllocateCbvSrvUavCpu();
     uint32_t AllocateSamplerCpu();
+    void     FreeSamplerCpu(uint32_t index);
+    uint32_t SamplerHandleToIndex(SIZE_T handle_ptr);
     uint32_t AllocateRing(uint32_t count); // index in shader-visible cbv/srv/uav heap
 
     // queue resources

@@ -32,12 +32,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Queue.h"
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_DescriptorSetLayout.h"
+#include "../RHI_AccelerationStructure.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Core/Debugging.h"
 #include "../../Core/Breadcrumbs.h"
 #include "D3D12_Internal.h"
 #include "D3D12_BlitGraphics.h"
+#include <wrl/client.h>
 #include <cstring>
 #include <unordered_map>
 #include <vector>
@@ -145,7 +147,7 @@ namespace spartan
         struct PendingBindings
         {
             // source cpu handles (from cpu staging heap) per slot - zero means null
-            D3D12_CPU_DESCRIPTOR_HANDLE srv[27] = {};
+            D3D12_CPU_DESCRIPTOR_HANDLE srv[28] = {};
             D3D12_CPU_DESCRIPTOR_HANDLE uav[45] = {};
             bool srv_dirty                       = false;
             bool uav_dirty                       = false;
@@ -475,6 +477,135 @@ namespace spartan
         }
     }
 
+    // per-cmd-list query state: timestamp + occlusion heaps and their readback buffers
+    // keyed by RHI_CommandList so we don't bloat the public class while still keeping the d3d12-specific
+    // ID3D12QueryHeap and readback ID3D12Resource pointers off the rhi header
+    namespace queries
+    {
+        constexpr uint32_t timestamp_count    = 256;
+        constexpr uint32_t occlusion_count    = 4096;
+
+        struct CmdListQueries
+        {
+            ID3D12QueryHeap*  heap_timestamp     = nullptr;
+            ID3D12Resource*   readback_timestamp = nullptr;
+            uint32_t          timestamps_used    = 0;
+
+            ID3D12QueryHeap*  heap_occlusion     = nullptr;
+            ID3D12Resource*   readback_occlusion = nullptr;
+            uint32_t          occlusion_index    = 0;
+            uint32_t          occlusion_active   = 0;
+            bool              occlusion_query_in_flight = false;
+            std::unordered_map<uint64_t, uint32_t> occlusion_id_to_index;
+            std::array<uint64_t, occlusion_count>  occlusion_data = {};
+        };
+
+        std::unordered_map<const RHI_CommandList*, CmdListQueries> per_cmd;
+        std::mutex per_cmd_mutex;
+
+        CmdListQueries& get(const RHI_CommandList* cmd)
+        {
+            std::lock_guard<std::mutex> lock(per_cmd_mutex);
+            return per_cmd[cmd];
+        }
+
+        void erase(const RHI_CommandList* cmd)
+        {
+            std::lock_guard<std::mutex> lock(per_cmd_mutex);
+            auto it = per_cmd.find(cmd);
+            if (it == per_cmd.end()) return;
+            CmdListQueries& q = it->second;
+            if (q.heap_timestamp)     { q.heap_timestamp->Release();     q.heap_timestamp = nullptr; }
+            if (q.readback_timestamp) { q.readback_timestamp->Release(); q.readback_timestamp = nullptr; }
+            if (q.heap_occlusion)     { q.heap_occlusion->Release();     q.heap_occlusion = nullptr; }
+            if (q.readback_occlusion) { q.readback_occlusion->Release(); q.readback_occlusion = nullptr; }
+            per_cmd.erase(it);
+        }
+
+        // create a readback buffer sized for query_count * 8 bytes
+        static ID3D12Resource* create_readback(uint32_t query_count)
+        {
+            D3D12_HEAP_PROPERTIES heap_props = {};
+            heap_props.Type = D3D12_HEAP_TYPE_READBACK;
+
+            D3D12_RESOURCE_DESC desc = {};
+            desc.Dimension          = D3D12_RESOURCE_DIMENSION_BUFFER;
+            desc.Width              = static_cast<UINT64>(query_count) * sizeof(uint64_t);
+            desc.Height             = 1;
+            desc.DepthOrArraySize   = 1;
+            desc.MipLevels          = 1;
+            desc.Format             = DXGI_FORMAT_UNKNOWN;
+            desc.SampleDesc.Count   = 1;
+            desc.Layout             = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+            ID3D12Resource* res = nullptr;
+            RHI_Context::device->CreateCommittedResource(
+                &heap_props, D3D12_HEAP_FLAG_NONE,
+                &desc, D3D12_RESOURCE_STATE_COPY_DEST,
+                nullptr, IID_PPV_ARGS(&res));
+            return res;
+        }
+
+        void initialize(const RHI_CommandList* cmd, RHI_Queue_Type queue_type)
+        {
+            if (queue_type == RHI_Queue_Type::Copy)
+                return;
+
+            CmdListQueries& q = get(cmd);
+
+            // timestamp heap, copy queue does not support timestamps in d3d12
+            if (Debugging::IsGpuTimingEnabled())
+            {
+                D3D12_QUERY_HEAP_DESC desc = {};
+                desc.Type    = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+                desc.Count   = timestamp_count;
+                if (SUCCEEDED(RHI_Context::device->CreateQueryHeap(&desc, IID_PPV_ARGS(&q.heap_timestamp))))
+                {
+                    q.readback_timestamp = create_readback(timestamp_count);
+                }
+            }
+
+            // occlusion heap, only valid on graphics queues
+            if (queue_type == RHI_Queue_Type::Graphics)
+            {
+                D3D12_QUERY_HEAP_DESC desc = {};
+                desc.Type    = D3D12_QUERY_HEAP_TYPE_OCCLUSION;
+                desc.Count   = occlusion_count;
+                if (SUCCEEDED(RHI_Context::device->CreateQueryHeap(&desc, IID_PPV_ARGS(&q.heap_occlusion))))
+                {
+                    q.readback_occlusion = create_readback(occlusion_count);
+                }
+            }
+        }
+
+        void resolve(ID3D12GraphicsCommandList* cmd_list, CmdListQueries& q)
+        {
+            if (q.heap_timestamp && q.readback_timestamp && q.timestamps_used > 0)
+            {
+                cmd_list->ResolveQueryData(q.heap_timestamp, D3D12_QUERY_TYPE_TIMESTAMP, 0, q.timestamps_used, q.readback_timestamp, 0);
+            }
+            if (q.heap_occlusion && q.readback_occlusion && q.occlusion_index > 0)
+            {
+                cmd_list->ResolveQueryData(q.heap_occlusion, D3D12_QUERY_TYPE_OCCLUSION, 0, q.occlusion_index, q.readback_occlusion, 0);
+            }
+        }
+
+        // copy the resolved query data from the readback buffer into a uint64 array
+        static void readback_data(ID3D12Resource* readback, uint64_t* out, uint32_t count)
+        {
+            if (!readback || !out || count == 0)
+                return;
+
+            D3D12_RANGE read_range = { 0, count * sizeof(uint64_t) };
+            void* mapped = nullptr;
+            if (FAILED(readback->Map(0, &read_range, &mapped)) || !mapped)
+                return;
+            memcpy(out, mapped, count * sizeof(uint64_t));
+            D3D12_RANGE write_range = { 0, 0 };
+            readback->Unmap(0, &write_range);
+        }
+    }
+
     static bool pso_is_imgui(const RHI_PipelineState& pso) { return pso.name != nullptr && strcmp(pso.name, "imgui") == 0; }
 
     // bind all bindless descriptor tables at the fixed bindless zones
@@ -531,8 +662,8 @@ namespace spartan
 
         if (b.srv_dirty)
         {
-            uint32_t base = d3d12_descriptors::AllocateRing(27);
-            for (uint32_t i = 0; i < 27; i++)
+            uint32_t base = d3d12_descriptors::AllocateRing(28);
+            for (uint32_t i = 0; i < 28; i++)
             {
                 D3D12_CPU_DESCRIPTOR_HANDLE dst = d3d12_descriptors::GetCbvSrvUavGpuVisibleCpuHandle(base + i);
                 D3D12_CPU_DESCRIPTOR_HANDLE src = (b.srv[i].ptr != 0) ? b.srv[i] : cmd_state::ensure_null_srv(b);
@@ -593,6 +724,11 @@ namespace spartan
         SP_ASSERT_MSG(m_rhi_fence_event != nullptr, "Failed to create fence event");
 
         m_state = RHI_CommandListState::Idle;
+
+        // create timestamp/occlusion query heaps and matching readback buffers, queries side-table holds them
+        queries::initialize(this, queue->GetType());
+        m_rhi_query_pool_timestamps = queries::get(this).heap_timestamp;
+        m_rhi_query_pool_occlusion  = queries::get(this).heap_occlusion;
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -611,6 +747,11 @@ namespace spartan
                 cmd_state::bindings.erase(it);
             }
         }
+
+        // tear down per-cmd-list query heaps + readback buffers
+        queries::erase(this);
+        m_rhi_query_pool_timestamps = nullptr;
+        m_rhi_query_pool_occlusion  = nullptr;
 
         if (m_rhi_fence_event)
         {
@@ -667,6 +808,25 @@ namespace spartan
         // record the queue type so push_transition can mask compute-invalid state bits when recording on a compute queue
         cmd_state::get(this).is_compute_queue = (m_queue && m_queue->GetType() == RHI_Queue_Type::Compute);
 
+        // pull fresh query results from the previous submission before resetting the index
+        // d3d12 query data lives in a readback buffer that's safe to read once the cmd list fence has signaled
+        if (m_timestamp_index > 0)
+        {
+            queries::CmdListQueries& q = queries::get(this);
+            queries::readback_data(q.readback_timestamp, m_timestamp_data.data(), std::min<uint32_t>(m_timestamp_index, m_max_timestamps));
+            m_gpu_frame_reference_tick = m_timestamp_data[0];
+        }
+        // reset per-frame counters, queries::resolve at submit time uses the previous values to size the resolve
+        {
+            queries::CmdListQueries& q = queries::get(this);
+            q.timestamps_used  = 0;
+            q.occlusion_index  = 0;
+            q.occlusion_active = 0;
+            q.occlusion_query_in_flight = false;
+            q.occlusion_id_to_index.clear();
+        }
+        m_timestamp_index = 0;
+
         m_state              = RHI_CommandListState::Recording;
         m_buffer_id_vertex   = 0;
         m_buffer_id_index    = 0;
@@ -691,6 +851,13 @@ namespace spartan
             auto& b = cmd_state::get(this);
             cmd_state::flush(cmd_list, b);
             cmd_state::commit_states_to_global(cmd_list, b);
+        }
+
+        // resolve any queries (timestamp, occlusion) into their readback buffers before close
+        // ResolveQueryData is only valid before Close, the readback can be mapped after the fence signals
+        {
+            queries::CmdListQueries& q = queries::get(this);
+            queries::resolve(cmd_list, q);
         }
 
         // note: swapchain backbuffer render_target -> present transition is handled by Renderer::SubmitAndPresent
@@ -780,13 +947,15 @@ namespace spartan
         RHI_DescriptorSetLayout* descriptor_set_layout = nullptr;
         RHI_Device::GetOrCreatePipeline(pso, pipeline, descriptor_set_layout);
 
-        const bool is_compute = pso.IsCompute();
-        const bool is_imgui   = pso_is_imgui(pso);
+        const bool is_compute    = pso.IsCompute();
+        const bool is_raytracing = pso.IsRayTracing();
+        const bool is_imgui      = pso_is_imgui(pso);
 
         // route flags must always reflect the requested pso, even if the pipeline failed to bind
+        // ray tracing dispatches go through the compute binding cycle, so it is treated as compute here
         {
             auto& b = cmd_state::get(this);
-            b.is_compute_bound        = is_compute;
+            b.is_compute_bound        = is_compute || is_raytracing;
             b.is_bindless_pipeline    = !is_imgui;
             b.is_imgui_pipeline_bound = false;
         }
@@ -795,13 +964,27 @@ namespace spartan
         {
             ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
 
-            cmd_list->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline->GetRhiResource()));
+            // ray tracing pipelines are state objects and need SetPipelineState1 via ID3D12GraphicsCommandList4
+            // graphics and compute pipelines use the regular SetPipelineState path
+            if (pso.IsRayTracing())
+            {
+                Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmd4;
+                if (SUCCEEDED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd4))))
+                {
+                    cmd4->SetPipelineState1(static_cast<ID3D12StateObject*>(pipeline->GetRhiResource()));
+                }
+            }
+            else
+            {
+                cmd_list->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline->GetRhiResource()));
+            }
 
             auto& b = cmd_state::get(this);
             if (pipeline->GetRhiResourceLayout())
             {
                 ID3D12RootSignature* rs = static_cast<ID3D12RootSignature*>(pipeline->GetRhiResourceLayout());
-                if (is_compute)
+                // ray tracing uses the compute root signature binding cycle on dxr
+                if (is_compute || pso.IsRayTracing())
                 {
                     cmd_list->SetComputeRootSignature(rs);
                     b.has_root_signature_compute = true;
@@ -813,19 +996,21 @@ namespace spartan
                 }
             }
 
-            if (!is_compute)
+            if (!is_compute && !is_raytracing)
             {
                 D3D12_PRIMITIVE_TOPOLOGY topo = (pso.primitive_toplogy == RHI_PrimitiveTopology::LineList) ? D3D_PRIMITIVE_TOPOLOGY_LINELIST : D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
                 cmd_list->IASetPrimitiveTopology(topo);
             }
 
-            b.is_imgui_pipeline_bound = is_imgui && !is_compute;
+            b.is_imgui_pipeline_bound = is_imgui && !is_compute && !is_raytracing;
 
             // bind fixed bindless tables only when the matching root signature is live, otherwise the table sets fail
-            const bool root_sig_ready = is_compute ? b.has_root_signature_compute : b.has_root_signature_graphics;
+            // ray tracing dispatches use the compute root sig
+            const bool use_compute_sig = is_compute || is_raytracing;
+            const bool root_sig_ready  = use_compute_sig ? b.has_root_signature_compute : b.has_root_signature_graphics;
             if (!is_imgui && root_sig_ready)
             {
-                bind_bindless_tables(cmd_list, is_compute);
+                bind_bindless_tables(cmd_list, use_compute_sig);
                 // mark srv/uav tables dirty so they get flushed before the next draw/dispatch
                 b.srv_dirty = true;
                 b.uav_dirty = true;
@@ -835,7 +1020,7 @@ namespace spartan
         m_pso      = pso;
         m_pipeline = pipeline;
 
-        if (!is_compute)
+        if (!is_compute && !is_raytracing)
         {
             RenderPassBegin();
         }
@@ -1176,9 +1361,94 @@ namespace spartan
         );
     }
 
-    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height) { }
+    void RHI_CommandList::TraceRays(const uint32_t width, const uint32_t height)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-    void RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas) { }
+        if (width == 0 || height == 0)
+            return;
+
+        if (!m_pso.IsRayTracing() || !m_pipeline)
+            return;
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmd4;
+        if (FAILED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd4))))
+            return;
+
+        // flush descriptor table bindings, ray tracing uses the compute root signature path
+        auto& b = cmd_state::get(this);
+        cmd_state::flush(cmd_list, b);
+        if (!b.has_root_signature_compute) return;
+        flush_pending_bindings(cmd_list, this, true);
+
+        // get or create an sbt for the currently bound state object
+        void* pipeline_handle = GetRhiResourcePipeline();
+        SP_ASSERT(pipeline_handle != nullptr);
+
+        auto it = m_shader_binding_tables.find(pipeline_handle);
+        if (it == m_shader_binding_tables.end())
+        {
+            uint32_t handle_size = RHI_Device::PropertyGetShaderGroupHandleSize();
+            auto sbt = std::make_unique<RHI_Buffer>(RHI_Buffer_Type::ShaderBindingTable, handle_size, 3, nullptr, true, "sbt");
+            it = m_shader_binding_tables.emplace(pipeline_handle, std::move(sbt)).first;
+        }
+        RHI_Buffer* sbt = it->second.get();
+
+        // copy shader identifiers into the sbt buffer
+        sbt->UpdateHandles(this);
+
+        // build dispatch desc
+        RHI_StridedDeviceAddressRegion raygen_region = sbt->GetRegion(RHI_Shader_Type::RayGeneration);
+        RHI_StridedDeviceAddressRegion miss_region   = sbt->GetRegion(RHI_Shader_Type::RayMiss);
+        RHI_StridedDeviceAddressRegion hit_region    = sbt->GetRegion(RHI_Shader_Type::RayHit);
+
+        D3D12_DISPATCH_RAYS_DESC desc = {};
+        desc.RayGenerationShaderRecord.StartAddress = raygen_region.device_address;
+        desc.RayGenerationShaderRecord.SizeInBytes  = raygen_region.size;
+        desc.MissShaderTable.StartAddress           = miss_region.device_address;
+        desc.MissShaderTable.SizeInBytes            = miss_region.size;
+        desc.MissShaderTable.StrideInBytes          = miss_region.stride;
+        desc.HitGroupTable.StartAddress             = hit_region.device_address;
+        desc.HitGroupTable.SizeInBytes              = hit_region.size;
+        desc.HitGroupTable.StrideInBytes            = hit_region.stride;
+        desc.Width                                  = width;
+        desc.Height                                 = height;
+        desc.Depth                                  = 1;
+
+        cmd4->DispatchRays(&desc);
+    }
+
+    void RHI_CommandList::SetAccelerationStructure(Renderer_BindingsSrv slot, RHI_AccelerationStructure* tlas)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        if (!tlas)
+            return;
+
+        const uint64_t address = tlas->GetDeviceAddress();
+        if (address == 0)
+            return;
+
+        const uint32_t slot_index = static_cast<uint32_t>(slot);
+        if (slot_index >= 28)
+            return;
+
+        // build a srv that points at the as buffer's gpu virtual address, no resource pointer required
+        D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+        srv_desc.Format                                  = DXGI_FORMAT_UNKNOWN;
+        srv_desc.ViewDimension                           = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+        srv_desc.Shader4ComponentMapping                 = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srv_desc.RaytracingAccelerationStructure.Location = address;
+
+        uint32_t alloc_idx          = d3d12_descriptors::AllocateCbvSrvUavCpu();
+        D3D12_CPU_DESCRIPTOR_HANDLE h = d3d12_descriptors::GetCbvSrvUavCpuHandle(alloc_idx);
+        RHI_Context::device->CreateShaderResourceView(nullptr, &srv_desc, h);
+
+        auto& b      = cmd_state::get(this);
+        b.srv[slot_index] = h;
+        b.srv_dirty  = true;
+    }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float resolution_scale)
     {
@@ -1286,9 +1556,44 @@ namespace spartan
         b.swapchain_bb_transitioned = dst;
     }
 
-    void RHI_CommandList::BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer) { }
+    void RHI_CommandList::BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer)
+    {
+        if (!source || !destination) return;
 
-    void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source) { }
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
+        ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
+        if (!src || !dst) return;
+
+        auto& b = cmd_state::get(this);
+        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmd_state::flush(cmd_list, b);
+
+        // mip 0 of array layer dst_layer in destination, mip 0 of source
+        // subresource index formula, MipSlice + ArraySlice * MipLevels + PlaneSlice * MipLevels * ArraySize
+        const uint32_t dst_mip_count = destination->GetMipCount();
+        const UINT dst_subresource = static_cast<UINT>(0u + dst_layer * dst_mip_count);
+
+        D3D12_TEXTURE_COPY_LOCATION src_loc = {};
+        src_loc.pResource        = src;
+        src_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        src_loc.SubresourceIndex = 0;
+
+        D3D12_TEXTURE_COPY_LOCATION dst_loc = {};
+        dst_loc.pResource        = dst;
+        dst_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dst_loc.SubresourceIndex = dst_subresource;
+
+        cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, nullptr);
+    }
+
+    void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source)
+    {
+        // d3d12 xr swapchain integration is not wired up yet, so this is a no-op
+        // openxr's d3d12 backend exposes ID3D12Resource* per swapchain image; once Renderer wires up
+        // the xr swapchain handle here we can call CopyTextureRegion / cmd_list->CopyResource just like Blit
+    }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
     {
@@ -1298,6 +1603,22 @@ namespace spartan
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_SwapChain* destination)
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        if (!source || !destination) return;
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
+        ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiRt());
+        if (!src || !dst) return;
+
+        auto& b = cmd_state::get(this);
+        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmd_state::flush(cmd_list, b);
+
+        cmd_list->CopyResource(dst, src);
+
+        source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
+        b.swapchain_bb_transitioned = dst;
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -1609,7 +1930,7 @@ namespace spartan
         if (!texture)
         {
             if (uav) { if (slot < 45) { b.uav[slot].ptr = 0; b.uav_dirty = true; } }
-            else     { if (slot < 27) { b.srv[slot].ptr = 0; b.srv_dirty = true; } }
+            else     { if (slot < 28) { b.srv[slot].ptr = 0; b.srv_dirty = true; } }
             return;
         }
 
@@ -1670,7 +1991,7 @@ namespace spartan
         }
         else
         {
-            if (slot >= 27) return;
+            if (slot >= 28) return;
 
             // shader_read covers both pixel and non-pixel reads, depth textures additionally allow depth_read
             const bool is_depth = texture->IsDepthStencilFormat();
@@ -1697,24 +2018,178 @@ namespace spartan
         }
     }
 
-    uint32_t RHI_CommandList::BeginTimestamp() { return 0; }
-    uint32_t RHI_CommandList::EndTimestamp()   { return 0; }
-    float RHI_CommandList::GetTimestampResult(const uint32_t timestamp_index) { return 0.0f; }
-    float RHI_CommandList::GetTimestampStartMs(const uint32_t timestamp_index) { return 0.0f; }
-    void  RHI_CommandList::ReadbackTimestampsForProfiler() { }
+    uint32_t RHI_CommandList::BeginTimestamp()
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (!Debugging::IsGpuTimingEnabled() || !m_rhi_query_pool_timestamps)
+            return 0;
+        if (m_timestamp_index >= m_max_timestamps)
+            return 0;
 
-    void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id) { }
-    void RHI_CommandList::EndOcclusionQuery() { }
-    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id) { return false; }
-    void RHI_CommandList::UpdateOcclusionQueries() { }
+        // d3d12 timestamp queries use only EndQuery, write 'ticks-at-this-point-in-the-stream' to the slot
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        ID3D12QueryHeap* heap = static_cast<ID3D12QueryHeap*>(m_rhi_query_pool_timestamps);
+
+        uint32_t slot = m_timestamp_index;
+        cmd_list->EndQuery(heap, D3D12_QUERY_TYPE_TIMESTAMP, slot);
+        m_timestamp_index++;
+
+        queries::CmdListQueries& q = queries::get(this);
+        q.timestamps_used = m_timestamp_index;
+        return slot;
+    }
+
+    uint32_t RHI_CommandList::EndTimestamp()
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        if (!Debugging::IsGpuTimingEnabled() || !m_rhi_query_pool_timestamps)
+            return 0;
+        if (m_timestamp_index >= m_max_timestamps)
+            return 0;
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        ID3D12QueryHeap* heap = static_cast<ID3D12QueryHeap*>(m_rhi_query_pool_timestamps);
+
+        uint32_t slot = m_timestamp_index;
+        cmd_list->EndQuery(heap, D3D12_QUERY_TYPE_TIMESTAMP, slot);
+        m_timestamp_index++;
+
+        queries::CmdListQueries& q = queries::get(this);
+        q.timestamps_used = m_timestamp_index;
+        return slot;
+    }
+
+    float RHI_CommandList::GetTimestampResult(const uint32_t timestamp_index)
+    {
+        if (timestamp_index + 1 >= m_max_timestamps)
+            return 0.0f;
+
+        uint64_t start = m_timestamp_data[timestamp_index];
+        uint64_t end   = m_timestamp_data[timestamp_index + 1];
+        if (end <= start)
+            return 0.0f;
+
+        // d3d12 m_timestamp_period is nanoseconds-per-tick (1e9 / GetTimestampFrequency())
+        uint64_t duration = end - start;
+        float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
+        if (duration_ms < 0.0f) duration_ms = 0.0f;
+        if (duration_ms > 1000.0f) duration_ms = 1000.0f;
+        return duration_ms;
+    }
+
+    float RHI_CommandList::GetTimestampStartMs(const uint32_t timestamp_index)
+    {
+        if (timestamp_index >= m_max_timestamps)
+            return 0.0f;
+        uint64_t start_tick = m_timestamp_data[timestamp_index];
+        uint64_t ref_tick   = m_gpu_frame_reference_tick;
+        if (start_tick < ref_tick) return 0.0f;
+        float offset_ms = static_cast<float>((start_tick - ref_tick) * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
+        return offset_ms < 0.0f ? 0.0f : offset_ms;
+    }
+
+    void RHI_CommandList::ReadbackTimestampsForProfiler()
+    {
+        if (m_state == RHI_CommandListState::Submitted)
+        {
+            WaitForExecution();
+        }
+        if (m_timestamp_index == 0)
+            return;
+
+        queries::CmdListQueries& q = queries::get(this);
+        queries::readback_data(q.readback_timestamp, m_timestamp_data.data(), std::min<uint32_t>(m_timestamp_index, m_max_timestamps));
+        m_gpu_frame_reference_tick = m_timestamp_data[0];
+    }
+
+    void RHI_CommandList::BeginOcclusionQuery(const uint64_t entity_id)
+    {
+        SP_ASSERT_MSG(m_pso.IsGraphics(), "Occlusion queries are only supported in graphics pipelines");
+        if (!m_rhi_query_pool_occlusion)
+            return;
+
+        queries::CmdListQueries& q = queries::get(this);
+
+        // reuse the slot if this entity has been queried before, otherwise grab the next index
+        auto it = q.occlusion_id_to_index.find(entity_id);
+        uint32_t slot = 0;
+        if (it != q.occlusion_id_to_index.end())
+        {
+            slot = it->second;
+        }
+        else
+        {
+            if (q.occlusion_index >= queries::occlusion_count - 1)
+                return;
+            slot = ++q.occlusion_index;
+            q.occlusion_id_to_index[entity_id] = slot;
+        }
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        ID3D12QueryHeap* heap = static_cast<ID3D12QueryHeap*>(m_rhi_query_pool_occlusion);
+        cmd_list->BeginQuery(heap, D3D12_QUERY_TYPE_OCCLUSION, slot);
+
+        q.occlusion_active = slot;
+        q.occlusion_query_in_flight = true;
+    }
+
+    void RHI_CommandList::EndOcclusionQuery()
+    {
+        if (!m_rhi_query_pool_occlusion)
+            return;
+
+        queries::CmdListQueries& q = queries::get(this);
+        if (!q.occlusion_query_in_flight)
+            return;
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        ID3D12QueryHeap* heap = static_cast<ID3D12QueryHeap*>(m_rhi_query_pool_occlusion);
+        cmd_list->EndQuery(heap, D3D12_QUERY_TYPE_OCCLUSION, q.occlusion_active);
+
+        q.occlusion_query_in_flight = false;
+    }
+
+    bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
+    {
+        queries::CmdListQueries& q = queries::get(this);
+        auto it = q.occlusion_id_to_index.find(entity_id);
+        if (it == q.occlusion_id_to_index.end())
+            return false;
+        uint64_t visible_pixels = q.occlusion_data[it->second];
+        // mirror Vulkan behavior, occluded means zero visible pixels
+        return visible_pixels == 0;
+    }
+
+    void RHI_CommandList::UpdateOcclusionQueries()
+    {
+        queries::CmdListQueries& q = queries::get(this);
+        if (!q.readback_occlusion || q.occlusion_index == 0)
+            return;
+        queries::readback_data(q.readback_occlusion, q.occlusion_data.data(), std::min<uint32_t>(q.occlusion_index + 1, queries::occlusion_count));
+    }
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
+        SP_ASSERT(name != nullptr);
+
+        // cpu profiler block, queue type lets the profiler keep gpu/compute lanes separate
+        RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
+        Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this, queue_type);
+        if (Debugging::IsGpuTimingEnabled() && gpu_timing)
+        {
+            Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this, queue_type);
+        }
+
+        // gpu marker (PIX), kept independent of breadcrumbs so it works in the absence of breadcrumb infra
+        if (Debugging::IsGpuMarkingEnabled() && gpu_marker)
+        {
+            RHI_Device::MarkerBegin(this, name, math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        }
+
         if (Debugging::IsBreadcrumbsEnabled())
         {
             Breadcrumbs::BeginMarker(name);
-            RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
-            int32_t gpu_slot          = Breadcrumbs::GpuMarkerBegin(name, queue_type);
+            int32_t gpu_slot = Breadcrumbs::GpuMarkerBegin(name, queue_type);
             if (gpu_slot >= 0)
             {
                 m_breadcrumb_gpu_slots.push(gpu_slot);
@@ -1726,6 +2201,13 @@ namespace spartan
 
     void RHI_CommandList::EndTimeblock()
     {
+        if (Debugging::IsGpuMarkingEnabled())
+        {
+            RHI_Device::MarkerEnd(this);
+        }
+
+        RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
+
         if (Debugging::IsBreadcrumbsEnabled())
         {
             Breadcrumbs::EndMarker();
@@ -1733,15 +2215,25 @@ namespace spartan
             {
                 int32_t gpu_slot = m_breadcrumb_gpu_slots.top();
                 m_breadcrumb_gpu_slots.pop();
-                RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
-                RHI_Buffer* buffer        = Breadcrumbs::GetGpuBuffer(queue_type);
+                RHI_Buffer* buffer = Breadcrumbs::GetGpuBuffer(queue_type);
                 if (buffer && gpu_slot >= 0) WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), Breadcrumbs::gpu_marker_completed);
             }
         }
+
+        if (Debugging::IsGpuTimingEnabled())
+        {
+            Profiler::TimeBlockEnd(TimeBlockType::Gpu, this);
+        }
+        Profiler::TimeBlockEnd(TimeBlockType::Cpu, this);
     }
 
     void RHI_CommandList::BeginMarker(const char* name)
     {
+        if (Debugging::IsGpuMarkingEnabled())
+        {
+            RHI_Device::MarkerBegin(this, name, math::Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        }
+
         if (Debugging::IsBreadcrumbsEnabled())
         {
             Breadcrumbs::BeginMarker(name);
@@ -1758,6 +2250,11 @@ namespace spartan
 
     void RHI_CommandList::EndMarker()
     {
+        if (Debugging::IsGpuMarkingEnabled())
+        {
+            RHI_Device::MarkerEnd(this);
+        }
+
         if (Debugging::IsBreadcrumbsEnabled())
         {
             Breadcrumbs::EndMarker();
@@ -1940,10 +2437,112 @@ namespace spartan
         InsertBarrier(RHI_Barrier::image_layout(image, format, mip_index, mip_range, array_length, layout));
     }
 
-    RHI_Image_Layout RHI_CommandList::GetImageLayout(void* image, const uint32_t mip_index) { return RHI_Image_Layout::Max; }
+    void RHI_CommandList::RemoveLayout(void* image)
+    {
+        if (!image) return;
+        d3d12_state::RemoveState(static_cast<ID3D12Resource*>(image));
+    }
 
-    void RHI_CommandList::CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination) { }
-    void RHI_CommandList::CopyBufferToBuffer(void* source, RHI_Buffer* destination, uint64_t size) { }
+    // map a d3d12 resource state mask back to the closest rhi image layout for the renderer
+    // d3d12 lets multiple read bits coexist so we collapse them in priority order
+    static RHI_Image_Layout d3d12_state_to_rhi_layout(D3D12_RESOURCE_STATES state)
+    {
+        if (state & D3D12_RESOURCE_STATE_RENDER_TARGET)        return RHI_Image_Layout::Attachment;
+        if (state & D3D12_RESOURCE_STATE_DEPTH_WRITE)          return RHI_Image_Layout::Attachment;
+        if (state & D3D12_RESOURCE_STATE_PRESENT)              return RHI_Image_Layout::Present_Source;
+        if (state & D3D12_RESOURCE_STATE_COPY_DEST)            return RHI_Image_Layout::Transfer_Destination;
+        if (state & D3D12_RESOURCE_STATE_COPY_SOURCE)          return RHI_Image_Layout::Transfer_Source;
+        if (state & D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE)  return RHI_Image_Layout::Shading_Rate_Attachment;
+        if (state & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)     return RHI_Image_Layout::General;
+        if (state & (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_DEPTH_READ))
+                                                               return RHI_Image_Layout::Shader_Read;
+        return RHI_Image_Layout::Max;
+    }
+
+    RHI_Image_Layout RHI_CommandList::GetImageLayout(void* image, const uint32_t mip_index)
+    {
+        if (!image) return RHI_Image_Layout::Max;
+        ID3D12Resource* resource = static_cast<ID3D12Resource*>(image);
+        D3D12_RESOURCE_STATES state = d3d12_state::GetState(resource);
+        return d3d12_state_to_rhi_layout(state);
+    }
+
+    void RHI_CommandList::CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination)
+    {
+        if (!source || !destination) return;
+
+        ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
+        ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
+        if (!src || !dst) return;
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        auto& b = cmd_state::get(this);
+
+        D3D12_RESOURCE_DESC src_desc = src->GetDesc();
+        const uint32_t array_size  = (src_desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) ? 1u : static_cast<uint32_t>(src_desc.DepthOrArraySize);
+        const uint32_t mip_count   = static_cast<uint32_t>(src_desc.MipLevels);
+        const uint32_t subres_count = mip_count * array_size;
+
+        std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(subres_count);
+        std::vector<UINT>                               num_rows(subres_count);
+        std::vector<UINT64>                             row_sizes(subres_count);
+        UINT64 total_bytes = 0;
+        RHI_Context::device->GetCopyableFootprints(&src_desc, 0, subres_count, 0, footprints.data(), num_rows.data(), row_sizes.data(), &total_bytes);
+
+        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmd_state::flush(cmd_list, b);
+
+        for (uint32_t i = 0; i < subres_count; i++)
+        {
+            D3D12_TEXTURE_COPY_LOCATION src_loc = {};
+            src_loc.pResource        = src;
+            src_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            src_loc.SubresourceIndex = i;
+
+            D3D12_TEXTURE_COPY_LOCATION dst_loc = {};
+            dst_loc.pResource       = dst;
+            dst_loc.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+            dst_loc.PlacedFootprint = footprints[i];
+
+            cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, nullptr);
+        }
+    }
+
+    void RHI_CommandList::CopyBufferToBuffer(void* source, RHI_Buffer* destination, uint64_t size)
+    {
+        if (!source || !destination || size == 0) return;
+
+        ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
+        if (!dst) return;
+
+        // stage host data through a transient upload buffer, then copy into dst on this cmd list
+        void* staging_ptr = RHI_Device::StagingBufferAcquire(size);
+        ID3D12Resource* staging = static_cast<ID3D12Resource*>(staging_ptr);
+        if (!staging) return;
+
+        void* mapped = nullptr;
+        D3D12_RANGE rr = { 0, 0 };
+        if (FAILED(staging->Map(0, &rr, &mapped)) || !mapped)
+        {
+            RHI_Device::StagingBufferRelease(staging_ptr);
+            return;
+        }
+        memcpy(mapped, source, static_cast<size_t>(size));
+        staging->Unmap(0, nullptr);
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        auto& b = cmd_state::get(this);
+
+        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmd_state::flush(cmd_list, b);
+
+        cmd_list->CopyBufferRegion(dst, 0, staging, 0, size);
+
+        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        b.staging_buffers_in_flight.push_back(staging_ptr);
+    }
     void RHI_CommandList::CopyBufferToBuffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
         if (!source || !destination) return;

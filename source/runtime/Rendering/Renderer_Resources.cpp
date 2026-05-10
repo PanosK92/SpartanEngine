@@ -521,7 +521,9 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::cloud_noise_shape)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 128, 128, 128, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_noise_shape");
             at(render_targets, Renderer_RenderTarget::cloud_noise_detail) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 32,  32,  32,  1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_noise_detail");
             at(render_targets, Renderer_RenderTarget::cloud_shadow)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1024, 1024, 1, 1, RHI_Format::R16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_shadow");
-            
+
+            // wind field, baked once per frame, sampled by all wind-driven geometry
+            at(render_targets, Renderer_RenderTarget::wind_field)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 256, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "wind_field");
         }
     }
 
@@ -656,6 +658,9 @@ namespace spartan
         compile_shader(Renderer_Shader::cloud_noise_shape_c,  RHI_Shader_Type::Compute, sd + "sky/cloud_noise.hlsl",  true, RHI_Vertex_Type::Max, "SHAPE_NOISE");
         compile_shader(Renderer_Shader::cloud_noise_detail_c, RHI_Shader_Type::Compute, sd + "sky/cloud_noise.hlsl",  true, RHI_Vertex_Type::Max, "DETAIL_NOISE");
         compile_shader(Renderer_Shader::cloud_shadow_c,       RHI_Shader_Type::Compute, sd + "sky/cloud_shadow.hlsl");
+
+        // wind field
+        compile_shader(Renderer_Shader::wind_field_c,         RHI_Shader_Type::Compute, sd + "wind_field.hlsl");
 
         // gpu-driven particles
         compile_shader(Renderer_Shader::particle_emit_c,     RHI_Shader_Type::Compute, sd + "particles.hlsl", true, RHI_Vertex_Type::Max, "EMIT");

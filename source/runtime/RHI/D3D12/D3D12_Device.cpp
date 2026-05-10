@@ -31,10 +31,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <wrl/client.h>
 #include "../RHI_Queue.h"
 #include "../Core/Debugging.h"
+#include "../Rendering/Renderer_Definitions.h"
+#include "D3D12_Internal.h"
 #include <unordered_map>
 #include <mutex>
 #include <atomic>
+#include <vector>
 //================================
+
+// pix3blob marker encoding constants, hard-coded so we don't need the winpixeventruntime header pack
+// PIX, Renderdoc and the d3d12 debug layer all accept these via ID3D12GraphicsCommandList::BeginEvent etc.
+#ifndef PIX_EVENT_ANSI_VERSION
+#define PIX_EVENT_ANSI_VERSION 1
+#endif
+#ifndef PIX_COLOR
+#define PIX_COLOR(r, g, b) static_cast<UINT64>(0xff000000u | (static_cast<UINT32>(r) << 16) | (static_cast<UINT32>(g) << 8) | static_cast<UINT32>(b))
+#endif
 
 //= NAMESPACES ===============
 using namespace std;
@@ -157,10 +169,38 @@ namespace spartan
         // rhi queue wrappers
         array<shared_ptr<RHI_Queue>, 3> regular;
 
-        // fences for synchronization
+        // per-queue fences for queue-side wait/signal, separate from the rhi sync primitives
+        // (fence_graphics is reused as the "everything finished" fence by QueueWaitAll)
         ID3D12Fence* fence_graphics = nullptr;
+        ID3D12Fence* fence_compute  = nullptr;
+        ID3D12Fence* fence_copy     = nullptr;
         uint64_t fence_value_graphics = 0;
+        uint64_t fence_value_compute  = 0;
+        uint64_t fence_value_copy     = 0;
         HANDLE fence_event = nullptr;
+
+        ID3D12CommandQueue* get_d3d_queue(RHI_Queue_Type type)
+        {
+            if (type == RHI_Queue_Type::Graphics) return graphics;
+            if (type == RHI_Queue_Type::Compute)  return compute;
+            if (type == RHI_Queue_Type::Copy)     return copy;
+            return nullptr;
+        }
+
+        ID3D12Fence* get_fence(RHI_Queue_Type type)
+        {
+            if (type == RHI_Queue_Type::Graphics) return fence_graphics;
+            if (type == RHI_Queue_Type::Compute)  return fence_compute;
+            if (type == RHI_Queue_Type::Copy)     return fence_copy;
+            return nullptr;
+        }
+
+        uint64_t& get_fence_value(RHI_Queue_Type type)
+        {
+            if (type == RHI_Queue_Type::Compute)  return fence_value_compute;
+            if (type == RHI_Queue_Type::Copy)     return fence_value_copy;
+            return fence_value_graphics;
+        }
 
         void destroy()
         {
@@ -175,11 +215,9 @@ namespace spartan
                 fence_event = nullptr;
             }
 
-            if (fence_graphics)
-            {
-                fence_graphics->Release();
-                fence_graphics = nullptr;
-            }
+            if (fence_graphics) { fence_graphics->Release(); fence_graphics = nullptr; }
+            if (fence_compute)  { fence_compute->Release();  fence_compute  = nullptr; }
+            if (fence_copy)     { fence_copy->Release();     fence_copy     = nullptr; }
 
             if (allocator_graphics)
             {
@@ -199,6 +237,26 @@ namespace spartan
                 allocator_copy = nullptr;
             }
         }
+    }
+
+    // deferred resource destruction queue, mirrors Vulkan_Device behaviour, age in frames
+    namespace deletion
+    {
+        struct Entry { RHI_Resource_Type type; void* resource; uint64_t frame; };
+        std::vector<Entry> queue;
+        uint64_t           frame = 0;
+        std::mutex         mutex;
+
+        // per-resource destructor switch, called when an entry is old enough to retire
+        void destroy_resource(RHI_Resource_Type type, void* resource);
+    }
+
+    // pipeline library, populated on first GetPipelineCache call
+    namespace pipeline_library
+    {
+        ID3D12PipelineLibrary* lib = nullptr;
+        std::vector<uint8_t>   data;
+        std::once_flag         init_flag;
     }
 
     namespace descriptors
@@ -237,6 +295,10 @@ namespace spartan
         atomic<uint32_t> dsv_offset             = 0;
         atomic<uint32_t> cbv_srv_uav_cpu_offset = 0;
         atomic<uint32_t> sampler_cpu_offset     = 0;
+
+        // sampler cpu heap free list, populated when samplers are destroyed so the slot can be reused
+        std::vector<uint32_t> sampler_free_list;
+        std::mutex            sampler_free_list_mutex;
 
         // zone bases inside the shader-visible heaps
         uint32_t zone_bindless_textures_base   = 0;
@@ -358,13 +420,24 @@ namespace spartan
 
     void RHI_Device::Initialize()
     {
-        // detect device limits
+        // detect device limits, the rt and vrs caps below are queried from the d3d12 device
         m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;
         m_max_texture_2d_dimension   = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;
         m_max_texture_3d_dimension   = D3D12_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
         m_max_texture_cube_dimension = D3D12_REQ_TEXTURECUBE_DIMENSION;
         m_max_texture_array_layers   = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
         m_max_push_constant_size     = 256;
+
+        // alignment requirements, fixed by the d3d12 spec
+        m_min_uniform_buffer_offset_alignment      = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;       // 256
+        m_min_storage_buffer_offset_alignment      = 16;                                                  // structured buffers, conservative
+        m_min_acceleration_buffer_offset_alignment = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT; // 256
+        m_optimal_buffer_copy_offset_alignment     = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;              // 512
+
+        // dxr shader binding table sizes, fixed by the d3d12 spec
+        m_shader_group_handle_size      = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;            // 32
+        m_shader_group_handle_alignment = D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT;    // 32
+        m_shader_group_base_alignment   = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;     // 64
 
         device_physical::detect_all();
         device_physical::select_primary();
@@ -422,6 +495,41 @@ namespace spartan
         // hook up the info queue so debug layer messages flow into the engine log
         validation::initialize();
 
+        // query feature support for ray tracing, vrs, and timestamp period
+        {
+            D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
+            if (SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5))))
+            {
+                m_is_ray_tracing_supported = (options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
+                if (m_is_ray_tracing_supported)
+                {
+                    SP_LOG_INFO("DXR raytracing tier %d supported", static_cast<int>(options5.RaytracingTier));
+                }
+            }
+
+            D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
+            if (SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6))))
+            {
+                // tier 2 supports per-image vrs (RSSetShadingRateImage), tier 1 only per-draw, we need image vrs for parity
+                m_is_shading_rate_supported       = (options6.VariableShadingRateTier >= D3D12_VARIABLE_SHADING_RATE_TIER_2);
+                m_max_shading_rate_texel_size_x   = options6.ShadingRateImageTileSize;
+                m_max_shading_rate_texel_size_y   = options6.ShadingRateImageTileSize;
+                if (m_is_shading_rate_supported)
+                {
+                    SP_LOG_INFO("Variable rate shading tier %d supported (tile size %u)", static_cast<int>(options6.VariableShadingRateTier), options6.ShadingRateImageTileSize);
+                }
+            }
+
+            // xess always reports as supported on d3d12 since the runtime falls back to a pass-through path on unsupported gpus
+            m_xess_supported = true;
+        }
+
+        // queue timestamp period: d3d12 uses GetTimestampFrequency on the queue (ticks/second)
+        {
+            // query graphics queue's timestamp frequency when the queue is created below
+            // for now, leave m_timestamp_period 0 and patch it after queue creation
+        }
+
         // create command queues
         {
             D3D12_COMMAND_QUEUE_DESC queue_desc = {};
@@ -438,6 +546,14 @@ namespace spartan
             queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queues::copy))),
                 "Failed to create copy queue");
+
+            // sample the graphics queue's timestamp frequency, used by RHI_CommandList::GetTimestampResult
+            // d3d12 returns ticks-per-second, vulkan-style m_timestamp_period is nanoseconds-per-tick
+            UINT64 ticks_per_second = 0;
+            if (SUCCEEDED(queues::graphics->GetTimestampFrequency(&ticks_per_second)) && ticks_per_second > 0)
+            {
+                m_timestamp_period = 1e9f / static_cast<float>(ticks_per_second);
+            }
         }
 
         // create command allocators
@@ -455,13 +571,23 @@ namespace spartan
                 "Failed to create copy command allocator");
         }
 
-        // create fence for synchronization
+        // create fences for synchronization (one per queue so wait/signal across queues can be ordered)
         {
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateFence(
                 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queues::fence_graphics))),
-                "Failed to create fence");
+                "Failed to create graphics fence");
+
+            SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateFence(
+                0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queues::fence_compute))),
+                "Failed to create compute fence");
+
+            SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateFence(
+                0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&queues::fence_copy))),
+                "Failed to create copy fence");
 
             queues::fence_value_graphics = 1;
+            queues::fence_value_compute  = 1;
+            queues::fence_value_copy     = 1;
             queues::fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
             SP_ASSERT_MSG(queues::fence_event != nullptr, "Failed to create fence event");
         }
@@ -545,11 +671,26 @@ namespace spartan
     {
         // wrap the per-frame ring on each tick to avoid unbounded growth
         descriptors::zone_ring_offset.store(0);
+
+        // retire any deletion queue entries old enough to be safe (gpu has finished using them)
+        DeletionQueueParse();
     }
 
     void RHI_Device::Destroy()
     {
         QueueWaitAll();
+
+        // flush the pipeline library to disk (best-effort, ignored on failure)
+        if (pipeline_library::lib)
+        {
+            pipeline_library::lib->Release();
+            pipeline_library::lib = nullptr;
+        }
+
+        // force-retire any pending deletions, the gpu is guaranteed idle here
+        deletion::frame += renderer_draw_data_buffer_count + 2;
+        DeletionQueueParse();
+
         queues::destroy();
         descriptors::destroy();
 
@@ -569,15 +710,39 @@ namespace spartan
 
     void RHI_Device::QueueWaitAll(const bool flush)
     {
-        if (queues::graphics && queues::fence_graphics)
+        // first ensure all rhi command lists per queue are fully submitted/waited
+        if (flush)
         {
-            const uint64_t fence_value = queues::fence_value_graphics;
-            queues::graphics->Signal(queues::fence_graphics, fence_value);
-            queues::fence_value_graphics++;
-
-            if (queues::fence_graphics->GetCompletedValue() < fence_value)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Queue_Type::Max); i++)
             {
-                queues::fence_graphics->SetEventOnCompletion(fence_value, queues::fence_event);
+                if (queues::regular[i])
+                    queues::regular[i]->Wait(true);
+            }
+        }
+        else
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Queue_Type::Max); i++)
+            {
+                if (queues::regular[i])
+                    queues::regular[i]->Wait(false);
+            }
+        }
+
+        // then signal+wait on each queue's per-queue fence as a final guard
+        const RHI_Queue_Type queue_types[] = { RHI_Queue_Type::Graphics, RHI_Queue_Type::Compute, RHI_Queue_Type::Copy };
+        for (RHI_Queue_Type type : queue_types)
+        {
+            ID3D12CommandQueue* q = queues::get_d3d_queue(type);
+            ID3D12Fence*        f = queues::get_fence(type);
+            if (!q || !f) continue;
+
+            uint64_t& fv = queues::get_fence_value(type);
+            const uint64_t target = fv++;
+            q->Signal(f, target);
+
+            if (f->GetCompletedValue() < target)
+            {
+                f->SetEventOnCompletion(target, queues::fence_event);
                 WaitForSingleObject(queues::fence_event, INFINITE);
             }
         }
@@ -601,10 +766,128 @@ namespace spartan
         return nullptr;
     }
 
-    void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)      { /* todo */ }
-    void RHI_Device::DeletionQueueParse()                                                         { /* todo */ }
-    void RHI_Device::DeletionQueueFlush()                                                         { /* todo */ }
-    bool RHI_Device::DeletionQueueNeedsToParse()                                                  { return false; }
+    void deletion::destroy_resource(RHI_Resource_Type type, void* resource)
+    {
+        if (!resource) return;
+
+        switch (type)
+        {
+            case RHI_Resource_Type::Buffer:
+            case RHI_Resource_Type::Image:
+            {
+                // both are ID3D12Resource, also evict from the global state tracker
+                ID3D12Resource* d3d_res = static_cast<ID3D12Resource*>(resource);
+                d3d12_state::RemoveState(d3d_res);
+                d3d_res->Release();
+                break;
+            }
+            case RHI_Resource_Type::Shader:
+            {
+                // shader bytecode is owned by IDxcBlob held inside RHI_Shader, so not released here
+                break;
+            }
+            case RHI_Resource_Type::Sampler:
+            {
+                // d3d12 samplers live in the cpu staging heap, the entry encodes (index << 1 | 1) so we can recover the slot
+                uintptr_t encoded = reinterpret_cast<uintptr_t>(resource);
+                if (encoded & 0x1ull)
+                {
+                    uint32_t index = static_cast<uint32_t>(encoded >> 1);
+                    d3d12_descriptors::FreeSamplerCpu(index);
+                }
+                break;
+            }
+            case RHI_Resource_Type::Pipeline:
+            {
+                static_cast<ID3D12PipelineState*>(resource)->Release();
+                break;
+            }
+            case RHI_Resource_Type::PipelineLayout:
+            {
+                // ID3D12RootSignature
+                static_cast<IUnknown*>(resource)->Release();
+                break;
+            }
+            case RHI_Resource_Type::DescriptorSetLayout:
+            {
+                // d3d12 dsl m_rhi_resource is a stable hash token, not a com object, drop without release
+                break;
+            }
+            case RHI_Resource_Type::AccelerationStructure:
+            {
+                // dxr acceleration structures live inside an ID3D12Resource buffer, the result buffer enqueue handles release
+                break;
+            }
+            case RHI_Resource_Type::Fence:
+            case RHI_Resource_Type::Semaphore:
+            {
+                static_cast<ID3D12Fence*>(resource)->Release();
+                break;
+            }
+            default:
+                // best-effort: anything that came in as an IUnknown can be Release()-d, otherwise ignore
+                break;
+        }
+    }
+
+    void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
+    {
+        if (!resource)
+            return;
+
+        std::lock_guard<std::mutex> guard(deletion::mutex);
+        deletion::queue.push_back({ resource_type, resource, deletion::frame });
+    }
+
+    void RHI_Device::DeletionQueueParse()
+    {
+        std::lock_guard<std::mutex> guard(deletion::mutex);
+
+        deletion::frame++;
+
+        // resources older than (renderer_draw_data_buffer_count + 1) frames are guaranteed to be no longer in flight
+        const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
+
+        auto it = deletion::queue.begin();
+        while (it != deletion::queue.end())
+        {
+            if ((deletion::frame - it->frame) < safe_age)
+            {
+                ++it;
+                continue;
+            }
+
+            deletion::destroy_resource(it->type, it->resource);
+            it = deletion::queue.erase(it);
+        }
+    }
+
+    void RHI_Device::DeletionQueueFlush()
+    {
+        {
+            std::lock_guard<std::mutex> guard(deletion::mutex);
+            for (auto& entry : deletion::queue)
+                entry.frame = 0;
+        }
+        DeletionQueueParse();
+    }
+
+    bool RHI_Device::DeletionQueueNeedsToParse()
+    {
+        std::lock_guard<std::mutex> guard(deletion::mutex);
+
+        if (deletion::queue.empty())
+            return false;
+
+        const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
+        for (const auto& entry : deletion::queue)
+        {
+            if ((deletion::frame + 1 - entry.frame) >= safe_age)
+                return true;
+        }
+
+        return false;
+    }
 }
 
 // expose descriptor heap access for other d3d12 files - declared here, fully implemented below
@@ -702,7 +985,32 @@ namespace spartan::d3d12_descriptors
     uint32_t AllocateRtv()             { return spartan::descriptors::rtv_offset.fetch_add(1); }
     uint32_t AllocateDsv()             { return spartan::descriptors::dsv_offset.fetch_add(1); }
     uint32_t AllocateCbvSrvUavCpu()    { return spartan::descriptors::cbv_srv_uav_cpu_offset.fetch_add(1); }
-    uint32_t AllocateSamplerCpu()      { return spartan::descriptors::sampler_cpu_offset.fetch_add(1); }
+    uint32_t AllocateSamplerCpu()
+    {
+        // reuse a freed slot first, then bump the offset
+        std::lock_guard<std::mutex> lock(spartan::descriptors::sampler_free_list_mutex);
+        if (!spartan::descriptors::sampler_free_list.empty())
+        {
+            uint32_t idx = spartan::descriptors::sampler_free_list.back();
+            spartan::descriptors::sampler_free_list.pop_back();
+            return idx;
+        }
+        return spartan::descriptors::sampler_cpu_offset.fetch_add(1);
+    }
+
+    void FreeSamplerCpu(uint32_t index)
+    {
+        std::lock_guard<std::mutex> lock(spartan::descriptors::sampler_free_list_mutex);
+        spartan::descriptors::sampler_free_list.push_back(index);
+    }
+
+    uint32_t SamplerHandleToIndex(SIZE_T handle_ptr)
+    {
+        if (!spartan::descriptors::heap_sampler_cpu) return UINT32_MAX;
+        SIZE_T base = spartan::descriptors::heap_sampler_cpu->GetCPUDescriptorHandleForHeapStart().ptr;
+        if (handle_ptr < base) return UINT32_MAX;
+        return static_cast<uint32_t>((handle_ptr - base) / spartan::descriptors::sampler_descriptor_size);
+    }
 
     // ring allocator inside the shader-visible cbv/srv/uav heap; wraps once full
     uint32_t AllocateRing(uint32_t count)
@@ -874,9 +1182,44 @@ namespace spartan
         }
     }
 
-    uint64_t RHI_Device::MemoryGetAllocatedMb() { return 0; }
-    uint64_t RHI_Device::MemoryGetAvailableMb() { return 0; }
-    uint64_t RHI_Device::MemoryGetTotalMb()     { return 0; }
+    static bool query_video_memory_info(DXGI_QUERY_VIDEO_MEMORY_INFO& out)
+    {
+        // walk back to the adapter via dxgi factory so memory budget is in sync with dxgi state
+        Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+        if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&factory))))
+            return false;
+
+        const LUID adapter_luid = RHI_Context::device->GetAdapterLuid();
+        Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
+        if (FAILED(factory->EnumAdapterByLuid(adapter_luid, IID_PPV_ARGS(&adapter))))
+            return false;
+
+        Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter3;
+        if (FAILED(adapter.As(&adapter3)))
+            return false;
+
+        return SUCCEEDED(adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &out));
+    }
+
+    uint64_t RHI_Device::MemoryGetAllocatedMb()
+    {
+        DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
+        return query_video_memory_info(info) ? (info.CurrentUsage / (1024ull * 1024ull)) : 0;
+    }
+
+    uint64_t RHI_Device::MemoryGetAvailableMb()
+    {
+        DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
+        if (!query_video_memory_info(info))
+            return 0;
+        return (info.Budget > info.CurrentUsage) ? ((info.Budget - info.CurrentUsage) / (1024ull * 1024ull)) : 0;
+    }
+
+    uint64_t RHI_Device::MemoryGetTotalMb()
+    {
+        DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
+        return query_video_memory_info(info) ? (info.Budget / (1024ull * 1024ull)) : 0;
+    }
 
     // staging buffer pool - simple acquire/release wrapping committed upload buffers
     namespace staging
@@ -970,7 +1313,23 @@ namespace spartan
 
     void* RHI_Device::GetPipelineCache()
     {
-        return nullptr;
+        // create a small empty pipeline library on first request, callers use it as an opaque handle
+        // d3d12 requires the library to be created from a serialized blob, an empty blob is valid
+        std::call_once(pipeline_library::init_flag, []()
+        {
+            Microsoft::WRL::ComPtr<ID3D12Device1> device1;
+            if (FAILED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device1))))
+                return;
+
+            HRESULT hr = device1->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&pipeline_library::lib));
+            if (FAILED(hr))
+            {
+                // unsupported, drivers without pipeline library support fail this with ERROR_UNSUPPORTED
+                pipeline_library::lib = nullptr;
+            }
+        });
+
+        return pipeline_library::lib;
     }
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const char* name)
@@ -981,12 +1340,84 @@ namespace spartan
         }
     }
 
-    void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color) { }
-    void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list) { }
-    void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled) { }
+    void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color)
+    {
+        if (!Debugging::IsGpuMarkingEnabled() || !cmd_list || !name)
+            return;
+
+        ID3D12GraphicsCommandList* d3d_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
+        if (!d3d_cmd_list)
+            return;
+
+        // PIX_EVENT_ANSI_VERSION encoding: data is a null-terminated ansi string
+        const size_t length = strnlen_s(name, 256);
+        d3d_cmd_list->BeginEvent(PIX_EVENT_ANSI_VERSION, name, static_cast<UINT>(length + 1));
+    }
+
+    void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list)
+    {
+        if (!Debugging::IsGpuMarkingEnabled() || !cmd_list)
+            return;
+
+        ID3D12GraphicsCommandList* d3d_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
+        if (!d3d_cmd_list)
+            return;
+
+        d3d_cmd_list->EndEvent();
+    }
+
+    void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled)
+    {
+        if (!m_is_shading_rate_supported || !cmd_list)
+            return;
+
+        // command list 5 exposes RSSetShadingRate / RSSetShadingRateImage, query for it on first use
+        ID3D12GraphicsCommandList* d3d_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
+        if (!d3d_cmd_list)
+            return;
+
+        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList5> cmd_list5;
+        if (FAILED(d3d_cmd_list->QueryInterface(IID_PPV_ARGS(&cmd_list5))))
+            return;
+
+        if (enabled)
+        {
+            // combiner: PASSTHROUGH for the per-draw rate (x), OVERRIDE for the per-image (y) so the image always wins
+            const D3D12_SHADING_RATE_COMBINER combiners[2] = {
+                D3D12_SHADING_RATE_COMBINER_PASSTHROUGH,
+                D3D12_SHADING_RATE_COMBINER_OVERRIDE
+            };
+            cmd_list5->RSSetShadingRate(D3D12_SHADING_RATE_1X1, combiners);
+
+            // the image binding requires a per-pso vrs input texture, set in Renderer_Passes via pso.vrs_input_texture
+            // we rely on the command list path to call cmd_list5->RSSetShadingRateImage with the texture's resource at pass-bind time
+        }
+        else
+        {
+            cmd_list5->RSSetShadingRate(D3D12_SHADING_RATE_1X1, nullptr);
+            cmd_list5->RSSetShadingRateImage(nullptr);
+        }
+    }
+
     void* RHI_Device::GetDescriptorSet(const RHI_Device_Bindless_Resource resource_type) { return nullptr; }
     void* RHI_Device::GetDescriptorSetLayout(const RHI_Device_Bindless_Resource resource_type) { return nullptr; }
-    uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor) { return 0; }
+
+    // map an rhi descriptor to its d3d12 root parameter slot, used by callers that want to know
+    // which root slot a binding maps to in the unified bindless root signature; mirrors the layout
+    // baked into create_root_signature_bindless above
+    uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
+    {
+        switch (descriptor.type)
+        {
+            case RHI_Descriptor_Type::ConstantBuffer:        return 0; // CBV b0
+            case RHI_Descriptor_Type::PushConstantBuffer:    return 1; // 32-bit constants b1
+            case RHI_Descriptor_Type::Image:                 return 2; // SRV table space0
+            case RHI_Descriptor_Type::TextureStorage:        return 3; // UAV table space0
+            case RHI_Descriptor_Type::StructuredBuffer:      return 2; // SRV table space0 (structured buffers are SRVs)
+            case RHI_Descriptor_Type::AccelerationStructure: return 2; // SRV table space0 (tlas srv)
+            default:                                         return 0;
+        }
+    }
 
     void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout, const vector<RHI_DescriptorWithBinding>& descriptors)
     {

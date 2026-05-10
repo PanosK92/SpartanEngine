@@ -54,6 +54,17 @@ namespace spartan
         m_stencil_fail_op             = stencil_fail_op;
         m_stencil_depth_fail_op       = stencil_depth_fail_op;
         m_stencil_pass_op             = stencil_pass_op;
+
+        // hash, mirrors the vulkan path so pso lookup is stable across backends
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_depth_test_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_depth_write_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_depth_comparison_function));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_test_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_write_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_comparison_function));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_fail_op));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_depth_fail_op));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_pass_op));
     }
     
     RHI_DepthStencilState::~RHI_DepthStencilState()

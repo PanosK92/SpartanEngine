@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Pipeline.h"
+#include "../RHI_Device.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_Shader.h"
 #include "../RHI_BlendState.h"
@@ -32,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Texture.h"
 #include "../Rendering/Renderer.h"
 #include "D3D12_Internal.h"
+#include <wrl/client.h>
 #include <cstring>
 //===================================
 
@@ -44,6 +46,7 @@ namespace spartan
     static void create_root_signature_bindless(RHI_Pipeline* pipeline);
     static void create_compute_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state);
     static void create_graphics_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state);
+    static void create_ray_tracing_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state);
 
     static bool pso_is_imgui(const RHI_PipelineState& state)
     {
@@ -61,6 +64,10 @@ namespace spartan
         else if (pipeline_state.IsGraphics())
         {
             create_graphics_pipeline(this, m_state);
+        }
+        else if (pipeline_state.IsRayTracing())
+        {
+            create_ray_tracing_pipeline(this, m_state);
         }
     }
 
@@ -337,7 +344,7 @@ namespace spartan
     // root parameter slots (see D3D12_RootSlot below):
     //   0: CBV b0 space0 (buffer_frame)
     //   1: 32-bit root constants b1 space0 (buffer_pass - 16 dwords = 64 bytes)
-    //   2: SRV table t0..t26 space0
+    //   2: SRV table t0..t27 space0
     //   3: UAV table u0..u44 space0
     //   4: SRV table t15 space1 unbounded (material_textures[])
     //   5: SRV table t16 space2 (material_parameters)
@@ -364,10 +371,10 @@ namespace spartan
         params[1].Constants.Num32BitValues = 16; // PassBufferData = 64 bytes
         params[1].ShaderVisibility         = D3D12_SHADER_VISIBILITY_ALL;
 
-        // 2: SRV table t0..t26 space0
+        // 2: SRV table t0..t27 space0
         static D3D12_DESCRIPTOR_RANGE srv0_range = {};
         srv0_range.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-        srv0_range.NumDescriptors                    = 27;
+        srv0_range.NumDescriptors                    = 28;
         srv0_range.BaseShaderRegister                = 0;
         srv0_range.RegisterSpace                     = 0;
         srv0_range.OffsetInDescriptorsFromTableStart = 0;
@@ -524,17 +531,137 @@ namespace spartan
         if (error_blob) error_blob->Release();
     }
 
+    // build a dxr ray tracing pipeline state object using the bindless root signature as the global root sig
+    // dxr requires a state object composed of: dxil library (per shader), hit groups, shader config,
+    // pipeline config, and the global root signature
+    static void create_ray_tracing_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state)
+    {
+        // dxr is only available on devices that expose ID3D12Device5
+        Microsoft::WRL::ComPtr<ID3D12Device5> device5;
+        if (FAILED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device5))))
+        {
+            SP_LOG_ERROR("Ray tracing pipeline requires ID3D12Device5");
+            return;
+        }
+
+        // global root signature, reuse the bindless one so descriptor bindings line up across pipelines
+        create_root_signature_bindless(pipeline);
+        if (!pipeline->GetRhiResourceLayout())
+            return;
+
+        // collect ray tracing shaders, the bytecode comes from dxc compiling lib_6_x targets
+        RHI_Shader* shader_raygen  = state.shaders[RHI_Shader_Type::RayGeneration];
+        RHI_Shader* shader_miss    = state.shaders[RHI_Shader_Type::RayMiss];
+        RHI_Shader* shader_hit     = state.shaders[RHI_Shader_Type::RayHit];
+
+        SP_ASSERT_MSG(shader_raygen && shader_miss && shader_hit, "ray tracing pipelines require raygen, miss and closest-hit shaders");
+
+        struct LibInfo
+        {
+            RHI_Shader* shader;
+            const wchar_t* export_name;       // canonical name used by sbt and hit group
+            const wchar_t* hlsl_entry_point;  // actual entry point name in the dxil library
+        };
+
+        // hlsl entry points are lower_snake_case, rename them on export so the sbt/hit-group references keep stable names
+        const LibInfo libs[] =
+        {
+            { shader_raygen, L"RayGen",     L"ray_gen"     },
+            { shader_miss,   L"Miss",       L"miss"        },
+            { shader_hit,    L"ClosestHit", L"closest_hit" }
+        };
+
+        // shader byte code blobs and exports, one library subobject per shader
+        D3D12_DXIL_LIBRARY_DESC lib_descs[3]   = {};
+        D3D12_EXPORT_DESC export_descs[3]      = {};
+        for (uint32_t i = 0; i < 3; ++i)
+        {
+            export_descs[i].Name           = libs[i].export_name;
+            export_descs[i].ExportToRename = libs[i].hlsl_entry_point;
+            export_descs[i].Flags          = D3D12_EXPORT_FLAG_NONE;
+
+            lib_descs[i].DXILLibrary.pShaderBytecode = libs[i].shader->GetRhiResource();
+            lib_descs[i].DXILLibrary.BytecodeLength  = libs[i].shader->GetObjectSize();
+            lib_descs[i].NumExports                  = 1;
+            lib_descs[i].pExports                    = &export_descs[i];
+        }
+
+        // hit group binds the closest hit shader, anyhit and intersection are unused
+        D3D12_HIT_GROUP_DESC hit_group = {};
+        hit_group.HitGroupExport         = L"HitGroup";
+        hit_group.Type                   = D3D12_HIT_GROUP_TYPE_TRIANGLES;
+        hit_group.AnyHitShaderImport     = nullptr;
+        hit_group.ClosestHitShaderImport = L"ClosestHit";
+        hit_group.IntersectionShaderImport = nullptr;
+
+        // shader config: payload + attribute storage budgets
+        // 128 bytes covers the largest engine payload (restir_pt PathPayload ~76 bytes), with headroom
+        // attributes are 8 bytes for built-in triangle barycentrics
+        D3D12_RAYTRACING_SHADER_CONFIG shader_config = {};
+        shader_config.MaxPayloadSizeInBytes   = 128;
+        shader_config.MaxAttributeSizeInBytes = 8;
+
+        // pipeline config: matches vulkan's maxPipelineRayRecursionDepth = 2 for second bounce gi
+        D3D12_RAYTRACING_PIPELINE_CONFIG pipeline_config = {};
+        pipeline_config.MaxTraceRecursionDepth = 2;
+
+        // global root signature subobject points at the bindless root sig so all rt shaders share it
+        ID3D12RootSignature* global_root_sig = static_cast<ID3D12RootSignature*>(pipeline->GetRhiResourceLayout());
+        D3D12_GLOBAL_ROOT_SIGNATURE global_root_sig_subobject = {};
+        global_root_sig_subobject.pGlobalRootSignature = global_root_sig;
+
+        // assemble subobjects, layout: 3 dxil libs + hit group + shader config + pipeline config + global rs = 7
+        constexpr uint32_t subobject_count = 3 + 1 + 1 + 1 + 1;
+        D3D12_STATE_SUBOBJECT subobjects[subobject_count] = {};
+
+        uint32_t idx = 0;
+        for (uint32_t i = 0; i < 3; ++i)
+        {
+            subobjects[idx].Type  = D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+            subobjects[idx].pDesc = &lib_descs[i];
+            ++idx;
+        }
+        subobjects[idx].Type  = D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP;
+        subobjects[idx].pDesc = &hit_group;
+        ++idx;
+        subobjects[idx].Type  = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_SHADER_CONFIG;
+        subobjects[idx].pDesc = &shader_config;
+        ++idx;
+        subobjects[idx].Type  = D3D12_STATE_SUBOBJECT_TYPE_RAYTRACING_PIPELINE_CONFIG;
+        subobjects[idx].pDesc = &pipeline_config;
+        ++idx;
+        subobjects[idx].Type  = D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE;
+        subobjects[idx].pDesc = &global_root_sig_subobject;
+        ++idx;
+
+        D3D12_STATE_OBJECT_DESC state_object_desc = {};
+        state_object_desc.Type          = D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE;
+        state_object_desc.NumSubobjects = idx;
+        state_object_desc.pSubobjects   = subobjects;
+
+        ID3D12StateObject* state_object = nullptr;
+        HRESULT hr = device5->CreateStateObject(&state_object_desc, IID_PPV_ARGS(&state_object));
+        if (FAILED(hr))
+        {
+            SP_LOG_ERROR("Failed to create ray tracing pipeline state object '%s': %s", state.name ? state.name : "?", d3d12_utility::error::dxgi_error_to_string(hr));
+            return;
+        }
+
+        pipeline->SetRhiResource(state_object);
+    }
+
     RHI_Pipeline::~RHI_Pipeline()
     {
+        // route through the deletion queue so any in-flight cmd lists referencing the pso/root sig finish first
         if (m_rhi_resource)
         {
-            static_cast<ID3D12PipelineState*>(m_rhi_resource)->Release();
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Pipeline, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
 
         if (m_rhi_resource_layout)
         {
-            static_cast<ID3D12RootSignature*>(m_rhi_resource_layout)->Release();
+            RHI_Device::DeletionQueueAdd(RHI_Resource_Type::PipelineLayout, m_rhi_resource_layout);
             m_rhi_resource_layout = nullptr;
         }
     }

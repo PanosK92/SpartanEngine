@@ -59,6 +59,10 @@ Texture2D<float4> tex_reservoir_prev2 : register(t24);
 Texture2D<float4> tex_reservoir_prev3 : register(t25);
 Texture2D<float4> tex_reservoir_prev4 : register(t26);
 
+// wind field, baked once per frame, sampled by all wind-driven geometry
+// rg = flow vector (signed, [-1,1]), b = gust pressure (0..1), a = micro turbulence (0..1)
+Texture2D<float4> tex_wind_field : register(t27);
+
 // geometry info buffer for ray tracing (per-blas-instance offsets)
 RWStructuredBuffer<GeometryInfo> geometry_infos : register(u20);
 
