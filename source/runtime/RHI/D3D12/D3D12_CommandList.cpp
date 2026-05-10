@@ -1441,7 +1441,7 @@ namespace spartan
         srv_desc.Shader4ComponentMapping                 = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srv_desc.RaytracingAccelerationStructure.Location = address;
 
-        uint32_t alloc_idx          = d3d12_descriptors::AllocateCbvSrvUavCpu();
+        uint32_t alloc_idx          = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
         D3D12_CPU_DESCRIPTOR_HANDLE h = d3d12_descriptors::GetCbvSrvUavCpuHandle(alloc_idx);
         RHI_Context::device->CreateShaderResourceView(nullptr, &srv_desc, h);
 
@@ -1774,7 +1774,7 @@ namespace spartan
         desc.Buffer.NumElements         = buffer->GetElementCount();
         desc.Buffer.StructureByteStride = buffer->GetStride();
 
-        uint32_t idx = d3d12_descriptors::AllocateCbvSrvUavCpu();
+        uint32_t idx = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
         D3D12_CPU_DESCRIPTOR_HANDLE h = d3d12_descriptors::GetCbvSrvUavCpuHandle(idx);
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
         RHI_Context::device->CreateUnorderedAccessView(resource, nullptr, &desc, h);
@@ -1797,7 +1797,7 @@ namespace spartan
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
         if (!resource) return handle;
 
-        uint32_t alloc_idx = d3d12_descriptors::AllocateCbvSrvUavCpu();
+        uint32_t alloc_idx = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
         handle             = d3d12_descriptors::GetCbvSrvUavCpuHandle(alloc_idx);
 
         // resolve format from the texture's underlying format, depth formats need their srv-compatible variant
@@ -1941,18 +1941,23 @@ namespace spartan
         const uint32_t effective_mip_range = mip_range == 0 ? 1u : mip_range;
 
         // helper, push a transition for either a specific subresource range or all subresources
-        // when mip_specified is true and mip_index > 0, only the specified mips for the chosen array layer(s) transition
-        // this keeps the rest of the texture in its existing state, required for passes that read other mips as srv
-        // while writing one mip as uav (e.g. mipmap filtering)
+        // when the request does not cover all mips/layers, only those subresources transition, this keeps the rest of
+        // the texture in its existing state, required for passes that read other mips as srv while writing one mip as
+        // uav, e.g. mipmap filtering, bloom up/down sample
+        const bool layer_specified = array_layer != rhi_all_mips;
+        const bool covers_all_mips = !mip_specified || (mip_index == 0 && effective_mip_range >= total_mips);
+        const bool covers_full     = covers_all_mips && !layer_specified;
         auto push_transition_for_view = [&](D3D12_RESOURCE_STATES state)
         {
-            if (mip_specified && mip_index > 0)
+            if (!covers_full)
             {
-                const uint32_t array_first = (array_layer == rhi_all_mips) ? 0u : array_layer;
-                const uint32_t array_last  = (array_layer == rhi_all_mips) ? array_size : (array_layer + 1u);
+                const uint32_t array_first = layer_specified ? array_layer : 0u;
+                const uint32_t array_last  = layer_specified ? (array_layer + 1u) : array_size;
+                const uint32_t mip_first   = covers_all_mips ? 0u : mip_index;
+                const uint32_t mip_last    = covers_all_mips ? total_mips : (mip_index + effective_mip_range);
                 for (uint32_t a = array_first; a < array_last; a++)
                 {
-                    for (uint32_t m = mip_index; m < mip_index + effective_mip_range && m < total_mips; m++)
+                    for (uint32_t m = mip_first; m < mip_last && m < total_mips; m++)
                     {
                         uint32_t subresource = m + a * total_mips;
                         cmd_state::push_transition(b, resource, state, subresource);
@@ -1971,17 +1976,20 @@ namespace spartan
 
             // ensure the texture is in unordered_access for both reads and writes
             push_transition_for_view(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::General);
+            if (covers_full) texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::General);
+            else             texture->SetLayoutDirect(covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::General);
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
-            if (mip_specified && mip_index > 0)
+            if (!covers_full)
             {
-                // create a transient mip-specific uav, the static all-mips uav at m_rhi_srv_mips[0] is the only one populated by Texture creation
-                h = create_transient_mip_view(texture, mip_index, effective_mip_range, true, array_layer);
+                // create a transient mip-specific uav, the static mip-0 uav at m_rhi_srv_mips[0] is the only one populated by Texture creation
+                const uint32_t view_mip_index = covers_all_mips ? 0u         : mip_index;
+                const uint32_t view_mip_range = covers_all_mips ? total_mips : effective_mip_range;
+                h = create_transient_mip_view(texture, view_mip_index, view_mip_range, true, array_layer);
             }
             else
             {
-                void* uav_ptr = texture->GetRhiSrvMip(0); // all-mips uav cpu handle
+                void* uav_ptr = texture->GetRhiSrvMip(0); // mip 0 uav cpu handle, single-mip by definition
                 if (uav_ptr) h.ptr = reinterpret_cast<SIZE_T>(uav_ptr);
             }
 
@@ -1999,12 +2007,16 @@ namespace spartan
                 ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
                 : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             push_transition_for_view(read_state);
-            texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::Shader_Read);
+            if (covers_full) texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::Shader_Read);
+            else             texture->SetLayoutDirect(covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::Shader_Read);
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
-            if (mip_specified && mip_index > 0)
+            if (!covers_full)
             {
-                h = create_transient_mip_view(texture, mip_index, effective_mip_range, false, array_layer);
+                // bind a transient single-range srv, the static all-mips/all-layer srv would force every subresource to be in srv state
+                const uint32_t view_mip_index = covers_all_mips ? 0u         : mip_index;
+                const uint32_t view_mip_range = covers_all_mips ? total_mips : effective_mip_range;
+                h = create_transient_mip_view(texture, view_mip_index, view_mip_range, false, array_layer);
             }
             else
             {

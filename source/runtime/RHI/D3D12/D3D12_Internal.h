@@ -64,7 +64,8 @@ namespace spartan::d3d12_descriptors
     // allocators
     uint32_t AllocateRtv();
     uint32_t AllocateDsv();
-    uint32_t AllocateCbvSrvUavCpu();
+    uint32_t AllocateCbvSrvUavCpu();          // monotonic, for static views (texture/buffer init)
+    uint32_t AllocateCbvSrvUavCpuTransient(); // wraps inside a dedicated transient zone, for per-frame transient views
     uint32_t AllocateSamplerCpu();
     void     FreeSamplerCpu(uint32_t index);
     uint32_t SamplerHandleToIndex(SIZE_T handle_ptr);

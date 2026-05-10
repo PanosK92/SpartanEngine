@@ -291,10 +291,18 @@ namespace spartan
         uint32_t sampler_descriptor_size     = 0;
 
         // current allocation offsets
-        atomic<uint32_t> rtv_offset             = 0;
-        atomic<uint32_t> dsv_offset             = 0;
-        atomic<uint32_t> cbv_srv_uav_cpu_offset = 0;
-        atomic<uint32_t> sampler_cpu_offset     = 0;
+        atomic<uint32_t> rtv_offset                       = 0;
+        atomic<uint32_t> dsv_offset                       = 0;
+        atomic<uint32_t> cbv_srv_uav_cpu_offset           = 0; // monotonic, used by static allocations (texture init etc)
+        atomic<uint32_t> cbv_srv_uav_cpu_transient_offset = 0; // wraps inside the transient zone, used by per-frame transient views
+        atomic<uint32_t> sampler_cpu_offset               = 0;
+
+        // cpu staging heap layout (cbv/srv/uav)
+        // [0, cpu_static_size)                            static views (texture/buffer creation)
+        // [cpu_static_size, cpu_static_size + cpu_transient_size) transient views (set_texture mip views, set_acceleration_structure, set_buffer_uav)
+        constexpr uint32_t cbv_srv_uav_cpu_static_size    = 100000;
+        constexpr uint32_t cbv_srv_uav_cpu_transient_size = 200000;
+        constexpr uint32_t cbv_srv_uav_cpu_total_size     = cbv_srv_uav_cpu_static_size + cbv_srv_uav_cpu_transient_size;
 
         // sampler cpu heap free list, populated when samplers are destroyed so the slot can be reused
         std::vector<uint32_t> sampler_free_list;
@@ -628,7 +636,7 @@ namespace spartan
 
             // cpu-only staging heaps for sources used by CopyDescriptors
             D3D12_DESCRIPTOR_HEAP_DESC cpu_cbv_heap_desc = {};
-            cpu_cbv_heap_desc.NumDescriptors = 100000;
+            cpu_cbv_heap_desc.NumDescriptors = descriptors::cbv_srv_uav_cpu_total_size;
             cpu_cbv_heap_desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
             cpu_cbv_heap_desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
             SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateDescriptorHeap(&cpu_cbv_heap_desc, IID_PPV_ARGS(&descriptors::heap_cbv_srv_uav_cpu))),
@@ -984,7 +992,24 @@ namespace spartan::d3d12_descriptors
 
     uint32_t AllocateRtv()             { return spartan::descriptors::rtv_offset.fetch_add(1); }
     uint32_t AllocateDsv()             { return spartan::descriptors::dsv_offset.fetch_add(1); }
-    uint32_t AllocateCbvSrvUavCpu()    { return spartan::descriptors::cbv_srv_uav_cpu_offset.fetch_add(1); }
+
+    // monotonic allocator for static cpu staging descriptors, used by texture/buffer init
+    // never wraps, sized large enough to hold all long-lived views
+    uint32_t AllocateCbvSrvUavCpu()
+    {
+        uint32_t idx = spartan::descriptors::cbv_srv_uav_cpu_offset.fetch_add(1);
+        SP_ASSERT_MSG(idx < spartan::descriptors::cbv_srv_uav_cpu_static_size,
+            "Static cpu staging heap exhausted, increase cbv_srv_uav_cpu_static_size");
+        return idx;
+    }
+
+    // ring allocator for transient cpu staging descriptors, wraps inside the dedicated transient zone
+    // safe to wrap because transient views are consumed by CopyDescriptorsSimple before any reuse becomes observable
+    uint32_t AllocateCbvSrvUavCpuTransient()
+    {
+        uint32_t offset = spartan::descriptors::cbv_srv_uav_cpu_transient_offset.fetch_add(1);
+        return spartan::descriptors::cbv_srv_uav_cpu_static_size + (offset % spartan::descriptors::cbv_srv_uav_cpu_transient_size);
+    }
     uint32_t AllocateSamplerCpu()
     {
         // reuse a freed slot first, then bump the offset
