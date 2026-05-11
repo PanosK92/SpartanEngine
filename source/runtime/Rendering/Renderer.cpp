@@ -1140,7 +1140,11 @@ namespace spartan
         {
             for (Entity* entity : World::GetEntitiesRenderables())
             {
-                if (Material* material = entity->GetComponent<Render>()->GetMaterial())
+                Render* renderable = entity->GetComponent<Render>();
+                if (!renderable)
+                    continue;
+
+                if (Material* material = renderable->GetMaterial())
                 {
                     update_material(material);
                 }
@@ -1356,8 +1360,11 @@ namespace spartan
         {
             for (Entity* entity : World::GetEntitiesRenderables())
             {
+                // a worker may still be assigning the Render component, the mesh or the material, so guard every step
                 Render* renderable = entity->GetComponent<Render>();
-                // skip not yet ready entities, mesh or material may still be in flight while loading is in progress
+                if (!renderable)
+                    continue;
+
                 if (!renderable->GetMesh())
                     continue;
 
@@ -1624,6 +1631,9 @@ namespace spartan
             for (Entity* entity : World::GetEntitiesRenderables())
             {
                 Render* renderable = entity->GetComponent<Render>();
+                if (!renderable)
+                    continue;
+
                 blas_total++;
 
                 if (!renderable->HasAccelerationStructure())
@@ -1688,6 +1698,9 @@ namespace spartan
             for (Entity* entity : World::GetEntitiesRenderables())
             {
                 Render* renderable = entity->GetComponent<Render>();
+                if (!renderable)
+                    continue;
+
                 Material* material = renderable->GetMaterial();
                 if (!material)
                     continue;
