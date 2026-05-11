@@ -378,6 +378,7 @@ namespace spartan
         {
             at(render_targets, Renderer_RenderTarget::frame_output)                = nullptr;
             at(render_targets, Renderer_RenderTarget::frame_output_2)              = nullptr;
+            at(render_targets, Renderer_RenderTarget::taau_history)                = nullptr;
             at(render_targets, Renderer_RenderTarget::frame_output_stereo)         = nullptr;
             at(render_targets, Renderer_RenderTarget::bloom)                       = nullptr;
             at(render_targets, Renderer_RenderTarget::outline)                     = nullptr;
@@ -487,6 +488,7 @@ namespace spartan
             uint32_t mip_count = compute_mip_count(width_output, height_output, 16);
             at(render_targets, Renderer_RenderTarget::frame_output)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_PerMipViews | RHI_Texture_ConcurrentSharing, "frame_output");
             at(render_targets, Renderer_RenderTarget::frame_output_2) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_2");
+            at(render_targets, Renderer_RenderTarget::taau_history)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "taau_history");
 
             // stereo output: 2-layer array for xr swapchain blit (only when vr is active)
             if (xr_stereo)
@@ -604,6 +606,7 @@ namespace spartan
 
         // post-process
         compile_shader(Renderer_Shader::fxaa_c,                 RHI_Shader_Type::Compute, sd + "fxaa/fxaa.hlsl");
+        compile_shader(Renderer_Shader::taau_c,                 RHI_Shader_Type::Compute, sd + "taau.hlsl");
         compile_shader(Renderer_Shader::font_v,                 RHI_Shader_Type::Vertex,  sd + "font.hlsl", true, RHI_Vertex_Type::PosUv);
         compile_shader(Renderer_Shader::font_p,                 RHI_Shader_Type::Pixel,   sd + "font.hlsl");
         compile_shader(Renderer_Shader::film_grain_c,           RHI_Shader_Type::Compute, sd + "film_grain.hlsl");

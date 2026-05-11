@@ -67,7 +67,3 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Frustum.h"
 #include "../Math/Plane.h"
 #include "../Math/Helper.h"
-
-#if !defined(_MSC_VER)
-    #define FFX_GCC
-#endif

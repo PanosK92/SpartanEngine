@@ -272,7 +272,7 @@ void RenderOptions::OnTickVisible()
                     {
                         "Off",   // AA_Off_Upscale_Linear
                         "FXAA",  // AA_Fxaa_Upscale_Linear
-                        "FSR 3", // AA_Fsr_Upscale_Fsr
+                        "TAAU",  // AA_Taau_Upscale_Taau
                         "XeSS 3" // AA_Xess_Upscale_Xess
                     };
 
@@ -284,10 +284,7 @@ void RenderOptions::OnTickVisible()
                         ConsoleRegistry::Get().SetValueFromString("r.antialiasing_upsampling", to_string(static_cast<float>(mode)));
                     }
 
-                    bool use_rcas = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>() == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
-                    string label = use_rcas ? "Sharpness (RCAS)" : "Sharpness (CAS)";
-                    string tooltip = use_rcas ? "AMD FidelityFX Robust Contrast Adaptive Sharpening" : "AMD FidelityFX Contrast Adaptive Sharpening";
-                    option_value(label.c_str(), "r.sharpness", tooltip.c_str(), 0.1f, 0.0f, 1.0f);
+                    option_value("Sharpness (CAS)", "r.sharpness", "AMD FidelityFX Contrast Adaptive Sharpening", 0.1f, 0.0f, 1.0f);
                 }
 
                 if (option_header("Ray-traced Effects"))

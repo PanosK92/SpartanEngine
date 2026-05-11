@@ -165,6 +165,7 @@ namespace spartan
 
         // force render target recreation (e.g. when xr stereo mode changes)
         static void RecreateRenderTargets();
+        static void ResetTaauHistory();
 
         // get all
         static std::array<std::shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)>& GetRenderTargets();
@@ -356,6 +357,7 @@ namespace spartan
         static std::atomic<bool> m_initialized_resources;
         static bool m_transparents_present;
         static bool m_is_hiz_suppressed;
+        static bool m_taau_reset_history;
         static RHI_CommandList* m_cmd_list_present;
         static RHI_CommandList* m_cmd_list_compute;
         static std::vector<ShadowSlice> m_shadow_slices;

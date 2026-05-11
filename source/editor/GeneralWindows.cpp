@@ -236,7 +236,7 @@ namespace
         static const third_party_lib libs[] =
         {
             { "AMD Compressonator",          "4.2",        "https://github.com/GPUOpen-Tools/compressonator"                  },
-            { "AMD FidelityFX",              "1.1.4",      "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK"       },
+            { "AMD FidelityFX CAS/SPD",      "1.1.4",      "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK"       },
             { "AMD Vulkan Memory Allocator", "3.3.0",      "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator"},
             { "Assimp",                      "6.0.2",      "https://github.com/assimp/assimp"                                 },
             { "DirectX",                     "12.0",       "https://en.wikipedia.org/wiki/DirectX"                            },

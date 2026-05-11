@@ -128,10 +128,11 @@ namespace spartan
                 return;
             }
 
-            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr) ||
+            if (v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau) ||
                 v == static_cast<float>(Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess))
             {
                 RHI_VendorTechnology::ResetHistory();
+                Renderer::ResetTaauHistory();
             }
         }
 

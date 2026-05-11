@@ -333,37 +333,4 @@ namespace spartan
     #endif
     }
 
-    void RHI_VendorTechnology::FSR3_GenerateJitterSample(float* x, float* y)
-    {
-        // not implemented on d3d12, no jitter
-        if (x) *x = 0.0f;
-        if (y) *y = 0.0f;
-    }
-
-    void RHI_VendorTechnology::FSR3_Dispatch
-    (
-        RHI_CommandList* cmd_list,
-        Camera* camera,
-        const float delta_time_sec,
-        const float sharpness,
-        RHI_Texture* tex_color,
-        RHI_Texture* tex_depth,
-        RHI_Texture* tex_velocity,
-        RHI_Texture* tex_output
-    )
-    {
-        // not implemented on d3d12, fall back to a passthrough blit so the renderer still produces an image
-        static bool warned = false;
-        if (!warned)
-        {
-            SP_LOG_WARNING("FSR3 on D3D12 not implemented, falling back to passthrough");
-            warned = true;
-        }
-
-        if (cmd_list && tex_color && tex_output)
-        {
-            cmd_list->Blit(tex_color, tex_output, false);
-        }
-    }
-
 }

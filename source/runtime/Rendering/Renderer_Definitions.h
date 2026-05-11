@@ -50,7 +50,7 @@ namespace spartan
     {
         AA_Off_Upscale_Linear,
         AA_Fxaa_Upcale_Linear,
-        AA_Fsr_Upscale_Fsr,
+        AA_Taau_Upscale_Taau,
         AA_Xess_Upscale_Xess
     };
 
@@ -163,6 +163,7 @@ namespace spartan
         depth_light_v,
         depth_light_alpha_color_p,
         fxaa_c,
+        taau_c,
         film_grain_c,
         motion_blur_c,
         depth_of_field_c,
@@ -267,6 +268,7 @@ namespace spartan
         frame_render_opaque,
         frame_output,
         frame_output_2,
+        taau_history,
         ssao,
         reflections,
         gbuffer_reflections_position,

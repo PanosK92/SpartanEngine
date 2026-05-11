@@ -34,8 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 SP_WARNINGS_OFF
 #ifdef _WIN32
-#include <FidelityFX/host/backends/vk/ffx_vk.h>
-#include <FidelityFX/host/ffx_fsr3.h>
 #include <xess/xess_vk.h>
 #endif
 SP_WARNINGS_ON
@@ -217,532 +215,51 @@ namespace spartan
             return info;
         }
     }
-
-    namespace amd
-    {
-        FfxInterface ffx_interface             = {};
-        Matrix view                            = Matrix::Identity;
-        Matrix view_previous                   = Matrix::Identity;
-        Matrix projection                      = Matrix::Identity;
-        Matrix projection_previous             = Matrix::Identity;
-        Matrix view_projection                 = Matrix::Identity;
-        Matrix view_inverted                   = Matrix::Identity;
-        Matrix projection_inverted             = Matrix::Identity;
-        Matrix view_projection_previous        = Matrix::Identity;
-        Matrix view_projection_inverted        = Matrix::Identity;
-        shared_ptr<RHI_Texture> texture_skybox = nullptr;
-
-        void message_callback(FfxMsgType type, const wchar_t* message)
-        {
-            if (type == FFX_MESSAGE_TYPE_ERROR)
-            {
-                SP_LOG_ERROR("AMD FidelityFX: %ls", message);
-            }
-            else if (type == FFX_MESSAGE_TYPE_WARNING)
-            {
-                SP_LOG_WARNING("AMD FidelityFX: %ls", message);
-            }
-        }
-
-        FfxSurfaceFormat to_format(const RHI_Format format)
-        {
-            switch (format)
-            {
-            case RHI_Format::R32G32B32A32_Float:
-                return FFX_SURFACE_FORMAT_R32G32B32A32_FLOAT;
-            case RHI_Format::R16G16B16A16_Float:
-                return FFX_SURFACE_FORMAT_R16G16B16A16_FLOAT;
-            case RHI_Format::R32G32_Float:
-                return FFX_SURFACE_FORMAT_R32G32_FLOAT;
-            case RHI_Format::R8_Uint:
-                return FFX_SURFACE_FORMAT_R8_UINT;
-            case RHI_Format::R32_Uint:
-                return FFX_SURFACE_FORMAT_R32_UINT;
-            case RHI_Format::R8G8B8A8_Unorm:
-                return FFX_SURFACE_FORMAT_R8G8B8A8_UNORM;
-            case RHI_Format::R11G11B10_Float:
-                return FFX_SURFACE_FORMAT_R11G11B10_FLOAT;
-            case RHI_Format::R16G16_Float:
-                return FFX_SURFACE_FORMAT_R16G16_FLOAT;
-            case RHI_Format::R16_Uint:
-                return FFX_SURFACE_FORMAT_R16_UINT;
-            case RHI_Format::R16_Float:
-                return FFX_SURFACE_FORMAT_R16_FLOAT;
-            case RHI_Format::R16_Unorm:
-                return FFX_SURFACE_FORMAT_R16_UNORM;
-            case RHI_Format::R8_Unorm:
-                return FFX_SURFACE_FORMAT_R8_UNORM;
-            case RHI_Format::R8G8_Unorm:
-                return FFX_SURFACE_FORMAT_R8G8_UNORM;
-            case RHI_Format::R32_Float:
-                return FFX_SURFACE_FORMAT_R32_FLOAT;
-            case RHI_Format::D32_Float:
-                return FFX_SURFACE_FORMAT_R32_FLOAT; // shouldn't this be FFX_SURFACE_FORMAT_R32_TYPELESS?
-            default:
-                SP_ASSERT_MSG(false, "Unsupported format");
-                return FFX_SURFACE_FORMAT_UNKNOWN;
-            }
-        }
-
-        RHI_Format to_rhi_format(const FfxSurfaceFormat format)
-        {
-            switch (format)
-            {
-            case FFX_SURFACE_FORMAT_R32G32B32A32_FLOAT:
-                return RHI_Format::R32G32B32A32_Float;
-            case FFX_SURFACE_FORMAT_R16G16B16A16_FLOAT:
-                return RHI_Format::R16G16B16A16_Float;
-            case FFX_SURFACE_FORMAT_R32G32_FLOAT:
-                return RHI_Format::R32G32_Float;
-            case FFX_SURFACE_FORMAT_R8_UINT:
-                return RHI_Format::R8_Uint;
-            case FFX_SURFACE_FORMAT_R32_UINT:
-                return RHI_Format::R32_Uint;
-            case FFX_SURFACE_FORMAT_R8G8B8A8_UNORM:
-                return RHI_Format::R8G8B8A8_Unorm;
-            case FFX_SURFACE_FORMAT_R11G11B10_FLOAT:
-                return RHI_Format::R11G11B10_Float;
-            case FFX_SURFACE_FORMAT_R16G16_FLOAT:
-                return RHI_Format::R16G16_Float;
-            case FFX_SURFACE_FORMAT_R16_UINT:
-                return RHI_Format::R16_Uint;
-            case FFX_SURFACE_FORMAT_R16_FLOAT:
-                return RHI_Format::R16_Float;
-            case FFX_SURFACE_FORMAT_R16_UNORM:
-                return RHI_Format::R16_Unorm;
-            case FFX_SURFACE_FORMAT_R8_UNORM:
-                return RHI_Format::R8_Unorm;
-            case FFX_SURFACE_FORMAT_R8G8_UNORM:
-                return RHI_Format::R8G8_Unorm;
-            case FFX_SURFACE_FORMAT_R32_FLOAT:
-                return RHI_Format::R32_Float;
-            default:
-                SP_ASSERT_MSG(false, "Unsupported FFX format");
-                return RHI_Format::Max;
-            }
-        }
-
-        FfxResourceStates to_resource_state(RHI_Image_Layout layout)
-        {
-            switch (layout)
-            {
-            case RHI_Image_Layout::General:
-                return FFX_RESOURCE_STATE_COMMON;
-            case RHI_Image_Layout::Attachment:
-                return FFX_RESOURCE_STATE_RENDER_TARGET;
-            case RHI_Image_Layout::Shader_Read:
-                return FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ;
-            case RHI_Image_Layout::Transfer_Source:
-                return FFX_RESOURCE_STATE_COPY_SRC;
-            case RHI_Image_Layout::Transfer_Destination:
-                return FFX_RESOURCE_STATE_COPY_DEST;
-            case RHI_Image_Layout::Present_Source:
-                return FFX_RESOURCE_STATE_PRESENT;
-            default:
-                SP_ASSERT_MSG(false, "Unsupported layout");
-                return FFX_RESOURCE_STATE_COMMON;
-            }
-        }
-
-        template<typename T>
-        FfxResource to_resource(T* resource, const wchar_t* name)
-        {
-            FfxResourceDescription description = {};
-            FfxResourceStates state            = FFX_RESOURCE_STATE_COMMON;
-            void* rhi_resource                 = const_cast<T*>(resource)->GetRhiResource();
-
-            if constexpr (is_same_v<remove_const_t<T>, RHI_Texture>)
-            {
-                state = to_resource_state(resource->GetLayout(0));
-
-                uint32_t usage = FFX_RESOURCE_USAGE_READ_ONLY;
-                if (resource->IsDepthFormat())
-                    usage |= FFX_RESOURCE_USAGE_DEPTHTARGET;
-                if (resource->IsUav())
-                    usage |= FFX_RESOURCE_USAGE_UAV;
-                if (resource->GetType() == RHI_Texture_Type::Type2DArray || resource->GetType() == RHI_Texture_Type::TypeCube)
-                    usage |= FFX_RESOURCE_USAGE_ARRAYVIEW;
-                if (resource->IsRtv())
-                    usage |= FFX_RESOURCE_USAGE_RENDERTARGET;
-
-                switch (resource->GetType())
-                {
-                case RHI_Texture_Type::Type2D:
-                    description.type = FFX_RESOURCE_TYPE_TEXTURE2D;
-                    break;
-                case RHI_Texture_Type::Type3D:
-                    description.type = FFX_RESOURCE_TYPE_TEXTURE3D;
-                    break;
-                case RHI_Texture_Type::TypeCube:
-                    description.type = FFX_RESOURCE_TYPE_TEXTURE_CUBE;
-                    break;
-                default:
-                    SP_ASSERT_MSG(false, "Unsupported texture type");
-                    break;
-                }
-
-                description.width    = resource->GetWidth();
-                description.height   = resource->GetHeight();
-                description.depth    = resource->GetDepth();
-                description.mipCount = resource->GetMipCount();
-                description.format   = to_format(resource->GetFormat());
-                description.usage    = static_cast<FfxResourceUsage>(usage);
-            }
-            else if constexpr (is_same_v<remove_const_t<T>, RHI_Buffer>)
-            {
-                description.type   = FFX_RESOURCE_TYPE_BUFFER;
-                description.usage  = FFX_RESOURCE_USAGE_UAV;
-                description.size   = static_cast<uint32_t>(resource->GetObjectSize());
-                description.stride = resource->GetStride();
-                state              = FFX_RESOURCE_STATE_UNORDERED_ACCESS;
-            }
-            else
-            {
-                static_assert(is_same_v<T, RHI_Texture> || is_same_v<T, RHI_Buffer>, "Unsupported resource type");
-            }
-
-            return ffxGetResourceVK(rhi_resource, description, const_cast<wchar_t*>(name), state);
-        }
-
-        FfxResource to_resource(nullptr_t, const wchar_t* name)
-        {
-            FfxResourceDescription description = {};
-            description.type                   = FFX_RESOURCE_TYPE_TEXTURE1D;
-            description.width                  = 0;
-            description.height                 = 0;
-            description.depth                  = 0;
-            description.mipCount               = 0;
-            description.format                 = FFX_SURFACE_FORMAT_UNKNOWN;
-            description.usage                  = static_cast<FfxResourceUsage>(FFX_RESOURCE_USAGE_READ_ONLY);
-        
-            return ffxGetResourceVK(nullptr, description, const_cast<wchar_t*>(name), FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ);
-        }
-
-        FfxCommandList to_cmd_list(RHI_CommandList* cmd_list)
-        {
-            return ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-        }
-
-        FfxPipeline to_pipeline(RHI_Pipeline* pipeline)
-        {
-            return ffxGetPipelineVK(static_cast<VkPipeline>(pipeline->GetRhiResource()));
-        }
-
-        void set_float3(FfxFloat32x3& dest, const Vector3& source)
-        {
-            dest[0] = source.x;
-            dest[1] = source.y;
-            dest[2] = source.z;
-        }
-
-        void set_float16(float* ffx_matrix, const Matrix& matrix)
-        {
-            const float* data = matrix.Data();
-            memcpy(ffx_matrix, data, sizeof(Matrix));
-        }
-
-        Matrix to_matrix_view(const Matrix& matrix)
-        {
-            // sssr:          column-major, column-major memory layout, right-handed
-            // brixelizer gi: row-major,    column-major memory layout, right-handed
-            // engine:        row-major,    column-major memory layout, left-handed
-
-            // note: ffx probably has invalid documentation, as the
-            // below conversions work for both sssr and brixelizer gi
-
-            // 1. transpose
-            Matrix adjusted = matrix.Transposed();
-
-            // 2. switch handedness
-            adjusted.m20 = -adjusted.m20;
-            adjusted.m21 = -adjusted.m21;
-            adjusted.m22 = -adjusted.m22;
-            adjusted.m23 = -adjusted.m23;
-
-            return adjusted;
-        };
-
-        Matrix to_matrix_projection(const Matrix& matrix)
-        {
-            // sssr:          column-major, column-major memory layout, right-handed
-            // brixelizer gi: row-major,    column-major memory layout, right-handed
-            // engine:        row-major,    column-major memory layout, left-handed
-
-            // note: ffx probably has invalid documentation, as the
-            // below conversions work for both sssr and brixelizer gi
-
-            // 1 . transpose
-            Matrix adjusted = matrix.Transposed();
-
-            // 2. switch handedness
-            adjusted.m22 = 0.0f;
-            adjusted.m23 = matrix.m32;
-            adjusted.m32 = -1.0f;
-            adjusted.m33 = 0.0f;
-
-            return adjusted;
-        }
-
-        string convert_wchar_to_char(const wchar_t* wchar_str)
-        {
-            if (!wchar_str)
-                return {};
-        
-            size_t size_needed = 0;
-            errno_t err = wcstombs_s(&size_needed, nullptr, 0, wchar_str, 0);
-            if (err != 0 || size_needed == 0)
-                return {};
-        
-            string char_str(size_needed, '\0'); // size_needed includes null terminator
-        
-            err = wcstombs_s(&size_needed, &char_str[0], size_needed, wchar_str, size_needed - 1);
-            if (err != 0)
-                return {};
-        
-            char_str.resize(size_needed - 1); // remove null terminator from string length
-        
-            return char_str;
-        }
-
-        namespace upscaler
-        {
-            // documentation: https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK/blob/main/docs/techniques/super-resolution-upscaler.md
-            // requires:      VK_KHR_get_memory_requirements2
-
-            bool                                       context_created              = false;
-            FfxFsr3UpscalerContext                     context                      = {};
-            FfxFsr3UpscalerContextDescription          description_context          = {};
-            FfxFsr3UpscalerDispatchDescription         description_dispatch         = {};
-            FfxFsr3UpscalerGenerateReactiveDescription description_reactive_mask    = {};
-            FfxFsr3UpscalerSharedResourceDescriptions  description_shared_resources = {};
-            uint32_t                                   jitter_index                 = 0;
-            float velocity_factor                                                   = 1.0f; // controls temporal stability of bright pixels [0.0f, 1.0f]
-
-            // resources
-            shared_ptr<RHI_Texture> texture_depth_previous_nearest_reconstructed = nullptr;
-            shared_ptr<RHI_Texture> texture_depth_dilated                        = nullptr;
-            shared_ptr<RHI_Texture> texture_motion_vectors_dilated               = nullptr;
-
-            void context_destroy()
-            {
-                if (context_created)
-                {
-                    SP_ASSERT(ffxFsr3UpscalerContextDestroy(&context) == FFX_OK);
-                    context_created = false;
-
-                    texture_depth_previous_nearest_reconstructed = nullptr;
-                    texture_depth_dilated                        = nullptr;
-                    texture_motion_vectors_dilated               = nullptr;
-                }
-            }
-
-            void context_create()
-            {
-                context_destroy();
-
-            // description - use the unscaled base resolution as max since dynamic resolution is enabled
-            description_context.maxRenderSize.width    = common::resolution_render_max_width;
-            description_context.maxRenderSize.height   = common::resolution_render_max_height;
-            description_context.maxUpscaleSize.width   = common::resolution_output_width;
-            description_context.maxUpscaleSize.height  = common::resolution_output_height;
-            description_context.flags                  = FFX_FSR3_ENABLE_UPSCALING_ONLY | FFX_FSR3_ENABLE_DEPTH_INVERTED | FFX_FSR3_ENABLE_DYNAMIC_RESOLUTION;
-            description_context.flags                 |= FFX_FSR3_ENABLE_HIGH_DYNAMIC_RANGE; // hdr input
-                #ifdef DEBUG
-                description_context.flags                 |= FFX_FSR3_ENABLE_DEBUG_CHECKING;
-                description_context.fpMessage              = &message_callback;
-                #endif
-                description_context.backendInterface       = ffx_interface;
-
-                // context
-                SP_ASSERT(ffxFsr3UpscalerContextCreate(&context, &description_context) == FFX_OK);
-                context_created = true;
-                
-                // create shared resources (between upscaler and interpolator)
-                {
-                    ffxFsr3UpscalerGetSharedResourceDescriptions(&context, &description_shared_resources);
-                
-                    FfxCreateResourceDescription resource = description_shared_resources.reconstructedPrevNearestDepth;
-                    texture_depth_previous_nearest_reconstructed = make_shared<RHI_Texture>(
-                         RHI_Texture_Type::Type2D,
-                         resource.resourceDescription.width,
-                         resource.resourceDescription.height,
-                         resource.resourceDescription.depth,
-                         resource.resourceDescription.mipCount,
-                         to_rhi_format(resource.resourceDescription.format),
-                         RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_ClearBlit,
-                         convert_wchar_to_char(resource.name).c_str()
-                    );
-                
-                    resource = description_shared_resources.dilatedDepth;
-                    texture_depth_dilated = make_shared<RHI_Texture>(
-                        RHI_Texture_Type::Type2D,
-                        resource.resourceDescription.width,
-                        resource.resourceDescription.height,
-                        resource.resourceDescription.depth,
-                        resource.resourceDescription.mipCount,
-                        to_rhi_format(resource.resourceDescription.format),
-                        RHI_Texture_Srv | RHI_Texture_Uav,
-                        convert_wchar_to_char(resource.name).c_str()
-                    );
-                
-                    resource = description_shared_resources.dilatedMotionVectors;
-                    texture_motion_vectors_dilated = make_shared<RHI_Texture>(
-                         RHI_Texture_Type::Type2D,
-                         resource.resourceDescription.width,
-                         resource.resourceDescription.height,
-                         resource.resourceDescription.depth,
-                         resource.resourceDescription.mipCount, 
-                         to_rhi_format(resource.resourceDescription.format),
-                         RHI_Texture_Srv | RHI_Texture_Uav,
-                         convert_wchar_to_char(resource.name).c_str()
-                    );
-                }
-                
-                // set velocity factor [0, 1], this controls the temporal stability of bright pixels
-                ffxFsr3UpscalerSetConstant(&context, FFX_FSR3UPSCALER_CONFIGURE_UPSCALE_KEY_FVELOCITYFACTOR, static_cast<void*>(&velocity_factor));
-                
-                // reset jitter index
-                jitter_index = 0;
-            }
-        }
-
-    }
-
     #endif // _WIN32
 
     void RHI_VendorTechnology::Initialize()
     {
-    #ifdef _WIN32
-        // ffx interface
-        {
-            // all used contexts need to be accounted for here
-            const size_t max_contexts = FFX_FSR3_CONTEXT_COUNT;
-            
-            VkDeviceContext device_context  = {};
-            device_context.vkDevice         = RHI_Context::device;
-            device_context.vkPhysicalDevice = RHI_Context::device_physical;
-            device_context.vkDeviceProcAddr = vkGetDeviceProcAddr;
-            
-            const size_t scratch_buffer_size = ffxGetScratchMemorySizeVK(RHI_Context::device_physical, max_contexts);
-            void* scratch_buffer             = calloc(1, scratch_buffer_size);
-            
-            SP_ASSERT(ffxGetInterfaceVK(&amd::ffx_interface, ffxGetDeviceVK(&device_context), scratch_buffer, scratch_buffer_size, max_contexts)== FFX_OK);
-        }
 
-        // assets
-        {
-            // empty skybox
-            {
-                const uint32_t width     = 128;
-                const uint32_t height    = 128;
-                const uint32_t depth     = 6; // cube faces
-                const uint32_t mip_count = 1;
-                const RHI_Format format  = RHI_Format::R16G16B16A16_Float;
-                const uint32_t flags     = RHI_Texture_Srv | RHI_Texture_Uav;
-                const char* name         = "skybox";
-
-                const uint32_t channel_count    = 4;
-                const uint32_t bits_per_channel = 16;
-                const uint32_t bytes_per_pixel  = (bits_per_channel / 8) * channel_count;
-                const size_t slice_size         = static_cast<size_t>(width) * height * bytes_per_pixel;
-
-                // create black data for all 6 faces
-                std::vector<RHI_Texture_Slice> data(depth);
-                for (uint32_t face = 0; face < depth; face++)
-                {
-                    RHI_Texture_Mip mip;
-                    mip.bytes.resize(slice_size, std::byte(0));
-                    data[face].mips.push_back(std::move(mip));
-                }
-
-                amd::texture_skybox = make_shared<RHI_Texture>(
-                    RHI_Texture_Type::TypeCube,
-                    width,
-                    height,
-                    depth,
-                    mip_count,
-                    format,
-                    flags,
-                    name,
-                    std::move(data)
-                );
-            }
-        }
-    #endif
     }
 
     void RHI_VendorTechnology::Shutdown()
     {
     #ifdef _WIN32
-        amd::upscaler::context_destroy();
-
-        // ffx interface
-        if (amd::ffx_interface.scratchBuffer != nullptr)
-        {
-            free(amd::ffx_interface.scratchBuffer);
-        }
-
-        // shared
-        amd::texture_skybox = nullptr;
+        intel::context_destroy();
     #endif
     }
 
     void RHI_VendorTechnology::Tick(Cb_Frame* cb_frame, const Vector2& resolution_render, const Vector2& resolution_output, const float resolution_scale)
     {
     #ifdef _WIN32
-        // matrices - ffx is right-handed
+        common::resolution_scale = resolution_scale;
+
+        // update per-frame scaled render dimensions (used by dispatch)
+        common::resolution_render_width  = Renderer::GetScaledDimension(static_cast<uint32_t>(resolution_render.x), resolution_scale);
+        common::resolution_render_height = Renderer::GetScaledDimension(static_cast<uint32_t>(resolution_render.y), resolution_scale);
+
+        // check if the base (unscaled) render or output resolution changed
+        uint32_t base_render_width  = static_cast<uint32_t>(resolution_render.x);
+        uint32_t base_render_height = static_cast<uint32_t>(resolution_render.y);
+        uint32_t output_width       = static_cast<uint32_t>(resolution_output.x);
+        uint32_t output_height      = static_cast<uint32_t>(resolution_output.y);
+
+        bool base_render_changed = base_render_width  != common::resolution_render_max_width ||
+                                   base_render_height != common::resolution_render_max_height;
+        bool output_changed      = output_width  != common::resolution_output_width ||
+                                   output_height != common::resolution_output_height;
+
+        common::resolution_render_max_width  = base_render_width;
+        common::resolution_render_max_height = base_render_height;
+        common::resolution_output_width      = output_width;
+        common::resolution_output_height     = output_height;
+
+        if (base_render_changed || output_changed)
         {
-            amd::view_previous            = amd::view;
-            amd::projection_previous      = amd::projection;
-            amd::view_projection_previous = amd::view_projection;
-
-            amd::view                     = amd::to_matrix_view(cb_frame->view);
-            amd::projection               = amd::to_matrix_projection(cb_frame->projection);
-            amd::view_projection          = amd::projection * amd::view;
-
-            amd::view_inverted            = Matrix::Invert(amd::view);
-            amd::projection_inverted      = Matrix::Invert(amd::projection);
-            amd::view_projection_inverted = Matrix::Invert(amd::view_projection);
+            RHI_Device::QueueWaitAll();
+            intel::context_create();
+            common::reset_history = true;
         }
-
-        // resize
-        {
-            common::resolution_scale = resolution_scale;
-
-            // update per-frame scaled render dimensions (used by dispatch)
-            common::resolution_render_width  = Renderer::GetScaledDimension(static_cast<uint32_t>(resolution_render.x), resolution_scale);
-            common::resolution_render_height = Renderer::GetScaledDimension(static_cast<uint32_t>(resolution_render.y), resolution_scale);
-
-            // check if the base (unscaled) render or output resolution changed
-            // scale changes don't require context recreation since FSR3 has dynamic resolution enabled
-            uint32_t base_render_width  = static_cast<uint32_t>(resolution_render.x);
-            uint32_t base_render_height = static_cast<uint32_t>(resolution_render.y);
-            uint32_t output_width       = static_cast<uint32_t>(resolution_output.x);
-            uint32_t output_height      = static_cast<uint32_t>(resolution_output.y);
-
-            bool base_render_changed = base_render_width  != common::resolution_render_max_width ||
-                                       base_render_height != common::resolution_render_max_height;
-            bool output_changed      = output_width  != common::resolution_output_width ||
-                                       output_height != common::resolution_output_height;
-
-            common::resolution_render_max_width  = base_render_width;
-            common::resolution_render_max_height = base_render_height;
-            common::resolution_output_width      = output_width;
-            common::resolution_output_height     = output_height;
-
-            // re-create resolution dependent contexts
-            {
-                // todo: make these mutually exlusive
-                if (base_render_changed || output_changed)
-                {
-                    RHI_Device::QueueWaitAll();
-                    amd::upscaler::context_create();
-                    intel::context_create();
-                    common::reset_history = true;
-                }
-            }
-        }
-
     #endif
     }
 
@@ -782,8 +299,6 @@ namespace spartan
             uint32_t base_x      = 2;
             uint32_t base_y      = 3;
             uint32_t start_index = 1;
-            float offset_x       = 0.0f;
-            float offset_y       = 0.0f;
             halton_points.reserve(xess_sample_limit);
             for (uint32_t i = start_index; i < start_index + xess_sample_limit; ++i)
             {
@@ -853,81 +368,4 @@ namespace spartan
         SP_ASSERT(result == XESS_RESULT_SUCCESS);
     #endif
     }
-
-    void RHI_VendorTechnology::FSR3_GenerateJitterSample(float* x, float* y)
-    {
-    #ifdef _WIN32
-        // get jitter phase count
-        const uint32_t resolution_render_x = static_cast<uint32_t>(amd::upscaler::description_context.maxRenderSize.width);
-        const uint32_t resolution_render_y = static_cast<uint32_t>(amd::upscaler::description_context.maxRenderSize.height);
-        const uint32_t resolution_output_x = static_cast<uint32_t>(amd::upscaler::description_context.maxUpscaleSize.width);
-        const int32_t jitter_phase_count   = ffxFsr3GetJitterPhaseCount(resolution_render_x, resolution_output_x);
-
-        // ensure fsr3_jitter_index is properly wrapped around the jitter_phase_count
-        amd::upscaler::jitter_index = (amd::upscaler::jitter_index + 1) % jitter_phase_count;
-
-        // generate jitter sample
-        FfxErrorCode result = ffxFsr3GetJitterOffset(&amd::upscaler::description_dispatch.jitterOffset.x, &amd::upscaler::description_dispatch.jitterOffset.y, amd::upscaler::jitter_index, jitter_phase_count);
-        SP_ASSERT(result == FFX_OK);
-
-        *x =  2.0f * amd::upscaler::description_dispatch.jitterOffset.x / resolution_render_x;
-        *y = -2.0f * amd::upscaler::description_dispatch.jitterOffset.y / resolution_render_y;
-    #endif
-    }
-
-    void RHI_VendorTechnology::FSR3_Dispatch
-    (
-        RHI_CommandList* cmd_list,
-        Camera* camera,
-        const float delta_time_sec,
-        const float sharpness,
-        RHI_Texture* tex_color,
-        RHI_Texture* tex_depth,
-        RHI_Texture* tex_velocity,
-        RHI_Texture* tex_output
-    )
-    {
-    #ifdef _WIN32
-        RHI_Texture* tex_exposure = common::get_upscaler_exposure_texture(cmd_list);
-
-        // set resources (no need for the transparency or reactive masks as we do them later, full res)
-        amd::upscaler::description_dispatch.commandList                   = amd::to_cmd_list(cmd_list);
-        amd::upscaler::description_dispatch.color                         = amd::to_resource(tex_color,                                                         L"fsr3_color");
-        amd::upscaler::description_dispatch.depth                         = amd::to_resource(tex_depth,                                                         L"fsr3_depth");
-        amd::upscaler::description_dispatch.motionVectors                 = amd::to_resource(tex_velocity,                                                      L"fsr3_velocity");
-        amd::upscaler::description_dispatch.exposure                      = amd::to_resource(tex_exposure,                                                      L"fsr3_exposure");
-        amd::upscaler::description_dispatch.reactive                      = amd::to_resource(nullptr,                                                           L"fsr3_reactive");
-        amd::upscaler::description_dispatch.transparencyAndComposition    = amd::to_resource(nullptr,                                                           L"fsr3_transaprency_and_composition");
-        amd::upscaler::description_dispatch.dilatedDepth                  = amd::to_resource(amd::upscaler::texture_depth_dilated.get(),                        L"fsr3_depth_dilated");
-        amd::upscaler::description_dispatch.dilatedMotionVectors          = amd::to_resource(amd::upscaler::texture_motion_vectors_dilated.get(),               L"fsr3_motion_vectors_dilated");
-        amd::upscaler::description_dispatch.reconstructedPrevNearestDepth = amd::to_resource(amd::upscaler::texture_depth_previous_nearest_reconstructed.get(), L"fsr3_depth_nearest_previous_reconstructed");
-        amd::upscaler::description_dispatch.output                        = amd::to_resource(tex_output,                                                        L"fsr3_output");
-        
-        // configure
-        amd::upscaler::description_dispatch.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth())  * 0.5f;
-        amd::upscaler::description_dispatch.motionVectorScale.y    =  static_cast<float>(tex_velocity->GetHeight()) * 0.5f;
-        amd::upscaler::description_dispatch.enableSharpening       = sharpness != 0.0f;        // sdk issue: redundant parameter
-        amd::upscaler::description_dispatch.sharpness              = sharpness;
-        amd::upscaler::description_dispatch.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds
-        amd::upscaler::description_dispatch.preExposure            = 1.0f;                     // input color is not pre-exposed before upscaling
-        amd::upscaler::description_dispatch.renderSize.width       = common::resolution_render_width;
-        amd::upscaler::description_dispatch.renderSize.height      = common::resolution_render_height;
-        amd::upscaler::description_dispatch.upscaleSize.width      = common::resolution_output_width;
-        amd::upscaler::description_dispatch.upscaleSize.height     = common::resolution_output_height;
-        amd::upscaler::description_dispatch.cameraNear             = camera->GetFarPlane();    // far as near because we are using reverse-z
-        amd::upscaler::description_dispatch.cameraFar              = camera->GetNearPlane();   // near as far because we are using reverse-z
-        amd::upscaler::description_dispatch.cameraFovAngleVertical = camera->GetFovVerticalRad();
-        amd::upscaler::description_dispatch.viewSpaceToMetersFactor = 1.0f;
-        amd::upscaler::description_dispatch.flags                  = 0;
-        
-        // reset history
-        amd::upscaler::description_dispatch.reset = common::reset_history;
-        common::reset_history = false;
-        
-        // dispatch
-        SP_ASSERT(ffxFsr3UpscalerContextDispatch(&amd::upscaler::context, &amd::upscaler::description_dispatch) == FFX_OK);
-        amd::upscaler::description_dispatch.reset = false;
-    #endif
-    }
-
 }

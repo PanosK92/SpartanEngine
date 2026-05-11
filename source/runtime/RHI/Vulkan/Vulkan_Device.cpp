@@ -264,9 +264,6 @@ namespace spartan
             "VK_KHR_fragment_shading_rate",
             "VK_EXT_hdr_metadata",
             "VK_KHR_robustness2",
-            // AMD FidelityFX relies on "VK_KHR_get_memory_requirements2" because it explicitly calls the extension function
-            // vkGetBufferMemoryRequirements2KHR instead of the core Vulkan 1.1+ function vkGetBufferMemoryRequirements2,
-            // even though the latter is available in the core API. Same goes for VK_KHR_synchonization2.
             "VK_KHR_synchronization2",
             "VK_KHR_get_memory_requirements2",
             "VK_EXT_mutable_descriptor_type", // added for XeSS mutable descriptor support
@@ -450,7 +447,7 @@ namespace spartan
             VkDebugUtilsMessengerEXT messenger;
 
             // suppress known non-actionable warnings from third-party libraries and validation sdk.
-            // these are either caused by external code (fidelityfx, xess, openxr) requesting
+            // these are either caused by external code (xess, openxr) requesting
             // deprecated-but-functional extensions, or by sdk best-practice heuristics that
             // don't apply to this engine's architecture (e.g. sub-allocation, gpu-av overhead).
             bool is_suppressed(const VkDebugUtilsMessengerCallbackDataEXT* data)
@@ -460,7 +457,7 @@ namespace spartan
 
                 const char* msg = data->pMessage;
 
-                // deprecated extensions required by fidelityfx / openxr / xess
+                // deprecated extensions required by openxr / xess
                 if (strstr(msg, "Attempting to enable deprecated extension"))  return true;
                 if (strstr(msg, "intended to support D3D emulation layers"))   return true;
 
@@ -1331,29 +1328,24 @@ namespace spartan
                     //features_1_4.pushDescriptor = VK_TRUE;
                 }
 
-                // fidelity fx
+                // amd fidelityfx cas/spd
                 {
                     // spd
                     SP_ASSERT(support_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
                     features_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
 
-                    // wave64
                     SP_ASSERT(support_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
                     features_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
 
-                    // float16 - If supported, fsr will opt for it, so don't assert
+                    // optional fast-paths used by cas/spd when the device exposes them
                     if (support_1_2.shaderFloat16 == VK_TRUE)
                     {
                         features_1_2.shaderFloat16 = VK_TRUE;
                     }
-
-                    // int16 - If supported, fsr will opt for it, so don't assert
                     if (support.features.shaderInt16 == VK_TRUE)
                     {
                         features.features.shaderInt16 = VK_TRUE;
                     }
-
-                    // wave64 - If supported, fsr will opt for it, so don't assert
                     if (support_1_3.subgroupSizeControl == VK_TRUE)
                     {
                         features_1_3.subgroupSizeControl = VK_TRUE;

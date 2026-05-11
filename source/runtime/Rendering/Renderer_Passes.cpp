@@ -2022,9 +2022,6 @@ namespace spartan
             cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::auto_exposure), GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous), false);
         }
 
-        // post-tonemapping effects
-        bool is_fsr = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>() == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr;
-
         if (cvar_dithering.GetValueAs<bool>())
         {
             run_effect("dithering", Renderer_Shader::dithering_c, [&]()
@@ -2033,7 +2030,7 @@ namespace spartan
             });
         }
 
-        if (cvar_sharpness.GetValueAs<bool>() && !is_fsr)
+        if (cvar_sharpness.GetValueAs<bool>())
         {
             run_effect("sharpening", Renderer_Shader::ffx_cas_c, [&]()
             {
@@ -2262,7 +2259,7 @@ namespace spartan
             bool is_stereo = eye_layer != rhi_all_mips;
             Renderer_AntiAliasing_Upsampling method = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
 
-            // fsr3/xess don't support array textures, fall back to fxaa or blit in stereo
+            // taau/xess don't support array textures, fall back to fxaa or blit in stereo
             if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
             {
                 RHI_VendorTechnology::XeSS_Dispatch(
@@ -2273,18 +2270,29 @@ namespace spartan
                     tex_out
                 );
             }
-            else if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+            else if (!is_stereo && method == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
             {
-                RHI_VendorTechnology::FSR3_Dispatch(
-                    cmd_list,
-                    World::GetCamera(),
-                    m_cb_frame_cpu.delta_time,
-                    cvar_sharpness.GetValue(),
-                    tex_in,
-                    tex_depth,
-                    tex_velocity,
-                    tex_out
-                );
+                RHI_Texture* tex_history = GetRenderTarget(Renderer_RenderTarget::taau_history);
+
+                RHI_PipelineState pso;
+                pso.name             = "taau";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::taau_c);
+                cmd_list->SetPipelineState(pso);
+
+                m_pcb_pass_cpu.set_f3_value(m_taau_reset_history ? 1.0f : 0.0f, 0.0f, 0.0f);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_history);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_in);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_out);
+                cmd_list->Dispatch(tex_out);
+
+                cmd_list->InsertBarrier(tex_out,     RHI_BarrierType::EnsureWriteThenRead);
+                cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureReadThenWrite);
+                cmd_list->FlushBarriers();
+                cmd_list->Copy(tex_out, tex_history, false);
+
+                m_taau_reset_history = false;
             }
             else if (method == Renderer_AntiAliasing_Upsampling::AA_Fxaa_Upcale_Linear)
             {

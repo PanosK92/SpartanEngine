@@ -145,7 +145,6 @@ function spartan_project_configuration()
                 includedirs {
                     "../third_party/spirv_cross",
                     "../third_party/vulkan",
-                    "../third_party/fidelityfx",
                     "../third_party/xess",
                     "../third_party/vulkan_memory_allocator"
                 }
@@ -174,8 +173,7 @@ function spartan_project_configuration()
                 if ARG_API_GRAPHICS == "vulkan" then
                     links {
                         "spirv-cross-c", "spirv-cross-core", "spirv-cross-cpp", "spirv-cross-glsl", "spirv-cross-hlsl",
-                        "ffx_backend_vk_x64", "ffx_frameinterpolation_x64", "ffx_fsr3_x64", "ffx_fsr3upscaler_x64",
-                        "ffx_opticalflow_x64", "ffx_denoiser_x64", "libxess"
+                        "libxess"
                     }
                 elseif ARG_API_GRAPHICS == "d3d12" then
                     links { "libxess" }
@@ -199,8 +197,7 @@ function spartan_project_configuration()
             if ARG_API_GRAPHICS == "vulkan" then
                 links {
                     "spirv-cross-c_debug", "spirv-cross-core_debug", "spirv-cross-cpp_debug", "spirv-cross-glsl_debug", "spirv-cross-hlsl_debug",
-                    "ffx_backend_vk_x64d", "ffx_frameinterpolation_x64d", "ffx_fsr3_x64d", "ffx_fsr3upscaler_x64d",
-                    "ffx_opticalflow_x64d", "ffx_denoiser_x64d", "libxess"
+                    "libxess"
                 }
             elseif ARG_API_GRAPHICS == "d3d12" then
                 links { "libxess" }

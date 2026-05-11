@@ -86,6 +86,7 @@ namespace spartan
     atomic<bool> Renderer::m_initialized_resources = false;
     bool Renderer::m_transparents_present          = false;
     bool Renderer::m_is_hiz_suppressed             = false;
+    bool Renderer::m_taau_reset_history            = true;
     bool Renderer::m_bindless_samplers_dirty       = true;
     RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
     RHI_CommandList* Renderer::m_cmd_list_compute  = nullptr;
@@ -178,7 +179,7 @@ namespace spartan
             uint32_t height = Window::GetHeight();
 
             SetResolutionOutput(width, height, false);
-            SetResolutionRender(1920, 1080, false); // lower than output so fsr/taa works well
+            SetResolutionRender(1920, 1080, false); // lower than output so taau works well
             SetViewport(static_cast<float>(width), static_cast<float>(height));
         }
 
@@ -678,6 +679,7 @@ namespace spartan
             m_pass_state.atmosphere_lut_produced = false;
             m_pass_state.cloud_noise_produced    = false;
             m_pass_state.sky_first_frame         = true;
+            m_taau_reset_history                 = true;
 
             CreateSamplers();
         }
@@ -727,6 +729,11 @@ namespace spartan
         CreateSamplers();
     }
 
+    void Renderer::ResetTaauHistory()
+    {
+        m_taau_reset_history = true;
+    }
+
     void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
     {
         // matrices
@@ -760,9 +767,34 @@ namespace spartan
         // taa jitter
         Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
         {
-            if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Fsr_Upscale_Fsr)
+            if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
             {
-                RHI_VendorTechnology::FSR3_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+                // halton-2,3 jitter, engine side, used by the taau compute pass to reconstruct sub-pixel detail
+                auto halton = [](uint32_t index, uint32_t base) -> float
+                {
+                    float result = 0.0f;
+                    float bk     = 1.0f;
+                    while (index > 0)
+                    {
+                        bk     /= static_cast<float>(base);
+                        result += static_cast<float>(index % base) * bk;
+                        index  /= base;
+                    }
+                    return result;
+                };
+
+                static const uint32_t phase_count = 16;
+                static uint32_t phase_index       = 0;
+                phase_index                       = (phase_index + 1) % phase_count;
+
+                float jx = halton(phase_index + 1, 2) - 0.5f;
+                float jy = halton(phase_index + 1, 3) - 0.5f;
+
+                float render_w = max(m_resolution_render.x, 1.0f);
+                float render_h = max(m_resolution_render.y, 1.0f);
+                jitter_offset.x =  2.0f * jx / render_w;
+                jitter_offset.y = -2.0f * jy / render_h;
+
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
             }
             else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)

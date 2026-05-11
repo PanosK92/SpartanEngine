@@ -30,7 +30,6 @@ struct FrameBufferData;
 
 namespace spartan
 {
-    class Camera;
     using Cb_Frame = FrameBufferData;
 
     class RHI_VendorTechnology
@@ -50,19 +49,5 @@ namespace spartan
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_output
         );
-
-        // fsr 3
-        static void FSR3_GenerateJitterSample(float* x, float* y);
-        static void FSR3_Dispatch(
-            RHI_CommandList* cmd_list,
-            Camera* camera,
-            const float delta_time,
-            const float sharpness,
-            RHI_Texture* tex_color,
-            RHI_Texture* tex_depth,
-            RHI_Texture* tex_velocity,
-            RHI_Texture* tex_output
-        );
-
     };
 }
