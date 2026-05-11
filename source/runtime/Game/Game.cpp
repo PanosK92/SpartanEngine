@@ -374,6 +374,9 @@ namespace spartan
                 entities::floor();
                 World::SetWind(Vector3(0.0f, 0.2f, 1.0f) * 0.1f);
 
+                // publish base entities so the renderer can show camera, sun and floor immediately
+                World::PublishAll();
+
                 const Vector3 position = Vector3(0.0f, 1.5f, 0.0f);
                 const float scale      = 1.5f;
 
@@ -417,6 +420,8 @@ namespace spartan
                             physics_body->SetBodyType(BodyType::Mesh);
                         }
                     }
+
+                    World::PublishEntity(entity);
                 }
 
                 // curtains
@@ -436,6 +441,8 @@ namespace spartan
                             material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
                         }
                     }
+
+                    World::PublishEntity(entity);
                 }
 
                 // ivy
@@ -465,6 +472,8 @@ namespace spartan
                             material->SetProperty(MaterialProperty::SubsurfaceScattering, 1.0f);
                         }
                     }
+
+                    World::PublishEntity(entity);
                 }
             }
         }
@@ -501,6 +510,9 @@ namespace spartan
                     //car_config.show_telemetry = true;
                     //Car::Create(car_config);
                 }
+
+                // publish camera and sun first so the renderer can frame the world immediately
+                World::PublishAll();
 
                 // terrain root
                 default_terrain = World::CreateEntity();
@@ -601,11 +613,17 @@ namespace spartan
                     }
                 }
 
+                // publish the audio root, the terrain root and all its tile children so the renderer can show the ground while props stream in
+                World::PublishAll();
+
                 // water
                 const float dimension          = 8000;
                 const uint32_t density         = 64;
                 const Color forest_water_color = Color(0.0f / 255.0f, 140.0f / 255.0f, 100.0f / 255.0f, 50.0f / 255.0f);
                 entities::water(Vector3::Zero, dimension, density, forest_water_color);
+
+                // publish water tiles so they appear before the foliage parallel pass starts
+                World::PublishAll();
 
                 // props: trees, rocks, grass
                 {
@@ -772,6 +790,9 @@ namespace spartan
                         {
                             Entity* terrain_tile = children[tile_index];
 
+                            // collected so we can publish each top-level prop entity for this tile in one go
+                            vector<Entity*> tile_roots;
+
                             // trees
                             {
                                 Entity* entity = mesh_tree->GetRootEntity()->Clone();
@@ -801,6 +822,8 @@ namespace spartan
                                     renderable->SetMaxShadowDistance(shadow_distance);
                                     renderable->SetMaterial(material_leaf);
                                 }
+
+                                tile_roots.push_back(entity);
                             }
 
                             // rocks
@@ -823,6 +846,8 @@ namespace spartan
                                     Physics* physics = rock_entity->AddComponent<Physics>();
                                     physics->SetBodyType(BodyType::Mesh);
                                 }
+
+                                tile_roots.push_back(entity);
                             }
 
                             // grass - density layers for lod
@@ -850,6 +875,8 @@ namespace spartan
                                         renderable->SetInstances(far_transforms);
                                         renderable->SetMaterial(material_grass_blade);
                                         renderable->SetMaxRenderDistance(render_distance_foliage);
+
+                                        tile_roots.push_back(entity);
                                     }
 
                                     // mid layer (30%)
@@ -866,6 +893,8 @@ namespace spartan
                                         renderable->SetInstances(mid_transforms);
                                         renderable->SetMaterial(material_grass_blade);
                                         renderable->SetMaxRenderDistance(render_distance_foliage * 0.6f);
+
+                                        tile_roots.push_back(entity);
                                     }
 
                                     // near layer (55%)
@@ -882,6 +911,8 @@ namespace spartan
                                         renderable->SetInstances(near_transforms);
                                         renderable->SetMaterial(material_grass_blade);
                                         renderable->SetMaxRenderDistance(render_distance_foliage * 0.3f);
+
+                                        tile_roots.push_back(entity);
                                     }
                                 }
                             }
@@ -901,6 +932,14 @@ namespace spartan
                                 renderable->SetInstances(transforms);
                                 renderable->SetMaterial(material_flower);
                                 renderable->SetMaxRenderDistance(render_distance_foliage);
+
+                                tile_roots.push_back(entity);
+                            }
+
+                            // publish each prop subtree, safe under concurrent parallel-loop workers since each call only touches its own descendants
+                            for (Entity* root : tile_roots)
+                            {
+                                World::PublishEntity(root);
                             }
                         }
                     };
@@ -1011,6 +1050,8 @@ namespace spartan
                         }
                     }
                 }
+
+                World::PublishAll();
             }
         }
         //====================================================================================
@@ -1023,6 +1064,8 @@ namespace spartan
                 entities::camera(false);
                 entities::floor();
                 entities::sun(LightPreset::dusk, true);
+
+                World::PublishAll();
             }
         }
         //====================================================================================
@@ -1071,6 +1114,9 @@ namespace spartan
 
             // dispatch to world create function
             world_create[static_cast<size_t>(default_world)]();
+
+            // catch-all in case a world create function forgot a publish, otherwise these entities would never reach the renderer
+            World::PublishAll();
 
             ProgressTracker::SetGlobalLoadingState(false);
         });

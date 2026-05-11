@@ -62,7 +62,10 @@ namespace spartan
         string world_description;
         vector<string> world_console_variables; // cvar names overridden by this world (preserved across save/load)
         mutex entity_access_mutex;
-        vector<Entity*> pending_add;
+        // entities that workers are still configuring, invisible to the renderer
+        vector<Entity*> entities_in_construction;
+        // entities workers have fully configured and explicitly published, drained into entities by the main thread
+        vector<Entity*> entities_ready_to_publish;
         set<uint64_t> pending_remove;
         uint32_t audio_source_count = 0;
         atomic<bool> resolve        = false;
@@ -748,15 +751,63 @@ namespace spartan
         pending_remove.clear();
     }
 
-    void World::ProcessPendingAdditions()
+    void World::ProcessReadyToPublish()
     {
         lock_guard<mutex> lock(entity_access_mutex);
 
-        if (pending_add.empty())
+        if (entities_ready_to_publish.empty())
             return;
 
-        entities.insert(entities.end(), pending_add.begin(), pending_add.end());
-        pending_add.clear();
+        entities.insert(entities.end(), entities_ready_to_publish.begin(), entities_ready_to_publish.end());
+        entities_ready_to_publish.clear();
+    }
+
+    void World::PublishEntity(Entity* entity)
+    {
+        if (!entity)
+            return;
+
+        // walk the in_construction list and move this entity plus all descendants currently in construction to ready_to_publish
+        // descendants may have been added via World::CreateEntity by Entity::Load or by world create code
+        vector<Entity*> subtree;
+        subtree.push_back(entity);
+        entity->GetDescendants(&subtree);
+
+        // build a fast lookup set of subtree ids so we can match against entities_in_construction
+        set<uint64_t> subtree_ids;
+        for (Entity* e : subtree)
+        {
+            subtree_ids.insert(e->GetObjectId());
+        }
+
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        for (auto it = entities_in_construction.begin(); it != entities_in_construction.end(); )
+        {
+            if (subtree_ids.count((*it)->GetObjectId()) > 0)
+            {
+                entities_ready_to_publish.push_back(*it);
+                it = entities_in_construction.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        resolve = true;
+    }
+
+    void World::PublishAll()
+    {
+        lock_guard<mutex> lock(entity_access_mutex);
+
+        if (entities_in_construction.empty())
+            return;
+
+        entities_ready_to_publish.insert(entities_ready_to_publish.end(), entities_in_construction.begin(), entities_in_construction.end());
+        entities_in_construction.clear();
+        resolve = true;
     }
 
     void World::Initialize()
@@ -781,7 +832,20 @@ namespace spartan
         entities.clear();
         entities_lights.clear();
         entities_renderables.clear();
-        pending_add.clear();
+        // also clear any entities the loader had queued, otherwise we'd leak partially-built objects when a load is aborted
+        {
+            lock_guard<mutex> lock(entity_access_mutex);
+            for (Entity* entity : entities_in_construction)
+            {
+                delete entity;
+            }
+            entities_in_construction.clear();
+            for (Entity* entity : entities_ready_to_publish)
+            {
+                delete entity;
+            }
+            entities_ready_to_publish.clear();
+        }
         camera = nullptr;
         light  = nullptr;
         file_path.clear();
@@ -799,10 +863,76 @@ namespace spartan
 
     void World::Tick()
     {
-        // loading can happen in the background
+        // loading can happen in the background, but the renderer still wants to see whatever entities the loader has already published
+        // do a load-time tick, drain published entities, run normal component ticks, rebuild caches; skip Game::Tick and simulated world time
         if (ProgressTracker::IsLoading())
         {
+            SP_PROFILE_CPU();
+
             was_loading = true;
+            ProcessPendingRemovals();
+            ProcessReadyToPublish();
+
+            // published entities are fully configured, normal PreTick and Tick is safe and keeps camera, lights and renderables coherent
+            for (Entity* entity : entities)
+            {
+                if (entity->GetActive())
+                {
+                    entity->PreTick();
+                }
+            }
+            for (Entity* entity : entities)
+            {
+                if (entity->GetActive())
+                {
+                    entity->Tick();
+                }
+            }
+
+            // force the renderable, lights, camera caches to rebuild every loading frame so newly published entities show up
+            resolve = true;
+            {
+                camera             = nullptr;
+                light              = nullptr;
+                audio_source_count = 0;
+                entities_lights.clear();
+                entities_renderables.clear();
+                for (Entity* entity : entities)
+                {
+                    if (entity->GetActive())
+                    {
+                        if (!camera && entity->GetComponent<Camera>())
+                        {
+                            camera = entity;
+                        }
+
+                        if (Light* light_comp = entity->GetComponent<Light>())
+                        {
+                            if (!light && light_comp->GetLightType() == LightType::Directional)
+                            {
+                                light = entity;
+                            }
+                            entities_lights.push_back(entity);
+                        }
+
+                        if (entity->GetComponent<Render>())
+                        {
+                            entities_renderables.push_back(entity);
+                        }
+
+                        if (entity->GetComponent<AudioSource>())
+                        {
+                            audio_source_count++;
+                        }
+                    }
+                }
+            }
+
+            compute_bounding_box();
+            resolve = false;
+            // do not clear entity_states here, worker threads are still writing to it via mark_entity_changed under the lock, racing with an unlocked clear crashes the unordered_map
+            // it gets drained safely in the regular non-loading Tick path once loading completes
+
             return;
         }
 
@@ -813,7 +943,7 @@ namespace spartan
         if (was_loading)
         {
             was_loading = false;
-            ProcessPendingAdditions();
+            ProcessReadyToPublish();
             SP_FIRE_EVENT(EventType::WorldLoaded);
         }
 
@@ -956,7 +1086,7 @@ namespace spartan
             }
         }
 
-        ProcessPendingAdditions();
+        ProcessReadyToPublish();
 
         // resolve if needed
         if (resolve)
@@ -1302,10 +1432,15 @@ namespace spartan
                     {
                         Entity* entity = World::CreateEntity();
                         entity->Load(entity_nodes[i]);
+                        // publish this root and its descendants so the renderer can pick it up as soon as it is fully assembled
+                        World::PublishEntity(entity);
                         ProgressTracker::GetProgress(ProgressType::World).JobDone();
                     }
                 }, entity_count);
             }
+
+            // safety net, anything that did not flow through the per-root publish above (none expected) still makes it to the renderer
+            World::PublishAll();
 
             // report time
             SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", file_path.c_str(), timer.GetElapsedTimeMs());
@@ -1326,7 +1461,8 @@ namespace spartan
         lock_guard lock(entity_access_mutex);
 
         Entity* entity = new Entity();
-        pending_add.push_back(entity);
+        // worker threads keep the entity in the in-construction list until they call Publish, the renderer never sees it before then
+        entities_in_construction.push_back(entity);
         mark_entity_changed(entity->GetObjectId(), EntityChange::Components); // new entity requires resolve
 
         return entity;
@@ -1420,11 +1556,16 @@ namespace spartan
                 entities.erase(it);
             }
 
-            // also remove from pending_add if it was just added
-            auto pending_it = find(pending_add.begin(), pending_add.end(), entity);
-            if (pending_it != pending_add.end())
+            // also remove from the in-construction and ready-to-publish lists if it was just added
+            auto construction_it = find(entities_in_construction.begin(), entities_in_construction.end(), entity);
+            if (construction_it != entities_in_construction.end())
             {
-                pending_add.erase(pending_it);
+                entities_in_construction.erase(construction_it);
+            }
+            auto ready_it = find(entities_ready_to_publish.begin(), entities_ready_to_publish.end(), entity);
+            if (ready_it != entities_ready_to_publish.end())
+            {
+                entities_ready_to_publish.erase(ready_it);
             }
 
             delete entity;
@@ -1436,7 +1577,7 @@ namespace spartan
         lock_guard<mutex> lock(entity_access_mutex);
 
         entities_out.clear();
-        entities_out.reserve(entities.size() + pending_add.size());
+        entities_out.reserve(entities.size() + entities_in_construction.size() + entities_ready_to_publish.size());
 
         // include committed entities
         for (Entity* entity : entities)
@@ -1447,9 +1588,16 @@ namespace spartan
             }
         }
 
-        // also include pending entities (important during world loading when prefabs
-        // need to reference other entities that haven't been committed yet)
-        for (Entity* entity : pending_add)
+        // also include entities still being constructed or waiting to be published, important during world loading
+        // when prefabs need to reference other entities that haven't been committed yet
+        for (Entity* entity : entities_in_construction)
+        {
+            if (!entity->GetParent())
+            {
+                entities_out.emplace_back(entity);
+            }
+        }
+        for (Entity* entity : entities_ready_to_publish)
         {
             if (!entity->GetParent())
             {

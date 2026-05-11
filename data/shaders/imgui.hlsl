@@ -48,9 +48,9 @@ vertex main_vs(Vertex_Pos2dUvColor input)
     return output;
 }
 
+// rec.709 (srgb primaries) linear values to hdr10 (rec.2020 + st.2084 pq curve)
 float3 linear_to_hdr10(float3 color, float white_point)
 {
-    // convert Rec.709 (similar to srgb) to Rec.2020 color space
     {
         static const float3x3 from709to2020 =
         {
@@ -58,15 +58,13 @@ float3 linear_to_hdr10(float3 color, float white_point)
             { 0.0690970f, 0.9195400f, 0.0113612f },
             { 0.0163916f, 0.0880132f, 0.8955950f }
         };
-        
         color = mul(from709to2020, color);
     }
 
-    // normalize HDR scene values ([0..>1] to [0..1]) for the ST.2084 curve
+    // normalize hdr scene values to the st.2084 [0..1] domain where 1.0 = 10000 nits
     const float st2084_max = 10000.0f;
     color *= white_point / st2084_max;
 
-    // apply ST.2084 (PQ curve) for HDR10 standard
     {
         static const float m1 = 2610.0 / 4096.0 / 4;
         static const float m2 = 2523.0 / 4096.0 * 128;
@@ -131,10 +129,9 @@ float4 main_ps(vertex input) : SV_Target
     color_texture.rgb  = lerp(color_texture.rgb, linear_to_srgb(color_texture.rgb), f_visualized * float(gamma_correct));
     color_texture.rgb *= lerp(1.0f, 10.0f, f_visualized * float(boost));
 
-    // final
     float4 color = input.color * color_texture;
 
-    // hdr
+    // hdr encoding, skipped for the frame texture since the output pass already wrote pq-encoded values into it
     float apply_hdr     = buffer_frame.hdr_enabled * (1.0f - is_frame_texture);
     float3 color_linear = srgb_to_linear(color.rgb);
     float3 color_hdr    = linear_to_hdr10(color_linear, 400.0f);

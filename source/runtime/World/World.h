@@ -66,6 +66,10 @@ namespace spartan
         static const std::vector<Entity*>& GetEntitiesLights();
         static const std::vector<Entity*>& GetEntitiesRenderables();
 
+        // publish, workers call these once an entity (or batch) is fully configured so the main thread can merge it into the live list
+        static void PublishEntity(Entity* entity);
+        static void PublishAll();
+
         // misc
         static const std::string& GetName();
         static const std::string& GetFilePath();
@@ -94,6 +98,6 @@ namespace spartan
 
     private:
         static void ProcessPendingRemovals();
-        static void ProcessPendingAdditions();
+        static void ProcessReadyToPublish();
     };
 }

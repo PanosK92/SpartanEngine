@@ -343,13 +343,11 @@ namespace spartan
 
         if (can_render)
         {
-            // skip heavy gpu work during loading to avoid contention with texture uploads
-            bool is_loading = ProgressTracker::IsLoading();
-
-            // suppress hi-z for a grace period after loading while draw calls stabilize
+            // suppress hi-z while loading and for a grace period after, draw calls and acceleration structures stabilize during this window
             {
                 static uint32_t post_load_frames = 0;
-                static bool was_loading           = true;
+                static bool was_loading          = true;
+                const bool is_loading            = ProgressTracker::IsLoading();
 
                 if (is_loading)
                 {
@@ -366,7 +364,7 @@ namespace spartan
                     post_load_frames--;
                 }
 
-                m_is_hiz_suppressed = post_load_frames > 0;
+                m_is_hiz_suppressed = is_loading || post_load_frames > 0;
             }
 
             // rebuild geometry buffer if new meshes arrived
@@ -388,11 +386,9 @@ namespace spartan
 
             UpdateDrawCalls(m_cmd_list_present);
 
-            if (!is_loading)
-            {
-                UpdateAccelerationStructures(m_cmd_list_compute);
-            }
-    
+            // run accel updates even during loading, blas builds are capped per frame and tlas waits until burst is done
+            UpdateAccelerationStructures(m_cmd_list_compute);
+
             // resource cleanup - frame-based retirement, no gpu stall required
             if (RHI_Device::DeletionQueueNeedsToParse())
             {
@@ -409,8 +405,7 @@ namespace spartan
                 }
             }
     
-            // bindless resource updates
-            if (!is_loading)
+            // bindless resource updates, run during loading so newly published entities pick up materials and lights as they arrive
             {
                 bool initialize = GetFrameNumber() == 0;
 
@@ -1316,7 +1311,7 @@ namespace spartan
 
     void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)
     {
-        // reset every counter before the loading early out so indirect passes never read stale bindless geometry
+        // reset every counter so indirect passes never read stale bindless geometry
         m_draw_call_count           = 0;
         m_draw_calls_prepass_count  = 0;
         m_draw_data_count           = 0;
@@ -1324,14 +1319,16 @@ namespace spartan
         m_indirect_renderable_count = 0;
         m_cull_task_count           = 0;
         m_transparents_present      = false;
-        if (ProgressTracker::IsLoading())
-            return;
 
         // collect draw calls
         {
             for (Entity* entity : World::GetEntitiesRenderables())
             {
                 Render* renderable = entity->GetComponent<Render>();
+                // skip not yet ready entities, mesh or material may still be in flight while loading is in progress
+                if (!renderable->GetMesh())
+                    continue;
+
                 Material* material = renderable->GetMaterial();
                 if (!material)
                     continue;
