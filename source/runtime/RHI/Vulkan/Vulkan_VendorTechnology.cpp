@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Pipeline.h"
 #include "../RHI_Shader.h"
 #include "../Rendering/Renderer.h"
-#include "../../Rendering/Color.h"
 #include "../../World/World.h"
 #include "../World/Components/Camera.h"
 SP_WARNINGS_OFF
@@ -57,25 +56,6 @@ namespace spartan
         uint32_t resolution_output_height     = 0;
         bool reset_history                    = false;
         float resolution_scale                = 1.0f;
-
-        RHI_Texture* get_upscaler_exposure_texture(RHI_CommandList* cmd_list)
-        {
-            RHI_Texture* texture = Renderer::GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous);
-            SP_ASSERT(texture != nullptr);
-
-            const bool auto_exposure_enabled = cvar_auto_exposure_adaptation_speed.GetValue() > 0.0f;
-            const float camera_exposure      = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
-            const float exposure             = max(camera_exposure, 0.000001f);
-
-            if (!auto_exposure_enabled || reset_history)
-            {
-                cmd_list->ClearTexture(texture, Color(exposure, exposure, exposure, 1.0f));
-            }
-
-            texture->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-
-            return texture;
-        }
     }
 
     namespace intel
@@ -151,7 +131,10 @@ namespace spartan
             intel::params_init.outputResolution.x = common::resolution_output_width;
             intel::params_init.outputResolution.y = common::resolution_output_height;
             intel::params_init.qualitySetting     = intel::get_quality(scale_factor);
-            intel::params_init.initFlags          = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_EXPOSURE_SCALE_TEXTURE;
+            // let xess compute its own exposure from input statistics, the engine's tonemapper
+            // handles exposure for the displayed image, decoupling these two avoids feeding xess
+            // a value that lags or fluctuates relative to its training assumptions
+            intel::params_init.initFlags          = XESS_INIT_FLAG_USE_NDC_VELOCITY | XESS_INIT_FLAG_INVERTED_DEPTH | XESS_INIT_FLAG_ENABLE_AUTOEXPOSURE;
             intel::params_init.creationNodeMask   = 0;
             intel::params_init.visibleNodeMask    = 0;
             intel::params_init.tempBufferHeap     = VK_NULL_HANDLE;
@@ -335,8 +318,6 @@ namespace spartan
     )
     {
     #ifdef _WIN32
-        RHI_Texture* tex_exposure = common::get_upscaler_exposure_texture(cmd_list);
-
         tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
@@ -347,7 +328,7 @@ namespace spartan
         intel::params_execute.depthTexture               = intel::to_xess_image_view(tex_depth);
         intel::params_execute.velocityTexture            = intel::to_xess_image_view(tex_velocity);
         intel::params_execute.outputTexture              = intel::to_xess_image_view(tex_output);
-        intel::params_execute.exposureScaleTexture       = intel::to_xess_image_view(tex_exposure);
+        intel::params_execute.exposureScaleTexture       = {}; // ignored, autoexposure flag is set
         intel::params_execute.responsivePixelMaskTexture = intel::to_xess_image_view(Renderer::GetStandardTexture(Renderer_StandardTexture::Black)); // neutralize and control via float
         intel::params_execute.jitterOffsetX              = intel::jitter.x;
         intel::params_execute.jitterOffsetY              = intel::jitter.y;
