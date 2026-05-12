@@ -27,8 +27,8 @@ local BUILD_SCRIPTS    = path.join(PROJECT_ROOT, "build_scripts")
 local SEVEN_ZIP        = path.join(BUILD_SCRIPTS, "7z.exe")
 local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
 
-local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/nun4i5rkbr6opigee3he2/libraries.7z?rlkey=bxb6wmgmf2740y0snar5u4ed6&st=8l4zm4dt&dl=1"
-local LIBRARY_HASH     = "9d8769164e05c975b41d3935052cb5959b97dca8a960a4cc157673dab30cb58d"
+local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/09anq21m35bpkx5c2raqp/libraries.7z?rlkey=7ipbyiumnrofun9jynhki90t6&dl=1"
+local LIBRARY_HASH     = "ab500c71d3efbe72659cb6bab653eeb7186da9056a7db0ae542dbe518246c039"
 
 local RUNTIME_DLLS     = {
     path.join(LIBRARIES_DIR, "dxcompiler.dll"),

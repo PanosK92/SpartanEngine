@@ -248,20 +248,20 @@ namespace spartan
     {
         uint32_t width  = static_cast<uint32_t>(GetResolutionRender().x);
         uint32_t height = static_cast<uint32_t>(GetResolutionRender().y);
-        uint32_t flags  = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
+        uint32_t flags  = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
 
         // ssao
         bool need_ssao = cvar_ssao.GetValueAs<bool>();
         if (need_ssao && !at(render_targets, Renderer_RenderTarget::ssao))
         {
-            at(render_targets, Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags | RHI_Texture_ConcurrentSharing, "ssao");
+            at(render_targets, Renderer_RenderTarget::ssao) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width, height, 1, 1, RHI_Format::R16G16B16A16_Float, flags, "ssao");
         }
         else if (!need_ssao && at(render_targets, Renderer_RenderTarget::ssao))
         {
             at(render_targets, Renderer_RenderTarget::ssao) = nullptr;
         }
         
-        // ray traced reflections gbuffer
+        // ray traced reflections gbuffer, concurrent sharing so rt reflections can run on the compute queue
         bool need_rt_reflections = cvar_ray_traced_reflections.GetValueAs<bool>() && RHI_Device::IsSupportedRayTracing();
         if (need_rt_reflections && !at(render_targets, Renderer_RenderTarget::gbuffer_reflections_position))
         {
@@ -453,7 +453,7 @@ namespace spartan
 
             // misc
             at(render_targets, Renderer_RenderTarget::sss)                = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_render, height_render, 4, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "sss");
-            at(render_targets, Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "reflections");
+            at(render_targets, Renderer_RenderTarget::reflections)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "reflections");
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D,      width_render, height_render, 1, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "ray_traced_shadows");
             {
                 float restir_scale          = cvar_restir_pt_scale.GetValue();

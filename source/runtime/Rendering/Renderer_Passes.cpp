@@ -178,6 +178,8 @@ namespace spartan
         // with the prior frame's graphics phase 3 reads of cloud_shadow, tlas, skysphere etc.
         // null timeline on frame 0 means no wait, which is fine because nothing has been read yet
         cmd_list_compute->Submit(nullptr, false, nullptr, m_previous_present_timeline, m_previous_present_timeline_value);
+        RHI_SyncPrimitive* batch_a_timeline = cmd_list_compute->GetTimelineSemaphore();
+        uint64_t batch_a_value              = cmd_list_compute->GetLastTimelineSignalValue();
 
         if (Camera* camera = World::GetCamera())
         {
@@ -226,16 +228,18 @@ namespace spartan
             RHI_SyncPrimitive* compute_b_timeline = cmd_list_compute_b->GetTimelineSemaphore();
             uint64_t compute_b_value              = cmd_list_compute_b->GetLastTimelineSignalValue();
 
-            // graphics phase 2: shadow maps
-            // no compute wait, queue order keeps it after phase 1, so it overlaps with batch b
+            // graphics phase 2: work that does not depend on batch b's results
+            // runs in parallel with compute batch b, must wait on batch a so the tlas is ready
+            // for ray traced reflections (built in batch a on the compute queue)
             RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
             cmd_list_graphics_present = queue_graphics->NextCommandList();
             cmd_list_graphics_present->Begin();
             m_cmd_list_present = cmd_list_graphics_present;
 
             Pass_ShadowMaps(cmd_list_graphics_present);
+            Pass_RayTracedReflections(cmd_list_graphics_present);
 
-            cmd_list_graphics_present->Submit(nullptr, false);
+            cmd_list_graphics_present->Submit(nullptr, false, nullptr, batch_a_timeline, batch_a_value);
 
             // graphics phase 3: lighting and post-process
             // present cmd list waits on compute batch b at submit time via SubmitAndPresent
@@ -282,9 +286,9 @@ namespace spartan
                 }
 
                 Pass_Light_ImageBased(cmd_list_graphics_present, eye_layer);
-                
-                // rt reflections (after transparents so depth includes glass)
-                Pass_RayTracedReflections(cmd_list_graphics_present, eye_layer);
+
+                // rt reflections gbuffer is produced earlier in graphics phase 2 (parallel with compute batch b)
+                // so this only does the light composition step here
                 Pass_Light_Reflections(cmd_list_graphics_present, eye_layer);
                 
                 Pass_TransparencyReflectionRefraction(cmd_list_graphics_present, eye_layer);

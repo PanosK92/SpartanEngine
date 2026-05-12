@@ -14,24 +14,12 @@
     <Instances />
    </render>
   </Entity>
-  <Entity name="floor" id="9100000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 1 5000">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
   <Entity name="tube_front_warm" id="12638874799870260079" active="true" position="-2.23517e-08 1.15 -5.04129" rotation="0 0 0 1" scale="0.02 2.3 0.02">
    <light flags="5" light_type="3" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" index="1" preset="5" area_width="0.100000001" area_height="2.3499999" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="ceiing_light" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </render>
-  </Entity>
-  <Entity name="physics_body_camera" id="9100000000000000002" active="true" position="-5.86753 1.04523 -4.91659" rotation="0 0 0 1" scale="1 1 1">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <Entity name="component_camera" id="9100000000000000003" active="true" position="0 0.77 0" rotation="-0.0403847 -0.415506 0.0153787 -0.908563" scale="1 1 1">
-    <camera aperture="11" shutter_speed="0.00800000038" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="49" />
-   </Entity>
   </Entity>
   <Entity name="Cube" id="5196688867028285157" active="true" position="0.377128 1.13078 11.4597" rotation="0 0.707108 0 0.707106" scale="1 5.8 20">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
@@ -42,650 +30,13 @@
   <Entity name="turntable" id="9100000000000000006" active="true" position="0 -0.1 0" rotation="0 0 0 1" scale="0.75 0.75 0.75">
    <script file_path="../worlds/turntable.lua" />
    <Entity name="disc" id="9100000000000000007" active="true" position="0 0.15 0" rotation="0 0 0 1" scale="5 0.3 5">
-    <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="pool_tiles" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
      <Instances />
     </render>
    </Entity>
    <Entity name="ferrari" id="9100000000000000008" active="true" position="0 0.3 0" rotation="0 0 0 1" scale="1 1 1">
     <prefab type="car" type="car" static_physics="false" drivable="false" />
    </Entity>
-  </Entity>
-  <Entity name="Cube_1_1" id="2124977161275690050" active="true" position="10.0771 1.13078 1.95973" rotation="0 0 0 1" scale="1 5.8 20">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="scene" id="15927797017079915126" active="false" position="0 0 0" rotation="0.000489867 0.710916 -0.703277 0.000484602" scale="0.0124652 0.0124652 0.0124652">
-   <Entity name="root" id="15927821246270357895" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-    <Entity name="GLTF_SceneRootNode" id="15927815646951543959" active="true" position="0 0 0" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
-     <Entity name="Sketchfab_model_0" id="15927807409453217170" active="true" position="0 0 0" rotation="0.711216 -0.000768161 -0.000759257 0.702973" scale="0.598849 0.598849 0.598849">
-      <Entity name="Laferrari fbx.fbx_1" id="15927816136083789886" active="true" position="0 0 0" rotation="-0.707107 0 0 0.707107" scale="0.01 0.01 0.01">
-       <Entity name="RootNode_2" id="15927775619354010162" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-        <Entity name="LaFerrari_3" id="15927773199810569634" active="true" position="0.247717 -3.48485 -0" rotation="5.33851e-08 0.707107 -0.707107 5.33851e-08" scale="5.30804 5.30804 5.30804">
-         <Entity name="LaFerrari_black_0_4" id="15927775939221070916" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_8" id="15927778914003608906" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="4" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Carbon fiber_0_5" id="15927760829476928437" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_10" id="15927771023960572431" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="23" material_name="Carbon_fiber" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Body_0_6" id="15927764410146162050" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_12" id="15927297230838049510" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="51" material_name="car_paint" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Disk_0_7" id="15927302663693200051" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_14" id="15927781814400966806" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="73" material_name="Disk" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_break lights glasses_0_8" id="15927784729355749340" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_16" id="15927298978621008980" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="80" material_name="break_lights_glasses" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Logos_0_9" id="15927786649196671360" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_18" id="15927320618166851973" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="16" material_name="Logos" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0xE0C657_0_10" id="15927329259730241330" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_20" id="15927331578302367141" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="49" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0xE05656_0_11" id="15927316626966237018" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_22" id="15927313331875692748" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="55" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0x57E0C6_0_12" id="15927322619266408175" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_24" id="15927315836615472135" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="62" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Viper_0_13" id="15927270796769132258" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_26" id="15927279438624102104" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="68" material_name="Viper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_breake lights chrom_0_14" id="15927263529329289726" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_28" id="15927264070237448968" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="0" material_name="breake_lights_chrom" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_breake chrome 2_0_15" id="15927272967661802784" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_30" id="15927266999670442970" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="22" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Under_0_16" id="15927370591141062248" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_32" id="15927375315630037523" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="33" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_under carreage_0_17" id="15927374061297655053" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_34" id="15927290921290544554" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="37" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Rear logo_0_18" id="15927295292536324654" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_36" id="15927288101036569178" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="47" material_name="Rear_logo" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_head lights glasses.002_0_19" id="15927385662274001911" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_38" id="15927397314843615830" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="9" material_name="head_lights_glasses.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_red light_0_20" id="15927389149599273928" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_40" id="15927376547723170753" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="46" material_name="red_light" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_rear black something_0_21" id="15927379691773493826" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_42" id="15927388723136656794" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="53" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0xE056560_0_22" id="15927343191783021632" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_44" id="15927338049368476495" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="58" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Rear headlights_0_23" id="15927345544314253707" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_46" id="15927342589569667143" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="75" material_name="Rear_headlights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_chrome_0_24" id="15927399698218046805" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_48" id="15927402016790967104" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="11" material_name="chrome" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0x8606062_0_25" id="15927361847174897803" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_50" id="15927440054230943921" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="40" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0xE0C6571_0_26" id="15927437662227660082" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_52" id="15927364521078731818" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="56" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0xE5A6D7_0_27" id="15927350183289753542" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_54" id="15927357027175368869" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="64" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Engine glass_0_28" id="15927355800917964767" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_56" id="15927360514524632271" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="71" material_name="Engine_glass" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Glasses_0_29" id="15927452134665594878" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_58" id="15927458629607450086" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="10" material_name="Glasses" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Material.019_0_30" id="15927450712126025276" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_60" id="15927462945463077482" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="24" material_name="Material.019" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_break lights.001_0_31" id="15927455255553702587" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_62" id="15927445189407901615" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="39" material_name="break_lights.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_run lights_0_32" id="15927443547522559746" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_64" id="15927446714886375156" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="59" material_name="run_lights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_tail lights_0_33" id="15927450168534905305" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_66" id="15927403518311541701" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="67" material_name="tail_lights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0x1C59B11_0_34" id="15927410702435694607" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_68" id="15927403090412906649" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="6" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0xB11C95_0_35" id="15927407629441163536" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_70" id="15927407882263182584" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="36" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Rear something_0_36" id="15927463923416569812" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_72" id="15927460631784612389" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="43" material_name="Rear_something" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_black 2_0_37" id="15927470360742242968" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_74" id="15927471544282341161" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="74" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_black.007_0_38" id="15927471611096765733" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_76" id="15927430910472209306" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="77" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_black.005_0_39" id="15927427697121711115" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_78" id="15927435530369932289" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="1" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Front headlights.001_0_40" id="15927429243461985711" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_80" id="15927419805527385515" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="29" material_name="Front_headlights.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0x1C59B13_0_41" id="15927413007001697178" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_82" id="15927420536280793461" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="61" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_chrome0_0_42" id="15927416985399239355" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_84" id="15927424170996129493" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="70" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_hood black_0_43" id="15927517766828064706" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_86" id="15927518871765971667" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="78" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Inside stickers_0_44" id="15927516990886580538" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_88" id="15927529544339843964" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="12" material_name="Inside_stickers" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Material.009_0_45" id="15927524556485671108" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_90" id="15927510233556406681" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="30" material_name="Material.009" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Interior 2.001_0_46" id="15927509969634520585" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_92" id="15927511024932068251" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="54" material_name="Interior_2.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_int mirror_0_47" id="15927513970677215545" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_94" id="15927515398193678166" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="76" material_name="int_mirror" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0x1C59B14_0_48" id="15927515969154380345" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_96" id="15927475913601145644" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="83" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_side mirrors_0_49" id="15927542762396610282" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_98" id="15927473942673793444" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="2" material_name="side_mirrors" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Seets logo_0_50" id="15927476933241525217" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_100" id="15927473411850734496" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="17" material_name="Seets_logo" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_seats nuts_0_51" id="15927533716632700621" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_102" id="15927530212670132571" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="20" material_name="seats_nuts" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_seat belt lock_0_52" id="15927527171134456640" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_104" id="15927535005688690934" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="45" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_Rim_0_53" id="15927531711860754759" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_106" id="15927536515594439766" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="52" material_name="material" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0x8606063_0_54" id="15927491893917523094" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_108" id="15927493251963811763" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="7" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_wireframe_color_0xE056562_0_55" id="15927491128298645559" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_110" id="15927501336211230816" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="26" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="LaFerrari_sreerean wheel buttons_0_56" id="15927495668995974062" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_112" id="15927485605195217210" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="32" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="BrakeRearLeft.001_57" id="15927477164575079569" active="true" position="-24.4098 40.976 -11.0366" rotation="3.93985e-16 -2.18557e-08 -1 7.54979e-08" scale="0.998485 0.998485 0.998485">
-          <Entity name="BrakeRearLeft.001_Material.144_0_58" id="15927489572088471515" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <Entity name="Object_115" id="15927487448584825247" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-            <render mesh_name="scene" sub_mesh_index="72" material_name="Material.144" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-             <Instances />
-            </render>
-           </Entity>
-          </Entity>
-         </Entity>
-         <Entity name="BrakeRearLeft.002_59" id="15927488386221545572" active="true" position="-24.4098 -38.2016 -10.5672" rotation="3.93985e-16 -2.18557e-08 -1 7.54979e-08" scale="0.998485 0.998485 0.998485">
-          <Entity name="BrakeRearLeft.002_Material.145_0_60" id="15927021409509728740" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <Entity name="Object_118" id="15927022597843193910" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-            <render mesh_name="scene" sub_mesh_index="81" material_name="Material.144" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-             <Instances />
-            </render>
-           </Entity>
-          </Entity>
-         </Entity>
-         <Entity name="BrakeRearLeft.003_61" id="15927031003372215654" active="true" position="24.5559 -38.2016 -10.5672" rotation="2.18557e-08 -5.61358e-16 3.17865e-08 1" scale="0.998485 0.998485 0.998485">
-          <Entity name="BrakeRearLeft.003_Material.146_0_62" id="15927025017021005753" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <Entity name="Object_121" id="15927505966669184036" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-            <render mesh_name="scene" sub_mesh_index="14" material_name="Material.146" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-             <Instances />
-            </render>
-           </Entity>
-          </Entity>
-         </Entity>
-         <Entity name="BrakeRearLeft.004_63" id="15927499352792386199" active="true" position="24.5559 40.935 -10.9951" rotation="2.18557e-08 -5.61358e-16 3.17865e-08 1" scale="0.998485 0.998485 0.998485">
-          <Entity name="BrakeRearLeft.004_Material.147_0_64" id="15927018748378137570" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <Entity name="Object_124" id="15927503641419083795" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-            <render mesh_name="scene" sub_mesh_index="35" material_name="Material.147" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-             <Instances />
-            </render>
-           </Entity>
-          </Entity>
-         </Entity>
-        </Entity>
-        <Entity name="tire 1_65" id="15927017739603981527" active="true" position="134.205 52.2153 202.703" rotation="0.707107 0 0 0.707107" scale="5.66641 5.66641 5.66641">
-         <Entity name="tire 1_tread.001_0_66" id="15927049271518291076" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_127" id="15927044031412498273" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="42" material_name="tread.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 1_disc.003_0_67" id="15927047153685855491" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_129" id="15926984257106766274" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="63" material_name="disc.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 1_visse.009_0_68" id="15927049472328478606" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_131" id="15927036388165156584" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="69" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 1_Material.111_0_69" id="15927029262867214961" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_133" id="15927041495501486599" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="5" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 1_rim.001_0_70" id="15927037677562692802" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_135" id="15927034704059850031" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="18" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 1_Material.112_0_71" id="15926994336688182319" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_137" id="15926995052604737825" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="25" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 1_Material.113_0_72" id="15926996410454501638" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_139" id="15926999532667965656" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="34" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-        </Entity>
-        <Entity name="tire 2_73" id="15927002027675784831" active="true" position="-134.552 52.2153 202.703" rotation="0.707107 0 0 0.707107" scale="5.66641 5.66641 5.66641">
-         <Entity name="tire 2_tread.002_0_74" id="15926988758889078669" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_142" id="15926980504781471384" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="66" material_name="tread.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 2_disc.004_0_75" id="15926992736356673166" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_144" id="15926984883357169876" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="13" material_name="disc.004" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 2_visse.011_0_76" id="15926991550867137943" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_146" id="15927085962914846462" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="38" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 2_Material.114_0_77" id="15927012245227938223" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_148" id="15927091826486572931" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="57" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 2_rim.002_0_78" id="15927096792156729582" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_150" id="15927094145330123286" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="65" material_name="rim.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 2_Material.115_0_79" id="15927010690542533464" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_152" id="15927005851409942752" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="79" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 2_Material.116_0_80" id="15927013284600451379" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_154" id="15927011488098550826" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="3" material_name="Material.116" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-        </Entity>
-        <Entity name="tire 3_81" id="15927007701181094525" active="true" position="133.208 54.6617 -217.374" rotation="0.707107 0 0 0.707107" scale="5.97512 5.97512 5.97512">
-         <Entity name="tire 3_tread.003_0_82" id="15927108315872555848" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_157" id="15927103469318057200" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="21" material_name="tread.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 3_disc.005_0_83" id="15927112863751828816" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_159" id="15927113582366488634" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="44" material_name="disc.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 3_visse.012_0_84" id="15927114377695103480" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_161" id="15927096138890134011" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="82" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 3_Material.117_0_85" id="15927101118654321582" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_163" id="15927098390907864983" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="84" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 3_rim.003_0_86" id="15927094884705765933" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_165" id="15927103783467016245" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="8" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 3_Material.118_0_87" id="15927100816863277146" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_167" id="15927061165136850476" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="28" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 3_Material.119_0_88" id="15927062209595227549" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_169" id="15927063930447163907" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="31" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-        </Entity>
-        <Entity name="tire 4_89" id="15927065940996713826" active="true" position="-133.556 54.6617 -217.374" rotation="0.707107 0 0 0.707107" scale="5.97512 5.97512 5.97512">
-         <Entity name="tire 4_tread.004_0_90" id="15927053494354936331" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_172" id="15927120578999719828" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="48" material_name="tread.004" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 4_disc.006_0_91" id="15927057465553315892" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_174" id="15927055658634423331" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="60" material_name="disc.006" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 4_visse.013_0_92" id="15927052374906216404" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_176" id="15927083336397691395" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="15" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 4_Material.120_0_93" id="15927078028611712552" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_178" id="15927156228420144734" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="19" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 4_rim.004_0_94" id="15927083219621197606" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_180" id="15927158478639546225" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="27" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 4_Material.121_0_95" id="15927069950360483956" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_182" id="15927076627249771720" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="41" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-         <Entity name="tire 4_Material.122_0_96" id="15927071388230438885" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-          <Entity name="Object_184" id="15927079221713008019" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-           <render mesh_name="scene" sub_mesh_index="50" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-            <Instances />
-           </render>
-          </Entity>
-         </Entity>
-        </Entity>
-       </Entity>
-      </Entity>
-     </Entity>
-    </Entity>
-   </Entity>
-  </Entity>
-  <Entity name="Cube_1" id="10406687217253271126" active="true" position="-10.1229 1.13078 1.2597" rotation="0 0 0 1" scale="1 5.8 20">
-   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
-   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
   </Entity>
   <Entity name="light_directional" id="9100000000000000004" active="false" position="0 5 0" rotation="-0.26101 0 0 0.965336" scale="1 1 1">
    <light flags="1" light_type="0" color_r="1" color_g="0.949999988" color_b="0.850000024" temperature="5500" intensity="8" intensity_photometric="30000" range="3.40282347e+38" angle="0.52359879" index="0" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
@@ -1322,13 +673,656 @@
     </Entity>
    </Entity>
   </Entity>
-  <Entity name="Directional" id="11601109533259598530" active="true" position="0 0 0" rotation="0.92388 0 0 -0.382683" scale="1 1 1">
-   <light flags="3" light_type="0" color_r="1" color_g="0.816754639" color_b="0.669110954" temperature="4100" intensity="8" intensity_photometric="200000" range="3.40282347e+38" angle="0.52359879" index="0" preset="3" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
-  </Entity>
   <Entity name="tube_right_red" id="12638874799870260081" active="true" position="5.025 1.15 0.0250001" rotation="0 -0.706985 0 0.707228" scale="0.02 2.3 0.02">
    <light flags="5" light_type="3" color_r="1" color_g="0.25" color_b="0.349999994" temperature="2700" intensity="1" intensity_photometric="400000" range="225.675827" angle="0.52359879" index="3" preset="5" area_width="0.109999999" area_height="2.33999991" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="3" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <render mesh_name="standard_cylinder" sub_mesh_index="0" material_name="ceiing_light" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="scene" id="15927797017079915126" active="false" position="0 0 0" rotation="0.000489867 0.710916 -0.703277 0.000484602" scale="0.0124652 0.0124652 0.0124652">
+   <Entity name="root" id="15927821246270357895" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="GLTF_SceneRootNode" id="15927815646951543959" active="true" position="0 0 0" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
+     <Entity name="Sketchfab_model_0" id="15927807409453217170" active="true" position="0 0 0" rotation="0.711216 -0.000768161 -0.000759257 0.702973" scale="0.598849 0.598849 0.598849">
+      <Entity name="Laferrari fbx.fbx_1" id="15927816136083789886" active="true" position="0 0 0" rotation="-0.707107 0 0 0.707107" scale="0.01 0.01 0.01">
+       <Entity name="RootNode_2" id="15927775619354010162" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+        <Entity name="LaFerrari_3" id="15927773199810569634" active="true" position="0.247717 -3.48485 -0" rotation="5.33851e-08 0.707107 -0.707107 5.33851e-08" scale="5.30804 5.30804 5.30804">
+         <Entity name="LaFerrari_black_0_4" id="15927775939221070916" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_8" id="15927778914003608906" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="4" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Carbon fiber_0_5" id="15927760829476928437" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_10" id="15927771023960572431" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="23" material_name="Carbon_fiber" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Body_0_6" id="15927764410146162050" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_12" id="15927297230838049510" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="51" material_name="car_paint" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Disk_0_7" id="15927302663693200051" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_14" id="15927781814400966806" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="73" material_name="Disk" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_break lights glasses_0_8" id="15927784729355749340" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_16" id="15927298978621008980" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="80" material_name="break_lights_glasses" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Logos_0_9" id="15927786649196671360" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_18" id="15927320618166851973" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="16" material_name="Logos" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE0C657_0_10" id="15927329259730241330" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_20" id="15927331578302367141" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="49" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE05656_0_11" id="15927316626966237018" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_22" id="15927313331875692748" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="55" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x57E0C6_0_12" id="15927322619266408175" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_24" id="15927315836615472135" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="62" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Viper_0_13" id="15927270796769132258" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_26" id="15927279438624102104" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="68" material_name="Viper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_breake lights chrom_0_14" id="15927263529329289726" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_28" id="15927264070237448968" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="0" material_name="breake_lights_chrom" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_breake chrome 2_0_15" id="15927272967661802784" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_30" id="15927266999670442970" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="22" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Under_0_16" id="15927370591141062248" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_32" id="15927375315630037523" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="33" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_under carreage_0_17" id="15927374061297655053" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_34" id="15927290921290544554" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="37" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Rear logo_0_18" id="15927295292536324654" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_36" id="15927288101036569178" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="47" material_name="Rear_logo" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_head lights glasses.002_0_19" id="15927385662274001911" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_38" id="15927397314843615830" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="9" material_name="head_lights_glasses.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_red light_0_20" id="15927389149599273928" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_40" id="15927376547723170753" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="46" material_name="red_light" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_rear black something_0_21" id="15927379691773493826" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_42" id="15927388723136656794" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="53" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE056560_0_22" id="15927343191783021632" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_44" id="15927338049368476495" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="58" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Rear headlights_0_23" id="15927345544314253707" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_46" id="15927342589569667143" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="75" material_name="Rear_headlights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_chrome_0_24" id="15927399698218046805" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_48" id="15927402016790967104" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="11" material_name="chrome" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x8606062_0_25" id="15927361847174897803" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_50" id="15927440054230943921" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="40" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE0C6571_0_26" id="15927437662227660082" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_52" id="15927364521078731818" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="56" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE5A6D7_0_27" id="15927350183289753542" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_54" id="15927357027175368869" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="64" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Engine glass_0_28" id="15927355800917964767" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_56" id="15927360514524632271" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="71" material_name="Engine_glass" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Glasses_0_29" id="15927452134665594878" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_58" id="15927458629607450086" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="10" material_name="Glasses" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Material.019_0_30" id="15927450712126025276" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_60" id="15927462945463077482" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="24" material_name="Material.019" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_break lights.001_0_31" id="15927455255553702587" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_62" id="15927445189407901615" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="39" material_name="break_lights.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_run lights_0_32" id="15927443547522559746" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_64" id="15927446714886375156" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="59" material_name="run_lights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_tail lights_0_33" id="15927450168534905305" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_66" id="15927403518311541701" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="67" material_name="tail_lights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x1C59B11_0_34" id="15927410702435694607" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_68" id="15927403090412906649" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="6" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xB11C95_0_35" id="15927407629441163536" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_70" id="15927407882263182584" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="36" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Rear something_0_36" id="15927463923416569812" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_72" id="15927460631784612389" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="43" material_name="Rear_something" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_black 2_0_37" id="15927470360742242968" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_74" id="15927471544282341161" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="74" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_black.007_0_38" id="15927471611096765733" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_76" id="15927430910472209306" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="77" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_black.005_0_39" id="15927427697121711115" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_78" id="15927435530369932289" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="1" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Front headlights.001_0_40" id="15927429243461985711" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_80" id="15927419805527385515" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="29" material_name="Front_headlights.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x1C59B13_0_41" id="15927413007001697178" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_82" id="15927420536280793461" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="61" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_chrome0_0_42" id="15927416985399239355" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_84" id="15927424170996129493" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="70" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_hood black_0_43" id="15927517766828064706" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_86" id="15927518871765971667" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="78" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Inside stickers_0_44" id="15927516990886580538" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_88" id="15927529544339843964" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="12" material_name="Inside_stickers" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Material.009_0_45" id="15927524556485671108" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_90" id="15927510233556406681" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="30" material_name="Material.009" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Interior 2.001_0_46" id="15927509969634520585" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_92" id="15927511024932068251" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="54" material_name="Interior_2.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_int mirror_0_47" id="15927513970677215545" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_94" id="15927515398193678166" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="76" material_name="int_mirror" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x1C59B14_0_48" id="15927515969154380345" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_96" id="15927475913601145644" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="83" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_side mirrors_0_49" id="15927542762396610282" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_98" id="15927473942673793444" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="2" material_name="side_mirrors" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Seets logo_0_50" id="15927476933241525217" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_100" id="15927473411850734496" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="17" material_name="Seets_logo" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_seats nuts_0_51" id="15927533716632700621" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_102" id="15927530212670132571" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="20" material_name="seats_nuts" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_seat belt lock_0_52" id="15927527171134456640" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_104" id="15927535005688690934" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="45" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Rim_0_53" id="15927531711860754759" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_106" id="15927536515594439766" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="52" material_name="material" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x8606063_0_54" id="15927491893917523094" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_108" id="15927493251963811763" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="7" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE056562_0_55" id="15927491128298645559" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_110" id="15927501336211230816" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="26" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_sreerean wheel buttons_0_56" id="15927495668995974062" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_112" id="15927485605195217210" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="32" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="BrakeRearLeft.001_57" id="15927477164575079569" active="true" position="-24.4098 40.976 -11.0366" rotation="3.93985e-16 -2.18557e-08 -1 7.54979e-08" scale="0.998485 0.998485 0.998485">
+          <Entity name="BrakeRearLeft.001_Material.144_0_58" id="15927489572088471515" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <Entity name="Object_115" id="15927487448584825247" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+            <render mesh_name="scene" sub_mesh_index="72" material_name="Material.144" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+             <Instances />
+            </render>
+           </Entity>
+          </Entity>
+         </Entity>
+         <Entity name="BrakeRearLeft.002_59" id="15927488386221545572" active="true" position="-24.4098 -38.2016 -10.5672" rotation="3.93985e-16 -2.18557e-08 -1 7.54979e-08" scale="0.998485 0.998485 0.998485">
+          <Entity name="BrakeRearLeft.002_Material.145_0_60" id="15927021409509728740" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <Entity name="Object_118" id="15927022597843193910" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+            <render mesh_name="scene" sub_mesh_index="81" material_name="Material.144" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+             <Instances />
+            </render>
+           </Entity>
+          </Entity>
+         </Entity>
+         <Entity name="BrakeRearLeft.003_61" id="15927031003372215654" active="true" position="24.5559 -38.2016 -10.5672" rotation="2.18557e-08 -5.61358e-16 3.17865e-08 1" scale="0.998485 0.998485 0.998485">
+          <Entity name="BrakeRearLeft.003_Material.146_0_62" id="15927025017021005753" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <Entity name="Object_121" id="15927505966669184036" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+            <render mesh_name="scene" sub_mesh_index="14" material_name="Material.146" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+             <Instances />
+            </render>
+           </Entity>
+          </Entity>
+         </Entity>
+         <Entity name="BrakeRearLeft.004_63" id="15927499352792386199" active="true" position="24.5559 40.935 -10.9951" rotation="2.18557e-08 -5.61358e-16 3.17865e-08 1" scale="0.998485 0.998485 0.998485">
+          <Entity name="BrakeRearLeft.004_Material.147_0_64" id="15927018748378137570" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <Entity name="Object_124" id="15927503641419083795" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+            <render mesh_name="scene" sub_mesh_index="35" material_name="Material.147" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+             <Instances />
+            </render>
+           </Entity>
+          </Entity>
+         </Entity>
+        </Entity>
+        <Entity name="tire 1_65" id="15927017739603981527" active="true" position="134.205 52.2153 202.703" rotation="0.707107 0 0 0.707107" scale="5.66641 5.66641 5.66641">
+         <Entity name="tire 1_tread.001_0_66" id="15927049271518291076" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_127" id="15927044031412498273" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="42" material_name="tread.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_disc.003_0_67" id="15927047153685855491" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_129" id="15926984257106766274" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="63" material_name="disc.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_visse.009_0_68" id="15927049472328478606" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_131" id="15927036388165156584" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="69" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_Material.111_0_69" id="15927029262867214961" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_133" id="15927041495501486599" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="5" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_rim.001_0_70" id="15927037677562692802" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_135" id="15927034704059850031" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="18" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_Material.112_0_71" id="15926994336688182319" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_137" id="15926995052604737825" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="25" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_Material.113_0_72" id="15926996410454501638" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_139" id="15926999532667965656" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="34" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+        </Entity>
+        <Entity name="tire 2_73" id="15927002027675784831" active="true" position="-134.552 52.2153 202.703" rotation="0.707107 0 0 0.707107" scale="5.66641 5.66641 5.66641">
+         <Entity name="tire 2_tread.002_0_74" id="15926988758889078669" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_142" id="15926980504781471384" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="66" material_name="tread.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_disc.004_0_75" id="15926992736356673166" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_144" id="15926984883357169876" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="13" material_name="disc.004" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_visse.011_0_76" id="15926991550867137943" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_146" id="15927085962914846462" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="38" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_Material.114_0_77" id="15927012245227938223" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_148" id="15927091826486572931" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="57" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_rim.002_0_78" id="15927096792156729582" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_150" id="15927094145330123286" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="65" material_name="rim.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_Material.115_0_79" id="15927010690542533464" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_152" id="15927005851409942752" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="79" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_Material.116_0_80" id="15927013284600451379" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_154" id="15927011488098550826" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="3" material_name="Material.116" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+        </Entity>
+        <Entity name="tire 3_81" id="15927007701181094525" active="true" position="133.208 54.6617 -217.374" rotation="0.707107 0 0 0.707107" scale="5.97512 5.97512 5.97512">
+         <Entity name="tire 3_tread.003_0_82" id="15927108315872555848" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_157" id="15927103469318057200" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="21" material_name="tread.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_disc.005_0_83" id="15927112863751828816" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_159" id="15927113582366488634" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="44" material_name="disc.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_visse.012_0_84" id="15927114377695103480" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_161" id="15927096138890134011" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="82" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_Material.117_0_85" id="15927101118654321582" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_163" id="15927098390907864983" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="84" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_rim.003_0_86" id="15927094884705765933" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_165" id="15927103783467016245" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="8" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_Material.118_0_87" id="15927100816863277146" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_167" id="15927061165136850476" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="28" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_Material.119_0_88" id="15927062209595227549" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_169" id="15927063930447163907" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="31" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+        </Entity>
+        <Entity name="tire 4_89" id="15927065940996713826" active="true" position="-133.556 54.6617 -217.374" rotation="0.707107 0 0 0.707107" scale="5.97512 5.97512 5.97512">
+         <Entity name="tire 4_tread.004_0_90" id="15927053494354936331" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_172" id="15927120578999719828" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="48" material_name="tread.004" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_disc.006_0_91" id="15927057465553315892" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_174" id="15927055658634423331" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="60" material_name="disc.006" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_visse.013_0_92" id="15927052374906216404" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_176" id="15927083336397691395" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="15" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_Material.120_0_93" id="15927078028611712552" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_178" id="15927156228420144734" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="19" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_rim.004_0_94" id="15927083219621197606" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_180" id="15927158478639546225" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="27" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_Material.121_0_95" id="15927069950360483956" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_182" id="15927076627249771720" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="41" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_Material.122_0_96" id="15927071388230438885" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_184" id="15927079221713008019" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="50" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+        </Entity>
+       </Entity>
+      </Entity>
+     </Entity>
+    </Entity>
+   </Entity>
+  </Entity>
+  <Entity name="Cube_1" id="10406687217253271126" active="true" position="-10.1229 1.13078 1.2597" rotation="0 0 0 1" scale="1 5.8 20">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="Directional" id="11601109533259598530" active="true" position="0 0 0" rotation="0.92388 0 0 -0.382683" scale="1 1 1">
+   <light flags="3" light_type="0" color_r="1" color_g="0.816754639" color_b="0.669110954" temperature="4100" intensity="8" intensity_photometric="200000" range="3.40282347e+38" angle="0.52359879" index="0" preset="3" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+  </Entity>
+  <Entity name="physics_body_camera" id="9100000000000000002" active="true" position="-5.86753 1.04523 -4.91659" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+   <Entity name="component_camera" id="9100000000000000003" active="true" position="0 0.77 0" rotation="-0.0720685 -0.414716 0.0298703 -0.9066" scale="1 1 1">
+    <camera aperture="11" shutter_speed="0.00800000038" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="49" />
+   </Entity>
+  </Entity>
+  <Entity name="Cube_1_1" id="2124977161275690050" active="true" position="10.0771 1.13078 1.95973" rotation="0 0 0 1" scale="1 5.8 20">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+   <render mesh_name="standard_cube" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
     <Instances />
    </render>
   </Entity>
@@ -1946,6 +1940,637 @@
          <Entity name="tire 4_Material.122_0_96" id="7628487814287099436" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
           <Entity name="Object_184" id="7628487202503103415" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
            <render mesh_name="scene" sub_mesh_index="53" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+        </Entity>
+       </Entity>
+      </Entity>
+     </Entity>
+    </Entity>
+   </Entity>
+  </Entity>
+  <Entity name="floor" id="9100000000000000005" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 1 5000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
+   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="tile_black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="scene" id="8791082788588042475" active="false" position="0 0 0" rotation="0.000489867 0.710916 -0.703277 0.000484602" scale="0.0124652 0.0124652 0.0124652">
+   <Entity name="root" id="8791109053047436999" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+    <Entity name="GLTF_SceneRootNode" id="8791114825506293174" active="true" position="0 0 0" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
+     <Entity name="Sketchfab_model_0" id="8791122314335187263" active="true" position="0 0 0" rotation="0.711216 -0.000768161 -0.000759257 0.702973" scale="0.598849 0.598849 0.598849">
+      <Entity name="Laferrari fbx.fbx_1" id="8791119868866606237" active="true" position="0 0 0" rotation="-0.707107 0 0 0.707107" scale="0.01 0.01 0.01">
+       <Entity name="RootNode_2" id="8791097946671225860" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+        <Entity name="LaFerrari_3" id="8791103597966115860" active="true" position="0.247717 -3.48485 -0" rotation="5.33851e-08 0.707107 -0.707107 5.33851e-08" scale="5.30804 5.30804 5.30804">
+         <Entity name="LaFerrari_black_0_4" id="8791113216768108080" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_8" id="8791111207890744828" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="6" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Carbon fiber_0_5" id="8791045876814476397" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_10" id="8791048722677989835" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="14" material_name="Carbon_fiber" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Body_0_6" id="8791057828930682940" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_12" id="8791047025763887336" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="43" material_name="car_paint" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Disk_0_7" id="8791043562520546226" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_14" id="8791041119260411920" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="64" material_name="Disk" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_break lights glasses_0_8" id="8791050492349117089" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_16" id="8791036788149105113" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="74" material_name="break_lights_glasses" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Logos_0_9" id="8791063997763185507" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_18" id="8791062182202912217" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="82" material_name="Logos" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE0C657_0_10" id="8791071288540321570" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_20" id="8791078077828612837" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="84" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE05656_0_11" id="8791056853289654706" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_22" id="8791053952323957014" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="1" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x57E0C6_0_12" id="8791060741623683786" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_24" id="8791070114163140522" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="16" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Viper_0_13" id="8791068107390826750" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_26" id="8790899982469064468" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="20" material_name="Viper" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_breake lights chrom_0_14" id="8790901991761676888" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_28" id="8790895709398172202" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="44" material_name="breake_lights_chrom" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_breake chrome 2_0_15" id="8790897963132667466" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_30" id="8790893253231958301" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="65" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Under_0_16" id="8791161210363587725" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_32" id="8790887024385971454" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="66" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_under carreage_0_17" id="8790889033335423905" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_34" id="8790891477721235463" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="0" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Rear logo_0_18" id="8790915981013272744" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_36" id="8790923158348119122" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="15" material_name="Rear_logo" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_head lights glasses.002_0_19" id="8790925337184912600" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_38" id="8790907678473852350" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="51" material_name="head_lights_glasses.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_red light_0_20" id="8790905724821117404" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_40" id="8790920615556776129" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="67" material_name="red_light" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_rear black something_0_21" id="8790905223290580210" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_42" id="8791133861146859178" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="75" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE056560_0_22" id="8791140457117449387" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_44" id="8791125445371872082" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="76" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Rear headlights_0_23" id="8791134798046502750" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_46" id="8791135880788179712" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="8" material_name="Rear_headlights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_chrome_0_24" id="8791128288667567154" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_48" id="8791116782844235193" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="38" material_name="chrome" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x8606062_0_25" id="8791118735406220574" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_50" id="8791123254708308173" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="60" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE0C6571_0_26" id="8791130934795358849" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_52" id="8791149710285099419" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="61" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE5A6D7_0_27" id="8791159084465012004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_54" id="8791166115835709043" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="62" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Engine glass_0_28" id="8791164106648513335" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_56" id="8791141313528207114" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="63" material_name="Engine_glass" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Glasses_0_29" id="8791148970712981754" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_58" id="8791157644386749245" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="10" material_name="Glasses" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Material.019_0_30" id="8791143333168428448" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_60" id="8790987238554733450" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="34" material_name="Material.019" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_break lights.001_0_31" id="8790975620171704804" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_62" id="8790984537056539815" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="58" material_name="break_lights.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_run lights_0_32" id="8790986548126475243" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_64" id="8790965605420369493" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="72" material_name="run_lights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_tail lights_0_33" id="8790976097607913562" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_66" id="8790978108710266765" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="81" material_name="tail_lights" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x1C59B11_0_34" id="8791003238307714534" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_68" id="8791005436243224591" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="83" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xB11C95_0_35" id="8791013730774181658" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_70" id="8791001652940015694" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="4" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Rear something_0_36" id="8790995883616148734" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_72" id="8791004610193632275" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="17" material_name="Rear_something" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_black 2_0_37" id="8790993423250048335" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_74" id="8790991663911633539" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="39" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_black.007_0_38" id="8790943270818240908" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_76" id="8790945907441013568" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="40" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_black.005_0_39" id="8790954391146206616" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_78" id="8790939242236418310" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="41" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Front headlights.001_0_40" id="8790941687644953316" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_80" id="8790937412849810513" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="42" material_name="Front_headlights.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x1C59B13_0_41" id="8790921829863731989" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_82" id="8790924273093572530" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="2" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_chrome0_0_42" id="8790933384153692995" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_84" id="8790936264022691531" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="24" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_hood black_0_43" id="8790957697128420718" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_86" id="8790960139299446219" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="25" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Inside stickers_0_44" id="8790962150565981879" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_88" id="8790970632123293896" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="26" material_name="Inside_stickers" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Material.009_0_45" id="8790972643058465156" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_90" id="8790950340856318294" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="54" material_name="Material.009" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Interior 2.001_0_46" id="8790955420812528120" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_92" id="8790963904757811777" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="69" material_name="Interior_2.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_int mirror_0_47" id="8790797687160164745" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_94" id="8790796164250161681" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="3" material_name="int_mirror" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x1C59B14_0_48" id="8790784281829155234" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_96" id="8790792765400002459" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="32" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_side mirrors_0_49" id="8790794774182485207" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_98" id="8790773148128042655" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="33" material_name="side_mirrors" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Seets logo_0_50" id="8790775156991241803" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_100" id="8790783836779969186" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="57" material_name="Seets_logo" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_seats nuts_0_51" id="8790785218361528742" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_102" id="8790787415362802111" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="71" material_name="seats_nuts" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_seat belt lock_0_52" id="8790809287807165228" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_104" id="8790811917829172776" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="80" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_Rim_0_53" id="8790823913357473168" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_106" id="8790808764494328310" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="5" material_name="material" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0x8606063_0_54" id="8790804294483060381" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_108" id="8790806494069260935" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="27" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_wireframe_color_0xE056562_0_55" id="8790790911271868354" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_110" id="8790799207729682117" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="28" material_name="wireframe_color_0xE0C657" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="LaFerrari_sreerean wheel buttons_0_56" id="8790750116703687460" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_112" id="8790752561060761466" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="29" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="BrakeRearLeft.001_57" id="8791019319459000562" active="true" position="-24.4098 40.976 -11.0366" rotation="3.93985e-16 -2.18557e-08 -1 7.54979e-08" scale="0.998485 0.998485 0.998485">
+          <Entity name="BrakeRearLeft.001_Material.144_0_58" id="8790745892568680768" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <Entity name="Object_115" id="8790750541440474576" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+            <render mesh_name="scene" sub_mesh_index="30" material_name="Material.144" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+             <Instances />
+            </render>
+           </Entity>
+          </Entity>
+         </Entity>
+         <Entity name="BrakeRearLeft.002_59" id="8791010390638942473" active="true" position="-24.4098 -38.2016 -10.5672" rotation="3.93985e-16 -2.18557e-08 -1 7.54979e-08" scale="0.998485 0.998485 0.998485">
+          <Entity name="BrakeRearLeft.002_Material.145_0_60" id="8791012592824170042" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <Entity name="Object_118" id="8791021319672584159" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+            <render mesh_name="scene" sub_mesh_index="55" material_name="Material.144" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+             <Instances />
+            </render>
+           </Entity>
+          </Entity>
+         </Entity>
+         <Entity name="BrakeRearLeft.003_61" id="8791023085330082855" active="true" position="24.5559 -38.2016 -10.5672" rotation="2.18557e-08 -5.61358e-16 3.17865e-08 1" scale="0.998485 0.998485 0.998485">
+          <Entity name="BrakeRearLeft.003_Material.146_0_62" id="8790763288335723398" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <Entity name="Object_121" id="8790765293117126346" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+            <render mesh_name="scene" sub_mesh_index="13" material_name="Material.146" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+             <Instances />
+            </render>
+           </Entity>
+          </Entity>
+         </Entity>
+         <Entity name="BrakeRearLeft.004_63" id="8790767302809237822" active="true" position="24.5559 40.935 -10.9951" rotation="2.18557e-08 -5.61358e-16 3.17865e-08 1" scale="0.998485 0.998485 0.998485">
+          <Entity name="BrakeRearLeft.004_Material.147_0_64" id="8790775981136286316" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <Entity name="Object_124" id="8790777990960046040" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+            <render mesh_name="scene" sub_mesh_index="31" material_name="Material.147" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+             <Instances />
+            </render>
+           </Entity>
+          </Entity>
+         </Entity>
+        </Entity>
+        <Entity name="tire 1_65" id="8790760061334122510" active="true" position="134.205 52.2153 202.703" rotation="0.707107 0 0 0.707107" scale="5.66641 5.66641 5.66641">
+         <Entity name="tire 1_tread.001_0_66" id="8790761883563205052" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_127" id="8790769927657391635" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="56" material_name="tread.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_disc.003_0_67" id="8790754783867476145" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_129" id="8790885181235109595" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="70" material_name="disc.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_visse.009_0_68" id="8790869354903124803" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_131" id="8790876950060730491" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="78" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_Material.111_0_69" id="8790883359088092975" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_133" id="8790885361507187219" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="79" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_rim.001_0_70" id="8790859539308490665" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_135" id="8790865939870374141" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="9" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_Material.112_0_71" id="8790870896783440906" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_137" id="8790874234581804008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="35" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 1_Material.113_0_72" id="8790876432624996346" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_139" id="8790861292081237080" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="36" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+        </Entity>
+        <Entity name="tire 2_73" id="8790618377389637876" active="true" position="-134.552 52.2153 202.703" rotation="0.707107 0 0 0.707107" scale="5.66641 5.66641 5.66641">
+         <Entity name="tire 2_tread.002_0_74" id="8790620386217705288" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_142" id="8790629061302316062" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="37" material_name="tread.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_disc.004_0_75" id="8790609638933910393" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_144" id="8790611892167743929" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="59" material_name="disc.004" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_visse.011_0_76" id="8790877540905270977" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_146" id="8790604557016237097" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="73" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_Material.114_0_77" id="8790607436614512545" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_148" id="8790841141958068650" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="7" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_rim.002_0_78" id="8790839627899038290" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_150" id="8790824934485147190" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="23" material_name="rim.002" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_Material.115_0_79" id="8790837113267981876" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_152" id="8790835592119114404" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="52" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 2_Material.116_0_80" id="8790838302584618891" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_154" id="8790815737225427573" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="53" material_name="Material.116" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+        </Entity>
+        <Entity name="tire 3_81" id="8790817994750141989" active="true" position="133.208 54.6617 -217.374" rotation="0.707107 0 0 0.707107" scale="5.97512 5.97512 5.97512">
+         <Entity name="tire 3_tread.003_0_82" id="8790830627908191329" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_157" id="8790828674239859407" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="68" material_name="tread.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_disc.005_0_83" id="8790831116503846701" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_159" id="8790856946444027216" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="77" material_name="disc.003" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_visse.012_0_84" id="8790858956640496884" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_161" id="8790866307204238992" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="12" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_Material.117_0_85" id="8790851425001682142" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_163" id="8790849595154858289" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="18" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_rim.003_0_86" id="8790834014267775980" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_165" id="8790842928984329391" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="19" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_Material.118_0_87" id="8790845813097521983" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_167" id="8790690092770085517" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="21" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 3_Material.119_0_88" id="8790674951444547883" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_169" id="8790677831315122867" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="22" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+        </Entity>
+        <Entity name="tire 4_89" id="8790690011969913513" active="true" position="-133.556 54.6617 -217.374" rotation="0.707107 0 0 0.707107" scale="5.97512 5.97512 5.97512">
+         <Entity name="tire 4_tread.004_0_90" id="8790669957014403740" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_172" id="8790672408864881978" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="45" material_name="tread.004" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_disc.006_0_91" id="8790674608985088027" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_174" id="8790679128948573670" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="11" material_name="disc.006" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_visse.013_0_92" id="8790681575440221764" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_176" id="8790707151309656066" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="46" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_Material.120_0_93" id="8790705900259207187" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_178" id="8790717028635700839" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="47" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_rim.004_0_94" id="8790705133605099864" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_180" id="8790696711665149073" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="48" material_name="rim.001" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_Material.121_0_95" id="8790699147417200375" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_182" id="8790684001991498581" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="49" material_name="black" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+            <Instances />
+           </render>
+          </Entity>
+         </Entity>
+         <Entity name="tire 4_Material.122_0_96" id="8790692491687859958" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+          <Entity name="Object_184" id="8790694694174244079" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+           <render mesh_name="scene" sub_mesh_index="50" material_name="Material.113" material_default="false" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
             <Instances />
            </render>
           </Entity>
