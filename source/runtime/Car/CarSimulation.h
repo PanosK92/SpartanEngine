@@ -667,7 +667,20 @@ namespace car
     inline float       get_max_rpm()               { return tuning::spec.engine_max_rpm; }
     inline float       get_idle_rpm()              { return tuning::spec.engine_idle_rpm; }
 
-    inline void  set_turbo_enabled(bool enabled) { tuning::spec.turbo_enabled = enabled; }
+    inline void  set_turbo_enabled(bool enabled)
+    {
+        tuning::spec.turbo_enabled = enabled;
+        // if enabling turbo on a preset that has no turbo configured, fall back to sensible defaults
+        // so the gauge actually reads non-zero when the engine spools
+        if (enabled && tuning::spec.boost_max_pressure <= 0.0f)
+        {
+            tuning::spec.boost_max_pressure  = 1.0f;
+            tuning::spec.boost_spool_rate    = 3.0f;
+            tuning::spec.boost_torque_mult   = 0.35f;
+            tuning::spec.boost_min_rpm       = 2000.0f;
+            tuning::spec.boost_wastegate_rpm = tuning::spec.engine_redline_rpm > 0.0f ? tuning::spec.engine_redline_rpm - 500.0f : 6500.0f;
+        }
+    }
     inline bool  get_turbo_enabled()             { return tuning::spec.turbo_enabled; }
     inline float get_boost_pressure()            { return boost_pressure; }
     inline float get_boost_max_pressure()        { return tuning::spec.boost_max_pressure; }

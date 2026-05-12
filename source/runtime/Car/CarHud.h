@@ -21,26 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
-#include "Widget.h"
-//=================
-
-class Viewport : public Widget
+namespace spartan
 {
-public:
-    Viewport(Editor* editor);
+    class Physics;
 
-    void OnTickVisible() override;
+    namespace car_hud
+    {
+        // always-on cockpit overlay anchored to the bottom of the viewport
+        void draw_driver_hud(Physics* physics);
 
-    // screen-space rect of the 3d render area, published every frame so other systems
-    // (eg. game huds) can snap overlays to the viewport instead of the os window
-    static const spartan::math::Vector2& GetScreenPosition() { return m_screen_position; }
-    static const spartan::math::Vector2& GetScreenSize()     { return m_screen_size; }
-
-private:
-    spartan::math::Vector2 m_offset = spartan::math::Vector2::Zero;
-    float m_window_padding          = 4.0f;
-
-    inline static spartan::math::Vector2 m_screen_position = spartan::math::Vector2::Zero;
-    inline static spartan::math::Vector2 m_screen_size     = spartan::math::Vector2::Zero;
-};
+        // single tabbed telemetry window, p_open is bound to the toggle state
+        void draw_telemetry_window(Physics* physics, bool* p_open);
+    }
+}

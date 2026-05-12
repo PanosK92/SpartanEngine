@@ -92,6 +92,11 @@ void Viewport::OnTickVisible()
     offset.y += 34; // TODO: this is probably the tab bar height, find a way to get it properly
     Input::SetEditorViewportOffset(offset);
 
+    // publish the viewport's screen-space rect so other systems can snap overlays to it
+    ImVec2 screen_pos = ImGui::GetCursorScreenPos();
+    m_screen_position = Vector2(screen_pos.x, screen_pos.y);
+    m_screen_size     = Vector2(static_cast<float>(width), static_cast<float>(height));
+
     // draw the image after a potential resolution change call has been made
     ImGuiSp::image(Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output), ImVec2(static_cast<float>(width), static_cast<float>(height)));
 

@@ -125,7 +125,6 @@ namespace spartan
         void TickChaseCamera();
         void TickEnterExit();
         void TickViewSwitch();
-        void DrawTelemetry();
 
         // chase camera - gt7 style
         struct ChaseCameraState

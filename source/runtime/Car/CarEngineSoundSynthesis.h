@@ -1386,7 +1386,4 @@ namespace engine_sound
     {
         return get_synthesizer().get_debug();
     }
-
-    // imgui-based debug ui, definition lives in CarEngineSoundSynthesis.cpp to keep imgui out of this header
-    void debug_window();
 }
