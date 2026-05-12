@@ -358,6 +358,13 @@ namespace spartan
         if (World::GetLightCount() == 0)
             return;
 
+        // skip when ray traced shadows or restir pt own the shadow term
+        // light.hlsl never samples the atlas in those branches so this pass is pure waste
+        bool tlas_available  = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
+        bool rt_owns_shadows = (cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available) || cvar_restir_pt.GetValueAs<bool>();
+        if (rt_owns_shadows)
+            return;
+
         RHI_PipelineState pso;
         pso.name                             = "shadow_maps";
         pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::depth_light_v);
@@ -1071,8 +1078,7 @@ namespace spartan
         
         if (!tex_reflections_position)
             return;
-        RHI_Texture* tex_shadow_atlas         = GetRenderTarget(Renderer_RenderTarget::shadow_atlas);
-        
+
         cmd_list->BeginTimeblock("light_reflections");
         {
             tex_reflections->SetLayout(RHI_Image_Layout::General, cmd_list);
@@ -1082,8 +1088,7 @@ namespace spartan
             tex_reflections_normal->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_reflections_albedo->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
             tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_shadow_atlas->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            
+
             RHI_PipelineState pso;
             pso.name             = "light_reflections";
             pso.shaders[Compute] = GetShader(Renderer_Shader::light_reflections_c);
@@ -1095,7 +1100,6 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_reflections_normal);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_reflections_albedo);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_skysphere);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex5, tex_shadow_atlas);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_reflections, rhi_all_mips, 0, true);
 
             // bind tlas for inline ray traced shadows at the hit, every light type uses this
