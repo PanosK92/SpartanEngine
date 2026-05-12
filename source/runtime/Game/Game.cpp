@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/ThreadPool.h"
 #include "../Core/Stopwatch.h"
 #include "../Rendering/Renderer.h"
+#include "../Rendering/GeometryBuffer.h"
 #include "../Resource/ResourceCache.h"
 #include "../Geometry/GeometryGeneration.h"
 #include "../Geometry/GeometryProcessing.h"
@@ -311,25 +312,39 @@ namespace spartan
                     vector<Vector3> tile_offsets;
                     spartan::geometry_processing::split_surface_into_tiles(vertices, indices, tile_count, tiled_vertices, tiled_indices, tile_offsets);
 
-                    // create mesh tile entities
-                    for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(tiled_vertices.size()); tile_index++)
+                    const uint32_t actual_tile_count = static_cast<uint32_t>(tiled_vertices.size());
+
+                    // pre-allocate per-tile meshes sequentially so meshes.emplace_back stays single-threaded
+                    vector<shared_ptr<Mesh>> tile_meshes(actual_tile_count);
+                    for (uint32_t tile_index = 0; tile_index < actual_tile_count; tile_index++)
                     {
                         string name = "tile_" + to_string(tile_index);
+                        tile_meshes[tile_index] = meshes.emplace_back(make_shared<Mesh>());
+                        tile_meshes[tile_index]->SetObjectName(name);
+                        tile_meshes[tile_index]->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                    }
 
-                        shared_ptr<Mesh> mesh = meshes.emplace_back(make_shared<Mesh>());
-                        mesh->SetObjectName(name);
-                        mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                        mesh->AddGeometry(tiled_vertices[tile_index], tiled_indices[tile_index], false);
-                        mesh->CreateGpuBuffers();
+                    // build mesh geometry in parallel, each tile is independent
+                    ThreadPool::ParallelLoop([&tile_meshes, &tiled_vertices, &tiled_indices](uint32_t start, uint32_t end)
+                    {
+                        for (uint32_t i = start; i < end; i++)
+                        {
+                            tile_meshes[i]->AddGeometry(tiled_vertices[i], tiled_indices[i], false);
+                            tile_meshes[i]->CreateGpuBuffers();
+                        }
+                    }, actual_tile_count);
 
+                    // create mesh tile entities sequentially
+                    for (uint32_t tile_index = 0; tile_index < actual_tile_count; tile_index++)
+                    {
                         Entity* entity_tile = World::CreateEntity();
-                        entity_tile->SetObjectName(name);
+                        entity_tile->SetObjectName(tile_meshes[tile_index]->GetObjectName());
                         entity_tile->SetParent(water);
                         entity_tile->SetPosition(tile_offsets[tile_index]);
 
                         if (Render* renderable = entity_tile->AddComponent<Render>())
                         {
-                            renderable->SetMesh(mesh.get());
+                            renderable->SetMesh(tile_meshes[tile_index].get());
                             renderable->SetMaterial(material);
                             renderable->SetFlag(RenderableFlags::CastsShadows, false);
                         }
@@ -484,6 +499,122 @@ namespace spartan
                 const float per_triangle_density_tree        = 0.004f;
                 const float per_triangle_density_rock        = 0.001f;
 
+                // pre-size the global geometry buffer high enough for the whole forest so worker threads streaming
+                // mesh data in cannot trip a mid-load rebuild from the renderer's per-frame BuildIfDirty
+                GeometryBuffer::Reserve(
+                    12u * 1024u * 1024u, // ~12M vertices  (terrain lods + trees + rocks + water + foliage)
+                    32u * 1024u * 1024u, // ~32M indices
+                    128u * 1024u,        // ~128K meshlet bounds
+                    256u * 1024u         // ~256K instances (grass dominates this)
+                );
+
+                // kick off heavy mesh work in parallel so it overlaps terrain generation, audio, camera, lighting
+                shared_ptr<Mesh> mesh_tree;
+                shared_ptr<Mesh> mesh_rock;
+                shared_ptr<Mesh> mesh_grass_blade = meshes.emplace_back(make_shared<Mesh>());
+                shared_ptr<Mesh> mesh_flower      = meshes.emplace_back(make_shared<Mesh>());
+
+                Stopwatch sw_parallel_meshes;
+
+                const uint32_t tree_flags      = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
+                const string grass_cache_path  = string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH;
+                const string flower_cache_path = string(ResourceCache::GetProjectDirectory()) + "standard_flower" + EXTENSION_MESH;
+
+                future<void> f_tree = ThreadPool::AddTask([&mesh_tree, tree_flags]()
+                {
+                    mesh_tree = ResourceCache::Load<Mesh>("project/models/tree/tree.fbx", tree_flags);
+                });
+
+                future<void> f_rock = ThreadPool::AddTask([&mesh_rock]()
+                {
+                    mesh_rock = ResourceCache::Load<Mesh>("project/models/rock_2/model.obj");
+                });
+
+                future<void> f_grass = ThreadPool::AddTask([mesh_grass_blade, grass_cache_path]()
+                {
+                    // try the engine-mesh cache first to skip simplify and build_meshlets entirely
+                    if (FileSystem::Exists(grass_cache_path))
+                    {
+                        mesh_grass_blade->LoadFromFile(grass_cache_path);
+                        if (mesh_grass_blade->GetVertexCount() > 0)
+                            return;
+                    }
+
+                    mesh_grass_blade->SetObjectName("grass_blade");
+                    mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                    uint32_t sub_mesh_index = 0;
+
+                    // lod 0: 3 segments
+                    {
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 3);
+                        mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index);
+                    }
+
+                    // lod 1: 2 segments
+                    {
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 2);
+                        mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);
+                    }
+
+                    // lod 2: 1 segment
+                    {
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 1);
+                        mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);
+                    }
+
+                    mesh_grass_blade->SetResourceFilePath(grass_cache_path);
+                    mesh_grass_blade->SaveToFile(grass_cache_path);
+                    mesh_grass_blade->CreateGpuBuffers();
+                });
+
+                future<void> f_flower = ThreadPool::AddTask([mesh_flower, flower_cache_path]()
+                {
+                    if (FileSystem::Exists(flower_cache_path))
+                    {
+                        mesh_flower->LoadFromFile(flower_cache_path);
+                        if (mesh_flower->GetVertexCount() > 0)
+                            return;
+                    }
+
+                    mesh_flower->SetObjectName("flower");
+                    mesh_flower->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+                    uint32_t sub_mesh_index = 0;
+
+                    // lod 0
+                    {
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_foliage_flower(&vertices, &indices, 3, 6, 3);
+                        mesh_flower->AddGeometry(vertices, indices, false, &sub_mesh_index);
+                    }
+
+                    // lod 1
+                    {
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_foliage_flower(&vertices, &indices, 2, 4, 2);
+                        mesh_flower->AddLod(vertices, indices, sub_mesh_index);
+                    }
+
+                    // lod 2
+                    {
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_foliage_flower(&vertices, &indices, 1, 1, 1);
+                        mesh_flower->AddLod(vertices, indices, sub_mesh_index);
+                    }
+
+                    mesh_flower->SetResourceFilePath(flower_cache_path);
+                    mesh_flower->SaveToFile(flower_cache_path);
+                    mesh_flower->CreateGpuBuffers();
+                });
+
                 // lighting
                 entities::sun(LightPreset::david_lynch, true);
                 default_light_directional->SetRotation(Quaternion::FromEulerAngles(9.07f, -122.84f, 180.0f));
@@ -593,12 +724,16 @@ namespace spartan
                     terrain->SetHeightMapSeed(height_map.get());
                     terrain->Generate();
 
-                    // terrain physics
-                    for (Entity* terrain_tile : terrain->GetEntity()->GetChildren())
+                    // terrain physics, parallelized because each tile's BodyType::Mesh path simplifies the mesh and runs physx cooking, which dominates this loop
+                    vector<Entity*> terrain_tiles = terrain->GetEntity()->GetChildren();
+                    ThreadPool::ParallelLoop([&terrain_tiles](uint32_t start, uint32_t end)
                     {
-                        Physics* physics_body = terrain_tile->AddComponent<Physics>();
-                        physics_body->SetBodyType(BodyType::Mesh);
-                    }
+                        for (uint32_t i = start; i < end; i++)
+                        {
+                            Physics* physics_body = terrain_tiles[i]->AddComponent<Physics>();
+                            physics_body->SetBodyType(BodyType::Mesh);
+                        }
+                    }, static_cast<uint32_t>(terrain_tiles.size()));
                 }
 
                 // water
@@ -609,86 +744,12 @@ namespace spartan
 
                 // props: trees, rocks, grass
                 {
-                    // load meshes in parallel
-                    uint32_t flags = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                    shared_ptr<Mesh> mesh_tree;
-                    shared_ptr<Mesh> mesh_rock;
-                    {
-                        Stopwatch sw_total;
-                        future<void> f_tree = ThreadPool::AddTask([&mesh_tree, flags]() { mesh_tree = ResourceCache::Load<Mesh>("project/models/tree/tree.fbx", flags); });
-                        future<void> f_rock = ThreadPool::AddTask([&mesh_rock]()        { mesh_rock = ResourceCache::Load<Mesh>("project/models/rock_2/model.obj"); });
-                        f_tree.wait();
-                        f_rock.wait();
-                        SP_LOG_INFO("forest parallel mesh load took %d ms", static_cast<int>(sw_total.GetElapsedTimeMs()));
-                    }
-
-                    // procedural grass mesh with lods
-                    shared_ptr<Mesh> mesh_grass_blade = meshes.emplace_back(make_shared<Mesh>());
-                    {
-                        mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                        uint32_t sub_mesh_index = 0;
-
-                        // lod 0: 3 segments
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 3);
-                            mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index);
-                        }
-
-                        // lod 1: 2 segments
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 2);
-                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);
-                        }
-
-                        // lod 2: 1 segment
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 1);
-                            mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);
-                        }
-
-                        mesh_grass_blade->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH);
-                        mesh_grass_blade->CreateGpuBuffers();
-                    }
-
-                    // procedural flower mesh with lods
-                    shared_ptr<Mesh> mesh_flower = meshes.emplace_back(make_shared<Mesh>());
-                    {
-                        mesh_flower->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-                        uint32_t sub_mesh_index = 0;
-
-                        // lod 0
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_flower(&vertices, &indices, 3, 6, 3);
-                            mesh_flower->AddGeometry(vertices, indices, false, &sub_mesh_index);
-                        }
-
-                        // lod 1
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_flower(&vertices, &indices, 2, 4, 2);
-                            mesh_flower->AddLod(vertices, indices, sub_mesh_index);
-                        }
-
-                        // lod 2
-                        {
-                            vector<RHI_Vertex_PosTexNorTan> vertices;
-                            vector<uint32_t> indices;
-                            geometry_generation::generate_foliage_flower(&vertices, &indices, 1, 1, 1);
-                            mesh_flower->AddLod(vertices, indices, sub_mesh_index);
-                        }
-
-                        mesh_flower->SetResourceFilePath(string(ResourceCache::GetProjectDirectory()) + "standard_flower" + EXTENSION_MESH);
-                        mesh_flower->CreateGpuBuffers();
-                    }
+                    // wait for the parallel mesh tasks kicked off at the top of forest::create
+                    f_tree.wait();
+                    f_rock.wait();
+                    f_grass.wait();
+                    f_flower.wait();
+                    SP_LOG_INFO("forest parallel mesh build took %d ms", static_cast<int>(sw_parallel_meshes.GetElapsedTimeMs()));
 
                     // materials
                     shared_ptr<Material> material_leaf;
@@ -747,23 +808,26 @@ namespace spartan
 
                     // place props on terrain tiles
                     vector<Entity*> children = terrain->GetEntity()->GetChildren();
+
+                    // collected per tile so the parallel pass can write without contention
+                    // trees and rocks are merged into single entities afterwards so physx cooks each shape only once
+                    vector<vector<Matrix>> tree_transforms_per_tile(children.size());
+                    vector<vector<Matrix>> rock_transforms_per_tile(children.size());
+
                     auto place_props_on_tiles = [
                         &children,
-                        &mesh_rock,
-                        &mesh_tree,
                         &mesh_grass_blade,
                         &mesh_flower,
+                        &mesh_tree,
+                        &mesh_rock,
+                        &tree_transforms_per_tile,
+                        &rock_transforms_per_tile,
                         &terrain,
-                        render_distance_trees,
                         render_distance_foliage,
-                        shadow_distance,
                         per_triangle_density_grass_blade,
                         per_triangle_density_flower,
                         per_triangle_density_tree,
                         per_triangle_density_rock,
-                        material_leaf,
-                        material_body,
-                        material_rock,
                         material_grass_blade,
                         material_flower
                     ](uint32_t start_index, uint32_t end_index)
@@ -772,58 +836,20 @@ namespace spartan
                         {
                             Entity* terrain_tile = children[tile_index];
 
-                            // trees
-                            {
-                                Entity* entity = mesh_tree->GetRootEntity()->Clone();
-                                entity->SetObjectName("tree");
-                                entity->SetParent(terrain_tile);
+                            // tile vertices are tile-local, so FindTransforms returns instance matrices in tile-local space
+                            // when the consolidated tree/rock entity is parented to default_terrain (at origin), we need world-space instances
+                            // multiply by the tile's world matrix to lift each per-tile instance into the consolidated entity's space
+                            const math::Matrix tile_world_matrix = terrain_tile->GetMatrix();
 
-                                vector<Matrix> transforms;
-                                terrain->FindTransforms(tile_index, TerrainProp::Tree, entity, per_triangle_density_tree, 0.026f, transforms);
+                            // tree transforms (deferred to a single entity below)
+                            terrain->FindTransforms(tile_index, TerrainProp::Tree, mesh_tree->GetRootEntity(), per_triangle_density_tree, 0.026f, tree_transforms_per_tile[tile_index]);
+                            for (math::Matrix& t : tree_transforms_per_tile[tile_index])
+                                t *= tile_world_matrix;
 
-                                if (Entity* trunk = entity->GetChildByIndex(0))
-                                {
-                                    Render* renderable = trunk->GetComponent<Render>();
-                                    renderable->SetInstances(transforms);
-                                    renderable->SetMaxRenderDistance(render_distance_trees);
-                                    renderable->SetMaxShadowDistance(shadow_distance);
-                                    renderable->SetMaterial(material_body);
-
-                                    Physics* physics = trunk->AddComponent<Physics>();
-                                    physics->SetBodyType(BodyType::Mesh);
-                                }
-
-                                if (Entity* leafs = entity->GetChildByIndex(1))
-                                {
-                                    Render* renderable = leafs->GetComponent<Render>();
-                                    renderable->SetInstances(transforms);
-                                    renderable->SetMaxRenderDistance(render_distance_trees);
-                                    renderable->SetMaxShadowDistance(shadow_distance);
-                                    renderable->SetMaterial(material_leaf);
-                                }
-                            }
-
-                            // rocks
-                            {
-                                Entity* entity = mesh_rock->GetRootEntity()->Clone();
-                                entity->SetObjectName("rock");
-                                entity->SetParent(terrain_tile);
-
-                                vector<Matrix> transforms;
-                                terrain->FindTransforms(tile_index, TerrainProp::Rock, entity, per_triangle_density_rock, 0.64f, transforms);
-
-                                if (Entity* rock_entity = entity->GetDescendantByName("untitled"))
-                                {
-                                    Render* renderable = rock_entity->GetComponent<Render>();
-                                    renderable->SetInstances(transforms);
-                                    renderable->SetMaxRenderDistance(render_distance_trees);
-                                    renderable->SetMaxShadowDistance(shadow_distance);
-                                    renderable->SetMaterial(material_rock);
-
-                                    Physics* physics = rock_entity->AddComponent<Physics>();
-                                    physics->SetBodyType(BodyType::Mesh);
-                                }
-                            }
+                            // rock transforms (deferred to a single entity below)
+                            terrain->FindTransforms(tile_index, TerrainProp::Rock, mesh_rock->GetRootEntity(), per_triangle_density_rock, 0.64f, rock_transforms_per_tile[tile_index]);
+                            for (math::Matrix& t : rock_transforms_per_tile[tile_index])
+                                t *= tile_world_matrix;
 
                             // grass - density layers for lod
                             {
@@ -906,6 +932,73 @@ namespace spartan
                     };
 
                     ThreadPool::ParallelLoop(place_props_on_tiles, static_cast<uint32_t>(children.size()));
+
+                    // single tree entity for the whole world - one cook, one render submission per submesh
+                    {
+                        size_t tree_total = 0;
+                        for (const auto& v : tree_transforms_per_tile) tree_total += v.size();
+                        vector<Matrix> all_tree_transforms;
+                        all_tree_transforms.reserve(tree_total);
+                        for (auto& v : tree_transforms_per_tile)
+                            all_tree_transforms.insert(all_tree_transforms.end(), v.begin(), v.end());
+
+                        if (!all_tree_transforms.empty())
+                        {
+                            Entity* entity = mesh_tree->GetRootEntity()->Clone();
+                            entity->SetObjectName("tree");
+                            entity->SetParent(default_terrain);
+
+                            if (Entity* trunk = entity->GetChildByIndex(0))
+                            {
+                                Render* renderable = trunk->GetComponent<Render>();
+                                renderable->SetInstances(all_tree_transforms);
+                                renderable->SetMaxRenderDistance(render_distance_trees);
+                                renderable->SetMaxShadowDistance(shadow_distance);
+                                renderable->SetMaterial(material_body);
+
+                                Physics* physics = trunk->AddComponent<Physics>();
+                                physics->SetBodyType(BodyType::Mesh);
+                            }
+
+                            if (Entity* leafs = entity->GetChildByIndex(1))
+                            {
+                                Render* renderable = leafs->GetComponent<Render>();
+                                renderable->SetInstances(all_tree_transforms);
+                                renderable->SetMaxRenderDistance(render_distance_trees);
+                                renderable->SetMaxShadowDistance(shadow_distance);
+                                renderable->SetMaterial(material_leaf);
+                            }
+                        }
+                    }
+
+                    // single rock entity for the whole world
+                    {
+                        size_t rock_total = 0;
+                        for (const auto& v : rock_transforms_per_tile) rock_total += v.size();
+                        vector<Matrix> all_rock_transforms;
+                        all_rock_transforms.reserve(rock_total);
+                        for (auto& v : rock_transforms_per_tile)
+                            all_rock_transforms.insert(all_rock_transforms.end(), v.begin(), v.end());
+
+                        if (!all_rock_transforms.empty())
+                        {
+                            Entity* entity = mesh_rock->GetRootEntity()->Clone();
+                            entity->SetObjectName("rock");
+                            entity->SetParent(default_terrain);
+
+                            if (Entity* rock_entity = entity->GetDescendantByName("untitled"))
+                            {
+                                Render* renderable = rock_entity->GetComponent<Render>();
+                                renderable->SetInstances(all_rock_transforms);
+                                renderable->SetMaxRenderDistance(render_distance_trees);
+                                renderable->SetMaxShadowDistance(shadow_distance);
+                                renderable->SetMaterial(material_rock);
+
+                                Physics* physics = rock_entity->AddComponent<Physics>();
+                                physics->SetBodyType(BodyType::Mesh);
+                            }
+                        }
+                    }
                 }
             }
 

@@ -1081,6 +1081,10 @@ namespace spartan
             hash *= 1099511628211ull; // fnv-1a prime
         };
 
+        // bump when cache format changes so old caches get invalidated
+        const uint64_t cache_format_version = 2;
+        hash_combine(cache_format_version);
+
         hash_combine(static_cast<uint64_t>(m_min_y * 1000));
         hash_combine(static_cast<uint64_t>(m_max_y * 1000));
         hash_combine(static_cast<uint64_t>(m_level_sea * 1000));
@@ -1197,7 +1201,8 @@ namespace spartan
         file.write(reinterpret_cast<const char*>(&position_count), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&m_dense_width), sizeof(uint32_t));
         file.write(reinterpret_cast<const char*>(&m_dense_height), sizeof(uint32_t));
-    
+        file.write(reinterpret_cast<const char*>(&m_area_km2), sizeof(float));
+
         // main data
         file.write(reinterpret_cast<const char*>(m_height_data.data()), height_data_size * sizeof(float));
         file.write(reinterpret_cast<const char*>(m_vertices.data()), vertex_count * sizeof(RHI_Vertex_PosTexNorTan));
@@ -1266,7 +1271,8 @@ namespace spartan
         file.read(reinterpret_cast<char*>(&position_count), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_dense_width), sizeof(uint32_t));
         file.read(reinterpret_cast<char*>(&m_dense_height), sizeof(uint32_t));
-    
+        file.read(reinterpret_cast<char*>(&m_area_km2), sizeof(float));
+
         if (tile_count > 10000 || offset_count > 10000)
         {
             SP_LOG_ERROR("invalid tile_count (%u) or offset_count (%u), aborting load", tile_count, offset_count);
@@ -1431,20 +1437,54 @@ namespace spartan
         m_vertex_count   = static_cast<uint32_t>(m_vertices.size());
         m_index_count    = static_cast<uint32_t>(m_indices.size());
         m_triangle_count = m_index_count / 3;
-        m_area_km2       = compute_surface_area_km2(m_vertices, m_indices);
+
+        // surface area is expensive to compute, only recompute on cache miss (cached value was read from disk)
+        if (!loaded_from_cache)
+        {
+            m_area_km2 = compute_surface_area_km2(m_vertices, m_indices);
+        }
 
         // 9. create tile entities and gpu buffers
         ProgressTracker::GetProgress(ProgressType::Terrain).SetText("creating gpu mesh...");
-        m_mesh = make_shared<Mesh>();
-        m_mesh->SetObjectName("terrain_mesh");
-        m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
-        m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
 
-        for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
+        // try to load the prebuilt mesh (lods + meshlets) from disk so cached loads skip simplify + build_meshlets
+        const string cache_file_mesh = "terrain_mesh_cache.mesh";
+        bool mesh_loaded_from_cache  = false;
+        if (loaded_from_cache && FileSystem::Exists(cache_file_mesh))
         {
-            uint32_t sub_mesh_index = 0;
-            m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
-            
+            shared_ptr<Mesh> mesh_from_cache = make_shared<Mesh>();
+            mesh_from_cache->LoadFromFile(cache_file_mesh);
+            if (mesh_from_cache->GetVertexCount() > 0)
+            {
+                m_mesh                 = mesh_from_cache;
+                mesh_loaded_from_cache = true;
+            }
+        }
+
+        if (!mesh_loaded_from_cache)
+        {
+            m_mesh = make_shared<Mesh>();
+            m_mesh->SetObjectName("terrain_mesh");
+            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
+            m_mesh->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessPreserveTerrainEdges), true);
+
+            for (uint32_t tile_index = 0; tile_index < static_cast<uint32_t>(m_tile_vertices.size()); tile_index++)
+            {
+                uint32_t sub_mesh_index = 0;
+                m_mesh->AddGeometry(m_tile_vertices[tile_index], m_tile_indices[tile_index], true, &sub_mesh_index);
+            }
+
+            // save before CreateGpuBuffers so the global geometry offsets are not baked into the file
+            m_mesh->SetResourceFilePath(cache_file_mesh);
+            m_mesh->SaveToFile(cache_file_mesh);
+
+            m_mesh->CreateGpuBuffers();
+        }
+
+        // create per-tile entities (sub_mesh_index == tile_index by construction)
+        const uint32_t tile_count_entities = static_cast<uint32_t>(m_tile_offsets.size());
+        for (uint32_t tile_index = 0; tile_index < tile_count_entities; tile_index++)
+        {
             Entity* entity = World::CreateEntity();
             entity->SetObjectName("tile_" + to_string(tile_index + 1));
             entity->SetParent(GetEntity());
@@ -1452,14 +1492,13 @@ namespace spartan
 
             if (Render* renderable = entity->AddComponent<Render>())
             {
-                renderable->SetMesh(m_mesh.get(), sub_mesh_index);
+                renderable->SetMesh(m_mesh.get(), tile_index);
                 renderable->SetMaterial(m_material);
             }
         }
-    
-        m_mesh->CreateGpuBuffers();
+
         ProgressTracker::GetProgress(ProgressType::Terrain).JobDone();
-    
+
         // free temporary data
         m_vertices.clear();
         m_indices.clear();
