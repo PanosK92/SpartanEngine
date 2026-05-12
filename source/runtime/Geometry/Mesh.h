@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include <mutex>
+#include <atomic>
 #include <memory>
 #include "../RHI/RHI_Vertex.h"
 #include "../Resource/IResource.h"
@@ -152,6 +153,7 @@ namespace spartan
         RHI_AccelerationStructure* GetBlas(uint32_t sub_mesh_index) const;
         bool HasBlas(uint32_t sub_mesh_index) const;
         void InvalidateBlas(uint32_t sub_mesh_index);
+        void InvalidateAllBlas();
         void RefitBlas(RHI_CommandList* cmd_list, uint32_t sub_mesh_index);
         bool CanRefitBlas(uint32_t sub_mesh_index) const;
 
@@ -169,6 +171,10 @@ namespace spartan
 
         // acceleration structures
         std::vector<std::unique_ptr<RHI_AccelerationStructure>> m_blas; // one blas per sub-mesh
+
+        // set once createGpuBuffers has run and the global buffer offsets are finalized,
+        // gates blas building so the renderer never observes a mesh whose sub-meshes/lods are still being filled in by a loader thread
+        std::atomic<bool> m_ready_for_blas = false;
 
         // misc
         std::mutex m_mutex;

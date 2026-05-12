@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Geometry/GeometryProcessing.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Rendering/GeometryBuffer.h"
+#include "../../Core/ProgressTracker.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #ifdef DEBUG
@@ -255,6 +256,13 @@ namespace spartan
             Create();
         }
 
+        // during world load worker threads are busy inside pxphysics/pxscene creating actors and
+        // shapes, the editor sync path below writes to pxrigidactor on the main thread which physx
+        // flags as concurrent api access and corrupts the internal pruner aabb tree, the entities
+        // were just placed at the right pose so this sync would be a no-op anyway
+        if (ProgressTracker::IsLoading())
+            return;
+
         // sync physics transforms to entities before other components (like camera) tick
         // this ensures child entities have up-to-date parent transforms when they compute matrices
         const bool is_playing  = Engine::IsFlagSet(EngineMode::Playing);
@@ -300,6 +308,12 @@ namespace spartan
 
     void Physics::Tick()
     {
+        // distance activation iterates m_actors which a worker thread may still be appending to
+        // inside Create, the entity is already published to the world before its physics component
+        // finishes creating actors so reading m_actors here would race
+        if (ProgressTracker::IsLoading())
+            return;
+
         // distance-based activation/deactivation for static actors
         if (m_body_type != BodyType::Controller && m_body_type != BodyType::Cloth && m_is_static)
         {

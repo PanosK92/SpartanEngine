@@ -235,6 +235,11 @@ namespace spartan
         static vector<pair<float, float>> halton_points;
         static size_t halton_index = 0;
 
+        // restart the sequence whenever history is wiped so the first accumulated frame
+        // samples a known sub-pixel position rather than continuing from an arbitrary phase
+        if (common::reset_history)
+            halton_index = 0;
+
         if (halton_points.empty())
         {
             const uint32_t xess_sample_limit = 96;

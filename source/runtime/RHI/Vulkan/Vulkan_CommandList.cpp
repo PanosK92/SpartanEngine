@@ -436,7 +436,10 @@ namespace spartan
                     }
                 }
 
-                // immediate execution
+                // flush pending deferred barriers first, otherwise this immediate transition records before them and gpu layout drifts from the tracker
+                if (!m_pending_barriers.empty())
+                    FlushBarriers();
+
                 VkDependencyInfo dependency_info        = {};
                 dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
                 dependency_info.imageMemoryBarrierCount = static_cast<uint32_t>(vk_barriers.size());

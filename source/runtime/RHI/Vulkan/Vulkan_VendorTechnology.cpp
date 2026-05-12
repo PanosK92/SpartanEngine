@@ -273,7 +273,12 @@ namespace spartan
         // static storage for halton points and index
         static vector<pair<float, float>> halton_points;
         static size_t halton_index = 0;
-    
+
+        // restart the sequence whenever history is wiped so the first accumulated frame
+        // samples a known sub-pixel position rather than continuing from an arbitrary phase
+        if (common::reset_history)
+            halton_index = 0;
+
         // generate halton points (bases 2 and 3, start index 1) if not already done
         if (halton_points.empty())
         {
@@ -318,6 +323,9 @@ namespace spartan
     )
     {
     #ifdef _WIN32
+        if (!intel::context)
+            return;
+
         tex_color->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);

@@ -988,6 +988,8 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, GetRenderTarget(Renderer_RenderTarget::lut_brdf_specular));
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex4, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_opaque_output));
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_frame);             // out
+                // shader uses buffer_pass via world_to_view so push constants must be set
+                cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(tex_frame);
             }
             cmd_list->EndMarker();
@@ -1058,6 +1060,10 @@ namespace spartan
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex),  tex_reflections_position, rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex2), tex_reflections_normal,   rhi_all_mips, 0, true);
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex3), tex_reflections_albedo,   rhi_all_mips, 0, true);
+
+            // raygen shader's pipeline layout has a push constant range via common_resources.hlsl,
+            // amd drivers tdr when tracerays dispatches with uninitialized push constant scalar registers
+            cmd_list->PushConstants(m_pcb_pass_cpu);
 
             uint32_t width  = tex_reflections_position->GetWidth();
             uint32_t height = tex_reflections_position->GetHeight();
@@ -1258,6 +1264,10 @@ namespace spartan
             
             for (uint32_t i = 0; i < 5; i++)
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0) + i, reservoirs[i], rhi_all_mips, 0, true);
+
+            // raygen shader's pipeline layout has a push constant range via common_resources.hlsl,
+            // amd drivers tdr when tracerays dispatches with uninitialized push constant scalar registers
+            cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->TraceRays(width, height);
             

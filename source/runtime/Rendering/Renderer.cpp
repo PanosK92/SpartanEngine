@@ -1956,6 +1956,26 @@ namespace spartan
 
         m_tlas = nullptr;
 
+        // invalidate every blas, they hold device addresses into the previous global vertex/index buffers,
+        // those buffers are about to be freed via DeletionQueueParse so leaving stale blas in place would have
+        // future trace rays read freed gpu memory, dedup by mesh because many renderables share one mesh,
+        // e.g. terrain has one mesh with hundreds of sub-meshes and matching renderables
+        std::unordered_set<Mesh*> meshes;
+        for (Entity* entity : World::GetEntitiesRenderables())
+        {
+            if (Render* renderable = entity->GetComponent<Render>())
+            {
+                if (Mesh* mesh = renderable->GetMesh())
+                {
+                    meshes.insert(mesh);
+                }
+            }
+        }
+        for (Mesh* mesh : meshes)
+        {
+            mesh->InvalidateAllBlas();
+        }
+
         SP_LOG_INFO("Acceleration structures destroyed for world change");
     }
 }

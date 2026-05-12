@@ -65,6 +65,8 @@ namespace spartan
 
     void Mesh::Clear()
     {
+        m_ready_for_blas = false;
+
         m_indices.clear();
         m_indices.shrink_to_fit();
 
@@ -462,6 +464,10 @@ namespace spartan
                 m_root_entity->SetScale(normalized_scale);
             }
         }
+
+        // publish to the renderer only after global offsets are finalized and every sub-mesh has at least lod 0,
+        // release ordering pairs with the acquire load in BuildAccelerationStructure
+        m_ready_for_blas.store(true, std::memory_order_release);
     }
 
     RHI_Buffer* Mesh::GetVertexBuffer()
@@ -477,6 +483,11 @@ namespace spartan
     void Mesh::BuildAccelerationStructure(RHI_CommandList* cmd_list, bool allow_update)
     {
         SP_ASSERT(RHI_Device::IsSupportedRayTracing());
+
+        // wait until the mesh has been fully published by the loader,
+        // sub_meshes and global buffer offsets are only consistent after CreateGpuBuffers has run
+        if (!m_ready_for_blas.load(std::memory_order_acquire))
+            return;
 
         // nothing to build
         if (m_sub_meshes.empty())
@@ -499,6 +510,11 @@ namespace spartan
         {
             // skip if already built
             if (m_blas[i])
+                continue;
+
+            // defensive, a sub-mesh with no lods means it was published before its first lod was filled in,
+            // gating on m_ready_for_blas should make this unreachable but we keep the guard to avoid an out-of-range crash on regression
+            if (m_sub_meshes[i].lods.empty())
                 continue;
 
             const auto& lod = m_sub_meshes[i].lods[0]; // use lod 0 for blas
@@ -559,14 +575,30 @@ namespace spartan
         }
     }
 
+    void Mesh::InvalidateAllBlas()
+    {
+        // called when the global geometry buffer is rebuilt, every blas references the old vertex/index buffer
+        // device address and must be rebuilt against the new buffers, the caller is responsible for ensuring the gpu is idle
+        for (auto& blas : m_blas)
+        {
+            blas.reset();
+        }
+    }
+
     void Mesh::RefitBlas(RHI_CommandList* cmd_list, uint32_t sub_mesh_index)
     {
+        if (!m_ready_for_blas.load(std::memory_order_acquire))
+            return;
+
         if (sub_mesh_index >= m_blas.size() || !m_blas[sub_mesh_index] || !m_blas[sub_mesh_index]->CanRefit())
             return;
 
         RHI_Buffer* vertex_buffer = GeometryBuffer::GetVertexBuffer();
         RHI_Buffer* index_buffer  = GeometryBuffer::GetIndexBuffer();
         if (!vertex_buffer || !index_buffer)
+            return;
+
+        if (sub_mesh_index >= m_sub_meshes.size() || m_sub_meshes[sub_mesh_index].lods.empty())
             return;
 
         const auto& lod = m_sub_meshes[sub_mesh_index].lods[0];
