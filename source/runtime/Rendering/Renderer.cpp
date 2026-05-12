@@ -90,6 +90,10 @@ namespace spartan
     bool Renderer::m_bindless_samplers_dirty       = true;
     RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
     RHI_CommandList* Renderer::m_cmd_list_compute  = nullptr;
+    RHI_SyncPrimitive* Renderer::m_pending_compute_timeline = nullptr;
+    uint64_t Renderer::m_pending_compute_timeline_value     = 0;
+    RHI_SyncPrimitive* Renderer::m_previous_present_timeline = nullptr;
+    uint64_t Renderer::m_previous_present_timeline_value     = 0;
     vector<ShadowSlice> Renderer::m_shadow_slices;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
@@ -387,8 +391,7 @@ namespace spartan
 
             UpdateDrawCalls(m_cmd_list_present);
 
-            // run accel updates even during loading, blas builds are capped per frame and tlas waits until burst is done
-            UpdateAccelerationStructures(m_cmd_list_compute);
+            // accel updates moved into ProduceFrame compute batch a so they overlap with phase 1 gbuffer
 
             // resource cleanup - frame-based retirement, no gpu stall required
             if (RHI_Device::DeletionQueueNeedsToParse())
@@ -992,13 +995,32 @@ namespace spartan
                 m_cmd_list_present->RenderPassEnd();
                 m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
 
-                m_cmd_list_present->Submit(swapchain->GetImageAcquiredSemaphore(), false, swapchain->GetRenderingCompleteSemaphore());
+                m_cmd_list_present->Submit(
+                    swapchain->GetImageAcquiredSemaphore(),
+                    false,
+                    swapchain->GetRenderingCompleteSemaphore(),
+                    m_pending_compute_timeline,
+                    m_pending_compute_timeline_value);
                 swapchain->Present(m_cmd_list_present);
             }
             else
             {
-                m_cmd_list_present->Submit(nullptr, true);
+                m_cmd_list_present->Submit(
+                    nullptr,
+                    true,
+                    nullptr,
+                    m_pending_compute_timeline,
+                    m_pending_compute_timeline_value);
             }
+
+            m_pending_compute_timeline       = nullptr;
+            m_pending_compute_timeline_value = 0;
+
+            // capture this frame's last graphics signal so the next frame's compute batch a can
+            // wait on it, avoiding cross-frame races on resources written by batch a but read by
+            // graphics phase 3 of the previous frame (e.g. cloud_shadow, tlas, skysphere)
+            m_previous_present_timeline       = m_cmd_list_present->GetTimelineSemaphore();
+            m_previous_present_timeline_value = m_cmd_list_present->GetLastTimelineSignalValue();
         }
         Profiler::TimeBlockEnd(TimeBlockType::Cpu);
     }

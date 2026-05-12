@@ -360,6 +360,13 @@ namespace spartan
         static bool m_taau_reset_history;
         static RHI_CommandList* m_cmd_list_present;
         static RHI_CommandList* m_cmd_list_compute;
+        // cross-queue sync: phase 3 present submit waits on async compute batch B
+        static RHI_SyncPrimitive* m_pending_compute_timeline;
+        static uint64_t m_pending_compute_timeline_value;
+        // cross-frame sync: compute batch a waits on the previous frame's last graphics submit
+        // so that batch a does not write resources still being read by phase 3 of the prior frame
+        static RHI_SyncPrimitive* m_previous_present_timeline;
+        static uint64_t m_previous_present_timeline_value;
         static std::vector<ShadowSlice> m_shadow_slices;
         static uint32_t m_count_active_lights;
     };

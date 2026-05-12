@@ -71,8 +71,11 @@ namespace spartan
         // wind field is the same texture that gets written by Pass_WindField as a UAV
         // skip binding it as an SRV while it is in General layout, otherwise the descriptor
         // would carry a stale shader-read layout into the dispatch and trip vulkan validation
-        RHI_Texture* tex_wind = GetRenderTarget(Renderer_RenderTarget::wind_field);
-        if (tex_wind && tex_wind->GetLayout(0) == RHI_Image_Layout::Shader_Read)
+        // also skip on non-graphics queues, the wind_field write happens on graphics and binding
+        // it on async compute would race with that write across queue families
+        bool is_graphics_queue = cmd_list->GetQueue() && cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Graphics;
+        RHI_Texture* tex_wind  = GetRenderTarget(Renderer_RenderTarget::wind_field);
+        if (is_graphics_queue && tex_wind && tex_wind->GetLayout(0) == RHI_Image_Layout::Shader_Read)
         {
             cmd_list->SetTexture(Renderer_BindingsSrv::tex_wind_field, tex_wind);
         }
@@ -97,64 +100,84 @@ namespace spartan
         RHI_Texture* rt_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTarget::frame_output);
 
-        // brdf lut (once)
-        if (!m_pass_state.brdf_lut_produced)
+        // skysphere update detection, used by compute batch a
+        bool clouds_visible      = cvar_cloud_coverage.GetValue() > 0.0f;
+        bool update_skysphere    = false;
+        Light* directional_light = World::GetDirectionalLight();
         {
-            Pass_Lut_BrdfSpecular(cmd_list_graphics_present);
-            m_pass_state.brdf_lut_produced = true;
+            const uint32_t temporal_convergence_frames = 8;
+
+            bool has_directional_light = directional_light != nullptr;
+            float current_coverage     = cvar_cloud_coverage.GetValue();
+
+            bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) ||
+                                 (has_directional_light != m_pass_state.sky_had_directional_light);
+            bool cloud_params_changed = current_coverage != m_pass_state.sky_last_coverage;
+
+            if (m_pass_state.sky_first_frame || light_changed || cloud_params_changed)
+            {
+                m_pass_state.sky_frames_remaining = temporal_convergence_frames;
+            }
+
+            update_skysphere = m_pass_state.sky_frames_remaining > 0;
+
+            if (m_pass_state.sky_frames_remaining > 0)
+            {
+                m_pass_state.sky_frames_remaining--;
+            }
+
+            m_pass_state.sky_first_frame           = false;
+            m_pass_state.sky_had_directional_light = has_directional_light;
+            m_pass_state.sky_last_coverage         = current_coverage;
         }
 
-        // cloud noise (once)
-        Pass_CloudNoise(cmd_list_graphics_present);
-
-        // wind field (every frame, must be ready before any geometry pass that runs vertex_processing)
-        Pass_WindField(cmd_list_graphics_present);
-
-        // skysphere (re-render on light/coverage changes, converge over several frames)
-        bool clouds_visible = cvar_cloud_coverage.GetValue() > 0.0f;
-        
+        // -------------------------------------------------------------------------
+        // compute batch a: view-independent prep, no cross-queue waits
+        // overlaps with graphics phase 1 (gbuffer rasterization)
+        // -------------------------------------------------------------------------
         {
-            bool update_skysphere = false;
-            Light* directional_light = World::GetDirectionalLight();
-            
+            cmd_list_compute->BeginMarker("compute_batch_a");
+
+            // accel structures first so batch b's rt passes inherit the tlas via compute-queue order
+            UpdateAccelerationStructures(cmd_list_compute);
+
+            // brdf lut, one-shot
+            if (!m_pass_state.brdf_lut_produced)
             {
-                const uint32_t temporal_convergence_frames = 8;
-                
-                bool has_directional_light = directional_light != nullptr;
-                float current_coverage = cvar_cloud_coverage.GetValue();
-                
-                bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) || 
-                                     (has_directional_light != m_pass_state.sky_had_directional_light);
-                bool cloud_params_changed = current_coverage != m_pass_state.sky_last_coverage;
-                
-                if (m_pass_state.sky_first_frame || light_changed || cloud_params_changed)
-                {
-                    m_pass_state.sky_frames_remaining = temporal_convergence_frames;
-                }
-                
-                update_skysphere = m_pass_state.sky_frames_remaining > 0;
-                
-                if (m_pass_state.sky_frames_remaining > 0)
-                {
-                    m_pass_state.sky_frames_remaining--;
-                }
-                
-                m_pass_state.sky_first_frame           = false;
-                m_pass_state.sky_had_directional_light = has_directional_light;
-                m_pass_state.sky_last_coverage         = current_coverage;
+                Pass_Lut_BrdfSpecular(cmd_list_compute);
+                m_pass_state.brdf_lut_produced = true;
             }
-            
+
+            // cloud noise, one-shot
+            Pass_CloudNoise(cmd_list_compute);
+
+            // skysphere and atmospheric luts, only when light or coverage changes
             if (update_skysphere)
             {
-                // lut (expensive, only on light change)
                 if (!m_pass_state.atmosphere_lut_produced || (directional_light && directional_light->NeedsSkysphereUpdate()))
                 {
-                    Pass_Lut_AtmosphericScattering(cmd_list_graphics_present);
+                    Pass_Lut_AtmosphericScattering(cmd_list_compute);
                     m_pass_state.atmosphere_lut_produced = true;
                 }
-                Pass_Skysphere(cmd_list_graphics_present);
+                Pass_Skysphere(cmd_list_compute);
             }
+
+            // cloud shadow, every frame, view-independent
+            if (clouds_visible)
+            {
+                Pass_CloudShadow(cmd_list_compute);
+            }
+
+            cmd_list_compute->EndMarker();
         }
+
+        // wind field stays on graphics queue, must precede gbuffer for vertex animation sampling
+        Pass_WindField(cmd_list_graphics_present);
+
+        // submit compute batch a, waits on the previous frame's present so writes here do not race
+        // with the prior frame's graphics phase 3 reads of cloud_shadow, tlas, skysphere etc.
+        // null timeline on frame 0 means no wait, which is fine because nothing has been read yet
+        cmd_list_compute->Submit(nullptr, false, nullptr, m_previous_present_timeline, m_previous_present_timeline_value);
 
         if (Camera* camera = World::GetCamera())
         {
@@ -182,27 +205,29 @@ namespace spartan
             uint64_t gfx_phase1_timeline_value = cmd_list_graphics_present->GetLastTimelineSignalValue();
             RHI_SyncPrimitive* gfx_timeline    = cmd_list_graphics_present->GetTimelineSemaphore();
 
-            // async compute: overlaps with shadow rasterization
+            // -------------------------------------------------------------------------
+            // compute batch b: gbuffer-consuming work, waits on phase 1 timeline
+            // overlaps with graphics phase 2 (shadow rasterization)
+            // -------------------------------------------------------------------------
+            RHI_Queue* queue_compute            = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
+            RHI_CommandList* cmd_list_compute_b = queue_compute->NextCommandList();
+            cmd_list_compute_b->Begin();
+            cmd_list_compute_b->BeginMarker("compute_batch_b");
             {
-                if (clouds_visible)
-                {
-                    Pass_CloudShadow(cmd_list_compute);
-                }
-
-                Pass_ScreenSpaceAmbientOcclusion(cmd_list_compute);
-                Pass_ScreenSpaceShadows(cmd_list_compute);
-
-                Pass_RayTracedShadows(cmd_list_compute);
-                Pass_ReSTIR_PathTracing(cmd_list_compute);
-                Pass_ReSTIR_Denoising(cmd_list_compute);
-
-                // submit compute, wait on phase 1
-                cmd_list_compute->Submit(nullptr, false, nullptr, gfx_timeline, gfx_phase1_timeline_value);
+                Pass_ScreenSpaceAmbientOcclusion(cmd_list_compute_b);
+                Pass_ScreenSpaceShadows(cmd_list_compute_b);
+                Pass_RayTracedShadows(cmd_list_compute_b);
+                Pass_ReSTIR_PathTracing(cmd_list_compute_b);
+                Pass_ReSTIR_Denoising(cmd_list_compute_b);
             }
-            uint64_t compute_timeline_value = cmd_list_compute->GetLastTimelineSignalValue();
-            RHI_SyncPrimitive* compute_timeline = cmd_list_compute->GetTimelineSemaphore();
+            cmd_list_compute_b->EndMarker();
+
+            cmd_list_compute_b->Submit(nullptr, false, nullptr, gfx_timeline, gfx_phase1_timeline_value);
+            RHI_SyncPrimitive* compute_b_timeline = cmd_list_compute_b->GetTimelineSemaphore();
+            uint64_t compute_b_value              = cmd_list_compute_b->GetLastTimelineSignalValue();
 
             // graphics phase 2: shadow maps
+            // no compute wait, queue order keeps it after phase 1, so it overlaps with batch b
             RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
             cmd_list_graphics_present = queue_graphics->NextCommandList();
             cmd_list_graphics_present->Begin();
@@ -210,12 +235,17 @@ namespace spartan
 
             Pass_ShadowMaps(cmd_list_graphics_present);
 
-            // graphics phase 3: lighting and post-process (waits on compute)
-            cmd_list_graphics_present->Submit(nullptr, false, nullptr, compute_timeline, compute_timeline_value);
+            cmd_list_graphics_present->Submit(nullptr, false);
 
+            // graphics phase 3: lighting and post-process
+            // present cmd list waits on compute batch b at submit time via SubmitAndPresent
             cmd_list_graphics_present = queue_graphics->NextCommandList();
             cmd_list_graphics_present->Begin();
             m_cmd_list_present = cmd_list_graphics_present;
+
+            // stash sync state, consumed by SubmitAndPresent on the present submit
+            m_pending_compute_timeline       = compute_b_timeline;
+            m_pending_compute_timeline_value = compute_b_value;
 
             // for each eye
             bool xr_stereo     = Xr::IsSessionRunning() && Xr::GetStereoMode();
