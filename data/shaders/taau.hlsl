@@ -25,15 +25,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //      mitchell netravali filter over a 3x3 render-res neighborhood that accounts
 //      for the projection jitter, this is the actual upsampling step
 //   2. fetch reprojected history at output res via a 5-tap catmull-rom
-//   3. clip history to a ycocg variance aabb derived from the same 3x3 to suppress ghosting
-//   4. depth-reproject the closest surface with the previous unjittered view-projection
-//      to estimate disocclusion confidence
-//   5. blend with an adaptive feedback factor plus fsr2 style anti-flicker luminance weighting
+//   3. clip history to a ycocg variance aabb derived from the same 3x3 to suppress
+//      ghosting and to handle disocclusion implicitly via clip distance
+//   4. blend with a small fixed feedback factor that scales with the upsample ratio
 // bindings, set by the renderer pass:
 //   tex          history at output resolution
 //   tex2         current jittered color at render resolution, only the top-left
 //                resolution_render * resolution_scale region is valid
-//   tex_depth    reverse-z depth at render resolution
+//   tex_depth    reverse-z depth at render resolution, used only to pick the closest
+//                surface for velocity fetch
 //   tex_velocity ndc-space velocity at render resolution
 //   tex_uav      output at output resolution
 
@@ -155,24 +155,24 @@ float3 taau(uint2 px_out)
     float2 active_render = buffer_frame.resolution_render * scale;
     int2   px_render_max = max(int2(active_render) - 1, int2(0, 0));
 
-    // taa_jitter_current is in ndc, ndc to pixel is (x*0.5*width, y*-0.5*height) because
-    // ndc y is flipped relative to texture y, the rendered image was shifted by +jitter_px
-    // so the world point that maps to output pixel uv_out lands at uv_out * active + jitter_px
-    // in render pixel space
+    // taa_jitter_current is in ndc, ndc to render-pixel is (x*0.5*width, y*-0.5*height)
+    // because ndc y is flipped relative to texture y, the rendered image is shifted by
+    // +jitter_px so the world point that corresponds to output pixel uv_out lands at
+    // uv_out*active_render + jitter_px in render pixel space
     float2 jitter_px = buffer_frame.taa_jitter_current * float2(0.5f, -0.5f) * active_render;
     float2 p_render  = uv_out * active_render + jitter_px;
-    int2   center    = int2(floor(p_render));
+    int2   center    = clamp(int2(floor(p_render)), int2(0, 0), px_render_max);
 
     // 3x3 gather, mitchell weighted current reconstruction plus ycocg neighborhood stats
     // plus closest reverse-z depth for velocity fetch, all in one pass
     float3 m1            = 0.0f.xxx;
     float3 m2            = 0.0f.xxx;
-    float3 cmin          =  1e10f.xxx;
-    float3 cmax          = -1e10f.xxx;
+    float3 cmin          =  FLT_MAX_16U.xxx;
+    float3 cmax          = -FLT_MAX_16U.xxx;
     float3 current_rgb   = 0.0f.xxx;
     float  weight_sum    = 0.0f;
     float  closest_depth = -1.0f;
-    int2   closest_pos   = clamp(center, int2(0, 0), px_render_max);
+    int2   closest_pos   = center;
 
     [unroll]
     for (int dy = -1; dy <= 1; ++dy)
@@ -204,11 +204,13 @@ float3 taau(uint2 px_out)
         }
     }
 
-    // current sample, normalized, clamped to a sane hdr range
+    // current sample, normalized, mitchell can yield small negative tail weights so
+    // clamp to a non-negative hdr range
     current_rgb          = saturate_16(max(current_rgb / max(weight_sum, FLT_MIN), 0.0f.xxx));
     float3 current_ycocg = rgb_to_ycocg(current_rgb);
 
-    // velocity is ndc delta, convert to uv delta with the standard y-flip
+    // velocity is stored as an ndc delta, convert to a uv delta, the y axis flips
+    // because ndc y is bottom-up while uv y is top-down
     float2 velocity_ndc = tex_velocity[closest_pos].xy;
     float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
     float2 uv_prev      = uv_out - velocity_uv;
@@ -222,51 +224,24 @@ float3 taau(uint2 px_out)
     float3 history_rgb   = sample_history_catmull_rom(uv_prev, res_out);
     float3 history_ycocg = rgb_to_ycocg(history_rgb);
 
-    // depth-reproject the closest surface through the previous unjittered vp,
-    // pixel disagreement vs the velocity-derived uv_prev is a robust disocclusion proxy
-    // get_position internally uses the jittered inverse vp, which leaves a sub-pixel
-    // residual, so the threshold is loose enough to tolerate it
-    float2 uv_screen        = (float2(closest_pos) + 0.5f) / max(active_render, 1.0f.xx);
-    float3 pos_ws           = get_position(closest_depth, uv_screen);
-    float4 clip_prev        = mul(float4(pos_ws, 1.0f), buffer_frame.view_projection_previous_unjittered);
-    float2 ndc_prev         = clip_prev.xy / max(abs(clip_prev.w), FLT_MIN) * sign(clip_prev.w + FLT_MIN);
-    float2 uv_prev_expect   = ndc_prev * float2(0.5f, -0.5f) + 0.5f;
-    float  disp_px          = length((uv_prev_expect - uv_prev) * res_out);
-    float  confidence_depth = saturate(1.0f - smoothstep(1.5f, 4.0f, disp_px));
+    // ycocg mean and stddev, the aabb is built from sigma and intersected with the
+    // raw min/max so narrow neighborhoods still allow some detail through, sigma
+    // tightens slightly with motion to crush ghosting on moving edges
+    float3 mean      = m1 * RPC_9;
+    float3 sigma     = sqrt(max(m2 * RPC_9 - mean * mean, 0.0f.xxx));
+    float  motion    = saturate(length(velocity_uv) * res_out.x * (1.0f / 32.0f));
+    float  gamma     = lerp(1.0f, 0.5f, motion);
+    float3 aabb_min  = max(mean - sigma * gamma, cmin);
+    float3 aabb_max  = min(mean + sigma * gamma, cmax);
+    float3 history_c = clip_aabb(aabb_min, aabb_max, clamp(mean, aabb_min, aabb_max), history_ycocg);
 
-    // ycocg mean and stddev, sigma is scaled tighter under low confidence to crush ghosts
-    float3 mean     = m1 * RPC_9;
-    float3 sigma    = sqrt(abs(m2 * RPC_9 - mean * mean));
-    float  gamma    = lerp(0.75f, 1.75f, confidence_depth);
-    float3 aabb_min = max(mean - sigma * gamma, cmin);
-    float3 aabb_max = min(mean + sigma * gamma, cmax);
-    float3 history_clipped = clip_aabb(aabb_min, aabb_max, clamp(mean, aabb_min, aabb_max), history_ycocg);
+    // fixed feedback factor, the aabb clip above already handles disocclusion
+    // implicitly by snapping stale history to the current neighborhood, so a
+    // separate disocclusion-driven blend lift would just fight the accumulator
+    // and produce content-dependent ringing
+    float blend = 1.0f / 8.0f;
 
-    // clip distance, second disocclusion signal, large displacements in chroma typically
-    // indicate the history belonged to a different surface
-    float clip_distance      = length(history_clipped - history_ycocg) / max(length(sigma), FLT_MIN);
-    float confidence_clip    = saturate(1.0f - smoothstep(0.75f, 2.5f, clip_distance));
-    float confidence         = min(confidence_depth, confidence_clip);
-
-    // adaptive feedback factor
-    //   base                  1/16 at deep static accumulation
-    //   upsample-aware floor  each output pixel only gets a fresh render-res sample every
-    //                         ~1/scale^2 frames, push the floor up to avoid over-smearing
-    //   motion boost          tiny push that keeps moving edges crisper
-    //   disocclusion          fade toward 1 as confidence drops so stale history is dropped
-    float motion = saturate(length(velocity_uv) * 25.0f);
-    float blend  = max(1.0f / 16.0f, scale * scale * 0.125f);
-    blend       += motion * 0.05f;
-    blend        = lerp(blend, 1.0f, 1.0f - confidence);
-    blend        = saturate(blend);
-
-    // fsr2 style anti-flicker, weighted blend in tonemapped luma space, brighter samples
-    // contribute less which keeps single-frame fireflies from leaking into the accumulator
-    float w_c       = 1.0f / (1.0f + max(current_ycocg.x,        0.0f));
-    float w_h       = 1.0f / (1.0f + max(history_clipped.x,      0.0f));
-    float blend_eff = (w_c * blend) / max(w_c * blend + w_h * (1.0f - blend), FLT_MIN);
-
-    float3 result_ycocg = lerp(history_clipped, current_ycocg, blend_eff);
+    float3 result_ycocg = lerp(history_c, current_ycocg, blend);
     float3 result_rgb   = ycocg_to_rgb(result_ycocg);
     return saturate_16(max(result_rgb, 0.0f.xxx));
 }

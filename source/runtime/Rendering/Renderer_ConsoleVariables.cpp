@@ -178,7 +178,7 @@ namespace spartan
     // quality settings
     TConsoleVar<float> cvar_anisotropy                     ("r.anisotropy",                     16.0f,                                                   "anisotropic filtering level (0-16)",      on_anisotropy_change);
     TConsoleVar<float> cvar_tonemapping                    ("r.tonemapping",                    4.0f,                                                    "tonemapping algorithm index");
-    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        2.0f,                                                    "aa/upsampling method index",              on_antialiasing_change);
+    TConsoleVar<float> cvar_antialiasing_upsampling        ("r.antialiasing_upsampling",        3.0f,                                                    "aa/upsampling method index",              on_antialiasing_change);
     // display
     TConsoleVar<float> cvar_hdr                            ("r.hdr",                            0.0f,                                                    "enable hdr output",                       on_hdr_change);
     TConsoleVar<float> cvar_gamma                          ("r.gamma",                          2.2f,                                                    "display gamma");
