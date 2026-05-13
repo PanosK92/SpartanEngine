@@ -169,6 +169,23 @@ namespace spartan
     
     Entity* Camera::FindEntityUnderCursor()
     {
+        // hover cache, the picking ray is reasonably expensive (per-entity geometry copy + triangle loop)
+        // so we reuse the previous result while the cursor is steady, drag-preview ticks this every frame
+        // a small staleness budget lets animated meshes eventually re-resolve under a held cursor
+        static Vector2  s_cached_cursor    = Vector2(numeric_limits<float>::infinity(), numeric_limits<float>::infinity());
+        static uint64_t s_cached_entity_id = 0;
+        static uint64_t s_cached_frame     = 0;
+        const  float    cursor_epsilon_px  = 0.5f;
+        const  uint64_t max_cache_age      = 6;
+
+        Vector2  cursor = Input::GetMousePosition();
+        uint64_t frame  = Renderer::GetFrameNumber();
+        if ((cursor - s_cached_cursor).LengthSquared() < cursor_epsilon_px * cursor_epsilon_px &&
+            (frame - s_cached_frame) < max_cache_age)
+        {
+            return World::GetEntityById(s_cached_entity_id);
+        }
+
         const Ray& ray = ComputePickingRay();
         m_pick_hits.clear();
 
@@ -186,17 +203,22 @@ namespace spartan
             m_pick_hits.emplace_back(entity, Vector3::Zero, distance, distance == 0.0f);
         }
 
-        Vector2 cursor         = Input::GetMousePosition();
-        float best_screen_dist = numeric_limits<float>::max();
-        float best_depth       = numeric_limits<float>::max();
-        Entity* best_entity    = nullptr;
+        Entity* best_entity = nullptr;
+        float   best_depth  = numeric_limits<float>::max();
 
-        if (m_pick_hits.empty())
-            return nullptr;
+        // sort broadphase hits by aabb distance so we can early-out once the front-most triangle is closer
+        // than any remaining candidate's bounding box (the camera is inside an aabb -> distance == 0, those go first)
+        std::sort(m_pick_hits.begin(), m_pick_hits.end(),
+            [](const RayHitResult& a, const RayHitResult& b) { return a.m_distance < b.m_distance; });
 
-        // mesh-based triangle picking
+        // mesh-based triangle picking, rank by smallest ray distance (z-pick)
+        // screen-distance ranking is unstable here because the ray-triangle intersection lands on the cursor
+        // by definition so all candidates have screen_distance ~0 and float noise picks the winner
         for (RayHitResult& broad_hit : m_pick_hits)
         {
+            if (broad_hit.m_distance >= best_depth)
+                break;
+
             Render* renderable = broad_hit.m_entity->GetComponent<Render>();
 
             // query mesh size first to reserve exact capacity and avoid allocations
@@ -238,31 +260,17 @@ namespace spartan
                 if (distance == numeric_limits<float>::infinity())
                     continue;
 
-                Vector3 world_hit = ray.GetStart() + ray.GetDirection() * distance;
-
-                // project to clip space
-                Vector4 clip = Vector4(world_hit, 1.0f) * GetViewProjectionMatrix();
-                if (clip.w == 0.0f)
-                    continue;
-
-                // ndc to screen
-                Vector2 screen_pos(
-                    (clip.x / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().width,
-                    (clip.y / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().height
-                );
-
-                float screen_dist = (screen_pos - cursor).Length();
-
-                // prefer smallest screen distance, then depth
-                if (screen_dist < best_screen_dist || (screen_dist == best_screen_dist && distance < best_depth))
+                if (distance < best_depth)
                 {
-                    best_screen_dist = screen_dist;
-                    best_depth       = distance;
-                    best_entity      = broad_hit.m_entity;
+                    best_depth  = distance;
+                    best_entity = broad_hit.m_entity;
                 }
             }
         }
 
+        s_cached_cursor    = cursor;
+        s_cached_entity_id = best_entity ? best_entity->GetObjectId() : 0;
+        s_cached_frame     = frame;
         return best_entity;
     }
 
