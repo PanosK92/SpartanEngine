@@ -132,6 +132,10 @@ struct gbuffer_vertex
     float width_percent      : TEXCOORD2; // temp, will remove
     nointerpolation uint material_index : TEXCOORD3; // for indirect draws, material index passed from vs
     nointerpolation uint view_id        : TEXCOORD4; // multiview eye index (0 = left, 1 = right)
+    // per-renderable uv transform passed through for the pixel shader's world-space-uv path,
+    // nointerpolation since these are constant per draw
+    nointerpolation float4 uv_xform_ts  : TEXCOORD5; // xy = tiling, zw = offset
+    nointerpolation float4 uv_xform_ir  : TEXCOORD6; // xy = invert, z = rotation, w = unused
 };
 
 float4x4 compose_instance_transform(min16float instance_position_x, min16float instance_position_y, min16float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
@@ -484,16 +488,27 @@ gbuffer_vertex transform_to_world_space(Vertex_PosUvNorTan input, uint instance_
     float3 input_normal  = unpack_vertex_oct(input.normal_packed);
     float3 input_tangent = unpack_vertex_oct(input.tangent_packed);
 
-    // compute UV with tiling and offset
-    float2 uv = input_uv * material.tiling + material.offset;
-    
-    // apply UV inversion: mirror along axis if enabled
-    float2 invert_mask = step(0.5f, material.invert_uv);
+    // uv state now lives on the per-renderable draw data, so multiple renderables can share a material
+    float2 uv_tiling      = _draw.uv_tiling;
+    float2 uv_offset      = _draw.uv_offset;
+    float2 uv_invert      = _draw.uv_invert;
+    float  uv_rotation    = _draw.uv_rotation;
+    float  uv_world_space = _draw.uv_world_space;
+
+    // forward to the pixel shader, ir.w carries the world_space_uv flag
+    vertex.uv_xform_ts = float4(uv_tiling, uv_offset);
+    vertex.uv_xform_ir = float4(uv_invert, uv_rotation, uv_world_space);
+
+    // compute uv with tiling and offset
+    float2 uv = input_uv * uv_tiling + uv_offset;
+
+    // apply uv inversion, mirror along axis if enabled
+    float2 invert_mask = step(0.5f, uv_invert);
     uv                 = lerp(uv, 2.0f * floor(uv) + 1.0f - uv, invert_mask);
 
     // apply 90 degree rotation increments
-    if (material.uv_rotation != 0.0f)
-        uv = rotate_uv_90(uv, material.uv_rotation);
+    if (uv_rotation != 0.0f)
+        uv = rotate_uv_90(uv, uv_rotation);
 
     vertex.uv_misc.xy  = uv;
     

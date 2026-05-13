@@ -78,41 +78,30 @@ float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16U); }
 /*------------------------------------------------------------------------------
     VALIDATE (used because AMD SSSR is full of issues)
 ------------------------------------------------------------------------------*/
+// nan propagates through addition so a single any check on the combined value catches the bad
+// case in one shot instead of running isnan and a select per component
 float validate_output(float value)
 {
     value = saturate_16(value);
-    float is_nan_mask = isnan(value) ? 1.0f : 0.0f;
-    return lerp(value, 1.0f, is_nan_mask);
+    return isnan(value) ? 1.0f : value;
 }
 
 float2 validate_output(float2 value)
 {
-    return float2
-    (
-        validate_output(value.x),
-        validate_output(value.y)
-    );
+    value = saturate_16(value);
+    return any(isnan(value)) ? float2(1.0f, 1.0f) : value;
 }
 
 float3 validate_output(float3 value)
 {
-    return float3
-    (
-        validate_output(value.x),
-        validate_output(value.y),
-        validate_output(value.z)
-    );
+    value = saturate_16(value);
+    return any(isnan(value)) ? float3(1.0f, 1.0f, 1.0f) : value;
 }
 
 float4 validate_output(float4 value)
 {
-    return float4
-    (
-        validate_output(value.x),
-        validate_output(value.y),
-        validate_output(value.z),
-        validate_output(value.w)
-    );
+    value = saturate_16(value);
+    return any(isnan(value)) ? float4(1.0f, 1.0f, 1.0f, 1.0f) : value;
 }
 
 /*------------------------------------------------------------------------------

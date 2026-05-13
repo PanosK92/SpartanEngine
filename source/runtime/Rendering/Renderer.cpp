@@ -45,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Volume.h"
+#include "../World/Components/Render.h"
 #include "../Core/ProgressTracker.h"
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
@@ -793,8 +794,11 @@ namespace spartan
                 float jx = halton(phase_index + 1, 2) - 0.5f;
                 float jy = halton(phase_index + 1, 3) - 0.5f;
 
-                float render_w = max(m_resolution_render.x, 1.0f);
-                float render_h = max(m_resolution_render.y, 1.0f);
+                // jitter must be sized to the active render area, m_resolution_render * resolution_scale,
+                // not the full render target, otherwise sub-pixel coverage shrinks with the upsample ratio
+                float scale    = GetResolutionScale();
+                float render_w = max(m_resolution_render.x * scale, 1.0f);
+                float render_h = max(m_resolution_render.y * scale, 1.0f);
                 jitter_offset.x =  2.0f * jx / render_w;
                 jitter_offset.y = -2.0f * jy / render_h;
 
@@ -858,6 +862,7 @@ namespace spartan
 
         // vr stereo: override primary matrices with the left eye and populate the right eye
         // so that every shader helper can pick the correct per-eye matrices via eye_index
+        const uint32_t multiview_previous = m_cb_frame_cpu.is_multiview;
         if (Xr::IsSessionRunning() && Xr::GetStereoMode())
         {
             // left eye -> primary matrices
@@ -904,6 +909,10 @@ namespace spartan
             m_view_projection_previous_right                          = Matrix::Identity;
             m_view_projection_previous_unjittered_left                = Matrix::Identity;
         }
+
+        // entering or leaving stereo invalidates taau history because the projection setup changes
+        if (multiview_previous != m_cb_frame_cpu.is_multiview)
+            m_taau_reset_history = true;
 
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
     }
@@ -1049,7 +1058,7 @@ namespace spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::ssao, tex_ssao ? tex_ssao : GetStandardTexture(Renderer_StandardTexture::White));
     }
 
-    uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent)
+    uint32_t Renderer::WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous, uint32_t material_index, uint32_t is_transparent, const Render* renderable)
     {
         SP_ASSERT(m_draw_data_count < renderer_max_draw_calls);
         uint32_t index = m_draw_data_count++;
@@ -1065,6 +1074,24 @@ namespace spartan
         entry.instance_offset    = 0;
         entry.instance_index     = 0;
         entry.lod_vertex_offset  = 0;
+
+        // resolve per-renderable uv overrides against the material's defaults
+        if (renderable)
+        {
+            entry.uv_tiling      = math::Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY());
+            entry.uv_offset     = math::Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY());
+            entry.uv_invert      = math::Vector2(renderable->ResolveUvInvertX(), renderable->ResolveUvInvertY());
+            entry.uv_rotation    = renderable->ResolveUvRotation();
+            entry.uv_world_space = renderable->ResolveUvWorldSpace();
+        }
+        else
+        {
+            entry.uv_tiling      = math::Vector2(1.0f, 1.0f);
+            entry.uv_offset      = math::Vector2::Zero;
+            entry.uv_invert      = math::Vector2::Zero;
+            entry.uv_rotation    = 0.0f;
+            entry.uv_world_space = 0.0f;
+        }
 
         // the draw data buffer is a single large allocation partitioned into per-frame regions;
         // each frame writes to its own region so there is no write-after-read race with the gpu
@@ -1095,18 +1122,14 @@ namespace spartan
             {
                 SP_ASSERT(count < rhi_max_array_size);
 
+                // uv state (tiling, offset, invert, rotation, world_space_uv) intentionally not uploaded here,
+                // it is per-renderable and lives on Sb_DrawData (see WriteDrawData) and Sb_GeometryInfo for rt
                 properties[count].local_width           = material->GetProperty(MaterialProperty::WorldWidth);
                 properties[count].local_height          = material->GetProperty(MaterialProperty::WorldHeight);
                 properties[count].color.x               = material->GetProperty(MaterialProperty::ColorR);
                 properties[count].color.y               = material->GetProperty(MaterialProperty::ColorG);
                 properties[count].color.z               = material->GetProperty(MaterialProperty::ColorB);
                 properties[count].color.w               = material->GetProperty(MaterialProperty::ColorA);
-                properties[count].tiling.x              = material->GetProperty(MaterialProperty::TextureTilingX);
-                properties[count].tiling.y              = material->GetProperty(MaterialProperty::TextureTilingY);
-                properties[count].offset.x              = material->GetProperty(MaterialProperty::TextureOffsetX);
-                properties[count].offset.y              = material->GetProperty(MaterialProperty::TextureOffsetY);
-                properties[count].invert_uv.x           = material->GetProperty(MaterialProperty::TextureInvertX);
-                properties[count].invert_uv.y           = material->GetProperty(MaterialProperty::TextureInvertY);
                 properties[count].roughness             = material->GetProperty(MaterialProperty::Roughness);
                 properties[count].metallness            = material->GetProperty(MaterialProperty::Metalness);
                 properties[count].normal                = material->GetProperty(MaterialProperty::Normal);
@@ -1117,8 +1140,6 @@ namespace spartan
                 properties[count].clearcoat_roughness   = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
                 properties[count].sheen                 = material->GetProperty(MaterialProperty::Sheen);
                 properties[count].subsurface_scattering = material->GetProperty(MaterialProperty::SubsurfaceScattering);
-                properties[count].world_space_uv        = material->GetProperty(MaterialProperty::WorldSpaceUv);
-                properties[count].uv_rotation           = material->GetProperty(MaterialProperty::TextureRotation);
 
                 // flags
                 properties[count].flags  = material->HasTextureOfType(MaterialTextureType::Height)             ? (1U << 0)  : 0;
@@ -1403,7 +1424,8 @@ namespace spartan
                     entity->GetMatrix(),
                     entity->GetMatrixPrevious(),
                     material->GetIndex(),
-                    material->IsTransparent() ? 1 : 0
+                    material->IsTransparent() ? 1 : 0,
+                    renderable
                 );
 
                 Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
@@ -1543,6 +1565,12 @@ namespace spartan
                 data.instance_offset    = renderable->GetGlobalInstanceOffset();
                 data.instance_index     = 0;
                 data.lod_vertex_offset  = vertex_offset;
+                // per-renderable uv state, resolved from override or material default
+                data.uv_tiling          = math::Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY());
+                data.uv_offset          = math::Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY());
+                data.uv_invert          = math::Vector2(renderable->ResolveUvInvertX(), renderable->ResolveUvInvertY());
+                data.uv_rotation        = renderable->ResolveUvRotation();
+                data.uv_world_space     = renderable->ResolveUvWorldSpace();
 
                 // emit one cull task per meshlet, fanning out per-instance tasks unless we fell back to hw-instancing
                 uint32_t instances_per_task = use_hw_instancing ? inst_n : 1u;
@@ -1756,6 +1784,12 @@ namespace spartan
                 Sb_GeometryInfo geo_info = {};
                 geo_info.vertex_offset  = renderable->GetVertexOffset(0);
                 geo_info.index_offset   = renderable->GetIndexOffset(0);
+                // per-renderable uv state, same resolution as the raster path so rt and raster agree
+                geo_info.uv_tiling      = math::Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY());
+                geo_info.uv_offset      = math::Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY());
+                geo_info.uv_invert      = math::Vector2(renderable->ResolveUvInvertX(), renderable->ResolveUvInvertY());
+                geo_info.uv_rotation    = renderable->ResolveUvRotation();
+                geo_info.uv_world_space = renderable->ResolveUvWorldSpace();
                 geometry_infos.push_back(geo_info);
             }
     

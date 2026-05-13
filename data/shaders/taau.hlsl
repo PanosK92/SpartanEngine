@@ -22,12 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // taau, temporal anti-aliasing with built-in upsampling
 // per output pixel:
 //   1. reconstruct the current sample at the output pixel center via a sub-pixel
-//      mitchell netravali filter over a 3x3 render-res neighborhood that accounts
-//      for the projection jitter, this is the actual upsampling step
+//      blackman-harris weighted 3x3 render-res gather that accounts for the
+//      projection jitter, this is the actual upsampling step
 //   2. fetch reprojected history at output res via a 5-tap catmull-rom
-//   3. clip history to a ycocg variance aabb derived from the same 3x3 to suppress
-//      ghosting and to handle disocclusion implicitly via clip distance
-//   4. blend with a small fixed feedback factor that scales with the upsample ratio
+//   3. clip history to a tonemapped ycocg variance aabb derived from the same 3x3
+//      to suppress ghosting and to handle disocclusion implicitly via clip distance
+//   4. blend with a small fixed feedback factor in the tonemapped space, then
+//      untonemap so downstream post-processing still sees hdr
 // bindings, set by the renderer pass:
 //   tex          history at output resolution
 //   tex2         current jittered color at render resolution, only the top-left
@@ -64,21 +65,33 @@ float3 ycocg_to_rgb(float3 c)
 }
 
 /*------------------------------------------------------------------------------
-    MITCHELL-NETRAVALI B=1/3, C=1/3, the standard cinematic resampling kernel
-    used as a separable sub-pixel reconstruction filter for the current sample
+    HDR TONEMAP, the variance stats, aabb clip and history blend all happen in
+    this compressed [0,1) space so a single bright firefly in the 3x3 cannot
+    inflate cmax/sigma and let stale history flicker through, the inverse is
+    applied on the way out so post-processing still operates on hdr values
 ------------------------------------------------------------------------------*/
-float mitchell(float x)
+float3 tonemap_for_taa(float3 c)
 {
-    const float B = 1.0f / 3.0f;
-    const float C = 1.0f / 3.0f;
-    x          = abs(x);
-    float xx   = x * x;
-    float xxx  = xx * x;
-    if (x < 1.0f)
-        return ((12.0f - 9.0f * B - 6.0f * C) * xxx + (-18.0f + 12.0f * B + 6.0f * C) * xx + (6.0f - 2.0f * B)) * (1.0f / 6.0f);
-    if (x < 2.0f)
-        return ((-B - 6.0f * C) * xxx + (6.0f * B + 30.0f * C) * xx + (-12.0f * B - 48.0f * C) * x + (8.0f * B + 24.0f * C)) * (1.0f / 6.0f);
-    return 0.0f;
+    float l = max(c.r, max(c.g, c.b));
+    return c * rcp(1.0f + l);
+}
+
+float3 tonemap_for_taa_inv(float3 c)
+{
+    float l = max(c.r, max(c.g, c.b));
+    return c * rcp(max(1.0f - l, 1e-5f));
+}
+
+/*------------------------------------------------------------------------------
+    BLACKMAN-HARRIS RECONSTRUCTION WEIGHT
+    non-negative gaussian-like kernel (~3x3 support), used by fsr/smaa-t2x for
+    sub-pixel sample reconstruction, replaces mitchell-netravali whose negative
+    outer lobes sit at distance ~1.5 and get partially truncated by a 3x3 gather,
+    producing asymmetric, frame-varying weight sums that boil on fine detail
+------------------------------------------------------------------------------*/
+float reconstruct_weight(float d_sq)
+{
+    return exp(-2.29f * d_sq);
 }
 
 /*------------------------------------------------------------------------------
@@ -104,8 +117,7 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 /*------------------------------------------------------------------------------
     CATMULL-ROM HISTORY SAMPLING AT OUTPUT RES
     9-tap catmull-rom collapsed to 5 bilinear taps, reduces the blur caused by
-    chaining bilinear filters across frames, based on
-    https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
+    chaining bilinear filters across frames
 ------------------------------------------------------------------------------*/
 float3 sample_history_catmull_rom(float2 uv, float2 resolution)
 {
@@ -161,18 +173,27 @@ float3 taau(uint2 px_out)
     // uv_out*active_render + jitter_px in render pixel space
     float2 jitter_px = buffer_frame.taa_jitter_current * float2(0.5f, -0.5f) * active_render;
     float2 p_render  = uv_out * active_render + jitter_px;
+
+    // clamp the reconstruction point so the 3x3 gather always centers inside the
+    // valid (top-left) rendered region, near the right and bottom output edges
+    // p_render would otherwise land outside the rasterized area and skew weights
+    p_render         = clamp(p_render, float2(0.5f, 0.5f), float2(active_render) - 0.5f);
     int2   center    = clamp(int2(floor(p_render)), int2(0, 0), px_render_max);
 
-    // 3x3 gather, mitchell weighted current reconstruction plus ycocg neighborhood stats
-    // plus closest reverse-z depth for velocity fetch, all in one pass
-    float3 m1            = 0.0f.xxx;
-    float3 m2            = 0.0f.xxx;
-    float3 cmin          =  FLT_MAX_16U.xxx;
-    float3 cmax          = -FLT_MAX_16U.xxx;
-    float3 current_rgb   = 0.0f.xxx;
-    float  weight_sum    = 0.0f;
-    float  closest_depth = -1.0f;
-    int2   closest_pos   = center;
+    // 3x3 gather, blackman-harris weighted reconstruction in tonemapped space plus
+    // tonemapped ycocg neighborhood stats plus closest reverse-z depth for velocity
+    // fetch, all in one pass
+    float3 m1             = 0.0f.xxx;
+    float3 m2             = 0.0f.xxx;
+    float3 cmin           =  FLT_MAX_16U.xxx;
+    float3 cmax           = -FLT_MAX_16U.xxx;
+    float3 current_rgb_tm = 0.0f.xxx;
+    float  weight_sum     = 0.0f;
+
+    // pre-seed closest-depth tracking with the central tap so ties (e.g. flat sky)
+    // resolve to the center, otherwise the first unrolled iteration always wins
+    float closest_depth = tex_depth[center].r;
+    int2  closest_pos   = center;
 
     [unroll]
     for (int dy = -1; dy <= 1; ++dy)
@@ -182,18 +203,19 @@ float3 taau(uint2 px_out)
         {
             int2 tap = clamp(center + int2(dx, dy), int2(0, 0), px_render_max);
 
-            float3 s_rgb   = max(tex2[tap].rgb, 0.0f.xxx);
-            float3 s_ycocg = rgb_to_ycocg(s_rgb);
+            float3 s_rgb      = max(tex2[tap].rgb, 0.0f.xxx);
+            float3 s_rgb_tm   = tonemap_for_taa(s_rgb);
+            float3 s_ycocg_tm = rgb_to_ycocg(s_rgb_tm);
 
-            m1   += s_ycocg;
-            m2   += s_ycocg * s_ycocg;
-            cmin  = min(cmin, s_ycocg);
-            cmax  = max(cmax, s_ycocg);
+            m1   += s_ycocg_tm;
+            m2   += s_ycocg_tm * s_ycocg_tm;
+            cmin  = min(cmin, s_ycocg_tm);
+            cmax  = max(cmax, s_ycocg_tm);
 
             float2 d = (float2(center + int2(dx, dy)) + 0.5f) - p_render;
-            float  w = mitchell(d.x) * mitchell(d.y);
-            current_rgb += s_rgb * w;
-            weight_sum  += w;
+            float  w = reconstruct_weight(dot(d, d));
+            current_rgb_tm += s_rgb_tm * w;
+            weight_sum     += w;
 
             float z = tex_depth[tap].r;
             if (z > closest_depth)
@@ -204,10 +226,10 @@ float3 taau(uint2 px_out)
         }
     }
 
-    // current sample, normalized, mitchell can yield small negative tail weights so
-    // clamp to a non-negative hdr range
-    current_rgb          = saturate_16(max(current_rgb / max(weight_sum, FLT_MIN), 0.0f.xxx));
-    float3 current_ycocg = rgb_to_ycocg(current_rgb);
+    // current reconstructed sample in tonemapped space, the kernel is non-negative
+    // so weight_sum is strictly positive across the full 3x3 and the divide is safe
+    current_rgb_tm          = current_rgb_tm * rcp(weight_sum);
+    float3 current_ycocg_tm = rgb_to_ycocg(current_rgb_tm);
 
     // velocity is stored as an ndc delta, convert to a uv delta, the y axis flips
     // because ndc y is bottom-up while uv y is top-down
@@ -218,22 +240,26 @@ float3 taau(uint2 px_out)
     // reset, first frame, or off-screen reprojection, no usable history
     bool history_invalid = reset_history() > 0.5f || !is_valid_uv(uv_prev);
     if (history_invalid)
-        return current_rgb;
+        return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
 
-    // history at output res via catmull-rom, converted to ycocg
-    float3 history_rgb   = sample_history_catmull_rom(uv_prev, res_out);
-    float3 history_ycocg = rgb_to_ycocg(history_rgb);
+    // history at output res via catmull-rom, tonemapped to match the clip space
+    float3 history_rgb      = sample_history_catmull_rom(uv_prev, res_out);
+    float3 history_rgb_tm   = tonemap_for_taa(history_rgb);
+    float3 history_ycocg_tm = rgb_to_ycocg(history_rgb_tm);
 
-    // ycocg mean and stddev, the aabb is built from sigma and intersected with the
-    // raw min/max so narrow neighborhoods still allow some detail through, sigma
-    // tightens slightly with motion to crush ghosting on moving edges
+    // ycocg mean and stddev in tonemapped space, the aabb is built from sigma and
+    // intersected with the raw min/max so narrow neighborhoods still allow some
+    // detail through, gamma stays loose at rest so detail accumulates and only
+    // tightens under motion to crush ghosting on moving edges, the motion ramp
+    // is in output pixels per frame, slower than the previous version so subtle
+    // panning does not flick history away on every frame
     float3 mean      = m1 * RPC_9;
     float3 sigma     = sqrt(max(m2 * RPC_9 - mean * mean, 0.0f.xxx));
-    float  motion    = saturate(length(velocity_uv) * res_out.x * (1.0f / 32.0f));
-    float  gamma     = lerp(1.0f, 0.5f, motion);
+    float  motion    = saturate(length(velocity_uv) * res_out.x * (1.0f / 64.0f));
+    float  gamma     = lerp(1.5f, 1.0f, motion);
     float3 aabb_min  = max(mean - sigma * gamma, cmin);
     float3 aabb_max  = min(mean + sigma * gamma, cmax);
-    float3 history_c = clip_aabb(aabb_min, aabb_max, clamp(mean, aabb_min, aabb_max), history_ycocg);
+    float3 history_c = clip_aabb(aabb_min, aabb_max, clamp(mean, aabb_min, aabb_max), history_ycocg_tm);
 
     // fixed feedback factor, the aabb clip above already handles disocclusion
     // implicitly by snapping stale history to the current neighborhood, so a
@@ -241,9 +267,14 @@ float3 taau(uint2 px_out)
     // and produce content-dependent ringing
     float blend = 1.0f / 8.0f;
 
-    float3 result_ycocg = lerp(history_c, current_ycocg, blend);
-    float3 result_rgb   = ycocg_to_rgb(result_ycocg);
-    return saturate_16(max(result_rgb, 0.0f.xxx));
+    float3 result_ycocg_tm = lerp(history_c, current_ycocg_tm, blend);
+    float3 result_rgb_tm   = ycocg_to_rgb(result_ycocg_tm);
+    // saturate in tonemapped space, ycocg->rgb on a clipped box can drift slightly
+    // outside [0,1] and tonemap_for_taa_inv divides by (1 - max(c)) which would
+    // otherwise blow up for max(c) >= 1
+    result_rgb_tm          = saturate(result_rgb_tm);
+    float3 result_rgb      = tonemap_for_taa_inv(result_rgb_tm);
+    return saturate_16(result_rgb);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

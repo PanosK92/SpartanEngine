@@ -186,17 +186,24 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float distance         = fast_sqrt(dot(camera_to_pixel, camera_to_pixel));
 
     // world space uv transformation
-    if (any(material.world_space_uv))
+    // the full uv state is per-renderable, forwarded by the vs through uv_xform_ts/uv_xform_ir
+    float  uv_world_space = vertex.uv_xform_ir.w;
+    if (uv_world_space > 0.0f)
     {
+        float2 uv_tiling   = vertex.uv_xform_ts.xy;
+        float2 uv_offset   = vertex.uv_xform_ts.zw;
+        float2 uv_invert   = vertex.uv_xform_ir.xy;
+        float  uv_rotation = vertex.uv_xform_ir.z;
+
         float2 uv_world = compute_world_space_uv(position_world, normal);
-        uv_world        = uv_world * material.tiling + material.offset;
-        
+        uv_world        = uv_world * uv_tiling + uv_offset;
+
         // branchless inversion
-        float2 invert_mask = step(0.5f, material.invert_uv);
+        float2 invert_mask = step(0.5f, uv_invert);
         uv_world           = lerp(uv_world, 1.0f - frac(uv_world) + floor(uv_world), invert_mask);
 
-        if (material.uv_rotation != 0.0f)
-            uv_world = rotate_uv_90(uv_world, material.uv_rotation);
+        if (uv_rotation != 0.0f)
+            uv_world = rotate_uv_90(uv_world, uv_rotation);
 
         vertex.uv_misc.xy = uv_world;
     }

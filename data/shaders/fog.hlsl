@@ -62,8 +62,9 @@ float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_
     return saturate(fog_factor);
 }
 
-// returns 1.0 if the world space position is lit by the given light, 0.0 if it is occluded by a shadow caster
-// the shadow lookup is per light type, area lights reuse the spot path since they render a single 120 fov slice
+// returns 1.0 if the world space position is lit by the given light, 0.0 if it is occluded
+// uses the hardware comparison sampler so the depth compare happens in the texture unit
+// for directional we pick a single cascade per sample instead of paying for both
 float visible(float3 position, Light light, uint2 pixel_pos)
 {
     if (light.is_point())
@@ -75,50 +76,40 @@ float visible(float3 position, Light light, uint2 pixel_pos)
                           (abs_dir.y >= abs_dir.z)                           ? (light_to_pixel.y > 0.0f ? 2u : 3u) :
                                                                                (light_to_pixel.z > 0.0f ? 4u : 5u);
 
-        float4 clip_pos      = mul(float4(position, 1.0f), light.transform[face_index]);
+        float4 clip_pos = mul(float4(position, 1.0f), light.transform[face_index]);
         if (clip_pos.w <= 0.0f)
             return 1.0f;
 
-        float3 ndc           = clip_pos.xyz / clip_pos.w;
-        float2 projected_uv  = ndc_to_uv(ndc.xy);
-        float3 sample_coords = float3(projected_uv, (float)face_index);
-        float  shadow_depth  = light.sample_depth(sample_coords);
-        return ndc.z > shadow_depth ? 1.0f : 0.0f;
+        float3 ndc          = clip_pos.xyz / clip_pos.w;
+        float2 projected_uv = ndc_to_uv(ndc.xy);
+        return light.compare_depth(float3(projected_uv, (float)face_index), ndc.z);
     }
 
     if (light.is_directional())
     {
-        // cascaded shadow maps, lerp between near and far based on distance from the near cascade edge
+        // try the near cascade first, fall back to the far cascade only if outside its frustum
+        // single cascade per sample keeps shadow lookups halved across the raymarch
         const uint near_cascade = 0;
         const uint far_cascade  = 1;
 
         float3 projected_pos_near = world_to_ndc(position, light.transform[near_cascade]);
         float2 projected_uv_near  = ndc_to_uv(projected_pos_near);
-        float  shadow_near        = 1.0f;
         if (is_valid_uv(projected_uv_near))
         {
-            float3 sample_coords_near = float3(projected_uv_near.x, projected_uv_near.y, near_cascade);
-            float  shadow_depth_near  = light.sample_depth(sample_coords_near);
-            shadow_near               = (projected_pos_near.z > shadow_depth_near) ? 1.0f : 0.0f;
+            return light.compare_depth(float3(projected_uv_near, (float)near_cascade), projected_pos_near.z);
         }
 
         float3 projected_pos_far = world_to_ndc(position, light.transform[far_cascade]);
         float2 projected_uv_far  = ndc_to_uv(projected_pos_far);
-        float  shadow_far        = 1.0f;
         if (is_valid_uv(projected_uv_far))
         {
-            float3 sample_coords_far = float3(projected_uv_far.x, projected_uv_far.y, far_cascade);
-            float  shadow_depth_far  = light.sample_depth(sample_coords_far);
-            shadow_far               = (projected_pos_far.z > shadow_depth_far) ? 1.0f : 0.0f;
+            return light.compare_depth(float3(projected_uv_far, (float)far_cascade), projected_pos_far.z);
         }
 
-        float edge_dist    = max(abs(projected_pos_near.x), abs(projected_pos_near.y));
-        float blend_factor = smoothstep(0.7f, 1.0f, edge_dist);
-        return lerp(shadow_near, shadow_far, blend_factor);
+        return 1.0f;
     }
 
     // spot or area light, both render a single perspective slice into the atlas
-    // area lights use a 120 fov slice from the rectangle origin so points inside the front hemisphere are covered
     float4 clip_pos = mul(float4(position, 1.0f), light.transform[0]);
     if (clip_pos.w <= 0.0f)
         return 1.0f;
@@ -126,21 +117,21 @@ float visible(float3 position, Light light, uint2 pixel_pos)
     float3 projected_pos = clip_pos.xyz / clip_pos.w;
     float2 projected_uv  = ndc_to_uv(projected_pos.xy);
     if (!is_valid_uv(projected_uv))
-        return 1.0f; // outside the cone, the volumetric attenuation already culls back hemisphere contribution
+        return 1.0f;
 
-    float3 sample_coords = float3(projected_uv.x, projected_uv.y, 0.0f);
-    float  shadow_depth  = light.sample_depth(sample_coords);
-    return projected_pos.z > shadow_depth ? 1.0f : 0.0f;
+    return light.compare_depth(float3(projected_uv, 0.0f), projected_pos.z);
 }
 
 // henyey greenstein phase function, g = 0 isotropic, g positive forward scatter, g negative back scatter
 // returned in 1/sr, the scattering coefficient sigma_s controls the overall brightness
 float henyey_greenstein_phase(float cos_theta, float g)
 {
-    cos_theta   = clamp(cos_theta, -1.0f, 1.0f);
-    float g2    = g * g;
-    float denom = 1.0f + g2 - 2.0f * g * cos_theta;
-    return (1.0f - g2) / (4.0f * PI * pow(max(denom, 1e-4f), 1.5f));
+    cos_theta     = clamp(cos_theta, -1.0f, 1.0f);
+    float g2      = g * g;
+    float denom   = max(1.0f + g2 - 2.0f * g * cos_theta, 1e-4f);
+    // pow(d, 1.5) replaced with d * sqrt(d), one rsq + a mul instead of exp2/log2
+    float denom32 = denom * sqrt(denom);
+    return (1.0f - g2) / (4.0f * PI * denom32);
 }
 
 // computes the local light direction and the volumetric attenuation at a sample inside the medium
@@ -184,12 +175,9 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 
     if (light.is_spot())
     {
-        float cos_outer   = cos(light.angle);
-        float cos_inner   = cos(light.angle * 0.9f);
-        float scale       = 1.0f / max(0.0001f, cos_inner - cos_outer);
-        // angle between the spot forward and the direction from light to sample, equals -light_dir
+        // cos_outer / angle_scale precomputed in Light::Build, hot raymarch path stays trig free
         float cd          = dot(-light_dir, light.forward);
-        float angle_atten = saturate((cd - cos_outer) * scale);
+        float angle_atten = saturate((cd - light.cos_outer) * light.angle_scale);
         local_atten      *= angle_atten * angle_atten;
     }
 }
@@ -259,6 +247,22 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     const float phase_g           = 0.6f;
     const float min_transmittance = 0.005f;
 
+    // hoisted invariants, step transmittance is constant for the whole march
+    const float step_transmittance = exp(-sigma_t * step_length);
+    const float sigma_s_dt         = sigma_s * step_length;
+
+    // for directional lights, light direction, cos_theta and the phase function are all constant
+    // for the whole ray, evaluate them once instead of per step
+    const bool is_dir = light.is_directional();
+    float3 dir_light_dir = 0.0f;
+    float  dir_phase     = 0.0f;
+    if (is_dir)
+    {
+        dir_light_dir       = normalize(-light.forward);
+        float dir_cos_theta = dot(ray_direction, dir_light_dir);
+        dir_phase           = henyey_greenstein_phase(dir_cos_theta, phase_g);
+    }
+
     // start with the extinction accumulated over the unmarched segment from camera to march_start
     float3 inscatter     = 0.0f;
     float  transmittance = exp(-sigma_t * march_start);
@@ -271,19 +275,29 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 
         float3 light_dir;
         float  local_atten;
-        compute_volumetric_light_sample(light, ray_pos, light_dir, local_atten);
+        float  phase;
+        if (is_dir)
+        {
+            light_dir   = dir_light_dir;
+            local_atten = 1.0f;
+            phase       = dir_phase;
+        }
+        else
+        {
+            compute_volumetric_light_sample(light, ray_pos, light_dir, local_atten);
+            float cos_theta = dot(ray_direction, light_dir);
+            phase           = henyey_greenstein_phase(cos_theta, phase_g);
+        }
 
         if (local_atten > 0.0f)
         {
-            float cos_theta  = dot(ray_direction, light_dir);
-            float phase      = henyey_greenstein_phase(cos_theta, phase_g);
             float visibility = visible(ray_pos, light, pixel_pos);
 
             // single scattering integrand, sigma_s * phase * incident_radiance * transmittance * dt
-            inscatter += sigma_s * phase * visibility * local_atten * transmittance * step_length;
+            inscatter += phase * visibility * local_atten * transmittance * sigma_s_dt;
         }
 
-        transmittance *= exp(-sigma_t * step_length);
+        transmittance *= step_transmittance;
         ray_pos       += ray_step;
     }
 

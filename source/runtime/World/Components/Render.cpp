@@ -80,6 +80,21 @@ namespace spartan
         node.append_attribute("material_name")    = m_material && !m_material_default ? m_material->GetObjectName().c_str() : "";
         node.append_attribute("material_default") = m_material_default;
 
+        // per-renderable material overrides, only set fields are written so unset ones keep inheriting from the material
+        auto save_override = [&node](const char* name, float v)
+        {
+            if (MaterialOverride::is_set(v))
+                node.append_attribute(name) = v;
+        };
+        save_override("ovr_uv_tiling_x",    m_material_override.uv_tiling_x);
+        save_override("ovr_uv_tiling_y",    m_material_override.uv_tiling_y);
+        save_override("ovr_uv_offset_x",    m_material_override.uv_offset_x);
+        save_override("ovr_uv_offset_y",    m_material_override.uv_offset_y);
+        save_override("ovr_uv_rotation",    m_material_override.uv_rotation);
+        save_override("ovr_uv_invert_x",    m_material_override.uv_invert_x);
+        save_override("ovr_uv_invert_y",    m_material_override.uv_invert_y);
+        save_override("ovr_uv_world_space", m_material_override.uv_world_space);
+
         // flags
         node.append_attribute("flags") = m_flags;
 
@@ -168,6 +183,21 @@ namespace spartan
         // distances
         m_max_distance_render = node.attribute("max_render_distance").as_float(FLT_MAX);
         m_max_distance_shadow = node.attribute("max_shadow_distance").as_float(FLT_MAX);
+
+        // per-renderable material overrides, missing attributes keep the nan default which means inherit
+        auto load_override = [&node](const char* name, float& target)
+        {
+            if (auto attr = node.attribute(name))
+                target = attr.as_float();
+        };
+        load_override("ovr_uv_tiling_x",    m_material_override.uv_tiling_x);
+        load_override("ovr_uv_tiling_y",    m_material_override.uv_tiling_y);
+        load_override("ovr_uv_offset_x",    m_material_override.uv_offset_x);
+        load_override("ovr_uv_offset_y",    m_material_override.uv_offset_y);
+        load_override("ovr_uv_rotation",    m_material_override.uv_rotation);
+        load_override("ovr_uv_invert_x",    m_material_override.uv_invert_x);
+        load_override("ovr_uv_invert_y",    m_material_override.uv_invert_y);
+        load_override("ovr_uv_world_space", m_material_override.uv_world_space);
 
         // instances
         m_instances.clear();
@@ -285,6 +315,70 @@ namespace spartan
             return;
         }
         m_mesh->GetGeometry(m_sub_mesh_index, indices, vertices);
+    }
+
+    float Render::ResolveUvTilingX() const
+    {
+        if (MaterialOverride::is_set(m_material_override.uv_tiling_x))
+            return m_material_override.uv_tiling_x;
+
+        return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingX) : 1.0f;
+    }
+
+    float Render::ResolveUvTilingY() const
+    {
+        if (MaterialOverride::is_set(m_material_override.uv_tiling_y))
+            return m_material_override.uv_tiling_y;
+
+        return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingY) : 1.0f;
+    }
+
+    float Render::ResolveUvOffsetX() const
+    {
+        if (MaterialOverride::is_set(m_material_override.uv_offset_x))
+            return m_material_override.uv_offset_x;
+
+        return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetX) : 0.0f;
+    }
+
+    float Render::ResolveUvOffsetY() const
+    {
+        if (MaterialOverride::is_set(m_material_override.uv_offset_y))
+            return m_material_override.uv_offset_y;
+
+        return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetY) : 0.0f;
+    }
+
+    float Render::ResolveUvRotation() const
+    {
+        if (MaterialOverride::is_set(m_material_override.uv_rotation))
+            return m_material_override.uv_rotation;
+
+        return m_material ? m_material->GetProperty(MaterialProperty::TextureRotation) : 0.0f;
+    }
+
+    float Render::ResolveUvInvertX() const
+    {
+        if (MaterialOverride::is_set(m_material_override.uv_invert_x))
+            return m_material_override.uv_invert_x;
+
+        return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertX) : 0.0f;
+    }
+
+    float Render::ResolveUvInvertY() const
+    {
+        if (MaterialOverride::is_set(m_material_override.uv_invert_y))
+            return m_material_override.uv_invert_y;
+
+        return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertY) : 0.0f;
+    }
+
+    float Render::ResolveUvWorldSpace() const
+    {
+        if (MaterialOverride::is_set(m_material_override.uv_world_space))
+            return m_material_override.uv_world_space;
+
+        return m_material ? m_material->GetProperty(MaterialProperty::WorldSpaceUv) : 0.0f;
     }
 
     void Render::SetMaterial(const shared_ptr<Material>& material)

@@ -27,7 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "RHI/RHI_Device.h"
 #include "Rendering/Renderer.h"
+#include "Rendering/Material.h"
+#include "Resource/ResourceCache.h"
 #include "World/Prefab.h"
+#include "World/Components/Render.h"
+#include "World/Components/Camera.h"
+#include "Math/Ray.h"
 #include "../ImGui/ImGui_Extension.h"
 #include "../ImGui/ImGui_TransformGizmo.h"
 #include "Settings.h"
@@ -44,6 +49,102 @@ namespace
     bool first_frame         = true;
     uint32_t width_previous  = 0;
     uint32_t height_previous = 0;
+
+    // material drag-preview state, while a material asset is being dragged over the viewport,
+    // the mesh under the cursor temporarily wears that material, release commits, drag-away reverts
+    // entity is tracked by id so a deletion mid-drag cannot dereference a dangling pointer on revert
+    uint64_t             preview_entity_id            = 0;
+    shared_ptr<Material> preview_original_material;
+    bool                 preview_original_was_default = false;
+
+    // resolves the renderable under the mouse cursor using triangle precision,
+    // aabb-only was insufficient because parent renderables (eg a gltf scene wrapper)
+    // have aabbs that swallow the whole world so they always win the broadphase
+    Entity* pick_entity_under_cursor()
+    {
+        Camera* camera = World::GetCamera();
+        if (!camera)
+            return nullptr;
+
+        return camera->FindEntityUnderCursor();
+    }
+
+    void clear_preview_state()
+    {
+        preview_entity_id            = 0;
+        preview_original_material.reset();
+        preview_original_was_default = false;
+    }
+
+    void revert_material_preview()
+    {
+        if (preview_entity_id == 0)
+            return;
+
+        if (Entity* entity = World::GetEntityById(preview_entity_id))
+        {
+            if (Render* render = entity->GetComponent<Render>())
+            {
+                if (preview_original_was_default)
+                {
+                    render->SetDefaultMaterial();
+                }
+                else if (preview_original_material)
+                {
+                    render->SetMaterial(preview_original_material);
+                }
+            }
+        }
+
+        clear_preview_state();
+    }
+
+    void apply_material_preview(Entity* entity, const char* material_path)
+    {
+        if (!entity || !material_path || !*material_path)
+            return;
+
+        Render* render = entity->GetComponent<Render>();
+        if (!render)
+            return;
+
+        // remember what to restore, the default flag short-circuits the path lookup for engine-owned defaults
+        bool was_default = render->IsUsingDefaultMaterial();
+        shared_ptr<Material> original;
+        if (Material* current = render->GetMaterial(); current && !was_default)
+        {
+            original = ResourceCache::GetByPath<Material>(current->GetResourceFilePath());
+        }
+
+        // cache-aware load, no-op if the material is already in the resource cache
+        shared_ptr<Material> dragged = ResourceCache::Load<Material>(material_path);
+        if (!dragged)
+            return;
+
+        render->SetMaterial(dragged);
+
+        preview_entity_id            = entity->GetObjectId();
+        preview_original_material    = original;
+        preview_original_was_default = was_default;
+    }
+
+    // peek at the active drag-drop payload without accepting, returns the path if it is a material drag
+    // returns nullptr when there is no active drag or the active drag is not a material payload
+    const char* peek_material_drag_path()
+    {
+        const ImGuiPayload* payload = ImGui::GetDragDropPayload();
+        if (!payload || !payload->IsDataType(ImGuiSp::GDragDropTypes[(int)ImGuiSp::DragPayloadType::Material].data()))
+            return nullptr;
+
+        if (payload->DataSize < static_cast<int>(sizeof(ImGuiSp::DragDropPayload)))
+            return nullptr;
+
+        const ImGuiSp::DragDropPayload* sp_payload = static_cast<const ImGuiSp::DragDropPayload*>(payload->Data);
+        if (!std::holds_alternative<const char*>(sp_payload->data))
+            return nullptr;
+
+        return std::get<const char*>(sp_payload->data);
+    }
 }
 
 Viewport::Viewport(Editor* editor) : Widget(editor)
@@ -100,8 +201,38 @@ void Viewport::OnTickVisible()
     // draw the image after a potential resolution change call has been made
     ImGuiSp::image(Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output), ImVec2(static_cast<float>(width), static_cast<float>(height)));
 
+    // cache the image rect for hover tests, isitemhovered can return false during drag-drop
+    ImVec2 image_rect_min = ImGui::GetItemRectMin();
+    ImVec2 image_rect_max = ImGui::GetItemRectMax();
+
     // let the input system know if the mouse is within the viewport
     Input::SetMouseIsInViewport(ImGui::IsItemHovered());
+
+    // material drag-preview, runs before the drop handlers so the drop just clears state without reverting
+    {
+        const char* drag_path  = peek_material_drag_path();
+        bool        in_image   = ImGui::IsMouseHoveringRect(image_rect_min, image_rect_max);
+        bool        previewing = drag_path && in_image;
+
+        if (previewing)
+        {
+            Entity*  hovered    = pick_entity_under_cursor();
+            uint64_t hovered_id = hovered ? hovered->GetObjectId() : 0;
+            if (hovered_id != preview_entity_id)
+            {
+                revert_material_preview();
+                if (hovered)
+                {
+                    apply_material_preview(hovered, drag_path);
+                }
+            }
+        }
+        else
+        {
+            // drag ended outside the viewport or moved off the image, restore the original
+            revert_material_preview();
+        }
+    }
 
     // handle model drop
     if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
@@ -125,6 +256,27 @@ void Viewport::OnTickVisible()
             else
             {
                 World::RemoveEntity(entity);
+            }
+        }
+    }
+
+    // handle material drop, the preview already applied the material to the hovered mesh,
+    // so commit just means clearing the preview state without restoring the original
+    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
+    {
+        if (preview_entity_id != 0)
+        {
+            clear_preview_state();
+        }
+        else if (const char* file_path = get<const char*>(payload->data))
+        {
+            // fallback for the unlikely case the drop fires without a prior hover frame
+            if (Entity* hovered = pick_entity_under_cursor())
+            {
+                if (Render* render = hovered->GetComponent<Render>())
+                {
+                    render->SetMaterial(file_path);
+                }
             }
         }
     }

@@ -116,6 +116,8 @@ gbuffer_vertex main_ds(HsConstantDataOutput input, float3 bary_coords : SV_Domai
     vertex.uv_misc.z         = barycentric(patch[0].uv_misc.z, patch[1].uv_misc.z, patch[2].uv_misc.z, bary_coords);
     vertex.uv_misc.w         = patch[0].uv_misc.w; // instance_id is constant per patch
     vertex.view_id           = patch[0].view_id;    // view_id is constant per patch
+    vertex.uv_xform_ts       = patch[0].uv_xform_ts; // uv transform is constant per patch
+    vertex.uv_xform_ir       = patch[0].uv_xform_ir;
 
     // reconstruct world positions from interpolated clip.  in a multiview raster pass this ds
     // invocation belongs to a specific view (patch[0].view_id == vertex.view_id), so the inverse

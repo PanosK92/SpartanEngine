@@ -31,14 +31,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float3 compute_f90(float3 f0) { return saturate(50.0 * dot(f0, 0.33333)); }
 float3 get_f90()              { return 1.0; } // for legacy/external use
 
+// (1 - x)^5 expressed as four multiplies, much cheaper than pow which lowers to exp2/log2
+float pow5(float x) { float x2 = x * x; return x2 * x2 * x; }
+
 float3 F_Schlick(float3 f0, float3 f90, float v_dot_h)
 {
-    return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
+    return f0 + (f90 - f0) * pow5(1.0 - v_dot_h);
 }
 
 float F_Schlick(float f0, float f90, float v_dot_h)
 {
-    return f0 + (f90 - f0) * pow(1.0 - v_dot_h, 5.0);
+    return f0 + (f90 - f0) * pow5(1.0 - v_dot_h);
 }
 
 /*------------------------------------------------------------------------------
@@ -130,7 +133,7 @@ float3 compute_diffuse_energy(float3 F, float metallic)
 float3 compute_multiscatter_energy(float3 f0, float n_dot_v, float roughness)
 {
     // approximate directional-hemispherical reflectance
-    float dhr         = lerp(1.0 - roughness * 0.7, 1.0, pow(1.0 - n_dot_v, 5.0));
+    float dhr         = lerp(1.0 - roughness * 0.7, 1.0, pow5(1.0 - n_dot_v));
     float3 energy_loss = (1.0 - dhr) * (1.0 - f0);
     return 1.0 + f0 * energy_loss / (1.0 - energy_loss + FLT_MIN);
 }
@@ -164,13 +167,16 @@ float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 
 float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info)
 {
-    // tangent frame
+    // tangent frame, find_best_axis_vectors yields orthonormal axes and the cross of unit
+    // vectors stays unit, so the trailing normalizes are redundant
     float3 t, b;
     find_best_axis_vectors(surface.normal, t, b);
-    float3x3 TBN = float3x3(t, b, surface.normal);
-    float rotation   = max(surface.anisotropic_rotation * PI2, FLT_MIN);
-    t = normalize(mul(float3(cos(rotation), sin(rotation), 0.0), TBN));
-    b = normalize(cross(surface.normal, t));
+    float3x3 TBN   = float3x3(t, b, surface.normal);
+    float rotation = max(surface.anisotropic_rotation * PI2, FLT_MIN);
+    float cos_r, sin_r;
+    sincos(rotation, sin_r, cos_r);
+    t = mul(float3(cos_r, sin_r, 0.0), TBN);
+    b = cross(surface.normal, t);
     
     // roughness
     float a      = D_GGX_Alpha(surface.roughness);
@@ -237,7 +243,7 @@ float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
     float  D           = D_Charlie(sheen_roughness, angular_info.n_dot_h);
     float  V           = V_Neubelt(angular_info.n_dot_v, angular_info.n_dot_l);
     float3 sheen_color = surface.albedo * surface.sheen;
-    float  edge        = pow(1.0 - angular_info.n_dot_v, 5.0);
+    float  edge        = pow5(1.0 - angular_info.n_dot_v);
     float3 F           = lerp(sheen_color * 0.2, sheen_color, edge);
     float3 Fr          = D * V * F;
     

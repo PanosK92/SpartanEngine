@@ -167,14 +167,8 @@ namespace spartan
         return ray;
     }
     
-    void Camera::Pick()
+    Entity* Camera::FindEntityUnderCursor()
     {
-        if (!Input::GetMouseIsInViewport())
-        {
-            ClearSelection();
-            return;
-        }
-
         const Ray& ray = ComputePickingRay();
         m_pick_hits.clear();
 
@@ -197,77 +191,94 @@ namespace spartan
         float best_depth       = numeric_limits<float>::max();
         Entity* best_entity    = nullptr;
 
+        if (m_pick_hits.empty())
+            return nullptr;
+
         // mesh-based triangle picking
-        if (!m_pick_hits.empty())
+        for (RayHitResult& broad_hit : m_pick_hits)
         {
-            for (RayHitResult& broad_hit : m_pick_hits)
+            Render* renderable = broad_hit.m_entity->GetComponent<Render>();
+
+            // query mesh size first to reserve exact capacity and avoid allocations
+            uint32_t index_count  = renderable->GetIndexCount();
+            uint32_t vertex_count = renderable->GetVertexCount();
+
+            // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
+            // only reserve if current capacity is insufficient
+            if (m_pick_indices.capacity() < index_count)
             {
-                Render* renderable = broad_hit.m_entity->GetComponent<Render>();
+                m_pick_indices.reserve(index_count);
+            }
+            if (m_pick_vertices.capacity() < vertex_count)
+            {
+                m_pick_vertices.reserve(vertex_count);
+            }
 
-                // query mesh size first to reserve exact capacity and avoid allocations
-                uint32_t index_count  = renderable->GetIndexCount();
-                uint32_t vertex_count = renderable->GetVertexCount();
-                
-                // reserve exact capacity needed to avoid heap allocations in GetGeometry::resize()
-                // only reserve if current capacity is insufficient
-                if (m_pick_indices.capacity() < index_count)
-                {
-                    m_pick_indices.reserve(index_count);
-                }
-                if (m_pick_vertices.capacity() < vertex_count)
-                {
-                    m_pick_vertices.reserve(vertex_count);
-                }
-                
-                // clear and reuse pre-allocated buffers 
-                m_pick_indices.clear();
-                m_pick_vertices.clear();
+            // clear and reuse pre-allocated buffers
+            m_pick_indices.clear();
+            m_pick_vertices.clear();
 
-                renderable->GetGeometry(&m_pick_indices, &m_pick_vertices);
-                if (m_pick_indices.empty() || m_pick_vertices.empty())
+            renderable->GetGeometry(&m_pick_indices, &m_pick_vertices);
+            if (m_pick_indices.empty() || m_pick_vertices.empty())
+                continue;
+
+            const Matrix& transform = broad_hit.m_entity->GetMatrix();
+
+            for (uint32_t i = 0; i < m_pick_indices.size(); i += 3)
+            {
+                Vector3 p1(m_pick_vertices[m_pick_indices[i]].pos);
+                Vector3 p2(m_pick_vertices[m_pick_indices[i + 1]].pos);
+                Vector3 p3(m_pick_vertices[m_pick_indices[i + 2]].pos);
+
+                p1 = p1 * transform;
+                p2 = p2 * transform;
+                p3 = p3 * transform;
+
+                float distance = ray.HitDistance(p1, p2, p3);
+                if (distance == numeric_limits<float>::infinity())
                     continue;
 
-                const Matrix& transform = broad_hit.m_entity->GetMatrix();
+                Vector3 world_hit = ray.GetStart() + ray.GetDirection() * distance;
 
-                for (uint32_t i = 0; i < m_pick_indices.size(); i += 3)
+                // project to clip space
+                Vector4 clip = Vector4(world_hit, 1.0f) * GetViewProjectionMatrix();
+                if (clip.w == 0.0f)
+                    continue;
+
+                // ndc to screen
+                Vector2 screen_pos(
+                    (clip.x / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().width,
+                    (clip.y / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().height
+                );
+
+                float screen_dist = (screen_pos - cursor).Length();
+
+                // prefer smallest screen distance, then depth
+                if (screen_dist < best_screen_dist || (screen_dist == best_screen_dist && distance < best_depth))
                 {
-                    Vector3 p1(m_pick_vertices[m_pick_indices[i]].pos);
-                    Vector3 p2(m_pick_vertices[m_pick_indices[i + 1]].pos);
-                    Vector3 p3(m_pick_vertices[m_pick_indices[i + 2]].pos);
-
-                    p1 = p1 * transform;
-                    p2 = p2 * transform;
-                    p3 = p3 * transform;
-
-                    float distance = ray.HitDistance(p1, p2, p3);
-                    if (distance == numeric_limits<float>::infinity())
-                        continue;
-
-                    Vector3 world_hit = ray.GetStart() + ray.GetDirection() * distance;
-
-                    // project to clip space
-                    Vector4 clip = Vector4(world_hit, 1.0f) * GetViewProjectionMatrix();
-                    if (clip.w == 0.0f)
-                        continue;
-
-                    // ndc → screen
-                    Vector2 screen_pos(
-                        (clip.x / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().width,
-                        (clip.y / clip.w * 0.5f + 0.5f) * Renderer::GetViewport().height
-                    );
-
-                    float screen_dist = (screen_pos - cursor).Length();
-
-                    // prefer smallest screen distance, then depth
-                    if (screen_dist < best_screen_dist || (screen_dist == best_screen_dist && distance < best_depth))
-                    {
-                        best_screen_dist = screen_dist;
-                        best_depth       = distance;
-                        best_entity      = broad_hit.m_entity;
-                    }
+                    best_screen_dist = screen_dist;
+                    best_depth       = distance;
+                    best_entity      = broad_hit.m_entity;
                 }
             }
         }
+
+        return best_entity;
+    }
+
+    void Camera::Pick()
+    {
+        if (!Input::GetMouseIsInViewport())
+        {
+            ClearSelection();
+            return;
+        }
+
+        Entity* best_entity = FindEntityUnderCursor();
+
+        // spline picking uses its own ray, recompute it here since pick() no longer owns the broadphase
+        const Ray& ray                  = ComputePickingRay();
+        const vector<Entity*>& entities = World::GetEntities();
 
         // spline control point picking
         {

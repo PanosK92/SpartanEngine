@@ -62,7 +62,7 @@ private:
     void ShowLight(spartan::Light* light) const;
     void ShowRender(spartan::Render* renderable) const;
     void ShowPhysics(spartan::Physics* rigid_body) const;
-    void ShowMaterial(spartan::Material* material) const;
+    void ShowMaterial(spartan::Material* material, spartan::Render* renderable = nullptr) const;
     void ShowCamera(spartan::Camera* camera) const;
     void ShowTerrain(spartan::Terrain* terrain) const;
     void ShowSpline(spartan::Spline* spline) const;

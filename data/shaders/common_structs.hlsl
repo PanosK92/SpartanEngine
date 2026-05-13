@@ -153,6 +153,9 @@ struct Light
     float3 radiance;
     float  n_dot_l;
     float  attenuation;
+    float  cos_outer;
+    float  cos_inner;
+    float  angle_scale;
     float2 resolution;
     matrix transform[6];
     uint screen_space_shadows_slice_index;
@@ -190,11 +193,9 @@ struct Light
 
     float compute_attenuation_angle()
     {
-        float cos_outer   = cos(angle);
-        float cos_inner   = cos(angle * 0.9f);
-        float scale       = 1.0f / max(0.0001f, cos_inner - cos_outer);
+        // cos_outer, cos_inner, angle_scale are precomputed once in Build
         float cd          = dot(to_pixel, forward);
-        float attenuation = saturate((cd - cos_outer) * scale);
+        float attenuation = saturate((cd - cos_outer) * angle_scale);
         return attenuation * attenuation;
     }
 
@@ -321,12 +322,10 @@ struct Light
 
             if (is_spot())
             {
-                float3 to_vol           = normalize(vol_position - position); // direction from light to point
-                float cos_outer         = cos(angle);
-                float cos_inner         = cos(angle * 0.9f);
-                float scale             = 1.0f / max(0.0001f, cos_inner - cos_outer);
-                float cd                = dot(to_vol, forward); // use per-sample direction
-                float atten_angle       = saturate((cd - cos_outer) * scale);
+                // direction from light to point, cos_outer/inner/angle_scale precomputed in Build
+                float3 to_vol     = normalize(vol_position - position);
+                float cd          = dot(to_vol, forward);
+                float atten_angle = saturate((cd - cos_outer) * angle_scale);
                 atten *= atten_angle * atten_angle;
             }
             else if (is_area())
@@ -410,6 +409,11 @@ struct Light
         forward                          = (is_point() && !is_area()) ? float3(0.0f, 0.0f, 1.0f) : light.direction.xyz;
         right                            = light.direction_right.xyz;
         distance_to_pixel                = length(surface.position - position);
+
+        // precompute spot cone trig once per pixel per light, used by surface and volumetric paths
+        cos_outer   = cos(angle);
+        cos_inner   = cos(angle * 0.9f);
+        angle_scale = 1.0f / max(0.0001f, cos_inner - cos_outer);
         
         // for area lights, point the brdf direction at the rectangle centroid so it stays
         // camera independent and produces a valid lambertian cosine even when the closest
@@ -448,10 +452,11 @@ struct AngularInfo
 
     void Build(Light light, Surface surface)
     {
-        n = normalize(surface.normal);           // outward direction of surface point
-        v = normalize(-surface.camera_to_pixel); // direction from surface point to view
-        l = normalize(-light.to_pixel);          // direction from surface point to light
-        h = normalize(l + v);                    // direction of the vector between l and v
+        // surface.normal, surface.camera_to_pixel and light.to_pixel are already unit length
+        n = surface.normal;            // outward direction of surface point
+        v = -surface.camera_to_pixel;  // direction from surface point to view
+        l = -light.to_pixel;           // direction from surface point to light
+        h = normalize(l + v);          // half vector still needs normalization
 
         n_dot_l = saturate(dot(n, l));
         n_dot_v = saturate(dot(n, v));

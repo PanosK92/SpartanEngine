@@ -84,6 +84,11 @@ namespace spartan
         // picks the nearest entity under the mouse cursor
         void Pick();
 
+        // resolves the entity under the mouse cursor using triangle precision,
+        // mirrors what pick() uses internally but has no side effects on selection state
+        // (useful for hover previews like drag-drop material onto a mesh in the viewport)
+        Entity* FindEntityUnderCursor();
+
         // converts a world point to a screen point
         void WorldToScreenCoordinates(const math::Vector3& position_world, math::Vector2& position_screen) const;
 

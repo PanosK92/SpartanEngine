@@ -179,23 +179,24 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
     
     // world space uv transformation
+    // full uv state is per-renderable, fetched from geometry_infos[InstanceIndex()]
     float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    if (any(mat.world_space_uv))
+    if (geo.uv_world_space > 0.0f)
     {
         float2 uv_world = compute_world_space_uv(hit_pos, normal_world);
-        uv_world        = uv_world * mat.tiling + mat.offset;
-        
+        uv_world        = uv_world * geo.uv_tiling + geo.uv_offset;
+
         // branchless inversion
-        float2 invert_mask = step(0.5f, mat.invert_uv);
+        float2 invert_mask = step(0.5f, geo.uv_invert);
         texcoord           = lerp(uv_world, 1.0f - frac(uv_world) + floor(uv_world), invert_mask);
     }
     else
     {
-        texcoord = texcoord * mat.tiling + mat.offset;
+        texcoord = texcoord * geo.uv_tiling + geo.uv_offset;
     }
 
-    if (mat.uv_rotation != 0.0f)
-        texcoord = rotate_uv_90(texcoord, mat.uv_rotation);
+    if (geo.uv_rotation != 0.0f)
+        texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
     
     // normal mapping, mild mip bias to avoid specular sparkle on detailed normal maps without destroying surface detail
     if (mat.has_texture_normal())

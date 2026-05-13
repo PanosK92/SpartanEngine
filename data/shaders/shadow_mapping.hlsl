@@ -98,14 +98,13 @@ float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
 }
 
 // estimate penumbra size using pcss
-float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, float receiver_depth, float light_distance)
+// texel_size_cascade_local is passed in so the atlas math is computed once in vogel_depth instead of twice
+float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, float receiver_depth, float light_distance, float2 texel_size_cascade_local)
 {
-    float penumbra                  = g_minimum_penumbra_size;
-    float blocker_depth_sum         = 0.0f;
-    uint  blocker_count             = 0;
-    uint  cascade_index             = (uint)sample_coords.z;
-    float2 texel_size_cascade_local = light.atlas_texel_size[cascade_index] / light.atlas_scale[cascade_index];
-    float search_radius             = g_penumbra_filter_size * texel_size_cascade_local.x;
+    float penumbra          = g_minimum_penumbra_size;
+    float blocker_depth_sum = 0.0f;
+    uint  blocker_count     = 0;
+    float search_radius     = g_penumbra_filter_size * texel_size_cascade_local.x;
 
     // adaptive blocker search
     for(uint i = 0; i < g_penumbra_sample_count; i++)
@@ -143,20 +142,28 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
 // compute shadow factor using vogel disk sampling
 float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth, float filter_size_multiplier = 1.0f)
 {
+    // cheap early out, sample the receiver center once with the comparison sampler
+    // if the result is fully lit or fully shadowed we skip both the pcss blocker search and
+    // the four tap pcf entirely, which is the common case for interior pixels
+    float center = light.compare_depth(sample_coords, receiver_depth);
+    if (center <= 0.001f) return 0.0f;
+    if (center >= 0.999f) return 1.0f;
+
     float shadow_factor = 0.0f;
     
     // temporal jitter
     float temporal_offset = noise_interleaved_gradient(surface.pos);
     float temporal_angle  = temporal_offset * PI2;
+
+    // atlas texel size in cascade local space, computed once and shared with the penumbra search
+    uint   cascade_index            = (uint)sample_coords.z;
+    float2 texel_size_cascade_local = light.atlas_texel_size[cascade_index] / light.atlas_scale[cascade_index];
     
     // estimate penumbra
-    float light_distance  = light.is_directional() ? 1000.0f : length(surface.position - light.position);
-    float penumbra        = compute_penumbra(light, temporal_angle, sample_coords, receiver_depth, light_distance);
+    float light_distance = light.is_directional() ? 1000.0f : length(surface.position - light.position);
+    float penumbra       = compute_penumbra(light, temporal_angle, sample_coords, receiver_depth, light_distance, texel_size_cascade_local);
 
-    // setup sampling
-    uint cascade_index              = (uint)sample_coords.z;
-    float2 texel_size_cascade_local = light.atlas_texel_size[cascade_index] / light.atlas_scale[cascade_index];
-    float valid_sample_count        = 0.0f;
+    float valid_sample_count = 0.0f;
     
     // sample shadow map
     for (uint i = 0; i < g_shadow_sample_count; i++)

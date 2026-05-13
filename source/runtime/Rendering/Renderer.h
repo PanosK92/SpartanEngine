@@ -143,7 +143,9 @@ namespace spartan
         static RHI_CommandList* GetCommandListPresent() { return m_cmd_list_present; }
 
         // write a draw data entry and return its index
-        static uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0);
+        // when renderable is non-null its uv overrides are resolved against the material defaults,
+        // otherwise an identity uv transform (tiling 1, offset 0, rotation 0, no invert) is written
+        static uint32_t WriteDrawData(const math::Matrix& transform, const math::Matrix& transform_previous = math::Matrix::Identity, uint32_t material_index = 0, uint32_t is_transparent = 0, const Render* renderable = nullptr);
 
         // wind
         static const math::Vector3& GetWind();

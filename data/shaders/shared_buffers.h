@@ -162,33 +162,31 @@ struct PassBufferData
 #endif
 };
 
+// note, the full uv state (tiling, offset, invert, rotation, world_space_uv) lives on DrawData,
+// not here, so multiple renderables can share a material yet have per-instance uv tweaks
 struct MaterialParameters
 {
     SHARED_FLOAT4 color SHARED_DEFAULT(spartan::math::Vector4::Zero);
-
-    SHARED_FLOAT2 tiling    SHARED_DEFAULT(spartan::math::Vector2::Zero);
-    SHARED_FLOAT2 offset    SHARED_DEFAULT(spartan::math::Vector2::Zero);
-    SHARED_FLOAT2 invert_uv SHARED_DEFAULT(spartan::math::Vector2::Zero);
 
     SHARED_FLOAT roughness  SHARED_DEFAULT(0.0f);
     SHARED_FLOAT metallness SHARED_DEFAULT(0.0f);
     SHARED_FLOAT normal     SHARED_DEFAULT(0.0f);
     SHARED_FLOAT height     SHARED_DEFAULT(0.0f);
 
-    SHARED_UINT  flags       SHARED_DEFAULT(0);
-    SHARED_FLOAT local_width SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT padding;
+    SHARED_UINT  flags        SHARED_DEFAULT(0);
+    SHARED_FLOAT local_width  SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT local_height SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT padding_a    SHARED_DEFAULT(0.0f);
+
     SHARED_FLOAT subsurface_scattering;
-
     SHARED_FLOAT sheen;
-    SHARED_FLOAT local_height    SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT world_space_uv  SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT uv_rotation    SHARED_DEFAULT(0.0f);
-
     SHARED_FLOAT anisotropic;
     SHARED_FLOAT anisotropic_rotation;
+
     SHARED_FLOAT clearcoat;
     SHARED_FLOAT clearcoat_roughness;
+    SHARED_FLOAT padding0 SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT padding1 SHARED_DEFAULT(0.0f);
 
 #ifndef __cplusplus
     bool has_texture_albedo()    { return (flags & (1 << 2))  != 0; }
@@ -229,11 +227,18 @@ struct Aabb
     SHARED_FLOAT  padding2;
 };
 
-// per-blas-instance offsets into the global geometry buffer (indexed by InstanceIndex() in rt shaders)
+// per-blas-instance data (indexed by InstanceIndex() in rt shaders)
+// carries the per-renderable uv state too so rt and raster see the same per-instance tweak
 struct GeometryInfo
 {
     SHARED_UINT vertex_offset;
     SHARED_UINT index_offset;
+
+    SHARED_FLOAT2 uv_tiling      SHARED_DEFAULT(spartan::math::Vector2(1.0f, 1.0f));
+    SHARED_FLOAT2 uv_offset      SHARED_DEFAULT(spartan::math::Vector2::Zero);
+    SHARED_FLOAT2 uv_invert      SHARED_DEFAULT(spartan::math::Vector2::Zero);
+    SHARED_FLOAT  uv_rotation    SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  uv_world_space SHARED_DEFAULT(0.0f);
 };
 
 // gpu-driven indirect draw arguments (matches VkDrawIndexedIndirectCommand layout)
@@ -274,6 +279,14 @@ struct DrawData
     SHARED_UINT   instance_offset   SHARED_DEFAULT(0); // offset into the global instance buffer
     SHARED_UINT   instance_index    SHARED_DEFAULT(0); // per-draw instance to fetch, vs uses this in place of sv_instanceid
     SHARED_UINT   lod_vertex_offset SHARED_DEFAULT(0); // global vertex offset for this lod (added to lod-local indices)
+
+    // per-renderable uv state, resolved on the cpu from the renderable's override or the material default
+    // lets multiple renderables share a material yet tweak tiling, offset, rotation, invert, or world_space_uv independently
+    SHARED_FLOAT2 uv_tiling        SHARED_DEFAULT(spartan::math::Vector2(1.0f, 1.0f));
+    SHARED_FLOAT2 uv_offset        SHARED_DEFAULT(spartan::math::Vector2::Zero);
+    SHARED_FLOAT2 uv_invert        SHARED_DEFAULT(spartan::math::Vector2::Zero);
+    SHARED_FLOAT  uv_rotation      SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  uv_world_space   SHARED_DEFAULT(0.0f);
 };
 
 // one cull task per (renderable lod, meshlet) tuple, the cull pass dispatches over these

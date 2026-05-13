@@ -655,7 +655,7 @@ void Properties::OnTickVisible()
             Render* render = entity->GetComponent<Render>();
             Material* material = render ? render->GetMaterial() : nullptr;
             ShowRender(render);
-            ShowMaterial(material);
+            ShowMaterial(material, render);
             ShowPhysics(entity->GetComponent<Physics>());
             ShowVolume(entity->GetComponent<Volume>());
             ShowParticleSystem(entity->GetComponent<ParticleSystem>());
@@ -1478,23 +1478,26 @@ void Properties::ShowPhysics(Physics* body) const
     component_end();
 }
 
-void Properties::ShowMaterial(Material* material) const
+void Properties::ShowMaterial(Material* material, Render* renderable) const
 {
     if (!material)
         return;
 
     if (component_begin("Material", design::accent_material(), nullptr, false))
     {
-        //= REFLECT ================================================
-        math::Vector2 tiling = Vector2(
-            material->GetProperty(MaterialProperty::TextureTilingX),
-            material->GetProperty(MaterialProperty::TextureTilingY)
-        );
+        // when shown with a renderable, uv edits go to the renderable's override, not the material asset,
+        // so multiple renderables sharing this material can each have their own uv tweak
+        // when shown standalone (no renderable), uv edits modify the material defaults instead
+        const bool uv_per_renderable = renderable != nullptr;
 
-        math::Vector2 offset = Vector2(
-            material->GetProperty(MaterialProperty::TextureOffsetX),
-            material->GetProperty(MaterialProperty::TextureOffsetY)
-        );
+        //= REFLECT ================================================
+        math::Vector2 tiling = uv_per_renderable
+            ? Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY())
+            : Vector2(material->GetProperty(MaterialProperty::TextureTilingX), material->GetProperty(MaterialProperty::TextureTilingY));
+
+        math::Vector2 offset = uv_per_renderable
+            ? Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY())
+            : Vector2(material->GetProperty(MaterialProperty::TextureOffsetX), material->GetProperty(MaterialProperty::TextureOffsetY));
 
         m_material_color_picker->SetColor(Color(
             material->GetProperty(MaterialProperty::ColorR),
@@ -1664,8 +1667,12 @@ void Properties::ShowMaterial(Material* material) const
         }
 
         // inversion
-        bool invert_x = material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
-        bool invert_y = material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
+        bool invert_x = uv_per_renderable
+            ? renderable->ResolveUvInvertX() > 0.5f
+            : material->GetProperty(MaterialProperty::TextureInvertX) > 0.5f;
+        bool invert_y = uv_per_renderable
+            ? renderable->ResolveUvInvertY() > 0.5f
+            : material->GetProperty(MaterialProperty::TextureInvertY) > 0.5f;
         {
             layout::begin_property("Invert", "flip texture axes");
 
@@ -1685,10 +1692,20 @@ void Properties::ShowMaterial(Material* material) const
 
         // rotation
         static vector<string> rotation_options = { "0", "90", "180", "270" };
-        uint32_t rotation_index = static_cast<uint32_t>(material->GetProperty(MaterialProperty::TextureRotation));
+        const float rotation_source = uv_per_renderable
+            ? renderable->ResolveUvRotation()
+            : material->GetProperty(MaterialProperty::TextureRotation);
+        uint32_t rotation_index = static_cast<uint32_t>(rotation_source);
         if (property_combo("Rotation", rotation_options, &rotation_index, "rotate texture in 90 degree increments"))
         {
-            material->SetProperty(MaterialProperty::TextureRotation, static_cast<float>(rotation_index));
+            if (uv_per_renderable)
+            {
+                renderable->GetMaterialOverrideMutable().uv_rotation = static_cast<float>(rotation_index);
+            }
+            else
+            {
+                material->SetProperty(MaterialProperty::TextureRotation, static_cast<float>(rotation_index));
+            }
         }
 
         layout::separator();
@@ -1721,19 +1738,49 @@ void Properties::ShowMaterial(Material* material) const
             material->SetProperty(MaterialProperty::EmissiveFromAlbedo, emissive_from_albedo ? 1.0f : 0.0f);
         }
 
-        bool world_space_uv = material->GetProperty(MaterialProperty::WorldSpaceUv) != 0.0f;
+        bool world_space_uv = uv_per_renderable
+            ? renderable->ResolveUvWorldSpace() != 0.0f
+            : material->GetProperty(MaterialProperty::WorldSpaceUv) != 0.0f;
         if (property_toggle("World Space UV", &world_space_uv, "world-space texture coordinates"))
         {
-            material->SetProperty(MaterialProperty::WorldSpaceUv, world_space_uv ? 1.0f : 0.0f);
+            if (uv_per_renderable)
+            {
+                renderable->GetMaterialOverrideMutable().uv_world_space = world_space_uv ? 1.0f : 0.0f;
+            }
+            else
+            {
+                material->SetProperty(MaterialProperty::WorldSpaceUv, world_space_uv ? 1.0f : 0.0f);
+            }
         }
 
         //= MAP ===============================================================================
-        material->SetProperty(MaterialProperty::TextureTilingX, tiling.x);
-        material->SetProperty(MaterialProperty::TextureTilingY, tiling.y);
-        material->SetProperty(MaterialProperty::TextureOffsetX, offset.x);
-        material->SetProperty(MaterialProperty::TextureOffsetY, offset.y);
-        material->SetProperty(MaterialProperty::TextureInvertX, invert_x ? 1.0f : 0.0f);
-        material->SetProperty(MaterialProperty::TextureInvertY, invert_y ? 1.0f : 0.0f);
+        // uv values: per-renderable override when a renderable is present, material default otherwise
+        // an edit lights up only the fields whose values actually changed, so untouched fields
+        // keep inheriting from the material default (uv_per_renderable nan sentinel)
+        auto write_override = [](float& target, float new_value, float resolved_value)
+        {
+            if (new_value != resolved_value)
+                target = new_value;
+        };
+        if (uv_per_renderable)
+        {
+            MaterialOverride& ovr = renderable->GetMaterialOverrideMutable();
+            write_override(ovr.uv_tiling_x, tiling.x,                    renderable->ResolveUvTilingX());
+            write_override(ovr.uv_tiling_y, tiling.y,                    renderable->ResolveUvTilingY());
+            write_override(ovr.uv_offset_x, offset.x,                    renderable->ResolveUvOffsetX());
+            write_override(ovr.uv_offset_y, offset.y,                    renderable->ResolveUvOffsetY());
+            write_override(ovr.uv_invert_x, invert_x ? 1.0f : 0.0f,      renderable->ResolveUvInvertX());
+            write_override(ovr.uv_invert_y, invert_y ? 1.0f : 0.0f,      renderable->ResolveUvInvertY());
+        }
+        else
+        {
+            material->SetProperty(MaterialProperty::TextureTilingX, tiling.x);
+            material->SetProperty(MaterialProperty::TextureTilingY, tiling.y);
+            material->SetProperty(MaterialProperty::TextureOffsetX, offset.x);
+            material->SetProperty(MaterialProperty::TextureOffsetY, offset.y);
+            material->SetProperty(MaterialProperty::TextureInvertX, invert_x ? 1.0f : 0.0f);
+            material->SetProperty(MaterialProperty::TextureInvertY, invert_y ? 1.0f : 0.0f);
+        }
         material->SetProperty(MaterialProperty::ColorR, m_material_color_picker->GetColor().r);
         material->SetProperty(MaterialProperty::ColorG, m_material_color_picker->GetColor().g);
         material->SetProperty(MaterialProperty::ColorB, m_material_color_picker->GetColor().b);

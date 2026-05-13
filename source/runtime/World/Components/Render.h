@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "Component.h"
 #include <vector>
+#include <limits>
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
 #include "../Geometry/Mesh.h"
@@ -38,6 +39,24 @@ namespace spartan
     enum RenderableFlags : uint32_t
     {
         CastsShadows = 1U << 0
+    };
+
+    // per-renderable material overrides, currently uv only
+    // each field defaults to nan, which means inherit from the material asset at draw time,
+    // so multiple renderables can share a material and still tweak uv independently
+    struct MaterialOverride
+    {
+        float uv_tiling_x      = std::numeric_limits<float>::quiet_NaN();
+        float uv_tiling_y      = std::numeric_limits<float>::quiet_NaN();
+        float uv_offset_x      = std::numeric_limits<float>::quiet_NaN();
+        float uv_offset_y      = std::numeric_limits<float>::quiet_NaN();
+        float uv_rotation      = std::numeric_limits<float>::quiet_NaN();
+        float uv_invert_x      = std::numeric_limits<float>::quiet_NaN();
+        float uv_invert_y      = std::numeric_limits<float>::quiet_NaN();
+        float uv_world_space   = std::numeric_limits<float>::quiet_NaN();
+
+        static bool is_set(float v)  { return v == v; } // nan != nan
+        static float unset()         { return std::numeric_limits<float>::quiet_NaN(); }
     };
 
     class Render : public Component
@@ -93,7 +112,23 @@ namespace spartan
         void SetMaterial(const std::string& file_path);
         void SetDefaultMaterial();
         std::string GetMaterialName() const;
-        Material* GetMaterial() const { return m_material; }
+        Material* GetMaterial() const           { return m_material; }
+        bool IsUsingDefaultMaterial() const     { return m_material_default; }
+
+        // per-renderable material overrides (uv transform)
+        // the override defaults to nan and resolves to the material's value at draw time
+        const MaterialOverride& GetMaterialOverride() const { return m_material_override; }
+        MaterialOverride& GetMaterialOverrideMutable()      { return m_material_override; }
+        void ClearMaterialOverride()                        { m_material_override = MaterialOverride{}; }
+        // resolves an override field, returning the material default when the override is unset
+        float ResolveUvTilingX() const;
+        float ResolveUvTilingY() const;
+        float ResolveUvOffsetX() const;
+        float ResolveUvOffsetY() const;
+        float ResolveUvRotation() const;
+        float ResolveUvInvertX() const;
+        float ResolveUvInvertY() const;
+        float ResolveUvWorldSpace() const;
 
         // instancing
         bool HasInstancing() const                  { return !m_instances.empty(); }
@@ -139,6 +174,7 @@ namespace spartan
         // material
         bool m_material_default = false;
         Material* m_material    = nullptr;
+        MaterialOverride m_material_override;
 
         // instancing
         std::vector<Instance> m_instances;

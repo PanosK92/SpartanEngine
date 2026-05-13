@@ -128,10 +128,9 @@ float2 concentric_disk(float2 u)
 
 float trace_inline_shadow_ray(Light light, Surface surface, float2 pixel_xy)
 {
-    // self intersection bias scaled by camera distance
-    float dist_to_camera = length(surface.position - get_camera_position());
-    float bias           = 0.005f + dist_to_camera * 0.0001f;
-    float3 origin        = surface.position + surface.normal * bias;
+    // self intersection bias scaled by camera distance, reuse cached length
+    float bias    = 0.005f + surface.camera_to_pixel_length * 0.0001f;
+    float3 origin = surface.position + surface.normal * bias;
 
     // stationary per pixel rotation to break stratification banding without temporal motion
     float rot_angle = spatial_hash_unit(pixel_xy) * PI2;
@@ -255,32 +254,35 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     const float sss_scale          = 0.8f;  // overall scattering strength multiplier
     const float min_scatter        = 0.05f; // minimum ambient scattering
     
-    // compute key vectors (use geometric normal for sss)
-    float3 L = normalize(-light.to_pixel);
-    float3 V = normalize(-surface.camera_to_pixel);
+    // light.to_pixel and surface.camera_to_pixel are pre-normalized by their builders
+    float3 L = -light.to_pixel;
+    float3 V = -surface.camera_to_pixel;
     float3 N = surface.normal;
     
-    // Wrapped diffuse: allows light to wrap around surface, simulating subsurface penetration
+    // wrapped diffuse, allows light to wrap around the surface
     float n_dot_l_wrapped = saturate((dot(N, L) + wrap_factor) / (1.0f + wrap_factor));
-    float wrapped_diffuse = n_dot_l_wrapped * n_dot_l_wrapped; // square for smoother falloff
+    float wrapped_diffuse = n_dot_l_wrapped * n_dot_l_wrapped;
     
-    // Back-scattering translucency: light passing through from behind using distorted normal
+    // back scattering translucency, light passing through from behind using a distorted normal
     const float distortion = 0.4f;
     float3 N_distorted     = normalize(N + L * distortion);
     float back_scatter     = saturate(dot(V, -N_distorted));
-    back_scatter           = pow(back_scatter, sss_exponent);
+    // pow(x, 3) replaced with mults, sss_exponent is the constant 3
+    back_scatter           = back_scatter * back_scatter * back_scatter;
     
-    // Combine forward (wrapped diffuse) and backward (translucency) scattering
+    // combine forward and backward scattering
     float sss_term = lerp(back_scatter, wrapped_diffuse, saturate(dot(N, L) * 0.5f + 0.5f));
-    sss_term = max(sss_term, min_scatter); // ensure minimum scattering
+    sss_term = max(sss_term, min_scatter);
     
-    // Thickness modulation: stronger scattering at thin edges (view-dependent)
+    // thickness modulation, stronger scattering at thin edges
     float n_dot_v = saturate(dot(N, V));
-    float view_thickness = pow(1.0f - n_dot_v, thickness_exponent);
+    // pow(x, 1.5) replaced with x * sqrt(x), thickness_exponent is the constant 1.5
+    float one_minus_nv   = 1.0f - n_dot_v;
+    float view_thickness = one_minus_nv * sqrt(one_minus_nv);
     
-    // Light-dependent: backlit areas show more scattering
-    float n_dot_l = saturate(dot(N, L));
-    float light_thickness = pow(1.0f - n_dot_l, 1.0f);
+    // light dependent, backlit areas show more scattering
+    float n_dot_l         = saturate(dot(N, L));
+    float light_thickness = 1.0f - n_dot_l;
     
     // combine thickness terms
     float thickness_modulation = saturate(view_thickness + light_thickness * 0.5f);
@@ -344,7 +346,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 L_subsurface    = 0.0f;
         float3 L_volumetric    = 0.0f;
 
-        if (!surface.is_sky() && !skip_surface_lighting)
+        // early out, light.radiance already bakes attenuation and n_dot_l so a zero radiance
+        // means this light contributes nothing to the surface no matter what shadows or brdf say
+        // volumetric still runs below because a ray can pass through the light volume
+        bool light_contributes_to_surface = any(light.radiance > 0.0f);
+
+        if (!surface.is_sky() && !skip_surface_lighting && light_contributes_to_surface)
         {
             // compute shadow term
             // ray traced shadows are mutually exclusive with rasterized/screen-space shadows
@@ -432,8 +439,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             surface.roughness       = original_roughness;
             surface.roughness_alpha = original_roughness_alpha;
 
-            // diffuse_precomputed is 0 for transparents so the brdf eval is harmless on glass
-            L_diffuse_term += BRDF_Diffuse(surface, angular_info);
+            // diffuse_precomputed is 0 for transparents, skip the eval entirely
+            if (!is_transparent)
+            {
+                L_diffuse_term += BRDF_Diffuse(surface, angular_info);
+            }
         }
 
         // compute volumetric fog contribution
