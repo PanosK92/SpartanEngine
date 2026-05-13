@@ -1755,6 +1755,28 @@ namespace spartan
         return descriptors::current_frame;
     }
 
+    void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
+    {
+        // descriptor sets are keyed by a binding hash that includes the cpu side
+        // resource pointer, so once that resource is gone any cached set that
+        // references it must be evicted, otherwise a future binding hash collision
+        // will return a stale set holding destroyed gpu handles
+        if (!resource)
+            return;
+
+        for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
+        {
+            if (it->second.IsReferingToResource(resource))
+            {
+                it = descriptors::sets.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+
     void RHI_Device::Destroy()
     {
         SP_ASSERT(queues::graphics != nullptr);
@@ -1911,22 +1933,8 @@ namespace spartan
                 default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                                  break;
             }
 
-            // invalidate descriptor sets that referenced the destroyed resource
-            if (resource_type == RHI_Resource_Type::ImageView || resource_type == RHI_Resource_Type::Buffer)
-            {
-                for (auto set_it = descriptors::sets.begin(); set_it != descriptors::sets.end();)
-                {
-                    if (set_it->second.IsReferingToResource(resource))
-                    {
-                        set_it = descriptors::sets.erase(set_it);
-                    }
-                    else
-                    {
-                        ++set_it;
-                    }
-                }
-            }
-
+            // descriptor set invalidation is handled synchronously by the rhi resource
+            // owner before queueing here, so the cache is already coherent at this point
             it = deletion_queue.erase(it);
         }
     }

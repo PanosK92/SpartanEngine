@@ -37,6 +37,12 @@ namespace spartan
     {
         if (m_rhi_resource)
         {
+            // evict cached descriptor sets that reference this buffer before the
+            // gpu handle is queued for deletion, the descriptor cache key includes
+            // the cpu side rhi_buffer pointer and a future allocation at the same
+            // address would otherwise resurrect a stale cache entry with a dead vkbuffer
+            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
@@ -46,6 +52,11 @@ namespace spartan
     {
         if (m_rhi_resource)
         {
+            // synchronous destruction must also invalidate cached descriptor sets,
+            // otherwise the next dispatch can bind a set that still references this
+            // now destroyed vkbuffer and gpu assisted validation aborts the submit
+            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+
             RHI_Device::MemoryBufferDestroy(m_rhi_resource);
             m_data_gpu = nullptr;
         }

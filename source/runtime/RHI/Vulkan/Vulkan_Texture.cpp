@@ -457,6 +457,10 @@ namespace spartan
 
     void RHI_Texture::RHI_DestroyResource()
     {
+        // evict cached descriptor sets keyed by this texture pointer before any
+        // gpu handle is queued for deletion
+        RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+
         // srv and uav
         {
             RHI_Device::DeletionQueueAdd(RHI_Resource_Type::ImageView, m_rhi_srv);
@@ -499,6 +503,10 @@ namespace spartan
 
     void RHI_Texture::DestroyResourceImmediate()
     {
+        // synchronous destruction must also invalidate cached descriptor sets so
+        // future dispatches don't bind a set that still holds these dead handles
+        RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+
         if (m_rhi_srv)
         {
             vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(m_rhi_srv), nullptr);

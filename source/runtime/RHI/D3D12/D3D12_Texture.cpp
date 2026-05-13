@@ -441,6 +441,9 @@ namespace spartan
 
     void RHI_Texture::RHI_DestroyResource()
     {
+        // evict cached descriptor sets keyed by this texture pointer
+        RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+
         if (m_rhi_resource)
         {
             d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));

@@ -1457,6 +1457,25 @@ namespace spartan
 
     uint64_t RHI_Device::GetDescriptorSetFrame() { return 0; }
 
+    void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
+    {
+        if (!resource)
+            return;
+
+        unordered_map<uint64_t, RHI_DescriptorSet>& sets = GetDescriptorSets();
+        for (auto it = sets.begin(); it != sets.end();)
+        {
+            if (it->second.IsReferingToResource(resource))
+            {
+                it = sets.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+    }
+
     uint64_t RHI_Device::GetBufferDeviceAddress(void* buffer)
     {
         if (buffer)

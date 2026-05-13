@@ -46,6 +46,9 @@ namespace spartan
 
         if (m_rhi_resource)
         {
+            // evict cached descriptor sets keyed by this buffer pointer
+            RHI_Device::DescriptorSetInvalidateReferencingResource(this);
+
             d3d12_state::RemoveState(static_cast<ID3D12Resource*>(m_rhi_resource));
             static_cast<ID3D12Resource*>(m_rhi_resource)->Release();
             m_rhi_resource = nullptr;

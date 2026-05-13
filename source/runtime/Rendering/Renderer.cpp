@@ -1724,7 +1724,10 @@ namespace spartan
         }
 
         // skip tlas build until all blas are ready so we don't keep rebuilding it with an incomplete set
-        if (!blas_burst_done)
+        // also skip while the world is still loading, async loading adds new renderables every frame
+        // which would force the instance, staging, scratch buffers and the as itself to reallocate
+        // each rebuild, defer to a single build once loading completes
+        if (!blas_burst_done || ProgressTracker::IsLoading())
         {
             return;
         }
