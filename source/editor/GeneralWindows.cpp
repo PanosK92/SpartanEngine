@@ -235,7 +235,6 @@ namespace
         // third-party libraries used by the engine (alphabetically sorted)
         static const third_party_lib libs[] =
         {
-            { "AMD Compressonator",          "4.2",        "https://github.com/GPUOpen-Tools/compressonator"                  },
             { "AMD FidelityFX CAS/SPD",      "1.1.4",      "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK"       },
             { "AMD Vulkan Memory Allocator", "3.3.0",      "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator"},
             { "Assimp",                      "6.0.2",      "https://github.com/assimp/assimp"                                 },

@@ -120,7 +120,7 @@ function spartan_project_configuration()
             includedirs {
                 SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
-                "../third_party/free_type", "../third_party/compressonator", "../third_party/renderdoc",
+                "../third_party/free_type", "../third_party/renderdoc",
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua"
             }
@@ -163,7 +163,7 @@ function spartan_project_configuration()
             targetname(EXECUTABLE_NAME)
             targetdir(TARGET_DIR)
             debugdir(TARGET_DIR)
-            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT", "meshoptimizer", "openxr_loader", "lua" }
+            links { "dxcompiler", "assimp", "FreeImageLib", "freetype", "SDL3", "meshoptimizer", "openxr_loader", "lua" }
             links {
                 "PhysX_static_64", "PhysXCommon_static_64", "PhysXFoundation_static_64", "PhysXExtensions_static_64",
                 "PhysXPvdSDK_static_64", "PhysXCooking_static_64", "PhysXVehicle2_static_64", "PhysXCharacterKinematic_static_64"
@@ -189,7 +189,7 @@ function spartan_project_configuration()
             linkoptions { "/IGNORE:4099", "/DEBUG:FASTLINK" }
             
         filter { "configurations:debug", "system:windows" }
-            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "Compressonator_MT_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug" }
+            links { "assimp_debug", "FreeImageLib_debug", "freetype_debug", "SDL3_debug", "meshoptimizer_debug", "openxr_loader_debug", "lua_debug" }
             links {
                 "PhysX_static_64_debug", "PhysXCommon_static_64_debug", "PhysXFoundation_static_64_debug", "PhysXExtensions_static_64_debug",
                 "PhysXPvdSDK_static_64_debug", "PhysXCooking_static_64_debug", "PhysXVehicle2_static_64_debug", "PhysXCharacterKinematic_static_64_debug"
@@ -204,7 +204,7 @@ function spartan_project_configuration()
             end
 
         filter { "configurations:debug", "system:linux" }
-            links { "assimp", "FreeImageLib", "freetype", "SDL3", "Compressonator_MT" }
+            links { "assimp", "FreeImageLib", "freetype", "SDL3" }
 end
 
 if generation_actions[_ACTION] then

@@ -32,11 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Core/ProgressTracker.h"
-#include "../Core/Debugging.h"
 #include "../Core/Breadcrumbs.h"
-SP_WARNINGS_OFF
-#include "compressonator.h"
-SP_WARNINGS_ON
 //===========================================
 
 //= NAMESPACES =====
@@ -45,106 +41,6 @@ using namespace std;
 
 namespace spartan
 {
-    namespace compressonator
-    {
-        CMP_FORMAT to_cmp_format(const RHI_Format format)
-        {
-            // input
-            if (format == RHI_Format::R8G8B8A8_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_RGBA_8888;
-
-            // output
-            if (format == RHI_Format::BC1_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_BC1;
-
-            if (format == RHI_Format::BC3_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_BC3;
-
-            if (format == RHI_Format::BC5_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_BC5;
-
-            if (format == RHI_Format::BC7_Unorm)
-                return CMP_FORMAT::CMP_FORMAT_BC7;
-
-            if (format == RHI_Format::ASTC)
-                return CMP_FORMAT::CMP_FORMAT_ASTC;
-
-            SP_ASSERT_MSG(false, "No equivalent format");
-            return CMP_FORMAT::CMP_FORMAT_Unknown;
-        }
-
-        void compress(RHI_Texture* texture, const uint32_t mip_index, const RHI_Format dest_format)
-        {
-            // validate mip data exists
-            RHI_Texture_Mip* mip = texture->GetMip(0, mip_index);
-            if (!mip || mip->bytes.empty())
-            {
-                SP_LOG_ERROR("Texture '%s' mip %u has no data, skipping compression", texture->GetObjectName().c_str(), mip_index);
-                return;
-            }
-
-            // calculate dimensions for this mip level (clamp to minimum of 1, same as mip generation)
-            uint32_t mip_width  = max(1u, texture->GetWidth() >> mip_index);
-            uint32_t mip_height = max(1u, texture->GetHeight() >> mip_index);
-
-            // source texture
-            CMP_Texture source_texture = {};
-            source_texture.format      = to_cmp_format(texture->GetFormat());
-            source_texture.dwSize      = sizeof(CMP_Texture);
-            source_texture.dwWidth     = mip_width;
-            source_texture.dwHeight    = mip_height;
-            source_texture.dwPitch     = source_texture.dwWidth * texture->GetBytesPerPixel();
-            source_texture.dwDataSize  = static_cast<uint32_t>(mip->bytes.size());
-            source_texture.pData       = reinterpret_cast<uint8_t*>(mip->bytes.data());
-
-            // destination texture
-            CMP_Texture destination_texture = {};
-            destination_texture.format      = to_cmp_format(dest_format);
-            destination_texture.dwSize      = sizeof(CMP_Texture);
-            destination_texture.dwWidth     = source_texture.dwWidth;
-            destination_texture.dwHeight    = source_texture.dwHeight;
-            destination_texture.dwDataSize  = CMP_CalculateBufferSize(&destination_texture);
-            vector<std::byte> destination_data(destination_texture.dwDataSize);
-            destination_texture.pData       = reinterpret_cast<uint8_t*>(destination_data.data());
-
-            // compress texture
-            {
-                CMP_CompressOptions options = {};
-                options.dwSize              = sizeof(CMP_CompressOptions);
-                options.fquality            = 0.05f;                                     // lower quality, faster compression
-                options.dwnumThreads        = 1; // single thread to avoid contention with the thread pool
-                options.nEncodeWith         = CMP_HPC;                                   // encoder
-
-                SP_ASSERT(CMP_ConvertTexture(&source_texture, &destination_texture, &options, nullptr) == CMP_OK);
-            }
-
-            // update texture with compressed data
-            texture->GetMip(0, mip_index)->bytes = destination_data;
-        }
-
-        void compress(RHI_Texture* texture)
-        {
-            SP_ASSERT(texture != nullptr);
-
-            RHI_Format target = texture->GetCompressionFormat();
-            if (target == RHI_Format::Max)
-                target = RHI_Format::BC3_Unorm;
-
-            char marker[128];
-            snprintf(marker, sizeof(marker), "texture_compress_cpu: %s", texture->GetObjectName().c_str());
-            Breadcrumbs::BeginMarker(marker);
-
-            for (uint32_t mip_index = 0; mip_index < texture->GetMipCount(); mip_index++)
-            {
-                compress(texture, mip_index, target);
-            }
-
-            texture->SetFormat(target);
-
-            Breadcrumbs::EndMarker();
-        }
-    }
-
     namespace gpu_compression
     {
         static mutex compress_mutex;
@@ -153,7 +49,7 @@ namespace spartan
         {
             SP_ASSERT(texture != nullptr);
 
-            if (Debugging::IsGpuAssistedValidationEnabled() || RHI_Device::IsDeviceLost())
+            if (RHI_Device::IsDeviceLost())
                 return false;
 
             // select shader based on target format
@@ -227,9 +123,9 @@ namespace spartan
                 return false;
             }
 
-            // the vulkan spec guarantees at least 65535 groups per dispatch axis;
-            // bail to cpu if the total work is so large that even a 2D dispatch
-            // can't represent it (extremely unlikely: would need >17 billion blocks)
+            // the vulkan spec guarantees at least 65535 groups per dispatch axis,
+            // bail out if the total work is so large that even a 2D dispatch
+            // can't represent it, extremely unlikely, would need over 17 billion blocks
             {
                 constexpr uint32_t max_groups_per_axis = 65535;
                 uint32_t max_dispatch_groups = (mip_block_counts[0] + 3) / 4;
@@ -240,7 +136,7 @@ namespace spartan
                 }
             }
 
-            // bail out to cpu compression if we don't have enough vram headroom
+            // bail out if we don't have enough vram headroom
             uint64_t min_alignment = RHI_Device::PropertyGetMinStorageBufferOffsetAlignment();
             uint64_t input_stride  = sizeof(uint32_t);
             uint64_t output_stride = output_element_size;
@@ -997,7 +893,10 @@ namespace spartan
             {
                 RHI_Format target = m_compression_format != RHI_Format::Max ? m_compression_format : RHI_Format::BC3_Unorm;
 
-                compressonator::compress(this);
+                if (!gpu_compression::compress(this, target))
+                {
+                    SP_LOG_WARNING("GPU compression skipped for '%s', texture will remain uncompressed", m_object_name.c_str());
+                }
             }
         }
         
