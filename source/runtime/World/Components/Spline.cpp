@@ -690,7 +690,15 @@ namespace spartan
                 Quaternion rotation = Quaternion::Identity;
                 if (m_instance_face_inward)
                 {
+                    // for attached fences face the source centerline, otherwise mirror around own tangent
                     Vector3 face_dir = right * static_cast<float>(-side);
+                    if (IsAttached())
+                    {
+                        if (m_attach_mode == SplineAttachMode::LeftEdge || m_attach_mode == SplineAttachMode::LeftOuter)
+                            face_dir = right;
+                        else if (m_attach_mode == SplineAttachMode::RightEdge || m_attach_mode == SplineAttachMode::RightOuter)
+                            face_dir = right * -1.0f;
+                    }
                     if (face_dir.LengthSquared() > 0.0f)
                     {
                         rotation = Quaternion::FromLookRotation(face_dir, Vector3::Up);
