@@ -68,12 +68,23 @@ namespace spartan
 
     void Spline::OnWorldLoaded()
     {
+        // resolve the source spline entity once the world finished loading so order doesn't matter
+        ResolveSourceSplineEntity();
+
+        // inherit closed loop from source if requested
+        if (IsAttached() && m_attach_inherit_closed_loop && m_source_spline_entity)
+        {
+            if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+                m_closed_loop = source->GetClosedLoop();
+        }
+
         // regenerate the road mesh if the saved scene had one
         if (m_needs_road_regeneration)
         {
             m_needs_road_regeneration = false;
 
-            if (m_mesh_enabled && GetControlPointCount() >= 2)
+            bool has_input = IsAttached() ? (m_source_spline_entity != nullptr) : (GetControlPointCount() >= 2);
+            if (m_mesh_enabled && has_input)
             {
                 GenerateRoadMesh();
                 SnapshotState();
@@ -82,7 +93,8 @@ namespace spartan
 
         // auto-spawn instances when a template is configured
         // spawned instances are transient (not saved) so they always regenerate from the spline config
-        if (m_instance_template_id != 0 && GetControlPointCount() >= 2)
+        bool can_spawn = IsAttached() ? (m_source_spline_entity != nullptr) : (GetControlPointCount() >= 2);
+        if (m_instance_template_id != 0 && can_spawn)
         {
             SpawnInstances();
         }
@@ -106,6 +118,14 @@ namespace spartan
         m_prev_conform_to_terrain = m_conform_to_terrain;
         m_prev_terrain_offset     = m_terrain_offset;
         m_prev_control_points     = GetControlPointsLocal();
+
+        m_prev_attach_mode                = m_attach_mode;
+        m_prev_source_spline_entity_id    = m_source_spline_entity_id;
+        m_prev_attach_lateral_offset      = m_attach_lateral_offset;
+        m_prev_attach_vertical_offset     = m_attach_vertical_offset;
+        m_prev_attach_inherit_closed_loop = m_attach_inherit_closed_loop;
+        m_prev_attach_sample_count        = m_attach_sample_count;
+        m_prev_source_hash                = ComputeSourceHash();
     }
 
     void Spline::Tick()
@@ -114,29 +134,50 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing))
             return;
 
+        // resolve the source if it has not been resolved yet (e.g. after a fresh component add)
+        if (m_source_spline_entity_id != 0 && !m_source_spline_entity)
+            ResolveSourceSplineEntity();
+
+        // mirror the source closed loop state when requested
+        if (IsAttached() && m_attach_inherit_closed_loop && m_source_spline_entity)
+        {
+            if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+                m_closed_loop = source->GetClosedLoop();
+        }
+
         // auto-regenerate mesh when any property/control point changes, or when mesh is enabled but missing
         uint32_t control_point_count = GetControlPointCount();
-        if (m_mesh_enabled && control_point_count >= 2)
+        bool has_mesh_input = IsAttached() ? (m_source_spline_entity != nullptr) : (control_point_count >= 2);
+
+        if (m_mesh_enabled && has_mesh_input)
         {
             vector<Vector3> current_points = GetControlPointsLocal();
             bool mesh_missing              = !HasRoadMesh();
+            uint64_t source_hash           = ComputeSourceHash();
 
-            bool dirty = (m_closed_loop        != m_prev_closed_loop)
-                      || (m_resolution         != m_prev_resolution)
-                      || (m_road_width         != m_prev_road_width)
-                      || (m_road_width_end     != m_prev_road_width_end)
-                      || (m_profile            != m_prev_profile)
-                      || (m_height             != m_prev_height)
-                      || (m_thickness          != m_prev_thickness)
-                      || (m_tube_sides         != m_prev_tube_sides)
-                      || (m_uv_tiling_u        != m_prev_uv_tiling_u)
-                      || (m_uv_tiling_v        != m_prev_uv_tiling_v)
-                      || (m_sidewalk_enabled   != m_prev_sidewalk_enabled)
-                      || (m_sidewalk_width     != m_prev_sidewalk_width)
-                      || (m_curb_height        != m_prev_curb_height)
-                      || (m_conform_to_terrain != m_prev_conform_to_terrain)
-                      || (m_terrain_offset     != m_prev_terrain_offset)
-                      || (current_points       != m_prev_control_points);
+            bool dirty = (m_closed_loop                != m_prev_closed_loop)
+                      || (m_resolution                 != m_prev_resolution)
+                      || (m_road_width                 != m_prev_road_width)
+                      || (m_road_width_end             != m_prev_road_width_end)
+                      || (m_profile                    != m_prev_profile)
+                      || (m_height                     != m_prev_height)
+                      || (m_thickness                  != m_prev_thickness)
+                      || (m_tube_sides                 != m_prev_tube_sides)
+                      || (m_uv_tiling_u                != m_prev_uv_tiling_u)
+                      || (m_uv_tiling_v                != m_prev_uv_tiling_v)
+                      || (m_sidewalk_enabled           != m_prev_sidewalk_enabled)
+                      || (m_sidewalk_width             != m_prev_sidewalk_width)
+                      || (m_curb_height                != m_prev_curb_height)
+                      || (m_conform_to_terrain         != m_prev_conform_to_terrain)
+                      || (m_terrain_offset             != m_prev_terrain_offset)
+                      || (current_points               != m_prev_control_points)
+                      || (m_attach_mode                != m_prev_attach_mode)
+                      || (m_source_spline_entity_id    != m_prev_source_spline_entity_id)
+                      || (m_attach_lateral_offset      != m_prev_attach_lateral_offset)
+                      || (m_attach_vertical_offset     != m_prev_attach_vertical_offset)
+                      || (m_attach_inherit_closed_loop != m_prev_attach_inherit_closed_loop)
+                      || (m_attach_sample_count        != m_prev_attach_sample_count)
+                      || (source_hash                  != m_prev_source_hash);
 
             if (dirty || mesh_missing)
             {
@@ -144,17 +185,36 @@ namespace spartan
                 SnapshotState();
             }
         }
-        else if (m_mesh_enabled && control_point_count < 2 && HasRoadMesh())
+        else if (m_mesh_enabled && !has_mesh_input && HasRoadMesh())
         {
             ClearRoadMesh();
+        }
+
+        const Color color_curve = Color(0.3f, 0.85f, 0.75f, 1.0f);
+        const Color color_point = Color(1.0f, 0.8f, 0.3f, 1.0f);
+
+        // attached splines visualize their derived path by walking GetPoint
+        if (IsAttached() && m_source_spline_entity)
+        {
+            Spline* source = m_source_spline_entity->GetComponent<Spline>();
+            if (source && source->GetControlPointCount() >= 2)
+            {
+                uint32_t total_segments = max(2u, m_resolution * 4u);
+                Vector3 prev_point      = GetPoint(0.0f);
+                for (uint32_t i = 1; i <= total_segments; i++)
+                {
+                    float t            = static_cast<float>(i) / static_cast<float>(total_segments);
+                    Vector3 curr_point = GetPoint(t);
+                    Renderer::DrawLine(prev_point, curr_point, color_curve, color_curve);
+                    prev_point = curr_point;
+                }
+            }
+            return;
         }
 
         vector<Vector3> points = GetControlPoints();
         if (points.size() < 2)
             return;
-
-        const Color color_curve = Color(0.3f, 0.85f, 0.75f, 1.0f);
-        const Color color_point = Color(1.0f, 0.8f, 0.3f, 1.0f);
 
         // draw the interpolated curve
         uint32_t span_count = m_closed_loop ? static_cast<uint32_t>(points.size()) : static_cast<uint32_t>(points.size()) - 1;
@@ -187,7 +247,6 @@ namespace spartan
         float marker_size = 0.15f;
         for (const Vector3& point : points)
         {
-            // draw a small cross at each control point
             Renderer::DrawLine(point - Vector3(marker_size, 0, 0), point + Vector3(marker_size, 0, 0), color_point, color_point);
             Renderer::DrawLine(point - Vector3(0, marker_size, 0), point + Vector3(0, marker_size, 0), color_point, color_point);
             Renderer::DrawLine(point - Vector3(0, 0, marker_size), point + Vector3(0, 0, marker_size), color_point, color_point);
@@ -234,6 +293,14 @@ namespace spartan
         node.append_attribute("instance_random_scale_min") = m_instance_random_scale_min;
         node.append_attribute("instance_random_scale_max") = m_instance_random_scale_max;
         node.append_attribute("instance_random_yaw")       = m_instance_random_yaw;
+
+        // attachment
+        node.append_attribute("source_spline_id")           = m_source_spline_entity_id;
+        node.append_attribute("attach_mode")                = static_cast<uint32_t>(m_attach_mode);
+        node.append_attribute("attach_lateral_offset")      = m_attach_lateral_offset;
+        node.append_attribute("attach_vertical_offset")     = m_attach_vertical_offset;
+        node.append_attribute("attach_inherit_closed_loop") = m_attach_inherit_closed_loop;
+        node.append_attribute("attach_sample_count")        = m_attach_sample_count;
     }
 
     void Spline::Load(pugi::xml_node& node)
@@ -277,6 +344,15 @@ namespace spartan
         m_instance_random_scale_max  = node.attribute("instance_random_scale_max").as_float(1.0f);
         m_instance_random_yaw        = node.attribute("instance_random_yaw").as_float(0.0f);
 
+        // attachment
+        m_source_spline_entity_id     = node.attribute("source_spline_id").as_ullong(0);
+        m_attach_mode                 = static_cast<SplineAttachMode>(node.attribute("attach_mode").as_uint(static_cast<uint32_t>(SplineAttachMode::None)));
+        m_attach_lateral_offset       = node.attribute("attach_lateral_offset").as_float(0.0f);
+        m_attach_vertical_offset      = node.attribute("attach_vertical_offset").as_float(0.0f);
+        m_attach_inherit_closed_loop  = node.attribute("attach_inherit_closed_loop").as_bool(true);
+        m_attach_sample_count         = node.attribute("attach_sample_count").as_uint(0);
+        m_source_spline_entity        = nullptr;
+
         // if a mesh was saved, remove the renderable and physics as they will be recreated
         // save the material name first so it can be restored after regeneration
         if (m_needs_road_regeneration && m_entity_ptr)
@@ -296,16 +372,83 @@ namespace spartan
 
     Vector3 Spline::GetPoint(float t) const
     {
+        if (IsAttached() && m_source_spline_entity)
+        {
+            if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+            {
+                Vector3 world_pos = source->GetPoint(t);
+                Vector3 world_tan = source->GetTangent(t);
+                if (world_tan.LengthSquared() < 1e-6f)
+                    world_tan = Vector3::Forward;
+                world_tan.Normalize();
+
+                Vector3 world_up = Vector3::Up;
+                if (abs(world_tan.Dot(Vector3::Up)) > 0.99f)
+                    world_up = Vector3::Forward;
+                Vector3 world_right = world_tan.Cross(world_up);
+                world_right.Normalize();
+
+                float side = 0.0f;
+                switch (m_attach_mode)
+                {
+                    case SplineAttachMode::LeftEdge:
+                    case SplineAttachMode::LeftOuter:  side = -1.0f; break;
+                    case SplineAttachMode::RightEdge:
+                    case SplineAttachMode::RightOuter: side = +1.0f; break;
+                    default:                           side =  0.0f; break;
+                }
+
+                bool source_has_sidewalk = source->GetSidewalkEnabled() && source->GetProfile() == SplineProfile::Road;
+                float source_half_width  = (source->GetRoadWidth() + (source->GetRoadWidthEnd() - source->GetRoadWidth()) * t) * 0.5f;
+                float edge_offset        = 0.0f;
+                if (m_attach_mode == SplineAttachMode::LeftEdge || m_attach_mode == SplineAttachMode::RightEdge)
+                {
+                    edge_offset = source_half_width;
+                }
+                else if (m_attach_mode == SplineAttachMode::LeftOuter || m_attach_mode == SplineAttachMode::RightOuter)
+                {
+                    edge_offset = source_half_width + (source_has_sidewalk ? source->GetSidewalkWidth() : 0.0f);
+                }
+
+                float lateral = (m_attach_mode == SplineAttachMode::Centerline)
+                                ? m_attach_lateral_offset
+                                : side * (edge_offset + m_attach_lateral_offset);
+
+                return world_pos + world_right * lateral + Vector3::Up * m_attach_vertical_offset;
+            }
+        }
+
         return EvaluatePoint(GetControlPoints(), t);
     }
 
     Vector3 Spline::GetTangent(float t) const
     {
+        if (IsAttached() && m_source_spline_entity)
+        {
+            if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+                return source->GetTangent(t);
+        }
         return EvaluateTangent(GetControlPoints(), t);
     }
 
     float Spline::GetLength(uint32_t samples_per_span) const
     {
+        if (IsAttached() && m_source_spline_entity)
+        {
+            // walk the offset curve to compute its arc length
+            uint32_t total_samples = max(2u, samples_per_span * 4);
+            float length           = 0.0f;
+            Vector3 prev_point     = GetPoint(0.0f);
+            for (uint32_t i = 1; i <= total_samples; i++)
+            {
+                float t            = static_cast<float>(i) / static_cast<float>(total_samples);
+                Vector3 curr_point = GetPoint(t);
+                length            += prev_point.Distance(curr_point);
+                prev_point         = curr_point;
+            }
+            return length;
+        }
+
         vector<Vector3> points = GetControlPoints();
         if (points.size() < 2)
             return 0.0f;
@@ -390,11 +533,11 @@ namespace spartan
 
     void Spline::GenerateRoadMesh()
     {
-        // need at least 2 control points
-        vector<Vector3> spline_points = GetControlPointsLocal();
-        if (spline_points.size() < 2)
+        // build the dense list of frames either from own control points or from the source spline
+        vector<SplineFrame> frames = SampleFrames(m_resolution);
+        if (frames.size() < 2)
         {
-            SP_LOG_WARNING("need at least 2 control points to generate a mesh");
+            SP_LOG_WARNING("need at least 2 sampled frames to generate a mesh");
             return;
         }
 
@@ -416,7 +559,7 @@ namespace spartan
         // resolve the profile and extrude it along the spline
         vector<Vector2> profile_points = GetProfilePoints();
         bool close_profile             = IsProfileClosed();
-        GenerateMesh(spline_points, profile_points, close_profile);
+        GenerateMesh(frames, profile_points, close_profile);
     }
 
     void Spline::ClearRoadMesh()
@@ -454,14 +597,15 @@ namespace spartan
         // clear any existing instances first
         ClearInstances();
 
-        vector<Vector3> points = GetControlPointsLocal();
-        if (points.size() < 2)
+        // sample dense frames in this entity local space (works for standalone and attached splines)
+        vector<SplineFrame> frames = SampleFrames(m_resolution * 4);
+        if (frames.size() < 2)
         {
-            SP_LOG_WARNING("need at least 2 control points to spawn instances");
+            SP_LOG_WARNING("need at least 2 sampled frames to spawn instances");
             return;
         }
 
-        float spline_length = GetLength();
+        float spline_length = frames.back().distance;
         if (spline_length < m_instance_spacing)
         {
             SP_LOG_WARNING("spline is shorter than instance spacing");
@@ -493,37 +637,23 @@ namespace spartan
             sides.push_back(+1);
         }
 
-        // walk along the spline at arc-length intervals and place instances
-        uint32_t total_samples = static_cast<uint32_t>(points.size()) * m_resolution * 4; // dense sampling for arc-length
-        float step             = 1.0f / static_cast<float>(total_samples);
+        float next_spawn_distance = 0.0f;
+        uint32_t spawned          = 0;
 
-        float accumulated_distance = 0.0f;
-        float next_spawn_distance  = 0.0f;
-        Vector3 prev_position      = EvaluatePoint(points, 0.0f);
-        uint32_t spawned           = 0;
-
-        for (uint32_t i = 0; i <= total_samples; i++)
+        for (uint32_t i = 0; i < frames.size(); i++)
         {
-            float t          = static_cast<float>(i) * step;
-            Vector3 position = EvaluatePoint(points, t);
+            const SplineFrame& frame = frames[i];
 
-            if (i > 0)
-            {
-                accumulated_distance += position.Distance(prev_position);
-            }
-            prev_position = position;
-
-            if (accumulated_distance < next_spawn_distance)
+            if (frame.distance < next_spawn_distance)
                 continue;
 
-            // tangent and right vector for this sample
-            Vector3 tangent = EvaluateTangent(points, t);
-            tangent.Normalize();
+            Vector3 position = frame.position;
+            Vector3 tangent  = frame.tangent;
+
+            // horizontal-only right vector keeps instances upright on tilted segments
             Vector3 horiz_tangent = Vector3(tangent.x, 0.0f, tangent.z);
             if (horiz_tangent.LengthSquared() < 1e-6f)
-            {
                 horiz_tangent = tangent;
-            }
             horiz_tangent.Normalize();
             Vector3 right = horiz_tangent.Cross(Vector3::Up);
             right.Normalize();
@@ -749,27 +879,130 @@ namespace spartan
         return m_profile == SplineProfile::Tube;
     }
 
-    void Spline::GenerateMesh(const vector<Vector3>& spline_points, const vector<Vector2>& profile_points, bool close_profile)
+    vector<SplineFrame> Spline::SampleFrames(uint32_t samples_per_span) const
     {
-        if (spline_points.size() < 2 || profile_points.size() < 2)
-            return;
+        vector<SplineFrame> frames;
 
-        bool width_varies = (m_road_width_end != m_road_width);
+        // attached path: sample the source spline and offset by the chosen edge
+        if (IsAttached() && m_source_spline_entity)
+        {
+            Spline* source = m_source_spline_entity->GetComponent<Spline>();
+            if (!source || source->GetControlPointCount() < 2)
+                return frames;
+
+            // determine the side sign for the lateral offset
+            float side = 0.0f;
+            switch (m_attach_mode)
+            {
+                case SplineAttachMode::LeftEdge:
+                case SplineAttachMode::LeftOuter:  side = -1.0f; break;
+                case SplineAttachMode::RightEdge:
+                case SplineAttachMode::RightOuter: side = +1.0f; break;
+                default:                           side =  0.0f; break;
+            }
+
+            // does the source profile expose a sidewalk on its outer edge
+            bool source_has_sidewalk = source->GetSidewalkEnabled() && source->GetProfile() == SplineProfile::Road;
+
+            // use source resolution unless the user pinned a sample count
+            uint32_t source_point_count = source->GetControlPointCount();
+            uint32_t source_span_count  = source->GetClosedLoop() ? source_point_count : (source_point_count - 1);
+            uint32_t total_samples      = (m_attach_sample_count > 0)
+                                          ? m_attach_sample_count
+                                          : source_span_count * samples_per_span;
+            if (total_samples < 1)
+                total_samples = 1;
+
+            Matrix world_inv = m_entity_ptr ? m_entity_ptr->GetMatrix().Inverted() : Matrix::Identity;
+
+            float accumulated_distance = 0.0f;
+            Vector3 prev_local_position;
+
+            frames.reserve(total_samples + 1);
+
+            for (uint32_t i = 0; i <= total_samples; i++)
+            {
+                float t = static_cast<float>(i) / static_cast<float>(total_samples);
+
+                Vector3 world_pos = source->GetPoint(t);
+                Vector3 world_tan = source->GetTangent(t);
+                if (world_tan.LengthSquared() < 1e-6f)
+                    world_tan = Vector3::Forward;
+                world_tan.Normalize();
+
+                Vector3 world_up = Vector3::Up;
+                if (abs(world_tan.Dot(Vector3::Up)) > 0.99f)
+                    world_up = Vector3::Forward;
+
+                Vector3 world_right = world_tan.Cross(world_up);
+                world_right.Normalize();
+                world_up = world_right.Cross(world_tan);
+                world_up.Normalize();
+
+                // edge offset based on the source road width (interpolated start to end)
+                float source_half_width = (source->GetRoadWidth() + (source->GetRoadWidthEnd() - source->GetRoadWidth()) * t) * 0.5f;
+                float edge_offset       = 0.0f;
+                if (m_attach_mode == SplineAttachMode::LeftEdge || m_attach_mode == SplineAttachMode::RightEdge)
+                {
+                    edge_offset = source_half_width;
+                }
+                else if (m_attach_mode == SplineAttachMode::LeftOuter || m_attach_mode == SplineAttachMode::RightOuter)
+                {
+                    edge_offset = source_half_width + (source_has_sidewalk ? source->GetSidewalkWidth() : 0.0f);
+                }
+
+                // outward push for non centerline modes, plain right shift for centerline
+                float lateral = (m_attach_mode == SplineAttachMode::Centerline)
+                                ? m_attach_lateral_offset
+                                : side * (edge_offset + m_attach_lateral_offset);
+
+                Vector3 offset_world = world_pos + world_right * lateral + Vector3::Up * m_attach_vertical_offset;
+
+                // transform position and direction vectors into this entity local space
+                Vector3 local_pos = world_inv * offset_world;
+                Vector3 local_origin = world_inv * Vector3::Zero;
+                Vector3 local_tan   = (world_inv * world_tan)   - local_origin;
+                Vector3 local_right = (world_inv * world_right) - local_origin;
+                Vector3 local_up    = (world_inv * world_up)    - local_origin;
+
+                if (local_tan.LengthSquared() < 1e-6f)   local_tan   = Vector3::Forward;
+                if (local_right.LengthSquared() < 1e-6f) local_right = Vector3::Right;
+                if (local_up.LengthSquared() < 1e-6f)    local_up    = Vector3::Up;
+                local_tan.Normalize();
+                local_right.Normalize();
+                local_up.Normalize();
+
+                if (i > 0)
+                    accumulated_distance += local_pos.Distance(prev_local_position);
+                prev_local_position = local_pos;
+
+                SplineFrame frame;
+                frame.position = local_pos;
+                frame.tangent  = local_tan;
+                frame.right    = local_right;
+                frame.up       = local_up;
+                frame.t        = t;
+                frame.distance = accumulated_distance;
+                frames.push_back(frame);
+            }
+
+            return frames;
+        }
+
+        // standalone path: walk own control points
+        vector<Vector3> spline_points = GetControlPointsLocal();
+        if (spline_points.size() < 2)
+            return frames;
 
         uint32_t span_count    = m_closed_loop ? static_cast<uint32_t>(spline_points.size()) : static_cast<uint32_t>(spline_points.size()) - 1;
-        uint32_t total_samples = span_count * m_resolution;
-        uint32_t profile_count = static_cast<uint32_t>(profile_points.size());
-        uint32_t edge_count    = close_profile ? profile_count : profile_count - 1;
+        uint32_t total_samples = span_count * samples_per_span;
+        if (total_samples < 1)
+            total_samples = 1;
 
-        // world transform for terrain conforming (local -> world and back)
         Matrix world_matrix   = m_entity_ptr ? m_entity_ptr->GetMatrix() : Matrix::Identity;
         Matrix inverse_matrix = world_matrix.Inverted();
 
-        vector<RHI_Vertex_PosTexNorTan> vertices;
-        vector<uint32_t> indices;
-
-        uint32_t sample_count = total_samples + 1;
-        vertices.reserve(sample_count * profile_count);
+        frames.reserve(total_samples + 1);
 
         float accumulated_distance = 0.0f;
         Vector3 prev_position;
@@ -782,7 +1015,7 @@ namespace spartan
             Vector3 tangent  = EvaluateTangent(spline_points, t);
             tangent.Normalize();
 
-            // terrain conforming: raycast downward from this sample to snap to ground
+            // terrain conforming, raycast downward and snap the sample to ground
             if (m_conform_to_terrain)
             {
                 Vector3 world_pos = world_matrix * position;
@@ -797,9 +1030,7 @@ namespace spartan
 
             Vector3 up = Vector3::Up;
             if (abs(tangent.Dot(Vector3::Up)) > 0.99f)
-            {
                 up = Vector3::Forward;
-            }
 
             Vector3 right = tangent.Cross(up);
             right.Normalize();
@@ -807,13 +1038,108 @@ namespace spartan
             up.Normalize();
 
             if (i > 0)
-            {
                 accumulated_distance += position.Distance(prev_position);
-            }
             prev_position = position;
 
+            SplineFrame frame;
+            frame.position = position;
+            frame.tangent  = tangent;
+            frame.right    = right;
+            frame.up       = up;
+            frame.t        = t;
+            frame.distance = accumulated_distance;
+            frames.push_back(frame);
+        }
+
+        return frames;
+    }
+
+    void Spline::SetSourceSplineEntityId(uint64_t id)
+    {
+        if (m_source_spline_entity_id == id)
+            return;
+
+        m_source_spline_entity_id = id;
+        m_source_spline_entity    = nullptr;
+        ResolveSourceSplineEntity();
+    }
+
+    void Spline::ResolveSourceSplineEntity()
+    {
+        m_source_spline_entity = nullptr;
+        if (m_source_spline_entity_id == 0)
+            return;
+
+        Entity* candidate = World::GetEntityById(m_source_spline_entity_id);
+        if (candidate == m_entity_ptr)
+            return;
+        m_source_spline_entity = candidate;
+    }
+
+    uint64_t Spline::ComputeSourceHash() const
+    {
+        if (!m_source_spline_entity)
+            return 0;
+
+        Spline* source = m_source_spline_entity->GetComponent<Spline>();
+        if (!source)
+            return 0;
+
+        // fnv-1a style hash mixing the source state that affects derived frames
+        uint64_t hash = 1469598103934665603ULL;
+        auto mix = [&](uint64_t v)
+        {
+            hash ^= v;
+            hash *= 1099511628211ULL;
+        };
+        auto mix_f = [&](float f)
+        {
+            uint32_t bits;
+            std::memcpy(&bits, &f, sizeof(bits));
+            mix(static_cast<uint64_t>(bits));
+        };
+
+        vector<Vector3> points = source->GetControlPoints();
+        mix(static_cast<uint64_t>(points.size()));
+        for (const Vector3& p : points)
+        {
+            mix_f(p.x);
+            mix_f(p.y);
+            mix_f(p.z);
+        }
+
+        mix_f(source->GetRoadWidth());
+        mix_f(source->GetRoadWidthEnd());
+        mix_f(source->GetSidewalkWidth());
+        mix(source->GetSidewalkEnabled() ? 1ULL : 0ULL);
+        mix(source->GetClosedLoop()      ? 1ULL : 0ULL);
+        mix(static_cast<uint64_t>(source->GetProfile()));
+        mix(static_cast<uint64_t>(source->GetResolution()));
+
+        return hash;
+    }
+
+    void Spline::GenerateMesh(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile)
+    {
+        if (frames.size() < 2 || profile_points.size() < 2)
+            return;
+
+        bool width_varies = (m_road_width_end != m_road_width);
+
+        uint32_t total_samples = static_cast<uint32_t>(frames.size()) - 1;
+        uint32_t profile_count = static_cast<uint32_t>(profile_points.size());
+
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices;
+
+        vertices.reserve(frames.size() * profile_count);
+
+        for (uint32_t i = 0; i < frames.size(); i++)
+        {
+            const SplineFrame& frame = frames[i];
+
             // interpolate width if it varies along the spline
-            float current_width         = width_varies ? (m_road_width + (m_road_width_end - m_road_width) * t) : m_road_width;
+            float current_width         = width_varies ? (m_road_width + (m_road_width_end - m_road_width) * frame.t) : m_road_width;
             vector<Vector2> cur_profile = width_varies ? GetProfilePointsForWidth(current_width) : profile_points;
             uint32_t cur_profile_count  = static_cast<uint32_t>(cur_profile.size());
 
@@ -828,12 +1154,12 @@ namespace spartan
             if (cur_perimeter < 0.001f)
                 cur_perimeter = 1.0f;
 
-            float v = (accumulated_distance / m_road_width) * m_uv_tiling_v;
+            float v = (frame.distance / m_road_width) * m_uv_tiling_v;
 
             float accumulated_profile_distance = 0.0f;
             for (uint32_t j = 0; j < cur_profile_count; j++)
             {
-                Vector3 vertex_pos = position + right * cur_profile[j].x + up * cur_profile[j].y;
+                Vector3 vertex_pos = frame.position + frame.right * cur_profile[j].x + frame.up * cur_profile[j].y;
 
                 if (j > 0)
                 {
@@ -844,7 +1170,7 @@ namespace spartan
                 Vector3 normal;
                 if (cur_profile_count == 2)
                 {
-                    normal = up;
+                    normal = frame.up;
                 }
                 else
                 {
@@ -854,7 +1180,7 @@ namespace spartan
                     Vector2 edge = cur_profile[j_next] - cur_profile[j_prev];
 
                     // open profiles (road/wall/fence/channel) need the opposite winding
-                    // from closed profiles (tube) to keep normals facing outward/upward.
+                    // from closed profiles (tube) to keep normals facing outward/upward
                     Vector2 perp = close_profile ? Vector2(edge.y, -edge.x) : Vector2(-edge.y, edge.x);
                     float perp_len = sqrtf(perp.x * perp.x + perp.y * perp.y);
                     if (perp_len > 0.001f)
@@ -863,16 +1189,15 @@ namespace spartan
                         perp.y /= perp_len;
                     }
 
-                    normal = right * perp.x + up * perp.y;
+                    normal = frame.right * perp.x + frame.up * perp.y;
                     normal.Normalize();
                 }
 
-                vertices.emplace_back(vertex_pos, Vector2(u, v), normal, tangent);
+                vertices.emplace_back(vertex_pos, Vector2(u, v), normal, frame.tangent);
             }
         }
 
         // generate triangle indices connecting adjacent cross-sections
-        // profile point count is constant regardless of width, so profile_count is always valid
         uint32_t idx_edge_count = close_profile ? profile_count : profile_count - 1;
 
         indices.reserve(total_samples * idx_edge_count * 6);
@@ -896,6 +1221,8 @@ namespace spartan
                 indices.push_back(tl);
             }
         }
+
+        float total_length = frames.back().distance;
 
         // create the mesh
         m_mesh = make_shared<Mesh>();
@@ -951,7 +1278,7 @@ namespace spartan
 
         SP_LOG_INFO("generated spline mesh: %u vertices, %u indices, %.1f m long",
             static_cast<uint32_t>(vertices.size()), static_cast<uint32_t>(indices.size()),
-            accumulated_distance);
+            total_length);
     }
 
     Vector3 Spline::CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t)

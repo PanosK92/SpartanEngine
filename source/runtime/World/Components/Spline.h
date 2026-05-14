@@ -43,6 +43,29 @@ namespace spartan
         Max
     };
 
+    // how a spline derives its path from another spline (the source)
+    enum class SplineAttachMode : uint8_t
+    {
+        None,        // standalone, uses own control points
+        Centerline,  // follow source centerline
+        LeftEdge,    // snap to source left road edge
+        RightEdge,   // snap to source right road edge
+        LeftOuter,   // outer edge of source left sidewalk, falls back to LeftEdge
+        RightOuter,  // outer edge of source right sidewalk, falls back to RightEdge
+        Max
+    };
+
+    // a single sampled frame along the spline, in the entity local space
+    struct SplineFrame
+    {
+        math::Vector3 position;
+        math::Vector3 tangent;
+        math::Vector3 right;
+        math::Vector3 up;
+        float t        = 0.0f;
+        float distance = 0.0f;
+    };
+
     class Spline : public Component
     {
     public:
@@ -137,6 +160,22 @@ namespace spartan
         float GetInstanceLateralOffset() const                  { return m_instance_lateral_offset; }
         void SetInstanceLateralOffset(float offset)             { m_instance_lateral_offset = offset; }
 
+        // attachment to another spline (the source)
+        uint64_t GetSourceSplineEntityId() const                { return m_source_spline_entity_id; }
+        void SetSourceSplineEntityId(uint64_t id);
+        Entity* GetSourceSplineEntity() const                   { return m_source_spline_entity; }
+        SplineAttachMode GetAttachMode() const                  { return m_attach_mode; }
+        void SetAttachMode(SplineAttachMode mode)               { m_attach_mode = mode; }
+        float GetAttachLateralOffset() const                    { return m_attach_lateral_offset; }
+        void SetAttachLateralOffset(float offset)               { m_attach_lateral_offset = offset; }
+        float GetAttachVerticalOffset() const                   { return m_attach_vertical_offset; }
+        void SetAttachVerticalOffset(float offset)              { m_attach_vertical_offset = offset; }
+        bool GetAttachInheritClosedLoop() const                 { return m_attach_inherit_closed_loop; }
+        void SetAttachInheritClosedLoop(bool inherit)           { m_attach_inherit_closed_loop = inherit; }
+        uint32_t GetAttachSampleCount() const                   { return m_attach_sample_count; }
+        void SetAttachSampleCount(uint32_t count)               { m_attach_sample_count = count; }
+        bool IsAttached() const                                 { return m_attach_mode != SplineAttachMode::None && m_source_spline_entity_id != 0; }
+
         // also spawn a mirrored instance on the opposite side
         bool GetInstanceMirror() const                          { return m_instance_mirror; }
         void SetInstanceMirror(bool mirror)                     { m_instance_mirror = mirror; }
@@ -172,8 +211,18 @@ namespace spartan
         // whether the current profile forms a closed loop cross-section (e.g. tube)
         bool IsProfileClosed() const;
 
-        // generalized mesh extrusion along the spline using the given cross-section
-        void GenerateMesh(const std::vector<math::Vector3>& spline_points, const std::vector<math::Vector2>& profile_points, bool close_profile);
+        // produce a dense list of frames in this entity local space, either from
+        // own control points or by sampling the attached source spline
+        std::vector<SplineFrame> SampleFrames(uint32_t samples_per_span) const;
+
+        // generalized mesh extrusion using a precomputed list of frames
+        void GenerateMesh(const std::vector<SplineFrame>& frames, const std::vector<math::Vector2>& profile_points, bool close_profile);
+
+        // resolve the runtime source spline entity pointer from the stored id
+        void ResolveSourceSplineEntity();
+
+        // hash of the source spline state used to detect changes
+        uint64_t ComputeSourceHash() const;
 
         // capture current property/control point state to compare against next tick
         void SnapshotState();
@@ -228,6 +277,15 @@ namespace spartan
         bool m_conform_to_terrain = false;
         float m_terrain_offset    = 0.01f;
 
+        // attachment
+        uint64_t m_source_spline_entity_id    = 0;
+        Entity* m_source_spline_entity        = nullptr;
+        SplineAttachMode m_attach_mode        = SplineAttachMode::None;
+        float m_attach_lateral_offset         = 0.0f;
+        float m_attach_vertical_offset        = 0.0f;
+        bool m_attach_inherit_closed_loop     = true;
+        uint32_t m_attach_sample_count        = 0;
+
         // instancing
         float m_instance_spacing              = 5.0f;
         bool m_align_instances_to_spline      = true;
@@ -267,5 +325,12 @@ namespace spartan
         bool m_prev_conform_to_terrain                  = false;
         float m_prev_terrain_offset                     = 0.0f;
         std::vector<math::Vector3> m_prev_control_points;
+        SplineAttachMode m_prev_attach_mode             = SplineAttachMode::None;
+        uint64_t m_prev_source_spline_entity_id         = 0;
+        float m_prev_attach_lateral_offset              = 0.0f;
+        float m_prev_attach_vertical_offset             = 0.0f;
+        bool m_prev_attach_inherit_closed_loop          = true;
+        uint32_t m_prev_attach_sample_count             = 0;
+        uint64_t m_prev_source_hash                     = 0;
     };
 }

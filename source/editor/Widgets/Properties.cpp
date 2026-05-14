@@ -1955,41 +1955,50 @@ void Properties::ShowSpline(spartan::Spline* spline) const
     if (component_begin("Spline", design::accent_spline(), spline))
     {
         //= REFLECT ===============================================
-        bool closed_loop            = spline->GetClosedLoop();
-        uint32_t resolution         = spline->GetResolution();
-        uint32_t point_count        = spline->GetControlPointCount();
-        float road_width            = spline->GetRoadWidth();
-        float road_width_end        = spline->GetRoadWidthEnd();
-        uint32_t profile            = static_cast<uint32_t>(spline->GetProfile());
-        float height                = spline->GetHeight();
-        float thickness             = spline->GetThickness();
-        uint32_t tube_sides         = spline->GetTubeSides();
-        float uv_tiling_u           = spline->GetUvTilingU();
-        float uv_tiling_v           = spline->GetUvTilingV();
-        bool sidewalk_enabled       = spline->GetSidewalkEnabled();
-        float sidewalk_width        = spline->GetSidewalkWidth();
-        float curb_height           = spline->GetCurbHeight();
-        bool conform_to_terrain     = spline->GetConformToTerrain();
-        float terrain_offset        = spline->GetTerrainOffset();
-        bool mesh_enabled           = spline->GetMeshEnabled();
-        float inst_spacing          = spline->GetInstanceSpacing();
-        bool inst_align             = spline->GetAlignInstancesToSpline();
-        uint64_t inst_template_id   = spline->GetInstanceTemplateId();
-        float inst_lateral_offset   = spline->GetInstanceLateralOffset();
-        bool inst_mirror            = spline->GetInstanceMirror();
-        bool inst_face_inward       = spline->GetInstanceFaceInward();
-        float inst_random_offset    = spline->GetInstanceRandomOffset();
-        float inst_random_scale_min = spline->GetInstanceRandomScaleMin();
-        float inst_random_scale_max = spline->GetInstanceRandomScaleMax();
-        float inst_random_yaw       = spline->GetInstanceRandomYaw();
+        bool closed_loop                  = spline->GetClosedLoop();
+        uint32_t resolution               = spline->GetResolution();
+        uint32_t point_count              = spline->GetControlPointCount();
+        float road_width                  = spline->GetRoadWidth();
+        float road_width_end              = spline->GetRoadWidthEnd();
+        uint32_t profile                  = static_cast<uint32_t>(spline->GetProfile());
+        float height                      = spline->GetHeight();
+        float thickness                   = spline->GetThickness();
+        uint32_t tube_sides               = spline->GetTubeSides();
+        float uv_tiling_u                 = spline->GetUvTilingU();
+        float uv_tiling_v                 = spline->GetUvTilingV();
+        bool sidewalk_enabled             = spline->GetSidewalkEnabled();
+        float sidewalk_width              = spline->GetSidewalkWidth();
+        float curb_height                 = spline->GetCurbHeight();
+        bool conform_to_terrain           = spline->GetConformToTerrain();
+        float terrain_offset              = spline->GetTerrainOffset();
+        bool mesh_enabled                 = spline->GetMeshEnabled();
+        float inst_spacing                = spline->GetInstanceSpacing();
+        bool inst_align                   = spline->GetAlignInstancesToSpline();
+        uint64_t inst_template_id         = spline->GetInstanceTemplateId();
+        float inst_lateral_offset         = spline->GetInstanceLateralOffset();
+        bool inst_mirror                  = spline->GetInstanceMirror();
+        bool inst_face_inward             = spline->GetInstanceFaceInward();
+        float inst_random_offset          = spline->GetInstanceRandomOffset();
+        float inst_random_scale_min       = spline->GetInstanceRandomScaleMin();
+        float inst_random_scale_max       = spline->GetInstanceRandomScaleMax();
+        float inst_random_yaw             = spline->GetInstanceRandomYaw();
+        uint32_t attach_mode              = static_cast<uint32_t>(spline->GetAttachMode());
+        uint64_t source_spline_id         = spline->GetSourceSplineEntityId();
+        float attach_lateral_offset       = spline->GetAttachLateralOffset();
+        float attach_vertical_offset      = spline->GetAttachVerticalOffset();
+        bool attach_inherit_closed_loop   = spline->GetAttachInheritClosedLoop();
+        uint32_t attach_sample_count      = spline->GetAttachSampleCount();
         //=========================================================
 
         layout::section_header("Spline");
 
+        bool is_attached_loop_inherited = attach_mode != 0 && attach_inherit_closed_loop && source_spline_id != 0;
+        ImGui::BeginDisabled(is_attached_loop_inherited);
         if (property_toggle("Closed Loop", &closed_loop, "connect the last point back to the first"))
         {
             spline->SetClosedLoop(closed_loop);
         }
+        ImGui::EndDisabled();
 
         float resolution_f = static_cast<float>(resolution);
         if (property_float("Resolution", &resolution_f, 1.0f, 2.0f, 100.0f, "line segments per span", "%.0f"))
@@ -1998,53 +2007,127 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         }
 
         layout::separator();
-        layout::section_header("Control Points");
+        layout::section_header("Attachment");
 
-        char stat_buf[64];
-        std::snprintf(stat_buf, sizeof(stat_buf), "%u", point_count);
-        property_text("Count", stat_buf);
+        // build a list of entities that have a spline component (excluding self)
+        const vector<Entity*>& all_entities_attach = World::GetEntities();
+        vector<string> attach_names;
+        vector<uint64_t> attach_ids;
+        uint32_t attach_selected_index = 0;
 
-        if (point_count >= 2)
+        attach_names.push_back("(none)");
+        attach_ids.push_back(0);
+
+        for (Entity* candidate : all_entities_attach)
         {
-            std::snprintf(stat_buf, sizeof(stat_buf), "%.2f m", spline->GetLength());
-            property_text("Length", stat_buf);
+            if (!candidate || candidate == spline->GetEntity())
+                continue;
+
+            if (candidate->GetComponent<spartan::Spline>())
+            {
+                attach_ids.push_back(candidate->GetObjectId());
+                attach_names.push_back(candidate->GetObjectName());
+
+                if (candidate->GetObjectId() == source_spline_id)
+                {
+                    attach_selected_index = static_cast<uint32_t>(attach_names.size() - 1);
+                }
+            }
         }
 
-        layout::group_spacing();
-
-        float button_width = 100.0f * spartan::Window::GetDpiScale();
-        float total_width  = button_width * 2.0f + design::spacing_md;
-        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total_width) * 0.5f + ImGui::GetCursorPosX());
-
-        if (ImGuiSp::button("+ Add Point", ImVec2(button_width, 0)))
+        if (property_combo("Source Spline", attach_names, &attach_selected_index, "attach this spline to another spline so it follows it"))
         {
-            math::Vector3 position = math::Vector3::Zero;
-            if (point_count > 0)
+            spline->SetSourceSplineEntityId(attach_ids[attach_selected_index]);
+        }
+
+        static vector<string> attach_mode_names = { "None", "Centerline", "Left Edge", "Right Edge", "Left Outer", "Right Outer" };
+        ImGui::BeginDisabled(source_spline_id == 0);
+        if (property_combo("Attach Mode", attach_mode_names, &attach_mode, "where on the source spline to snap"))
+        {
+            spline->SetAttachMode(static_cast<spartan::SplineAttachMode>(attach_mode));
+        }
+        ImGui::EndDisabled();
+
+        bool attachment_active = source_spline_id != 0 && attach_mode != 0;
+        if (attachment_active)
+        {
+            if (property_float("Lateral Offset", &attach_lateral_offset, 0.05f, -100.0f, 100.0f, "extra inward or outward push from the chosen edge", "%.2f m"))
             {
-                spartan::Entity* parent = spline->GetEntity();
-                for (uint32_t i = parent->GetChildrenCount(); i > 0; i--)
+                spline->SetAttachLateralOffset(attach_lateral_offset);
+            }
+            if (property_float("Vertical Offset", &attach_vertical_offset, 0.05f, -100.0f, 100.0f, "extra height above the source path", "%.2f m"))
+            {
+                spline->SetAttachVerticalOffset(attach_vertical_offset);
+            }
+            if (property_toggle("Inherit Closed Loop", &attach_inherit_closed_loop, "match the source closed loop state automatically"))
+            {
+                spline->SetAttachInheritClosedLoop(attach_inherit_closed_loop);
+            }
+            float sample_count_f = static_cast<float>(attach_sample_count);
+            if (property_float("Sample Count", &sample_count_f, 1.0f, 0.0f, 4096.0f, "0 means use the source resolution", "%.0f"))
+            {
+                spline->SetAttachSampleCount(static_cast<uint32_t>(sample_count_f));
+            }
+        }
+
+        // attached splines derive their path from the source so own control points are hidden
+        if (!attachment_active)
+        {
+            layout::separator();
+            layout::section_header("Control Points");
+
+            char stat_buf[64];
+            std::snprintf(stat_buf, sizeof(stat_buf), "%u", point_count);
+            property_text("Count", stat_buf);
+
+            if (point_count >= 2)
+            {
+                std::snprintf(stat_buf, sizeof(stat_buf), "%.2f m", spline->GetLength());
+                property_text("Length", stat_buf);
+            }
+
+            layout::group_spacing();
+
+            float button_width = 100.0f * spartan::Window::GetDpiScale();
+            float total_width  = button_width * 2.0f + design::spacing_md;
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - total_width) * 0.5f + ImGui::GetCursorPosX());
+
+            if (ImGuiSp::button("+ Add Point", ImVec2(button_width, 0)))
+            {
+                math::Vector3 position = math::Vector3::Zero;
+                if (point_count > 0)
                 {
-                    if (spartan::Entity* child = parent->GetChildByIndex(i - 1))
+                    spartan::Entity* parent = spline->GetEntity();
+                    for (uint32_t i = parent->GetChildrenCount(); i > 0; i--)
                     {
-                        if (child->GetObjectName().find("spline_point_") == 0)
+                        if (spartan::Entity* child = parent->GetChildByIndex(i - 1))
                         {
-                            position = child->GetPositionLocal() + math::Vector3(5.0f, 0.0f, 0.0f);
-                            break;
+                            if (child->GetObjectName().find("spline_point_") == 0)
+                            {
+                                position = child->GetPositionLocal() + math::Vector3(5.0f, 0.0f, 0.0f);
+                                break;
+                            }
                         }
                     }
                 }
+                spline->AddControlPoint(position);
             }
-            spline->AddControlPoint(position);
+
+            ImGui::SameLine(0, design::spacing_md);
+
+            ImGui::BeginDisabled(point_count == 0);
+            if (ImGuiSp::button("- Remove Last", ImVec2(button_width, 0)))
+            {
+                spline->RemoveLastControlPoint();
+            }
+            ImGui::EndDisabled();
         }
-
-        ImGui::SameLine(0, design::spacing_md);
-
-        ImGui::BeginDisabled(point_count == 0);
-        if (ImGuiSp::button("- Remove Last", ImVec2(button_width, 0)))
+        else
         {
-            spline->RemoveLastControlPoint();
+            char attached_length_buf[64];
+            std::snprintf(attached_length_buf, sizeof(attached_length_buf), "%.2f m", spline->GetLength());
+            property_text("Length", attached_length_buf);
         }
-        ImGui::EndDisabled();
 
         layout::separator();
         layout::section_header("Mesh Generation");
