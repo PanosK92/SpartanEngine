@@ -276,6 +276,9 @@ namespace spartan
             Breadcrumbs::Shutdown();
         }
 
+        // release the gpu compression pool buffers before the device goes away
+        RHI_Texture::ShutdownCompressionPool();
+
         RHI_Device::Destroy();
     }
 

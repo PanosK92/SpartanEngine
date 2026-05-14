@@ -41,17 +41,17 @@ namespace spartan
 
     enum RHI_Texture_Flags : uint32_t
     {
-        RHI_Texture_Srv         = 1U << 0,
-        RHI_Texture_Uav         = 1U << 1,
-        RHI_Texture_Rtv         = 1U << 2,
-        RHI_Texture_Vrs         = 1U << 3,
-        RHI_Texture_ClearBlit   = 1U << 4,
-        RHI_Texture_PerMipViews = 1U << 5,
-        RHI_Texture_Greyscale   = 1U << 6,
-        RHI_Texture_Transparent = 1U << 7,
+        RHI_Texture_Srv               = 1U << 0,
+        RHI_Texture_Uav               = 1U << 1,
+        RHI_Texture_Rtv               = 1U << 2,
+        RHI_Texture_Vrs               = 1U << 3,
+        RHI_Texture_ClearBlit         = 1U << 4,
+        RHI_Texture_PerMipViews       = 1U << 5,
+        RHI_Texture_Greyscale         = 1U << 6,
+        RHI_Texture_Transparent       = 1U << 7,
         RHI_Texture_Srgb              = 1U << 8,
         RHI_Texture_Mappable          = 1U << 9,
-        RHI_Texture_ConcurrentSharing = 1U << 10, // shared between graphics and compute queue families
+        RHI_Texture_ConcurrentSharing = 1U << 10,
         RHI_Texture_Compress          = 1U << 11
     };
 
@@ -108,14 +108,15 @@ namespace spartan
         static bool IsCompressedFormat(const RHI_Format format);
         bool IsCompressedFormat()               { return IsCompressedFormat(m_format); }
 
-        RHI_Format GetCompressionFormat() const                    { return m_compression_format; }
-        void SetCompressionFormat(const RHI_Format format)         { m_compression_format = format; }
+        RHI_Format GetCompressionFormat() const            { return m_compression_format; }
+        void SetCompressionFormat(const RHI_Format format) { m_compression_format = format; }
 
         // misc
         void ClearData();
         void PrepareForGpu();
         void DestroyResourceImmediate();
         static size_t CalculateMipSize(uint32_t width, uint32_t height, uint32_t depth, RHI_Format format, uint32_t bits_per_channel, uint32_t channel_count);
+        static void ShutdownCompressionPool();
 
         // data
         uint32_t GetMipCount() const    { return m_mip_count; }
@@ -163,13 +164,13 @@ namespace spartan
         const auto& GetViewport() const { return m_viewport; }
 
         // rhi
-        RHI_Texture_Type GetType() const            { return m_type; }
-        void*& GetRhiResource()                     { return m_rhi_resource; }
-        void* GetRhiSrv() const                          { return m_rhi_srv; }
-        void* GetRhiSrvMip(const uint32_t i) const      { return m_rhi_srv_mips[i]; }
-        void* GetRhiSrvLayer(const uint32_t i) const     { return m_rhi_srv_layers[i]; }
-        void* GetRhiDsv(const uint32_t i = 0) const      { return m_rhi_dsv[i]; }
-        void* GetRhiRtv(const uint32_t i = 0) const      { return m_rhi_rtv[i]; }
+        RHI_Texture_Type GetType() const             { return m_type; }
+        void*& GetRhiResource()                      { return m_rhi_resource; }
+        void* GetRhiSrv() const                      { return m_rhi_srv; }
+        void* GetRhiSrvMip(const uint32_t i) const   { return m_rhi_srv_mips[i]; }
+        void* GetRhiSrvLayer(const uint32_t i) const { return m_rhi_srv_layers[i]; }
+        void* GetRhiDsv(const uint32_t i = 0) const  { return m_rhi_dsv[i]; }
+        void* GetRhiRtv(const uint32_t i = 0) const  { return m_rhi_rtv[i]; }
         void* GetRhiRtvMultiview() const             { return m_rhi_rtv_multiview; }
         void* GetRhiDsvMultiview() const             { return m_rhi_dsv_multiview; }
         void RHI_DestroyResource();
@@ -178,12 +179,12 @@ namespace spartan
     protected:
         bool RHI_CreateResource();
 
-        uint32_t m_width            = 0;
-        uint32_t m_height           = 0;
-        uint32_t m_depth            = 0; // array length and depth are both m_depth (for simplicity), in case of 3D textures we only have one layer though
-        uint32_t m_mip_count        = 0;
-        uint32_t m_bits_per_channel = 0;
-        uint32_t m_channel_count    = 0;
+        uint32_t m_width                = 0;
+        uint32_t m_height               = 0;
+        uint32_t m_depth                = 0; // array length and depth are both m_depth (for simplicity), in case of 3D textures we only have one layer though
+        uint32_t m_mip_count            = 0;
+        uint32_t m_bits_per_channel     = 0;
+        uint32_t m_channel_count        = 0;
         RHI_Format m_format             = RHI_Format::Max;
         RHI_Format m_compression_format = RHI_Format::Max;
         RHI_Texture_Type m_type         = RHI_Texture_Type::Max;
@@ -192,15 +193,15 @@ namespace spartan
         std::vector<RHI_Texture_Slice> m_slices;
 
         // api resources
-        void* m_rhi_srv                                          = nullptr;     // an srv with all mips
-        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips      = { nullptr }; // an srv for each mip
+        void* m_rhi_srv                                                 = nullptr;     // an srv with all mips
+        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips             = { nullptr }; // an srv for each mip
         std::array<void*, rhi_max_render_target_count> m_rhi_srv_layers = { nullptr }; // per-layer srvs for array textures
-        std::array<void*, rhi_max_render_target_count> m_rhi_rtv = { nullptr };
-        std::array<void*, rhi_max_render_target_count> m_rhi_dsv = { nullptr };
-        void* m_rhi_rtv_multiview                                = nullptr;
-        void* m_rhi_dsv_multiview                                = nullptr;
-        void* m_rhi_resource                                     = nullptr;
-        void* m_mapped_data                                      = nullptr;
+        std::array<void*, rhi_max_render_target_count> m_rhi_rtv        = { nullptr };
+        std::array<void*, rhi_max_render_target_count> m_rhi_dsv        = { nullptr };
+        void* m_rhi_rtv_multiview                                       = nullptr;
+        void* m_rhi_dsv_multiview                                       = nullptr;
+        void* m_rhi_resource                                            = nullptr;
+        void* m_mapped_data                                             = nullptr;
 
     private:
         void ComputeMemoryUsage();

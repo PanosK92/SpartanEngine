@@ -45,6 +45,137 @@ namespace spartan
     {
         static mutex compress_mutex;
 
+        // pool of transient buffers reused across compress() calls, sized to the largest
+        // texture seen and grown geometrically, eliminates per texture vmaCreateBuffer churn
+        // and the vk_error_out_of_device_memory thrashing that follows it
+        namespace pool
+        {
+            // device local input buffer for compressed shaders to read from fast vram
+            static shared_ptr<RHI_Buffer> input;
+            // device local output buffer where compressed blocks are written
+            static shared_ptr<RHI_Buffer> output;
+            // host visible readback buffer mapped into cpu memory
+            static shared_ptr<RHI_Buffer> readback;
+            // host visible staging buffer used to upload pixel data to input
+            static shared_ptr<RHI_Buffer> staging;
+
+            static uint32_t input_capacity_pixels    = 0;
+            static uint32_t staging_capacity_pixels  = 0;
+            static uint32_t output_capacity_blocks   = 0;
+            static uint32_t readback_capacity_blocks = 0;
+
+            // bc3 and bc5 use 16 bytes per block, bc1 uses 8, sizing the pool at the max stride
+            // lets a single buffer serve every format at the cost of a small unused tail for bc1
+            constexpr uint32_t output_stride_bytes = sizeof(uint32_t) * 4;
+
+            void release()
+            {
+                input.reset();
+                output.reset();
+                readback.reset();
+                staging.reset();
+                input_capacity_pixels    = 0;
+                staging_capacity_pixels  = 0;
+                output_capacity_blocks   = 0;
+                readback_capacity_blocks = 0;
+            }
+        }
+
+        // grow each pool buffer with a 1.5x headroom factor so consecutive larger textures
+        // don't trigger a fresh allocation per texture
+        static uint32_t grow_capacity(uint32_t current, uint32_t needed)
+        {
+            uint32_t headroom = current + (current >> 1);
+            return max(needed, headroom);
+        }
+
+        static bool ensure_pool_capacity(uint32_t input_pixels, uint32_t output_blocks)
+        {
+            if (!pool::input || pool::input_capacity_pixels < input_pixels)
+            {
+                uint32_t new_cap = grow_capacity(pool::input_capacity_pixels, input_pixels);
+                pool::input = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Storage,
+                    static_cast<uint32_t>(sizeof(uint32_t)),
+                    new_cap,
+                    nullptr, false,
+                    "compress_input"
+                );
+                if (!pool::input->GetRhiResource())
+                {
+                    pool::input.reset();
+                    pool::input_capacity_pixels = 0;
+                    return false;
+                }
+                pool::input_capacity_pixels = new_cap;
+            }
+
+            if (!pool::staging || pool::staging_capacity_pixels < input_pixels)
+            {
+                uint32_t new_cap = grow_capacity(pool::staging_capacity_pixels, input_pixels);
+                pool::staging = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Storage,
+                    static_cast<uint32_t>(sizeof(uint32_t)),
+                    new_cap,
+                    nullptr, true,
+                    "compress_staging"
+                );
+                if (!pool::staging->GetRhiResource() || !pool::staging->GetMappedData())
+                {
+                    pool::staging.reset();
+                    pool::staging_capacity_pixels = 0;
+                    return false;
+                }
+                pool::staging_capacity_pixels = new_cap;
+            }
+
+            if (!pool::output || pool::output_capacity_blocks < output_blocks)
+            {
+                uint32_t new_cap = grow_capacity(pool::output_capacity_blocks, output_blocks);
+                pool::output = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Storage,
+                    pool::output_stride_bytes,
+                    new_cap,
+                    nullptr, false,
+                    "compress_output"
+                );
+                if (!pool::output->GetRhiResource())
+                {
+                    pool::output.reset();
+                    pool::output_capacity_blocks = 0;
+                    return false;
+                }
+                pool::output_capacity_blocks = new_cap;
+            }
+
+            if (!pool::readback || pool::readback_capacity_blocks < output_blocks)
+            {
+                uint32_t new_cap = grow_capacity(pool::readback_capacity_blocks, output_blocks);
+                pool::readback = make_shared<RHI_Buffer>(
+                    RHI_Buffer_Type::Storage,
+                    pool::output_stride_bytes,
+                    new_cap,
+                    nullptr, true,
+                    "compress_readback"
+                );
+                if (!pool::readback->GetRhiResource() || !pool::readback->GetMappedData())
+                {
+                    pool::readback.reset();
+                    pool::readback_capacity_blocks = 0;
+                    return false;
+                }
+                pool::readback_capacity_blocks = new_cap;
+            }
+
+            return true;
+        }
+
+        void shutdown()
+        {
+            lock_guard<mutex> lock(compress_mutex);
+            pool::release();
+        }
+
         bool compress(RHI_Texture* texture, RHI_Format target_format)
         {
             SP_ASSERT(texture != nullptr);
@@ -136,29 +267,37 @@ namespace spartan
                 }
             }
 
-            // bail out if we don't have enough vram headroom
-            uint64_t min_alignment = RHI_Device::PropertyGetMinStorageBufferOffsetAlignment();
-            uint64_t input_stride  = sizeof(uint32_t);
-            uint64_t output_stride = output_element_size;
-            if (min_alignment > 0)
+            // bail out if we don't have enough vram headroom, accounts for the worst case
+            // pool grow that would happen this call (input + staging + output + readback)
             {
-                if (min_alignment != input_stride)
-                    input_stride = (input_stride + min_alignment - 1) & ~(min_alignment - 1);
-                if (min_alignment != output_stride)
-                    output_stride = (output_stride + min_alignment - 1) & ~(min_alignment - 1);
-            }
-            uint64_t input_bytes  = static_cast<uint64_t>(total_input_pixels) * input_stride;
-            uint64_t output_bytes = static_cast<uint64_t>(total_blocks) * output_stride;
-            uint64_t required_mb  = (input_bytes + output_bytes + total_input_pixels * sizeof(uint32_t)) / (1024 * 1024);
-            if (RHI_Device::MemoryGetAvailableMb() < required_mb + 256)
-            {
-                Breadcrumbs::EndMarker(); // compress_gpu
-                return false;
+                uint32_t input_grow    = (pool::input_capacity_pixels    < total_input_pixels) ? grow_capacity(pool::input_capacity_pixels,    total_input_pixels) - pool::input_capacity_pixels    : 0;
+                uint32_t staging_grow  = (pool::staging_capacity_pixels  < total_input_pixels) ? grow_capacity(pool::staging_capacity_pixels,  total_input_pixels) - pool::staging_capacity_pixels  : 0;
+                uint32_t output_grow   = (pool::output_capacity_blocks   < total_blocks)       ? grow_capacity(pool::output_capacity_blocks,   total_blocks)       - pool::output_capacity_blocks   : 0;
+                uint32_t readback_grow = (pool::readback_capacity_blocks < total_blocks)       ? grow_capacity(pool::readback_capacity_blocks, total_blocks)       - pool::readback_capacity_blocks : 0;
+
+                uint64_t additional_bytes = static_cast<uint64_t>(input_grow + staging_grow) * sizeof(uint32_t)
+                                          + static_cast<uint64_t>(output_grow + readback_grow) * pool::output_stride_bytes;
+                uint64_t required_mb      = additional_bytes / (1024 * 1024);
+                if (required_mb > 0 && RHI_Device::MemoryGetAvailableMb() < required_mb + 256)
+                {
+                    Breadcrumbs::EndMarker(); // compress_gpu
+                    return false;
+                }
             }
 
             Breadcrumbs::BeginMarker("texture_compress_gpu_buffer_create");
 
-            vector<uint32_t> input_pixels(total_input_pixels);
+            if (!ensure_pool_capacity(total_input_pixels, total_blocks))
+            {
+                SP_LOG_ERROR("failed to acquire gpu compression pool buffers");
+                Breadcrumbs::EndMarker(); // buffer_create
+                Breadcrumbs::EndMarker(); // compress_gpu
+                return false;
+            }
+
+            // pack all mip pixel data into the staging buffer at the offsets the shader expects
+            uint64_t staging_size = static_cast<uint64_t>(total_input_pixels) * sizeof(uint32_t);
+            uint32_t* staging_dst = static_cast<uint32_t*>(pool::staging->GetMappedData());
             for (uint32_t mip = 0; mip < mip_count; mip++)
             {
                 RHI_Texture_Mip* mip_data = texture->GetMip(0, mip);
@@ -172,69 +311,8 @@ namespace spartan
                 uint32_t mip_w       = mip_widths[mip];
                 uint32_t mip_h       = max(1u, height >> mip);
                 uint32_t pixel_count = mip_w * mip_h;
-                memcpy(&input_pixels[mip_input_offsets[mip]], mip_data->bytes.data(), pixel_count * sizeof(uint32_t));
+                memcpy(staging_dst + mip_input_offsets[mip], mip_data->bytes.data(), pixel_count * sizeof(uint32_t));
             }
-
-            // input buffer is device-local so the gpu reads from fast vram instead of system ram over pcie
-            auto input_buffer = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage,
-                static_cast<uint32_t>(sizeof(uint32_t)),
-                total_input_pixels,
-                nullptr, false,
-                "compress_input"
-            );
-
-            // output buffer is also device-local so the gpu writes to fast vram
-            auto output_buffer = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage,
-                static_cast<uint32_t>(output_element_size),
-                total_blocks,
-                nullptr, false,
-                "compress_output"
-            );
-
-            if (!input_buffer->GetRhiResource() || !output_buffer->GetRhiResource())
-            {
-                SP_LOG_ERROR("failed to create buffers for gpu compression");
-                Breadcrumbs::EndMarker(); // buffer_create
-                Breadcrumbs::EndMarker(); // compress_gpu
-                return false;
-            }
-
-            // host-visible readback buffer for copying compressed output back to cpu
-            auto readback_buffer = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage,
-                static_cast<uint32_t>(output_element_size),
-                total_blocks,
-                nullptr, true,
-                "compress_readback"
-            );
-
-            if (!readback_buffer->GetRhiResource())
-            {
-                SP_LOG_ERROR("failed to create readback buffer for gpu compression");
-                Breadcrumbs::EndMarker(); // buffer_create
-                Breadcrumbs::EndMarker(); // compress_gpu
-                return false;
-            }
-
-            // host-visible staging buffer for uploading pixel data to the device-local input buffer
-            uint64_t staging_size = static_cast<uint64_t>(total_input_pixels) * sizeof(uint32_t);
-            auto staging_buffer = make_shared<RHI_Buffer>(
-                RHI_Buffer_Type::Storage,
-                static_cast<uint32_t>(sizeof(uint32_t)),
-                total_input_pixels,
-                nullptr, true,
-                "compress_staging"
-            );
-            if (!staging_buffer->GetRhiResource() || !staging_buffer->GetMappedData())
-            {
-                SP_LOG_ERROR("failed to create staging buffer for gpu compression");
-                Breadcrumbs::EndMarker(); // buffer_create
-                Breadcrumbs::EndMarker(); // compress_gpu
-                return false;
-            }
-            memcpy(staging_buffer->GetMappedData(), input_pixels.data(), staging_size);
 
             Breadcrumbs::EndMarker(); // buffer_create
 
@@ -245,26 +323,40 @@ namespace spartan
                 return f;
             };
 
-            // split into separate submissions per mip so that no single gpu submission
-            // exceeds the tdr timeout; this also lets the driver jit-compile the shader
-            // on the first (smallest) mip and amortize the cost
+            // single submission, copy + every mip dispatch + readback copy share one cmd list,
+            // each mip writes a disjoint slice of the output buffer so consecutive dispatches
+            // need no inter dispatch barrier, only the boundaries do (transfer to compute,
+            // compute to transfer)
             Breadcrumbs::BeginMarker("texture_compress_gpu_dispatch");
             {
-                auto dispatch_mip = [&](RHI_CommandList* cmd_list, int mip)
+                RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Compute);
+                if (!cmd_list)
+                {
+                    Breadcrumbs::EndMarker(); // dispatch
+                    Breadcrumbs::EndMarker(); // compress_gpu
+                    return false;
+                }
+
+                cmd_list->CopyBufferToBuffer(pool::staging.get(), pool::input.get(), staging_size);
+                cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(pool::input.get()).from(RHI_Barrier_Scope::Transfer).to(RHI_Barrier_Scope::Compute));
+                cmd_list->FlushBarriers();
+
+                RHI_PipelineState pso;
+                pso.name = pso_name;
+                pso.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)] = shader;
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetBuffer(Renderer_BindingsUav::compress_input, pool::input.get());
+                Renderer_BindingsUav output_binding = (target_format == RHI_Format::BC1_Unorm)
+                    ? Renderer_BindingsUav::compress_output_bc1
+                    : Renderer_BindingsUav::compress_output;
+                cmd_list->SetBuffer(output_binding, pool::output.get());
+
+                // dispatch from smallest to largest mip so the shader pipeline is warm by the
+                // time the heaviest dispatch runs
+                for (int mip = static_cast<int>(mip_count) - 1; mip >= 0; mip--)
                 {
                     uint32_t mip_h = max(1u, height >> mip);
-
-                    RHI_PipelineState pso;
-                    pso.name = pso_name;
-                    pso.shaders[static_cast<uint32_t>(RHI_Shader_Type::Compute)] = shader;
-                    cmd_list->SetPipelineState(pso);
-
-                    cmd_list->SetBuffer(Renderer_BindingsUav::compress_input, input_buffer.get());
-
-                    Renderer_BindingsUav output_binding = (target_format == RHI_Format::BC1_Unorm)
-                        ? Renderer_BindingsUav::compress_output_bc1
-                        : Renderer_BindingsUav::compress_output;
-                    cmd_list->SetBuffer(output_binding, output_buffer.get());
 
                     Pcb_Pass pass = {};
                     pass.v[0]     = uint_as_float(mip_blocks_x[mip]);
@@ -283,81 +375,17 @@ namespace spartan
 
                     cmd_list->PushConstants(pass);
                     cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-                };
-
-                // upload pixel data and compress the smallest mip in one submission;
-                // the barrier between copy and dispatch must live in the same command buffer
-                // to guarantee transfer→compute memory visibility
-                {
-                    int first_mip = static_cast<int>(mip_count) - 1;
-
-                    RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Compute);
-                    if (!cmd_list)
-                    {
-                        Breadcrumbs::EndMarker(); // dispatch
-                        Breadcrumbs::EndMarker(); // compress_gpu
-                        return false;
-                    }
-
-                    cmd_list->CopyBufferToBuffer(staging_buffer.get(), input_buffer.get(), staging_size);
-                    cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(input_buffer.get()).from(RHI_Barrier_Scope::Transfer).to(RHI_Barrier_Scope::Compute));
-                    cmd_list->FlushBarriers();
-
-                    dispatch_mip(cmd_list, first_mip);
-                    RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-
-                    if (RHI_Device::IsDeviceLost())
-                    {
-                        Breadcrumbs::EndMarker(); // dispatch
-                        Breadcrumbs::EndMarker(); // compress_gpu
-                        return false;
-                    }
                 }
 
-                // compress remaining mips (next-smallest to largest), one submission each
-                for (int mip = static_cast<int>(mip_count) - 2; mip >= 0; mip--)
-                {
-                    RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Compute);
-                    if (!cmd_list)
-                    {
-                        Breadcrumbs::EndMarker(); // dispatch
-                        Breadcrumbs::EndMarker(); // compress_gpu
-                        return false;
-                    }
+                cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(pool::output.get()).from(RHI_Barrier_Scope::Compute).to(RHI_Barrier_Scope::Transfer));
+                cmd_list->FlushBarriers();
 
-                    dispatch_mip(cmd_list, mip);
-                    RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+                uint64_t copy_size = static_cast<uint64_t>(total_blocks) * output_element_size;
+                cmd_list->CopyBufferToBuffer(pool::output.get(), pool::readback.get(), copy_size);
 
-                    if (RHI_Device::IsDeviceLost())
-                    {
-                        Breadcrumbs::EndMarker(); // dispatch
-                        Breadcrumbs::EndMarker(); // compress_gpu
-                        return false;
-                    }
-                }
-
-                // copy compressed output to host-visible readback buffer
-                {
-                    RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Compute);
-                    if (!cmd_list)
-                    {
-                        Breadcrumbs::EndMarker(); // dispatch
-                        Breadcrumbs::EndMarker(); // compress_gpu
-                        return false;
-                    }
-
-                    cmd_list->InsertBarrier(RHI_Barrier::buffer_sync(output_buffer.get()).from(RHI_Barrier_Scope::Compute).to(RHI_Barrier_Scope::Transfer));
-                    cmd_list->FlushBarriers();
-
-                    uint64_t copy_size = static_cast<uint64_t>(total_blocks) * output_element_size;
-                    cmd_list->CopyBufferToBuffer(output_buffer.get(), readback_buffer.get(), copy_size);
-
-                    RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-                }
+                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
             }
             Breadcrumbs::EndMarker(); // dispatch
-
-            staging_buffer.reset();
 
             if (RHI_Device::IsDeviceLost())
             {
@@ -367,7 +395,7 @@ namespace spartan
 
             Breadcrumbs::BeginMarker("texture_compress_gpu_readback");
 
-            void* mapped = readback_buffer->GetMappedData();
+            void* mapped = pool::readback->GetMappedData();
             if (!mapped)
             {
                 SP_LOG_ERROR("gpu compression readback buffer has no mapped data");
@@ -389,10 +417,6 @@ namespace spartan
                 }
             }
             Breadcrumbs::EndMarker(); // readback
-
-            input_buffer->DestroyResourceImmediate();
-            output_buffer->DestroyResourceImmediate();
-            readback_buffer->DestroyResourceImmediate();
 
             texture->SetFormat(target_format);
 
@@ -839,6 +863,11 @@ namespace spartan
     {
          m_slices.clear();
          m_slices.shrink_to_fit();
+    }
+
+    void RHI_Texture::ShutdownCompressionPool()
+    {
+        gpu_compression::shutdown();
     }
 
     void RHI_Texture::PrepareForGpu()
