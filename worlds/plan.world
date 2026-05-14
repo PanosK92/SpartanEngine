@@ -2562,7 +2562,7 @@
     </render>
    </Entity>
    <Entity name="Spot" id="12508816975450551640" active="true" position="0 8.9 1.3" rotation="0.573862 0 0 0.818952" scale="1 1 1">
-    <light flags="5" light_type="2" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="80000" range="100" angle="1.02538097" index="1" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
+    <light flags="5" light_type="2" color_r="1" color_g="0.653803825" color_b="0.342766613" temperature="2700" intensity="8" intensity_photometric="80000" range="30" angle="0.5235987756" index="1" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="32" />
    </Entity>
    <Entity name="Cube_1" id="6210913045995889543" active="true" position="0.0799999 8.85 0.900002" rotation="0.707107 0 0 0.707107" scale="0.18 0.48 0.1">
     <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="0" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />

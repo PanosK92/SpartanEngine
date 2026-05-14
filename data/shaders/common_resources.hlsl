@@ -150,6 +150,11 @@ RWStructuredBuffer<MeshletBounds> meshlet_bounds : register(u43);
 // per-instance cull tasks (read-only, declared as rw to keep slot management uniform with other indirect buffers)
 RWStructuredBuffer<CullTask> cull_tasks : register(u44);
 
+// clustered lighting, written by light_cluster_assign and read by light
+// grid is (first_index, count) per cluster, indices is the flat list of light slot ids
+RWStructuredBuffer<uint2> cluster_light_grid    : register(u45);
+RWStructuredBuffer<uint>  cluster_light_indices : register(u46);
+
 // buffers
 #ifdef API_D3D12
 // d3d12 path: root 32-bit constants at b1 (vk::push_constant is ignored by dxil)

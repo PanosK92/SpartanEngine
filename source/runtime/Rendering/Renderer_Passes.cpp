@@ -217,6 +217,7 @@ namespace spartan
             cmd_list_compute_b->BeginMarker("compute_batch_b");
             {
                 Pass_ScreenSpaceAmbientOcclusion(cmd_list_compute_b);
+                Pass_LightClusterAssign(cmd_list_compute_b);
                 Pass_ScreenSpaceShadows(cmd_list_compute_b);
                 Pass_RayTracedShadows(cmd_list_compute_b);
                 Pass_ReSTIR_PathTracing(cmd_list_compute_b);
@@ -268,6 +269,12 @@ namespace spartan
                     Pass_Light(cmd_list_graphics_present, is_transparent, eye_layer);
                     Pass_Light_Composition(cmd_list_graphics_present, is_transparent, eye_layer);
                     cmd_list_graphics_present->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+
+                    // clustered lighting heatmap, runs once per frame on the first eye, writes debug_output
+                    if (eye == 0)
+                    {
+                        Pass_LightClusterVisualize(cmd_list_graphics_present);
+                    }
                 }
 
                 // particles (only on first eye to avoid double-simulation)
@@ -1701,6 +1708,67 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_LightClusterAssign(RHI_CommandList* cmd_list)
+    {
+        // dispatched every frame even when only the directional sun is active so the grid never
+        // contains stale counts from a previous frame, the shader writes count = 0 for empty clusters
+        cmd_list->BeginTimeblock("light_cluster_assign");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "light_cluster_assign";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::light_cluster_assign_c);
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+
+            cmd_list->Dispatch(CLUSTER_COUNT_X, CLUSTER_COUNT_Y, CLUSTER_COUNT_Z);
+
+            // the light pass reads both buffers via the cross queue timeline, the barrier keeps
+            // any later compute work that touches them on the same queue correctly ordered
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::ClusterLightIndices));
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_LightClusterVisualize(RHI_CommandList* cmd_list)
+    {
+        uint32_t mode = cvar_cluster_visualize.GetValueAs<uint32_t>();
+        if (mode == 0)
+            return;
+
+        RHI_Texture* tex_debug = GetRenderTarget(Renderer_RenderTarget::debug_output);
+        if (!tex_debug)
+            return;
+
+        cmd_list->BeginTimeblock("light_cluster_visualize");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "light_cluster_visualize";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::light_cluster_visualize_c);
+            cmd_list->SetPipelineState(pso);
+
+            // depth feeds the per pixel cluster id, debug_output is the heatmap target
+            cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,           tex_debug);
+
+            // the visualize shader reads the grid populated by light_cluster_assign in compute batch b
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+
+            // f3.x: visualization mode, f3.y: saturation cap for the count ramp (lights per cluster that maps to full red)
+            // with the new spot cone test most road clusters end up with 2-4 lights, so a cap of 4 gives a clear road silhouette
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mode), 4.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+            // dispatch the full texture so the unrendered region (when resolution scale < 1) gets cleared to black
+            // inside the shader, rather than left as stale gpu memory
+            cmd_list->Dispatch(tex_debug, 1.0f);
+        }
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         RHI_Texture* light_diffuse    = GetRenderTarget(Renderer_RenderTarget::light_diffuse);
@@ -1725,6 +1793,10 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,    light_specular);
             cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_volumetric);
 
+            // clustered lighting grid, written by light_cluster_assign in compute batch b
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+
             // bind tlas for inline ray traced shadows when ray tracing is supported and the world has geometry
             if (RHI_Device::IsSupportedRayTracing())
             {
@@ -1737,8 +1809,9 @@ namespace spartan
                 }
             }
     
+            // active light count now flows through buffer_frame.cluster_light_count, fog density still rides in f3.y
             m_pcb_pass_cpu.is_transparent = is_transparent_pass ? 1 : 0;
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(m_count_active_lights), cvar_fog.GetValue());
+            m_pcb_pass_cpu.set_f3_value(0.0f, cvar_fog.GetValue());
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->Dispatch(light_diffuse, Renderer::GetResolutionScale());

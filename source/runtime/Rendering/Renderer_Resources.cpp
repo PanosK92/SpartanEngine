@@ -158,6 +158,17 @@ namespace spartan
         at(buffers, Renderer_Buffer::TriangleDispatchArgs) = fr.triangle_dispatch_args;
         at(buffers, Renderer_Buffer::CullTasks)            = fr.cull_tasks;
 
+        // clustered lighting buffers, written by the cluster assign pass and read by the light pass
+        // grid stores (first_index, count) per cluster, indices is fixed-slot with first_index = cluster_id * CLUSTER_MAX_LIGHTS
+        at(buffers, Renderer_Buffer::ClusterLightGrid) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t) * 2),
+            CLUSTER_COUNT_TOTAL, nullptr, false, "cluster_light_grid"
+        );
+        at(buffers, Renderer_Buffer::ClusterLightIndices) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            CLUSTER_COUNT_TOTAL * CLUSTER_MAX_LIGHTS, nullptr, false, "cluster_light_indices"
+        );
+
         // particle buffers
         const uint32_t particle_max = 100000;
         uint32_t particle_counter_init[2] = { 0, 0 };
@@ -579,6 +590,8 @@ namespace spartan
         compile_shader(Renderer_Shader::light_integration_brdf_specular_lut_c,  RHI_Shader_Type::Compute, sd + "light_integration.hlsl", false, RHI_Vertex_Type::Max, "BRDF_SPECULAR_LUT");
         compile_shader(Renderer_Shader::light_integration_environment_filter_c, RHI_Shader_Type::Compute, sd + "light_integration.hlsl", true,  RHI_Vertex_Type::Max, "ENVIRONMENT_FILTER");
         compile_shader(Renderer_Shader::light_c,                                RHI_Shader_Type::Compute, sd + "light.hlsl", true, RHI_Vertex_Type::Max, RHI_Device::IsSupportedRayTracing() ? "RAY_TRACING_ENABLED" : nullptr);
+        compile_shader(Renderer_Shader::light_cluster_assign_c,                 RHI_Shader_Type::Compute, sd + "light_cluster_assign.hlsl");
+        compile_shader(Renderer_Shader::light_cluster_visualize_c,              RHI_Shader_Type::Compute, sd + "light_cluster_visualize.hlsl");
         compile_shader(Renderer_Shader::light_composition_c,                    RHI_Shader_Type::Compute, sd + "light_composition.hlsl");
         compile_shader(Renderer_Shader::light_image_based_c,                    RHI_Shader_Type::Compute, sd + "light_image_based.hlsl");
 

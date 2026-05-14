@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
 #include "fog.hlsl"
+#include "light_cluster.hlsl"
 //============================
 
 // Cloud shadow map sampling
@@ -300,10 +301,141 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     return light_radiance * sss_term * thickness_modulation * sss_strength * sss_color;
 }
 
+// evaluates a single light against the surface, accumulates into out parameters
+// eval_surface picks up the brdf and shadow path, eval_volumetric handles the fog raymarch
+// surface is taken by value so per light tweaks like area light roughness widening do not leak
+void evaluate_light(
+    uint    light_index,
+    uint2   pixel_xy,
+    Surface surface,
+    bool    is_transparent,
+    float3  diffuse_precomputed,
+    float3  specular_precomputed,
+    bool    eval_surface,
+    bool    eval_volumetric,
+    inout float3 out_diffuse,
+    inout float3 out_specular,
+    inout float3 out_volumetric)
+{
+    Light light;
+    light.Build(light_index, surface);
+
+    // when restir pt is enabled, analytical lights are evaluated via nee inside the restir
+    // spatial pass with ray traced visibility, so skip the brdf path here to avoid double counting
+    bool skip_surface_lighting = is_restir_pt_enabled();
+
+    float  L_shadow        = 1.0f;
+    float3 L_specular_sum  = 0.0f;
+    float3 L_diffuse_term  = 0.0f;
+    float3 L_subsurface    = 0.0f;
+    float3 L_volumetric    = 0.0f;
+
+    // light.radiance already bakes attenuation and n_dot_l, zero radiance means no surface contribution
+    bool light_contributes_to_surface = any(light.radiance > 0.0f);
+
+    if (eval_surface && !surface.is_sky() && !skip_surface_lighting && light_contributes_to_surface)
+    {
+        // shadow term, ray traced shadows are mutually exclusive with rasterized/screen space shadows
+        bool can_use_rt_shadows = light.has_shadows() && is_ray_traced_shadows_enabled();
+
+        if (can_use_rt_shadows && light.is_directional())
+        {
+            // dedicated screen space pass produces high quality multi sample sun shadows
+            L_shadow        = sample_ray_traced_shadow(surface.uv);
+            light.radiance *= L_shadow;
+        }
+    #ifdef RAY_TRACING_ENABLED
+        else if (can_use_rt_shadows)
+        {
+            // inline ray traced shadow for point spot and area lights
+            L_shadow        = trace_inline_shadow_ray(light, surface, float2(pixel_xy));
+            light.radiance *= L_shadow;
+        }
+    #endif
+        else if (light.has_shadows())
+        {
+            L_shadow = compute_shadow(surface, light);
+
+            if (light.has_shadows_screen_space() && surface.is_opaque())
+            {
+                L_shadow = min(L_shadow, tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x);
+            }
+
+            light.radiance *= L_shadow;
+        }
+
+        // cloud shadows apply to directional lights regardless of shadow method
+        if (light.is_directional())
+        {
+            float cloud_shadow = sample_cloud_shadow(surface.position);
+            L_shadow           = min(L_shadow, cloud_shadow);
+            light.radiance    *= cloud_shadow;
+        }
+
+        AngularInfo angular_info;
+        angular_info.Build(light, surface);
+
+        // area lights widen specular roughness so the highlight matches the light's angular extent
+        float original_roughness       = surface.roughness;
+        float original_roughness_alpha = surface.roughness_alpha;
+        if (light.is_area())
+        {
+            surface.roughness_alpha = light.compute_area_roughness_modification(surface.roughness_alpha, light.distance_to_pixel);
+            surface.roughness       = sqrt(surface.roughness_alpha);
+        }
+
+        float3 L_specular_lobes = 0.0f;
+        {
+            if (surface.anisotropic > 0.0f)
+            {
+                L_specular_lobes += BRDF_Specular_Anisotropic(surface, angular_info);
+            }
+            else
+            {
+                L_specular_lobes += BRDF_Specular_Isotropic(surface, angular_info);
+            }
+
+            if (surface.clearcoat > 0.0f)
+            {
+                L_specular_lobes += BRDF_Specular_Clearcoat(surface, angular_info);
+            }
+
+            if (surface.sheen > 0.0f)
+            {
+                L_specular_lobes += BRDF_Specular_Sheen(surface, angular_info);
+            }
+
+            if (surface.subsurface_scattering > 0.0f)
+            {
+                L_subsurface += subsurface_scattering(surface, light, angular_info);
+            }
+        }
+
+        L_specular_sum += L_specular_lobes;
+
+        surface.roughness       = original_roughness;
+        surface.roughness_alpha = original_roughness_alpha;
+
+        // diffuse_precomputed is zero for transparents, skip the eval entirely
+        if (!is_transparent)
+        {
+            L_diffuse_term += BRDF_Diffuse(surface, angular_info);
+        }
+    }
+
+    if (eval_volumetric && light.is_volumetric())
+    {
+        L_volumetric += compute_volumetric_fog(surface, light, pixel_xy);
+    }
+
+    out_diffuse    += L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy + L_subsurface;
+    out_specular   += L_specular_sum * light.radiance * specular_precomputed;
+    out_volumetric += L_volumetric;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // get resolution and build surface data
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     Surface surface;
@@ -315,7 +447,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     if (early_exit_1 || early_exit_2)
         return;
 
-    // initialize output accumulators
     float3 out_diffuse    = 0.0f;
     float3 out_specular   = 0.0f;
     float3 out_volumetric = 0.0f;
@@ -325,146 +456,54 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float  alpha_occ            = surface.alpha * surface.occlusion;
     float3 specular_precomputed = is_transparent ? float3(surface.occlusion, surface.occlusion, surface.occlusion) : float3(alpha_occ, alpha_occ, alpha_occ);
     float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f)                                        : float3(alpha_occ, alpha_occ, alpha_occ);
-    
-    // loop over all lights and accumulate contributions
-    uint light_count = pass_get_f3_value().x;
-    for (uint i = 0; i < light_count; i++)
+
+    uint total_lights = buffer_frame.cluster_light_count;
+
+    // slot 0 is always the directional sun, evaluated unconditionally because it has no spatial bound
+    if (total_lights > 0u)
     {
-        Light light;
-        light.Build(i, surface);
-
-        // when restir pt is enabled, all analytical lights are evaluated via nee inside the
-        // restir spatial pass with ray-traced visibility, so skip the brdf / shadow path here to
-        // avoid double counting and let real path-traced shadows emerge from the rays themselves
-        // volumetric fog still runs below since it does not feed the surface brdf
-        bool skip_surface_lighting = is_restir_pt_enabled();
-
-        // per-light accumulators
-        float  L_shadow        = 1.0f;
-        float3 L_specular_sum  = 0.0f;
-        float3 L_diffuse_term  = 0.0f;
-        float3 L_subsurface    = 0.0f;
-        float3 L_volumetric    = 0.0f;
-
-        // early out, light.radiance already bakes attenuation and n_dot_l so a zero radiance
-        // means this light contributes nothing to the surface no matter what shadows or brdf say
-        // volumetric still runs below because a ray can pass through the light volume
-        bool light_contributes_to_surface = any(light.radiance > 0.0f);
-
-        if (!surface.is_sky() && !skip_surface_lighting && light_contributes_to_surface)
-        {
-            // compute shadow term
-            // ray traced shadows are mutually exclusive with rasterized/screen-space shadows
-            bool can_use_rt_shadows = light.has_shadows() && is_ray_traced_shadows_enabled();
-
-            if (can_use_rt_shadows && light.is_directional())
-            {
-                // dedicated screen space pass produces high quality multi sample sun shadows
-                L_shadow        = sample_ray_traced_shadow(surface.uv);
-                light.radiance *= L_shadow;
-            }
-        #ifdef RAY_TRACING_ENABLED
-            else if (can_use_rt_shadows)
-            {
-                // inline ray traced shadow for point spot and area lights, 1 spp jittered for taa
-                L_shadow        = trace_inline_shadow_ray(light, surface, float2(thread_id.xy));
-                light.radiance *= L_shadow;
-            }
-        #endif
-            else if (light.has_shadows())
-            {
-                // rasterized shadow mapping fallback
-                L_shadow = compute_shadow(surface, light);
-
-                // combine with screen-space shadows if available
-                if (light.has_shadows_screen_space() && surface.is_opaque())
-                {
-                    L_shadow = min(L_shadow, tex_uav_sss[int3(thread_id.xy, light.screen_space_shadows_slice_index)].x);
-                }
-
-                // apply shadow to light radiance
-                light.radiance *= L_shadow;
-            }
-            
-            // apply cloud shadows for directional lights (always, regardless of shadow method)
-            if (light.is_directional())
-            {
-                float cloud_shadow = sample_cloud_shadow(surface.position);
-                L_shadow = min(L_shadow, cloud_shadow);
-                light.radiance *= cloud_shadow;
-            }
-
-            // build angular information for brdf calculations
-            AngularInfo angular_info;
-            angular_info.Build(light, surface);
-
-            // area lights widen specular roughness so the highlight matches the light's angular extent
-            float original_roughness       = surface.roughness;
-            float original_roughness_alpha = surface.roughness_alpha;
-            if (light.is_area())
-            {
-                surface.roughness_alpha = light.compute_area_roughness_modification(surface.roughness_alpha, light.distance_to_pixel);
-                surface.roughness       = sqrt(surface.roughness_alpha);
-            }
-
-            float3 L_specular_lobes = 0.0f;
-            {
-                if (surface.anisotropic > 0.0f)
-                {
-                    L_specular_lobes += BRDF_Specular_Anisotropic(surface, angular_info);
-                }
-                else
-                {
-                    L_specular_lobes += BRDF_Specular_Isotropic(surface, angular_info);
-                }
-
-                if (surface.clearcoat > 0.0f)
-                {
-                    L_specular_lobes += BRDF_Specular_Clearcoat(surface, angular_info);
-                }
-
-                if (surface.sheen > 0.0f)
-                {
-                    L_specular_lobes += BRDF_Specular_Sheen(surface, angular_info);
-                }
-
-                if (surface.subsurface_scattering > 0.0f)
-                {
-                    L_subsurface += subsurface_scattering(surface, light, angular_info);
-                }
-            }
-
-            L_specular_sum += L_specular_lobes;
-
-            surface.roughness       = original_roughness;
-            surface.roughness_alpha = original_roughness_alpha;
-
-            // diffuse_precomputed is 0 for transparents, skip the eval entirely
-            if (!is_transparent)
-            {
-                L_diffuse_term += BRDF_Diffuse(surface, angular_info);
-            }
-        }
-
-        // compute volumetric fog contribution
-        if (light.is_volumetric())
-        {
-            L_volumetric += compute_volumetric_fog(surface, light, thread_id.xy);
-        }
-        
-        // combine per-light terms with radiance and precomputed factors
-        float3 write_diffuse    = L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy + L_subsurface;
-        float3 write_specular   = L_specular_sum * light.radiance * specular_precomputed;
-        float  write_shadow     = L_shadow;
-        float3 write_volumetric = L_volumetric;
-
-        // accumulate into output buffers
-        out_diffuse    += write_diffuse;
-        out_specular   += write_specular;
-        out_volumetric += write_volumetric;
+        evaluate_light(0u, thread_id.xy, surface, is_transparent,
+                       diffuse_precomputed, specular_precomputed,
+                       true, true,
+                       out_diffuse, out_specular, out_volumetric);
     }
 
-    // write results to output buffers
+    // clustered point, spot and area lights, only iterated for non sky pixels where surface shading runs
+    // restir pt owns analytical light surface shading, skipping the cluster loop avoids wasted nee work
+    if (!surface.is_sky() && !is_restir_pt_enabled() && total_lights > 1u)
+    {
+        // reuse the world position already in surface, view_z is the lh view space depth
+        // surface.uv is in [0, resolution_scale], normalize back to [0, 1] for the cluster xy mapping
+        float  view_z    = mul(float4(surface.position, 1.0f), get_view()).z;
+        float2 uv_full   = surface.uv / buffer_frame.resolution_scale;
+        uint3  cid       = cluster_id_from_screen(uv_full, view_z);
+        uint   flat_id   = cluster_flat(cid);
+        uint2  range     = cluster_light_grid[flat_id];
+
+        for (uint k = 0u; k < range.y; k++)
+        {
+            uint light_idx = cluster_light_indices[range.x + k];
+            evaluate_light(light_idx, thread_id.xy, surface, is_transparent,
+                           diffuse_precomputed, specular_precomputed,
+                           true, false,
+                           out_diffuse, out_specular, out_volumetric);
+        }
+    }
+
+    // volumetric fog needs every light that flags volumetric since fog rays cross multiple clusters
+    // the flag pre check is cheap and filters most non volumetric lights without building the full Light struct
+    for (uint v = 1u; v < total_lights; v++)
+    {
+        LightParameters lp = light_parameters[v];
+        if ((lp.flags & uint(1U << 5)) != 0u)
+        {
+            evaluate_light(v, thread_id.xy, surface, is_transparent,
+                           diffuse_precomputed, specular_precomputed,
+                           false, true,
+                           out_diffuse, out_specular, out_volumetric);
+        }
+    }
+
     tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,    1.0f));
     tex_uav2[thread_id.xy] = validate_output(float4(out_specular,   1.0f));
     tex_uav3[thread_id.xy] = validate_output(float4(out_volumetric, 1.0f));

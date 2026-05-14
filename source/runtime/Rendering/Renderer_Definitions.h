@@ -149,6 +149,9 @@ namespace spartan
         meshlet_bounds         = 43,
         // per-instance cull tasks for gpu-driven culling
         cull_tasks             = 44,
+        // clustered lighting, grid is uint2 (first_index, count), indices is a flat uint list
+        cluster_light_grid     = 45,
+        cluster_light_indices  = 46,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -177,6 +180,8 @@ namespace spartan
         light_integration_brdf_specular_lut_c,
         light_integration_environment_filter_c,
         light_c,
+        light_cluster_assign_c,
+        light_cluster_visualize_c,
         light_composition_c,
         light_image_based_c,
         line_v,
@@ -351,6 +356,9 @@ namespace spartan
         TriangleDispatchArgs,      // single-slot indirect dispatch args buffer driving the triangle cull pass
         CullTasks,                 // per (renderable, meshlet) cull tasks consumed by the meshlet cull compute shader
         DrawData,                  // bindless per-draw data (transforms, material index, etc.)
+        // clustered lighting
+        ClusterLightGrid,          // one uint2 per cluster: (first_index, count) into ClusterLightIndices
+        ClusterLightIndices,       // flat list of light indices, sliced by cluster in chunks of CLUSTER_MAX_LIGHTS
         // gpu-driven particles
         ParticleBufferA,
         ParticleBufferB,

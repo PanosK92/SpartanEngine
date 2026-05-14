@@ -191,6 +191,7 @@ namespace spartan
     TConsoleVar<float> cvar_hiz_occlusion                  ("r.hiz_occlusion",                  1.0f,                                                    "hi-z occlusion culling for gpu-driven rendering");
     TConsoleVar<float> cvar_meshlet_cull_skinned           ("r.meshlet_cull_skinned",           0.0f,                                                    "enable per-meshlet hi-z culling for skinned meshes (off by default since the local sphere is inexact after skinning)");
     TConsoleVar<float> cvar_meshlet_visualize              ("r.meshlet_visualize",              0.0f,                                                    "meshlet debug visualisation written to debug_output (0 off, 1 color by meshlet id, 2 wireframe by meshlet id, 3 color by post-cull draw id, 4 wireframe by post-cull draw id)");
+    TConsoleVar<float> cvar_cluster_visualize              ("r.cluster_visualize",              0.0f,                                                    "clustered lighting debug heatmap written to debug_output (0 off, 1 lights per cluster, 2 cluster slice z)");
     TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, 0 or negative disables");
     // volumetric clouds
     TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.45f,                                                   "sky coverage (0=clear, 1=overcast)");

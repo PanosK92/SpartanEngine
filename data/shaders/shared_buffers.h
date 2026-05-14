@@ -123,6 +123,18 @@ struct FrameBufferData
     SHARED_UINT   padding_mv1;
     SHARED_UINT   padding_mv2;
 
+    // clustered lighting, populated each frame from camera near/far and the grid constants
+    // exponential z slicing, slice = floor(log(view_z) * z_scale + z_bias)
+    SHARED_UINT   cluster_count_x;
+    SHARED_UINT   cluster_count_y;
+    SHARED_UINT   cluster_count_z;
+    SHARED_UINT   cluster_light_count;
+
+    SHARED_FLOAT  cluster_z_scale;
+    SHARED_FLOAT  cluster_z_bias;
+    SHARED_FLOAT  cluster_padding0;
+    SHARED_FLOAT  cluster_padding1;
+
 #ifdef __cplusplus
     void set_bit(const bool set, const uint32_t bit)
     {
@@ -314,6 +326,14 @@ struct MeshletInstance
 // must mirror meshlet_max_triangles in GeometryProcessing.h, 124 triangles -> 372 indices
 #define MESHLET_MAX_TRIANGLES 124
 #define MESHLET_MAX_INDICES   (MESHLET_MAX_TRIANGLES * 3)
+
+// clustered lighting grid dimensions, 16x9 matches a 16:9 aspect ratio and 24 exponential z slices
+// keep these in sync with the cluster_z_scale, cluster_z_bias compute on the cpu
+#define CLUSTER_COUNT_X     16
+#define CLUSTER_COUNT_Y     9
+#define CLUSTER_COUNT_Z     24
+#define CLUSTER_COUNT_TOTAL (CLUSTER_COUNT_X * CLUSTER_COUNT_Y * CLUSTER_COUNT_Z)
+#define CLUSTER_MAX_LIGHTS  256
 
 // visible triangle, packed into a single uint
 // high 24 bits: meshlet instance index (16M cap), low 8 bits: triangle index within the meshlet (124 cap)

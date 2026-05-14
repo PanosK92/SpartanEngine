@@ -87,6 +87,7 @@ The renderer is built around one principle: **the GPU owns the data.** Every res
 
 ### Lighting and Global Illumination
 
+- **Clustered deferred shading** with a GPU-built logarithmic-Z grid and cone-vs-AABB culling for spots, scales to many local lights at near-constant per-pixel cost
 - **ReSTIR path tracing** with spatiotemporal reservoir resampling for real-time multi-bounce global illumination
 - **Hardware ray-traced reflections and shadows** via ray queries
 - **Atmospheric scattering** and image-based lighting with bent normals

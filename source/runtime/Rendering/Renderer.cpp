@@ -855,6 +855,26 @@ namespace spartan
         m_cb_frame_cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
         m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
         m_cb_frame_cpu.wind           = World::GetWind();
+
+        // clustered lighting constants, log(z) slicing with the camera's near/far
+        // near is clamped to avoid log(0), the log range collapses when near == far
+        {
+            const float cluster_near = std::max(near_plane, 1e-3f);
+            const float cluster_far  = std::max(far_plane, cluster_near + 1e-3f);
+            const float log_range    = std::log(cluster_far / cluster_near);
+            const float z_scale      = log_range > 1e-6f ? static_cast<float>(CLUSTER_COUNT_Z) / log_range : 0.0f;
+            const float z_bias       = -std::log(cluster_near) * z_scale;
+
+            m_cb_frame_cpu.cluster_count_x     = CLUSTER_COUNT_X;
+            m_cb_frame_cpu.cluster_count_y     = CLUSTER_COUNT_Y;
+            m_cb_frame_cpu.cluster_count_z     = CLUSTER_COUNT_Z;
+            m_cb_frame_cpu.cluster_light_count = m_count_active_lights;
+            m_cb_frame_cpu.cluster_z_scale     = z_scale;
+            m_cb_frame_cpu.cluster_z_bias      = z_bias;
+            m_cb_frame_cpu.cluster_padding0    = 0.0f;
+            m_cb_frame_cpu.cluster_padding1    = 0.0f;
+        }
+
         // feature bits (must match common_resources.hlsl)
         // ray traced shadows require a valid tlas so the shader's inline ray query has something to trace against
         bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;

@@ -470,19 +470,37 @@ void RenderOptions::OnTickVisible()
                     option_check_box("AABBs", "r.aabb");
                     option_check_box("Wireframe", "r.wireframe");
                     option_check_box("Occlusion culling", "r.hiz_occlusion", "For development purposes");
+                }
 
-                    static const vector<string> meshlet_visualize_modes =
+                if (option_header("Debug Texture"))
+                {
+                    // every entry in this combo writes to the debug_output render target, view it in the texture viewer
+                    // entries are mutually exclusive, picking one wipes the previously selected cvar so only one writer runs
+                    static const vector<string> debug_texture_modes =
                     {
                         "Off",
-                        "Color by meshlet id",
-                        "Wireframe (meshlet id)",
-                        "Color by post-cull draw id",
-                        "Wireframe (draw id)"
+                        "Meshlets: color by meshlet id",
+                        "Meshlets: wireframe by meshlet id",
+                        "Meshlets: color by post-cull draw id",
+                        "Meshlets: wireframe by post-cull draw id",
+                        "Clusters: lights per cluster (heatmap)",
+                        "Clusters: z slice"
                     };
+
+                    // derive a single dropdown index from the two backing cvars
                     uint32_t meshlet_mode = cvar_meshlet_visualize.GetValueAs<uint32_t>();
-                    if (option_combo_box("Meshlet visualization", meshlet_visualize_modes, meshlet_mode, "Writes hashed meshlet colors to debug_output, view it in Texture Viewer"))
+                    uint32_t cluster_mode = cvar_cluster_visualize.GetValueAs<uint32_t>();
+                    uint32_t combined_mode =
+                        meshlet_mode > 0 ? meshlet_mode :
+                        cluster_mode > 0 ? (4u + cluster_mode) :
+                        0u;
+
+                    if (option_combo_box("debug_output writer", debug_texture_modes, combined_mode, "Picks which pass writes the debug_output texture, only one is active at a time"))
                     {
-                        ConsoleRegistry::Get().SetValueFromString("r.meshlet_visualize", to_string(static_cast<float>(meshlet_mode)));
+                        uint32_t new_meshlet = (combined_mode >= 1u && combined_mode <= 4u) ? combined_mode      : 0u;
+                        uint32_t new_cluster = (combined_mode >= 5u && combined_mode <= 6u) ? combined_mode - 4u : 0u;
+                        ConsoleRegistry::Get().SetValueFromString("r.meshlet_visualize", to_string(static_cast<float>(new_meshlet)));
+                        ConsoleRegistry::Get().SetValueFromString("r.cluster_visualize", to_string(static_cast<float>(new_cluster)));
                     }
                 }
 

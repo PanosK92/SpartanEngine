@@ -87,6 +87,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_hiz_occlusion;
     extern TConsoleVar<float> cvar_meshlet_cull_skinned;
     extern TConsoleVar<float> cvar_meshlet_visualize;
+    extern TConsoleVar<float> cvar_cluster_visualize;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
     extern TConsoleVar<float> cvar_cloud_coverage;
     extern TConsoleVar<float> cvar_cloud_shadows;
@@ -227,6 +228,8 @@ namespace spartan
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting
+        static void Pass_LightClusterAssign(RHI_CommandList* cmd_list);
+        static void Pass_LightClusterVisualize(RHI_CommandList* cmd_list);
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
