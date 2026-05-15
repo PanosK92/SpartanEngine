@@ -302,7 +302,7 @@ namespace spartan
             VkPipelineInputAssemblyStateCreateInfo input_assembly_state = {};
             {
                 input_assembly_state.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-                input_assembly_state.topology               = m_state.HasTessellation() ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : vulkan_primitive_topology[static_cast<uint32_t>(m_state.primitive_toplogy)];
+                input_assembly_state.topology               = m_state.HasTessellation() ? VK_PRIMITIVE_TOPOLOGY_PATCH_LIST : vulkan_primitive_topology[static_cast<uint32_t>(m_state.primitive_topology)];
                 input_assembly_state.primitiveRestartEnable = VK_FALSE;
             }
 

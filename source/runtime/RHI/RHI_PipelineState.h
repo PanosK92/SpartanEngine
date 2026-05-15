@@ -49,7 +49,7 @@ namespace spartan
         RHI_BlendState* blend_state                = nullptr;
         RHI_DepthStencilState* depth_stencil_state = nullptr;
         RHI_SwapChain* render_target_swapchain     = nullptr;
-        RHI_PrimitiveTopology primitive_toplogy    = RHI_PrimitiveTopology::TriangleList;
+        RHI_PrimitiveTopology primitive_topology   = RHI_PrimitiveTopology::TriangleList;
         RHI_Texture* render_target_depth_texture   = nullptr;
         RHI_Texture* vrs_input_texture             = nullptr;
         uint32_t render_target_array_index         = 0;

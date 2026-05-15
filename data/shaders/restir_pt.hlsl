@@ -658,7 +658,7 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     }
     roughness = max(roughness, 0.04f);
 
-    float metallic = mat.metallness;
+    float metallic = mat.metalness;
     if (mat.has_texture_metalness())
     {
         uint metalness_texture_index = material_index + material_texture_index_metalness;

@@ -165,7 +165,7 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     float4 albedo   = material.color;
     float3 normal   = vertex.normal.xyz;
     float roughness = material.roughness;
-    float metalness = material.metallness;
+    float metalness = material.metalness;
     float occlusion = 1.0f;
     float emission  = 0.0f;
 

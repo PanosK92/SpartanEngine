@@ -83,7 +83,7 @@ namespace spartan
     vector<tuple<RHI_Texture*, math::Vector3>> Renderer::m_icons;
 
     // misc
-    uint32_t Renderer::m_resource_index            = 0;
+    uint32_t Renderer::m_frame_cb_ring_slot        = 0;
     atomic<bool> Renderer::m_initialized_resources = false;
     bool Renderer::m_transparents_present          = false;
     bool Renderer::m_is_hiz_suppressed             = false;
@@ -91,152 +91,138 @@ namespace spartan
     bool Renderer::m_bindless_samplers_dirty       = true;
     RHI_CommandList* Renderer::m_cmd_list_present  = nullptr;
     RHI_CommandList* Renderer::m_cmd_list_compute  = nullptr;
-    RHI_SyncPrimitive* Renderer::m_pending_compute_timeline = nullptr;
-    uint64_t Renderer::m_pending_compute_timeline_value     = 0;
-    RHI_SyncPrimitive* Renderer::m_previous_present_timeline = nullptr;
-    uint64_t Renderer::m_previous_present_timeline_value     = 0;
+    Renderer::CrossQueueSync Renderer::m_cross_queue_sync;
     vector<ShadowSlice> Renderer::m_shadow_slices;
     array<RHI_Texture*, rhi_max_array_size> Renderer::m_bindless_textures;
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
-    unique_ptr<RHI_AccelerationStructure> m_tlas;
-    uint32_t Renderer::m_count_active_lights   = 0;
+    unique_ptr<RHI_AccelerationStructure> Renderer::m_tlas;
+    uint32_t Renderer::m_count_active_lights    = 0;
     uint32_t Renderer::m_volumetric_light_count = 0;
+
+    math::Vector2             Renderer::m_resolution_render = math::Vector2::Zero;
+    math::Vector2             Renderer::m_resolution_output = math::Vector2::Zero;
+    RHI_Viewport              Renderer::m_viewport          = RHI_Viewport(0, 0, 0, 0);
+    shared_ptr<RHI_SwapChain> Renderer::m_swapchain;
+    uint64_t                  Renderer::m_frame_num         = 0;
+    math::Vector2             Renderer::m_jitter_offset     = math::Vector2::Zero;
 
     namespace
     {
-        // resolution & viewport
-        math::Vector2 m_resolution_render = math::Vector2::Zero;
-        math::Vector2 m_resolution_output = math::Vector2::Zero;
-        RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
-
-        // rhi resources
-        shared_ptr<RHI_SwapChain> swapchain;
-        const uint8_t swap_chain_buffer_count = 2;
-
-        uint64_t frame_num                   = 0;
-        math::Vector2 jitter_offset          = math::Vector2::Zero;
-        const uint32_t resolution_shadow_min = 128;
-        float near_plane                     = 0.0f;
-        float far_plane                      = 1.0f;
-        bool dirty_orthographic_projection   = true;
+        const uint8_t  swap_chain_buffer_count    = 2;
+        const uint32_t resolution_shadow_min      = 128;
+        float          near_plane                 = 0.0f;
+        float          far_plane                  = 1.0f;
+        bool           dirty_orthographic_projection = true;
 
         float sanitize_resolution_scale(float scale)
         {
             return clamp(scale, 0.5f, 1.0f);
         }
 
-        void dynamic_resolution()
+        // pack the renderable's resolved uv state into any struct that exposes the standard uv fields
+        // raster and ray tracing both call this so they always agree on per-renderable uv overrides
+        template<typename T>
+        void fill_uv_draw_fields_from_renderable(T& out, const Render* renderable)
         {
-            if (cvar_dynamic_resolution.GetValue() != 0.0f)
+            if (renderable)
             {
-                float gpu_time_target   = 16.67f;                                               // target for 60 FPS
-                float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec()); // how aggressively to adjust screen percentage
-                float screen_percentage = Renderer::GetResolutionScale();
-                float gpu_time          = Profiler::GetTimeGpuLast();
-
-                if (gpu_time < gpu_time_target) // gpu is under target, increase resolution
-                {
-                    screen_percentage += adjustment_factor * (gpu_time_target - gpu_time);
-                }
-                else // gpu is over target, decrease resolution
-                {
-                    screen_percentage -= adjustment_factor * (gpu_time - gpu_time_target);
-                }
-
-                screen_percentage = sanitize_resolution_scale(screen_percentage);
-                ConsoleRegistry::Get().SetValueFromString("r.resolution_scale", to_string(screen_percentage));
+                out.uv_tiling      = math::Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY());
+                out.uv_offset      = math::Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY());
+                out.uv_invert      = math::Vector2(renderable->ResolveUvInvertX(), renderable->ResolveUvInvertY());
+                out.uv_rotation    = renderable->ResolveUvRotation();
+                out.uv_world_space = renderable->ResolveUvWorldSpace();
             }
+            else
+            {
+                out.uv_tiling      = math::Vector2(1.0f, 1.0f);
+                out.uv_offset      = math::Vector2::Zero;
+                out.uv_invert      = math::Vector2::Zero;
+                out.uv_rotation    = 0.0f;
+                out.uv_world_space = 0.0f;
+            }
+        }
+
+        void tick_dynamic_resolution_scale()
+        {
+            if (cvar_dynamic_resolution.GetValue() == 0.0f)
+                return;
+
+            const float gpu_time_target   = 16.67f;
+            const float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec());
+            float       screen_percentage = Renderer::GetResolutionScale();
+            const float gpu_time          = Profiler::GetTimeGpuLast();
+
+            if (gpu_time < gpu_time_target)
+                screen_percentage += adjustment_factor * (gpu_time_target - gpu_time);
+            else
+                screen_percentage -= adjustment_factor * (gpu_time - gpu_time_target);
+
+            screen_percentage = sanitize_resolution_scale(screen_percentage);
+            ConsoleRegistry::Get().SetValueFromString("r.resolution_scale", to_string(screen_percentage));
         }
     }
 
     void Renderer::Initialize()
     {
-        // device
-        {
-            if (Debugging::IsRenderdocEnabled())
-            {
-                RenderDoc::OnPreDeviceCreation();
-            }
+        if (Debugging::IsRenderdocEnabled())
+            RenderDoc::OnPreDeviceCreation();
+        RHI_Device::Initialize();
 
-            RHI_Device::Initialize();
-        }
-
-        // breadcrumbs
         if (Debugging::IsBreadcrumbsEnabled())
-        {
             Breadcrumbs::Initialize();
-        }
 
-        // runtime cvar overrides
-        {
-            // gamma from display
-            ConsoleRegistry::Get().SetValueFromString("r.gamma", to_string(Display::GetGamma()));
-            
-            // default tonemapping
-            ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
+        ConsoleRegistry::Get().SetValueFromString("r.gamma",       to_string(Display::GetGamma()));
+        ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
 
-            // wind is owned by World, initialized in World::Initialize()
-        }
-
-        // resolution (settings or editor may override later)
         {
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
-
             SetResolutionOutput(width, height, false);
             SetResolutionRender(1920, 1080, false); // lower than output so taau works well
             SetViewport(static_cast<float>(width), static_cast<float>(height));
         }
 
-        // must init before swapchain since breadcrumbs need it for command lists
+        // must init before swapchain so breadcrumbs are available for the swapchain command lists
         RHI_VendorTechnology::Initialize();
 
-        // swapchain
+        m_swapchain = make_shared<RHI_SwapChain>
+        (
+            Window::GetHandleSDL(),
+            Window::GetWidth(),
+            Window::GetHeight(),
+            cvar_vsync.GetValueAs<bool>() ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
+            swap_chain_buffer_count,
+            Display::GetHdr(),
+            "renderer"
+        );
+        ConsoleRegistry::Get().SetValueFromString("r.hdr", m_swapchain->IsHdr() ? "1" : "0");
+
+        ThreadPool::AddTask([]()
         {
-            swapchain = make_shared<RHI_SwapChain>
-            (
-                Window::GetHandleSDL(),
-                Window::GetWidth(),
-                Window::GetHeight(),
-                cvar_vsync.GetValueAs<bool>() ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
-                swap_chain_buffer_count,
-                Display::GetHdr(),
-                "renderer"
-            );
+            m_initialized_resources = false;
+            CreateStandardMeshes();
+            CreateStandardTextures();
+            CreateStandardMaterials();
+            CreateFonts();
+            CreateShaders();
+            m_initialized_resources = true;
+        });
 
-            ConsoleRegistry::Get().SetValueFromString("r.hdr", swapchain->IsHdr() ? "1" : "0");
-        }
+        CreateBuffers();
+        CreateDepthStencilStates();
+        CreateRasterizerStates();
+        CreateBlendStates();
+        CreateRenderTargets(true, true, true);
+        CreateSamplers();
 
-        // resources (heavy ops on background thread)
-        {
-            ThreadPool::AddTask([]()
-            {
-                m_initialized_resources = false;
-                CreateStandardMeshes();
-                CreateStandardTextures();
-                CreateStandardMaterials();
-                CreateFonts();
-                CreateShaders();
-                m_initialized_resources = true;
-            });
-
-            CreateBuffers();
-            CreateDepthStencilStates();
-            CreateRasterizerStates();
-            CreateBlendStates();
-            CreateRenderTargets(true, true, true);
-            CreateSamplers();
-
-            // pre-size the global geometry buffer so first build allocates large enough capacity
-            // to fit typical large worlds (sponza/forest) without triggering a mid-load rebuild
-            GeometryBuffer::Reserve(
-                4u * 1024u * 1024u,  // ~4M vertices  (~128 MB at 32B/vertex)
-                12u * 1024u * 1024u, // ~12M indices  (~48 MB)
-                64u * 1024u,         // ~64K meshlet bounds
-                16u * 1024u          // ~16K instances
-            );
-        }
+        // pre-size to fit typical large worlds without a mid-load rebuild
+        GeometryBuffer::Reserve(
+            4u  * 1024u * 1024u, // vertices, ~128mb at 32b each
+            12u * 1024u * 1024u, // indices,  ~48mb
+            64u * 1024u,         // meshlet bounds
+            16u * 1024u          // instances
+        );
 
         if (RHI_Device::GetPrimaryPhysicalDevice()->IsBelowMinimumRequirements())
         {
@@ -245,11 +231,8 @@ namespace spartan
             Window::SetSplashScreenVisible(true);
         }
 
-        // events
-        {
-            SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-            SP_FIRE_EVENT(EventType::RendererOnInitialized);
-        }
+        SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
+        SP_FIRE_EVENT(EventType::RendererOnInitialized);
     }
 
     void Renderer::Shutdown()
@@ -263,7 +246,7 @@ namespace spartan
         {
             DestroyResources();
             GeometryBuffer::Shutdown();
-            swapchain             = nullptr;
+            m_swapchain           = nullptr;
             m_lines_vertex_buffer = nullptr;
             m_tlas                = nullptr;
         }
@@ -287,60 +270,34 @@ namespace spartan
     {
         Profiler::FrameStart();
 
-        // process deferred fullscreen toggle at a safe point where no command lists are in flight
+        // process deferred fullscreen toggle at a safe point with no command lists in flight
         if (Window::IsFullScreenTogglePending())
         {
             RHI_Device::QueueWaitAll();
             Window::ProcessFullScreenToggle();
         }
 
+        m_swapchain->AcquireNextImage();
+        RHI_Device::Tick(m_frame_num);
+        RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
+        tick_dynamic_resolution_scale();
+        if (Debugging::IsBreadcrumbsEnabled())
         {
-            swapchain->AcquireNextImage();
-            RHI_Device::Tick(frame_num);
-
-            RHI_VendorTechnology::Tick(&m_cb_frame_cpu, GetResolutionRender(), GetResolutionOutput(), GetResolutionScale());
-            dynamic_resolution();
-
-            // breadcrumbs
-            if (Debugging::IsBreadcrumbsEnabled())
-            {
-                Breadcrumbs::StartFrame();
-            }
+            Breadcrumbs::StartFrame();
         }
-        
-        // recreate optional render targets when feature cvars change
-        if (m_initialized_resources)
-        {
-            static uint32_t options_hash  = 0;
-            static float restir_scale_old = -1.0f;
-            uint32_t options_hash_new     = (cvar_ssao.GetValueAs<bool>() << 0) | (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) | (cvar_restir_pt.GetValueAs<bool>() << 2);
-            float restir_scale_new        = cvar_restir_pt_scale.GetValue();
 
-            if (options_hash_new != options_hash || restir_scale_new != restir_scale_old)
-            {
-                RHI_Device::QueueWaitAll(true);
-                RHI_Device::DeletionQueueParse();
-                UpdateOptionalRenderTargets();
-                RHI_Device::DeletionQueueParse();
-                options_hash    = options_hash_new;
-                restir_scale_old = restir_scale_new;
-            }
-        }
-    
+        TickRecreateOptionalRenderTargetsIfNeeded();
+
         const uint32_t min_render_dimension = 64;
-        bool resolution_valid = m_resolution_render.x >= min_render_dimension && m_resolution_render.y >= min_render_dimension;
-        bool can_render = !Window::IsMinimized() && m_initialized_resources && resolution_valid;
+        const bool resolution_valid         = m_resolution_render.x >= min_render_dimension && m_resolution_render.y >= min_render_dimension;
+        const bool can_render               = !Window::IsMinimized() && m_initialized_resources && resolution_valid;
 
-        // prevent write-after-present hazards when idle (skip first frame, nothing to wait for)
-        if (!can_render && frame_num > 0)
-        {
+        // prevent write after present hazards when idle, skip first frame
+        if (!can_render && m_frame_num > 0)
             RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->Wait();
-        }
 
-        {
-            m_cmd_list_present = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
-            m_cmd_list_present->Begin();
-        }
+        m_cmd_list_present = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
+        m_cmd_list_present->Begin();
 
         m_cmd_list_compute = nullptr;
         if (can_render)
@@ -353,214 +310,35 @@ namespace spartan
 
         if (can_render)
         {
-            // suppress hi-z while loading and for a grace period after, draw calls and acceleration structures stabilize during this window
-            {
-                static uint32_t post_load_frames = 0;
-                static bool was_loading          = true;
-                const bool is_loading            = ProgressTracker::IsLoading();
+            TickUpdateHiZSuppressionState();
 
-                if (is_loading)
-                {
-                    was_loading = true;
-                }
-                else if (was_loading)
-                {
-                    was_loading      = false;
-                    post_load_frames = 30;
-                }
-
-                if (post_load_frames > 0)
-                {
-                    post_load_frames--;
-                }
-
-                m_is_hiz_suppressed = is_loading || post_load_frames > 0;
-            }
-
-            // rebuild geometry buffer if new meshes arrived
-            // safe to run during loading because growth routes the old buffers through the deletion queue
-            // so meshes appear progressively as they finish importing
+            // rebuild geometry buffer when meshes arrive, growth routes old buffers through the deletion queue
             GeometryBuffer::BuildIfDirty();
 
-            // geometry buffer rebuild invalidates blas device addresses
+            // geometry buffer rebuild invalidates blas device addresses, free old gpu memory before rebuilding to avoid a peak
             if (GeometryBuffer::WasRebuilt())
             {
                 DestroyAccelerationStructures();
-
-                // free released blas/tlas gpu memory before rebuilding to avoid a peak
                 RHI_Device::DeletionQueueParse();
             }
 
-            // rotate per-frame buffers to avoid cpu-gpu races
             RotateFrameBuffers();
-
             UpdateDrawCalls(m_cmd_list_present);
 
-            // accel updates moved into ProduceFrame compute batch a so they overlap with phase 1 gbuffer
-
-            // resource cleanup - frame-based retirement, no gpu stall required
+            // frame based retirement, no gpu stall required
             if (RHI_Device::DeletionQueueNeedsToParse())
             {
                 RHI_Device::DeletionQueueParse();
             }
 
-            // reset constant buffer offset periodically
-            {
-                m_resource_index++;
-                if (m_resource_index == renderer_draw_data_buffer_count)
-                {
-                    m_resource_index = 0;
-                    GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
-                }
-            }
-    
-            // bindless resource updates, run during loading so newly published entities pick up materials and lights as they arrive
-            {
-                bool initialize = GetFrameNumber() == 0;
+            TickAdvanceFrameConstantBufferRing();
+            TickUploadBindlessDependencies(m_cmd_list_present);
 
-                // lights
-                if (initialize || World::HaveLightsChanged())
-                {
-                    UpdateShadowAtlas();
-                    UpdateLights(m_cmd_list_present);
-                    RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
-                }
-
-                // materials
-                if (initialize || World::HaveMaterialsChangedThisFrame())
-                {
-                    UpdateMaterials(m_cmd_list_present);
-                    RHI_Device::UpdateBindlessMaterials(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters));
-                }
-
-                // samplers
-                if (m_bindless_samplers_dirty)
-                {
-                    RHI_Device::UpdateBindlessSamplers(&Renderer::GetSamplers());
-                    m_bindless_samplers_dirty = false;
-                }
-
-                // aabbs (always, they change with entity transforms)
-                {
-                    UpdateBoundingBoxes(m_cmd_list_present);
-
-                    static bool aabbs_descriptor_set = false;
-                    if (!aabbs_descriptor_set)
-                    {
-                        RHI_Device::UpdateBindlessAABBs(GetBuffer(Renderer_Buffer::AABBs));
-                        aabbs_descriptor_set = true;
-                    }
-                }
-
-                // draw data
-                {
-                    if (m_draw_data_count > 0)
-                    {
-                        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::DrawData);
-                        uint32_t frame_byte_offset = m_frame_resource_index * renderer_max_draw_calls * static_cast<uint32_t>(sizeof(Sb_DrawData));
-                        uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_DrawData)) * m_draw_data_count;
-                        m_cmd_list_present->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
-                    }
-
-                    // the descriptor points to a single large buffer that holds all frames' draw data
-                    // at different offsets, so it only needs to be set once; this eliminates the race
-                    // where vkUpdateDescriptorSets (host-side, instantly visible under UPDATE_AFTER_BIND)
-                    // would change the buffer pointer while the previous frame's phase 3 transparent pass
-                    // was still reading from it on the gpu
-                    static bool draw_data_descriptor_set = false;
-                    if (!draw_data_descriptor_set)
-                    {
-                        RHI_Device::UpdateBindlessDrawData(GetBuffer(Renderer_Buffer::DrawData));
-                        draw_data_descriptor_set = true;
-                    }
-                }
-
-                // geometry buffers (vertex pulling via bindless structured buffers)
-                {
-                    static RHI_Buffer* last_vertex_buffer = nullptr;
-                    RHI_Buffer* current_vertex = GeometryBuffer::GetVertexBuffer();
-                    if (current_vertex && current_vertex != last_vertex_buffer)
-                    {
-                        RHI_Device::UpdateBindlessGeometryVertices(current_vertex);
-                        last_vertex_buffer = current_vertex;
-                    }
-
-                    static RHI_Buffer* last_index_buffer = nullptr;
-                    RHI_Buffer* current_index = GeometryBuffer::GetIndexBuffer();
-                    if (current_index && current_index != last_index_buffer)
-                    {
-                        RHI_Device::UpdateBindlessGeometryIndices(current_index);
-                        last_index_buffer = current_index;
-                    }
-                }
-
-                // global instance buffer (vertex pulling for instanced indirect draws)
-                // falls back to the dummy buffer until the global one exists, rebinds whenever the global buffer is recreated
-                {
-                    static RHI_Buffer* last_instance_buffer = nullptr;
-                    RHI_Buffer* current_instance            = GeometryBuffer::GetInstanceBuffer();
-                    if (current_instance == nullptr)
-                    {
-                        current_instance = GetBuffer(Renderer_Buffer::DummyInstance);
-                    }
-                    if (current_instance != last_instance_buffer)
-                    {
-                        RHI_Device::UpdateBindlessInstances(current_instance);
-                        last_instance_buffer = current_instance;
-                    }
-                }
-
-                // indirect draw buffers
-                // slot 0 of indirect_draw_args is the consolidated draw args, layout matches VkDrawIndirectCommand for the first 16 bytes
-                // index_count aliases vertex_count and is bumped in 3-vertex steps by the triangle cull shader
-                // instance_count is fixed at 1, the indirect draw is non-instanced and the vertex shader keys directly off sv_vertexid
-                {
-                    Sb_IndirectDrawArgs single_args = {};
-                    single_args.index_count         = 0;
-                    single_args.instance_count      = 1;
-                    single_args.first_index         = 0;
-                    single_args.vertex_offset       = 0;
-                    single_args.first_instance      = 0;
-
-                    RHI_Buffer* args_buffer = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
-                    args_buffer->ResetOffset();
-                    args_buffer->Update(m_cmd_list_present, &single_args, sizeof(Sb_IndirectDrawArgs));
-                }
-
-                // single-slot indirect dispatch args for the triangle cull, group_count_x is bumped by the meshlet cull
-                {
-                    Sb_IndirectDispatchArgs dispatch_args = {};
-                    dispatch_args.group_count_x           = 0;
-                    dispatch_args.group_count_y           = 1;
-                    dispatch_args.group_count_z           = 1;
-
-                    RHI_Buffer* dispatch_args_buffer = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
-                    dispatch_args_buffer->ResetOffset();
-                    dispatch_args_buffer->Update(m_cmd_list_present, &dispatch_args, sizeof(Sb_IndirectDispatchArgs));
-                }
-
-                if (m_indirect_draw_count > 0)
-                {
-                    RHI_Buffer* data_buffer = GetBuffer(Renderer_Buffer::IndirectDrawData);
-                    data_buffer->ResetOffset();
-                    data_buffer->Update(m_cmd_list_present, &m_indirect_draw_data[0], data_buffer->GetStride() * m_indirect_draw_count);
-                }
-
-                if (m_cull_task_count > 0)
-                {
-                    RHI_Buffer* tasks_buffer = GetBuffer(Renderer_Buffer::CullTasks);
-                    tasks_buffer->ResetOffset();
-                    tasks_buffer->Update(m_cmd_list_present, &m_cull_tasks[0], tasks_buffer->GetStride() * m_cull_task_count);
-                }
-            }
-    
             UpdatePersistentLines();
             AddLinesToBeRendered();
         }
 
-        // xr: begin the frame before updating the frame constant buffer so the per-eye
-        // pose/projection matrices used for shading reflect the predicted pose for this
-        // frame rather than the previous one. xrBeginFrame must pair with xrEndFrame below.
+        // xrBeginFrame must precede UpdateFrameConstantBuffer so per eye matrices reflect this frame's predicted pose, paired with xrEndFrame below
         bool xr_should_render = false;
         if (Xr::IsSessionRunning())
         {
@@ -570,13 +348,7 @@ namespace spartan
         if (can_render)
         {
             UpdateFrameConstantBuffer(m_cmd_list_present);
-        }
-
-        {
-            if (can_render)
-            {
-                ProduceFrame(m_cmd_list_present, m_cmd_list_compute);
-            }
+            ProduceFrame(m_cmd_list_present, m_cmd_list_compute);
         }
 
         if (xr_should_render && can_render)
@@ -589,42 +361,199 @@ namespace spartan
         {
             Xr::EndFrame();
         }
-    
-        bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
 
+        const bool is_standalone = !Engine::IsFlagSet(EngineMode::EditorVisible);
         if (is_standalone && can_render)
         {
             BlitToBackBuffer(m_cmd_list_present, GetRenderTarget(Renderer_RenderTarget::frame_output));
         }
-
         if (is_standalone)
         {
             SubmitAndPresent();
         }
-    
-        {
-            m_lines_vertices.clear();
-            m_icons.clear();
-        }
-    
-        // only count frames that actually rendered
+
+        m_lines_vertices.clear();
+        m_icons.clear();
+
         if (can_render)
         {
-            frame_num++;
-            if (frame_num == 1)
-            {
+            m_frame_num++;
+            if (m_frame_num == 1)
                 SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
-            }
 
-            // cluster overflow warning, rate limited so a constantly overflowing scene does not spam the log
-            static double next_overflow_log_time = 0.0;
-            const uint32_t overflow_count        = GetClusterOverflowCount();
-            const double now                     = Timer::GetTimeSec();
-            if (overflow_count > 0 && now >= next_overflow_log_time)
-            {
-                SP_LOG_WARNING("Clustered lighting: %u clusters exceeded the %u light cap last frame, lights were dropped", overflow_count, static_cast<uint32_t>(CLUSTER_MAX_LIGHTS));
-                next_overflow_log_time = now + 5.0;
-            }
+            TickLogClusterOverflowRateLimited();
+        }
+    }
+
+    void Renderer::TickRecreateOptionalRenderTargetsIfNeeded()
+    {
+        if (!m_initialized_resources)
+            return;
+
+        static uint32_t options_hash  = 0;
+        static float restir_scale_old = -1.0f;
+
+        const uint32_t options_hash_new = (cvar_ssao.GetValueAs<bool>() << 0) | (cvar_ray_traced_reflections.GetValueAs<bool>() << 1) | (cvar_restir_pt.GetValueAs<bool>() << 2);
+        const float    restir_scale_new = cvar_restir_pt_scale.GetValue();
+
+        if (options_hash_new != options_hash || restir_scale_new != restir_scale_old)
+        {
+            RHI_Device::QueueWaitAll(true);
+            RHI_Device::DeletionQueueParse();
+            UpdateOptionalRenderTargets();
+            RHI_Device::DeletionQueueParse();
+            options_hash     = options_hash_new;
+            restir_scale_old = restir_scale_new;
+        }
+    }
+
+    void Renderer::TickUpdateHiZSuppressionState()
+    {
+        // suppress hi-z while loading and for a grace window after, draw calls and acceleration structures stabilize first
+        static uint32_t post_load_frames = 0;
+        static bool was_loading          = true;
+        const bool is_loading            = ProgressTracker::IsLoading();
+
+        if (is_loading)
+        {
+            was_loading = true;
+        }
+        else if (was_loading)
+        {
+            was_loading      = false;
+            post_load_frames = 30;
+        }
+
+        if (post_load_frames > 0)
+            post_load_frames--;
+
+        m_is_hiz_suppressed = is_loading || post_load_frames > 0;
+    }
+
+    void Renderer::TickAdvanceFrameConstantBufferRing()
+    {
+        m_frame_cb_ring_slot++;
+        if (m_frame_cb_ring_slot == renderer_draw_data_buffer_count)
+        {
+            m_frame_cb_ring_slot = 0;
+            GetBuffer(Renderer_Buffer::ConstantFrame)->ResetOffset();
+        }
+    }
+
+    void Renderer::TickUploadBindlessDependencies(RHI_CommandList* cmd_list)
+    {
+        // run during loading so newly published entities pick up materials and lights as they arrive
+        const bool initialize = GetFrameNumber() == 0;
+
+        if (initialize || World::HaveLightsChanged())
+        {
+            UpdateShadowAtlas();
+            UpdateLights(cmd_list);
+            RHI_Device::UpdateBindlessLights(GetBuffer(Renderer_Buffer::LightParameters));
+        }
+
+        if (initialize || World::HaveMaterialsChangedThisFrame())
+        {
+            UpdateMaterials(cmd_list);
+            RHI_Device::UpdateBindlessMaterials(&m_bindless_textures, GetBuffer(Renderer_Buffer::MaterialParameters));
+        }
+
+        if (m_bindless_samplers_dirty)
+        {
+            RHI_Device::UpdateBindlessSamplers(&Renderer::GetSamplers());
+            m_bindless_samplers_dirty = false;
+        }
+
+        // aabbs change every frame with entity transforms
+        UpdateBoundingBoxes(cmd_list);
+        static bool aabbs_descriptor_set = false;
+        if (!aabbs_descriptor_set)
+        {
+            RHI_Device::UpdateBindlessAABBs(GetBuffer(Renderer_Buffer::AABBs));
+            aabbs_descriptor_set = true;
+        }
+
+        // draw data, single descriptor for all frame slots avoids races where a host visible descriptor swap could overlap a gpu read
+        if (m_draw_data_count > 0)
+        {
+            RHI_Buffer* buffer               = GetBuffer(Renderer_Buffer::DrawData);
+            const uint32_t frame_byte_offset = m_frame_resource_index * renderer_max_draw_calls * static_cast<uint32_t>(sizeof(Sb_DrawData));
+            const uint32_t upload_size       = static_cast<uint32_t>(sizeof(Sb_DrawData)) * m_draw_data_count;
+            cmd_list->UpdateBuffer(buffer, frame_byte_offset, upload_size, &m_draw_data_cpu[0]);
+        }
+        static bool draw_data_descriptor_set = false;
+        if (!draw_data_descriptor_set)
+        {
+            RHI_Device::UpdateBindlessDrawData(GetBuffer(Renderer_Buffer::DrawData));
+            draw_data_descriptor_set = true;
+        }
+
+        // geometry buffers, vertex pulling via bindless structured buffers
+        static RHI_Buffer* last_vertex_buffer = nullptr;
+        if (RHI_Buffer* current_vertex = GeometryBuffer::GetVertexBuffer(); current_vertex && current_vertex != last_vertex_buffer)
+        {
+            RHI_Device::UpdateBindlessGeometryVertices(current_vertex);
+            last_vertex_buffer = current_vertex;
+        }
+        static RHI_Buffer* last_index_buffer = nullptr;
+        if (RHI_Buffer* current_index = GeometryBuffer::GetIndexBuffer(); current_index && current_index != last_index_buffer)
+        {
+            RHI_Device::UpdateBindlessGeometryIndices(current_index);
+            last_index_buffer = current_index;
+        }
+
+        // global instance buffer for instanced indirect draws, falls back to dummy until the global buffer exists
+        static RHI_Buffer* last_instance_buffer = nullptr;
+        RHI_Buffer* current_instance            = GeometryBuffer::GetInstanceBuffer();
+        if (!current_instance)
+            current_instance = GetBuffer(Renderer_Buffer::DummyInstance);
+        if (current_instance != last_instance_buffer)
+        {
+            RHI_Device::UpdateBindlessInstances(current_instance);
+            last_instance_buffer = current_instance;
+        }
+
+        // single slot indirect draw args, layout matches VkDrawIndirectCommand on the first 16 bytes
+        // index_count aliases vertex_count and is bumped 3 at a time by the triangle cull, instance_count fixed at 1
+        Sb_IndirectDrawArgs single_args = {};
+        single_args.instance_count      = 1;
+        RHI_Buffer* args_buffer         = GetBuffer(Renderer_Buffer::IndirectDrawArgs);
+        args_buffer->ResetOffset();
+        args_buffer->Update(cmd_list, &single_args, sizeof(Sb_IndirectDrawArgs));
+
+        // single slot indirect dispatch args for triangle cull, group_count_x bumped by the meshlet cull
+        Sb_IndirectDispatchArgs dispatch_args = {};
+        dispatch_args.group_count_y           = 1;
+        dispatch_args.group_count_z           = 1;
+        RHI_Buffer* dispatch_args_buffer      = GetBuffer(Renderer_Buffer::TriangleDispatchArgs);
+        dispatch_args_buffer->ResetOffset();
+        dispatch_args_buffer->Update(cmd_list, &dispatch_args, sizeof(Sb_IndirectDispatchArgs));
+
+        if (m_indirect_draw_count > 0)
+        {
+            RHI_Buffer* data_buffer = GetBuffer(Renderer_Buffer::IndirectDrawData);
+            data_buffer->ResetOffset();
+            data_buffer->Update(cmd_list, &m_indirect_draw_data[0], data_buffer->GetStride() * m_indirect_draw_count);
+        }
+
+        if (m_cull_task_count > 0)
+        {
+            RHI_Buffer* tasks_buffer = GetBuffer(Renderer_Buffer::CullTasks);
+            tasks_buffer->ResetOffset();
+            tasks_buffer->Update(cmd_list, &m_cull_tasks[0], tasks_buffer->GetStride() * m_cull_task_count);
+        }
+    }
+
+    void Renderer::TickLogClusterOverflowRateLimited()
+    {
+        // rate limit, a constantly overflowing scene must not spam the log
+        static double next_overflow_log_time = 0.0;
+        const uint32_t overflow_count        = GetClusterOverflowCount();
+        const double now                     = Timer::GetTimeSec();
+        if (overflow_count > 0 && now >= next_overflow_log_time)
+        {
+            SP_LOG_WARNING("Clustered lighting: %u clusters exceeded the %u light cap last frame, lights were dropped", overflow_count, static_cast<uint32_t>(CLUSTER_MAX_LIGHTS));
+            next_overflow_log_time = now + 5.0;
         }
     }
 
@@ -752,86 +681,87 @@ namespace spartan
         m_taau_reset_history = true;
     }
 
-    void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
+    void Renderer::UpdateFrameCb_CameraAndProjectionHistory()
     {
-        // matrices
+        if (Camera* camera = World::GetCamera())
         {
-            if (Camera* camera = World::GetCamera())
+            if (near_plane != camera->GetNearPlane() || far_plane != camera->GetFarPlane())
             {
-                if (near_plane != camera->GetNearPlane() || far_plane != camera->GetFarPlane())
+                near_plane                    = camera->GetNearPlane();
+                far_plane                     = camera->GetFarPlane();
+                dirty_orthographic_projection = true;
+            }
+
+            m_cb_frame_cpu.view_previous       = m_cb_frame_cpu.view;
+            m_cb_frame_cpu.view                = camera->GetViewMatrix();
+            m_cb_frame_cpu.view_inverted       = Matrix::Invert(m_cb_frame_cpu.view);
+            m_cb_frame_cpu.projection_previous = m_cb_frame_cpu.projection;
+            m_cb_frame_cpu.projection          = camera->GetProjectionMatrix();
+            m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
+        }
+
+        if (dirty_orthographic_projection)
+        {
+            // ortho near is 0 to avoid NaN in the [3,2] element
+            Matrix projection_ortho                     = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
+            m_cb_frame_cpu.view_projection_orthographic = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
+            dirty_orthographic_projection               = false;
+        }
+    }
+
+    void Renderer::UpdateFrameCb_ProjectionJitter()
+    {
+        const Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
+
+        if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
+        {
+            // halton-2,3 jitter, taau pass uses it to reconstruct sub-pixel detail
+            auto halton = [](uint32_t index, uint32_t base) -> float
+            {
+                float result = 0.0f;
+                float bk     = 1.0f;
+                while (index > 0)
                 {
-                    near_plane                    = camera->GetNearPlane();
-                    far_plane                     = camera->GetFarPlane();
-                    dirty_orthographic_projection = true;
+                    bk     /= static_cast<float>(base);
+                    result += static_cast<float>(index % base) * bk;
+                    index  /= base;
                 }
+                return result;
+            };
 
-                m_cb_frame_cpu.view_previous       = m_cb_frame_cpu.view;
-                m_cb_frame_cpu.view                = camera->GetViewMatrix();
-                m_cb_frame_cpu.view_inverted       = Matrix::Invert(m_cb_frame_cpu.view);
-                m_cb_frame_cpu.projection_previous = m_cb_frame_cpu.projection;
-                m_cb_frame_cpu.projection          = camera->GetProjectionMatrix();
-                m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
-            }
+            static const uint32_t phase_count = 16;
+            static uint32_t phase_index       = 0;
+            phase_index                       = (phase_index + 1) % phase_count;
 
-            if (dirty_orthographic_projection)
-            { 
-                // near = 0 for ortho (avoids NaN in [3,2] element)
-                Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
-                m_cb_frame_cpu.view_projection_orthographic = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
-                dirty_orthographic_projection        = false;
-            }
+            const float jx = halton(phase_index + 1, 2) - 0.5f;
+            const float jy = halton(phase_index + 1, 3) - 0.5f;
+
+            // jitter sized to active render area, m_resolution_render * scale, not the full target, sub pixel coverage shrinks otherwise
+            const float scale    = GetResolutionScale();
+            const float render_w = max(m_resolution_render.x * scale, 1.0f);
+            const float render_h = max(m_resolution_render.y * scale, 1.0f);
+            m_jitter_offset.x = 2.0f * jx / render_w;
+            m_jitter_offset.y = -2.0f * jy / render_h;
+
+            m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
         }
-
-        // taa jitter
-        Renderer_AntiAliasing_Upsampling upsampling_mode = cvar_antialiasing_upsampling.GetValueAs<Renderer_AntiAliasing_Upsampling>();
+        else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
         {
-            if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Taau_Upscale_Taau)
-            {
-                // halton-2,3 jitter, engine side, used by the taau compute pass to reconstruct sub-pixel detail
-                auto halton = [](uint32_t index, uint32_t base) -> float
-                {
-                    float result = 0.0f;
-                    float bk     = 1.0f;
-                    while (index > 0)
-                    {
-                        bk     /= static_cast<float>(base);
-                        result += static_cast<float>(index % base) * bk;
-                        index  /= base;
-                    }
-                    return result;
-                };
-
-                static const uint32_t phase_count = 16;
-                static uint32_t phase_index       = 0;
-                phase_index                       = (phase_index + 1) % phase_count;
-
-                float jx = halton(phase_index + 1, 2) - 0.5f;
-                float jy = halton(phase_index + 1, 3) - 0.5f;
-
-                // jitter must be sized to the active render area, m_resolution_render * resolution_scale,
-                // not the full render target, otherwise sub-pixel coverage shrinks with the upsample ratio
-                float scale    = GetResolutionScale();
-                float render_w = max(m_resolution_render.x * scale, 1.0f);
-                float render_h = max(m_resolution_render.y * scale, 1.0f);
-                jitter_offset.x =  2.0f * jx / render_w;
-                jitter_offset.y = -2.0f * jy / render_h;
-
-                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
-            }
-            else if (upsampling_mode == Renderer_AntiAliasing_Upsampling::AA_Xess_Upscale_Xess)
-            {
-                RHI_VendorTechnology::XeSS_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
-                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
-            }
-            else
-            {
-                jitter_offset = Vector2::Zero;
-            }
+            RHI_VendorTechnology::XeSS_GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
+            m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
         }
+        else
+        {
+            m_jitter_offset = Vector2::Zero;
+        }
+    }
 
+    void Renderer::UpdateFrameCb_ViewProjectionAndCameraFields()
+    {
         m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
         m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
         m_cb_frame_cpu.view_projection_inverted = Matrix::Invert(m_cb_frame_cpu.view_projection);
+
         if (Camera* camera = World::GetCamera())
         {
             m_cb_frame_cpu.view_projection_previous_unjittered = m_cb_frame_cpu.view_projection_unjittered;
@@ -847,59 +777,64 @@ namespace spartan
             m_cb_frame_cpu.camera_last_movement_time           = (m_cb_frame_cpu.camera_position - m_cb_frame_cpu.camera_position_previous).LengthSquared() != 0.0f
                 ? static_cast<float>(Timer::GetTimeSec()) : m_cb_frame_cpu.camera_last_movement_time;
         }
-        m_cb_frame_cpu.resolution_output   = m_resolution_output;
-        m_cb_frame_cpu.resolution_render   = m_resolution_render;
-        m_cb_frame_cpu.taa_jitter_previous = m_cb_frame_cpu.taa_jitter_current;
-        m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
-        m_cb_frame_cpu.time                = Timer::GetTimeSec();
-        m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSec());
-        m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
-        m_cb_frame_cpu.resolution_scale    = GetResolutionScale();
-        m_cb_frame_cpu.restir_pt_scale     = cvar_restir_pt_scale.GetValue();
-        m_cb_frame_cpu.restir_pt_debug_mode = cvar_restir_pt_debug_mode.GetValue();
-        m_cb_frame_cpu.hdr_enabled         = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
-        m_cb_frame_cpu.hdr_max_nits        = Display::GetLuminanceMax();
-        m_cb_frame_cpu.gamma               = cvar_gamma.GetValue();
-        m_cb_frame_cpu.camera_exposure     = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+    }
 
-        m_cb_frame_cpu.cloud_coverage = cvar_cloud_coverage.GetValue();
-        m_cb_frame_cpu.cloud_shadows  = cvar_cloud_shadows.GetValue();
+    void Renderer::UpdateFrameCb_ScalarFields()
+    {
+        m_cb_frame_cpu.resolution_output     = m_resolution_output;
+        m_cb_frame_cpu.resolution_render     = m_resolution_render;
+        m_cb_frame_cpu.taa_jitter_previous   = m_cb_frame_cpu.taa_jitter_current;
+        m_cb_frame_cpu.taa_jitter_current    = m_jitter_offset;
+        m_cb_frame_cpu.time                  = Timer::GetTimeSec();
+        m_cb_frame_cpu.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
+        m_cb_frame_cpu.frame                 = static_cast<uint32_t>(m_frame_num);
+        m_cb_frame_cpu.resolution_scale      = GetResolutionScale();
+        m_cb_frame_cpu.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
+        m_cb_frame_cpu.restir_pt_debug_mode  = cvar_restir_pt_debug_mode.GetValue();
+        m_cb_frame_cpu.hdr_enabled           = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
+        m_cb_frame_cpu.hdr_max_nits          = Display::GetLuminanceMax();
+        m_cb_frame_cpu.gamma                 = cvar_gamma.GetValue();
+        m_cb_frame_cpu.camera_exposure       = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+        m_cb_frame_cpu.cloud_coverage        = cvar_cloud_coverage.GetValue();
+        m_cb_frame_cpu.cloud_shadows         = cvar_cloud_shadows.GetValue();
         m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
-        m_cb_frame_cpu.wind           = World::GetWind();
+        m_cb_frame_cpu.wind                  = World::GetWind();
+    }
 
-        // clustered lighting constants, log(z) slicing with the camera's near/far
-        // near is clamped to avoid log(0), the log range collapses when near == far
-        {
-            const float cluster_near = std::max(near_plane, 1e-3f);
-            const float cluster_far  = std::max(far_plane, cluster_near + 1e-3f);
-            const float log_range    = std::log(cluster_far / cluster_near);
-            const float z_scale      = log_range > 1e-6f ? static_cast<float>(CLUSTER_COUNT_Z) / log_range : 0.0f;
-            const float z_bias       = -std::log(cluster_near) * z_scale;
+    void Renderer::UpdateFrameCb_ClusterLighting()
+    {
+        // log(z) slicing with the camera near/far, near clamped to avoid log(0), z scale collapses when near equals far
+        const float cluster_near = std::max(near_plane, 1e-3f);
+        const float cluster_far  = std::max(far_plane, cluster_near + 1e-3f);
+        const float log_range    = std::log(cluster_far / cluster_near);
+        const float z_scale      = log_range > 1e-6f ? static_cast<float>(CLUSTER_COUNT_Z) / log_range : 0.0f;
+        const float z_bias       = -std::log(cluster_near) * z_scale;
 
-            m_cb_frame_cpu.cluster_count_x         = CLUSTER_COUNT_X;
-            m_cb_frame_cpu.cluster_count_y         = CLUSTER_COUNT_Y;
-            m_cb_frame_cpu.cluster_count_z         = CLUSTER_COUNT_Z;
-            m_cb_frame_cpu.cluster_light_count     = m_count_active_lights;
-            m_cb_frame_cpu.cluster_z_scale         = z_scale;
-            m_cb_frame_cpu.cluster_z_bias          = z_bias;
-            m_cb_frame_cpu.volumetric_light_count  = m_volumetric_light_count;
-            m_cb_frame_cpu.cluster_padding1        = 0.0f;
-        }
+        m_cb_frame_cpu.cluster_count_x        = CLUSTER_COUNT_X;
+        m_cb_frame_cpu.cluster_count_y        = CLUSTER_COUNT_Y;
+        m_cb_frame_cpu.cluster_count_z        = CLUSTER_COUNT_Z;
+        m_cb_frame_cpu.cluster_light_count    = m_count_active_lights;
+        m_cb_frame_cpu.cluster_z_scale        = z_scale;
+        m_cb_frame_cpu.cluster_z_bias         = z_bias;
+        m_cb_frame_cpu.volumetric_light_count = m_volumetric_light_count;
+        m_cb_frame_cpu.cluster_padding1       = 0.0f;
+    }
 
-        // feature bits (must match common_resources.hlsl)
-        // ray traced shadows require a valid tlas so the shader's inline ray query has something to trace against
-        bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(),                    1 << 0);
-        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                      1 << 1);
-        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available,      1 << 2);
-        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>(),                                 1 << 3);
+    void Renderer::UpdateFrameCb_FeatureBits()
+    {
+        // bit positions are shader abi, must match common_resources.hlsl
+        const bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_reflections.GetValueAs<bool>(),               1 << 0);
+        m_cb_frame_cpu.set_bit(cvar_ssao.GetValueAs<bool>(),                                 1 << 1);
+        m_cb_frame_cpu.set_bit(cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available, 1 << 2);
+        m_cb_frame_cpu.set_bit(cvar_restir_pt.GetValueAs<bool>(),                            1 << 3);
+    }
 
-        // vr stereo: override primary matrices with the left eye and populate the right eye
-        // so that every shader helper can pick the correct per-eye matrices via eye_index
+    void Renderer::UpdateFrameCb_StereoXr()
+    {
         const uint32_t multiview_previous = m_cb_frame_cpu.is_multiview;
         if (Xr::IsSessionRunning() && Xr::GetStereoMode())
         {
-            // left eye -> primary matrices
             m_cb_frame_cpu.view                     = Xr::GetViewMatrix(0);
             m_cb_frame_cpu.view_inverted            = Matrix::Invert(m_cb_frame_cpu.view);
             m_cb_frame_cpu.projection               = Xr::GetProjectionMatrix(0);
@@ -908,14 +843,10 @@ namespace spartan
             m_cb_frame_cpu.view_projection_inverted = Matrix::Invert(m_cb_frame_cpu.view_projection);
             m_cb_frame_cpu.camera_position          = m_cb_frame_cpu.view_inverted.GetTranslation();
 
-            // vr has no taa jitter applied to the projection, so jittered == unjittered.
-            // these fields were computed earlier in the function using the mono camera, so
-            // replace them now with the left-eye xr matrices so motion-blur sky reprojection
-            // and any other unjittered-vp consumer sees eye-consistent data.
+            // vr does not jitter the projection, jittered equals unjittered, replace mono fields so consumers see eye consistent data
             m_cb_frame_cpu.view_projection_previous_unjittered = m_view_projection_previous_unjittered_left;
             m_cb_frame_cpu.view_projection_unjittered          = m_cb_frame_cpu.view_projection;
 
-            // right eye
             m_cb_frame_cpu.view_right                                 = Xr::GetViewMatrix(1);
             m_cb_frame_cpu.view_inverted_right                        = Matrix::Invert(m_cb_frame_cpu.view_right);
             m_cb_frame_cpu.projection_right                           = Xr::GetProjectionMatrix(1);
@@ -928,25 +859,34 @@ namespace spartan
             m_cb_frame_cpu.camera_position_right                      = m_cb_frame_cpu.view_inverted_right.GetTranslation();
             m_cb_frame_cpu.is_multiview                               = 1;
 
-            // store the current per-eye view-projection so the next frame can use it as the
-            // previous-frame matrix (the mono path only tracks the left eye through the
-            // shared view_projection, so the right eye needs a dedicated history slot)
-            m_view_projection_previous_right            = m_cb_frame_cpu.view_projection_right;
-            m_view_projection_previous_unjittered_left  = m_cb_frame_cpu.view_projection;
+            // record per-eye view projection so next frame's right-eye history exists, mono path tracks left eye via shared view_projection
+            m_view_projection_previous_right           = m_cb_frame_cpu.view_projection_right;
+            m_view_projection_previous_unjittered_left = m_cb_frame_cpu.view_projection;
         }
         else
         {
-            m_cb_frame_cpu.is_multiview                               = 0;
-            m_cb_frame_cpu.view_projection_previous_right             = Matrix::Identity;
-            m_cb_frame_cpu.view_projection_unjittered_right           = Matrix::Identity;
-            m_cb_frame_cpu.view_projection_previous_unjittered_right  = Matrix::Identity;
-            m_view_projection_previous_right                          = Matrix::Identity;
-            m_view_projection_previous_unjittered_left                = Matrix::Identity;
+            m_cb_frame_cpu.is_multiview                              = 0;
+            m_cb_frame_cpu.view_projection_previous_right            = Matrix::Identity;
+            m_cb_frame_cpu.view_projection_unjittered_right          = Matrix::Identity;
+            m_cb_frame_cpu.view_projection_previous_unjittered_right = Matrix::Identity;
+            m_view_projection_previous_right                         = Matrix::Identity;
+            m_view_projection_previous_unjittered_left               = Matrix::Identity;
         }
 
-        // entering or leaving stereo invalidates taau history because the projection setup changes
+        // entering or leaving stereo invalidates taau history, projection setup changes
         if (multiview_previous != m_cb_frame_cpu.is_multiview)
             m_taau_reset_history = true;
+    }
+
+    void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
+    {
+        UpdateFrameCb_CameraAndProjectionHistory();
+        UpdateFrameCb_ProjectionJitter();
+        UpdateFrameCb_ViewProjectionAndCameraFields();
+        UpdateFrameCb_ScalarFields();
+        UpdateFrameCb_ClusterLighting();
+        UpdateFrameCb_FeatureBits();
+        UpdateFrameCb_StereoXr();
 
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
     }
@@ -1010,13 +950,13 @@ namespace spartan
 
     RHI_SwapChain* Renderer::GetSwapChain()
     {
-        return swapchain.get();
+        return m_swapchain.get();
     }
-    
+
     void Renderer::BlitToBackBuffer(RHI_CommandList* cmd_list, RHI_Texture* texture)
     {
         cmd_list->BeginMarker("blit_to_back_buffer");
-        cmd_list->Blit(texture, swapchain.get());
+        cmd_list->Blit(texture, m_swapchain.get());
         cmd_list->EndMarker();
     }
 
@@ -1033,18 +973,18 @@ namespace spartan
         {
             SP_ASSERT(m_cmd_list_present->GetState() == RHI_CommandListState::Recording);
 
-            if (swapchain->IsImageAcquired())
+            if (m_swapchain->IsImageAcquired())
             {
                 m_cmd_list_present->RenderPassEnd();
-                m_cmd_list_present->InsertBarrier(swapchain->GetRhiRt(), swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
+                m_cmd_list_present->InsertBarrier(m_swapchain->GetRhiRt(), m_swapchain->GetFormat(), 0, 1, 1, RHI_Image_Layout::Present_Source);
 
                 m_cmd_list_present->Submit(
-                    swapchain->GetImageAcquiredSemaphore(),
+                    m_swapchain->GetImageAcquiredSemaphore(),
                     false,
-                    swapchain->GetRenderingCompleteSemaphore(),
-                    m_pending_compute_timeline,
-                    m_pending_compute_timeline_value);
-                swapchain->Present(m_cmd_list_present);
+                    m_swapchain->GetRenderingCompleteSemaphore(),
+                    m_cross_queue_sync.pending_compute_timeline,
+                    m_cross_queue_sync.pending_compute_timeline_value);
+                m_swapchain->Present(m_cmd_list_present);
             }
             else
             {
@@ -1052,18 +992,15 @@ namespace spartan
                     nullptr,
                     true,
                     nullptr,
-                    m_pending_compute_timeline,
-                    m_pending_compute_timeline_value);
+                    m_cross_queue_sync.pending_compute_timeline,
+                    m_cross_queue_sync.pending_compute_timeline_value);
             }
 
-            m_pending_compute_timeline       = nullptr;
-            m_pending_compute_timeline_value = 0;
+            m_cross_queue_sync.pending_compute_timeline       = nullptr;
+            m_cross_queue_sync.pending_compute_timeline_value = 0;
 
-            // capture this frame's last graphics signal so the next frame's compute batch a can
-            // wait on it, avoiding cross-frame races on resources written by batch a but read by
-            // graphics phase 3 of the previous frame (e.g. cloud_shadow, tlas, skysphere)
-            m_previous_present_timeline       = m_cmd_list_present->GetTimelineSemaphore();
-            m_previous_present_timeline_value = m_cmd_list_present->GetLastTimelineSignalValue();
+            m_cross_queue_sync.previous_present_timeline       = m_cmd_list_present->GetTimelineSemaphore();
+            m_cross_queue_sync.previous_present_timeline_value = m_cmd_list_present->GetLastTimelineSignalValue();
         }
         Profiler::TimeBlockEnd(TimeBlockType::Cpu);
     }
@@ -1075,13 +1012,13 @@ namespace spartan
 
     uint64_t Renderer::GetFrameNumber()
     {
-        return frame_num;
+        return m_frame_num;
     }
 
     void Renderer::SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
         // gbuffer (when eye_layer is specified, bind per-layer 2d views for compute passes)
-        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_albedo),   GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, false, eye_layer);
+        cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_color),    GetRenderTarget(Renderer_RenderTarget::gbuffer_color),    rhi_all_mips, 0, false, eye_layer);
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_normal),   GetRenderTarget(Renderer_RenderTarget::gbuffer_normal),   rhi_all_mips, 0, false, eye_layer);
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_material), GetRenderTarget(Renderer_RenderTarget::gbuffer_material), rhi_all_mips, 0, false, eye_layer);
         cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::gbuffer_velocity), GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity), rhi_all_mips, 0, false, eye_layer);
@@ -1109,23 +1046,7 @@ namespace spartan
         entry.instance_index     = 0;
         entry.lod_vertex_offset  = 0;
 
-        // resolve per-renderable uv overrides against the material's defaults
-        if (renderable)
-        {
-            entry.uv_tiling      = math::Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY());
-            entry.uv_offset     = math::Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY());
-            entry.uv_invert      = math::Vector2(renderable->ResolveUvInvertX(), renderable->ResolveUvInvertY());
-            entry.uv_rotation    = renderable->ResolveUvRotation();
-            entry.uv_world_space = renderable->ResolveUvWorldSpace();
-        }
-        else
-        {
-            entry.uv_tiling      = math::Vector2(1.0f, 1.0f);
-            entry.uv_offset      = math::Vector2::Zero;
-            entry.uv_invert      = math::Vector2::Zero;
-            entry.uv_rotation    = 0.0f;
-            entry.uv_world_space = 0.0f;
-        }
+        fill_uv_draw_fields_from_renderable(entry, renderable);
 
         // the draw data buffer is a single large allocation partitioned into per-frame regions;
         // each frame writes to its own region so there is no write-after-read race with the gpu
@@ -1165,7 +1086,7 @@ namespace spartan
                 properties[count].color.z               = material->GetProperty(MaterialProperty::ColorB);
                 properties[count].color.w               = material->GetProperty(MaterialProperty::ColorA);
                 properties[count].roughness             = material->GetProperty(MaterialProperty::Roughness);
-                properties[count].metallness            = material->GetProperty(MaterialProperty::Metalness);
+                properties[count].metalness             = material->GetProperty(MaterialProperty::Metalness);
                 properties[count].normal                = material->GetProperty(MaterialProperty::Normal);
                 properties[count].height                = material->GetProperty(MaterialProperty::Height);
                 properties[count].anisotropic           = material->GetProperty(MaterialProperty::Anisotropic);
@@ -1228,20 +1149,14 @@ namespace spartan
             }
         };
     
-        // cpu
-        {
-            properties.fill(Sb_Material{});
-            m_bindless_textures.fill(nullptr);
-            unique_material_ids.clear();
-            update_entities();
-        }
-    
-        // gpu
-        {
-            RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
-            buffer->ResetOffset();
-            buffer->Update(cmd_list, &properties[0], buffer->GetStride() * count);
-        }
+        properties.fill(Sb_Material{});
+        m_bindless_textures.fill(nullptr);
+        unique_material_ids.clear();
+        update_entities();
+
+        RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
+        buffer->ResetOffset();
+        buffer->Update(cmd_list, &properties[0], buffer->GetStride() * count);
     }
 
     void Renderer::UpdateLights(RHI_CommandList* cmd_list)
@@ -1441,9 +1356,8 @@ namespace spartan
         }
     }
 
-    void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)
+    void Renderer::UpdateDrawCalls_ResetCounts()
     {
-        // reset every counter so indirect passes never read stale bindless geometry
         m_draw_call_count           = 0;
         m_draw_calls_prepass_count  = 0;
         m_draw_data_count           = 0;
@@ -1451,260 +1365,232 @@ namespace spartan
         m_indirect_renderable_count = 0;
         m_cull_task_count           = 0;
         m_transparents_present      = false;
+    }
 
-        // collect draw calls
+    void Renderer::UpdateDrawCalls_CollectAndSort()
+    {
+        for (Entity* entity : World::GetEntitiesRenderables())
         {
-            for (Entity* entity : World::GetEntitiesRenderables())
-            {
-                // a worker may still be assigning the Render component, the mesh or the material, so guard every step
-                Render* renderable = entity->GetComponent<Render>();
-                if (!renderable)
-                    continue;
+            // a worker may still be assigning the Render component, the mesh or the material, so guard every step
+            Render* renderable = entity->GetComponent<Render>();
+            if (!renderable || !renderable->GetMesh())
+                continue;
 
-                if (!renderable->GetMesh())
-                    continue;
+            Material* material = renderable->GetMaterial();
+            if (!material)
+                continue;
 
-                Material* material = renderable->GetMaterial();
-                if (!material)
-                    continue;
+            if (material->IsTransparent())
+                m_transparents_present = true;
 
-                if (material->IsTransparent())
-                {
-                    m_transparents_present = true;
-                }
+            uint32_t draw_data_index = WriteDrawData(
+                entity->GetMatrix(),
+                entity->GetMatrixPrevious(),
+                material->GetIndex(),
+                material->IsTransparent() ? 1 : 0,
+                renderable
+            );
 
-                uint32_t draw_data_index = WriteDrawData(
-                    entity->GetMatrix(),
-                    entity->GetMatrixPrevious(),
-                    material->GetIndex(),
-                    material->IsTransparent() ? 1 : 0,
-                    renderable
-                );
-
-                Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
-                draw_call.renderable         = renderable;
-                draw_call.distance_squared   = renderable->GetDistanceSquared();
-                draw_call.lod_index          = renderable->GetLodIndex();
-                draw_call.is_occluder        = false;
-                draw_call.camera_visible     = renderable->IsVisible();
-                draw_call.instance_index     = 0;
-                draw_call.instance_count     = renderable->GetInstanceCount();
-                draw_call.draw_data_index    = draw_data_index;
-            }
-
-            // sort: opaque before transparent, then material, then distance
-            sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-            {
-                bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
-                bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
-                if (a_transparent != b_transparent)
-                {
-                    return !a_transparent;
-                }
-
-                uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
-                uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
-                if (a_material_id != b_material_id)
-                {
-                    return a_material_id < b_material_id;
-                }
-
-                if (!a_transparent)
-                {
-                    return a.distance_squared < b.distance_squared;
-                }
-                else
-                {
-                    return a.distance_squared > b.distance_squared;
-                }
-            });
+            Renderer_DrawCall& draw_call = m_draw_calls[m_draw_call_count++];
+            draw_call.renderable         = renderable;
+            draw_call.distance_squared   = renderable->GetDistanceSquared();
+            draw_call.lod_index          = renderable->GetLodIndex();
+            draw_call.is_occluder        = false;
+            draw_call.camera_visible     = renderable->IsVisible();
+            draw_call.instance_index     = 0;
+            draw_call.instance_count     = renderable->GetInstanceCount();
+            draw_call.draw_data_index    = draw_data_index;
         }
 
-        // prepass: visible opaques, sorted by alpha test then distance
+        // opaque before transparent, then by material id, then by distance
+        sort(m_draw_calls.begin(), m_draw_calls.begin() + m_draw_call_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
         {
-            for (uint32_t i = 0; i < m_draw_call_count; ++i)
-            {
-                const Renderer_DrawCall& dc = m_draw_calls[i];
-                if (!dc.renderable->GetMaterial()->IsTransparent() && dc.camera_visible)
-                {
-                    m_draw_calls_prepass[m_draw_calls_prepass_count++] = dc;
-                }
-            }
+            const bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
+            const bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
+            if (a_transparent != b_transparent)
+                return !a_transparent;
 
-            sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
-            {
-                bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
-                bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
-                if (a_alpha != b_alpha)
-                {
-                    return !a_alpha;
-                }
-                return a.distance_squared < b.distance_squared;
-            });
+            const uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
+            const uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
+            if (a_material_id != b_material_id)
+                return a_material_id < b_material_id;
+
+            return a_transparent ? a.distance_squared > b.distance_squared : a.distance_squared < b.distance_squared;
+        });
+    }
+
+    void Renderer::UpdateDrawCalls_BuildPrepass()
+    {
+        for (uint32_t i = 0; i < m_draw_call_count; ++i)
+        {
+            const Renderer_DrawCall& dc = m_draw_calls[i];
+            if (!dc.renderable->GetMaterial()->IsTransparent() && dc.camera_visible)
+                m_draw_calls_prepass[m_draw_calls_prepass_count++] = dc;
         }
 
-        // indirect draw buffers (gpu-driven path)
-        // one input draw entry per renderable lod, one cull task per (renderable, meshlet) tuple
-        // surviving meshlets are atomically compacted by the cull shader into meshlet_instances and rendered with a single indirect draw
+        sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
         {
-            m_indirect_draw_count       = 0;
-            m_indirect_renderable_count = 0;
-            m_cull_task_count           = 0;
-            uint32_t aabb_frame_offset  = m_frame_resource_index * rhi_max_array_size;
+            const bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
+            const bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
+            if (a_alpha != b_alpha)
+                return !a_alpha;
+            return a.distance_squared < b.distance_squared;
+        });
+    }
 
-            for (uint32_t i = 0; i < m_draw_call_count; i++)
+    void Renderer::UpdateDrawCalls_BuildIndirectAndCullTasks()
+    {
+        // one draw entry per renderable lod, one cull task per (renderable, meshlet) tuple
+        // survivors are compacted by the cull shader into meshlet_instances and drawn via one indirect draw
+        m_indirect_draw_count       = 0;
+        m_indirect_renderable_count = 0;
+        m_cull_task_count           = 0;
+        const uint32_t aabb_frame_offset = m_frame_resource_index * rhi_max_array_size;
+
+        for (uint32_t i = 0; i < m_draw_call_count; i++)
+        {
+            const Renderer_DrawCall& dc = m_draw_calls[i];
+            Render* renderable          = dc.renderable;
+            Material* material          = renderable->GetMaterial();
+
+            if (!material || material->IsTransparent())
+                continue;
+            if (!dc.camera_visible)
+                continue;
+            if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
+                continue;
+
+            const uint32_t lod_index_count = renderable->GetIndexCount(dc.lod_index);
+            if (lod_index_count == 0)
+                continue;
+
+            const uint32_t lod_meshlet_count = renderable->GetMeshletCount(dc.lod_index);
+            if (lod_meshlet_count == 0)
+                continue;
+
+            const bool is_instanced = dc.instance_count > 1;
+            const uint32_t inst_n   = is_instanced ? dc.instance_count : 1;
+
+            // hw-instancing fallback when per-instance fanout overflows the cull-task budget, cull shader emits n MeshletInstances per task
+            const uint32_t per_instance_tasks_add = lod_meshlet_count * inst_n;
+            const uint32_t hw_instanced_tasks_add = lod_meshlet_count;
+            const bool use_hw_instancing          = is_instanced && (m_cull_task_count + per_instance_tasks_add > renderer_max_cull_tasks);
+            const uint32_t actual_tasks_add       = use_hw_instancing ? hw_instanced_tasks_add : per_instance_tasks_add;
+
+            if (m_indirect_draw_count + 1 > renderer_max_indirect_draws)
+                continue;
+            if (m_cull_task_count + actual_tasks_add > renderer_max_cull_tasks)
+                continue;
+
+            const uint32_t renderable_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_renderable_count;
+            const uint32_t base_first_index     = renderable->GetIndexOffset(dc.lod_index);
+            const uint32_t vertex_offset        = renderable->GetVertexOffset(dc.lod_index);
+            const uint32_t base_meshlet_index   = renderable->GetGlobalMeshletOffset() + renderable->GetMeshletOffset(dc.lod_index);
+
+            Entity* entity = renderable->GetEntity();
+            Mesh* mesh     = renderable->GetMesh();
+
+            // flags bit 0 skinned, bit 1 per instance, bit 2 hw instancing, bit 3 two sided material
+            const bool is_skinned       = mesh->IsSkinned() && !cvar_meshlet_cull_skinned.GetValueAs<bool>();
+            const bool use_per_instance = is_instanced && !use_hw_instancing;
+            const bool is_two_sided     = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
+            uint32_t base_flags         = 0u;
+            if (is_skinned)        base_flags |= 1u;
+            if (use_per_instance)  base_flags |= 2u;
+            if (use_hw_instancing) base_flags |= 4u;
+            if (is_two_sided)      base_flags |= 8u;
+
+            const uint32_t draw_idx = m_indirect_draw_count++;
+            Sb_DrawData& data       = m_indirect_draw_data[draw_idx];
+            data.transform          = entity->GetMatrix();
+            data.transform_previous = entity->GetMatrixPrevious();
+            data.material_index     = material->GetIndex();
+            data.is_transparent     = 0;
+            data.aabb_index         = renderable_aabb_slot;
+            data.lod_first_index    = base_first_index;
+            data.flags              = base_flags;
+            data.instance_offset    = renderable->GetGlobalInstanceOffset();
+            data.instance_index     = 0;
+            data.lod_vertex_offset  = vertex_offset;
+            fill_uv_draw_fields_from_renderable(data, renderable);
+
+            // one cull task per meshlet, fan out per-instance tasks unless hw-instancing fell back
+            const uint32_t instances_per_task = use_hw_instancing ? inst_n : 1u;
+            const uint32_t task_instance_iter = use_hw_instancing ? 1u    : inst_n;
+
+            for (uint32_t m = 0; m < lod_meshlet_count; m++)
             {
-                const Renderer_DrawCall& dc = m_draw_calls[i];
-                Render* renderable          = dc.renderable;
-                Material* material          = renderable->GetMaterial();
-
-                if (!material || material->IsTransparent())
-                    continue;
-                if (!dc.camera_visible)
-                    continue;
-                if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
-                    continue;
-
-                uint32_t lod_index_count = renderable->GetIndexCount(dc.lod_index);
-                if (lod_index_count == 0)
-                    continue;
-
-                uint32_t lod_meshlet_count = renderable->GetMeshletCount(dc.lod_index);
-                if (lod_meshlet_count == 0)
-                    continue;
-
-                bool is_instanced  = dc.instance_count > 1;
-                uint32_t inst_n    = is_instanced ? dc.instance_count : 1;
-
-                // hw-instancing fallback when per-instance fanout would overflow the cull-task budget
-                // the cull task carries instance_count and the cull shader emits N MeshletInstances on survival
-                uint32_t per_instance_tasks_add = lod_meshlet_count * inst_n;
-                uint32_t hw_instanced_tasks_add = lod_meshlet_count;
-                bool use_hw_instancing          = is_instanced && (m_cull_task_count + per_instance_tasks_add > renderer_max_cull_tasks);
-                uint32_t actual_tasks_add       = use_hw_instancing ? hw_instanced_tasks_add : per_instance_tasks_add;
-
-                if (m_indirect_draw_count + 1 > renderer_max_indirect_draws)
-                    continue;
-                if (m_cull_task_count + actual_tasks_add > renderer_max_cull_tasks)
-                    continue;
-
-                uint32_t renderable_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_renderable_count;
-                uint32_t base_first_index     = renderable->GetIndexOffset(dc.lod_index);
-                uint32_t vertex_offset        = renderable->GetVertexOffset(dc.lod_index);
-                uint32_t base_meshlet_index   = renderable->GetGlobalMeshletOffset() + renderable->GetMeshletOffset(dc.lod_index);
-
-                Entity* entity = renderable->GetEntity();
-                Mesh* mesh     = renderable->GetMesh();
-
-                // flags bit 0 skinned (cull falls back to per-renderable aabb, triangle pass skips backface), bit 1 per-instance (cone+sphere fan out via task.instance_index), bit 2 hw instancing (single task fans into N writes, cull falls back to per-renderable aabb), bit 3 two-sided material (triangle pass skips backface)
-                bool is_skinned        = mesh->IsSkinned() && cvar_meshlet_cull_skinned.GetValueAs<bool>() == false;
-                bool use_per_instance  = is_instanced && !use_hw_instancing;
-                bool is_two_sided      = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
-                uint32_t base_flags    = 0u;
-                if (is_skinned)        base_flags |= 1u;
-                if (use_per_instance)  base_flags |= 2u;
-                if (use_hw_instancing) base_flags |= 4u;
-                if (is_two_sided)      base_flags |= 8u;
-
-                uint32_t draw_idx       = m_indirect_draw_count++;
-                Sb_DrawData& data       = m_indirect_draw_data[draw_idx];
-                data.transform          = entity->GetMatrix();
-                data.transform_previous = entity->GetMatrixPrevious();
-                data.material_index     = material->GetIndex();
-                data.is_transparent     = 0;
-                data.aabb_index         = renderable_aabb_slot;
-                data.lod_first_index    = base_first_index;
-                data.flags              = base_flags;
-                data.instance_offset    = renderable->GetGlobalInstanceOffset();
-                data.instance_index     = 0;
-                data.lod_vertex_offset  = vertex_offset;
-                // per-renderable uv state, resolved from override or material default
-                data.uv_tiling          = math::Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY());
-                data.uv_offset          = math::Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY());
-                data.uv_invert          = math::Vector2(renderable->ResolveUvInvertX(), renderable->ResolveUvInvertY());
-                data.uv_rotation        = renderable->ResolveUvRotation();
-                data.uv_world_space     = renderable->ResolveUvWorldSpace();
-
-                // emit one cull task per meshlet, fanning out per-instance tasks unless we fell back to hw-instancing
-                uint32_t instances_per_task = use_hw_instancing ? inst_n : 1u;
-                uint32_t task_instance_iter = use_hw_instancing ? 1u    : inst_n;
-
-                for (uint32_t m = 0; m < lod_meshlet_count; m++)
+                const uint32_t global_meshlet = base_meshlet_index + m;
+                for (uint32_t inst = 0; inst < task_instance_iter; inst++)
                 {
-                    uint32_t global_meshlet = base_meshlet_index + m;
-                    for (uint32_t inst = 0; inst < task_instance_iter; inst++)
-                    {
-                        Sb_CullTask& task   = m_cull_tasks[m_cull_task_count++];
-                        task.draw_index     = draw_idx;
-                        task.meshlet_index  = global_meshlet;
-                        task.instance_index = inst;
-                        task.instance_count = instances_per_task;
-                    }
+                    Sb_CullTask& task   = m_cull_tasks[m_cull_task_count++];
+                    task.draw_index     = draw_idx;
+                    task.meshlet_index  = global_meshlet;
+                    task.instance_index = inst;
+                    task.instance_count = instances_per_task;
                 }
-
-                m_indirect_renderable_count++;
             }
+
+            m_indirect_renderable_count++;
+        }
+    }
+
+    void Renderer::UpdateDrawCalls_SelectOccluders()
+    {
+        // top n by screen area with temporal hysteresis, the prior occluder set gets a 1.5x area bonus
+        static unordered_set<Render*> previous_occluders;
+
+        auto compute_screen_space_area = [](const BoundingBox& aabb_world) -> float
+        {
+            if (Camera* camera = World::GetCamera())
+            {
+                math::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
+                return clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
+            }
+            return 0.0f;
+        };
+
+        struct DrawCallArea { uint32_t index; float area; };
+        static vector<DrawCallArea> areas;
+        areas.clear();
+        areas.reserve(m_draw_calls_prepass_count);
+
+        for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
+        {
+            Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
+            Render* renderable           = draw_call.renderable;
+            Material* material           = renderable->GetMaterial();
+
+            if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
+                continue;
+
+            float screen_area = compute_screen_space_area(renderable->GetBoundingBox());
+            if (previous_occluders.find(renderable) != previous_occluders.end())
+                screen_area *= 1.5f;
+
+            areas.push_back({ i, screen_area });
         }
 
-        // select occluders (top N by screen area, with temporal hysteresis)
+        sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b) { return a.area > b.area; });
+
+        const uint32_t max_occluders  = 64;
+        const uint32_t occluder_count = min(max_occluders, static_cast<uint32_t>(areas.size()));
+
+        previous_occluders.clear();
+        for (uint32_t i = 0; i < occluder_count; i++)
         {
-            static unordered_set<Render*> previous_occluders;
-
-            auto compute_screen_space_area = [&](const BoundingBox& aabb_world) -> float
-            {
-                float area = 0.0f;
-                if (Camera* camera = World::GetCamera())
-                {
-                    math::Rectangle rect_screen = camera->WorldToScreenCoordinates(aabb_world);
-                    area = clamp(rect_screen.width * rect_screen.height, 0.0f, numeric_limits<float>::max());
-                }
-                return area;
-            };
-
-            struct DrawCallArea
-            {
-                uint32_t index;
-                float area;
-            };
-            static vector<DrawCallArea> areas;
-            areas.clear();
-            areas.reserve(m_draw_calls_prepass_count);
-
-            for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
-            {
-                Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-                Render* renderable = draw_call.renderable;
-                Material* material = renderable->GetMaterial();
-
-                if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
-                    continue;
-
-                float screen_area = compute_screen_space_area(renderable->GetBoundingBox());
-
-                // temporal hysteresis: bonus for previous occluders
-                if (previous_occluders.find(renderable) != previous_occluders.end())
-                {
-                    screen_area *= 1.5f;
-                }
-
-                areas.push_back({ i, screen_area });
-            }
-
-            sort(areas.begin(), areas.end(), [](const DrawCallArea& a, const DrawCallArea& b)
-            {
-                return a.area > b.area;
-            });
-
-            const uint32_t max_occluders = 64;
-            uint32_t occluder_count = min(max_occluders, static_cast<uint32_t>(areas.size()));
-
-            previous_occluders.clear();
-            for (uint32_t i = 0; i < occluder_count; i++)
-            {
-                m_draw_calls_prepass[areas[i].index].is_occluder = true;
-                previous_occluders.insert(m_draw_calls_prepass[areas[i].index].renderable);
-            }
+            m_draw_calls_prepass[areas[i].index].is_occluder = true;
+            previous_occluders.insert(m_draw_calls_prepass[areas[i].index].renderable);
         }
+    }
+
+    void Renderer::UpdateDrawCalls(RHI_CommandList* cmd_list)
+    {
+        UpdateDrawCalls_ResetCounts();
+        UpdateDrawCalls_CollectAndSort();
+        UpdateDrawCalls_BuildPrepass();
+        UpdateDrawCalls_BuildIndirectAndCullTasks();
+        UpdateDrawCalls_SelectOccluders();
     }
 
     void Renderer::UpdateAccelerationStructures(RHI_CommandList* cmd_list)
@@ -1840,12 +1726,7 @@ namespace spartan
                 Sb_GeometryInfo geo_info = {};
                 geo_info.vertex_offset  = renderable->GetVertexOffset(0);
                 geo_info.index_offset   = renderable->GetIndexOffset(0);
-                // per-renderable uv state, same resolution as the raster path so rt and raster agree
-                geo_info.uv_tiling      = math::Vector2(renderable->ResolveUvTilingX(), renderable->ResolveUvTilingY());
-                geo_info.uv_offset      = math::Vector2(renderable->ResolveUvOffsetX(), renderable->ResolveUvOffsetY());
-                geo_info.uv_invert      = math::Vector2(renderable->ResolveUvInvertX(), renderable->ResolveUvInvertY());
-                geo_info.uv_rotation    = renderable->ResolveUvRotation();
-                geo_info.uv_world_space = renderable->ResolveUvWorldSpace();
+                fill_uv_draw_fields_from_renderable(geo_info, renderable);
                 geometry_infos.push_back(geo_info);
             }
     
@@ -1870,6 +1751,40 @@ namespace spartan
 
             cmd_list->EndMarker();
         }
+    }
+
+    RHI_AccelerationStructure* Renderer::GetTopLevelAccelerationStructure()
+    {
+        return m_tlas.get();
+    }
+
+    void Renderer::DestroyAccelerationStructures()
+    {
+        RHI_Device::QueueWaitAll();
+
+        m_tlas = nullptr;
+
+        // invalidate every blas, they hold device addresses into the previous global vertex/index buffers,
+        // those buffers are about to be freed via DeletionQueueParse so leaving stale blas in place would have
+        // future trace rays read freed gpu memory, dedup by mesh because many renderables share one mesh,
+        // e.g. terrain has one mesh with hundreds of sub-meshes and matching renderables
+        std::unordered_set<Mesh*> meshes;
+        for (Entity* entity : World::GetEntitiesRenderables())
+        {
+            if (Render* renderable = entity->GetComponent<Render>())
+            {
+                if (Mesh* mesh = renderable->GetMesh())
+                {
+                    meshes.insert(mesh);
+                }
+            }
+        }
+        for (Mesh* mesh : meshes)
+        {
+            mesh->InvalidateAllBlas();
+        }
+
+        SP_LOG_INFO("Acceleration structures destroyed for world change");
     }
 
     void Renderer::UpdateShadowAtlas()
@@ -2035,11 +1950,6 @@ namespace spartan
         screenshot_internal(file_path);
     }
 
-    RHI_AccelerationStructure* Renderer::GetTopLevelAccelerationStructure()
-    {
-        return m_tlas.get();
-    }
-
     uint32_t Renderer::GetClusterOverflowCount()
     {
         // best effort readback, the buffer is host visible so we read the previous frame's accumulated value
@@ -2054,34 +1964,5 @@ namespace spartan
             }
         }
         return 0;
-    }
-
-    void Renderer::DestroyAccelerationStructures()
-    {
-        RHI_Device::QueueWaitAll();
-
-        m_tlas = nullptr;
-
-        // invalidate every blas, they hold device addresses into the previous global vertex/index buffers,
-        // those buffers are about to be freed via DeletionQueueParse so leaving stale blas in place would have
-        // future trace rays read freed gpu memory, dedup by mesh because many renderables share one mesh,
-        // e.g. terrain has one mesh with hundreds of sub-meshes and matching renderables
-        std::unordered_set<Mesh*> meshes;
-        for (Entity* entity : World::GetEntitiesRenderables())
-        {
-            if (Render* renderable = entity->GetComponent<Render>())
-            {
-                if (Mesh* mesh = renderable->GetMesh())
-                {
-                    meshes.insert(mesh);
-                }
-            }
-        }
-        for (Mesh* mesh : meshes)
-        {
-            mesh->InvalidateAllBlas();
-        }
-
-        SP_LOG_INFO("Acceleration structures destroyed for world change");
     }
 }

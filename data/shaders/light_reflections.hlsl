@@ -241,7 +241,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     // hit, lookup material and build view direction at the hit
     MaterialParameters mat = material_parameters[material_index];
-    float  metallic        = mat.metallness;
+    float  metallic        = mat.metalness;
     float3 F0              = lerp(0.04f, albedo, metallic);
     
     // proper view direction at the hit, the reflection ray came from the source pixel so the

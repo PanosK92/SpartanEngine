@@ -82,7 +82,7 @@ namespace spartan
         {
             uint64_t hash = 0;
 
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.primitive_toplogy));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.primitive_topology));
 
             if (pso.render_target_swapchain)
             {

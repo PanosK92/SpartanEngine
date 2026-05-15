@@ -181,7 +181,7 @@ struct MaterialParameters
     SHARED_FLOAT4 color SHARED_DEFAULT(spartan::math::Vector4::Zero);
 
     SHARED_FLOAT roughness  SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT metallness SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT metalness SHARED_DEFAULT(0.0f);
     SHARED_FLOAT normal     SHARED_DEFAULT(0.0f);
     SHARED_FLOAT height     SHARED_DEFAULT(0.0f);
 

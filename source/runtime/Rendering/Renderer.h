@@ -196,6 +196,13 @@ namespace spartan
         static void ClearMaterialTextureReferences();
     private:
         static void UpdateFrameConstantBuffer(RHI_CommandList* cmd_list);
+        static void UpdateFrameCb_CameraAndProjectionHistory();
+        static void UpdateFrameCb_ProjectionJitter();
+        static void UpdateFrameCb_ViewProjectionAndCameraFields();
+        static void UpdateFrameCb_ScalarFields();
+        static void UpdateFrameCb_ClusterLighting();
+        static void UpdateFrameCb_FeatureBits();
+        static void UpdateFrameCb_StereoXr();
         static bool SetResolution(math::Vector2& current, uint32_t width, uint32_t height, bool recreate_resources,
                                   bool create_render, bool create_output, const char* label);
 
@@ -215,20 +222,32 @@ namespace spartan
 
         // passes - core
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute);
+        static bool UpdateSkysphereConvergenceState();
+        static void Pass_ComputeBatchA(RHI_CommandList* cmd_list, bool update_skysphere, bool clouds_visible, Light* directional_light);
+        static void Pass_GraphicsPhase1_Geometry(RHI_CommandList* cmd_list);
+        static void Pass_ComputeBatchB(RHI_CommandList* cmd_list);
+        static void Pass_GraphicsPhase2_ShadowsAndRT(RHI_CommandList* cmd_list);
+        static void ProduceFrame_PerEye(RHI_CommandList* cmd_list, uint32_t eye, uint32_t eye_layer);
         static void Pass_VariableRateShading(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list);
         static void Pass_HiZ(RHI_CommandList* cmd_list);
         static void Pass_IndirectCull(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+        static void Pass_GBuffer_Indirect(RHI_CommandList* cmd_list);
+        static void Pass_GBuffer_TessellatedAndTransparent(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_MeshletVisualize(RHI_CommandList* cmd_list);
         static void Pass_ScreenSpaceAmbientOcclusion(RHI_CommandList* cmd_list);
         static void Pass_TransparencyReflectionRefraction(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
         static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
+        static void Pass_ReSTIR_TraceInitial(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* tex_skysphere, RHI_Texture* const* reservoirs, uint32_t width, uint32_t height);
+        static void Pass_ReSTIR_Temporal(RHI_CommandList* cmd_list, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_prev, uint32_t dispatch_x, uint32_t dispatch_y);
+        static bool Pass_ReSTIR_SpatialPair(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_spatial, uint32_t dispatch_x, uint32_t dispatch_y);
+        static void Pass_ReSTIR_SwapReservoirs();
         static void Pass_ReSTIR_Denoising(RHI_CommandList* cmd_list);
-        static void Pass_Light_Reflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Composite_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);
         static void Pass_Skysphere(RHI_CommandList* cmd_list);
         // passes - lighting
@@ -236,7 +255,7 @@ namespace spartan
         static void Pass_LightClusterVisualize(RHI_CommandList* cmd_list);
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, const bool is_transparent_pass, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
+        static void Pass_Light_Ibl(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
         static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
         // passes - particles
@@ -254,24 +273,30 @@ namespace spartan
         static void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         // passes - post-process
         static void Pass_PostProcess(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
-        static void Pass_Output(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        static void Pass_PostProcess_Color(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out, uint32_t eye_layer);
+        static void Pass_PostProcess_EditorOverlays(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        static void Pass_Tonemap(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_AA_Upscale(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         template<typename F = std::nullptr_t>
         static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum,
-                                 RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
+                                 RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr,
+                                 bool bind_common_textures = false, RHI_Texture* tex_in2 = nullptr,
+                                 float dispatch_resolution_scale = 1.0f);
         // passes - utility
         static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);
         static void Pass_Blur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool bilateral, const float radius, const uint32_t mip = rhi_all_mips);
+        // restir denoising fallback, history clear plus blit raw to denoised, used when restir is off, debug mode is on, or shaders missing
+        static void Pass_BlitRestirFallback(RHI_CommandList* cmd_list, RHI_Texture* tex_raw, RHI_Texture* tex_denoised, RHI_Texture* tex_history, bool clear_history_to_black);
 
         // event handlers
         static void OnFullScreenToggled();
 
         // bindless
         static void UpdateMaterials(RHI_CommandList* cmd_list);
-        static void UpdateLights(RHI_CommandList* cmd_lis);
+        static void UpdateLights(RHI_CommandList* cmd_list);
         static void UpdateBoundingBoxes(RHI_CommandList* cmd_list);
 
         // misc
@@ -280,7 +305,19 @@ namespace spartan
         static void SetCommonTextures(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void DestroyResources();
         static void UpdateShadowAtlas();
+
+        // tick helpers
+        static void TickRecreateOptionalRenderTargetsIfNeeded();
+        static void TickUpdateHiZSuppressionState();
+        static void TickUploadBindlessDependencies(RHI_CommandList* cmd_list);
+        static void TickAdvanceFrameConstantBufferRing();
+        static void TickLogClusterOverflowRateLimited();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);
+        static void UpdateDrawCalls_ResetCounts();
+        static void UpdateDrawCalls_CollectAndSort();
+        static void UpdateDrawCalls_BuildPrepass();
+        static void UpdateDrawCalls_BuildIndirectAndCullTasks();
+        static void UpdateDrawCalls_SelectOccluders();
         static void UpdateAccelerationStructures(RHI_CommandList* cmd_list);
         static void RotateFrameBuffers();
 
@@ -362,22 +399,40 @@ namespace spartan
         static std::vector<RHI_Vertex_PosCol> m_lines_vertices;
         static std::vector<PersistentLine> m_persistent_lines;
         static std::vector<std::tuple<RHI_Texture*, math::Vector3>> m_icons;
-        static uint32_t m_resource_index;
+        static uint32_t m_frame_cb_ring_slot;
         static std::atomic<bool> m_initialized_resources;
         static bool m_transparents_present;
         static bool m_is_hiz_suppressed;
         static bool m_taau_reset_history;
         static RHI_CommandList* m_cmd_list_present;
         static RHI_CommandList* m_cmd_list_compute;
-        // cross-queue sync: phase 3 present submit waits on async compute batch B
-        static RHI_SyncPrimitive* m_pending_compute_timeline;
-        static uint64_t m_pending_compute_timeline_value;
-        // cross-frame sync: compute batch a waits on the previous frame's last graphics submit
-        // so that batch a does not write resources still being read by phase 3 of the prior frame
-        static RHI_SyncPrimitive* m_previous_present_timeline;
-        static uint64_t m_previous_present_timeline_value;
+
+        // cross-queue and cross-frame timeline sync, see CrossQueueSync member fields for the contract
+        struct CrossQueueSync
+        {
+            // phase 3 present submit waits on async compute batch b before recording lighting work
+            RHI_SyncPrimitive* pending_compute_timeline       = nullptr;
+            uint64_t           pending_compute_timeline_value = 0;
+            // compute batch a waits on the previous frame's last graphics submit so it does not
+            // overwrite resources still in flight (e.g. cloud_shadow, tlas, skysphere)
+            RHI_SyncPrimitive* previous_present_timeline       = nullptr;
+            uint64_t           previous_present_timeline_value = 0;
+        };
+        static CrossQueueSync m_cross_queue_sync;
+
         static std::vector<ShadowSlice> m_shadow_slices;
         static uint32_t m_count_active_lights;
         static uint32_t m_volumetric_light_count;
+
+        // top-level acceleration structure built once per frame from all bindless mesh instances
+        static std::unique_ptr<RHI_AccelerationStructure> m_tlas;
+
+        // session statics (resolution, viewport, swapchain, frame counter, taa jitter)
+        static math::Vector2                 m_resolution_render;
+        static math::Vector2                 m_resolution_output;
+        static RHI_Viewport                  m_viewport;
+        static std::shared_ptr<RHI_SwapChain> m_swapchain;
+        static uint64_t                      m_frame_num;
+        static math::Vector2                 m_jitter_offset;
     };
 }

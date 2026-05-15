@@ -27,14 +27,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
-    const uint32_t renderer_resource_frame_lifetime    = 100;
-    const uint32_t renderer_max_draw_calls            = 20000;
-    const uint32_t renderer_max_instance_count        = 1024;
-    const uint32_t renderer_draw_data_buffer_count    = 4; // matches the command list pool size to avoid cpu-gpu memcpy races
-    const uint32_t renderer_max_indirect_draws        = 131072;  // capacity for per-renderable lod draw data, the cull shader clamps writes to this
-    const uint32_t renderer_max_cull_tasks            = 524288;  // capacity for per-(renderable, meshlet) cull tasks, drives the meshlet cull dispatch size
-    const uint32_t renderer_max_meshlet_instances     = 1048576; // capacity for the meshlet cull survivor list, hw-instancing fans out into this so it can exceed renderer_max_cull_tasks
-    const uint32_t renderer_max_visible_triangles     = 8388608; // capacity for the triangle cull survivor list, sized as a worst-case practical cap not as max_meshlet_instances * 124
+    const uint32_t renderer_max_draw_calls         = 20000;
+    const uint32_t renderer_max_instance_count     = 1024;
+    const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
+    const uint32_t renderer_max_indirect_draws     = 131072;  // per-renderable lod draw data, cull shader clamps writes
+    const uint32_t renderer_max_cull_tasks         = 524288;  // per (renderable, meshlet) cull tasks, drives meshlet cull dispatch size
+    const uint32_t renderer_max_meshlet_instances  = 1048576; // meshlet cull survivor list, hw instancing fans out so can exceed renderer_max_cull_tasks
+    const uint32_t renderer_max_visible_triangles  = 8388608; // triangle cull survivor list, worst case practical cap
+
+    // render target dimensions, fixed allocations sized for current quality budgets
+    const uint32_t renderer_resolution_shadow_atlas = 8192; // total shadow atlas, packed by row of square slices
+    const uint32_t renderer_resolution_blur_scratch = 4096; // ping pong target reused by every blur pass
+    const uint32_t renderer_resolution_skysphere_w  = 4096; // skysphere panorama width
+    const uint32_t renderer_resolution_skysphere_h  = 2048; // skysphere panorama height
+    const uint32_t renderer_resolution_brdf_lut     = 512;  // pre integrated brdf lookup table
+    const uint32_t renderer_resolution_restir_min   = 64;   // minimum restir output dimension regardless of scale
 
     enum class Renderer_Tonemapping : uint32_t
     {
@@ -49,7 +56,7 @@ namespace spartan
     enum class Renderer_AntiAliasing_Upsampling : uint32_t
     {
         AA_Off_Upscale_Linear,
-        AA_Fxaa_Upcale_Linear,
+        AA_Fxaa_Upscale_Linear,
         AA_Taau_Upscale_Taau,
         AA_Xess_Upscale_Xess
     };
@@ -62,7 +69,7 @@ namespace spartan
     enum class Renderer_BindingsSrv
     {
         // g-buffer
-        gbuffer_albedo   = 0,
+        gbuffer_color    = 0,
         gbuffer_normal   = 1,
         gbuffer_material = 2,
         gbuffer_velocity = 3,
@@ -138,7 +145,6 @@ namespace spartan
         triangle_dispatch_args = 35,
         // gpu-driven particles
         particle_buffer_a      = 36,
-        particle_buffer_b      = 37,
         particle_counter       = 38,
         particle_emitter       = 39,
         // gpu texture compression
@@ -164,7 +170,6 @@ namespace spartan
         gbuffer_v,
         gbuffer_p,
         depth_prepass_v,
-        depth_prepass_alpha_test_p,
         depth_prepass_indirect_alpha_test_p,
         depth_light_v,
         depth_light_alpha_color_p,
@@ -203,7 +208,7 @@ namespace spartan
         skysphere_transmittance_lut_c,
         skysphere_multiscatter_lut_c,
         blur_gaussian_c,
-        blur_gaussian_bilaterial_c,
+        blur_gaussian_bilateral_c,
         variable_rate_shading_c,
         ffx_cas_c,
         ffx_spd_average_c,
@@ -366,7 +371,6 @@ namespace spartan
         VolumetricLightIndices,    // compact list of volumetric light indices, built on cpu each frame
         // gpu-driven particles
         ParticleBufferA,
-        ParticleBufferB,
         ParticleCounter,
         ParticleEmitter,
         Max

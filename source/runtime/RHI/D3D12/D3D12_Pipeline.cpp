@@ -243,7 +243,7 @@ namespace spartan
         desc.BlendState            = desc_blend_state;
         desc.DepthStencilState     = desc_depth_stencil_state;
         desc.SampleMask            = UINT_MAX;
-        desc.PrimitiveTopologyType = (state.primitive_toplogy == RHI_PrimitiveTopology::LineList) ? D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE : D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+        desc.PrimitiveTopologyType = (state.primitive_topology == RHI_PrimitiveTopology::LineList) ? D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE : D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
         desc.SampleDesc.Count      = 1;
 
         if (state.shaders[RHI_Shader_Type::Vertex])
