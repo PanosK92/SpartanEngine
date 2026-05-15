@@ -502,6 +502,12 @@ void RenderOptions::OnTickVisible()
                         ConsoleRegistry::Get().SetValueFromString("r.meshlet_visualize", to_string(static_cast<float>(new_meshlet)));
                         ConsoleRegistry::Get().SetValueFromString("r.cluster_visualize", to_string(static_cast<float>(new_cluster)));
                     }
+
+                    // cluster overflow telemetry, surfaces the gpu side overflow counter so the user can spot bad worlds
+                    {
+                        uint32_t overflow = Renderer::GetClusterOverflowCount();
+                        ImGui::TextUnformatted(("Cluster overflow: " + to_string(overflow) + " clusters/frame").c_str());
+                    }
                 }
 
                 ImGui::EndTable();

@@ -152,6 +152,9 @@ namespace spartan
         // clustered lighting, grid is uint2 (first_index, count), indices is a flat uint list
         cluster_light_grid     = 45,
         cluster_light_indices  = 46,
+        // cluster stats and compacted volumetric light index list
+        cluster_stats          = 47,
+        volumetric_light_indices = 48,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -359,6 +362,8 @@ namespace spartan
         // clustered lighting
         ClusterLightGrid,          // one uint2 per cluster: (first_index, count) into ClusterLightIndices
         ClusterLightIndices,       // flat list of light indices, sliced by cluster in chunks of CLUSTER_MAX_LIGHTS
+        ClusterStats,              // tiny stats buffer for the cluster assign pass (overflow counter)
+        VolumetricLightIndices,    // compact list of volumetric light indices, built on cpu each frame
         // gpu-driven particles
         ParticleBufferA,
         ParticleBufferB,

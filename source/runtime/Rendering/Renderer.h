@@ -88,6 +88,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_meshlet_cull_skinned;
     extern TConsoleVar<float> cvar_meshlet_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize;
+    extern TConsoleVar<float> cvar_cluster_visualize_cap;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
     extern TConsoleVar<float> cvar_cloud_coverage;
     extern TConsoleVar<float> cvar_cloud_shadows;
@@ -186,6 +187,9 @@ namespace spartan
         static RHI_Texture* GetStandardTexture(const Renderer_StandardTexture type);
         static RHI_AccelerationStructure* GetTopLevelAccelerationStructure();
         static void DestroyAccelerationStructures();
+
+        // cluster shading telemetry, last frame's count of clusters that exceeded CLUSTER_MAX_LIGHTS
+        static uint32_t GetClusterOverflowCount();
         static std::shared_ptr<Mesh>& GetStandardMesh(const MeshType type);
         static std::shared_ptr<Font>& GetFont();
         static std::shared_ptr<Material>& GetStandardMaterial();
@@ -374,5 +378,6 @@ namespace spartan
         static uint64_t m_previous_present_timeline_value;
         static std::vector<ShadowSlice> m_shadow_slices;
         static uint32_t m_count_active_lights;
+        static uint32_t m_volumetric_light_count;
     };
 }

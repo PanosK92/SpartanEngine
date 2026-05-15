@@ -160,6 +160,8 @@ namespace spartan
 
         // clustered lighting buffers, written by the cluster assign pass and read by the light pass
         // grid stores (first_index, count) per cluster, indices is fixed-slot with first_index = cluster_id * CLUSTER_MAX_LIGHTS
+        // single grid is shared across both eyes in vr stereo, built in the left eye's view-projection space which
+        // contains the right eye's view to within the inter pupillary distance, far less than one cluster tile width
         at(buffers, Renderer_Buffer::ClusterLightGrid) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t) * 2),
             CLUSTER_COUNT_TOTAL, nullptr, false, "cluster_light_grid"
@@ -167,6 +169,21 @@ namespace spartan
         at(buffers, Renderer_Buffer::ClusterLightIndices) = make_shared<RHI_Buffer>(
             RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
             CLUSTER_COUNT_TOTAL * CLUSTER_MAX_LIGHTS, nullptr, false, "cluster_light_indices"
+        );
+
+        // tiny stats buffer for the cluster assign pass, currently holds a single overflow counter
+        // bumped atomically when a cluster exceeds CLUSTER_MAX_LIGHTS, cleared each frame on the cpu
+        // host visible so the cpu can read the previous frame's value for editor telemetry without a fence stall
+        at(buffers, Renderer_Buffer::ClusterStats) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            1, nullptr, true, "cluster_stats"
+        );
+
+        // volumetric light index list, compact list of light slot indices with the volumetric flag set
+        // built each frame on the cpu in UpdateLights, scanned per pixel by the volumetric fog loop
+        at(buffers, Renderer_Buffer::VolumetricLightIndices) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            rhi_max_array_size, nullptr, true, "volumetric_light_indices"
         );
 
         // particle buffers

@@ -48,7 +48,9 @@ bool light_intersects_cluster(LightParameters light, float3 aabb_min, float3 aab
         float sin_half = sin(angle);
 
         float3 apex_view = world_to_view(light.position, true);
-        float3 dir_view  = normalize(world_to_view(normalize(light.direction), false));
+        // light.direction is already unit length on the cpu side, only normalize after the view transform
+        // in case the view matrix carries non uniform scale, this avoids a redundant normalize per light
+        float3 dir_view  = normalize(world_to_view(light.direction, false));
 
         return cone_intersects_aabb(apex_view, dir_view, light.range, cos_half, sin_half, aabb_min, aabb_max);
     }
@@ -78,8 +80,8 @@ void main_cs(uint3 cluster_id : SV_GroupID, uint thread_index : SV_GroupIndex)
     }
     GroupMemoryBarrierWithGroupSync();
 
-    uint flat_id      = cluster_flat(cluster_id);
-    uint light_count  = buffer_frame.cluster_light_count;
+    uint flat_id     = cluster_flat(cluster_id);
+    uint light_count = buffer_frame.cluster_light_count;
 
     // skip slot 0, that is the directional sun which is always evaluated outside the grid
     for (uint i = thread_index + 1u; i < light_count; i += THREADS_PER_GROUP)
@@ -107,9 +109,53 @@ void main_cs(uint3 cluster_id : SV_GroupID, uint thread_index : SV_GroupIndex)
     }
     GroupMemoryBarrierWithGroupSync();
 
+    uint raw_count   = gs_count;
+    uint final_count = min(raw_count, (uint)CLUSTER_MAX_LIGHTS);
+
+    // stable contents: bitonic-sort the surviving indices ascending so the set is deterministic
+    // across frames regardless of warp scheduling, only sorts the actually populated lanes
+    if (final_count > 1u)
+    {
+        // pad the upper lanes with a sentinel so the sort leaves them alone, sort across the full lds array
+        for (uint pad = final_count + thread_index; pad < (uint)CLUSTER_MAX_LIGHTS; pad += THREADS_PER_GROUP)
+        {
+            gs_indices[pad] = 0xFFFFFFFFu;
+        }
+        GroupMemoryBarrierWithGroupSync();
+
+        for (uint k = 2u; k <= (uint)CLUSTER_MAX_LIGHTS; k <<= 1u)
+        {
+            for (uint j = k >> 1u; j > 0u; j >>= 1u)
+            {
+                for (uint idx = thread_index; idx < (uint)CLUSTER_MAX_LIGHTS; idx += THREADS_PER_GROUP)
+                {
+                    uint ixj = idx ^ j;
+                    if (ixj > idx)
+                    {
+                        bool ascending = (idx & k) == 0u;
+                        uint a = gs_indices[idx];
+                        uint b = gs_indices[ixj];
+                        if ((ascending && a > b) || (!ascending && a < b))
+                        {
+                            gs_indices[idx] = b;
+                            gs_indices[ixj] = a;
+                        }
+                    }
+                }
+                GroupMemoryBarrierWithGroupSync();
+            }
+        }
+    }
+
+    // overflow telemetry, bumped once per overflowing cluster so the cpu can warn the user
+    if (thread_index == 0 && raw_count > (uint)CLUSTER_MAX_LIGHTS)
+    {
+        uint dummy;
+        InterlockedAdd(cluster_stats[0], 1u, dummy);
+    }
+
     // write the grid entry, count is clamped to the per cluster cap
-    uint final_count = min(gs_count, (uint)CLUSTER_MAX_LIGHTS);
-    uint base_index  = flat_id * (uint)CLUSTER_MAX_LIGHTS;
+    uint base_index = flat_id * (uint)CLUSTER_MAX_LIGHTS;
 
     if (thread_index == 0)
     {

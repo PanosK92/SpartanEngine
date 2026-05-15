@@ -132,7 +132,7 @@ struct FrameBufferData
 
     SHARED_FLOAT  cluster_z_scale;
     SHARED_FLOAT  cluster_z_bias;
-    SHARED_FLOAT  cluster_padding0;
+    SHARED_UINT   volumetric_light_count;
     SHARED_FLOAT  cluster_padding1;
 
 #ifdef __cplusplus

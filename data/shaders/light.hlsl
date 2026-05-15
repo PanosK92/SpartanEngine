@@ -472,11 +472,13 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // restir pt owns analytical light surface shading, skipping the cluster loop avoids wasted nee work
     if (!surface.is_sky() && !is_restir_pt_enabled() && total_lights > 1u)
     {
-        // reuse the world position already in surface, view_z is the lh view space depth
-        // surface.uv is in [0, resolution_scale], normalize back to [0, 1] for the cluster xy mapping
-        float  view_z    = mul(float4(surface.position, 1.0f), get_view()).z;
-        float2 uv_full   = surface.uv / buffer_frame.resolution_scale;
-        uint3  cid       = cluster_id_from_screen(uv_full, view_z);
+        // the cluster grid lives in the left eye (or mono camera) view-projection space, both vr eyes share it
+        // so project world position through buffer_frame.view / view_projection regardless of pass_get_eye_index
+        float4 hp_left   = mul(float4(surface.position, 1.0f), buffer_frame.view_projection);
+        float3 ndc_left  = hp_left.xyz / hp_left.w;
+        float2 uv_lookup = float2(ndc_left.x * 0.5f + 0.5f, 0.5f - ndc_left.y * 0.5f);
+        float  view_z    = mul(float4(surface.position, 1.0f), buffer_frame.view).z;
+        uint3  cid       = cluster_id_from_screen(uv_lookup, view_z);
         uint   flat_id   = cluster_flat(cid);
         uint2  range     = cluster_light_grid[flat_id];
 
@@ -490,18 +492,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
     }
 
-    // volumetric fog needs every light that flags volumetric since fog rays cross multiple clusters
-    // the flag pre check is cheap and filters most non volumetric lights without building the full Light struct
-    for (uint v = 1u; v < total_lights; v++)
+    // volumetric fog scans a cpu built compact list, fog rays cross multiple clusters so a per pixel
+    // cluster lookup is not sufficient, but the list itself is typically a handful of lights
+    uint volumetric_count = buffer_frame.volumetric_light_count;
+    for (uint k = 0u; k < volumetric_count; k++)
     {
-        LightParameters lp = light_parameters[v];
-        if ((lp.flags & uint(1U << 5)) != 0u)
-        {
-            evaluate_light(v, thread_id.xy, surface, is_transparent,
-                           diffuse_precomputed, specular_precomputed,
-                           false, true,
-                           out_diffuse, out_specular, out_volumetric);
-        }
+        uint v = volumetric_light_indices[k];
+        evaluate_light(v, thread_id.xy, surface, is_transparent,
+                       diffuse_precomputed, specular_precomputed,
+                       false, true,
+                       out_diffuse, out_specular, out_volumetric);
     }
 
     tex_uav[thread_id.xy]  = validate_output(float4(out_diffuse,    1.0f));

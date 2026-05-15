@@ -78,8 +78,9 @@ float3 tonemap_for_taa(float3 c)
 
 float3 tonemap_for_taa_inv(float3 c)
 {
+    // 1e-3 floor matches the post-blend cap so both paths amplify by at most ~1000x
     float l = max(c.r, max(c.g, c.b));
-    return c * rcp(max(1.0f - l, 1e-5f));
+    return c * rcp(max(1.0f - l, 1e-3f));
 }
 
 /*------------------------------------------------------------------------------
@@ -116,8 +117,10 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 
 /*------------------------------------------------------------------------------
     CATMULL-ROM HISTORY SAMPLING AT OUTPUT RES
-    9-tap catmull-rom collapsed to 5 bilinear taps, reduces the blur caused by
-    chaining bilinear filters across frames
+    9-tap catmull-rom collapsed to 5 bilinear taps, the four corner taps are
+    dropped because their (w0/w3) weights are small and partially negative, the
+    remaining cross pattern is renormalized so the kernel still sums to one,
+    reduces the blur caused by chaining bilinear filters across frames
 ------------------------------------------------------------------------------*/
 float3 sample_history_catmull_rom(float2 uv, float2 resolution)
 {
@@ -139,29 +142,24 @@ float3 sample_history_catmull_rom(float2 uv, float2 resolution)
     float2 tex_pos_12 = (tex_pos_1 + offset_12) * inv_res;
 
     float3 result = 0.0f.xxx;
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_0.x,  tex_pos_0.y),  0.0f).rgb * w0.x  * w0.y;
     result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_0.y),  0.0f).rgb * w12.x * w0.y;
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_3.x,  tex_pos_0.y),  0.0f).rgb * w3.x  * w0.y;
-
     result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_0.x,  tex_pos_12.y), 0.0f).rgb * w0.x  * w12.y;
     result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_12.y), 0.0f).rgb * w12.x * w12.y;
     result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_3.x,  tex_pos_12.y), 0.0f).rgb * w3.x  * w12.y;
-
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_0.x,  tex_pos_3.y),  0.0f).rgb * w0.x  * w3.y;
     result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_12.x, tex_pos_3.y),  0.0f).rgb * w12.x * w3.y;
-    result += tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(tex_pos_3.x,  tex_pos_3.y),  0.0f).rgb * w3.x  * w3.y;
 
-    return max(result, 0.0f.xxx);
+    // renormalize, since w0+w12+w3 = 1 along each axis the sum of the kept weights
+    // simplifies to w12.x + w12.y - w12.x*w12.y, never zero for f in [0,1]
+    float weight_sum = w12.x + w12.y - w12.x * w12.y;
+    return max(result * rcp(weight_sum), 0.0f.xxx);
 }
 
 /*------------------------------------------------------------------------------
     MAIN
 ------------------------------------------------------------------------------*/
-float3 taau(uint2 px_out)
+float3 taau(uint2 px_out, float2 res_out)
 {
     // setup
-    float2 res_out;
-    tex_uav.GetDimensions(res_out.x, res_out.y);
     float2 uv_out        = (px_out + 0.5f) / res_out;
     float  scale         = buffer_frame.resolution_scale;
     float2 active_render = buffer_frame.resolution_render * scale;
@@ -189,6 +187,7 @@ float3 taau(uint2 px_out)
     float3 cmax           = -FLT_MAX_16U.xxx;
     float3 current_rgb_tm = 0.0f.xxx;
     float  weight_sum     = 0.0f;
+    float  count          = 0.0f;
 
     // pre-seed closest-depth tracking with the central tap so ties (e.g. flat sky)
     // resolve to the center, otherwise the first unrolled iteration always wins
@@ -201,33 +200,46 @@ float3 taau(uint2 px_out)
         [unroll]
         for (int dx = -1; dx <= 1; ++dx)
         {
-            int2 tap = clamp(center + int2(dx, dy), int2(0, 0), px_render_max);
+            // skip out-of-bounds taps, clamping would duplicate a boundary sample and bias the stats
+            int2 tap = center + int2(dx, dy);
+            if (any(tap < 0) || any(tap > px_render_max))
+                continue;
 
-            float3 s_rgb      = max(tex2[tap].rgb, 0.0f.xxx);
+            // strip nan, propagates through addition so a single isnan on the sum covers all channels
+            float3 s_rgb_raw  = tex2[tap].rgb;
+            float3 s_rgb      = isnan(s_rgb_raw.x + s_rgb_raw.y + s_rgb_raw.z) ? 0.0f.xxx : max(s_rgb_raw, 0.0f.xxx);
             float3 s_rgb_tm   = tonemap_for_taa(s_rgb);
             float3 s_ycocg_tm = rgb_to_ycocg(s_rgb_tm);
 
-            m1   += s_ycocg_tm;
-            m2   += s_ycocg_tm * s_ycocg_tm;
-            cmin  = min(cmin, s_ycocg_tm);
-            cmax  = max(cmax, s_ycocg_tm);
+            m1    += s_ycocg_tm;
+            m2    += s_ycocg_tm * s_ycocg_tm;
+            cmin   = min(cmin, s_ycocg_tm);
+            cmax   = max(cmax, s_ycocg_tm);
+            count += 1.0f;
 
-            float2 d = (float2(center + int2(dx, dy)) + 0.5f) - p_render;
+            float2 d = (float2(tap) + 0.5f) - p_render;
             float  w = reconstruct_weight(dot(d, d));
             current_rgb_tm += s_rgb_tm * w;
             weight_sum     += w;
 
-            float z = tex_depth[tap].r;
-            if (z > closest_depth)
+            // central tap is already pre-seeded, skip the redundant fetch and compare
+            if (dx != 0 || dy != 0)
             {
-                closest_depth = z;
-                closest_pos   = tap;
+                float z = tex_depth[tap].r;
+                if (z > closest_depth)
+                {
+                    closest_depth = z;
+                    closest_pos   = tap;
+                }
             }
         }
     }
 
     // current reconstructed sample in tonemapped space, the kernel is non-negative
-    // so weight_sum is strictly positive across the full 3x3 and the divide is safe
+    // so weight_sum is strictly positive across the full 3x3 and the divide is safe,
+    // note the reconstruction is deliberately a weighted sum of tonemapped samples
+    // not a tonemap of the weighted sum, this karis-style bias slightly darkens
+    // highlights but is what suppresses fireflies before they enter accumulation
     current_rgb_tm          = current_rgb_tm * rcp(weight_sum);
     float3 current_ycocg_tm = rgb_to_ycocg(current_rgb_tm);
 
@@ -237,8 +249,13 @@ float3 taau(uint2 px_out)
     float2 velocity_uv  = velocity_ndc * float2(0.5f, -0.5f);
     float2 uv_prev      = uv_out - velocity_uv;
 
-    // reset, first frame, or off-screen reprojection, no usable history
-    bool history_invalid = reset_history() > 0.5f || !is_valid_uv(uv_prev);
+    // reset, first frame, or off-screen reprojection, no usable history,
+    // the inset is sized to the catmull-rom 4x4 footprint so reprojection
+    // near the screen edge does not smear the bilinear-clamped border into
+    // the result
+    float2 inset           = 1.5f / res_out;
+    bool   uv_prev_valid   = all(uv_prev > inset) && all(uv_prev < 1.0f - inset);
+    bool   history_invalid = reset_history() > 0.5f || !uv_prev_valid;
     if (history_invalid)
         return saturate_16(max(tonemap_for_taa_inv(current_rgb_tm), 0.0f.xxx));
 
@@ -253,13 +270,20 @@ float3 taau(uint2 px_out)
     // tightens under motion to crush ghosting on moving edges, the motion ramp
     // is in output pixels per frame, slower than the previous version so subtle
     // panning does not flick history away on every frame
-    float3 mean      = m1 * RPC_9;
-    float3 sigma     = sqrt(max(m2 * RPC_9 - mean * mean, 0.0f.xxx));
-    float  motion    = saturate(length(velocity_uv) * res_out.x * (1.0f / 64.0f));
+    // rcp(count) instead of RPC_9 because boundary taps are skipped, count is in 4..9
+    float  inv_count = rcp(count);
+    float3 mean      = m1 * inv_count;
+    float3 sigma     = sqrt(max(m2 * inv_count - mean * mean, 0.0f.xxx));
+    // sigma floor prevents the aabb from collapsing in smooth regions and chasing history
+    sigma            = max(sigma, 0.005f);
+    float  motion    = saturate(length(velocity_uv * res_out) * (1.0f / 64.0f));
     float  gamma     = lerp(1.5f, 1.0f, motion);
     float3 aabb_min  = max(mean - sigma * gamma, cmin);
     float3 aabb_max  = min(mean + sigma * gamma, cmax);
-    float3 history_c = clip_aabb(aabb_min, aabb_max, clamp(mean, aabb_min, aabb_max), history_ycocg_tm);
+    // mean is always inside [aabb_min, aabb_max] because the sigma envelope is
+    // centered on it and aabb_min/max are intersected with cmin/cmax which mean
+    // already lies between, so it can be passed straight in as p
+    float3 history_c = clip_aabb(aabb_min, aabb_max, mean, history_ycocg_tm);
 
     // fixed feedback factor, the aabb clip above already handles disocclusion
     // implicitly by snapping stale history to the current neighborhood, so a
@@ -268,12 +292,16 @@ float3 taau(uint2 px_out)
     float blend = 1.0f / 8.0f;
 
     float3 result_ycocg_tm = lerp(history_c, current_ycocg_tm, blend);
-    float3 result_rgb_tm   = ycocg_to_rgb(result_ycocg_tm);
-    // saturate in tonemapped space, ycocg->rgb on a clipped box can drift slightly
-    // outside [0,1] and tonemap_for_taa_inv divides by (1 - max(c)) which would
-    // otherwise blow up for max(c) >= 1
-    result_rgb_tm          = saturate(result_rgb_tm);
-    float3 result_rgb      = tonemap_for_taa_inv(result_rgb_tm);
+    float3 result_rgb_tm   = max(ycocg_to_rgb(result_ycocg_tm), 0.0f.xxx);
+
+    // ycocg->rgb on a clipped box can drift slightly outside [0,1) and the inverse
+    // tonemap c = tm / (1 - max(tm)) explodes as max(tm) approaches 1, so cap the
+    // max channel strictly below 1 by uniformly scaling rgb, this preserves the
+    // hue of the result and bounds the inverse amplification (~1000x at worst)
+    float l_tm        = max(result_rgb_tm.r, max(result_rgb_tm.g, result_rgb_tm.b));
+    float l_tm_safe   = min(l_tm, 1.0f - 1e-3f);
+    result_rgb_tm    *= (l_tm > 0.0f) ? (l_tm_safe / l_tm) : 1.0f;
+    float3 result_rgb = result_rgb_tm * rcp(1.0f - l_tm_safe);
     return saturate_16(result_rgb);
 }
 
@@ -282,8 +310,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
-    if (any(int2(thread_id.xy) >= int2(resolution_out)))
+    if (any(thread_id.xy >= uint2(resolution_out)))
         return;
 
-    tex_uav[thread_id.xy] = float4(taau(thread_id.xy), 1.0f);
+    tex_uav[thread_id.xy] = float4(taau(thread_id.xy, resolution_out), 1.0f);
 }

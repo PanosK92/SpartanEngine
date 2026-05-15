@@ -90,7 +90,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float cap  = max(pass_get_f3_value().y, 1.0f);
 
     float3 color = float3(0.0f, 0.0f, 0.0f);
-    float  alpha = 1.0f;
 
     if (mode == 1u)
     {
@@ -117,5 +116,5 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float edge_y  = step(frac_y, 0.01f) + step(0.99f, frac_y);
     color         = lerp(color, float3(0.0f, 0.0f, 0.0f), saturate(edge_x + edge_y) * 0.35f);
 
-    tex_uav[thread_id.xy] = float4(color, alpha);
+    tex_uav[thread_id.xy] = float4(color, 1.0f);
 }

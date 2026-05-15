@@ -144,8 +144,11 @@ bool cone_intersects_sphere(
     return cone_distance <= sphere_radius;
 }
 
-// tests a spot cone against an aabb by using the aabb bounding sphere, conservative no false negatives
-// far tighter than an apex centered sphere for narrow cones, which is what most street lamps look like
+// tests a spot cone against an aabb in two passes, both must agree for an overlap, no false negatives
+// pass one rejects aabbs that do not intersect the spot's spherical falloff (apex, range), a much tighter
+//   bound than the cone alone since a spot is sphere intersected with a cone, not an infinite cone
+// pass two rejects aabbs whose bounding sphere does not intersect the cone's angular region
+// in tandem the two passes drop most clusters that the prior single bounding-sphere test would have admitted
 bool cone_intersects_aabb(
     float3 apex,
     float3 dir,
@@ -155,6 +158,9 @@ bool cone_intersects_aabb(
     float3 aabb_min,
     float3 aabb_max)
 {
+    if (!sphere_intersects_aabb(apex, range, aabb_min, aabb_max))
+        return false;
+
     float3 aabb_center = 0.5f * (aabb_min + aabb_max);
     float  aabb_radius = 0.5f * length(aabb_max - aabb_min);
     return cone_intersects_sphere(apex, dir, range, cos_half, sin_half, aabb_center, aabb_radius);

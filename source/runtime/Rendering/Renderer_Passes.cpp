@@ -1710,10 +1710,23 @@ namespace spartan
 
     void Renderer::Pass_LightClusterAssign(RHI_CommandList* cmd_list)
     {
-        // dispatched every frame even when only the directional sun is active so the grid never
-        // contains stale counts from a previous frame, the shader writes count = 0 for empty clusters
         cmd_list->BeginTimeblock("light_cluster_assign");
         {
+            // clear the overflow counter every frame, the shader bumps it atomically once per overflowing cluster
+            // and the light pass / cpu telemetry reads it back as the count for this frame
+            {
+                const uint32_t zero = 0;
+                cmd_list->UpdateBuffer(GetBuffer(Renderer_Buffer::ClusterStats), 0, sizeof(uint32_t), &zero);
+            }
+
+            // when only the directional sun is active there are no clustered lights, the light shader guards
+            // with total_lights > 1 so the grid contents are unread, skip the dispatch entirely
+            if (m_count_active_lights <= 1)
+            {
+                cmd_list->EndTimeblock();
+                return;
+            }
+
             RHI_PipelineState pso;
             pso.name             = "light_cluster_assign";
             pso.shaders[Compute] = GetShader(Renderer_Shader::light_cluster_assign_c);
@@ -1721,13 +1734,22 @@ namespace spartan
 
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_stats,         GetBuffer(Renderer_Buffer::ClusterStats));
 
+            // single dispatch even in vr stereo, the grid lives in the left eye view-projection space which contains
+            // the right eye to within the ipd, far less than one cluster tile width, force eye_index = 0 so the shader
+            // helpers (get_view, get_projection, world_to_view) select the left eye matrices for the assign math
+            const uint32_t saved_eye = m_pcb_pass_cpu.eye_index;
+            m_pcb_pass_cpu.eye_index = 0;
+            cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(CLUSTER_COUNT_X, CLUSTER_COUNT_Y, CLUSTER_COUNT_Z);
+            m_pcb_pass_cpu.eye_index = saved_eye;
 
             // the light pass reads both buffers via the cross queue timeline, the barrier keeps
             // any later compute work that touches them on the same queue correctly ordered
             cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::ClusterLightGrid));
             cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::ClusterLightIndices));
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::ClusterStats));
         }
         cmd_list->EndTimeblock();
     }
@@ -1758,8 +1780,9 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
 
             // f3.x: visualization mode, f3.y: saturation cap for the count ramp (lights per cluster that maps to full red)
-            // with the new spot cone test most road clusters end up with 2-4 lights, so a cap of 4 gives a clear road silhouette
-            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mode), 4.0f, 0.0f);
+            // the cap is a cvar so users can tune contrast per scene, defaults to 4 which matches typical street-lamp density
+            const float cap = max(cvar_cluster_visualize_cap.GetValue(), 1.0f);
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(mode), cap, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             // dispatch the full texture so the unrendered region (when resolution scale < 1) gets cleared to black
@@ -1794,8 +1817,9 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_volumetric);
 
             // clustered lighting grid, written by light_cluster_assign in compute batch b
-            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
-            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,       GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices,    GetBuffer(Renderer_Buffer::ClusterLightIndices));
+            cmd_list->SetBuffer(Renderer_BindingsUav::volumetric_light_indices, GetBuffer(Renderer_Buffer::VolumetricLightIndices));
 
             // bind tlas for inline ray traced shadows when ray tracing is supported and the world has geometry
             if (RHI_Device::IsSupportedRayTracing())

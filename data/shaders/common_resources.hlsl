@@ -152,8 +152,17 @@ RWStructuredBuffer<CullTask> cull_tasks : register(u44);
 
 // clustered lighting, written by light_cluster_assign and read by light
 // grid is (first_index, count) per cluster, indices is the flat list of light slot ids
+// single grid shared by both vr eyes, built in the left eye view-projection space, the right eye projects
+// its world space samples through the same matrices for the lookup, ipd induced offset is well under one tile
 RWStructuredBuffer<uint2> cluster_light_grid    : register(u45);
 RWStructuredBuffer<uint>  cluster_light_indices : register(u46);
+
+// cluster assign telemetry, currently a single overflow counter bumped when a cluster overshoots CLUSTER_MAX_LIGHTS
+RWStructuredBuffer<uint> cluster_stats : register(u47);
+
+// compact list of volumetric light indices, written by the cpu in UpdateLights, scanned by the volumetric fog loop
+// declared rw for binding uniformity with the other indirect/cluster buffers, treated as read only inside the shader
+RWStructuredBuffer<uint> volumetric_light_indices : register(u48);
 
 // buffers
 #ifdef API_D3D12

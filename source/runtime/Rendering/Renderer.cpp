@@ -100,7 +100,8 @@ namespace spartan
     array<Sb_Light, rhi_max_array_size> Renderer::m_bindless_lights;
     array<Sb_Aabb, rhi_max_array_size> Renderer::m_bindless_aabbs;
     unique_ptr<RHI_AccelerationStructure> m_tlas;
-    uint32_t Renderer::m_count_active_lights = 0;
+    uint32_t Renderer::m_count_active_lights   = 0;
+    uint32_t Renderer::m_volumetric_light_count = 0;
 
     namespace
     {
@@ -614,6 +615,16 @@ namespace spartan
             {
                 SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
             }
+
+            // cluster overflow warning, rate limited so a constantly overflowing scene does not spam the log
+            static double next_overflow_log_time = 0.0;
+            const uint32_t overflow_count        = GetClusterOverflowCount();
+            const double now                     = Timer::GetTimeSec();
+            if (overflow_count > 0 && now >= next_overflow_log_time)
+            {
+                SP_LOG_WARNING("Clustered lighting: %u clusters exceeded the %u light cap last frame, lights were dropped", overflow_count, static_cast<uint32_t>(CLUSTER_MAX_LIGHTS));
+                next_overflow_log_time = now + 5.0;
+            }
         }
     }
 
@@ -865,14 +876,14 @@ namespace spartan
             const float z_scale      = log_range > 1e-6f ? static_cast<float>(CLUSTER_COUNT_Z) / log_range : 0.0f;
             const float z_bias       = -std::log(cluster_near) * z_scale;
 
-            m_cb_frame_cpu.cluster_count_x     = CLUSTER_COUNT_X;
-            m_cb_frame_cpu.cluster_count_y     = CLUSTER_COUNT_Y;
-            m_cb_frame_cpu.cluster_count_z     = CLUSTER_COUNT_Z;
-            m_cb_frame_cpu.cluster_light_count = m_count_active_lights;
-            m_cb_frame_cpu.cluster_z_scale     = z_scale;
-            m_cb_frame_cpu.cluster_z_bias      = z_bias;
-            m_cb_frame_cpu.cluster_padding0    = 0.0f;
-            m_cb_frame_cpu.cluster_padding1    = 0.0f;
+            m_cb_frame_cpu.cluster_count_x         = CLUSTER_COUNT_X;
+            m_cb_frame_cpu.cluster_count_y         = CLUSTER_COUNT_Y;
+            m_cb_frame_cpu.cluster_count_z         = CLUSTER_COUNT_Z;
+            m_cb_frame_cpu.cluster_light_count     = m_count_active_lights;
+            m_cb_frame_cpu.cluster_z_scale         = z_scale;
+            m_cb_frame_cpu.cluster_z_bias          = z_bias;
+            m_cb_frame_cpu.volumetric_light_count  = m_volumetric_light_count;
+            m_cb_frame_cpu.cluster_padding1        = 0.0f;
         }
 
         // feature bits (must match common_resources.hlsl)
@@ -1236,9 +1247,11 @@ namespace spartan
     void Renderer::UpdateLights(RHI_CommandList* cmd_list)
     {
         m_bindless_lights.fill(Sb_Light());
-        
-        m_count_active_lights    = 0; 
-        Light* first_directional = nullptr;
+
+        m_count_active_lights         = 0;
+        uint32_t volumetric_count     = 0;
+        Light* first_directional      = nullptr;
+        static array<uint32_t, rhi_max_array_size> volumetric_indices;
     
         auto fill_light = [&](Light* light_component)
         {
@@ -1278,7 +1291,15 @@ namespace spartan
             light_buffer_entry.flags                            |= has_screen_space_shadows                                  ? (1 << 4) : 0;
             light_buffer_entry.flags                            |= volumetric_effective                                      ? (1 << 5) : 0;
             light_buffer_entry.flags                            |= light_component->GetLightType() == LightType::Area        ? (1 << 6) : 0;
-    
+
+            // build the compact volumetric index list, the light shader scans this instead of every light
+            // slot 0 is the directional sun which is evaluated unconditionally in the first evaluate_light call,
+            // including it here would double count its volumetric contribution
+            if (volumetric_effective && index > 0 && volumetric_count < rhi_max_array_size)
+            {
+                volumetric_indices[volumetric_count++] = index;
+            }
+
             for (uint32_t i = 0; i < 6; i++)
             {
                 if (i < light_component->GetSliceCount())
@@ -1353,6 +1374,15 @@ namespace spartan
         if (m_count_active_lights > 0)
         {
             buffer->Update(cmd_list, &m_bindless_lights[0], buffer->GetStride() * m_count_active_lights);
+        }
+
+        // upload the compact volumetric light index list, count flows through buffer_frame.volumetric_light_count
+        m_volumetric_light_count = volumetric_count;
+        if (volumetric_count > 0)
+        {
+            RHI_Buffer* vol_buffer = GetBuffer(Renderer_Buffer::VolumetricLightIndices);
+            vol_buffer->ResetOffset();
+            vol_buffer->Update(cmd_list, &volumetric_indices[0], vol_buffer->GetStride() * volumetric_count);
         }
     }
 
@@ -2008,6 +2038,22 @@ namespace spartan
     RHI_AccelerationStructure* Renderer::GetTopLevelAccelerationStructure()
     {
         return m_tlas.get();
+    }
+
+    uint32_t Renderer::GetClusterOverflowCount()
+    {
+        // best effort readback, the buffer is host visible so we read the previous frame's accumulated value
+        // gpu writes commit via the cross queue timeline before the cpu samples here, on integrated/uma gpus
+        // this is exact, on discrete gpus the value may lag by a frame which is fine for a debug warning
+        RHI_Buffer* buffer = GetBuffer(Renderer_Buffer::ClusterStats);
+        if (buffer)
+        {
+            if (void* mapped = buffer->GetMappedData())
+            {
+                return *static_cast<const uint32_t*>(mapped);
+            }
+        }
+        return 0;
     }
 
     void Renderer::DestroyAccelerationStructures()
