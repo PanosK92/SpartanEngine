@@ -425,20 +425,19 @@ namespace spartan
 
     void Renderer::Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list)
     {
-        const uint32_t min_rt_dimension = 64;
         if (Window::IsMinimized())
-        {
             return;
-        }
 
         RHI_Texture* tex_gi     = GetRenderTarget(Renderer_RenderTarget::restir_output);
         RHI_Texture* reservoir0 = GetRenderTarget(Renderer_RenderTarget::restir_reservoir0);
-        SP_ASSERT(tex_gi != nullptr);
 
-        if (tex_gi->GetWidth() < min_rt_dimension || tex_gi->GetHeight() < min_rt_dimension)
-        {
+        // restir resources are gated by cvar_restir_pt, nothing to do when they are not allocated
+        if (!tex_gi)
             return;
-        }
+
+        const uint32_t min_rt_dimension = 64;
+        if (tex_gi->GetWidth() < min_rt_dimension || tex_gi->GetHeight() < min_rt_dimension)
+            return;
 
         if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing() || !reservoir0)
         {
@@ -453,9 +452,7 @@ namespace spartan
 
         RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure();
         if (!tlas)
-        {
             return;
-        }
 
         RHI_Shader* shader_rgen = GetShader(Renderer_Shader::restir_pt_ray_generation_r);
         RHI_Shader* shader_miss = GetShader(Renderer_Shader::restir_pt_ray_miss_r);
@@ -498,21 +495,21 @@ namespace spartan
 
     void Renderer::Pass_ReSTIR_Denoising(RHI_CommandList* cmd_list)
     {
+        if (Window::IsMinimized())
+            return;
+
         RHI_Texture* tex_gi_raw      = GetRenderTarget(Renderer_RenderTarget::restir_output);
         RHI_Texture* tex_gi_denoised = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
         RHI_Texture* tex_gi_history  = GetRenderTarget(Renderer_RenderTarget::restir_denoised_history);
         RHI_Texture* tex_gi_ping     = GetRenderTarget(Renderer_RenderTarget::restir_denoised_ping);
-        SP_ASSERT(tex_gi_raw && tex_gi_denoised && tex_gi_history && tex_gi_ping);
+
+        // restir resources are gated by cvar_restir_pt, nothing to do when they are not allocated
+        if (!tex_gi_raw || !tex_gi_denoised || !tex_gi_history || !tex_gi_ping)
+            return;
 
         const uint32_t min_rt_dimension = 64;
-        if (Window::IsMinimized())
-        {
-            return;
-        }
         if (tex_gi_raw->GetWidth() < min_rt_dimension || tex_gi_raw->GetHeight() < min_rt_dimension)
-        {
             return;
-        }
 
         if (!cvar_restir_pt.GetValueAs<bool>() || !RHI_Device::IsSupportedRayTracing())
         {
@@ -835,7 +832,6 @@ namespace spartan
         RHI_Texture* tex_light_specular   = GetRenderTarget(Renderer_RenderTarget::light_specular);
         RHI_Texture* tex_light_volumetric = GetRenderTarget(Renderer_RenderTarget::light_volumetric);
         RHI_Texture* tex_gi               = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
-        SP_ASSERT(tex_gi != nullptr);
 
         cmd_list->InsertBarrier(tex_out, RHI_BarrierType::EnsureReadThenWrite);
 

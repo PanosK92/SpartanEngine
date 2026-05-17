@@ -225,6 +225,9 @@ namespace spartan
 
     void Physics::Remove()
     {
+        // serialize physx writes, async scene loading runs this on worker threads in parallel
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+
         // release controller if it exists
         // skip if controller_manager was already released during shutdown
         if (m_controller && controller_manager)
@@ -267,20 +270,22 @@ namespace spartan
 
     void Physics::PreTick()
     {
+        // during world load worker threads are busy inside pxphysics/pxscene creating actors and
+        // shapes, the editor sync path below writes to pxrigidactor on the main thread which physx
+        // flags as concurrent api access and corrupts the internal pruner aabb tree, the entities
+        // were just placed at the right pose so this sync would be a no-op anyway
+        // we also defer Create until loading completes, this avoids racing with workers that are
+        // still populating sibling components like Render whose mesh data we read for the shape
+        if (ProgressTracker::IsLoading())
+        {
+            return;
+        }
+
         // deferred creation after loading (renderable component needs to be available first)
         if (m_needs_creation)
         {
             m_needs_creation = false;
             Create();
-        }
-
-        // during world load worker threads are busy inside pxphysics/pxscene creating actors and
-        // shapes, the editor sync path below writes to pxrigidactor on the main thread which physx
-        // flags as concurrent api access and corrupts the internal pruner aabb tree, the entities
-        // were just placed at the right pose so this sync would be a no-op anyway
-        if (ProgressTracker::IsLoading())
-        {
-            return;
         }
 
         // sync physics transforms to entities before other components (like camera) tick
@@ -1192,6 +1197,7 @@ namespace spartan
         // get the actor used by the controller to avoid returning itself
         PxRigidActor* actor_to_ignore = controller->getActor();
 
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
         if (scene->raycast(ray_start, ray_dir, ray_length, hit, PxHitFlag::eDEFAULT, filter_data))
         {
             for (PxU32 i = 0; i < hit.nbTouches; ++i)
@@ -1511,6 +1517,10 @@ namespace spartan
             return;
         }
 
+        // car::set_chassis below mutates shapes on car::body which is already attached to the
+        // scene, async load runs this on worker threads so serialize against other physx writes
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+
         // collect all entities with renderables in the hierarchy
         vector<Entity*> mesh_entities;
         mesh_entities.push_back(chassis_entity);
@@ -1713,6 +1723,9 @@ namespace spartan
         // recalculate and update body height based on actual wheel radius
         if (car::body)
         {
+            // car::body is in the scene, async load reaches this from car prefab workers
+            lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+
             // calculate correct body height using actual spring stiffness
             float front_mass_per_wheel = car::cfg.mass * 0.40f * 0.5f;
             float front_omega = 2.0f * math::pi * car::tuning::spec.front_spring_freq;
@@ -2551,6 +2564,11 @@ namespace spartan
 
     void Physics::Create()
     {
+        // serialize the entire physx setup, the car prefab path calls this on loader workers
+        // in parallel with the main thread's PreTick, so without this lock physx flags concurrent
+        // scene writes (addActor, setGlobalPose, setSimulationFilterData) and corrupts the scene
+        lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
+
         // clear previous state
         Remove();
 

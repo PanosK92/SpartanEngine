@@ -53,7 +53,7 @@ namespace spartan
 {
     namespace
     {
-        mutex scene_mutex;
+        recursive_mutex physx_mutex;
     }
 
     namespace settings
@@ -95,6 +95,7 @@ namespace spartan
             PxRaycastBuffer hit;
             PxQueryFilterData filter_data(PxQueryFlag::eDYNAMIC); // only pick dynamic bodies - static/kinematic can be moved as per usual from the editor
             PxScene* scene = static_cast<PxScene*>(PhysicsWorld::GetScene());
+            lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
             if (scene->raycast(origin, direction, 1000.0f, hit, PxHitFlag::eDEFAULT, filter_data) && hit.hasBlock)
             {
                 PxRigidActor* actor = hit.block.actor;
@@ -142,6 +143,7 @@ namespace spartan
         {
             if (picked_body && joint)
             {
+                lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
                 joint->release();
                 joint = nullptr;
 
@@ -178,6 +180,7 @@ namespace spartan
             PxVec3 target = origin + direction * pick_distance;
 
             // move dummy actor to target
+            lock_guard<recursive_mutex> lock(PhysicsWorld::GetMutex());
             dummy_actor->setKinematicTarget(PxTransform(target));
         }
     }
@@ -319,6 +322,7 @@ namespace spartan
                 while (accumulated_time >= fixed_time_step)
                 {
                     // simulate one fixed time step
+                    lock_guard<recursive_mutex> lock(physx_mutex);
                     scene->simulate(fixed_time_step);
                     scene->fetchResults(true); // block
                     accumulated_time -= fixed_time_step;
@@ -345,6 +349,8 @@ namespace spartan
         // debug visualization (editor only, skip during play)
         if (cvar_physics.GetValueAs<bool>() && !Engine::IsFlagSet(EngineMode::Playing))
         {
+            lock_guard<recursive_mutex> lock(physx_mutex);
+
             // run a near-zero step so physx populates the render buffer (physx requires dt > 0)
             scene->simulate(numeric_limits<float>::min());
             scene->fetchResults(true);
@@ -369,7 +375,7 @@ namespace spartan
     {
         if (actor && scene && !actor->getScene())
         {
-            lock_guard<mutex> lock(scene_mutex);
+            lock_guard<recursive_mutex> lock(physx_mutex);
             scene->addActor(*actor);
         }
     }
@@ -378,7 +384,7 @@ namespace spartan
     {
         if (actor && scene && actor->getScene() == scene)
         {
-            lock_guard<mutex> lock(scene_mutex);
+            lock_guard<recursive_mutex> lock(physx_mutex);
             scene->removeActor(*actor);
         }
     }
@@ -399,6 +405,11 @@ namespace spartan
     void* PhysicsWorld::GetPhysics()
     {
         return static_cast<void*>(physics);
+    }
+
+    recursive_mutex& PhysicsWorld::GetMutex()
+    {
+        return physx_mutex;
     }
     
     float PhysicsWorld::GetInterpolationAlpha()
@@ -428,7 +439,7 @@ namespace spartan
         PxRaycastBuffer hit;
         PxQueryFilterData filter_data(PxQueryFlag::eSTATIC);
 
-        lock_guard<mutex> lock(scene_mutex);
+        lock_guard<recursive_mutex> lock(physx_mutex);
         if (scene->raycast(px_origin, px_direction, max_distance, hit, PxHitFlag::eDEFAULT, filter_data) && hit.hasBlock)
         {
             hit_position = Vector3(hit.block.position.x, hit.block.position.y, hit.block.position.z);
