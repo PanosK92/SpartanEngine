@@ -63,7 +63,9 @@ namespace spartan
         for (ULONG frame_number = 0; frame_number < 25; frame_number++)  // Limit to 25 frames
         {
             if (!StackWalk64(IMAGE_FILE_MACHINE_AMD64, process, thread, &frame, &context, NULL, SymFunctionTableAccess64, SymGetModuleBase64, NULL))
+            {
                 break;
+            }
 
             char symbol_buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
             PSYMBOL_INFO symbol = (PSYMBOL_INFO)symbol_buffer;
@@ -79,7 +81,9 @@ namespace spartan
             if (SymFromAddr(process, frame.AddrPC.Offset, &displacement, symbol))
             {
                 if (SymGetModuleInfo64(process, frame.AddrPC.Offset, &module_info))
+                {
                     callstack << module_info.ModuleName << "!";
+                }
 
                 callstack << symbol->Name;
 

@@ -136,7 +136,9 @@ namespace spartan::math
                 return (*this) * length_inverted;
             }
             else
+            {
                 return *this;
+            }
         }
 
         Vector4 operator+(const Vector4& rhs) const

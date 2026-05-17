@@ -30,8 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
 #include "../Rendering/Renderer_Buffers.h"
-#include "../Rendering/Animation/AnimationClip.h"
-#include "../Rendering/Animation/SkeletalMeshBinding.h"
+#include "../Animation/AnimationClip.h"
+#include "../Animation/SkeletalMeshBinding.h"
 //================================
 
 namespace sol

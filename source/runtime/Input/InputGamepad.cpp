@@ -80,7 +80,9 @@ namespace spartan
     void Input::PollGamepad()
     {
         if (!gamepad.is_connected)
+        {
             return;
+        }
     
         SDL_Gamepad* sdl_gamepad = static_cast<SDL_Gamepad*>(gamepad.sdl_pointer);
     
@@ -125,7 +127,9 @@ namespace spartan
     bool Input::GamepadVibrate(const float left_motor_speed, const float right_motor_speed)
     {
         if (!gamepad.is_connected)
+        {
             return false;
+        }
 
         Uint16 low_frequency_rumble  = static_cast<uint16_t>(clamp(left_motor_speed, 0.0f, 1.0f) * 65535);  // convert [0, 1] to [0, 65535]
         Uint16 high_frequency_rumble = static_cast<uint16_t>(clamp(right_motor_speed, 0.0f, 1.0f) * 65535); // convert [0, 1] to [0, 65535]

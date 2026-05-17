@@ -103,7 +103,9 @@ namespace spartan
                     for (const auto& define : m_defines)
                     {
                         if (!defines_str.empty())
+                        {
                             defines_str += ", ";
+                        }
 
                         defines_str += define.first + " = " + define.second;
                     }
@@ -164,7 +166,9 @@ namespace spartan
                     resolved_path = directory + candidate;
                     file_stream.open(resolved_path);
                     if (file_stream.is_open())
+                    {
                         break;
+                    }
                 }
             }
     

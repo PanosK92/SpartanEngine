@@ -36,7 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Core/Debugging.h"
-#include "../../Core/Breadcrumbs.h"
+#include "../../Profiling/Breadcrumbs.h"
 #include "D3D12_Internal.h"
 #include "D3D12_BlitGraphics.h"
 #include <wrl/client.h>
@@ -66,14 +66,20 @@ namespace spartan::d3d12_state
 
     void SetState(ID3D12Resource* resource, D3D12_RESOURCE_STATES state)
     {
-        if (!resource) return;
+        if (!resource)
+        {
+            return;
+        }
         std::lock_guard<std::mutex> lock(resource_states_mutex);
         resource_states[resource] = state;
     }
 
     D3D12_RESOURCE_STATES GetState(ID3D12Resource* resource)
     {
-        if (!resource) return D3D12_RESOURCE_STATE_COMMON;
+        if (!resource)
+        {
+            return D3D12_RESOURCE_STATE_COMMON;
+        }
         std::lock_guard<std::mutex> lock(resource_states_mutex);
         auto it = resource_states.find(resource);
         if (it == resource_states.end())
@@ -86,7 +92,10 @@ namespace spartan::d3d12_state
 
     void RemoveState(ID3D12Resource* resource)
     {
-        if (!resource) return;
+        if (!resource)
+        {
+            return;
+        }
         std::lock_guard<std::mutex> lock(resource_states_mutex);
         resource_states.erase(resource);
     }
@@ -245,7 +254,9 @@ namespace spartan
                     for (uint32_t i = 1; i < info.per_subresource.size(); i++)
                     {
                         if (info.per_subresource[i] == target)
+                        {
                             continue;
+                        }
 
                         D3D12_RESOURCE_BARRIER barrier = {};
                         barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -297,7 +308,10 @@ namespace spartan
         // returns true if any barrier was actually queued, false if all subresources were already in state_after
         bool push_transition(PendingBindings& b, ID3D12Resource* resource, D3D12_RESOURCE_STATES state_after, UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES)
         {
-            if (!resource) return false;
+            if (!resource)
+            {
+                return false;
+            }
 
             // on the compute queue strip graphics-only state bits from state_after, otherwise the runtime rejects the
             // barrier, the (pixel|non_pixel) shader_read combo collapses to non_pixel only which is the valid compute
@@ -314,7 +328,9 @@ namespace spartan
                 if (info.per_subresource.empty())
                 {
                     if (info.uniform_state == state_after)
+                    {
                         return false;
+                    }
 
                     D3D12_RESOURCE_BARRIER barrier = {};
                     barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -333,7 +349,9 @@ namespace spartan
                 for (uint32_t i = 0; i < info.per_subresource.size(); i++)
                 {
                     if (info.per_subresource[i] == state_after)
+                    {
                         continue;
+                    }
 
                     D3D12_RESOURCE_BARRIER barrier = {};
                     barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -354,20 +372,28 @@ namespace spartan
             if (info.per_subresource.empty())
             {
                 if (info.uniform_state == state_after)
+                {
                     return false;
+                }
 
                 uint32_t count = get_subresource_count(resource);
                 if (count == 0)
+                {
                     count = subresource + 1;
+                }
                 info.per_subresource.assign(count, info.uniform_state);
             }
 
             if (subresource >= info.per_subresource.size())
+            {
                 return false;
+            }
 
             D3D12_RESOURCE_STATES state_before = info.per_subresource[subresource];
             if (state_before == state_after)
+            {
                 return false;
+            }
 
             D3D12_RESOURCE_BARRIER barrier = {};
             barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -383,7 +409,10 @@ namespace spartan
 
         void push_uav_barrier(PendingBindings& b, ID3D12Resource* resource)
         {
-            if (!resource) return;
+            if (!resource)
+            {
+                return;
+            }
             D3D12_RESOURCE_BARRIER barrier = {};
             barrier.Type          = D3D12_RESOURCE_BARRIER_TYPE_UAV;
             barrier.UAV.pResource = resource;
@@ -393,7 +422,9 @@ namespace spartan
         void flush(ID3D12GraphicsCommandList* cmd_list, PendingBindings& b)
         {
             if (b.pending_barriers.empty())
+            {
                 return;
+            }
 
             // dedup transitions, multiple push_transition calls on the same resource between flushes produce
             // a chain like A->B then B->C in pending_barriers, d3d12 accepts this but warns about it,
@@ -422,7 +453,9 @@ namespace spartan
                     }
                 }
                 if (!merged)
+                {
                     deduped.push_back(barrier);
+                }
             }
 
             // drop any resulting no-op transitions where the chained Before == After
@@ -510,7 +543,10 @@ namespace spartan
         {
             std::lock_guard<std::mutex> lock(per_cmd_mutex);
             auto it = per_cmd.find(cmd);
-            if (it == per_cmd.end()) return;
+            if (it == per_cmd.end())
+            {
+                return;
+            }
             CmdListQueries& q = it->second;
             if (q.heap_timestamp)     { q.heap_timestamp->Release();     q.heap_timestamp = nullptr; }
             if (q.readback_timestamp) { q.readback_timestamp->Release(); q.readback_timestamp = nullptr; }
@@ -546,7 +582,9 @@ namespace spartan
         void initialize(const RHI_CommandList* cmd, RHI_Queue_Type queue_type)
         {
             if (queue_type == RHI_Queue_Type::Copy)
+            {
                 return;
+            }
 
             CmdListQueries& q = get(cmd);
 
@@ -591,12 +629,16 @@ namespace spartan
         static void readback_data(ID3D12Resource* readback, uint64_t* out, uint32_t count)
         {
             if (!readback || !out || count == 0)
+            {
                 return;
+            }
 
             D3D12_RANGE read_range = { 0, count * sizeof(uint64_t) };
             void* mapped = nullptr;
             if (FAILED(readback->Map(0, &read_range, &mapped)) || !mapped)
+            {
                 return;
+            }
             memcpy(out, mapped, count * sizeof(uint64_t));
             D3D12_RANGE write_range = { 0, 0 };
             readback->Unmap(0, &write_range);
@@ -650,11 +692,19 @@ namespace spartan
 
         // bail if no pipeline has ever been bound on this cmd list, no tables to sync
         if (!b.is_bindless_pipeline)
+        {
             return;
+        }
 
         // skip table binds if the matching root signature was never bound, happens when a pipeline failed to compile
-        if (is_compute && !b.has_root_signature_compute)  return;
-        if (!is_compute && !b.has_root_signature_graphics) return;
+        if (is_compute && !b.has_root_signature_compute)
+        {
+            return;
+        }
+        if (!is_compute && !b.has_root_signature_graphics)
+        {
+            return;
+        }
 
         if (b.srv_dirty)
         {
@@ -666,8 +716,14 @@ namespace spartan
                 RHI_Context::device->CopyDescriptorsSimple(1, dst, src, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
             }
             D3D12_GPU_DESCRIPTOR_HANDLE gpu = d3d12_descriptors::GetCbvSrvUavGpuHandle(base);
-            if (is_compute) cmd_list->SetComputeRootDescriptorTable(d3d12_root_slot::srv_table_space0, gpu);
-            else            cmd_list->SetGraphicsRootDescriptorTable(d3d12_root_slot::srv_table_space0, gpu);
+            if (is_compute)
+            {
+                cmd_list->SetComputeRootDescriptorTable(d3d12_root_slot::srv_table_space0, gpu);
+            }
+            else
+            {
+                cmd_list->SetGraphicsRootDescriptorTable(d3d12_root_slot::srv_table_space0, gpu);
+            }
             b.srv_dirty = false;
         }
 
@@ -681,8 +737,14 @@ namespace spartan
                 RHI_Context::device->CopyDescriptorsSimple(1, dst, src, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
             }
             D3D12_GPU_DESCRIPTOR_HANDLE gpu = d3d12_descriptors::GetCbvSrvUavGpuHandle(base);
-            if (is_compute) cmd_list->SetComputeRootDescriptorTable(d3d12_root_slot::uav_table_space0, gpu);
-            else            cmd_list->SetGraphicsRootDescriptorTable(d3d12_root_slot::uav_table_space0, gpu);
+            if (is_compute)
+            {
+                cmd_list->SetComputeRootDescriptorTable(d3d12_root_slot::uav_table_space0, gpu);
+            }
+            else
+            {
+                cmd_list->SetGraphicsRootDescriptorTable(d3d12_root_slot::uav_table_space0, gpu);
+            }
             b.uav_dirty = false;
         }
     }
@@ -698,9 +760,13 @@ namespace spartan
 
         D3D12_COMMAND_LIST_TYPE cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         if (queue->GetType() == RHI_Queue_Type::Compute)
+        {
             cmd_list_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+        }
         else if (queue->GetType() == RHI_Queue_Type::Copy)
+        {
             cmd_list_type = D3D12_COMMAND_LIST_TYPE_COPY;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = nullptr;
         SP_ASSERT_MSG(d3d12_utility::error::check(RHI_Context::device->CreateCommandList(
@@ -796,9 +862,13 @@ namespace spartan
             d3d12_descriptors::GetSamplerHeap()
         };
         if (heaps[0] && heaps[1])
+        {
             cmd_list->SetDescriptorHeaps(2, heaps);
+        }
         else if (heaps[0])
+        {
             cmd_list->SetDescriptorHeaps(1, heaps);
+        }
 
         cmd_state::reset(this);
         // record the queue type so push_transition can mask compute-invalid state bits when recording on a compute queue
@@ -896,7 +966,9 @@ namespace spartan
     void RHI_CommandList::WaitForExecution(const bool log_wait_time)
     {
         if (m_state != RHI_CommandListState::Submitted)
+        {
             return;
+        }
 
         ID3D12Fence* fence = static_cast<ID3D12Fence*>(m_rhi_fence);
         HANDLE fence_event = static_cast<HANDLE>(m_rhi_fence_event);
@@ -917,7 +989,9 @@ namespace spartan
 
         // early exit if the pipeline state hasn't changed
         if (m_pso.GetHash() == pso.GetHash())
+        {
             return;
+        }
 
         // determine load flags by comparing render targets with the previous pso
         // matching vertex shader and array index means this pso continues drawing into the same attachments,
@@ -1034,7 +1108,9 @@ namespace spartan
         RenderPassEnd();
 
         if (!m_pso.IsGraphics())
+        {
             return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         auto& b = cmd_state::get(this);
@@ -1068,7 +1144,9 @@ namespace spartan
             {
                 RHI_Texture* rt = m_pso.render_target_color_textures[i];
                 if (!rt || !rt->GetRhiRtv(0))
+                {
                     continue;
+                }
 
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(rt->GetRhiResource());
                 cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -1119,8 +1197,14 @@ namespace spartan
         if (dsv_ptr && !m_load_depth_render_target)
         {
             D3D12_CLEAR_FLAGS flags = static_cast<D3D12_CLEAR_FLAGS>(0);
-            if (m_pso.clear_depth != rhi_depth_load && m_pso.clear_depth != rhi_depth_dont_care) flags |= D3D12_CLEAR_FLAG_DEPTH;
-            if (m_pso.clear_stencil != rhi_stencil_load && m_pso.clear_stencil != rhi_stencil_dont_care) flags |= D3D12_CLEAR_FLAG_STENCIL;
+            if (m_pso.clear_depth != rhi_depth_load && m_pso.clear_depth != rhi_depth_dont_care)
+            {
+                flags |= D3D12_CLEAR_FLAG_DEPTH;
+            }
+            if (m_pso.clear_stencil != rhi_stencil_load && m_pso.clear_stencil != rhi_stencil_dont_care)
+            {
+                flags |= D3D12_CLEAR_FLAG_STENCIL;
+            }
             if (flags != 0)
             {
                 float depth     = (m_pso.clear_depth != rhi_depth_load && m_pso.clear_depth != rhi_depth_dont_care) ? m_pso.clear_depth : 1.0f;
@@ -1150,7 +1234,9 @@ namespace spartan
     void RHI_CommandList::RenderPassEnd()
     {
         if (!m_render_pass_active)
+        {
             return;
+        }
 
         m_render_pass_active = false;
     }
@@ -1163,7 +1249,9 @@ namespace spartan
     void RHI_CommandList::ClearTexture(RHI_Texture* texture, const Color& clear_color, const float clear_depth, const uint32_t clear_stencil)
     {
         if (!texture)
+        {
             return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         auto& b = cmd_state::get(this);
@@ -1179,7 +1267,10 @@ namespace spartan
             D3D12_CPU_DESCRIPTOR_HANDLE dsv = {};
             dsv.ptr = reinterpret_cast<SIZE_T>(texture->GetRhiDsv(0));
             D3D12_CLEAR_FLAGS flags = D3D12_CLEAR_FLAG_DEPTH;
-            if (texture->IsStencilFormat()) flags |= D3D12_CLEAR_FLAG_STENCIL;
+            if (texture->IsStencilFormat())
+            {
+                flags |= D3D12_CLEAR_FLAG_STENCIL;
+            }
             cmd_list->ClearDepthStencilView(dsv, flags,
                 (clear_depth == rhi_depth_load || clear_depth == rhi_depth_dont_care) ? 1.0f : clear_depth,
                 static_cast<UINT8>((clear_stencil == rhi_stencil_load || clear_stencil == rhi_stencil_dont_care) ? 0 : clear_stencil),
@@ -1188,7 +1279,9 @@ namespace spartan
         else if (texture->GetRhiRtv(0))
         {
             if (clear_color == rhi_color_load || clear_color == rhi_color_dont_care)
+            {
                 return;
+            }
 
             // ClearRenderTargetView requires the resource to be in render_target state
             cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -1209,7 +1302,10 @@ namespace spartan
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         // always flush queued transitions, otherwise they accumulate across failed psos and diverge from the actual gpu state
         cmd_state::flush(cmd_list, b);
-        if (!b.has_root_signature_graphics) return;
+        if (!b.has_root_signature_graphics)
+        {
+            return;
+        }
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->DrawInstanced(vertex_count, 1, vertex_start_index, 0);
         Profiler::m_rhi_draw++;
@@ -1221,7 +1317,10 @@ namespace spartan
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         cmd_state::flush(cmd_list, b);
-        if (!b.has_root_signature_graphics) return;
+        if (!b.has_root_signature_graphics)
+        {
+            return;
+        }
         flush_pending_bindings(cmd_list, this, false);
         cmd_list->DrawIndexedInstanced(index_count, instance_count, index_offset, vertex_offset, instance_start_index);
         Profiler::m_rhi_draw++;
@@ -1235,9 +1334,14 @@ namespace spartan
         cmd_state::flush(cmd_list, b);
 
         if (!args_buffer || !count_buffer)
+        {
             return;
+        }
 
-        if (!b.has_root_signature_graphics) return;
+        if (!b.has_root_signature_graphics)
+        {
+            return;
+        }
 
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
@@ -1273,7 +1377,10 @@ namespace spartan
         auto& b = cmd_state::get(this);
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         cmd_state::flush(cmd_list, b);
-        if (!b.has_root_signature_compute) return;
+        if (!b.has_root_signature_compute)
+        {
+            return;
+        }
         flush_pending_bindings(cmd_list, this, true);
         cmd_list->Dispatch(x, y, z);
     }
@@ -1286,9 +1393,14 @@ namespace spartan
         cmd_state::flush(cmd_list, b);
 
         if (!args_buffer)
+        {
             return;
+        }
 
-        if (!b.has_root_signature_graphics) return;
+        if (!b.has_root_signature_graphics)
+        {
+            return;
+        }
 
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
@@ -1324,9 +1436,14 @@ namespace spartan
         cmd_state::flush(cmd_list, b);
 
         if (!args_buffer)
+        {
             return;
+        }
 
-        if (!b.has_root_signature_compute) return;
+        if (!b.has_root_signature_compute)
+        {
+            return;
+        }
 
         static ID3D12CommandSignature* command_signature = nullptr;
         if (!command_signature)
@@ -1358,20 +1475,29 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (width == 0 || height == 0)
+        {
             return;
+        }
 
         if (!m_pso.IsRayTracing() || !m_pipeline)
+        {
             return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmd4;
         if (FAILED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd4))))
+        {
             return;
+        }
 
         // flush descriptor table bindings, ray tracing uses the compute root signature path
         auto& b = cmd_state::get(this);
         cmd_state::flush(cmd_list, b);
-        if (!b.has_root_signature_compute) return;
+        if (!b.has_root_signature_compute)
+        {
+            return;
+        }
         flush_pending_bindings(cmd_list, this, true);
 
         // get or create an sbt for the currently bound state object
@@ -1416,15 +1542,21 @@ namespace spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!tlas)
+        {
             return;
+        }
 
         const uint64_t address = tlas->GetDeviceAddress();
         if (address == 0)
+        {
             return;
+        }
 
         const uint32_t slot_index = static_cast<uint32_t>(slot);
         if (slot_index >= 28)
+        {
             return;
+        }
 
         // build a srv that points at the as buffer's gpu virtual address, no resource pointer required
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
@@ -1444,11 +1576,17 @@ namespace spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips, const float resolution_scale)
     {
-        if (!source || !destination) return;
+        if (!source || !destination)
+        {
+            return;
+        }
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
-        if (!src || !dst) return;
+        if (!src || !dst)
+        {
+            return;
+        }
 
         auto& b = cmd_state::get(this);
 
@@ -1487,19 +1625,28 @@ namespace spartan
 
         d3d12_blit::BlitParams params = {};
         void* src_srv_ptr = source->GetRhiSrv();
-        if (!src_srv_ptr) return;
+        if (!src_srv_ptr)
+        {
+            return;
+        }
         params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
 
         if (dst_is_depth)
         {
             void* dsv_ptr = destination->GetRhiDsv(0);
-            if (!dsv_ptr) return;
+            if (!dsv_ptr)
+            {
+                return;
+            }
             params.destination_dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv_ptr);
         }
         else
         {
             void* rtv_ptr = destination->GetRhiRtv(0);
-            if (!rtv_ptr) return;
+            if (!rtv_ptr)
+            {
+                return;
+            }
             params.destination_rtv_handle.ptr = reinterpret_cast<SIZE_T>(rtv_ptr);
         }
 
@@ -1525,12 +1672,18 @@ namespace spartan
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination)
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
-        if (!source || !destination) return;
+        if (!source || !destination)
+        {
+            return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiRt());
-        if (!src || !dst) return;
+        if (!src || !dst)
+        {
+            return;
+        }
 
         // transition source to copy_source and backbuffer to copy_dest, then issue the copy
         auto& b = cmd_state::get(this);
@@ -1549,12 +1702,18 @@ namespace spartan
 
     void RHI_CommandList::BlitToArrayLayer(RHI_Texture* source, RHI_Texture* destination, uint32_t dst_layer)
     {
-        if (!source || !destination) return;
+        if (!source || !destination)
+        {
+            return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
-        if (!src || !dst) return;
+        if (!src || !dst)
+        {
+            return;
+        }
 
         auto& b = cmd_state::get(this);
         cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -1594,12 +1753,18 @@ namespace spartan
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_SwapChain* destination)
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
-        if (!source || !destination) return;
+        if (!source || !destination)
+        {
+            return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiRt());
-        if (!src || !dst) return;
+        if (!src || !dst)
+        {
+            return;
+        }
 
         auto& b = cmd_state::get(this);
         cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -1680,7 +1845,9 @@ namespace spartan
         SP_ASSERT(buffer && buffer->GetRhiResource());
 
         if (m_buffer_id_index == buffer->GetObjectId())
+        {
             return;
+        }
 
         bool is_16_bit = buffer->GetStride() == sizeof(uint16_t);
 
@@ -1698,21 +1865,37 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (!constant_buffer || !constant_buffer->GetRhiResource())
+        {
             return;
+        }
 
         auto& b = cmd_state::get(this);
         if (!b.is_bindless_pipeline)
+        {
             return;
+        }
 
         // skip when no matching root signature is bound, can happen if the pipeline failed to bind
-        if (b.is_compute_bound && !b.has_root_signature_compute)  return;
-        if (!b.is_compute_bound && !b.has_root_signature_graphics) return;
+        if (b.is_compute_bound && !b.has_root_signature_compute)
+        {
+            return;
+        }
+        if (!b.is_compute_bound && !b.has_root_signature_graphics)
+        {
+            return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         D3D12_GPU_VIRTUAL_ADDRESS addr = static_cast<ID3D12Resource*>(constant_buffer->GetRhiResource())->GetGPUVirtualAddress() + constant_buffer->GetOffset();
 
-        if (b.is_compute_bound) cmd_list->SetComputeRootConstantBufferView(d3d12_root_slot::cbv_frame, addr);
-        else                    cmd_list->SetGraphicsRootConstantBufferView(d3d12_root_slot::cbv_frame, addr);
+        if (b.is_compute_bound)
+        {
+            cmd_list->SetComputeRootConstantBufferView(d3d12_root_slot::cbv_frame, addr);
+        }
+        else
+        {
+            cmd_list->SetGraphicsRootConstantBufferView(d3d12_root_slot::cbv_frame, addr);
+        }
     }
 
     void RHI_CommandList::PushConstants(const uint32_t offset, const uint32_t size, const void* data)
@@ -1726,12 +1909,18 @@ namespace spartan
         auto& b = cmd_state::get(this);
         if (b.is_compute_bound)
         {
-            if (!b.has_root_signature_compute) return;
+            if (!b.has_root_signature_compute)
+            {
+                return;
+            }
             cmd_list->SetComputeRoot32BitConstants(d3d12_root_slot::push_constants, num_32bit, data, offset / 4);
         }
         else
         {
-            if (!b.has_root_signature_graphics) return;
+            if (!b.has_root_signature_graphics)
+            {
+                return;
+            }
             cmd_list->SetGraphicsRoot32BitConstants(d3d12_root_slot::push_constants, num_32bit, data, offset / 4);
         }
     }
@@ -1740,15 +1929,22 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (!buffer || !buffer->GetRhiResource())
+        {
             return;
+        }
 
         auto& b = cmd_state::get(this);
         if (!b.is_bindless_pipeline)
+        {
             return;
+        }
 
         // engine only declares a uav SetBuffer overload (Renderer_BindingsUav), so this path is uav-only
         // slots beyond what the bindless root signature exposes (u0..u44) are skipped, this matches the editor-level limit
-        if (slot >= 45) return;
+        if (slot >= 45)
+        {
+            return;
+        }
 
         D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
         desc.Format                     = DXGI_FORMAT_UNKNOWN;
@@ -1774,10 +1970,16 @@ namespace spartan
     {
         D3D12_CPU_DESCRIPTOR_HANDLE handle = {};
 
-        if (!texture) return handle;
+        if (!texture)
+        {
+            return handle;
+        }
 
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(texture->GetRhiResource());
-        if (!resource) return handle;
+        if (!resource)
+        {
+            return handle;
+        }
 
         uint32_t alloc_idx = d3d12_descriptors::AllocateCbvSrvUavCpuTransient();
         handle             = d3d12_descriptors::GetCbvSrvUavCpuHandle(alloc_idx);
@@ -1927,12 +2129,21 @@ namespace spartan
 
         if (uav)
         {
-            if (slot >= 45) return;
+            if (slot >= 45)
+            {
+                return;
+            }
 
             // ensure the texture is in unordered_access for both reads and writes
             push_transition_for_view(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            if (covers_full) texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::General);
-            else             texture->SetLayoutDirect(covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::General);
+            if (covers_full)
+            {
+                texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::General);
+            }
+            else
+            {
+                texture->SetLayoutDirect(covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::General);
+            }
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
             if (!covers_full)
@@ -1945,16 +2156,25 @@ namespace spartan
             else
             {
                 void* uav_ptr = texture->GetRhiSrvMip(0); // mip 0 uav cpu handle, single-mip by definition
-                if (uav_ptr) h.ptr = reinterpret_cast<SIZE_T>(uav_ptr);
+                if (uav_ptr)
+                {
+                    h.ptr = reinterpret_cast<SIZE_T>(uav_ptr);
+                }
             }
 
-            if (h.ptr == 0) return;
+            if (h.ptr == 0)
+            {
+                return;
+            }
             b.uav[slot] = h;
             b.uav_dirty = true;
         }
         else
         {
-            if (slot >= 28) return;
+            if (slot >= 28)
+            {
+                return;
+            }
 
             // shader_read covers both pixel and non-pixel reads, depth textures additionally allow depth_read
             const bool is_depth = texture->IsDepthStencilFormat();
@@ -1962,8 +2182,14 @@ namespace spartan
                 ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
                 : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             push_transition_for_view(read_state);
-            if (covers_full) texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::Shader_Read);
-            else             texture->SetLayoutDirect(covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::Shader_Read);
+            if (covers_full)
+            {
+                texture->SetLayoutDirect(0, total_mips, RHI_Image_Layout::Shader_Read);
+            }
+            else
+            {
+                texture->SetLayoutDirect(covers_all_mips ? 0u : mip_index, covers_all_mips ? total_mips : effective_mip_range, RHI_Image_Layout::Shader_Read);
+            }
 
             D3D12_CPU_DESCRIPTOR_HANDLE h = {};
             if (!covers_full)
@@ -1976,10 +2202,16 @@ namespace spartan
             else
             {
                 void* srv_ptr = texture->GetRhiSrv();
-                if (srv_ptr) h.ptr = reinterpret_cast<SIZE_T>(srv_ptr);
+                if (srv_ptr)
+                {
+                    h.ptr = reinterpret_cast<SIZE_T>(srv_ptr);
+                }
             }
 
-            if (h.ptr == 0) return;
+            if (h.ptr == 0)
+            {
+                return;
+            }
             b.srv[slot] = h;
             b.srv_dirty = true;
         }
@@ -1989,9 +2221,13 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (!Debugging::IsGpuTimingEnabled() || !m_rhi_query_pool_timestamps)
+        {
             return 0;
+        }
         if (m_timestamp_index >= m_max_timestamps)
+        {
             return 0;
+        }
 
         // d3d12 timestamp queries use only EndQuery, write 'ticks-at-this-point-in-the-stream' to the slot
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
@@ -2010,9 +2246,13 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (!Debugging::IsGpuTimingEnabled() || !m_rhi_query_pool_timestamps)
+        {
             return 0;
+        }
         if (m_timestamp_index >= m_max_timestamps)
+        {
             return 0;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         ID3D12QueryHeap* heap = static_cast<ID3D12QueryHeap*>(m_rhi_query_pool_timestamps);
@@ -2029,28 +2269,43 @@ namespace spartan
     float RHI_CommandList::GetTimestampResult(const uint32_t timestamp_index)
     {
         if (timestamp_index + 1 >= m_max_timestamps)
+        {
             return 0.0f;
+        }
 
         uint64_t start = m_timestamp_data[timestamp_index];
         uint64_t end   = m_timestamp_data[timestamp_index + 1];
         if (end <= start)
+        {
             return 0.0f;
+        }
 
         // d3d12 m_timestamp_period is nanoseconds-per-tick (1e9 / GetTimestampFrequency())
         uint64_t duration = end - start;
         float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
-        if (duration_ms < 0.0f) duration_ms = 0.0f;
-        if (duration_ms > 1000.0f) duration_ms = 1000.0f;
+        if (duration_ms < 0.0f)
+        {
+            duration_ms = 0.0f;
+        }
+        if (duration_ms > 1000.0f)
+        {
+            duration_ms = 1000.0f;
+        }
         return duration_ms;
     }
 
     float RHI_CommandList::GetTimestampStartMs(const uint32_t timestamp_index)
     {
         if (timestamp_index >= m_max_timestamps)
+        {
             return 0.0f;
+        }
         uint64_t start_tick = m_timestamp_data[timestamp_index];
         uint64_t ref_tick   = m_gpu_frame_reference_tick;
-        if (start_tick < ref_tick) return 0.0f;
+        if (start_tick < ref_tick)
+        {
+            return 0.0f;
+        }
         float offset_ms = static_cast<float>((start_tick - ref_tick) * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
         return offset_ms < 0.0f ? 0.0f : offset_ms;
     }
@@ -2062,7 +2317,9 @@ namespace spartan
             WaitForExecution();
         }
         if (m_timestamp_index == 0)
+        {
             return;
+        }
 
         queries::CmdListQueries& q = queries::get(this);
         queries::readback_data(q.readback_timestamp, m_timestamp_data.data(), std::min<uint32_t>(m_timestamp_index, m_max_timestamps));
@@ -2073,7 +2330,9 @@ namespace spartan
     {
         SP_ASSERT_MSG(m_pso.IsGraphics(), "Occlusion queries are only supported in graphics pipelines");
         if (!m_rhi_query_pool_occlusion)
+        {
             return;
+        }
 
         queries::CmdListQueries& q = queries::get(this);
 
@@ -2087,7 +2346,9 @@ namespace spartan
         else
         {
             if (q.occlusion_index >= queries::occlusion_count - 1)
+            {
                 return;
+            }
             slot = ++q.occlusion_index;
             q.occlusion_id_to_index[entity_id] = slot;
         }
@@ -2103,11 +2364,15 @@ namespace spartan
     void RHI_CommandList::EndOcclusionQuery()
     {
         if (!m_rhi_query_pool_occlusion)
+        {
             return;
+        }
 
         queries::CmdListQueries& q = queries::get(this);
         if (!q.occlusion_query_in_flight)
+        {
             return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         ID3D12QueryHeap* heap = static_cast<ID3D12QueryHeap*>(m_rhi_query_pool_occlusion);
@@ -2121,7 +2386,9 @@ namespace spartan
         queries::CmdListQueries& q = queries::get(this);
         auto it = q.occlusion_id_to_index.find(entity_id);
         if (it == q.occlusion_id_to_index.end())
+        {
             return false;
+        }
         uint64_t visible_pixels = q.occlusion_data[it->second];
         // mirror Vulkan behavior, occluded means zero visible pixels
         return visible_pixels == 0;
@@ -2131,7 +2398,9 @@ namespace spartan
     {
         queries::CmdListQueries& q = queries::get(this);
         if (!q.readback_occlusion || q.occlusion_index == 0)
+        {
             return;
+        }
         queries::readback_data(q.readback_occlusion, q.occlusion_data.data(), std::min<uint32_t>(q.occlusion_index + 1, queries::occlusion_count));
     }
 
@@ -2161,7 +2430,10 @@ namespace spartan
             {
                 m_breadcrumb_gpu_slots.push(gpu_slot);
                 RHI_Buffer* buffer = Breadcrumbs::GetGpuBuffer(queue_type);
-                if (buffer) WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), static_cast<uint32_t>(gpu_slot + 1));
+                if (buffer)
+                {
+                    WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), static_cast<uint32_t>(gpu_slot + 1));
+                }
             }
         }
     }
@@ -2183,7 +2455,10 @@ namespace spartan
                 int32_t gpu_slot = m_breadcrumb_gpu_slots.top();
                 m_breadcrumb_gpu_slots.pop();
                 RHI_Buffer* buffer = Breadcrumbs::GetGpuBuffer(queue_type);
-                if (buffer && gpu_slot >= 0) WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), Breadcrumbs::gpu_marker_completed);
+                if (buffer && gpu_slot >= 0)
+                {
+                    WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), Breadcrumbs::gpu_marker_completed);
+                }
             }
         }
 
@@ -2210,7 +2485,10 @@ namespace spartan
             {
                 m_breadcrumb_gpu_slots.push(gpu_slot);
                 RHI_Buffer* buffer = Breadcrumbs::GetGpuBuffer(queue_type);
-                if (buffer) WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), static_cast<uint32_t>(gpu_slot + 1));
+                if (buffer)
+                {
+                    WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), static_cast<uint32_t>(gpu_slot + 1));
+                }
             }
         }
     }
@@ -2231,7 +2509,10 @@ namespace spartan
                 m_breadcrumb_gpu_slots.pop();
                 RHI_Queue_Type queue_type = m_queue ? m_queue->GetType() : RHI_Queue_Type::Max;
                 RHI_Buffer* buffer        = Breadcrumbs::GetGpuBuffer(queue_type);
-                if (buffer && gpu_slot >= 0) WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), Breadcrumbs::gpu_marker_completed);
+                if (buffer && gpu_slot >= 0)
+                {
+                    WriteGpuBreadcrumb(buffer, static_cast<uint32_t>(gpu_slot), Breadcrumbs::gpu_marker_completed);
+                }
             }
         }
     }
@@ -2260,7 +2541,9 @@ namespace spartan
     void RHI_CommandList::UpdateBuffer(RHI_Buffer* buffer, const uint64_t offset, const uint64_t size, const void* data)
     {
         if (!buffer || !data || size == 0)
+        {
             return;
+        }
 
         // mapped path, persistently mapped upload heap buffers can be memcpyd directly
         if (buffer->GetMappedData())
@@ -2272,12 +2555,16 @@ namespace spartan
         // staged path, default-heap buffers are uploaded via a transient staging buffer copied on this cmd list
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(buffer->GetRhiResource());
         if (!dst)
+        {
             return;
+        }
 
         void* staging_ptr = RHI_Device::StagingBufferAcquire(size);
         ID3D12Resource* staging = static_cast<ID3D12Resource*>(staging_ptr);
         if (!staging)
+        {
             return;
+        }
 
         void* mapped = nullptr;
         D3D12_RANGE rr = { 0, 0 };
@@ -2328,7 +2615,10 @@ namespace spartan
                     resource = static_cast<ID3D12Resource*>(barrier.image);
                 }
 
-                if (!resource) return;
+                if (!resource)
+                {
+                    return;
+                }
 
                 D3D12_RESOURCE_STATES state_after = rhi_layout_to_d3d12_state(barrier.layout, is_depth);
 
@@ -2361,14 +2651,20 @@ namespace spartan
             }
             case RHI_Barrier::Type::ImageSync:
             {
-                if (!barrier.texture) return;
+                if (!barrier.texture)
+                {
+                    return;
+                }
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(barrier.texture->GetRhiResource());
                 cmd_state::push_uav_barrier(b, resource);
                 break;
             }
             case RHI_Barrier::Type::BufferSync:
             {
-                if (!barrier.buffer) return;
+                if (!barrier.buffer)
+                {
+                    return;
+                }
                 ID3D12Resource* resource = static_cast<ID3D12Resource*>(barrier.buffer->GetRhiResource());
                 cmd_state::push_uav_barrier(b, resource);
                 break;
@@ -2406,7 +2702,10 @@ namespace spartan
 
     void RHI_CommandList::RemoveLayout(void* image)
     {
-        if (!image) return;
+        if (!image)
+        {
+            return;
+        }
         d3d12_state::RemoveState(static_cast<ID3D12Resource*>(image));
     }
 
@@ -2414,21 +2713,47 @@ namespace spartan
     // d3d12 lets multiple read bits coexist so we collapse them in priority order
     static RHI_Image_Layout d3d12_state_to_rhi_layout(D3D12_RESOURCE_STATES state)
     {
-        if (state & D3D12_RESOURCE_STATE_RENDER_TARGET)        return RHI_Image_Layout::Attachment;
-        if (state & D3D12_RESOURCE_STATE_DEPTH_WRITE)          return RHI_Image_Layout::Attachment;
-        if (state & D3D12_RESOURCE_STATE_PRESENT)              return RHI_Image_Layout::Present_Source;
-        if (state & D3D12_RESOURCE_STATE_COPY_DEST)            return RHI_Image_Layout::Transfer_Destination;
-        if (state & D3D12_RESOURCE_STATE_COPY_SOURCE)          return RHI_Image_Layout::Transfer_Source;
-        if (state & D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE)  return RHI_Image_Layout::Shading_Rate_Attachment;
-        if (state & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)     return RHI_Image_Layout::General;
+        if (state & D3D12_RESOURCE_STATE_RENDER_TARGET)
+        {
+            return RHI_Image_Layout::Attachment;
+        }
+        if (state & D3D12_RESOURCE_STATE_DEPTH_WRITE)
+        {
+            return RHI_Image_Layout::Attachment;
+        }
+        if (state & D3D12_RESOURCE_STATE_PRESENT)
+        {
+            return RHI_Image_Layout::Present_Source;
+        }
+        if (state & D3D12_RESOURCE_STATE_COPY_DEST)
+        {
+            return RHI_Image_Layout::Transfer_Destination;
+        }
+        if (state & D3D12_RESOURCE_STATE_COPY_SOURCE)
+        {
+            return RHI_Image_Layout::Transfer_Source;
+        }
+        if (state & D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE)
+        {
+            return RHI_Image_Layout::Shading_Rate_Attachment;
+        }
+        if (state & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+        {
+            return RHI_Image_Layout::General;
+        }
         if (state & (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_DEPTH_READ))
-                                                               return RHI_Image_Layout::Shader_Read;
+        {
+            return RHI_Image_Layout::Shader_Read;
+        }
         return RHI_Image_Layout::Max;
     }
 
     RHI_Image_Layout RHI_CommandList::GetImageLayout(void* image, const uint32_t mip_index)
     {
-        if (!image) return RHI_Image_Layout::Max;
+        if (!image)
+        {
+            return RHI_Image_Layout::Max;
+        }
         ID3D12Resource* resource = static_cast<ID3D12Resource*>(image);
         D3D12_RESOURCE_STATES state = d3d12_state::GetState(resource);
         return d3d12_state_to_rhi_layout(state);
@@ -2436,11 +2761,17 @@ namespace spartan
 
     void RHI_CommandList::CopyTextureToBuffer(RHI_Texture* source, RHI_Buffer* destination)
     {
-        if (!source || !destination) return;
+        if (!source || !destination)
+        {
+            return;
+        }
 
         ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
-        if (!src || !dst) return;
+        if (!src || !dst)
+        {
+            return;
+        }
 
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         auto& b = cmd_state::get(this);
@@ -2478,15 +2809,24 @@ namespace spartan
 
     void RHI_CommandList::CopyBufferToBuffer(void* source, RHI_Buffer* destination, uint64_t size)
     {
-        if (!source || !destination || size == 0) return;
+        if (!source || !destination || size == 0)
+        {
+            return;
+        }
 
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
-        if (!dst) return;
+        if (!dst)
+        {
+            return;
+        }
 
         // stage host data through a transient upload buffer, then copy into dst on this cmd list
         void* staging_ptr = RHI_Device::StagingBufferAcquire(size);
         ID3D12Resource* staging = static_cast<ID3D12Resource*>(staging_ptr);
-        if (!staging) return;
+        if (!staging)
+        {
+            return;
+        }
 
         void* mapped = nullptr;
         D3D12_RANGE rr = { 0, 0 };
@@ -2512,11 +2852,17 @@ namespace spartan
     }
     void RHI_CommandList::CopyBufferToBuffer(RHI_Buffer* source, RHI_Buffer* destination, uint64_t size)
     {
-        if (!source || !destination) return;
+        if (!source || !destination)
+        {
+            return;
+        }
         ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
         ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
         ID3D12Resource* dst = static_cast<ID3D12Resource*>(destination->GetRhiResource());
-        if (!src || !dst) return;
+        if (!src || !dst)
+        {
+            return;
+        }
         cmd_list->CopyBufferRegion(dst, 0, src, 0, size);
     }
 
@@ -2547,7 +2893,9 @@ namespace spartan
     RHI_CommandList* RHI_CommandList::ImmediateExecutionBegin(const RHI_Queue_Type queue_type)
     {
         if (RHI_Device::IsDeviceLost())
+        {
             return nullptr;
+        }
 
         immediate_execution::ensure_initialized();
 
@@ -2565,7 +2913,10 @@ namespace spartan
 
     void RHI_CommandList::ImmediateExecutionEnd(RHI_CommandList* cmd_list)
     {
-        if (!cmd_list) return;
+        if (!cmd_list)
+        {
+            return;
+        }
 
         cmd_list->Submit(nullptr, true);
 

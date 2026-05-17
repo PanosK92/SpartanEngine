@@ -75,7 +75,9 @@ namespace spartan
         if (IsAttached() && m_attach_inherit_closed_loop && m_source_spline_entity)
         {
             if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+            {
                 m_closed_loop = source->GetClosedLoop();
+            }
         }
 
         // regenerate the road mesh if the saved scene had one
@@ -132,17 +134,23 @@ namespace spartan
     {
         // only draw spline visualization in edit mode
         if (Engine::IsFlagSet(EngineMode::Playing))
+        {
             return;
+        }
 
         // resolve the source if it has not been resolved yet (e.g. after a fresh component add)
         if (m_source_spline_entity_id != 0 && !m_source_spline_entity)
+        {
             ResolveSourceSplineEntity();
+        }
 
         // mirror the source closed loop state when requested
         if (IsAttached() && m_attach_inherit_closed_loop && m_source_spline_entity)
         {
             if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+            {
                 m_closed_loop = source->GetClosedLoop();
+            }
         }
 
         // auto-regenerate mesh when any property/control point changes, or when mesh is enabled but missing
@@ -214,7 +222,9 @@ namespace spartan
 
         vector<Vector3> points = GetControlPoints();
         if (points.size() < 2)
+        {
             return;
+        }
 
         // draw the interpolated curve
         uint32_t span_count = m_closed_loop ? static_cast<uint32_t>(points.size()) : static_cast<uint32_t>(points.size()) - 1;
@@ -379,12 +389,16 @@ namespace spartan
                 Vector3 world_pos = source->GetPoint(t);
                 Vector3 world_tan = source->GetTangent(t);
                 if (world_tan.LengthSquared() < 1e-6f)
+                {
                     world_tan = Vector3::Forward;
+                }
                 world_tan.Normalize();
 
                 Vector3 world_up = Vector3::Up;
                 if (abs(world_tan.Dot(Vector3::Up)) > 0.99f)
+                {
                     world_up = Vector3::Forward;
+                }
                 Vector3 world_right = world_tan.Cross(world_up);
                 world_right.Normalize();
 
@@ -426,7 +440,9 @@ namespace spartan
         if (IsAttached() && m_source_spline_entity)
         {
             if (Spline* source = m_source_spline_entity->GetComponent<Spline>())
+            {
                 return source->GetTangent(t);
+            }
         }
         return EvaluateTangent(GetControlPoints(), t);
     }
@@ -451,7 +467,9 @@ namespace spartan
 
         vector<Vector3> points = GetControlPoints();
         if (points.size() < 2)
+        {
             return 0.0f;
+        }
 
         uint32_t span_count    = m_closed_loop ? static_cast<uint32_t>(points.size()) : static_cast<uint32_t>(points.size()) - 1;
         uint32_t total_samples = span_count * samples_per_span;
@@ -472,7 +490,9 @@ namespace spartan
     uint32_t Spline::GetControlPointCount() const
     {
         if (!m_entity_ptr)
+        {
             return 0;
+        }
 
         // count only children that are control points (not instances)
         uint32_t count       = 0;
@@ -494,7 +514,9 @@ namespace spartan
     void Spline::AddControlPoint(const Vector3& local_position)
     {
         if (!m_entity_ptr)
+        {
             return;
+        }
 
         Entity* point = World::CreateEntity();
 
@@ -508,7 +530,9 @@ namespace spartan
     void Spline::RemoveLastControlPoint()
     {
         if (!m_entity_ptr || m_entity_ptr->GetChildrenCount() == 0)
+        {
             return;
+        }
 
         // find the last control point child (not an instance)
         Entity* last_point    = nullptr;
@@ -592,7 +616,9 @@ namespace spartan
     void Spline::SpawnInstances()
     {
         if (!m_entity_ptr)
+        {
             return;
+        }
 
         // clear any existing instances first
         ClearInstances();
@@ -645,7 +671,9 @@ namespace spartan
             const SplineFrame& frame = frames[i];
 
             if (frame.distance < next_spawn_distance)
+            {
                 continue;
+            }
 
             Vector3 position = frame.position;
             Vector3 tangent  = frame.tangent;
@@ -653,7 +681,9 @@ namespace spartan
             // horizontal-only right vector keeps instances upright on tilted segments
             Vector3 horiz_tangent = Vector3(tangent.x, 0.0f, tangent.z);
             if (horiz_tangent.LengthSquared() < 1e-6f)
+            {
                 horiz_tangent = tangent;
+            }
             horiz_tangent.Normalize();
             Vector3 right = horiz_tangent.Cross(Vector3::Up);
             right.Normalize();
@@ -695,9 +725,13 @@ namespace spartan
                     if (IsAttached())
                     {
                         if (m_attach_mode == SplineAttachMode::LeftEdge || m_attach_mode == SplineAttachMode::LeftOuter)
+                        {
                             face_dir = right;
+                        }
                         else if (m_attach_mode == SplineAttachMode::RightEdge || m_attach_mode == SplineAttachMode::RightOuter)
+                        {
                             face_dir = right * -1.0f;
+                        }
                     }
                     if (face_dir.LengthSquared() > 0.0f)
                     {
@@ -734,7 +768,9 @@ namespace spartan
     void Spline::ClearInstances()
     {
         if (!m_entity_ptr)
+        {
             return;
+        }
 
         // collect instance children (iterate in reverse to safely remove)
         vector<Entity*> instances_to_remove;
@@ -761,7 +797,9 @@ namespace spartan
         vector<Vector3> points;
 
         if (!m_entity_ptr)
+        {
             return points;
+        }
 
         uint32_t child_count = m_entity_ptr->GetChildrenCount();
         points.reserve(child_count);
@@ -786,7 +824,9 @@ namespace spartan
         vector<Vector3> points;
 
         if (!m_entity_ptr)
+        {
             return points;
+        }
 
         uint32_t child_count = m_entity_ptr->GetChildrenCount();
         points.reserve(child_count);
@@ -896,7 +936,9 @@ namespace spartan
         {
             Spline* source = m_source_spline_entity->GetComponent<Spline>();
             if (!source || source->GetControlPointCount() < 2)
+            {
                 return frames;
+            }
 
             // determine the side sign for the lateral offset
             float side = 0.0f;
@@ -919,7 +961,9 @@ namespace spartan
                                           ? m_attach_sample_count
                                           : source_span_count * samples_per_span;
             if (total_samples < 1)
+            {
                 total_samples = 1;
+            }
 
             Matrix world_inv = m_entity_ptr ? m_entity_ptr->GetMatrix().Inverted() : Matrix::Identity;
 
@@ -935,12 +979,16 @@ namespace spartan
                 Vector3 world_pos = source->GetPoint(t);
                 Vector3 world_tan = source->GetTangent(t);
                 if (world_tan.LengthSquared() < 1e-6f)
+                {
                     world_tan = Vector3::Forward;
+                }
                 world_tan.Normalize();
 
                 Vector3 world_up = Vector3::Up;
                 if (abs(world_tan.Dot(Vector3::Up)) > 0.99f)
+                {
                     world_up = Vector3::Forward;
+                }
 
                 Vector3 world_right = world_tan.Cross(world_up);
                 world_right.Normalize();
@@ -973,15 +1021,26 @@ namespace spartan
                 Vector3 local_right = (world_inv * world_right) - local_origin;
                 Vector3 local_up    = (world_inv * world_up)    - local_origin;
 
-                if (local_tan.LengthSquared() < 1e-6f)   local_tan   = Vector3::Forward;
-                if (local_right.LengthSquared() < 1e-6f) local_right = Vector3::Right;
-                if (local_up.LengthSquared() < 1e-6f)    local_up    = Vector3::Up;
+                if (local_tan.LengthSquared() < 1e-6f)
+                {
+                    local_tan   = Vector3::Forward;
+                }
+                if (local_right.LengthSquared() < 1e-6f)
+                {
+                    local_right = Vector3::Right;
+                }
+                if (local_up.LengthSquared() < 1e-6f)
+                {
+                    local_up    = Vector3::Up;
+                }
                 local_tan.Normalize();
                 local_right.Normalize();
                 local_up.Normalize();
 
                 if (i > 0)
+                {
                     accumulated_distance += local_pos.Distance(prev_local_position);
+                }
                 prev_local_position = local_pos;
 
                 SplineFrame frame;
@@ -1000,12 +1059,16 @@ namespace spartan
         // standalone path: walk own control points
         vector<Vector3> spline_points = GetControlPointsLocal();
         if (spline_points.size() < 2)
+        {
             return frames;
+        }
 
         uint32_t span_count    = m_closed_loop ? static_cast<uint32_t>(spline_points.size()) : static_cast<uint32_t>(spline_points.size()) - 1;
         uint32_t total_samples = span_count * samples_per_span;
         if (total_samples < 1)
+        {
             total_samples = 1;
+        }
 
         Matrix world_matrix   = m_entity_ptr ? m_entity_ptr->GetMatrix() : Matrix::Identity;
         Matrix inverse_matrix = world_matrix.Inverted();
@@ -1038,7 +1101,9 @@ namespace spartan
 
             Vector3 up = Vector3::Up;
             if (abs(tangent.Dot(Vector3::Up)) > 0.99f)
+            {
                 up = Vector3::Forward;
+            }
 
             Vector3 right = tangent.Cross(up);
             right.Normalize();
@@ -1046,7 +1111,9 @@ namespace spartan
             up.Normalize();
 
             if (i > 0)
+            {
                 accumulated_distance += position.Distance(prev_position);
+            }
             prev_position = position;
 
             SplineFrame frame;
@@ -1065,7 +1132,9 @@ namespace spartan
     void Spline::SetSourceSplineEntityId(uint64_t id)
     {
         if (m_source_spline_entity_id == id)
+        {
             return;
+        }
 
         m_source_spline_entity_id = id;
         m_source_spline_entity    = nullptr;
@@ -1076,22 +1145,30 @@ namespace spartan
     {
         m_source_spline_entity = nullptr;
         if (m_source_spline_entity_id == 0)
+        {
             return;
+        }
 
         Entity* candidate = World::GetEntityById(m_source_spline_entity_id);
         if (candidate == m_entity_ptr)
+        {
             return;
+        }
         m_source_spline_entity = candidate;
     }
 
     uint64_t Spline::ComputeSourceHash() const
     {
         if (!m_source_spline_entity)
+        {
             return 0;
+        }
 
         Spline* source = m_source_spline_entity->GetComponent<Spline>();
         if (!source)
+        {
             return 0;
+        }
 
         // fnv-1a style hash mixing the source state that affects derived frames
         uint64_t hash = 1469598103934665603ULL;
@@ -1130,7 +1207,9 @@ namespace spartan
     void Spline::GenerateMesh(const vector<SplineFrame>& frames, const vector<Vector2>& profile_points, bool close_profile)
     {
         if (frames.size() < 2 || profile_points.size() < 2)
+        {
             return;
+        }
 
         bool width_varies = (m_road_width_end != m_road_width);
 
@@ -1160,7 +1239,9 @@ namespace spartan
                 cur_perimeter += Vector2::Distance(cur_profile[j], cur_profile[j_next]);
             }
             if (cur_perimeter < 0.001f)
+            {
                 cur_perimeter = 1.0f;
+            }
 
             float v = (frame.distance / m_road_width) * m_uv_tiling_v;
 
@@ -1318,9 +1399,13 @@ namespace spartan
     Vector3 Spline::EvaluatePoint(const vector<Vector3>& points, float t) const
     {
         if (points.empty())
+        {
             return Vector3::Zero;
+        }
         if (points.size() == 1)
+        {
             return points[0];
+        }
 
         uint32_t span_index = 0;
         float local_t       = 0.0f;
@@ -1338,7 +1423,9 @@ namespace spartan
     Vector3 Spline::EvaluateTangent(const vector<Vector3>& points, float t) const
     {
         if (points.size() < 2)
+        {
             return Vector3::Forward;
+        }
 
         uint32_t span_index = 0;
         float local_t       = 0.0f;

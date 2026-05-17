@@ -45,14 +45,18 @@ namespace spartan
         {
             if (FIICCPROFILE* icc_profile = FreeImage_GetICCProfile(bitmap))
             {
-                if (!icc_profile->data || icc_profile->size < 132) // minimal size check for header + tag count
+                if (!icc_profile->data || icc_profile->size < 132)
+                {
                     return false;
+                }
         
                 auto icc = static_cast<unsigned char*>(icc_profile->data);
         
                 // check for "acsp" signature at bytes 36-39
                 if (icc[36] != 'a' || icc[37] != 'c' || icc[38] != 's' || icc[39] != 'p')
+                {
                     return false;
+                }
         
                 unsigned char* icc_end = icc + icc_profile->size;
         
@@ -68,7 +72,9 @@ namespace spartan
                     unsigned char* tag = icc + header_size + 4 + i * tag_record_size;
         
                     if (tag + tag_record_size > icc_end)
-                        return false; // invalid ICC file, tag record out of bounds
+                    {
+                        return false;
+                    } // invalid ICC file, tag record out of bounds
         
                     // check tag signature "desc"
                     if (memcmp(tag, "desc", 4) == 0)
@@ -78,7 +84,9 @@ namespace spartan
                         uint32_t tag_size = (tag[8] << 24) | (tag[9] << 16) | (tag[10] << 8) | tag[11];
         
                         if (tag_ofs + tag_size > static_cast<uint32_t>(icc_profile->size) || tag_size < 12)
-                            return false; // invalid tag offset or size
+                        {
+                            return false;
+                        } // invalid tag offset or size
         
                         // copy the string data after the 12-byte header of the 'desc' tag, up to 255 chars safely
                         uint32_t string_len = min(255u, tag_size - 12);
@@ -326,7 +334,9 @@ namespace spartan
                         {
                             BYTE alpha = bits[FI_RGBA_ALPHA];
                             if (alpha != 255)
+                            {
                                 return true;
+                            }
         
                             bits += 4; // move to the next pixel (4 bytes per pixel for 32-bit)
                         }
@@ -340,7 +350,9 @@ namespace spartan
                         for (unsigned i = 0; i < FreeImage_GetTransparencyCount(bitmap); ++i)
                         {
                             if (FreeImage_GetTransparencyTable(bitmap)[i] != 255)
+                            {
                                 return true;
+                            }
                         }
                     }
                     // If no transparency mask, 24-bit images are assumed to be fully opaque
@@ -355,8 +367,10 @@ namespace spartan
                     for (unsigned x = 0; x < FreeImage_GetWidth(bitmap); ++x)
                     {
                         WORD alpha = bits[3]; // Assuming RGBA order, alpha at index 3
-                        if (alpha != 0xFFFF) // 16-bit alpha, 0xFFFF is fully opaque
+                        if (alpha != 0xFFFF)
+                        {
                             return true;
+                        }
         
                         bits += 4; // move to next pixel (4 words for RGBA16)
                     }
@@ -395,7 +409,9 @@ namespace spartan
         float srgb_to_linear(float srgb)
         {
             if (srgb <= 0.04045f)
+            {
                 return srgb / 12.92f;
+            }
             return powf((srgb + 0.055f) / 1.055f, 2.4f);
         }
 
@@ -441,7 +457,9 @@ namespace spartan
         float linear_to_srgb(float linear)
         {
             if (linear <= 0.0031308f)
+            {
                 return linear * 12.92f;
+            }
             return 1.055f * powf(linear, 1.0f / 2.4f) - 0.055f;
         }
 
@@ -468,7 +486,10 @@ namespace spartan
                 float vp = powf(v, 1.0f / m2);
                 float num = max(vp - c1, 0.0f);
                 float den = c2 - c3 * vp;
-                if (den <= 0.0001f) return 0.0f;
+                if (den <= 0.0001f)
+                {
+                    return 0.0f;
+                }
                 float linear = powf(num / den, 1.0f / m1);
                 // scale for good aces input range
                 return linear * 50.0f;

@@ -77,7 +77,9 @@ namespace spartan
 
             // early exit if the component exists
             if (T* component = GetComponent<T>())
+            {
                 return component;
+            }
 
             // create a new component
             std::shared_ptr<T> component = std::make_shared<T>(this);

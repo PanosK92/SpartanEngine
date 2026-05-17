@@ -82,7 +82,9 @@ namespace spartan
     void Renderer::DrawCircle(const Vector3& center, const Vector3& axis, const float radius, uint32_t segment_count, const Color& color /*= DEBUG_COLOR*/, float duration_sec /*= 0.0f*/)
     {
         if (radius <= 0.0f)
+        {
             return;
+        }
 
         segment_count = max<uint32_t>(segment_count, 4u);
 
@@ -92,11 +94,17 @@ namespace spartan
         {
             const float angle = static_cast<float>(i) * angle_step;
             if (axis.x != 0.0f)
+            {
                 points[i] = Vector3(center.x, cos(angle) * radius + center.y, sin(angle) * radius + center.z);
+            }
             else if (axis.y != 0.0f)
+            {
                 points[i] = Vector3(cos(angle) * radius + center.x, center.y, sin(angle) * radius + center.z);
+            }
             else
+            {
                 points[i] = Vector3(cos(angle) * radius + center.x, sin(angle) * radius + center.y, center.z);
+            }
         }
 
         for (uint32_t i = 0; i < segment_count; i++)
@@ -155,7 +163,9 @@ namespace spartan
         Vector3 up(0, 0, 1);
         Vector3 right = dir.Cross(up);
         if (!right.IsNormalized())
+        {
             dir.FindBestAxisVectors(up, right);
+        }
 
         Matrix tm;
         tm.m00 = dir.x;   tm.m01 = dir.y;   tm.m02 = dir.z;
@@ -201,7 +211,9 @@ namespace spartan
     void Renderer::AddLinesToBeRendered()
     {
         if (Engine::IsFlagSet(EngineMode::Playing))
+        {
             return;
+        }
 
         if (cvar_picking_ray.GetValueAs<bool>())
         {
@@ -216,11 +228,15 @@ namespace spartan
                 for (Entity* entity : camera->GetSelectedEntities())
                 {
                     if (!entity)
+                    {
                         continue;
+                    }
                         
                     Light* light = entity->GetComponent<Light>();
                     if (!light)
+                    {
                         continue;
+                    }
 
                     if (light->GetLightType() == LightType::Directional)
                     {
@@ -290,7 +306,9 @@ namespace spartan
             for (Entity* entity : World::GetEntities())
             {
                 if (!entity)
+                {
                     continue;
+                }
 
                 if (Render* renderable = entity->GetComponent<Render>())
                 {
@@ -301,14 +319,18 @@ namespace spartan
                         const float distance            = bounding_box.GetClosestPoint(camera_position).Distance(camera_position);
 
                         if (distance > renderable->GetMaxRenderDistance())
+                        {
                             continue;
+                        }
 
                         DrawBox(bounding_box, get_color(renderable));
                     }
                 }
 
                 if (Light* light = entity->GetComponent<Light>())
+                {
                     DrawBox(light->GetBoundingBox(), Color::standard_yellow);
+                }
             }
         }
     }

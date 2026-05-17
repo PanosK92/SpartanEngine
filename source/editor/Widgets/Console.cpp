@@ -398,15 +398,23 @@ void Console::OnTickVisible()
                                     int end_idx = (i == sel_end_line) ? std::min(sel_end_char, static_cast<int>(line_text.size())) : static_cast<int>(line_text.size());
 
                                     if (start_idx < end_idx)
+                                    {
                                         selected_text += line_text.substr(start_idx, end_idx - start_idx);
+                                    }
                                     else if (i != sel_end_line)
+                                    {
                                         selected_text += line_text.substr(start_idx);
+                                    }
 
                                     if (i < sel_end_line)
+                                    {
                                         selected_text += "\n";
+                                    }
                                 }
                                 if (!selected_text.empty())
+                                {
                                     ImGui::SetClipboardText(selected_text.c_str());
+                                }
                             }
 
                             ImGui::Separator();
@@ -418,10 +426,14 @@ void Console::OnTickVisible()
                                 {
                                     all_text += visible_logs[i].second->text;
                                     if (i + 1 < visible_logs.size())
+                                    {
                                         all_text += "\n";
+                                    }
                                 }
                                 if (!all_text.empty())
+                                {
                                     ImGui::SetClipboardText(all_text.c_str());
+                                }
                             }
 
                             if (ImGui::MenuItem("Save to File"))
@@ -433,7 +445,9 @@ void Console::OnTickVisible()
                                     {
                                         file << visible_logs[i].second->text;
                                         if (i + 1 < visible_logs.size())
+                                        {
                                             file << "\n";
+                                        }
                                     }
                                     file.close();
                                     SP_LOG_INFO("Console output saved to console_output.txt")
@@ -472,7 +486,10 @@ void Console::OnTickVisible()
                 auto get_char_at_x = [&](const char* text, float row_x, float mouse_x) -> int
                 {
                     float content_x = mouse_x - row_x;
-                    if (content_x <= 0) return 0;
+                    if (content_x <= 0)
+                    {
+                        return 0;
+                    }
 
                     int char_idx = 0;
                     float current_x = 0;
@@ -481,7 +498,9 @@ void Console::OnTickVisible()
                     {
                         float char_width = ImGui::CalcTextSize(p, p + 1).x;
                         if (current_x + char_width * 0.5f > content_x)
+                        {
                             break;
+                        }
                         current_x += char_width;
                         char_idx++;
                         p++;
@@ -777,7 +796,9 @@ void Console::UpdateAutocomplete()
             input.pop_back();
 
         if (input == m_filtered_cvars[m_autocomplete_selection])
+        {
             return;
+        }
 
         // text no longer matches the selected item -- the user typed something
         m_autocomplete_navigating = false;

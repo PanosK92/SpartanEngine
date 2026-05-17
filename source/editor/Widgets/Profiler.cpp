@@ -164,9 +164,13 @@ void Profiler::OnTickVisible()
         if (ImGui::BeginCombo("##mode_hardware", mode_hardware == 0 ? "GPU" : "CPU"))
         {
             if (ImGui::Selectable("GPU", mode_hardware == 0))
+            {
                 mode_hardware = 0;
+            }
             if (ImGui::Selectable("CPU", mode_hardware == 1))
+            {
                 mode_hardware = 1;
+            }
             ImGui::EndCombo();
         }
 
@@ -176,9 +180,13 @@ void Profiler::OnTickVisible()
         if (ImGui::BeginCombo("##mode_view", mode_view == 0 ? "List" : "Timeline"))
         {
             if (ImGui::Selectable("List", mode_view == 0))
+            {
                 mode_view = 0;
+            }
             if (ImGui::Selectable("Timeline", mode_view == 1))
+            {
                 mode_view = 1;
+            }
             ImGui::EndCombo();
         }
 
@@ -190,9 +198,13 @@ void Profiler::OnTickVisible()
             if (ImGui::BeginCombo("##mode_sort", mode_sort == 0 ? "Alphabetically" : "By Duration"))
             {
                 if (ImGui::Selectable("Alphabetically", mode_sort == 0))
+                {
                     mode_sort = 0;
+                }
                 if (ImGui::Selectable("By Duration", mode_sort == 1))
+                {
                     mode_sort = 1;
+                }
                 ImGui::EndCombo();
             }
         }
@@ -248,9 +260,13 @@ void Profiler::OnTickVisible()
         for (uint32_t i = 0; i < time_block_count; i++)
         {
             if (time_blocks[i].GetType() != type)
+            {
                 continue;
+            }
             if (!time_blocks[i].IsComplete())
+            {
                 continue;
+            }
             show_time_block(time_blocks[i]);
         }
     }
@@ -288,7 +304,9 @@ void Profiler::OnTickVisible()
             for (uint32_t i = 0; i < time_block_count; i++)
             {
                 if (time_blocks[i].GetType() == spartan::TimeBlockType::Cpu && time_blocks[i].IsComplete())
+                {
                     max_depth = max(max_depth, time_blocks[i].GetTreeDepth());
+                }
             }
             lanes.push_back({"CPU", spartan::TimeBlockType::Cpu, spartan::RHI_Queue_Type::Max, true});
         }
@@ -309,7 +327,9 @@ void Profiler::OnTickVisible()
         {
             const spartan::TimeBlock& block = time_blocks[i];
             if (!block.IsComplete() || block.GetType() != type)
+            {
                 continue;
+            }
 
             if (type == spartan::TimeBlockType::Gpu)
             {
@@ -323,7 +343,9 @@ void Profiler::OnTickVisible()
                     }
                 }
                 if (!in_any_lane)
+                {
                     continue;
+                }
             }
 
             data_min_ms = ImMin(data_min_ms, block.GetStartMs());
@@ -444,11 +466,15 @@ void Profiler::OnTickVisible()
             for (float tick_ms = first_tick; tick_ms <= m_timeline_offset_ms + m_timeline_range_ms; tick_ms += tick_interval_ms)
             {
                 if (++tick_count > 500)
+                {
                     break;
+                }
 
                 float frac = (tick_ms - m_timeline_offset_ms) / m_timeline_range_ms;
                 if (frac < -0.01f || frac > 1.01f)
+                {
                     continue;
+                }
 
                 float x = ruler_min.x + frac * timeline_width;
 
@@ -473,19 +499,27 @@ void Profiler::OnTickVisible()
             for (float tick_ms = first_tick; tick_ms <= m_timeline_offset_ms + m_timeline_range_ms; tick_ms += tick_interval_ms)
             {
                 if (++tick_count > 500)
+                {
                     break;
+                }
 
                 float frac = (tick_ms - m_timeline_offset_ms) / m_timeline_range_ms;
                 if (frac < -0.01f || frac > 1.01f)
+                {
                     continue;
+                }
 
                 float x = ruler_min.x + frac * timeline_width;
 
                 char tick_label[32];
                 if (tick_interval_ms >= 1.0f)
+                {
                     snprintf(tick_label, sizeof(tick_label), "%.0f", tick_ms);
+                }
                 else
+                {
                     snprintf(tick_label, sizeof(tick_label), "%.2f", tick_ms);
+                }
 
                 draw_list->AddText(ImVec2(x + 3.0f, ruler_min.y + 4.0f), IM_COL32(180, 180, 180, 255), tick_label);
             }
@@ -541,13 +575,17 @@ void Profiler::OnTickVisible()
             {
                 const spartan::TimeBlock& block = time_blocks[i];
                 if (!block.IsComplete() || block.GetType() != lane.block_type)
+                {
                     continue;
+                }
 
                 // filter by queue type for gpu lanes
                 if (lane.block_type == spartan::TimeBlockType::Gpu && lane.queue_filter != spartan::RHI_Queue_Type::Max)
                 {
                     if (block.GetQueueType() != lane.queue_filter)
+                    {
                         continue;
+                    }
                 }
 
                 float block_start = block.GetStartMs();
@@ -555,7 +593,9 @@ void Profiler::OnTickVisible()
 
                 // skip blocks entirely outside visible range
                 if (block_end < m_timeline_offset_ms || block_start > m_timeline_offset_ms + m_timeline_range_ms)
+                {
                     continue;
+                }
 
                 // compute pixel positions
                 float frac_start = (block_start - m_timeline_offset_ms) / m_timeline_range_ms;
@@ -568,7 +608,9 @@ void Profiler::OnTickVisible()
 
                 // minimum width so tiny blocks are still visible and clickable
                 if (x1 - x0 < 3.0f)
+                {
                     x1 = x0 + 3.0f;
+                }
 
                 // vertical position
                 float depth_offset = lane.use_depth ? (block.GetTreeDepth() * lane_height) : 0.0f;
@@ -638,9 +680,13 @@ void Profiler::OnTickVisible()
             {
                 const char* queue_name = "unknown";
                 if (tooltip_block->GetQueueType() == spartan::RHI_Queue_Type::Graphics)
+                {
                     queue_name = "graphics";
+                }
                 else if (tooltip_block->GetQueueType() == spartan::RHI_Queue_Type::Compute)
+                {
                     queue_name = "compute";
+                }
                 ImGui::Text("queue:    %s", queue_name);
             }
             ImGui::EndTooltip();

@@ -387,7 +387,9 @@ namespace spartan
 
                 // geometry too simple to benefit from further simplification
                 if (lod_indices.size() <= 64)
+                {
                     break;
+                }
 
                 // compute optimal simplification target from screen coverage ratio
                 // since visible detail scales with screen coverage, and we want
@@ -408,7 +410,9 @@ namespace spartan
 
                 // stop if simplification couldn't reduce complexity further
                 if (lod_indices.size() >= prev_indices.size())
+                {
                     break;
+                }
 
                 // add simplified geometry as new lod
                 AddLod(lod_vertices, lod_indices, current_sub_mesh_index);
@@ -487,17 +491,23 @@ namespace spartan
         // wait until the mesh has been fully published by the loader,
         // sub_meshes and global buffer offsets are only consistent after CreateGpuBuffers has run
         if (!m_ready_for_blas.load(std::memory_order_acquire))
+        {
             return;
+        }
 
         // nothing to build
         if (m_sub_meshes.empty())
+        {
             return;
+        }
 
         // the global geometry buffer must be built before acceleration structures
         RHI_Buffer* vertex_buffer = GeometryBuffer::GetVertexBuffer();
         RHI_Buffer* index_buffer  = GeometryBuffer::GetIndexBuffer();
         if (!vertex_buffer || !index_buffer)
+        {
             return;
+        }
 
         // resize blas vector to match sub-mesh count if needed
         if (m_blas.size() != m_sub_meshes.size())
@@ -510,12 +520,16 @@ namespace spartan
         {
             // skip if already built
             if (m_blas[i])
+            {
                 continue;
+            }
 
             // defensive, a sub-mesh with no lods means it was published before its first lod was filled in,
             // gating on m_ready_for_blas should make this unreachable but we keep the guard to avoid an out-of-range crash on regression
             if (m_sub_meshes[i].lods.empty())
+            {
                 continue;
+            }
 
             const auto& lod = m_sub_meshes[i].lods[0]; // use lod 0 for blas
 
@@ -554,7 +568,9 @@ namespace spartan
     RHI_AccelerationStructure* Mesh::GetBlas(uint32_t sub_mesh_index) const
     {
         if (sub_mesh_index >= m_blas.size())
+        {
             return nullptr;
+        }
 
         return m_blas[sub_mesh_index].get();
     }
@@ -562,7 +578,9 @@ namespace spartan
     bool Mesh::HasBlas(uint32_t sub_mesh_index) const
     {
         if (sub_mesh_index >= m_blas.size())
+        {
             return false;
+        }
 
         return m_blas[sub_mesh_index] != nullptr;
     }
@@ -588,18 +606,26 @@ namespace spartan
     void Mesh::RefitBlas(RHI_CommandList* cmd_list, uint32_t sub_mesh_index)
     {
         if (!m_ready_for_blas.load(std::memory_order_acquire))
+        {
             return;
+        }
 
         if (sub_mesh_index >= m_blas.size() || !m_blas[sub_mesh_index] || !m_blas[sub_mesh_index]->CanRefit())
+        {
             return;
+        }
 
         RHI_Buffer* vertex_buffer = GeometryBuffer::GetVertexBuffer();
         RHI_Buffer* index_buffer  = GeometryBuffer::GetIndexBuffer();
         if (!vertex_buffer || !index_buffer)
+        {
             return;
+        }
 
         if (sub_mesh_index >= m_sub_meshes.size() || m_sub_meshes[sub_mesh_index].lods.empty())
+        {
             return;
+        }
 
         const auto& lod = m_sub_meshes[sub_mesh_index].lods[0];
 
@@ -624,7 +650,9 @@ namespace spartan
     bool Mesh::CanRefitBlas(uint32_t sub_mesh_index) const
     {
         if (sub_mesh_index >= m_blas.size() || !m_blas[sub_mesh_index])
+        {
             return false;
+        }
 
         return m_blas[sub_mesh_index]->CanRefit();
     }

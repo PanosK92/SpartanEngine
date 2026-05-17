@@ -88,10 +88,14 @@ namespace spartan
         void initialize()
         {
             if (!Debugging::IsValidationLayerEnabled())
+            {
                 return;
+            }
 
             if (!d3d12_utility::error::check(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&info_queue))))
+            {
                 return;
+            }
 
             info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
             info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR,      TRUE);
@@ -181,24 +185,48 @@ namespace spartan
 
         ID3D12CommandQueue* get_d3d_queue(RHI_Queue_Type type)
         {
-            if (type == RHI_Queue_Type::Graphics) return graphics;
-            if (type == RHI_Queue_Type::Compute)  return compute;
-            if (type == RHI_Queue_Type::Copy)     return copy;
+            if (type == RHI_Queue_Type::Graphics)
+            {
+                return graphics;
+            }
+            if (type == RHI_Queue_Type::Compute)
+            {
+                return compute;
+            }
+            if (type == RHI_Queue_Type::Copy)
+            {
+                return copy;
+            }
             return nullptr;
         }
 
         ID3D12Fence* get_fence(RHI_Queue_Type type)
         {
-            if (type == RHI_Queue_Type::Graphics) return fence_graphics;
-            if (type == RHI_Queue_Type::Compute)  return fence_compute;
-            if (type == RHI_Queue_Type::Copy)     return fence_copy;
+            if (type == RHI_Queue_Type::Graphics)
+            {
+                return fence_graphics;
+            }
+            if (type == RHI_Queue_Type::Compute)
+            {
+                return fence_compute;
+            }
+            if (type == RHI_Queue_Type::Copy)
+            {
+                return fence_copy;
+            }
             return nullptr;
         }
 
         uint64_t& get_fence_value(RHI_Queue_Type type)
         {
-            if (type == RHI_Queue_Type::Compute)  return fence_value_compute;
-            if (type == RHI_Queue_Type::Copy)     return fence_value_copy;
+            if (type == RHI_Queue_Type::Compute)
+            {
+                return fence_value_compute;
+            }
+            if (type == RHI_Queue_Type::Copy)
+            {
+                return fence_value_copy;
+            }
             return fence_value_graphics;
         }
 
@@ -487,10 +515,14 @@ namespace spartan
                 adapter->GetDesc1(&desc);
 
                 if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+                {
                     continue;
+                }
 
                 if (SUCCEEDED(D3D12CreateDevice(adapter.Get(), minimum_feature_level, _uuidof(ID3D12Device), nullptr)))
+                {
                     break;
+                }
             }
         }
 
@@ -724,7 +756,9 @@ namespace spartan
             for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Queue_Type::Max); i++)
             {
                 if (queues::regular[i])
+                {
                     queues::regular[i]->Wait(true);
+                }
             }
         }
         else
@@ -732,7 +766,9 @@ namespace spartan
             for (uint32_t i = 0; i < static_cast<uint32_t>(RHI_Queue_Type::Max); i++)
             {
                 if (queues::regular[i])
+                {
                     queues::regular[i]->Wait(false);
+                }
             }
         }
 
@@ -742,7 +778,10 @@ namespace spartan
         {
             ID3D12CommandQueue* q = queues::get_d3d_queue(type);
             ID3D12Fence*        f = queues::get_fence(type);
-            if (!q || !f) continue;
+            if (!q || !f)
+            {
+                continue;
+            }
 
             uint64_t& fv = queues::get_fence_value(type);
             const uint64_t target = fv++;
@@ -760,23 +799,44 @@ namespace spartan
 
     RHI_Queue* RHI_Device::GetQueue(const RHI_Queue_Type type)
     {
-        if (type == RHI_Queue_Type::Graphics) return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)].get();
-        if (type == RHI_Queue_Type::Compute)  return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)].get();
-        if (type == RHI_Queue_Type::Copy)     return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)].get();
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)].get();
+        }
+        if (type == RHI_Queue_Type::Compute)
+        {
+            return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)].get();
+        }
+        if (type == RHI_Queue_Type::Copy)
+        {
+            return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Copy)].get();
+        }
         return nullptr;
     }
 
     void* RHI_Device::GetQueueRhiResource(const RHI_Queue_Type type)
     {
-        if (type == RHI_Queue_Type::Graphics) return queues::graphics;
-        if (type == RHI_Queue_Type::Compute)  return queues::compute;
-        if (type == RHI_Queue_Type::Copy)     return queues::copy;
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            return queues::graphics;
+        }
+        if (type == RHI_Queue_Type::Compute)
+        {
+            return queues::compute;
+        }
+        if (type == RHI_Queue_Type::Copy)
+        {
+            return queues::copy;
+        }
         return nullptr;
     }
 
     void deletion::destroy_resource(RHI_Resource_Type type, void* resource)
     {
-        if (!resource) return;
+        if (!resource)
+        {
+            return;
+        }
 
         switch (type)
         {
@@ -841,7 +901,9 @@ namespace spartan
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
         if (!resource)
+        {
             return;
+        }
 
         std::lock_guard<std::mutex> guard(deletion::mutex);
         deletion::queue.push_back({ resource_type, resource, deletion::frame });
@@ -885,13 +947,17 @@ namespace spartan
         std::lock_guard<std::mutex> guard(deletion::mutex);
 
         if (deletion::queue.empty())
+        {
             return false;
+        }
 
         const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
         for (const auto& entry : deletion::queue)
         {
             if ((deletion::frame + 1 - entry.frame) >= safe_age)
+            {
                 return true;
+            }
         }
 
         return false;
@@ -1031,16 +1097,25 @@ namespace spartan::d3d12_descriptors
 
     uint32_t SamplerHandleToIndex(SIZE_T handle_ptr)
     {
-        if (!spartan::descriptors::heap_sampler_cpu) return UINT32_MAX;
+        if (!spartan::descriptors::heap_sampler_cpu)
+        {
+            return UINT32_MAX;
+        }
         SIZE_T base = spartan::descriptors::heap_sampler_cpu->GetCPUDescriptorHandleForHeapStart().ptr;
-        if (handle_ptr < base) return UINT32_MAX;
+        if (handle_ptr < base)
+        {
+            return UINT32_MAX;
+        }
         return static_cast<uint32_t>((handle_ptr - base) / spartan::descriptors::sampler_descriptor_size);
     }
 
     // ring allocator inside the shader-visible cbv/srv/uav heap; wraps once full
     uint32_t AllocateRing(uint32_t count)
     {
-        if (count == 0) return spartan::descriptors::zone_ring_base;
+        if (count == 0)
+        {
+            return spartan::descriptors::zone_ring_base;
+        }
         const uint32_t ring_size = spartan::descriptors::zone_ring_size;
         uint32_t prev = spartan::descriptors::zone_ring_offset.fetch_add(count);
         if (prev + count > ring_size)
@@ -1074,7 +1149,9 @@ namespace spartan
             {
                 RHI_Texture* tex = (*textures)[i];
                 if (!tex || !tex->GetRhiSrv())
+                {
                     continue;
+                }
 
                 // tex->GetRhiSrv() stores the cpu handle ptr of the source srv (see D3D12_Texture)
                 D3D12_CPU_DESCRIPTOR_HANDLE src;
@@ -1105,7 +1182,9 @@ namespace spartan
     static void write_bindless_structured_srv(uint32_t slot, RHI_Buffer* buffer)
     {
         if (!buffer || !buffer->GetRhiResource())
+        {
             return;
+        }
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
         srv_desc.Format                     = DXGI_FORMAT_UNKNOWN;
@@ -1127,7 +1206,9 @@ namespace spartan
     void RHI_Device::UpdateBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>* samplers)
     {
         if (!samplers)
+        {
             return;
+        }
 
         const uint32_t base_compare = d3d12_descriptors::GetSamplersCompareBase();
         const uint32_t base_sampler = d3d12_descriptors::GetSamplersBase();
@@ -1138,7 +1219,9 @@ namespace spartan
         {
             const auto& s = (*samplers)[i];
             if (!s || !s->GetRhiResource())
+            {
                 continue;
+            }
 
             D3D12_CPU_DESCRIPTOR_HANDLE src;
             src.ptr = reinterpret_cast<SIZE_T>(s->GetRhiResource());
@@ -1212,16 +1295,22 @@ namespace spartan
         // walk back to the adapter via dxgi factory so memory budget is in sync with dxgi state
         Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
         if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(&factory))))
+        {
             return false;
+        }
 
         const LUID adapter_luid = RHI_Context::device->GetAdapterLuid();
         Microsoft::WRL::ComPtr<IDXGIAdapter> adapter;
         if (FAILED(factory->EnumAdapterByLuid(adapter_luid, IID_PPV_ARGS(&adapter))))
+        {
             return false;
+        }
 
         Microsoft::WRL::ComPtr<IDXGIAdapter3> adapter3;
         if (FAILED(adapter.As(&adapter3)))
+        {
             return false;
+        }
 
         return SUCCEEDED(adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &out));
     }
@@ -1236,7 +1325,9 @@ namespace spartan
     {
         DXGI_QUERY_VIDEO_MEMORY_INFO info = {};
         if (!query_video_memory_info(info))
+        {
             return 0;
+        }
         return (info.Budget > info.CurrentUsage) ? ((info.Budget - info.CurrentUsage) / (1024ull * 1024ull)) : 0;
     }
 
@@ -1284,7 +1375,9 @@ namespace spartan
 
         ID3D12Resource* res = nullptr;
         if (FAILED(RHI_Context::device->CreateCommittedResource(&props, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&res))))
+        {
             return nullptr;
+        }
 
         staging::pool.push_back({ res, size, true });
         return res;
@@ -1308,7 +1401,10 @@ namespace spartan
         lock_guard<mutex> lock(staging::mutex_pool);
         for (auto& e : staging::pool)
         {
-            if (e.res) e.res->Release();
+            if (e.res)
+            {
+                e.res->Release();
+            }
         }
         staging::pool.clear();
     }
@@ -1344,7 +1440,9 @@ namespace spartan
         {
             Microsoft::WRL::ComPtr<ID3D12Device1> device1;
             if (FAILED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device1))))
+            {
                 return;
+            }
 
             HRESULT hr = device1->CreatePipelineLibrary(nullptr, 0, IID_PPV_ARGS(&pipeline_library::lib));
             if (FAILED(hr))
@@ -1368,11 +1466,15 @@ namespace spartan
     void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const math::Vector4& color)
     {
         if (!Debugging::IsGpuMarkingEnabled() || !cmd_list || !name)
+        {
             return;
+        }
 
         ID3D12GraphicsCommandList* d3d_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
         if (!d3d_cmd_list)
+        {
             return;
+        }
 
         // PIX_EVENT_ANSI_VERSION encoding: data is a null-terminated ansi string
         const size_t length = strnlen_s(name, 256);
@@ -1382,11 +1484,15 @@ namespace spartan
     void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list)
     {
         if (!Debugging::IsGpuMarkingEnabled() || !cmd_list)
+        {
             return;
+        }
 
         ID3D12GraphicsCommandList* d3d_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
         if (!d3d_cmd_list)
+        {
             return;
+        }
 
         d3d_cmd_list->EndEvent();
     }
@@ -1394,16 +1500,22 @@ namespace spartan
     void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled)
     {
         if (!m_is_shading_rate_supported || !cmd_list)
+        {
             return;
+        }
 
         // command list 5 exposes RSSetShadingRate / RSSetShadingRateImage, query for it on first use
         ID3D12GraphicsCommandList* d3d_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
         if (!d3d_cmd_list)
+        {
             return;
+        }
 
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList5> cmd_list5;
         if (FAILED(d3d_cmd_list->QueryInterface(IID_PPV_ARGS(&cmd_list5))))
+        {
             return;
+        }
 
         if (enabled)
         {
@@ -1460,7 +1572,9 @@ namespace spartan
     void RHI_Device::DescriptorSetInvalidateReferencingResource(void* resource)
     {
         if (!resource)
+        {
             return;
+        }
 
         unordered_map<uint64_t, RHI_DescriptorSet>& sets = GetDescriptorSets();
         for (auto it = sets.begin(); it != sets.end();)

@@ -142,7 +142,10 @@ void ResourceViewer::OnTickVisible()
         {
             const SpartanObject* object_A = dynamic_cast<SpartanObject*>(a.get());
             const SpartanObject* object_B = dynamic_cast<SpartanObject*>(b.get());
-            if (!object_A || !object_B) return false;
+            if (!object_A || !object_B)
+            {
+                return false;
+            }
 
             switch (sorted_column)
             {
@@ -173,7 +176,9 @@ void ResourceViewer::OnTickVisible()
                 if (search_buffer[0] != '\0')
                 {
                     if (!is_resource_searched(resource.get(), search_buffer))
+                    {
                         continue;
+                    }
 
                     resource_search_count++;
                 }

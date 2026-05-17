@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../RHI_Queue.h"
 #include "../Core/Debugging.h"
-#include "../Core/Breadcrumbs.h"
+#include "../../Profiling/Breadcrumbs.h"
 #include "../Core/Event.h"
 #include "../Core/Window.h"
 #include "D3D12_Internal.h"
@@ -274,7 +274,9 @@ namespace spartan
         }
 
         if (m_width == width && m_height == height)
+        {
             return;
+        }
 
         m_width  = width;
         m_height = height;
@@ -337,7 +339,9 @@ namespace spartan
         m_image_acquired = false;
 
         if (!m_rhi_swapchain)
+        {
             return;
+        }
 
         // d3d12 doesn't have explicit image acquisition like vulkan
         // the current backbuffer index is determined by the swapchain
@@ -349,7 +353,9 @@ namespace spartan
     {
         // only present if we successfully acquired an image
         if (!m_image_acquired)
+        {
             return;
+        }
 
         if (!m_rhi_swapchain)
         {
@@ -394,11 +400,15 @@ namespace spartan
     void RHI_SwapChain::SetHdr(const bool enabled)
     {
         if (!m_rhi_swapchain)
+        {
             return;
+        }
 
         const RHI_Format target_format = enabled ? format_hdr : format_sdr;
         if (target_format == m_format)
+        {
             return;
+        }
 
         // wait gpu, recreate buffers in the new format
         RHI_Device::QueueWaitAll();
@@ -424,7 +434,9 @@ namespace spartan
         {
             ID3D12Resource* backbuffer = nullptr;
             if (!d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetBuffer(i, IID_PPV_ARGS(&backbuffer))))
+            {
                 continue;
+            }
 
             D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
             rtv_handle.ptr += s_rtv_indices[i] * rtv_descriptor_size;
@@ -443,7 +455,9 @@ namespace spartan
     {
         const RHI_Present_Mode new_mode = enabled ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate;
         if (new_mode == m_present_mode)
+        {
             return;
+        }
 
         m_present_mode = new_mode;
 

@@ -325,7 +325,9 @@ namespace spartan
     void Light::SetFlag(const LightFlags flag, const bool enable)
     {
         if (flag == LightFlags::ShadowsScreenSpace && enable && m_light_type != LightType::Directional)
+        {
             return;
+        }
 
         bool enabled      = false;
         bool disabled     = false;
@@ -359,7 +361,9 @@ namespace spartan
     void Light::SetLightType(LightType type)
     {
         if (m_light_type == type)
+        {
             return;
+        }
 
         m_light_type = type;
 
@@ -386,27 +390,49 @@ namespace spartan
         m_color_rgb = rgb;
 
         if (rgb == Color::light_sky_clear)
+        {
             m_temperature_kelvin = 15000.0f;
+        }
         else if (rgb == Color::light_sky_daylight_overcast)
+        {
             m_temperature_kelvin = 6500.0f;
+        }
         else if (rgb == Color::light_sky_moonlight)
+        {
             m_temperature_kelvin = 4000.0f;
+        }
         else if (rgb == Color::light_sky_sunrise)
+        {
             m_temperature_kelvin = 2000.0f;
+        }
         else if (rgb == Color::light_candle_flame)
+        {
             m_temperature_kelvin = 1850.0f;
+        }
         else if (rgb == Color::light_direct_sunlight)
+        {
             m_temperature_kelvin = 5778.0f;
+        }
         else if (rgb == Color::light_digital_display)
+        {
             m_temperature_kelvin = 6500.0f;
+        }
         else if (rgb == Color::light_fluorescent_tube_light)
+        {
             m_temperature_kelvin = 5000.0f;
+        }
         else if (rgb == Color::light_kerosene_lamp)
+        {
             m_temperature_kelvin = 1850.0f;
+        }
         else if (rgb == Color::light_light_bulb)
+        {
             m_temperature_kelvin = 2700.0f;
+        }
         else if (rgb == Color::light_photo_flash)
+        {
             m_temperature_kelvin = 5500.0f;
+        }
     }
 
     void Light::SetIntensity(const LightIntensity intensity)
@@ -578,7 +604,9 @@ namespace spartan
     {
         range = clamp(range, 0.0f, numeric_limits<float>::max());
         if (range == m_range)
+        {
             return;
+        }
 
         m_range = range;
         UpdateMatrices();
@@ -588,7 +616,9 @@ namespace spartan
     {
         angle = clamp(angle, 0.0f, math::pi_2);
         if (angle == m_angle_rad)
+        {
             return;
+        }
 
         m_angle_rad = angle;
         UpdateMatrices();
@@ -598,7 +628,9 @@ namespace spartan
     {
         width = clamp(width, 0.01f, 100.0f);
         if (width == m_area_width)
+        {
             return;
+        }
 
         m_area_width = width;
         UpdateMatrices();
@@ -608,7 +640,9 @@ namespace spartan
     {
         height = clamp(height, 0.01f, 100.0f);
         if (height == m_area_height)
+        {
             return;
+        }
 
         m_area_height = height;
         UpdateMatrices();
@@ -618,16 +652,22 @@ namespace spartan
     {
         // only meaningful for area lights (rectangular emitter)
         if (m_light_type != LightType::Area)
+        {
             return false;
+        }
 
         Render* renderable = GetEntity()->GetComponent<Render>();
         if (!renderable || !renderable->GetMesh())
+        {
             return false;
+        }
 
         const BoundingBox& bbox_local = renderable->GetBoundingBoxMesh();
         const Vector3 bbox_extent     = bbox_local.GetMax() - bbox_local.GetMin();
         if (bbox_extent == Vector3::Zero)
+        {
             return false;
+        }
 
         // bbox is in mesh local space, scale by the entity's world scale to get the world footprint
         const Vector3 world_scale     = GetEntity()->GetScale();
@@ -635,9 +675,18 @@ namespace spartan
 
         // pick the two largest extents so the rectangle matches the tube regardless of which local axis it was authored along
         float e[3] = { scaled_extent.x, scaled_extent.y, scaled_extent.z };
-        if (e[0] < e[1]) swap(e[0], e[1]);
-        if (e[1] < e[2]) swap(e[1], e[2]);
-        if (e[0] < e[1]) swap(e[0], e[1]);
+        if (e[0] < e[1])
+        {
+            swap(e[0], e[1]);
+        }
+        if (e[1] < e[2])
+        {
+            swap(e[1], e[2]);
+        }
+        if (e[0] < e[1])
+        {
+            swap(e[0], e[1]);
+        }
 
         SetAreaWidth(e[0]);
         SetAreaHeight(e[1]);
@@ -647,7 +696,9 @@ namespace spartan
     bool Light::NeedsSkysphereUpdate() const
     {
         if (m_light_type != LightType::Directional)
+        {
             return false;
+        }
 
         static Quaternion last_rotation           = Quaternion::Identity;
         static Color last_color_rgb               = Color::standard_black;
@@ -688,8 +739,14 @@ namespace spartan
 
     uint32_t Light::GetSliceCount() const
     {
-        if (m_light_type == LightType::Directional) return 2;
-        if (m_light_type == LightType::Point)       return 6;
+        if (m_light_type == LightType::Directional)
+        {
+            return 2;
+        }
+        if (m_light_type == LightType::Point)
+        {
+            return 6;
+        }
         return 1; // spot and area lights use a single slice
     }
 
@@ -708,7 +765,9 @@ namespace spartan
         {
             Camera* camera = World::GetCamera();
             if (!camera)
+            {
                 return;
+            }
 
             // both cascades follow the camera
             Vector3 camera_pos = camera->GetEntity()->GetPosition();
@@ -894,11 +953,15 @@ namespace spartan
         bool is_within_distance(const Light* light, float distance_meters)
         {
             if (light->GetLightType() == LightType::Directional)
+            {
                 return true;
+            }
 
             Camera* camera = World::GetCamera();
             if (!camera)
+            {
                 return false;
+            }
 
             const Vector3 light_pos  = light->GetEntity()->GetPosition();
             const Vector3 camera_pos = camera->GetEntity()->GetPosition();
@@ -915,7 +978,9 @@ namespace spartan
     bool Light::IsShadowEffective() const
     {
         if (!(m_flags & static_cast<uint32_t>(LightFlags::Shadows)))
+        {
             return false;
+        }
 
         return is_within_distance(this, m_distance_shadows);
     }
@@ -923,7 +988,9 @@ namespace spartan
     bool Light::IsVolumetricEffective() const
     {
         if (!(m_flags & static_cast<uint32_t>(LightFlags::Volumetric)))
+        {
             return false;
+        }
 
         return is_within_distance(this, m_distance_volumetric);
     }

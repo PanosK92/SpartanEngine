@@ -117,7 +117,10 @@ namespace spartan
             // compute tile bounds using parallel reduction
             uint32_t tri_count_bounds = static_cast<uint32_t>(tile_triangle_data.size());
             uint32_t num_chunks = min(tri_count_bounds, static_cast<uint32_t>(thread::hardware_concurrency()));
-            if (num_chunks == 0) num_chunks = 1;
+            if (num_chunks == 0)
+            {
+                num_chunks = 1;
+            }
             
             struct Bounds { float min_x, max_x, min_z, max_z; };
             vector<Bounds> chunk_bounds(num_chunks, { 
@@ -172,7 +175,9 @@ namespace spartan
 
                 // skip edge triangles to prevent double-spawning at tile boundaries
                 if (tri.centroid.x >= edge_threshold_x || tri.centroid.z >= edge_threshold_z)
+                {
                     continue;
+                }
 
                 if (tri.slope_radians <= prop_desc.max_slope_angle_rad &&
                     tri.height_min >= prop_desc.min_spawn_height &&
@@ -182,13 +187,17 @@ namespace spartan
                 }
             }
             if (acceptable_triangles.empty())
+            {
                 return;
+            }
 
             // compute instance count based on density
             uint32_t adjusted_count = static_cast<uint32_t>(density_fraction * static_cast<float>(acceptable_triangles.size()) + 0.5f);
             transforms_out.resize(adjusted_count);
             if (adjusted_count == 0)
+            {
                 return;
+            }
 
             // setup cluster parameters
             float safe_min_x   = tile_min_x + prop_desc.cluster_radius;
@@ -237,7 +246,9 @@ namespace spartan
                         attempts++;
                         
                         if (!has_safe_zone || prop_desc.cluster_radius <= 0.0f)
+                        {
                             break;
+                        }
                             
                     } while (attempts < max_attempts &&
                              (position.x < safe_min_x || position.x > safe_max_x ||
@@ -319,7 +330,9 @@ namespace spartan
                             int64_t cell_key = static_cast<int64_t>(cell_z + dz) * grid_width + (cell_x + dx);
                             auto grid_it     = spatial_grid.find(cell_key);
                             if (grid_it == spatial_grid.end())
+                            {
                                 continue;
+                            }
                             
                             for (uint32_t t : grid_it->second)
                             {
@@ -346,13 +359,17 @@ namespace spartan
                                 
                                 float effective_radius = prop_desc.cluster_radius * radius_variation;
                                 if (dist_sq <= effective_radius * effective_radius)
+                                {
                                     nearby.push_back(tri_idx);
+                                }
                             }
                         }
                     }
                     
                     if (nearby.empty())
+                    {
                         nearby.push_back(cl.center_tri_idx);
+                    }
                 }
             };
             ThreadPool::ParallelLoop(compute_nearby, cluster_count);
@@ -371,13 +388,19 @@ namespace spartan
                     // map instance to cluster
                     uint32_t cluster_idx;
                     if (i < remainder_instances * larger_cluster_size)
+                    {
                         cluster_idx = i / larger_cluster_size;
+                    }
                     else
+                    {
                         cluster_idx = remainder_instances + (i - remainder_instances * larger_cluster_size) / base_instances_per_cluster;
+                    }
                     
                     auto& nearby = cluster_nearby_tris[cluster_idx];
                     if (nearby.empty())
+                    {
                         continue;
+                    }
 
                     uniform_int_distribution<int> nearby_dist(0, static_cast<int>(nearby.size()) - 1);
                     uint32_t tri_idx  = nearby[nearby_dist(generator)];
@@ -502,7 +525,9 @@ namespace spartan
                             for (int nx = -1; nx <= 1; ++nx)
                             {
                                 if (nx == 0 && ny == 0)
+                                {
                                     continue;
+                                }
                                 
                                 int neighbor_x = static_cast<int>(x) + nx;
                                 int neighbor_y = static_cast<int>(y) + ny;
@@ -562,7 +587,9 @@ namespace spartan
         void densify_height_map(vector<float>& height_data, uint32_t width, uint32_t height, uint32_t density)
         {
             if (density <= 1)
+            {
                 return;
+            }
         
             uint32_t dense_width  = density * (width - 1) + 1;
             uint32_t dense_height = density * (height - 1) + 1;
@@ -662,7 +689,9 @@ namespace spartan
                     uint32_t z = idx / width;
                     
                     if (x < 1 || x >= width - 1 || z < 1 || z >= height - 1)
+                    {
                         continue;
+                    }
                     
                     float new_height = 0.0f;
                     for (int kz = -1; kz <= 1; ++kz)
@@ -747,7 +776,9 @@ namespace spartan
             for (uint32_t i = 0; i < iterations; ++i)
             {
                 if (i % wind_interval == 0 && i != 0)
+                {
                     apply_wind_erosion(positions, width, height, wind_strength);
+                }
         
                 float pos_x    = dist_x(gen);
                 float pos_z    = dist_z(gen);
@@ -759,7 +790,9 @@ namespace spartan
                 for (uint32_t step = 0; step < max_steps; ++step)
                 {
                     if (water < 0.01f)
+                    {
                         break;
+                    }
         
                     float h          = get_height(pos_x, pos_z);
                     Vector2 gradient = get_gradient(pos_x, pos_z);
@@ -1238,7 +1271,9 @@ namespace spartan
     {
         ifstream file(file_path, ios::binary);
         if (!file.is_open())
+        {
             return;
+        }
     
         // verify cache hash matches current parameters
         uint64_t stored_hash = 0;
@@ -1521,7 +1556,9 @@ namespace spartan
         for (Entity* child : m_entity_ptr->GetChildren())
         {
             if (Render* renderable = child->AddComponent<Render>())
+            {
                 renderable->SetMesh(nullptr);
+            }
         }
     }
 }

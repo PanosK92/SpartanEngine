@@ -37,7 +37,9 @@ namespace spartan
         inline bool checked_mul_u64(const uint64_t a, const uint64_t b, uint64_t& out)
         {
             if (a != 0 && b > std::numeric_limits<uint64_t>::max() / a)
+            {
                 return false;
+            }
 
             out = a * b;
             return true;
@@ -46,7 +48,9 @@ namespace spartan
         inline bool checked_add_u64(const uint64_t a, const uint64_t b, uint64_t& out)
         {
             if (a > std::numeric_limits<uint64_t>::max() - b)
+            {
                 return false;
+            }
 
             out = a + b;
             return true;
@@ -61,10 +65,14 @@ namespace spartan
             {
                 uint64_t next_used = 0;
                 if (!checked_add_u64(used, bytes, next_used))
+                {
                     return false;
+                }
 
                 if (next_used > limit)
+                {
                     return false;
+                }
 
                 used = next_used;
                 return true;
@@ -87,11 +95,15 @@ namespace spartan
             bool ReadBytes(void* out_data, const size_t byte_count)
             {
                 if (byte_count > remaining)
+                {
                     return false;
+                }
 
                 stream.read(reinterpret_cast<char*>(out_data), static_cast<std::streamsize>(byte_count));
                 if (!stream.good())
+                {
                     return false;
+                }
 
                 remaining -= byte_count;
                 return true;
@@ -106,7 +118,9 @@ namespace spartan
             stream.seekg(0, std::ios::end);
             const std::streamoff end = stream.tellg();
             if (end < 0)
+            {
                 return false;
+            }
 
             stream.seekg(0, std::ios::beg);
             file_size = static_cast<uint64_t>(end);
@@ -126,7 +140,9 @@ namespace spartan
             static_assert(std::is_trivially_copyable_v<T>);
             out_values.resize(count);
             if (count == 0)
+            {
                 return true;
+            }
 
             return reader.ReadBytes(out_values.data(), static_cast<size_t>(count) * sizeof(T));
         }
@@ -136,10 +152,14 @@ namespace spartan
         {
             static_assert(std::is_trivially_copyable_v<T>);
             if (out_values.size() < count)
+            {
                 return false;
+            }
 
             if (count == 0)
+            {
                 return true;
+            }
 
             return reader.ReadBytes(out_values.data(), static_cast<size_t>(count) * sizeof(T));
         }
@@ -157,7 +177,9 @@ namespace spartan
         {
             static_assert(std::is_trivially_copyable_v<T>);
             if (values.empty())
+            {
                 return true;
+            }
 
             stream.write(reinterpret_cast<const char*>(values.data()), static_cast<std::streamsize>(values.size() * sizeof(T)));
             return stream.good();
@@ -168,7 +190,9 @@ namespace spartan
         {
             static_assert(std::is_trivially_copyable_v<T>);
             if (values.empty())
+            {
                 return true;
+            }
 
             stream.write(reinterpret_cast<const char*>(values.data()), static_cast<std::streamsize>(values.size() * sizeof(T)));
             return stream.good();

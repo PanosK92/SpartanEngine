@@ -64,7 +64,9 @@ namespace spartan
                 task_cv.wait(lock, [] { return !tasks.empty() || stopping; });
 
                 if (stopping && tasks.empty())
+                {
                     return;
+                }
 
                 task = std::move(tasks.front());
                 tasks.pop_front();
@@ -89,7 +91,9 @@ namespace spartan
 
         uint32_t hw_threads = thread::hardware_concurrency();
         if (hw_threads == 0)
+        {
             hw_threads = 4;
+        }
 
         // assume half are physical cores, then scale for mixed workloads
         uint32_t core_count = max(1u, hw_threads / 2);
@@ -118,7 +122,9 @@ namespace spartan
         for (thread& t : threads)
         {
             if (t.joinable())
+            {
                 t.join();
+            }
         }
 
         threads.clear();

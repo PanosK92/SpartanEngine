@@ -210,7 +210,9 @@ namespace
         for (float s : nice_steps)
         {
             if (s >= raw_step)
+            {
                 return s;
+            }
         }
         return 300.0f;
     }
@@ -227,7 +229,9 @@ string Sequencer::GetFilePath() const
 {
     const string& world_path = World::GetFilePath();
     if (world_path.empty())
+    {
         return "";
+    }
 
     return FileSystem::GetDirectoryFromFilePath(world_path) + "sequencer.xml";
 }
@@ -236,7 +240,9 @@ void Sequencer::Save()
 {
     string file_path = GetFilePath();
     if (file_path.empty())
+    {
         return;
+    }
 
     pugi::xml_document doc;
     pugi::xml_node root = doc.append_child("Sequencer");
@@ -257,15 +263,21 @@ void Sequencer::Load()
 
     string file_path = GetFilePath();
     if (file_path.empty())
+    {
         return;
+    }
 
     pugi::xml_document doc;
     if (!doc.load_file(file_path.c_str()))
+    {
         return;
+    }
 
     pugi::xml_node root = doc.child("Sequencer");
     if (!root)
+    {
         return;
+    }
 
     for (pugi::xml_node seq_node = root.child("Sequence"); seq_node; seq_node = seq_node.next_sibling("Sequence"))
     {
@@ -278,7 +290,9 @@ void Sequencer::Load()
 float Sequencer::SnapTime(float time) const
 {
     if (!m_snap_enabled || m_snap_interval <= 0.0f)
+    {
         return time;
+    }
 
     return roundf(time / m_snap_interval) * m_snap_interval;
 }
@@ -310,13 +324,17 @@ void Sequencer::ClearSelection()
 void Sequencer::DeleteSelection()
 {
     if (m_selected_sequence < 0 || m_selected_sequence >= static_cast<int32_t>(m_sequences.size()))
+    {
         return;
+    }
 
     Sequence& seq = m_sequences[m_selected_sequence];
     auto& tracks = seq.GetTracks();
 
     if (m_selected_track < 0 || m_selected_track >= static_cast<int32_t>(tracks.size()))
+    {
         return;
+    }
 
     SequenceTrack& track = tracks[m_selected_track];
 
@@ -328,7 +346,9 @@ void Sequencer::DeleteSelection()
         for (uint32_t idx : sorted_indices)
         {
             if (idx < static_cast<uint32_t>(track.keyframes.size()))
+            {
                 track.keyframes.erase(track.keyframes.begin() + idx);
+            }
         }
         m_selected_keyframes.clear();
         m_selected_keyframe = -1;
@@ -355,13 +375,17 @@ void Sequencer::DeleteSelection()
 void Sequencer::DuplicateSelection()
 {
     if (m_selected_sequence < 0 || m_selected_sequence >= static_cast<int32_t>(m_sequences.size()))
+    {
         return;
+    }
 
     Sequence& seq = m_sequences[m_selected_sequence];
     auto& tracks = seq.GetTracks();
 
     if (m_selected_track < 0 || m_selected_track >= static_cast<int32_t>(tracks.size()))
+    {
         return;
+    }
 
     SequenceTrack& track = tracks[m_selected_track];
 
@@ -370,7 +394,9 @@ void Sequencer::DuplicateSelection()
         SequenceKeyframe kf = track.keyframes[m_selected_keyframe];
         kf.time += 0.5f;
         if (kf.time > seq.GetDuration())
+        {
             kf.time = seq.GetDuration();
+        }
         track.keyframes.push_back(kf);
         sort(track.keyframes.begin(), track.keyframes.end(),
             [](const SequenceKeyframe& a, const SequenceKeyframe& b) { return a.time < b.time; });
@@ -382,18 +408,24 @@ void Sequencer::DuplicateSelection()
         clip.start_time = clip.end_time;
         clip.end_time   = min(clip.start_time + duration, seq.GetDuration());
         if (clip.start_time < seq.GetDuration())
+        {
             track.camera_clips.push_back(clip);
+        }
     }
 }
 
 void Sequencer::HandleInput()
 {
     if (!ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows))
+    {
         return;
+    }
 
     // don't consume keys while renaming
     if (m_renaming_sequence >= 0 || m_renaming_track >= 0)
+    {
         return;
+    }
 
     ImGuiIO& io = ImGui::GetIO();
 
@@ -403,7 +435,9 @@ void Sequencer::HandleInput()
         for (const Sequence& seq : m_sequences)
         {
             if (seq.IsPlaying() && !seq.IsPaused())
+            {
                 any_playing = true;
+            }
         }
 
         if (any_playing)
@@ -419,13 +453,19 @@ void Sequencer::HandleInput()
     }
 
     if (ImGui::IsKeyPressed(ImGuiKey_Delete, false))
+    {
         DeleteSelection();
+    }
 
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S, false))
+    {
         Save();
+    }
 
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_D, false))
+    {
         DuplicateSelection();
+    }
 
     if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_A, false))
     {
@@ -575,9 +615,13 @@ void Sequencer::DrawToolbar()
     for (const Sequence& seq : m_sequences)
     {
         if (seq.IsPlaying() && !seq.IsPaused())
+        {
             any_playing = true;
+        }
         if (seq.IsLooping())
+        {
             any_looping = true;
+        }
     }
 
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
@@ -670,7 +714,9 @@ void Sequencer::DrawToolbar()
         ImGui::SameLine();
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
         if (ImGui::Button("save"))
+        {
             Save();
+        }
         ImGui::PopStyleVar();
 
         ImGui::SameLine();
@@ -686,7 +732,9 @@ void Sequencer::DrawToolbar()
         }
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
         if (ImGui::Button("snap"))
+        {
             m_snap_enabled = !m_snap_enabled;
+        }
         ImGui::PopStyleVar();
         ImGui::PopStyleColor(2);
 
@@ -699,7 +747,9 @@ void Sequencer::DrawToolbar()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
         if (ImGui::Button("settings"))
+        {
             ImGui::OpenPopup("##seq_settings");
+        }
         ImGui::PopStyleVar();
 
         if (ImGui::BeginPopup("##seq_settings"))
@@ -725,7 +775,9 @@ void Sequencer::DrawTimeline()
 {
     ImVec2 avail = ImGui::GetContentRegionAvail();
     if (avail.x < 10.0f || avail.y < 10.0f)
+    {
         return;
+    }
 
     float total_track_h = ComputeTotalHeight();
     float content_height = ruler_height + minimap_height + total_track_h + 20.0f;
@@ -877,9 +929,13 @@ void Sequencer::DrawTrackList()
         else if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
         {
             if (m_collapsed_sequences.count(seq.GetId()))
+            {
                 m_collapsed_sequences.erase(seq.GetId());
+            }
             else
+            {
                 m_collapsed_sequences.insert(seq.GetId());
+            }
         }
 
         if (m_renaming_sequence == static_cast<int32_t>(s) && m_renaming_track == -1)
@@ -896,12 +952,16 @@ void Sequencer::DrawTrackList()
             if (!ImGui::IsItemActive() && m_renaming_sequence == static_cast<int32_t>(s))
             {
                 if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+                {
                     m_renaming_sequence = -1;
+                }
             }
         }
 
         if (header_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        {
             ImGui::OpenPopup("seq_header_context");
+        }
 
         if (ImGui::BeginPopup("seq_header_context"))
         {
@@ -915,12 +975,16 @@ void Sequencer::DrawTrackList()
             float dur = seq.GetDuration();
             ImGui::SetNextItemWidth(100.0f);
             if (ImGui::DragFloat("duration", &dur, 0.1f, 0.1f, 600.0f, "%.1f s"))
+            {
                 seq.SetDuration(dur);
+            }
 
             float spd = seq.GetPlaybackSpeed();
             ImGui::SetNextItemWidth(100.0f);
             if (ImGui::DragFloat("speed", &spd, 0.01f, 0.1f, 10.0f, "%.2fx"))
+            {
                 seq.SetPlaybackSpeed(spd);
+            }
 
             ImGui::Separator();
 
@@ -965,7 +1029,9 @@ void Sequencer::DrawTrackList()
             {
                 m_sequences.erase(m_sequences.begin() + s);
                 if (m_selected_sequence == static_cast<int32_t>(s))
+                {
                     ClearSelection();
+                }
                 ImGui::PopStyleColor();
                 ImGui::EndPopup();
                 ImGui::PopID();
@@ -1000,7 +1066,9 @@ void Sequencer::DrawTrackList()
 
                 // mute indicator: dim the row
                 if (track.muted)
+                {
                     dl->AddRectFilled(row_min, row_max, IM_COL32(0, 0, 0, 80));
+                }
 
                 dl->AddRectFilled(ImVec2(row_min.x, row_min.y), ImVec2(row_min.x + 3.0f, row_max.y), to_imu32(accent));
 
@@ -1014,7 +1082,9 @@ void Sequencer::DrawTrackList()
                     dl->AddRectFilled(m_min, m_max, track.muted ? IM_COL32(180, 60, 60, 200) : (m_hov ? IM_COL32(80, 80, 80, 150) : IM_COL32(0, 0, 0, 0)), 2.0f);
                     dl->AddText(ImVec2(btn_x + 2.0f, btn_y), track.muted ? IM_COL32(255, 255, 255, 230) : tc.text_dim, "M");
                     if (m_hov && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                    {
                         track.muted = !track.muted;
+                    }
                 }
                 {
                     float s_x = btn_x - 16.0f;
@@ -1024,7 +1094,9 @@ void Sequencer::DrawTrackList()
                     dl->AddRectFilled(s_min, s_max, track.solo ? IM_COL32(60, 120, 180, 200) : (s_hov ? IM_COL32(80, 80, 80, 150) : IM_COL32(0, 0, 0, 0)), 2.0f);
                     dl->AddText(ImVec2(s_x + 2.0f, btn_y), track.solo ? IM_COL32(255, 255, 255, 230) : tc.text_dim, "S");
                     if (s_hov && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                    {
                         track.solo = !track.solo;
+                    }
                 }
 
                 float text_x = row_min.x + 14.0f;
@@ -1096,7 +1168,9 @@ void Sequencer::DrawTrackList()
                 }
 
                 if (row_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+                {
                     ImGui::OpenPopup("track_context");
+                }
 
                 if (ImGui::BeginPopup("track_context"))
                 {
@@ -1109,7 +1183,9 @@ void Sequencer::DrawTrackList()
                                 ImGui::PushID(static_cast<int>(entity->GetObjectId()));
                                 bool is_current = (entity->GetObjectId() == track.target_entity_id);
                                 if (ImGui::MenuItem(entity->GetObjectName().c_str(), nullptr, is_current))
+                                {
                                     track.target_entity_id = entity->GetObjectId();
+                                }
                                 ImGui::PopID();
                             }
                             ImGui::EndMenu();
@@ -1133,7 +1209,9 @@ void Sequencer::DrawTrackList()
                     ImGui::TextUnformatted("track color");
 
                     if (ImGui::MenuItem("reset color"))
+                    {
                         track.custom_color = Vector4::Zero;
+                    }
 
                     ImGui::Separator();
                     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(ImGui::Style::color_error.x, ImGui::Style::color_error.y, ImGui::Style::color_error.z, 1.0f));
@@ -1141,7 +1219,9 @@ void Sequencer::DrawTrackList()
                     {
                         seq.RemoveTrack(t);
                         if (m_selected_sequence == static_cast<int32_t>(s) && m_selected_track == static_cast<int32_t>(t))
+                        {
                             m_selected_track = -1;
+                        }
                         ImGui::PopStyleColor();
                         ImGui::EndPopup();
                         ImGui::PopID();
@@ -1174,12 +1254,18 @@ void Sequencer::DrawTrackList()
                 if (from != to && from >= 0 && from < static_cast<int>(trks.size()))
                 {
                     if (to > from)
+                    {
                         rotate(trks.begin() + from, trks.begin() + from + 1, trks.begin() + to + 1);
+                    }
                     else
+                    {
                         rotate(trks.begin() + to, trks.begin() + from, trks.begin() + from + 1);
+                    }
 
                     if (m_selected_sequence == m_reorder_seq && m_selected_track == from)
+                    {
                         m_selected_track = to;
+                    }
                 }
             }
         }
@@ -1228,11 +1314,17 @@ void Sequencer::DrawTimelineContent()
             int mins = static_cast<int>(t) / 60;
             float secs = t - static_cast<float>(mins * 60);
             if (mins > 0)
+            {
                 snprintf(time_str, sizeof(time_str), "%d:%04.1f", mins, secs);
+            }
             else if (step < 1.0f)
+            {
                 snprintf(time_str, sizeof(time_str), "%.2fs", t);
+            }
             else
+            {
                 snprintf(time_str, sizeof(time_str), "%.0fs", t);
+            }
             draw_list->AddText(ImVec2(x + 2.0f, timeline_y + 2.0f), tc.ruler_text, time_str);
 
             // sub-ticks
@@ -1282,7 +1374,9 @@ void Sequencer::DrawTimelineContent()
         ImGui::InvisibleButton("##ruler_scrub", ImVec2(content_width, ruler_height));
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
             m_scrubbing = true;
+        }
 
         if (m_scrubbing)
         {
@@ -1348,7 +1442,9 @@ void Sequencer::DrawTimelineContent()
         y_offset += m_group_height;
 
         if (collapsed)
+        {
             continue;
+        }
 
         auto& tracks = seq.GetTracks();
         for (uint32_t i = 0; i < static_cast<uint32_t>(tracks.size()); i++)
@@ -1423,7 +1519,9 @@ void Sequencer::DrawTimelineContent()
                         draw_list->AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), cc, 4.0f);
 
                         if (sel)
+                        {
                             draw_list->AddRect(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(255, 255, 255, 120), 4.0f, 0, 1.5f);
+                        }
 
                         Entity* cam_ent = World::GetEntityById(clip.camera_entity_id);
                         const char* cam_name = cam_ent ? cam_ent->GetObjectName().c_str() : "?";
@@ -1442,7 +1540,9 @@ void Sequencer::DrawTimelineContent()
                         bool right_edge = ImGui::IsMouseHoveringRect(ImVec2(x1 - edge_zone, y0), ImVec2(x1 + 2, y1));
 
                         if ((left_edge || right_edge) && m_resizing_clip == -1)
+                        {
                             ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+                        }
 
                         if (left_edge && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                         {
@@ -1466,7 +1566,9 @@ void Sequencer::DrawTimelineContent()
                             ImGui::Text("%s", cam_name);
                             ImGui::Text("%.2fs - %.2fs (%.2fs)", clip.start_time, clip.end_time, clip.end_time - clip.start_time);
                             if (clip.transition_in > 0.0f)
+                            {
                                 ImGui::Text("blend: %.2fs", clip.transition_in);
+                            }
                             ImGui::EndTooltip();
                         }
 
@@ -1550,7 +1652,9 @@ void Sequencer::DrawTimelineContent()
                         draw_list->AddConvexPolyFilled(diamond, 4, kf_color);
 
                         if (sel || multi_sel)
+                        {
                             draw_list->AddPolyline(diamond, 4, IM_COL32(255, 255, 255, 180), ImDrawFlags_Closed, 1.5f);
+                        }
 
                         // tooltip
                         if (hovered)
@@ -1574,16 +1678,23 @@ void Sequencer::DrawTimelineContent()
                             if (io.KeyCtrl)
                             {
                                 if (m_selected_keyframes.count(k))
+                                {
                                     m_selected_keyframes.erase(k);
+                                }
                                 else
+                                {
                                     m_selected_keyframes.insert(k);
+                                }
                                 m_selected_keyframe = static_cast<int32_t>(k);
                             }
                             else if (io.KeyShift && m_selected_keyframe >= 0)
                             {
                                 uint32_t from = static_cast<uint32_t>(m_selected_keyframe);
                                 uint32_t to = k;
-                                if (from > to) swap(from, to);
+                                if (from > to)
+                                {
+                                    swap(from, to);
+                                }
                                 m_selected_keyframes.clear();
                                 for (uint32_t ki = from; ki <= to; ki++)
                                     m_selected_keyframes.insert(ki);
@@ -1662,9 +1773,13 @@ void Sequencer::DrawTimelineContent()
                             ImGui::Text("%s @ %.2fs", event_action_label(evt.action), evt.time);
                             Entity* target = World::GetEntityById(evt.target_entity_id);
                             if (target)
+                            {
                                 ImGui::Text("target: %s", target->GetObjectName().c_str());
+                            }
                             if (evt.parameter != 0.0f)
+                            {
                                 ImGui::Text("param: %.2f", evt.parameter);
+                            }
                             ImGui::EndTooltip();
                         }
 
@@ -1818,9 +1933,13 @@ void Sequencer::DrawTimelineContent()
                         new_time = SnapTime(new_time);
 
                         if (m_resizing_left)
+                        {
                             clips[m_resizing_clip].start_time = min(new_time, clips[m_resizing_clip].end_time - 0.01f);
+                        }
                         else
+                        {
                             clips[m_resizing_clip].end_time = max(new_time, clips[m_resizing_clip].start_time + 0.01f);
+                        }
                     }
                 }
             }
@@ -1859,7 +1978,9 @@ void Sequencer::DrawTimelineContent()
                     {
                         float kx = timeline_x + trks[m_box_select_trk].keyframes[k].time * m_pixels_per_sec;
                         if (kx >= x0 && kx <= x1)
+                        {
                             m_selected_keyframes.insert(k);
+                        }
                     }
                 }
             }
@@ -1877,7 +1998,9 @@ void Sequencer::DrawTimelineContent()
         for (const Sequence& seq : m_sequences)
         {
             if (seq.IsPlaying() && !seq.IsPaused())
+            {
                 any_playing = true;
+            }
             playback_time = max(playback_time, seq.GetPlaybackTime());
         }
 
@@ -2048,7 +2171,9 @@ void Sequencer::DrawTimelineContent()
                                 ImGui::PushID(static_cast<int>(entity->GetObjectId()));
                                 bool is_current = (entity->GetObjectId() == clip.camera_entity_id);
                                 if (ImGui::MenuItem(entity->GetObjectName().c_str(), nullptr, is_current))
+                                {
                                     clip.camera_entity_id = entity->GetObjectId();
+                                }
                                 ImGui::PopID();
                             }
                         }
@@ -2094,7 +2219,9 @@ void Sequencer::DrawTimelineContent()
                                 ImGui::PushID(static_cast<int>(entity->GetObjectId()));
                                 bool is_current = (entity->GetObjectId() == evt.target_entity_id);
                                 if (ImGui::MenuItem(entity->GetObjectName().c_str(), nullptr, is_current))
+                                {
                                     evt.target_entity_id = entity->GetObjectId();
+                                }
                                 ImGui::PopID();
                             }
                             ImGui::EndMenu();
@@ -2125,7 +2252,9 @@ void Sequencer::DrawTimelineContent()
 void Sequencer::DrawPlayhead(float timeline_x, float content_width, float timeline_y, float total_height)
 {
     if (total_height <= 0.0f)
+    {
         return;
+    }
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
@@ -2135,7 +2264,9 @@ void Sequencer::DrawPlayhead(float timeline_x, float content_width, float timeli
     {
         playback_time = max(playback_time, seq.GetPlaybackTime());
         if (seq.IsPlaying() && !seq.IsPaused())
+        {
             any_playing = true;
+        }
     }
 
     float playhead_x = timeline_x + playback_time * m_pixels_per_sec;
@@ -2279,26 +2410,38 @@ void Sequencer::DrawMinimap(float timeline_x, float content_width, float timelin
 void Sequencer::DrawSelectionProperties()
 {
     if (m_selected_sequence < 0 || m_selected_sequence >= static_cast<int32_t>(m_sequences.size()))
+    {
         return;
+    }
 
     Sequence& seq = m_sequences[m_selected_sequence];
     auto& tracks = seq.GetTracks();
 
     if (m_selected_track < 0 || m_selected_track >= static_cast<int32_t>(tracks.size()))
+    {
         return;
+    }
 
     SequenceTrack& track = tracks[m_selected_track];
 
     bool has_selection = false;
     if (track.type == SequenceTrackType::Transform && m_selected_keyframe >= 0 && m_selected_keyframe < static_cast<int32_t>(track.keyframes.size()))
+    {
         has_selection = true;
+    }
     if (track.type == SequenceTrackType::CameraCut && m_selected_clip >= 0 && m_selected_clip < static_cast<int32_t>(track.camera_clips.size()))
+    {
         has_selection = true;
+    }
     if (track.type == SequenceTrackType::Event && m_selected_keyframe >= 0 && m_selected_keyframe < static_cast<int32_t>(track.event_clips.size()))
+    {
         has_selection = true;
+    }
 
     if (!has_selection)
+    {
         return;
+    }
 
     ImGui::SetNextItemOpen(m_properties_open);
     if (ImGui::CollapsingHeader("properties", &m_properties_open))
@@ -2340,9 +2483,13 @@ void Sequencer::DrawSelectionProperties()
                         InterpolationMode mode = static_cast<InterpolationMode>(m);
                         bool is_selected = (kf.interpolation == mode);
                         if (ImGui::Selectable(interpolation_mode_label(mode), is_selected))
+                        {
                             kf.interpolation = mode;
+                        }
                         if (is_selected)
+                        {
                             ImGui::SetItemDefaultFocus();
+                        }
                     }
                     ImGui::EndCombo();
                 }
@@ -2478,9 +2625,13 @@ void Sequencer::DrawSelectionProperties()
                             ImGui::PushID(static_cast<int>(entity->GetObjectId()));
                             bool is_current = (entity->GetObjectId() == clip.camera_entity_id);
                             if (ImGui::Selectable(entity->GetObjectName().c_str(), is_current))
+                            {
                                 clip.camera_entity_id = entity->GetObjectId();
+                            }
                             if (is_current)
+                            {
                                 ImGui::SetItemDefaultFocus();
+                            }
                             ImGui::PopID();
                         }
                     }

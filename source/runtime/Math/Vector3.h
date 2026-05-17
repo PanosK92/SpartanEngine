@@ -251,8 +251,14 @@ namespace spartan::math
             const float NZ = abs(z);
 
             // find best basis vectors
-            if (NZ > NX && NZ > NY)	Axis1 = Vector3(1, 0, 0);
-            else                    Axis1 = Vector3(0, 0, 1);
+            if (NZ > NX && NZ > NY)
+            {
+                Axis1 = Vector3(1, 0, 0);
+            }
+            else
+            {
+                Axis1 = Vector3(0, 0, 1);
+            }
 
             Axis1 = (Axis1 - *this * (Axis1.Dot(*this))).Normalized();
             Axis2 = Axis1.Cross(*this);

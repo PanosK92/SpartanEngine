@@ -59,7 +59,9 @@ namespace spartan
     {
         // only draw in editor mode (not playing)
         if (Engine::IsFlagSet(EngineMode::Playing))
+        {
             return;
+        }
 
         // transform the bounding box by the entity's transform matrix
         const Matrix& entity_matrix       = GetEntity()->GetMatrix();

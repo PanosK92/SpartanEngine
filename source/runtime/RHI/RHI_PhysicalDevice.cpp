@@ -65,7 +65,10 @@ namespace spartan
 
                 // truncate at first space
                 char* space_ptr = strchr(driver_version_str, ' ');
-                if (space_ptr) *space_ptr = '\0';
+                if (space_ptr)
+                {
+                    *space_ptr = '\0';
+                }
                 return driver_version_str;
             }
             return "Unknown AMD driver";

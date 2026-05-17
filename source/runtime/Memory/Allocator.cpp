@@ -94,7 +94,9 @@ namespace spartan
         size_t get_size_class(size_t size)
         {
             if (size == 0)
+            {
                 return 0;
+            }
 
             return min((size - 1) / cache_size_granularity, cache_size_classes - 1);
         }
@@ -109,7 +111,9 @@ namespace spartan
         void* cache_try_get(size_t size)
         {
             if (size > cache_max_size)
+            {
                 return nullptr;
+            }
 
             size_t size_class = get_size_class(size);
             if (tl_cache.count[size_class] > 0)
@@ -124,7 +128,9 @@ namespace spartan
         bool cache_try_put(void* ptr, size_t size)
         {
             if (size > cache_max_size)
+            {
                 return false;
+            }
 
             size_t size_class = get_size_class(size);
             if (tl_cache.count[size_class] < cache_max_entries)
@@ -171,7 +177,9 @@ namespace spartan
             void* raw = aligned_alloc(alignment, aligned_total_size);
 #endif
             if (!raw)
+            {
                 return nullptr;
+            }
 
             // calculate aligned user pointer (must be aligned and have room for header before it)
             uintptr_t raw_addr  = reinterpret_cast<uintptr_t>(raw);
@@ -287,7 +295,9 @@ namespace spartan
     void Allocator::Free(void* ptr)
     {
         if (!ptr)
+        {
             return;
+        }
 
         const size_t header_size = sizeof(allocation_header);
         allocation_header* header = reinterpret_cast<allocation_header*>(static_cast<char*>(ptr) - header_size);
@@ -441,7 +451,9 @@ namespace spartan
     {
         size_t index = static_cast<size_t>(tag);
         if (index >= static_cast<size_t>(MemoryTag::Count))
+        {
             return 0.0f;
+        }
         return static_cast<float>(bytes_by_tag[index].load(memory_order_relaxed)) / (1024.0f * 1024.0f);
     }
 
@@ -461,7 +473,9 @@ namespace spartan
 
         size_t index = static_cast<size_t>(tag);
         if (index >= static_cast<size_t>(MemoryTag::Count))
+        {
             return "Unknown";
+        }
         return tag_names[index];
     }
 }

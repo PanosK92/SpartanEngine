@@ -105,14 +105,10 @@ namespace spartan
         {
             auto It = Find(name)->m_value_ptr;
             if (It == nullptr)
-            {
                 return nullptr;
-            }
 
             if (auto* Ptr = std::get_if<T>(It))
-            {
                 return Ptr;
-            }
 
             return nullptr;
         }

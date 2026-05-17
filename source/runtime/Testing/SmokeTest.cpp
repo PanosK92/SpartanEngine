@@ -76,13 +76,17 @@ namespace spartan
     void SmokeTest::OnFirstFrameCompleted()
     {
         if (Engine::HasArgument("-ci_test"))
+        {
             RunInitialTests();
+        }
     }
 
     void SmokeTest::Tick()
     {
         if (!m_delayedTestsPending)
+        {
             return;
+        }
 
         Material* standard_material = Renderer::GetStandardMaterial().get();
         if (standard_material && standard_material->GetResourceState() >= ResourceState::PreparedForGpu)
@@ -361,9 +365,13 @@ namespace spartan
                     );
                     
                     if (buffer && buffer->GetRhiResource())
+                    {
                         success_count++;
+                    }
                     else
+                    {
                         failure_count++;
+                    }
                 }
             });
         }
@@ -498,7 +506,9 @@ namespace spartan
     bool SmokeTest::ValidateCenterPixel(void* data, uint32_t width, uint32_t height, uint32_t bits_per_channel, uint32_t channel_count)
     {
         if (!data)
+        {
             return false;
+        }
 
         size_t center_pixel_index = (height / 2) * width + (width / 2);
         size_t pixel_size = (bits_per_channel / 8) * channel_count;
@@ -507,7 +517,9 @@ namespace spartan
         for (size_t i = 0; i < pixel_size; ++i)
         {
             if (pixel_start[i] != 0)
+            {
                 return true;
+            }
         }
 
         return false;

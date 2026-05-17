@@ -37,7 +37,9 @@ namespace spartan
         {
             const std::size_t bone_count = parent_indices.size();
             if (local_matrices.size() < bone_count || out_global_matrices.size() < bone_count)
+            {
                 return;
+            }
 
             for (std::size_t bone_index = 0; bone_index < bone_count; ++bone_index)
             {
@@ -84,7 +86,9 @@ namespace spartan
             Clear();
             joint_count = in_joint_count;
             if (joint_count == 0)
+            {
                 return;
+            }
 
             std::size_t total_bytes = 0;
             total_bytes = AlignUp<int16_t>(total_bytes) + static_cast<std::size_t>(joint_count) * sizeof(int16_t);
@@ -113,7 +117,9 @@ namespace spartan
             const std::uintptr_t address = reinterpret_cast<std::uintptr_t>(cursor);
             const std::size_t misalignment = address % alignment;
             if (misalignment != 0)
+            {
                 cursor += alignment - misalignment;
+            }
 
             out_span = std::span<T>(reinterpret_cast<T*>(cursor), count);
             cursor += static_cast<std::size_t>(count) * sizeof(T);

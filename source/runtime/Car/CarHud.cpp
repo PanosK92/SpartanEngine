@@ -75,14 +75,18 @@ namespace spartan::car_hud
         void draw_arrow(ImDrawList* dl, ImVec2 origin, float dx, float dy, ImU32 color, float thickness = 3.0f)
         {
             if (fabsf(dx) < 1.0f && fabsf(dy) < 1.0f)
+            {
                 return;
+            }
 
             ImVec2 tip(origin.x + dx, origin.y + dy);
             dl->AddLine(origin, tip, color, thickness);
 
             float len = sqrtf(dx * dx + dy * dy);
             if (len <= 5.0f)
+            {
                 return;
+            }
 
             float nx = dx / len;
             float ny = dy / len;
@@ -131,8 +135,14 @@ namespace spartan::car_hud
         // colour ramp for tire surface and core temperatures
         ImU32 temp_color(float t)
         {
-            if (t > 110.0f) return accent_warn;
-            if (t < 70.0f)  return accent_info;
+            if (t > 110.0f)
+            {
+                return accent_warn;
+            }
+            if (t < 70.0f)
+            {
+                return accent_info;
+            }
             return accent_ok;
         }
 
@@ -159,21 +169,42 @@ namespace spartan::car_hud
         // colour ramp for the sweep arc depending on the gauge type
         ImU32 arc_color_for_speed(float fraction)
         {
-            if (fraction < 0.45f) return IM_COL32(60, 140, 90, 255);
-            if (fraction < 0.75f) return IM_COL32(160, 140, 60, 255);
+            if (fraction < 0.45f)
+            {
+                return IM_COL32(60, 140, 90, 255);
+            }
+            if (fraction < 0.75f)
+            {
+                return IM_COL32(160, 140, 60, 255);
+            }
             return IM_COL32(190, 70, 70, 255);
         }
         ImU32 arc_color_for_rpm(float fraction, float redline_fraction)
         {
-            if (fraction >= redline_fraction) return IM_COL32(220, 70, 70, 255);
-            if (fraction < 0.65f)             return IM_COL32(70, 160, 100, 255);
+            if (fraction >= redline_fraction)
+            {
+                return IM_COL32(220, 70, 70, 255);
+            }
+            if (fraction < 0.65f)
+            {
+                return IM_COL32(70, 160, 100, 255);
+            }
             return IM_COL32(190, 160, 60, 255);
         }
         ImU32 arc_color_for_boost(float fraction)
         {
-            if (fraction < 0.30f) return IM_COL32(80, 100, 130, 255);
-            if (fraction < 0.60f) return IM_COL32(50, 130, 160, 255);
-            if (fraction < 0.85f) return IM_COL32(60, 170, 100, 255);
+            if (fraction < 0.30f)
+            {
+                return IM_COL32(80, 100, 130, 255);
+            }
+            if (fraction < 0.60f)
+            {
+                return IM_COL32(50, 130, 160, 255);
+            }
+            if (fraction < 0.85f)
+            {
+                return IM_COL32(60, 170, 100, 255);
+            }
             return IM_COL32(210, 80, 60, 255);
         }
 
@@ -208,14 +239,26 @@ namespace spartan::car_hud
             {
                 float seg_frac_0 = (float)i       / track_segments;
                 float seg_frac_1 = (float)(i + 1) / track_segments;
-                if (seg_frac_0 >= fraction) break;
+                if (seg_frac_0 >= fraction)
+                {
+                    break;
+                }
                 float a1 = arc_start + arc_range * seg_frac_0;
                 float a2 = arc_start + arc_range * std::min(seg_frac_1, fraction);
 
                 ImU32 c = IM_COL32_WHITE;
-                if      (kind == gauge_kind::speed) c = arc_color_for_speed(seg_frac_0);
-                else if (kind == gauge_kind::rpm)   c = arc_color_for_rpm(seg_frac_0, s.redline_fraction);
-                else                                c = arc_color_for_boost(seg_frac_0);
+                if      (kind == gauge_kind::speed)
+                {
+                    c = arc_color_for_speed(seg_frac_0);
+                }
+                else if (kind == gauge_kind::rpm)
+                {
+                    c = arc_color_for_rpm(seg_frac_0, s.redline_fraction);
+                }
+                else
+                {
+                    c = arc_color_for_boost(seg_frac_0);
+                }
 
                 ImVec2 p1(center.x + cosf(a1) * (r - 10), center.y + sinf(a1) * (r - 10));
                 ImVec2 p2(center.x + cosf(a1) * (r - 4),  center.y + sinf(a1) * (r - 4));
@@ -244,9 +287,13 @@ namespace spartan::car_hud
                     {
                         char buf[8];
                         if (s.labels_as_int)
+                        {
                             snprintf(buf, sizeof(buf), "%d", (int)((s.value_max * t) / s.label_divider));
+                        }
                         else
+                        {
                             snprintf(buf, sizeof(buf), "%.1f", (s.value_max * t) / s.label_divider);
+                        }
                         float lr = r - 28;
                         ImVec2 size = ImGui::CalcTextSize(buf);
                         ImVec2 lp(center.x + cosf(a) * lr - size.x * 0.5f, center.y + sinf(a) * lr - size.y * 0.5f);
@@ -301,7 +348,9 @@ namespace spartan::car_hud
             float rate   = 8.0f;
             anim.alpha  += (target - anim.alpha) * std::clamp(dt * rate, 0.0f, 1.0f);
             if (anim.alpha < 0.02f)
+            {
                 return;
+            }
 
             ImVec2 ts   = ImGui::CalcTextSize(text);
             float pad_x = 7.0f;
@@ -370,9 +419,13 @@ namespace spartan::car_hud
                 float lon_a = std::clamp(-lon * scale, -max_arrow, max_arrow);
 
                 if (fabsf(lat_a) > 2.0f)
+                {
                     draw_arrow(dl, center, lat_a, 0.0f, accent_info, 3.0f);
+                }
                 if (fabsf(lon_a) > 2.0f)
+                {
                     draw_arrow(dl, center, 0.0f, lon_a, (lon > 0.0f) ? accent_ok : accent_danger, 3.0f);
+                }
             }
         }
 
@@ -482,11 +535,15 @@ namespace spartan::car_hud
     void draw_driver_hud(Physics* physics)
     {
         if (!Engine::IsFlagSet(EngineMode::EditorVisible) || !physics)
+        {
             return;
+        }
 
         ImGuiIO& io = ImGui::GetIO();
         if (io.DisplaySize.x < 200.0f || io.DisplaySize.y < 200.0f)
+        {
             return;
+        }
 
         math::Vector3 velocity = physics->GetLinearVelocity();
         float speed_kmh        = velocity.Length() * 3.6f;
@@ -559,7 +616,9 @@ namespace spartan::car_hud
                 ImGui::TableSetupColumn("##gear",  ImGuiTableColumnFlags_WidthFixed, gear_col_w);
                 ImGui::TableSetupColumn("##speed", ImGuiTableColumnFlags_WidthFixed, gauge_col_w);
                 if (turbo_enabled)
+                {
                     ImGui::TableSetupColumn("##turbo", ImGuiTableColumnFlags_WidthFixed, turbo_col_w);
+                }
 
                 ImGui::TableNextRow();
 
@@ -586,7 +645,10 @@ namespace spartan::car_hud
                 {
                     static float gear_pulse = 0.0f;
                     static bool  prev_shift = false;
-                    if (is_shifting && !prev_shift) gear_pulse = 1.0f;
+                    if (is_shifting && !prev_shift)
+                    {
+                        gear_pulse = 1.0f;
+                    }
                     prev_shift = is_shifting;
                     gear_pulse = std::max(0.0f, gear_pulse - io.DeltaTime * 5.0f);
                     float scale = 1.0f + gear_pulse * 0.18f;
@@ -695,8 +757,14 @@ namespace spartan::car_hud
                     dl->AddRect(bar_tl, bar_br, IM_COL32(70, 80, 92, 255), 3.0f, 0, 1.0f);
 
                     char buf[8];
-                    if (signed_pct) snprintf(buf, sizeof(buf), "%+.0f%%", value * 100.0f);
-                    else            snprintf(buf, sizeof(buf), "%.0f%%",  value * 100.0f);
+                    if (signed_pct)
+                    {
+                        snprintf(buf, sizeof(buf), "%+.0f%%", value * 100.0f);
+                    }
+                    else
+                    {
+                        snprintf(buf, sizeof(buf), "%.0f%%",  value * 100.0f);
+                    }
                     dl->AddText(ImVec2(bar_br.x + 6.0f, base_y), text_dim, buf);
 
                     ImGui::Dummy(ImVec2(input_col_w, input_row_h));
@@ -738,7 +806,10 @@ namespace spartan::car_hud
                 ImVec2 pill_tl(tl.x + panel_w - 12.0f, tl.y + 4.0f);
                 auto push_pill = [&](const char* text, pill_state st, pill_anim& anim)
                 {
-                    if (anim.alpha < 0.02f && st == pill_state::off) return;
+                    if (anim.alpha < 0.02f && st == pill_state::off)
+                    {
+                        return;
+                    }
                     ImVec2 ts = ImGui::CalcTextSize(text);
                     pill_tl.x -= (ts.x + 14.0f + 10.0f);
                     draw_status_pill(dl, pill_tl, text, st, anim, io.DeltaTime);
@@ -779,7 +850,10 @@ namespace spartan::car_hud
 
             static float gear_pulse = 0.0f;
             static bool  prev_shift = false;
-            if (is_shifting && !prev_shift) gear_pulse = 1.0f;
+            if (is_shifting && !prev_shift)
+            {
+                gear_pulse = 1.0f;
+            }
             prev_shift = is_shifting;
             gear_pulse = std::max(0.0f, gear_pulse - ImGui::GetIO().DeltaTime * 5.0f);
             float scale = 1.0f + gear_pulse * 0.18f;
@@ -865,7 +939,9 @@ namespace spartan::car_hud
                 ImGui::TableSetupColumn("##gear",  ImGuiTableColumnFlags_WidthFixed, gear_col_w);
                 ImGui::TableSetupColumn("##speed", ImGuiTableColumnFlags_WidthFixed, gauge_col_w);
                 if (turbo_enabled)
+                {
                     ImGui::TableSetupColumn("##turbo", ImGuiTableColumnFlags_WidthFixed, turbo_col_w);
+                }
 
                 ImGui::TableNextRow();
 
@@ -954,25 +1030,43 @@ namespace spartan::car_hud
             {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                if (ImGui::Checkbox("ABS", &abs_enabled)) physics->SetAbsEnabled(abs_enabled);
+                if (ImGui::Checkbox("ABS", &abs_enabled))
+                {
+                    physics->SetAbsEnabled(abs_enabled);
+                }
                 hud_tooltip("Anti-lock braking: prevents wheel lockup under hard braking.");
                 ImGui::TableNextColumn();
-                if (ImGui::Checkbox("TCS", &tc_enabled)) physics->SetTcEnabled(tc_enabled);
+                if (ImGui::Checkbox("TCS", &tc_enabled))
+                {
+                    physics->SetTcEnabled(tc_enabled);
+                }
                 hud_tooltip("Traction control: cuts throttle when driven wheels spin faster than the vehicle.");
                 ImGui::TableNextColumn();
-                if (ImGui::Checkbox("Manual", &manual_trans)) physics->SetManualTransmission(manual_trans);
+                if (ImGui::Checkbox("Manual", &manual_trans))
+                {
+                    physics->SetManualTransmission(manual_trans);
+                }
                 hud_tooltip("Manual transmission: disables auto shifts. Use L1/R1.");
 
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                if (ImGui::Checkbox("Turbo", &turbo_on)) physics->SetTurboEnabled(turbo_on);
+                if (ImGui::Checkbox("Turbo", &turbo_on))
+                {
+                    physics->SetTurboEnabled(turbo_on);
+                }
                 hud_tooltip("Forced induction. Boost spools with RPM and load.");
                 ImGui::TableNextColumn();
-                if (ImGui::Checkbox("DRS", &drs_enabled)) physics->SetDrsEnabled(drs_enabled);
+                if (ImGui::Checkbox("DRS", &drs_enabled))
+                {
+                    physics->SetDrsEnabled(drs_enabled);
+                }
                 hud_tooltip("Drag reduction system: opens the rear wing on straights.");
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-FLT_MIN);
-                if (ImGui::Combo("##diff", &diff_type, diff_items, 3)) physics->SetDiffType(diff_type);
+                if (ImGui::Combo("##diff", &diff_type, diff_items, 3))
+                {
+                    physics->SetDiffType(diff_type);
+                }
                 ImGui::SameLine();
                 ImGui::TextColored(imvec4_from_u32(text_dim), "Diff");
                 hud_tooltip("Differential type: Open splits torque freely, Locked equalises wheel speed, LSD biases under load.");
@@ -991,7 +1085,10 @@ namespace spartan::car_hud
                         car::active_preset_index = i;
                         car::load_car(*car::preset_registry[i].instance);
                     }
-                    if (selected) ImGui::SetItemDefaultFocus();
+                    if (selected)
+                    {
+                        ImGui::SetItemDefaultFocus();
+                    }
                 }
                 ImGui::EndCombo();
             }
@@ -1013,7 +1110,10 @@ namespace spartan::car_hud
             {
                 for (int i = 0; i < 4; ++i)
                 {
-                    if ((i % 2) == 0) ImGui::TableNextRow();
+                    if ((i % 2) == 0)
+                    {
+                        ImGui::TableNextRow();
+                    }
                     ImGui::TableNextColumn();
 
                     // wheel header
@@ -1147,7 +1247,10 @@ namespace spartan::car_hud
             {
                 for (int i = 0; i < 4; ++i)
                 {
-                    if ((i % 2) == 0) ImGui::TableNextRow();
+                    if ((i % 2) == 0)
+                    {
+                        ImGui::TableNextRow();
+                    }
                     ImGui::TableNextColumn();
 
                     float comp = physics->GetWheelCompression(idx[i]);
@@ -1194,7 +1297,10 @@ namespace spartan::car_hud
                                 int idx_k = (hist_pos + k) % hist_n;
                                 float v = std::clamp(history[i][idx_k], 0.0f, 1.0f);
                                 ImVec2 pt(tl.x + (float)k / (hist_n - 1) * ww, br.y - v * (hh - 2.0f) - 1.0f);
-                                if (k > 0) dl->AddLine(prev_pt, pt, comp_color, 1.4f);
+                                if (k > 0)
+                                {
+                                    dl->AddLine(prev_pt, pt, comp_color, 1.4f);
+                                }
                                 prev_pt = pt;
                             }
                             dl->AddText(ImVec2(tl.x + 4.0f, tl.y + 2.0f), text_label, "travel history");
@@ -1248,10 +1354,16 @@ namespace spartan::car_hud
                                     float min_axis, float max_axis, float min_y, float max_y,
                                     float draw_x, float draw_y, float draw_w, float draw_h)
             {
-                if (profile.size() < 3) return;
+                if (profile.size() < 3)
+                {
+                    return;
+                }
                 float axis_range = max_axis - min_axis;
                 float y_range    = max_y - min_y;
-                if (axis_range < 0.01f || y_range < 0.01f) return;
+                if (axis_range < 0.01f || y_range < 0.01f)
+                {
+                    return;
+                }
                 float scale_x = axis_range * ppm;
                 float scale_y = y_range * ppm;
                 float off_x   = draw_x + (draw_w - scale_x) * 0.5f;
@@ -1292,11 +1404,20 @@ namespace spartan::car_hud
             auto arrow_with_label = [&](ImVec2 from, float dx, float dy, ImU32 color, float force_n)
             {
                 draw_arrow(dl, from, dx, dy, color, 3.0f);
-                if (sqrtf(dx*dx + dy*dy) < 5.0f) return;
+                if (sqrtf(dx*dx + dy*dy) < 5.0f)
+                {
+                    return;
+                }
                 ImVec2 end(from.x + dx, from.y + dy);
                 char buf[16];
-                if (force_n >= 1000.0f) snprintf(buf, sizeof(buf), "%.1f kN", force_n / 1000.0f);
-                else                    snprintf(buf, sizeof(buf), "%.0f N",   force_n);
+                if (force_n >= 1000.0f)
+                {
+                    snprintf(buf, sizeof(buf), "%.1f kN", force_n / 1000.0f);
+                }
+                else
+                {
+                    snprintf(buf, sizeof(buf), "%.0f N",   force_n);
+                }
                 dl->AddText(ImVec2(end.x + (dy != 0 ? 4.0f : -18.0f), end.y + (dx != 0 ? -14.0f : -4.0f)), color, buf);
             };
 
@@ -1317,14 +1438,22 @@ namespace spartan::car_hud
                     draw_panel_background(dl, tl, br, 6.0f);
 
                     if (shape.valid)
+                    {
                         draw_profile(shape.side_profile, shape.min_z, shape.max_z, shape.min_y, shape.max_y, tl.x, tl.y, side_view_w, view_h);
+                    }
 
                     if (drag_n > 10.0f)
+                    {
                         arrow_with_label(ImVec2(tl.x + side_view_w * 0.06f, tl.y + view_h * 0.50f), -std::clamp(drag_n * fs, 10.0f, max_len), 0, accent_warn, drag_n);
+                    }
                     if (front_df_n > 10.0f)
+                    {
                         arrow_with_label(ImVec2(tl.x + side_view_w * 0.22f, tl.y + view_h * 0.10f), 0, std::clamp(front_df_n * fs, 10.0f, max_len), accent_info, front_df_n);
+                    }
                     if (rear_df_n > 10.0f)
+                    {
                         arrow_with_label(ImVec2(tl.x + side_view_w * 0.80f, tl.y + view_h * 0.10f), 0, std::clamp(rear_df_n * fs, 10.0f, max_len), accent_info, rear_df_n);
+                    }
 
                     ImGui::Dummy(ImVec2(side_view_w, view_h + 4.0f));
                 }
@@ -1338,10 +1467,14 @@ namespace spartan::car_hud
                     draw_panel_background(dl, tl, br, 6.0f);
 
                     if (shape.valid)
+                    {
                         draw_profile(shape.front_profile, shape.min_x, shape.max_x, shape.min_y, shape.max_y, tl.x, tl.y, front_view_w, view_h);
+                    }
 
                     if (total_df > 10.0f)
+                    {
                         arrow_with_label(ImVec2(tl.x + front_view_w * 0.5f, tl.y + view_h * 0.04f), 0, std::clamp(total_df * fs * 0.5f, 10.0f, max_len), accent_info, total_df);
+                    }
                     if (side_n > 50.0f)
                     {
                         float dir = (aero.valid && aero.side_force.x < 0) ? -1.0f : 1.0f;
@@ -1419,7 +1552,9 @@ namespace spartan::car_hud
                 ImGui::Dummy(ImVec2(bw, bh + 4.0f));
 
                 if (aero.valid && aero.ground_effect_factor > 1.01f)
+                {
                     ImGui::TextColored(imvec4_from_u32(accent_ok), "Ground effect: +%.0f%%", (aero.ground_effect_factor - 1.0f) * 100.0f);
+                }
             }
 
             ImGui::SeparatorText("Legend");
@@ -1442,9 +1577,13 @@ namespace spartan::car_hud
                 dbg.rpm, dbg.throttle * 100.0f, dbg.boost, dbg.firing_freq);
 
             if (dbg.ir_taps > 0)
+            {
                 ImGui::TextColored(imvec4_from_u32(text_dim), "Exhaust IR: %d taps @ %.0f Hz", dbg.ir_taps, (float)engine_sound::tuning::sample_rate);
+            }
             else
+            {
                 ImGui::TextColored(imvec4_from_u32(accent_danger), "Exhaust IR: not loaded (check binaries/project/music/exhaust_ir.wav)");
+            }
 
             ImGui::SeparatorText("Layer levels");
             draw_level_bar("Combustion", dbg.combustion_level, IM_COL32(255, 100, 100, 255));
@@ -1525,7 +1664,9 @@ namespace spartan::car_hud
                 }
                 float fx = pos.x + w * (dbg.firing_freq / nyq);
                 if (fx >= pos.x && fx <= pos.x + w)
+                {
                     dl->AddLine(ImVec2(fx, pos.y), ImVec2(fx, pos.y + h), IM_COL32(255, 200, 80, 220), 1.0f);
+                }
                 dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 4.0f, 0, 1.0f);
                 ImGui::Dummy(ImVec2(w, h));
             }
@@ -1551,10 +1692,14 @@ namespace spartan::car_hud
             bool draw_rays = physics->GetDrawRaycasts();
             bool draw_susp = physics->GetDrawSuspension();
             if (ImGui::Checkbox("Draw raycasts", &draw_rays))
+            {
                 physics->SetDrawRaycasts(draw_rays);
+            }
             hud_tooltip("Draws wheel raycasts in the 3D viewport. Green = ground hit, red = miss.");
             if (ImGui::Checkbox("Draw suspension", &draw_susp))
+            {
                 physics->SetDrawSuspension(draw_susp);
+            }
             hud_tooltip("Draws the suspension line between top mount and wheel contact in the 3D viewport.");
 
             if (draw_rays || draw_susp)
@@ -1589,7 +1734,9 @@ namespace spartan::car_hud
                 ImGui::SliderFloat("master_offset",    &s.params.master_offset,   -0.7f, 1.0f, "%.2f");
                 ImGui::SliderFloat("notch_depth",      &s.params.notch_depth,      0.0f, 1.0f, "%.2f");
                 if (ImGui::Button("Reset to defaults"))
+                {
                     s.params = engine_sound::runtime_params();
+                }
             }
 
             if (ImGui::CollapsingHeader("WAV dump"))
@@ -1609,11 +1756,20 @@ namespace spartan::car_hud
 
                 if (dbg.dump_total == 0)
                 {
-                    if (ImGui::Button("Dump 2s WAV"))  s.begin_dump(2.0f);
+                    if (ImGui::Button("Dump 2s WAV"))
+                    {
+                        s.begin_dump(2.0f);
+                    }
                     ImGui::SameLine();
-                    if (ImGui::Button("Dump 5s WAV"))  s.begin_dump(5.0f);
+                    if (ImGui::Button("Dump 5s WAV"))
+                    {
+                        s.begin_dump(5.0f);
+                    }
                     ImGui::SameLine();
-                    if (ImGui::Button("Dump 10s WAV")) s.begin_dump(10.0f);
+                    if (ImGui::Button("Dump 10s WAV"))
+                    {
+                        s.begin_dump(10.0f);
+                    }
                 }
                 else
                 {
@@ -1624,9 +1780,13 @@ namespace spartan::car_hud
                 if (last_save_time > 0 && now - last_save_time < 6.0)
                 {
                     if (last_save_ok)
+                    {
                         ImGui::TextColored(imvec4_from_u32(accent_ok),     "saved binaries/last_synth.wav (%.1fs ago)", now - last_save_time);
+                    }
                     else
+                    {
                         ImGui::TextColored(imvec4_from_u32(accent_danger), "save FAILED (check working dir / permissions)");
+                    }
                 }
             }
         }
@@ -1635,13 +1795,17 @@ namespace spartan::car_hud
     void draw_telemetry_window(Physics* physics, bool* p_open)
     {
         if (!Engine::IsFlagSet(EngineMode::EditorVisible) || !physics)
+        {
             return;
+        }
 
         physics->DrawDebugVisualization();
 
         ImGuiIO& io = ImGui::GetIO();
         if (io.DisplaySize.x < 200.0f || io.DisplaySize.y < 200.0f)
+        {
             return;
+        }
 
         ImGui::SetNextWindowSize(ImVec2(720.0f, 700.0f), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 740.0f, 40.0f), ImGuiCond_FirstUseEver);
@@ -1653,42 +1817,54 @@ namespace spartan::car_hud
                 if (ImGui::BeginTabItem("Overview"))
                 {
                     if (ImGui::BeginChild("##overview_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                    {
                         tab_overview(physics);
+                    }
                     ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Tires"))
                 {
                     if (ImGui::BeginChild("##tires_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                    {
                         tab_tires(physics);
+                    }
                     ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Suspension"))
                 {
                     if (ImGui::BeginChild("##susp_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                    {
                         tab_suspension(physics);
+                    }
                     ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Aerodynamics"))
                 {
                     if (ImGui::BeginChild("##aero_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                    {
                         tab_aero(physics);
+                    }
                     ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Engine"))
                 {
                     if (ImGui::BeginChild("##engine_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                    {
                         tab_engine(physics);
+                    }
                     ImGui::EndChild();
                     ImGui::EndTabItem();
                 }
                 if (ImGui::BeginTabItem("Debug"))
                 {
                     if (ImGui::BeginChild("##debug_scroll", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysVerticalScrollbar))
+                    {
                         tab_debug(physics);
+                    }
                     ImGui::EndChild();
                     ImGui::EndTabItem();
                 }

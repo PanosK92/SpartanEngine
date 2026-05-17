@@ -91,7 +91,9 @@ namespace spartan
         fps_in = clamp(fps_in, fps_min, fps_max);
 
         if (fps_limit == fps_in)
+        {
             return;
+        }
 
         fps_limit = fps_in;
         SP_LOG_INFO("Set to %.2f FPS", fps_limit);
@@ -105,10 +107,14 @@ namespace spartan
     FpsLimitType Timer::GetFpsLimitType()
     {
         if (fps_limit == static_cast<float>(Display::GetRefreshRate()))
+        {
             return FpsLimitType::FixedToMonitor;
+        }
 
         if (fps_limit == fps_max)
+        {
             return FpsLimitType::Unlocked;
+        }
 
         return FpsLimitType::Fixed;
     }

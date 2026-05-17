@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Queue.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Buffer.h"
+#include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_VendorTechnology.h"
 #include "../RHI/RHI_AccelerationStructure.h"
 #include "../World/Entity.h"
@@ -50,7 +51,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Rectangle.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Commands/Console/ConsoleCommands.h"
-#include "../Core/Breadcrumbs.h"
+#include "../Profiling/Breadcrumbs.h"
 #include "../XR/Xr.h"
 //==============================================
 
@@ -146,7 +147,9 @@ namespace spartan
         void tick_dynamic_resolution_scale()
         {
             if (cvar_dynamic_resolution.GetValue() == 0.0f)
+            {
                 return;
+            }
 
             const float gpu_time_target   = 16.67f;
             const float adjustment_factor = static_cast<float>(0.05f * Timer::GetDeltaTimeSec());
@@ -154,9 +157,13 @@ namespace spartan
             const float gpu_time          = Profiler::GetTimeGpuLast();
 
             if (gpu_time < gpu_time_target)
+            {
                 screen_percentage += adjustment_factor * (gpu_time_target - gpu_time);
+            }
             else
+            {
                 screen_percentage -= adjustment_factor * (gpu_time - gpu_time_target);
+            }
 
             screen_percentage = sanitize_resolution_scale(screen_percentage);
             ConsoleRegistry::Get().SetValueFromString("r.resolution_scale", to_string(screen_percentage));
@@ -166,11 +173,15 @@ namespace spartan
     void Renderer::Initialize()
     {
         if (Debugging::IsRenderdocEnabled())
+        {
             RenderDoc::OnPreDeviceCreation();
+        }
         RHI_Device::Initialize();
 
         if (Debugging::IsBreadcrumbsEnabled())
+        {
             Breadcrumbs::Initialize();
+        }
 
         ConsoleRegistry::Get().SetValueFromString("r.gamma",       to_string(Display::GetGamma()));
         ConsoleRegistry::Get().SetValueFromString("r.tonemapping", to_string(static_cast<float>(Renderer_Tonemapping::GranTurismo7)));
@@ -294,7 +305,9 @@ namespace spartan
 
         // prevent write after present hazards when idle, skip first frame
         if (!can_render && m_frame_num > 0)
+        {
             RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->Wait();
+        }
 
         m_cmd_list_present = RHI_Device::GetQueue(RHI_Queue_Type::Graphics)->NextCommandList();
         m_cmd_list_present->Begin();
@@ -379,7 +392,9 @@ namespace spartan
         {
             m_frame_num++;
             if (m_frame_num == 1)
+            {
                 SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
+            }
 
             TickLogClusterOverflowRateLimited();
         }
@@ -388,7 +403,9 @@ namespace spartan
     void Renderer::TickRecreateOptionalRenderTargetsIfNeeded()
     {
         if (!m_initialized_resources)
+        {
             return;
+        }
 
         static uint32_t options_hash  = 0;
         static float restir_scale_old = -1.0f;
@@ -425,7 +442,9 @@ namespace spartan
         }
 
         if (post_load_frames > 0)
+        {
             post_load_frames--;
+        }
 
         m_is_hiz_suppressed = is_loading || post_load_frames > 0;
     }
@@ -506,7 +525,9 @@ namespace spartan
         static RHI_Buffer* last_instance_buffer = nullptr;
         RHI_Buffer* current_instance            = GeometryBuffer::GetInstanceBuffer();
         if (!current_instance)
+        {
             current_instance = GetBuffer(Renderer_Buffer::DummyInstance);
+        }
         if (current_instance != last_instance_buffer)
         {
             RHI_Device::UpdateBindlessInstances(current_instance);
@@ -590,7 +611,9 @@ namespace spartan
         }
 
         if (current.x == width && current.y == height)
+        {
             return false;
+        }
 
         current.x = static_cast<float>(width);
         current.y = static_cast<float>(height);
@@ -875,7 +898,9 @@ namespace spartan
 
         // entering or leaving stereo invalidates taau history, projection setup changes
         if (multiview_previous != m_cb_frame_cpu.is_multiview)
+        {
             m_taau_reset_history = true;
+        }
     }
 
     void Renderer::UpdateFrameConstantBuffer(RHI_CommandList* cmd_list)
@@ -1071,7 +1096,9 @@ namespace spartan
         auto update_material = [&count](Material* material)
         {
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
+            {
                 return;
+            }
     
             unique_material_ids.insert(material->GetObjectId());
             {
@@ -1140,7 +1167,9 @@ namespace spartan
             {
                 Render* renderable = entity->GetComponent<Render>();
                 if (!renderable)
+                {
                     continue;
+                }
 
                 if (Material* material = renderable->GetMaterial())
                 {
@@ -1259,24 +1288,34 @@ namespace spartan
             if (Light* light_component = entity->GetComponent<Light>())
             {
                 if (light_component == first_directional)
+                {
                     continue;
+                }
     
                 light_component->SetIndex(numeric_limits<uint32_t>::max());
     
                 if (!light_component->GetEntity()->GetActive())
+                {
                     continue;
+                }
     
                 if (light_component->GetIntensityRadiometric() <= 0.0f)
+                {
                     continue;
+                }
     
                 if (Camera* camera = World::GetCamera())
                 {
                     if (!camera->IsInViewFrustum(light_component->GetBoundingBox()))
+                    {
                         continue;
+                    }
                 }
     
                 if (!light_component->IsActiveByDistance())
+                {
                     continue;
+                }
     
                 fill_light(light_component);
             }
@@ -1326,13 +1365,21 @@ namespace spartan
                 Material* material          = renderable->GetMaterial();
 
                 if (!material || material->IsTransparent())
+                {
                     continue;
+                }
                 if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
+                {
                     continue;
+                }
                 if (renderable->GetIndexCount(dc.lod_index) == 0)
+                {
                     continue;
+                }
                 if (!dc.camera_visible)
+                {
                     continue;
+                }
 
                 uint32_t aabb_slot = m_draw_calls_prepass_count + indirect_idx;
                 if (aabb_slot < rhi_max_array_size)
@@ -1374,14 +1421,20 @@ namespace spartan
             // a worker may still be assigning the Render component, the mesh or the material, so guard every step
             Render* renderable = entity->GetComponent<Render>();
             if (!renderable || !renderable->GetMesh())
+            {
                 continue;
+            }
 
             Material* material = renderable->GetMaterial();
             if (!material)
+            {
                 continue;
+            }
 
             if (material->IsTransparent())
+            {
                 m_transparents_present = true;
+            }
 
             uint32_t draw_data_index = WriteDrawData(
                 entity->GetMatrix(),
@@ -1408,12 +1461,16 @@ namespace spartan
             const bool a_transparent = a.renderable->GetMaterial()->IsTransparent();
             const bool b_transparent = b.renderable->GetMaterial()->IsTransparent();
             if (a_transparent != b_transparent)
+            {
                 return !a_transparent;
+            }
 
             const uint64_t a_material_id = a.renderable->GetMaterial()->GetObjectId();
             const uint64_t b_material_id = b.renderable->GetMaterial()->GetObjectId();
             if (a_material_id != b_material_id)
+            {
                 return a_material_id < b_material_id;
+            }
 
             return a_transparent ? a.distance_squared > b.distance_squared : a.distance_squared < b.distance_squared;
         });
@@ -1425,7 +1482,9 @@ namespace spartan
         {
             const Renderer_DrawCall& dc = m_draw_calls[i];
             if (!dc.renderable->GetMaterial()->IsTransparent() && dc.camera_visible)
+            {
                 m_draw_calls_prepass[m_draw_calls_prepass_count++] = dc;
+            }
         }
 
         sort(m_draw_calls_prepass.begin(), m_draw_calls_prepass.begin() + m_draw_calls_prepass_count, [](const Renderer_DrawCall& a, const Renderer_DrawCall& b)
@@ -1433,7 +1492,9 @@ namespace spartan
             const bool a_alpha = a.renderable->GetMaterial()->IsAlphaTested();
             const bool b_alpha = b.renderable->GetMaterial()->IsAlphaTested();
             if (a_alpha != b_alpha)
+            {
                 return !a_alpha;
+            }
             return a.distance_squared < b.distance_squared;
         });
     }
@@ -1454,19 +1515,29 @@ namespace spartan
             Material* material          = renderable->GetMaterial();
 
             if (!material || material->IsTransparent())
+            {
                 continue;
+            }
             if (!dc.camera_visible)
+            {
                 continue;
+            }
             if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
+            {
                 continue;
+            }
 
             const uint32_t lod_index_count = renderable->GetIndexCount(dc.lod_index);
             if (lod_index_count == 0)
+            {
                 continue;
+            }
 
             const uint32_t lod_meshlet_count = renderable->GetMeshletCount(dc.lod_index);
             if (lod_meshlet_count == 0)
+            {
                 continue;
+            }
 
             const bool is_instanced = dc.instance_count > 1;
             const uint32_t inst_n   = is_instanced ? dc.instance_count : 1;
@@ -1478,9 +1549,13 @@ namespace spartan
             const uint32_t actual_tasks_add       = use_hw_instancing ? hw_instanced_tasks_add : per_instance_tasks_add;
 
             if (m_indirect_draw_count + 1 > renderer_max_indirect_draws)
+            {
                 continue;
+            }
             if (m_cull_task_count + actual_tasks_add > renderer_max_cull_tasks)
+            {
                 continue;
+            }
 
             const uint32_t renderable_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_renderable_count;
             const uint32_t base_first_index     = renderable->GetIndexOffset(dc.lod_index);
@@ -1495,10 +1570,22 @@ namespace spartan
             const bool use_per_instance = is_instanced && !use_hw_instancing;
             const bool is_two_sided     = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode)) != RHI_CullMode::Back;
             uint32_t base_flags         = 0u;
-            if (is_skinned)        base_flags |= 1u;
-            if (use_per_instance)  base_flags |= 2u;
-            if (use_hw_instancing) base_flags |= 4u;
-            if (is_two_sided)      base_flags |= 8u;
+            if (is_skinned)
+            {
+                base_flags |= 1u;
+            }
+            if (use_per_instance)
+            {
+                base_flags |= 2u;
+            }
+            if (use_hw_instancing)
+            {
+                base_flags |= 4u;
+            }
+            if (is_two_sided)
+            {
+                base_flags |= 8u;
+            }
 
             const uint32_t draw_idx = m_indirect_draw_count++;
             Sb_DrawData& data       = m_indirect_draw_data[draw_idx];
@@ -1562,11 +1649,15 @@ namespace spartan
             Material* material           = renderable->GetMaterial();
 
             if (!material || material->IsTransparent() || renderable->HasInstancing() || !draw_call.camera_visible)
+            {
                 continue;
+            }
 
             float screen_area = compute_screen_space_area(renderable->GetBoundingBox());
             if (previous_occluders.find(renderable) != previous_occluders.end())
+            {
                 screen_area *= 1.5f;
+            }
 
             areas.push_back({ i, screen_area });
         }
@@ -1597,7 +1688,9 @@ namespace spartan
     {
         bool ray_tracing_enabled = cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_ray_traced_shadows.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>();
         if (!ray_tracing_enabled)
+        {
             return;
+        }
 
         if (!RHI_Device::IsSupportedRayTracing() || !cmd_list)
         {
@@ -1621,7 +1714,9 @@ namespace spartan
             {
                 Render* renderable = entity->GetComponent<Render>();
                 if (!renderable)
+                {
                     continue;
+                }
 
                 blas_total++;
 
@@ -1691,20 +1786,28 @@ namespace spartan
             {
                 Render* renderable = entity->GetComponent<Render>();
                 if (!renderable)
+                {
                     continue;
+                }
 
                 Material* material = renderable->GetMaterial();
                 if (!material)
+                {
                     continue;
+                }
 
                 uint64_t device_address = renderable->GetAccelerationStructureDeviceAddress();
                 if (device_address == 0)
+                {
                     continue;
+                }
 
                 RHI_Buffer* vertex_buffer = renderable->GetVertexBuffer();
                 RHI_Buffer* index_buffer  = renderable->GetIndexBuffer();
                 if (!vertex_buffer || !index_buffer)
+                {
                     continue;
+                }
 
                 RHI_CullMode cull_mode = static_cast<RHI_CullMode>(material->GetProperty(MaterialProperty::CullMode));
 
@@ -1800,25 +1903,33 @@ namespace spartan
             Light* light = entity->GetComponent<Light>();
             light->ClearAtlasRectangles();
             if (light->GetIndex() == numeric_limits<uint32_t>::max())
+            {
                 continue;
+            }
             // skip lights that are out of shadow distance, the shader and shadow pass
             // both rely on rect.IsDefined() so leaving them unallocated is enough
             if (!light->IsShadowEffective())
+            {
                 continue;
+            }
             for (uint32_t i = 0; i < light->GetSliceCount(); ++i)
             {
                 m_shadow_slices.emplace_back(light, i, 0, math::Rectangle::Zero);
             }
         }
         if (m_shadow_slices.empty())
+        {
             return;
+        }
 
         // row-based packing: lays out uniform-sized slices left-to-right, wrapping to the next row.
         // when rects is null it only tests whether the layout fits; when non-null it writes the rectangles.
         auto pack_row = [&](uint32_t slice_res, uint32_t num_slices, vector<ShadowSlice>* rects) -> bool
         {
             if (slice_res > resolution_atlas)
+            {
                 return false;
+            }
 
             uint32_t x = 0, y = 0, row_h = 0;
             for (uint32_t i = 0; i < num_slices; ++i)
@@ -1835,7 +1946,9 @@ namespace spartan
                 }
 
                 if (placed_x + slice_res > resolution_atlas || y + slice_res > resolution_atlas)
+                {
                     return false;
+                }
 
                 if (rects)
                 {
@@ -1862,9 +1975,13 @@ namespace spartan
             {
                 uint32_t mid = (low + high + 1) / 2;
                 if (pack_row(mid, num_slices, nullptr))
+                {
                     low = mid;
+                }
                 else
+                {
                     high = mid - 1;
+                }
             }
             max_slice_res = low;
         }
@@ -1964,5 +2081,300 @@ namespace spartan
             }
         }
         return 0;
+    }
+
+    // draw calls
+    array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls;
+    uint32_t Renderer::m_draw_call_count;
+    array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls_prepass;
+    uint32_t Renderer::m_draw_calls_prepass_count;
+    array<Sb_DrawData, renderer_max_indirect_draws> Renderer::m_indirect_draw_data;
+    uint32_t Renderer::m_indirect_draw_count       = 0;
+    uint32_t Renderer::m_indirect_renderable_count = 0;
+    array<Sb_CullTask, renderer_max_cull_tasks> Renderer::m_cull_tasks;
+    uint32_t Renderer::m_cull_task_count = 0;
+
+    bool Renderer::UpdateSkysphereConvergenceState()
+    {
+        // re-arm temporal convergence whenever the directional light or cloud coverage changes
+        const uint32_t temporal_convergence_frames = 8;
+
+        Light* directional_light         = World::GetDirectionalLight();
+        const bool has_directional_light = directional_light != nullptr;
+        const float current_coverage     = cvar_cloud_coverage.GetValue();
+
+        const bool light_changed        = (has_directional_light && directional_light->NeedsSkysphereUpdate()) ||
+                                          (has_directional_light != m_pass_state.sky_had_directional_light);
+        const bool cloud_params_changed = current_coverage != m_pass_state.sky_last_coverage;
+
+        if (m_pass_state.sky_first_frame || light_changed || cloud_params_changed)
+        {
+            m_pass_state.sky_frames_remaining = temporal_convergence_frames;
+        }
+
+        const bool update_skysphere = m_pass_state.sky_frames_remaining > 0;
+        if (m_pass_state.sky_frames_remaining > 0)
+        {
+            m_pass_state.sky_frames_remaining--;
+        }
+
+        m_pass_state.sky_first_frame           = false;
+        m_pass_state.sky_had_directional_light = has_directional_light;
+        m_pass_state.sky_last_coverage         = current_coverage;
+        return update_skysphere;
+    }
+
+    void Renderer::SetStandardResources(RHI_CommandList* cmd_list)
+    {
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetBuffer(Renderer_Buffer::ConstantFrame));
+        cmd_list->SetTexture(Renderer_BindingsSrv::tex_perlin, GetStandardTexture(Renderer_StandardTexture::Noise_perlin));
+
+        // wind field is the same texture that gets written by Pass_WindField as a uav
+        // skip binding it as an srv while it is in general layout, otherwise the descriptor
+        // would carry a stale shader-read layout into the dispatch and trip vulkan validation
+        // also skip on non-graphics queues, the wind_field write happens on graphics and binding
+        // it on async compute would race with that write across queue families
+        bool is_graphics_queue = cmd_list->GetQueue() && cmd_list->GetQueue()->GetType() == RHI_Queue_Type::Graphics;
+        RHI_Texture* tex_wind  = GetRenderTarget(Renderer_RenderTarget::wind_field);
+        if (is_graphics_queue && tex_wind && tex_wind->GetLayout(0) == RHI_Image_Layout::Shader_Read)
+        {
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex_wind_field, tex_wind);
+        }
+    }
+
+    void Renderer::Pass_VariableRateShading(RHI_CommandList* cmd_list)
+    {
+        if (!cvar_variable_rate_shading.GetValueAs<bool>())
+            return;
+
+        RHI_Shader* shader_c = GetShader(Renderer_Shader::variable_rate_shading_c);
+        RHI_Texture* tex_in  = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        RHI_Texture* tex_out = GetRenderTarget(Renderer_RenderTarget::shading_rate);
+        if (!shader_c || !shader_c->IsCompiled() || !tex_in || !tex_out)
+            return;
+
+        // clear to full rate on first use or after render target recreation
+        if (tex_out != m_pass_state.vrs_last_cleared_texture)
+        {
+            cmd_list->ClearTexture(tex_out, Color(0.0f, 0.0f, 0.0f, 0.0f));
+            m_pass_state.vrs_last_cleared_texture = tex_out;
+        }
+
+        cmd_list->BeginTimeblock("variable_rate_shading");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "variable_rate_shading";
+            pso.shaders[Compute] = shader_c;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex_uint, tex_out);
+            cmd_list->Dispatch(tex_out);
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_ComputeBatchA(RHI_CommandList* cmd_list, bool update_skysphere, bool clouds_visible, Light* directional_light)
+    {
+        cmd_list->BeginMarker("compute_batch_a");
+
+        // accel structures first so batch b's rt passes inherit the tlas via compute queue order
+        UpdateAccelerationStructures(cmd_list);
+
+        if (!m_pass_state.brdf_lut_produced)
+        {
+            Pass_Lut_BrdfSpecular(cmd_list);
+            m_pass_state.brdf_lut_produced = true;
+        }
+
+        Pass_CloudNoise(cmd_list);
+
+        if (update_skysphere)
+        {
+            if (!m_pass_state.atmosphere_lut_produced || (directional_light && directional_light->NeedsSkysphereUpdate()))
+            {
+                Pass_Lut_AtmosphericScattering(cmd_list);
+                m_pass_state.atmosphere_lut_produced = true;
+            }
+            Pass_Skysphere(cmd_list);
+        }
+
+        if (clouds_visible)
+        {
+            Pass_CloudShadow(cmd_list);
+        }
+
+        cmd_list->EndMarker();
+    }
+
+    void Renderer::Pass_ComputeBatchB(RHI_CommandList* cmd_list)
+    {
+        cmd_list->BeginMarker("compute_batch_b");
+        Pass_ScreenSpaceAmbientOcclusion(cmd_list);
+        Pass_LightClusterAssign(cmd_list);
+        Pass_ScreenSpaceShadows(cmd_list);
+        Pass_RayTracedShadows(cmd_list);
+        Pass_ReSTIR_PathTracing(cmd_list);
+        Pass_ReSTIR_Denoising(cmd_list);
+        cmd_list->EndMarker();
+    }
+
+    void Renderer::Pass_GraphicsPhase1_Geometry(RHI_CommandList* cmd_list)
+    {
+        Pass_HiZ(cmd_list);
+        Pass_IndirectCull(cmd_list);
+        Pass_Depth_Prepass(cmd_list);
+        Pass_GBuffer(cmd_list, false);
+        Pass_MeshletVisualize(cmd_list);
+
+        // gbuffer to shader read before submit
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+    }
+
+    void Renderer::Pass_GraphicsPhase2_ShadowsAndRT(RHI_CommandList* cmd_list)
+    {
+        Pass_ShadowMaps(cmd_list);
+        Pass_RayTracedReflections(cmd_list);
+    }
+
+    void Renderer::ProduceFrame_PerEye(RHI_CommandList* cmd_list, uint32_t eye, uint32_t eye_layer)
+    {
+        // opaque lighting
+        Pass_Light(cmd_list, false, eye_layer);
+        Pass_Light_Composition(cmd_list, false, eye_layer);
+        cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
+
+        if (eye == 0)
+        {
+            Pass_LightClusterVisualize(cmd_list);
+        }
+
+        // first eye only, particles avoid double simulation
+        if (eye == 0)
+        {
+            Pass_Particles(cmd_list);
+        }
+
+        if (m_transparents_present)
+        {
+            Pass_GBuffer(cmd_list, true);
+            Pass_Light(cmd_list, true, eye_layer);
+            Pass_Light_Composition(cmd_list, true, eye_layer);
+        }
+
+        Pass_Light_Ibl(cmd_list, eye_layer);
+        // rt reflections gbuffer is produced in graphics phase 2 alongside compute batch b, this only composites
+        Pass_Composite_RayTracedReflections(cmd_list, eye_layer);
+
+        Pass_TransparencyReflectionRefraction(cmd_list, eye_layer);
+        Pass_AA_Upscale(cmd_list, eye_layer);
+        Pass_PostProcess(cmd_list, eye_layer);
+
+        if (Xr::IsSessionRunning() && Xr::GetStereoMode())
+        {
+            cmd_list->BlitToArrayLayer(
+                GetRenderTarget(Renderer_RenderTarget::frame_output),
+                GetRenderTarget(Renderer_RenderTarget::frame_output_stereo),
+                eye
+            );
+        }
+    }
+
+    void Renderer::ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute)
+    {
+        SP_PROFILE_CPU();
+
+        // wait until every shader has finished compiling, null entries are safe to skip
+        for (const auto& shader : GetShaders())
+        {
+            if (!shader)
+            {
+                continue;
+            }
+            const RHI_ShaderCompilationState state = shader->GetCompilationState();
+            if (state == RHI_ShaderCompilationState::Idle || state == RHI_ShaderCompilationState::Compiling)
+                return;
+        }
+
+        RHI_Texture* rt_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
+        const bool clouds_visible      = cvar_cloud_coverage.GetValue() > 0.0f;
+        const bool update_skysphere    = UpdateSkysphereConvergenceState();
+        Light* directional_light       = World::GetDirectionalLight();
+
+        // compute batch a, view independent prep, runs alongside graphics phase 1
+        Pass_ComputeBatchA(cmd_list_compute, update_skysphere, clouds_visible, directional_light);
+
+        // wind field stays on graphics queue, must precede gbuffer for vertex animation sampling
+        Pass_WindField(cmd_list_graphics_present);
+
+        // submit batch a, waits on the prior frame's present so writes here do not race with phase 3 reads
+        cmd_list_compute->Submit(nullptr, false, nullptr, m_cross_queue_sync.previous_present_timeline, m_cross_queue_sync.previous_present_timeline_value);
+        RHI_SyncPrimitive* batch_a_timeline = cmd_list_compute->GetTimelineSemaphore();
+        const uint64_t batch_a_value        = cmd_list_compute->GetLastTimelineSignalValue();
+
+        if (Camera* camera = World::GetCamera())
+        {
+            Pass_VariableRateShading(cmd_list_graphics_present);
+            Pass_GraphicsPhase1_Geometry(cmd_list_graphics_present);
+
+            // submit phase 1, signal gbuffer ready
+            cmd_list_graphics_present->Submit(nullptr, false);
+            const uint64_t gfx_phase1_timeline_value = cmd_list_graphics_present->GetLastTimelineSignalValue();
+            RHI_SyncPrimitive* gfx_timeline          = cmd_list_graphics_present->GetTimelineSemaphore();
+
+            // compute batch b, gbuffer consumers, waits on phase 1, overlaps with graphics phase 2
+            RHI_Queue* queue_compute            = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
+            RHI_CommandList* cmd_list_compute_b = queue_compute->NextCommandList();
+            cmd_list_compute_b->Begin();
+            Pass_ComputeBatchB(cmd_list_compute_b);
+            cmd_list_compute_b->Submit(nullptr, false, nullptr, gfx_timeline, gfx_phase1_timeline_value);
+            RHI_SyncPrimitive* compute_b_timeline = cmd_list_compute_b->GetTimelineSemaphore();
+            const uint64_t compute_b_value        = cmd_list_compute_b->GetLastTimelineSignalValue();
+
+            // graphics phase 2, runs parallel to batch b, waits on batch a so tlas is ready for rt reflections
+            RHI_Queue* queue_graphics = RHI_Device::GetQueue(RHI_Queue_Type::Graphics);
+            cmd_list_graphics_present = queue_graphics->NextCommandList();
+            cmd_list_graphics_present->Begin();
+            m_cmd_list_present        = cmd_list_graphics_present;
+            Pass_GraphicsPhase2_ShadowsAndRT(cmd_list_graphics_present);
+            cmd_list_graphics_present->Submit(nullptr, false, nullptr, batch_a_timeline, batch_a_value);
+
+            // graphics phase 3, lighting and post, present cmd list waits on batch b in SubmitAndPresent
+            cmd_list_graphics_present = queue_graphics->NextCommandList();
+            cmd_list_graphics_present->Begin();
+            m_cmd_list_present                                = cmd_list_graphics_present;
+            m_cross_queue_sync.pending_compute_timeline       = compute_b_timeline;
+            m_cross_queue_sync.pending_compute_timeline_value = compute_b_value;
+
+            const bool xr_stereo     = Xr::IsSessionRunning() && Xr::GetStereoMode();
+            const uint32_t eye_count = xr_stereo ? Xr::eye_count : 1;
+            for (uint32_t eye = 0; eye < eye_count; eye++)
+            {
+                const uint32_t eye_layer = xr_stereo ? eye : rhi_all_mips;
+                // tag push constant eye index so per eye selectors in common_resources.hlsl pick the right matrices
+                m_pcb_pass_cpu.eye_index = xr_stereo ? eye : 0;
+                ProduceFrame_PerEye(cmd_list_graphics_present, eye, eye_layer);
+            }
+            // reset eye index for non per eye passes that follow
+            m_pcb_pass_cpu.eye_index = 0;
+        }
+        else
+        {
+            cmd_list_graphics_present->ClearTexture(rt_output, Color::standard_black);
+        }
+
+        Pass_Text(cmd_list_graphics_present, rt_output);
+
+        // early transitions for next frame
+        rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_color)   ->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_normal)  ->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_material)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity)->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
+        GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Attachment, cmd_list_graphics_present);
     }
 }

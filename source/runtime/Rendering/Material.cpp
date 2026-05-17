@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========================
 #include "pch.h"
+#include <filesystem>
 #include "Material.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
@@ -103,6 +104,20 @@ namespace spartan
                     return nullptr;
                 }
             }
+        }
+
+        // per path mutex map, serializes concurrent saves so the tmp file and rename are not raced
+        mutex& save_mutex_for(const string& file_path)
+        {
+            static mutex map_mutex;
+            static unordered_map<string, unique_ptr<mutex>> mutexes;
+            lock_guard<mutex> guard(map_mutex);
+            auto it = mutexes.find(file_path);
+            if (it == mutexes.end())
+            {
+                it = mutexes.emplace(file_path, make_unique<mutex>()).first;
+            }
+            return *it->second;
         }
     }
 
@@ -320,9 +335,7 @@ namespace spartan
         {
             RHI_Texture_Mip* mip = texture ? texture->GetMip(0, 0) : nullptr;
             if (mip && !mip->bytes.empty())
-            {
                 return mip->bytes;
-            }
 
             return vector<byte>(expected_size, default_value);
         }
@@ -607,12 +620,13 @@ namespace spartan
     void Material::LoadFromFile(const string& file_path)
     {
         pugi::xml_document doc;
-        if (!doc.load_file(file_path.c_str()))
+        pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+        if (!result)
         {
-            SP_LOG_ERROR("Failed to load XML file %s", file_path.c_str());
+            SP_LOG_ERROR("Failed to load XML file %s, pugi: %s", file_path.c_str(), result.description());
             return;
         }
-    
+
         SetResourceFilePath(file_path);
         pugi::xml_node node_material = doc.child("Material");
 
@@ -628,7 +642,9 @@ namespace spartan
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
             if (static_cast<MaterialTextureType>(type) == MaterialTextureType::Packed)
+            {
                 continue;
+            }
 
             for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
@@ -636,7 +652,9 @@ namespace spartan
                 string node_name = "texture_" + to_string(index);
                 pugi::xml_node node_texture = textures_node.child(node_name.c_str());
                 if (!node_texture)
-                    continue; // skip if node doesn't exist
+                {
+                    continue;
+                }
     
                 string tex_name = node_texture.attribute("texture_name").as_string();
                 string tex_path = node_texture.attribute("texture_path").as_string();
@@ -666,32 +684,33 @@ namespace spartan
     
     void Material::SaveToFile(const string& file_path)
     {
-        // skip when called without a resolved path (e.g. mid-import via SetTexture's auto-save)
-        // and serialize concurrent saves of the same material so parallel SetTexture calls cannot race on the file
+        // skip when called without a resolved path
         if (file_path.empty())
             return;
 
-        static mutex save_mutex;
-        lock_guard<mutex> lock(save_mutex);
+        // serialize concurrent saves of the same path, the tmp file and rename must not race
+        lock_guard<mutex> file_lock(save_mutex_for(file_path));
 
         SetResourceFilePath(file_path);
         pugi::xml_document doc;
         pugi::xml_node material_node = doc.append_child("Material");
-    
+
         // save properties
         for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); ++i)
         {
             const char* attribute_name = material_property_to_char_ptr(static_cast<MaterialProperty>(i));
             material_node.append_child(attribute_name).text().set(m_properties[i]);
         }
-    
+
         // save textures (skip packed textures as they're regenerated from source textures during PrepareForGpu)
         pugi::xml_node textures_node = material_node.append_child("textures");
         textures_node.append_attribute("count").set_value(static_cast<uint32_t>(m_textures.size()));
         for (uint32_t type = 0; type < static_cast<uint32_t>(MaterialTextureType::Max); ++type)
         {
             if (static_cast<MaterialTextureType>(type) == MaterialTextureType::Packed)
+            {
                 continue;
+            }
 
             for (uint32_t slot = 0; slot < slots_per_texture; ++slot)
             {
@@ -704,8 +723,27 @@ namespace spartan
                 texture_node.append_attribute("texture_path").set_value(m_textures[index] ? m_textures[index]->GetResourceFilePath().c_str() : "");
             }
         }
-    
-        doc.save_file(file_path.c_str());
+
+        // atomic write so a reader on another thread never observes a truncated file
+        const string tmp_path = file_path + ".tmp";
+        if (!doc.save_file(tmp_path.c_str()))
+        {
+            SP_LOG_ERROR("Failed to write %s", tmp_path.c_str());
+            return;
+        }
+
+        std::error_code ec;
+        std::filesystem::rename(tmp_path, file_path, ec);
+        if (ec)
+        {
+            // fall back to copy + remove for cross volume cases
+            std::filesystem::copy_file(tmp_path, file_path, std::filesystem::copy_options::overwrite_existing, ec);
+            std::filesystem::remove(tmp_path, ec);
+            if (ec)
+            {
+                SP_LOG_ERROR("Failed to commit %s, %s", file_path.c_str(), ec.message().c_str());
+            }
+        }
     }
 
     void Material::SetTexture(const MaterialTextureType texture_type, RHI_Texture* texture, const uint8_t slot, const bool auto_adjust_multipler)
@@ -777,7 +815,9 @@ namespace spartan
         for (const auto& texture : m_textures)
         {
             if (!texture)
+            {
                 continue;
+            }
 
             if (texture->GetResourceFilePath() == path)
                 return true;
@@ -791,7 +831,7 @@ namespace spartan
         for (uint32_t slot = 0; slot < slots_per_texture; slot++)
         {
             if (m_textures[static_cast<uint32_t>(texture_type) * slots_per_texture + slot] != nullptr)
-                return true; 
+                return true;
         }
     
         return false;
@@ -811,7 +851,9 @@ namespace spartan
         for (const auto& texture : m_textures)
         {
             if (!texture)
+            {
                 continue;
+            }
 
             paths.emplace_back(texture->GetResourceFilePath());
         }
@@ -963,12 +1005,18 @@ namespace spartan
     {
         const float epsilon = 0.001f;
 
-        if (abs(ior - 1.0f)  < epsilon) return MaterialIor::Air;
-        if (abs(ior - 1.33f) < epsilon) return MaterialIor::Water;
-        if (abs(ior - 1.38f) < epsilon) return MaterialIor::Eyes;
-        if (abs(ior - 1.52f) < epsilon) return MaterialIor::Glass;
-        if (abs(ior - 1.76f) < epsilon) return MaterialIor::Sapphire;
-        if (abs(ior - 2.42f) < epsilon) return MaterialIor::Diamond;
+        if (abs(ior - 1.0f)  < epsilon)
+            return MaterialIor::Air;
+        if (abs(ior - 1.33f) < epsilon)
+            return MaterialIor::Water;
+        if (abs(ior - 1.38f) < epsilon)
+            return MaterialIor::Eyes;
+        if (abs(ior - 1.52f) < epsilon)
+            return MaterialIor::Glass;
+        if (abs(ior - 1.76f) < epsilon)
+            return MaterialIor::Sapphire;
+        if (abs(ior - 2.42f) < epsilon)
+            return MaterialIor::Diamond;
 
         return MaterialIor::Air;
     }

@@ -65,9 +65,13 @@ namespace spartan
         // create command allocator for this queue
         D3D12_COMMAND_LIST_TYPE cmd_list_type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         if (queue_type == RHI_Queue_Type::Compute)
+        {
             cmd_list_type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+        }
         else if (queue_type == RHI_Queue_Type::Copy)
+        {
             cmd_list_type = D3D12_COMMAND_LIST_TYPE_COPY;
+        }
 
         // create command lists for this queue
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
@@ -172,7 +176,9 @@ namespace spartan
         ID3D12CommandQueue* d3d12_queue = static_cast<ID3D12CommandQueue*>(m_rhi_resource);
         ID3D12GraphicsCommandList* d3d12_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_buffer);
         if (!d3d12_queue || !d3d12_cmd_list)
+        {
             return;
+        }
 
         // gpu-side wait, queue->Wait blocks the queue until the fence reaches value, mirrors vulkan binary/timeline waits
         if (semaphore_wait && semaphore_wait->GetRhiResource())

@@ -72,9 +72,7 @@ namespace spartan
 
     template <typename T>
     std::optional<T> CircularStack<T>::Pop() {
-        if (items_count == 0) {
-            return std::nullopt;
-        }
+        if (items_count == 0) return std::nullopt;
 
         T item = buffer_start[top_item_index];
 

@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Texture.h"
 #include "../../Geometry/Mesh.h"
 #include "../../Rendering/Material.h"
-#include "../../Rendering/Animation.h"
-#include "../../Rendering/Animation/Skeleton.h"
-#include "../../Rendering/Animation/AnimationClip.h"
-#include "../../Rendering/Animation/SkeletalMeshBinding.h"
+#include "../../Animation/Animation.h"
+#include "../../Animation/Skeleton.h"
+#include "../../Animation/AnimationClip.h"
+#include "../../Animation/SkeletalMeshBinding.h"
 #include "../../World/World.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Light.h"
@@ -120,7 +120,9 @@ namespace spartan
         uint32_t compute_node_count(const aiNode* node)
         {
             if (!node)
+            {
                 return 0;
+            }
 
             uint32_t count = 1;
             for (uint32_t i = 0; i < node->mNumChildren; i++)
@@ -166,8 +168,14 @@ namespace spartan
         {
             for (char& c : path)
             {
-                if (c == '\\') c = '/';
-                else if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+                if (c == '\\')
+                {
+                    c = '/';
+                }
+                else if (c >= 'A' && c <= 'Z')
+                {
+                    c = static_cast<char>(c - 'A' + 'a');
+                }
             }
             return path;
         }
@@ -200,7 +208,9 @@ namespace spartan
                 {
                     auto it = directory_files.find(normalize_for_lookup(candidate));
                     if (it != directory_files.end())
+                    {
                         return it->second;
+                    }
                 }
 
                 // fall back to a real filesystem check so we still resolve absolute paths and ../ traversals
@@ -211,7 +221,9 @@ namespace spartan
             // try the original path first (relative to model)
             string full_path = model_directory + original_path;
             if (string hit = probe(full_path); !hit.empty())
+            {
                 return hit;
+            }
 
             // get base path without extension
             const string base_path = FileSystem::GetFilePathWithoutExtension(full_path);
@@ -226,14 +238,18 @@ namespace spartan
             for (const char* ext : extensions)
             {
                 if (string hit = probe(base_path + ext); !hit.empty())
+                {
                     return hit;
+                }
             }
 
             // try in model directory (common for absolute paths baked by artists)
             for (const char* ext : extensions)
             {
                 if (string hit = probe(model_directory + file_name_no_ext + ext); !hit.empty())
+                {
                     return hit;
+                }
             }
 
             return "";
@@ -257,17 +273,23 @@ namespace spartan
 
             // check if the material has any textures
             if (material_assimp->GetTextureCount(type_assimp) == 0)
+            {
                 return true;
+            }
 
             // get texture path
             aiString texture_path;
             if (material_assimp->GetTexture(type_assimp, 0, &texture_path) != AI_SUCCESS)
+            {
                 return false;
+            }
 
             // resolve actual file path
             const string resolved_path = resolve_texture_path(texture_path.data, model_directory, directory_files);
             if (!FileSystem::IsSupportedImageFile(resolved_path))
+            {
                 return false;
+            }
 
             // load the texture and set it to the material
             {
@@ -544,16 +566,22 @@ namespace spartan
         const aiNode* find_node(const aiNode* root, const string& name)
         {
             if (!root)
+            {
                 return nullptr;
+            }
 
             if (string(root->mName.C_Str()) == name)
+            {
                 return root;
+            }
 
             for (uint32_t i = 0; i < root->mNumChildren; ++i)
             {
                 const aiNode* found = find_node(root->mChildren[i], name);
                 if (found)
+                {
                     return found;
+                }
             }
 
             return nullptr;
@@ -567,7 +595,9 @@ namespace spartan
             {
                 auto it = name_to_index.find(parent->mName.C_Str());
                 if (it != name_to_index.end())
+                {
                     return static_cast<int16_t>(it->second);
+                }
 
                 parent = parent->mParent;
             }
@@ -583,7 +613,9 @@ namespace spartan
             collect_bone_names(scene, bone_names, name_to_index);
 
             if (bone_names.empty())
+            {
                 return nullptr;
+            }
 
             auto skeleton = make_shared<Skeleton>();
             const uint16_t joint_count = static_cast<uint16_t>(bone_names.size());
@@ -648,9 +680,13 @@ namespace spartan
                         for (uint32_t j = 0; j < joint_count; ++j)
                         {
                             if (skeleton->m_mutable_parents[j] == 0)
+                            {
                                 skeleton->m_mutable_parents[j] = static_cast<int16_t>(i);
+                            }
                             else if (skeleton->m_mutable_parents[j] == static_cast<int16_t>(i))
+                            {
                                 skeleton->m_mutable_parents[j] = 0;
+                            }
                         }
                         break;
                     }
@@ -670,7 +706,9 @@ namespace spartan
             SkeletalMeshBinding& binding)
         {
             if (assimp_mesh->mNumBones == 0)
+            {
                 return;
+            }
 
             SkeletalMeshSection section;
             section.sub_mesh_index     = sub_mesh_index;
@@ -686,7 +724,9 @@ namespace spartan
                 const aiBone* bone = assimp_mesh->mBones[bone_idx];
                 auto it = bone_name_to_index.find(bone->mName.C_Str());
                 if (it == bone_name_to_index.end())
+                {
                     continue;
+                }
 
                 const uint16_t global_bone_index = static_cast<uint16_t>(it->second);
 
@@ -696,7 +736,9 @@ namespace spartan
                     const uint32_t vertex_id = vw.mVertexId;
 
                     if (vertex_id >= assimp_mesh->mNumVertices)
+                    {
                         continue;
+                    }
 
                     SkeletalVertexInfluence& influence = section.influences[vertex_id];
                     uint32_t& count = influence_counts[vertex_id];
@@ -765,7 +807,9 @@ namespace spartan
                 const aiNodeAnim* channel = anim->mChannels[ch];
                 auto it = bone_name_to_index.find(channel->mNodeName.C_Str());
                 if (it == bone_name_to_index.end())
+                {
                     continue;
+                }
 
                 const uint32_t bone_index = it->second;
                 clip.sampled_bones.push_back(bone_index);
@@ -1163,7 +1207,9 @@ namespace spartan
             static mutex skeletal_binding_mutex;
             lock_guard<mutex> binding_lock(skeletal_binding_mutex);
             if (!ctx.mesh->GetSkeletalMeshBinding())
+            {
                 ctx.mesh->SetSkeletalMeshBinding(make_unique<SkeletalMeshBinding>());
+            }
 
             extract_bone_weights(assimp_mesh, ctx.bone_name_to_index, sub_mesh_index, vertex_offset, *ctx.mesh->GetSkeletalMeshBinding());
         }
@@ -1197,12 +1243,16 @@ namespace spartan
         }
 
         if (!has_bones)
+        {
             return;
+        }
 
         // build the skeleton and populate the bone name map
         shared_ptr<Skeleton> skeleton = build_skeleton(ctx.scene);
         if (!skeleton)
+        {
             return;
+        }
 
         ctx.mesh->SetSkeleton(skeleton);
 
@@ -1214,10 +1264,14 @@ namespace spartan
     void ModelImporter::ParseAnimations(ImportContext& ctx)
     {
         if (!ctx.scene->mAnimations || ctx.scene->mNumAnimations == 0)
+        {
             return;
+        }
 
         if (ctx.bone_name_to_index.empty())
+        {
             return;
+        }
 
         const uint32_t joint_count = static_cast<uint32_t>(ctx.bone_name_to_index.size());
 

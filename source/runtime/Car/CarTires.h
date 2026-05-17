@@ -41,7 +41,9 @@ namespace car
         PxVec3 chassis_right = pose.q.rotate(PxVec3(1, 0, 0));
 
         if (tuning::log_pacejka)
+        {
             SP_LOG_INFO("=== tire forces: speed=%.1f m/s ===", body->getLinearVelocity().magnitude());
+        }
 
         for (int i = 0; i < wheel_count; i++)
         {
@@ -53,7 +55,9 @@ namespace car
             if (!w.grounded || w.tire_load <= 0.0f)
             {
                 if (tuning::log_pacejka)
+                {
                     SP_LOG_INFO("[%s] airborne: grounded=%d, tire_load=%.1f", wheel_name, w.grounded, w.tire_load);
+                }
                 w.slip_angle = w.slip_ratio = w.lateral_force = w.longitudinal_force = 0.0f;
 
                 PxVec3 vel = body->getLinearVelocity();
@@ -69,19 +73,25 @@ namespace car
                     w.angular_velocity = ((w.angular_velocity > 0.0f && new_w < 0.0f) || (w.angular_velocity < 0.0f && new_w > 0.0f)) ? 0.0f : new_w;
                 }
                 else
+                {
                     w.angular_velocity = lerp(w.angular_velocity, target_w, exp_decay(5.0f, dt));
+                }
 
                 // airborne cooling: all zones cool at 3x rate
                 for (int z = 0; z < 3; z++)
                 {
                     float s_above = w.thermal.surface[z] - tuning::spec.tire_ambient_temp;
                     if (s_above > 0.0f)
+                    {
                         w.thermal.surface[z] -= tuning::spec.tire_cooling_rate * 3.0f * s_above / 30.0f * dt;
+                    }
                     w.thermal.surface[z] = PxMax(w.thermal.surface[z], tuning::spec.tire_ambient_temp);
                 }
                 float c_above = w.thermal.core - tuning::spec.tire_ambient_temp;
                 if (c_above > 0.0f)
+                {
                     w.thermal.core -= tuning::spec.tire_cooling_rate * 1.0f * c_above / 30.0f * dt;
+                }
                 w.thermal.core = PxMax(w.thermal.core, tuning::spec.tire_ambient_temp);
                 w.rotation += w.angular_velocity * dt;
                 continue;
@@ -102,7 +112,9 @@ namespace car
             float max_v = PxMax(fabsf(wheel_speed), fabsf(vx));
 
             if (tuning::log_pacejka)
+            {
                 SP_LOG_INFO("[%s] vx=%.3f, vy=%.3f, ws=%.3f", wheel_name, vx, vy, wheel_speed);
+            }
 
             float wear_factor    = 1.0f - w.wear * tuning::spec.tire_grip_wear_loss;
             float base_grip     = tuning::spec.tire_friction * load_sensitive_grip(PxMax(w.tire_load, 0.0f)) * wear_factor;
@@ -115,7 +127,9 @@ namespace car
             float peak_force    = base_grip * temp_factor * camber_factor * surface_factor * axle_grip_scale;
 
             if (tuning::log_pacejka)
+            {
                 SP_LOG_INFO("[%s] load=%.0f, peak_force=%.0f", wheel_name, w.tire_load, peak_force);
+            }
 
             float lat_f = 0.0f, long_f = 0.0f;
 
@@ -215,7 +229,9 @@ namespace car
             }
 
             if (tuning::log_pacejka)
+            {
                 SP_LOG_INFO("[%s] blend=%.2f, lat_f=%.1f, long_f=%.1f", wheel_name, pacejka_weight, lat_f, long_f);
+            }
 
             // --- 3-zone surface + core thermal model ---
             // carcass flex peaks when pressure is below optimal; over-inflation should never make
@@ -303,7 +319,9 @@ namespace car
             if (brake_locking)
             {
                 if ((w.angular_velocity > 0.0f && new_w < 0.0f) || (w.angular_velocity < 0.0f && new_w > 0.0f))
+                {
                     new_w = 0.0f;
+                }
             }
 
             w.angular_velocity = new_w;
@@ -321,10 +339,14 @@ namespace car
             w.rotation += w.angular_velocity * dt;
 
             if (tuning::log_pacejka)
+            {
                 SP_LOG_INFO("[%s] ang_vel=%.4f, lat_f=%.1f, long_f=%.1f", wheel_name, w.angular_velocity, lat_f, long_f);
+            }
         }
         if (tuning::log_pacejka)
+        {
             SP_LOG_INFO("=== pacejka tick end ===\n");
+        }
     }
 
     inline void apply_self_aligning_torque()
@@ -338,16 +360,22 @@ namespace car
         for (int i = 0; i < wheel_count; i++)
         {
             if (!wheels[i].grounded)
+            {
                 continue;
+            }
 
             float abs_sa = fabsf(wheels[i].slip_angle);
             float sa_norm = abs_sa / tuning::spec.pneumatic_trail_peak;
             float trail   = PxMax(tuning::spec.pneumatic_trail_max * (1.0f - sa_norm), 0.0f);
 
             if (is_front(i))
+            {
                 front_sat -= wheels[i].lateral_force * trail;
+            }
             else
+            {
                 rear_damp -= wheels[i].lateral_force * trail * 0.4f;
+            }
         }
 
         PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0, 1, 0));

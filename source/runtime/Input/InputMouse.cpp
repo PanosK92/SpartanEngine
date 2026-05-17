@@ -73,10 +73,22 @@ namespace spartan
 
         if (event_type == SDL_EVENT_MOUSE_WHEEL)
         {
-            if (sdl_event->wheel.x > 0) m_mouse_wheel_delta.x += 1;
-            if (sdl_event->wheel.x < 0) m_mouse_wheel_delta.x -= 1;
-            if (sdl_event->wheel.y > 0) m_mouse_wheel_delta.y += 1;
-            if (sdl_event->wheel.y < 0) m_mouse_wheel_delta.y -= 1;
+            if (sdl_event->wheel.x > 0)
+            {
+                m_mouse_wheel_delta.x += 1;
+            }
+            if (sdl_event->wheel.x < 0)
+            {
+                m_mouse_wheel_delta.x -= 1;
+            }
+            if (sdl_event->wheel.y > 0)
+            {
+                m_mouse_wheel_delta.y += 1;
+            }
+            if (sdl_event->wheel.y < 0)
+            {
+                m_mouse_wheel_delta.y -= 1;
+            }
         }
     }
 

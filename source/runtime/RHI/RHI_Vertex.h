@@ -42,8 +42,14 @@ namespace spartan
             uint32_t sign     = (u.i >> 16) & 0x8000;
             int32_t  exponent = ((u.i >> 23) & 0xFF) - 127;
             uint32_t mantissa = u.i & 0x7FFFFF;
-            if (exponent <= -15) return static_cast<uint16_t>(sign);
-            if (exponent >   15) return static_cast<uint16_t>(sign | 0x7C00);
+            if (exponent <= -15)
+            {
+                return static_cast<uint16_t>(sign);
+            }
+            if (exponent >   15)
+            {
+                return static_cast<uint16_t>(sign | 0x7C00);
+            }
             if (exponent <= -14)
             {
                 mantissa |= 0x800000;
@@ -61,7 +67,10 @@ namespace spartan
             uint32_t sign = static_cast<uint32_t>(value & 0x8000) << 16;
             uint32_t exp  = (value >> 10) & 0x1F;
             uint32_t mant = value & 0x3FF;
-            if (exp == 0x1F) return 0.0f;
+            if (exp == 0x1F)
+            {
+                return 0.0f;
+            }
             if (exp == 0 && mant == 0)
             {
                 union { uint32_t i; float f; } u = { sign };

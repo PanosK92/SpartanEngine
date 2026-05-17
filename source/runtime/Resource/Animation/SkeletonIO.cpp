@@ -39,11 +39,15 @@ namespace spartan
     {
         std::ifstream stream(path, std::ios::binary);
         if (!stream.is_open())
+        {
             return false;
+        }
 
         uint64_t file_size = 0;
         if (!try_get_file_size(stream, file_size))
+        {
             return false;
+        }
 
         BoundedReader reader(stream, file_size);
 
@@ -54,10 +58,14 @@ namespace spartan
         }
 
         if (header.magic != skeleton_magic || header.version != skeleton_version)
+        {
             return false;
+        }
 
         if (header.joint_count == 0 || header.joint_count > animation_limits::joint_count)
+        {
             return false;
+        }
 
         ByteBudget budget = {};
         budget.limit = animation_limits::max_skeleton_bytes;
@@ -81,10 +89,14 @@ namespace spartan
         }
 
         if (reader.remaining != 0)
+        {
             return false;
+        }
 
         if (!ValidateSkeleton(skeleton, nullptr))
+        {
             return false;
+        }
 
         return true;
     }
@@ -92,17 +104,23 @@ namespace spartan
     bool SkeletonWriter::WriteToFile(const Skeleton& skeleton, const std::string& path)
     {
         if (!ValidateSkeleton(skeleton, nullptr))
+        {
             return false;
+        }
 
         std::ofstream stream(path, std::ios::binary | std::ios::trunc);
         if (!stream.is_open())
+        {
             return false;
+        }
 
         SkeletonHeader header = {};
         header.joint_count = skeleton.joint_count;
 
         if (!write_pod(stream, header))
+        {
             return false;
+        }
 
         return write_array(stream, skeleton.parent_indices)
             && write_array(stream, skeleton.bind_positions)

@@ -148,7 +148,9 @@ namespace spartan
                 bool support_color_space = supported_format.colorSpace == color_space;
 
                 if (support_format && support_color_space)
+                {
                     return true;
+                }
             }
 
             return false;
@@ -184,7 +186,8 @@ namespace spartan
         {
         #ifdef _WIN32
             HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-            if (snapshot == INVALID_HANDLE_VALUE) {
+            if (snapshot == INVALID_HANDLE_VALUE)
+            {
                 return false;
             }
         
@@ -460,7 +463,9 @@ namespace spartan
         SP_ASSERT(RHI_Device::IsValidResolution(width, height));
 
         if (m_width == width && m_height == height)
+        {
             return;
+        }
 
         m_width  = width;
         m_height = height;
@@ -482,11 +487,15 @@ namespace spartan
 
         // when the window is minimized acquisition will fail and it's not necessary either
         if (Window::IsMinimized())
+        {
             return;
+        }
 
         // ensure swapchain is valid
         if (!m_rhi_swapchain)
+        {
             return;
+        }
 
         // try to acquire, with retry after swapchain recreation
         for (uint32_t attempt = 0; attempt < 2; attempt++)
@@ -528,7 +537,9 @@ namespace spartan
                 // swapchain needs recreation, then try to acquire again
                 Create();
                 if (!m_rhi_swapchain)
+                {
                     return;
+                }
                 // continue to retry acquisition
             }
             else if (result == VK_TIMEOUT || result == VK_NOT_READY)
@@ -548,7 +559,9 @@ namespace spartan
     {
         // only present if we successfully acquired an image
         if (!m_image_acquired)
+        {
             return;
+        }
 
         // use per-image semaphore to avoid reuse conflicts - when this image is re-acquired,
         // we know the previous presentation completed, so the semaphore is safe to signal again

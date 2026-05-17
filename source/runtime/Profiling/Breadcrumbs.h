@@ -74,7 +74,9 @@ namespace spartan
         static void StartFrame()
         {
             if (!m_initialized)
+            {
                 return;
+            }
 
             std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -96,7 +98,9 @@ namespace spartan
         static void BeginMarker(const char* name)
         {
             if (!m_initialized || !name)
+            {
                 return;
+            }
 
             std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -106,7 +110,9 @@ namespace spartan
             {
                 m_current_index = (m_current_index + 1) % max_markers;
                 if (m_current_index == start_index)
+                {
                     break;
+                }
             }
 
             Marker& marker = m_markers[m_current_index];
@@ -114,7 +120,9 @@ namespace spartan
 
             size_t name_len = strlen(name);
             if (name_len >= max_marker_name_size)
+            {
                 name_len = max_marker_name_size - 1;
+            }
 
             memcpy(marker.name.data(), name, name_len);
             marker.name[name_len] = '\0';
@@ -130,12 +138,16 @@ namespace spartan
         static void EndMarker()
         {
             if (!m_initialized)
+            {
                 return;
+            }
 
             std::lock_guard<std::mutex> lock(m_mutex);
 
             if (m_current_depth > 0)
+            {
                 m_current_depth--;
+            }
 
             // find the most recent started marker at current depth
             for (int32_t i = static_cast<int32_t>(m_markers.size()) - 1; i >= 0; i--)

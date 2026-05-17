@@ -453,28 +453,51 @@ namespace spartan
             bool is_suppressed(const VkDebugUtilsMessengerCallbackDataEXT* data)
             {
                 if (!data || !data->pMessage)
+                {
                     return false;
+                }
 
                 const char* msg = data->pMessage;
 
                 // deprecated extensions required by openxr / xess
-                if (strstr(msg, "Attempting to enable deprecated extension"))  return true;
-                if (strstr(msg, "intended to support D3D emulation layers"))   return true;
+                if (strstr(msg, "Attempting to enable deprecated extension"))
+                {
+                    return true;
+                }
+                if (strstr(msg, "intended to support D3D emulation layers"))
+                {
+                    return true;
+                }
 
                 // sub-allocation best-practice: would require a pool allocator for tiny resources
-                if (strstr(msg, "fully consumed by the"))                      return true;
+                if (strstr(msg, "fully consumed by the"))
+                {
+                    return true;
+                }
 
                 // spir-v workgroup built-in deprecated in 1.6, requires newer dxc to emit LocalSizeId
-                if (strstr(msg, "Workgroup built-in"))                         return true;
+                if (strstr(msg, "Workgroup built-in"))
+                {
+                    return true;
+                }
 
                 // gpu-av instrumentation overhead warning (validation layer only, not a runtime issue)
-                if (strstr(msg, "very slow to compile"))                       return true;
+                if (strstr(msg, "very slow to compile"))
+                {
+                    return true;
+                }
 
                 // mutable descriptor type list count mismatch from xess descriptor pool creation
-                if (strstr(msg, "mutableDescriptorTypeListCount"))             return true;
+                if (strstr(msg, "mutableDescriptorTypeListCount"))
+                {
+                    return true;
+                }
 
                 // forced feature enablement by the validation layer itself
-                if (strstr(msg, "Internal Warning: Forcing"))                  return true;
+                if (strstr(msg, "Internal Warning: Forcing"))
+                {
+                    return true;
+                }
 
                 return false;
             }
@@ -488,7 +511,9 @@ namespace spartan
             )
             {
                 if (is_suppressed(p_callback_data))
+                {
                     return VK_FALSE;
+                }
 
                 if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
                 {
@@ -523,7 +548,9 @@ namespace spartan
             void shutdown(VkInstance instance)
             {
                 if (!functions::destroy_messenger)
+                {
                     return;
+                }
 
                 functions::destroy_messenger(instance, messenger, nullptr);
             }
@@ -560,14 +587,23 @@ namespace spartan
                 // dedicated first
                 for (uint32_t i = 0; i < queue_family_count; ++i) 
                 {
-                    if (exclude_indices.count(i)) continue;
+                    if (exclude_indices.count(i))
+                    {
+                        continue;
+                    }
                     const auto& props = queue_families[i];
                     if ((props.queueFlags & flags) == flags) 
                     { 
                         // exact match for dedicated
                         bool is_dedicated = true;
-                        if (flags == VK_QUEUE_COMPUTE_BIT) is_dedicated  = !(props.queueFlags & VK_QUEUE_GRAPHICS_BIT);
-                        if (flags == VK_QUEUE_TRANSFER_BIT) is_dedicated = !(props.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT));
+                        if (flags == VK_QUEUE_COMPUTE_BIT)
+                        {
+                            is_dedicated  = !(props.queueFlags & VK_QUEUE_GRAPHICS_BIT);
+                        }
+                        if (flags == VK_QUEUE_TRANSFER_BIT)
+                        {
+                            is_dedicated = !(props.queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT));
+                        }
                         if (is_dedicated) 
                         {
                             *out_index = i;
@@ -579,7 +615,10 @@ namespace spartan
                 // fallback to any supporting
                 for (uint32_t i = 0; i < queue_family_count; ++i) 
                 {
-                    if (exclude_indices.count(i)) continue;
+                    if (exclude_indices.count(i))
+                    {
+                        continue;
+                    }
                     if (queue_families[i].queueFlags & flags)
                     {
                         SP_LOG_WARNING("No dedicated queue family found for flags %u, using family %u instead.", flags, i);
@@ -727,7 +766,9 @@ namespace spartan
         void save_pipeline_cache()
         {
             if (!pipeline_cache)
+            {
                 return;
+            }
 
             size_t data_size = 0;
             SP_ASSERT_VK(vkGetPipelineCacheData(RHI_Context::device, pipeline_cache, &data_size, nullptr));
@@ -1443,10 +1484,22 @@ namespace spartan
 
                 // deduce device type
                 RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Max;
-                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Type::Integrated;
-                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
-                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
-                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
+                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+                {
+                    type = RHI_PhysicalDevice_Type::Integrated;
+                }
+                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                {
+                    type = RHI_PhysicalDevice_Type::Discrete;
+                }
+                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)
+                {
+                    type = RHI_PhysicalDevice_Type::Virtual;
+                }
+                if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)
+                {
+                    type = RHI_PhysicalDevice_Type::Cpu;
+                }
 
                 // find the local device memory heap size
                 uint64_t vram_size_bytes = 0;
@@ -1559,9 +1612,13 @@ namespace spartan
             for (const auto& ext : extensions_instance)
             {
                 if (strcmp(ext, "VK_EXT_layer_settings") == 0)
+                {
                     layer_settings_supported = true;
+                }
                 if (strcmp(ext, "VK_EXT_validation_features") == 0)
+                {
                     validation_features_supported = true;
+                }
             }
 
             VkLayerSettingsCreateInfoEXT info_settings         = {};
@@ -1762,7 +1819,9 @@ namespace spartan
         // references it must be evicted, otherwise a future binding hash collision
         // will return a stale set holding destroyed gpu handles
         if (!resource)
+        {
             return;
+        }
 
         for (auto it = descriptors::sets.begin(); it != descriptors::sets.end();)
         {
@@ -1848,10 +1907,14 @@ namespace spartan
     RHI_Queue* RHI_Device::GetQueue(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
+        {
             return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Graphics)].get();
+        }
 
         if (type == RHI_Queue_Type::Compute)
+        {
             return queues::regular[static_cast<uint32_t>(RHI_Queue_Type::Compute)].get();
+        }
 
         return nullptr;
     }
@@ -1859,13 +1922,19 @@ namespace spartan
     void* RHI_Device::GetQueueRhiResource(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
+        {
             return queues::graphics;
+        }
 
         if (type == RHI_Queue_Type::Copy)
+        {
             return queues::copy;
+        }
 
         if (type == RHI_Queue_Type::Compute)
+        {
             return queues::compute;
+        }
 
         return nullptr;
     }
@@ -1887,7 +1956,9 @@ namespace spartan
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
         if (!resource)
+        {
             return;
+        }
 
         lock_guard<mutex> guard(mutex_deletion_queue);
         deletion_queue.push_back({ resource_type, resource, deletion_queue_frame });
@@ -1955,13 +2026,17 @@ namespace spartan
         lock_guard<mutex> guard(mutex_deletion_queue);
 
         if (deletion_queue.empty())
+        {
             return false;
+        }
 
         const uint64_t safe_age = renderer_draw_data_buffer_count + 1;
         for (const auto& entry : deletion_queue)
         {
             if ((deletion_queue_frame + 1 - entry.frame) >= safe_age)
+            {
                 return true;
+            }
         }
 
         return false;
@@ -2017,19 +2092,29 @@ namespace spartan
     uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
     {
         if (descriptor.type == RHI_Descriptor_Type::Image)
+        {
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        }
 
         if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
+        {
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        }
 
         if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
+        {
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+        }
 
         if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+        {
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+        }
 
         if (descriptor.type == RHI_Descriptor_Type::AccelerationStructure)
+        {
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        }
 
         SP_ASSERT_MSG(false, "Unhandled descriptor type");
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
@@ -2399,7 +2484,9 @@ namespace spartan
             if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
             {
                 if (budgets[i].budget < (1ull << 60))
+                {
                     bytes += budgets[i].usage;
+                }
             }
         }
 
@@ -2419,7 +2506,9 @@ namespace spartan
             if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
             {
                 if (budgets[i].budget < (1ull << 60))
+                {
                     bytes += budgets[i].budget;
+                }
             }
         }
 
@@ -2457,7 +2546,9 @@ namespace spartan
     void RHI_Device::StagingBufferRelease(void* buffer)
     {
         if (!buffer)
+        {
             return;
+        }
 
         MemoryBufferDestroy(buffer);
     }
@@ -2520,7 +2611,9 @@ namespace spartan
     void RHI_Device::SetVariableRateShading(const RHI_CommandList* cmd_list, const bool enabled)
     {
         if (!m_is_shading_rate_supported)
+        {
             return;
+        }
 
         // set the fragment shading rate state for the current pipeline
         VkExtent2D fragment_size = { 1, 1 };

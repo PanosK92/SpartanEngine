@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 #include "../Core/Debugging.h"
-#include "../Core/Breadcrumbs.h"
+#include "../../Profiling/Breadcrumbs.h"
 #include "../../XR/Xr.h"
 //=====================================
 
@@ -53,10 +53,14 @@ namespace spartan
         VkAttachmentLoadOp get_color_load_op(const Color& color)
         {
             if (color == rhi_color_dont_care)
+            {
                 return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            }
 
             if (color == rhi_color_load)
+            {
                 return VK_ATTACHMENT_LOAD_OP_LOAD;
+            }
 
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
         };
@@ -64,10 +68,14 @@ namespace spartan
         VkAttachmentLoadOp get_depth_load_op(const float depth)
         {
             if (depth == rhi_depth_dont_care)
+            {
                 return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            }
 
             if (depth == rhi_depth_load)
+            {
                 return VK_ATTACHMENT_LOAD_OP_LOAD;
+            }
 
             return VK_ATTACHMENT_LOAD_OP_CLEAR;
         };
@@ -99,13 +107,17 @@ namespace spartan
             SP_ASSERT(mip_index < rhi_max_mip_count);
 
             if (texture)
+            {
                 return texture->GetLayout(mip_index);
+            }
 
             SP_ASSERT(image != nullptr);
             lock_guard<mutex> lock(raw_image_layouts_mutex);
             auto it = raw_image_layouts.find(image);
             if (it == raw_image_layouts.end())
+            {
                 return RHI_Image_Layout::Max;
+            }
 
             return it->second[mip_index];
         }
@@ -197,9 +209,13 @@ namespace spartan
 
                 case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
                     if (!is_destination_mask)
+                    {
                         return make_tuple(VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, VK_ACCESS_2_NONE);
+                    }
                     else
+                    {
                         return make_tuple(VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, VK_ACCESS_2_NONE);
+                    }
 
                 case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
                     return make_tuple(VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
@@ -363,12 +379,18 @@ namespace spartan
                 {
                     layouts[i] = barrier_helpers::get_layout(texture, image, mip_index + i);
                     if (layouts[i] != barrier.layout)
+                    {
                         all_match_target = false;
+                    }
                     if (layouts[i] != first_layout)
+                    {
                         all_same_source = false;
+                    }
                 }
                 if (all_match_target)
+                {
                     return;
+                }
 
                 // create vulkan barriers
                 static thread_local vector<VkImageMemoryBarrier2> vk_barriers;
@@ -394,7 +416,9 @@ namespace spartan
                     }
                 }
                 if (vk_barriers.empty())
+                {
                     return;
+                }
 
                 // defer barriers and batch them (if eligible)
                 if (!m_render_pass_active)
@@ -438,7 +462,9 @@ namespace spartan
 
                 // flush pending deferred barriers first, otherwise this immediate transition records before them and gpu layout drifts from the tracker
                 if (!m_pending_barriers.empty())
+                {
                     FlushBarriers();
+                }
 
                 VkDependencyInfo dependency_info        = {};
                 dependency_info.sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
@@ -498,16 +524,24 @@ namespace spartan
     void RHI_CommandList::FlushBarriers()
     {
         if (m_pending_barriers.empty())
+        {
             return;
+        }
 
         // determine the dst scope hint from the current pso (narrows overly broad auto scopes)
         RHI_Barrier_Scope pso_scope_hint = RHI_Barrier_Scope::All;
         if (m_pso.IsCompute())
+        {
             pso_scope_hint = RHI_Barrier_Scope::Compute;
+        }
         else if (m_pso.IsGraphics())
+        {
             pso_scope_hint = RHI_Barrier_Scope::Graphics;
+        }
         else if (m_pso.IsRayTracing())
-            pso_scope_hint = RHI_Barrier_Scope::Compute; // ray tracing uses compute-adjacent stages
+        {
+            pso_scope_hint = RHI_Barrier_Scope::Compute;
+        } // ray tracing uses compute-adjacent stages
 
         // helper: set image sync access masks based on layout and sync type
         auto set_sync_access_masks = [](VkImageMemoryBarrier2& b, RHI_Image_Layout layout, RHI_BarrierType sync_type)
@@ -569,7 +603,9 @@ namespace spartan
                     // use pso-aware scope narrowing for the dst when auto and the target layout is general
                     RHI_Barrier_Scope effective_dst = pending.barrier.scope_dst;
                     if (effective_dst == RHI_Barrier_Scope::Auto && pending.layout_new == RHI_Image_Layout::General)
+                    {
                         effective_dst = pso_scope_hint;
+                    }
 
                     image_barriers.push_back(barrier_helpers::create_image_barrier(
                         pending.layout_old,
@@ -603,7 +639,9 @@ namespace spartan
                         {
                             RHI_Image_Layout layout = pending.per_mip_layouts[mip];
                             if (layout == RHI_Image_Layout::Max)
+                            {
                                 continue;
+                            }
 
                             VkImageMemoryBarrier2 vk_barrier           = {};
                             vk_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -815,7 +853,9 @@ namespace spartan
                 {
                     query_count_to_read = min(query_count_to_read, query_count);
                     if (query_count_to_read == 0)
+                    {
                         return;
+                    }
 
                     array<uint64_t, query_count * 2> results = {};
                     VkResult result = vkGetQueryPoolResults(
@@ -895,7 +935,9 @@ namespace spartan
                 // check if entity already has an index
                 auto it = id_to_index.find(entity_id);
                 if (it != id_to_index.end())
+                {
                     return it->second;
+                }
 
                 // allocate new index with bounds checking
                 if (index >= query_count - 1)
@@ -1118,7 +1160,9 @@ namespace spartan
         // early exit if the pipeline state hasn't changed
         pso.Prepare();
         if (m_pso.GetHash() == pso.GetHash())
+        {
             return;
+        }
 
         // determine if the new render pass should clear the render targets or not
         if ((m_pso.shaders[RHI_Shader_Type::Vertex] != nullptr && m_pso.shaders[RHI_Shader_Type::Vertex] == pso.shaders[RHI_Shader_Type::Vertex]) && m_pso.render_target_array_index == pso.render_target_array_index)
@@ -1205,7 +1249,9 @@ namespace spartan
     RHI_CommandList* RHI_CommandList::ImmediateExecutionBegin(const RHI_Queue_Type queue_type)
     {
         if (RHI_Device::IsDeviceLost())
+        {
             return nullptr;
+        }
 
         immediate_execution::ensure_initialized();
 
@@ -1249,7 +1295,9 @@ namespace spartan
         RenderPassEnd();
     
         if (!m_pso.IsGraphics())
+        {
             return;
+        }
     
         VkRenderingInfo rendering_info      = {};
         rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
@@ -1295,7 +1343,9 @@ namespace spartan
                 {
                     RHI_Texture* rt = m_pso.render_target_color_textures[i];
                     if (rt == nullptr)
+                    {
                         break;
+                    }
     
                     SP_ASSERT_MSG(rt->IsRtv(), "The texture wasn't created with the RHI_Texture_RenderTarget flag and/or isn't a color format");
     
@@ -1403,7 +1453,9 @@ namespace spartan
     void RHI_CommandList::RenderPassEnd()
     {
         if (!m_render_pass_active)
+        {
             return;
+        }
     
         vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
         m_render_pass_active = false;
@@ -1461,7 +1513,9 @@ namespace spartan
         clear_rect.rect.extent.height = pipeline_state.GetHeight();
 
         if (attachment_count == 0)
+        {
             return;
+        }
 
         vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_rhi_resource), attachment_count, attachments.data(), 1, &clear_rect);
     }
@@ -1625,7 +1679,9 @@ namespace spartan
 
         // skip if dimensions are invalid (can happen during window minimize/resize)
         if (width == 0 || height == 0)
+        {
             return;
+        }
 
         // bind descriptor sets (same as draw/dispatch)
         PreDraw();
@@ -1838,7 +1894,9 @@ namespace spartan
         // save the initial layout
         RHI_Image_Layout source_layout_initial = source->GetLayout(0);
         if (source_layout_initial == RHI_Image_Layout::Max)
+        {
             source_layout_initial = RHI_Image_Layout::General;
+        }
 
         // transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Source,           this);
@@ -1866,10 +1924,14 @@ namespace spartan
     void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source)
     {
         if (!Xr::IsSessionRunning())
+        {
             return;
+        }
 
         if (!Xr::AcquireSwapchainImage())
+        {
             return;
+        }
 
         VkImage xr_image = static_cast<VkImage>(Xr::GetSwapchainImage());
         if (!xr_image)
@@ -1888,7 +1950,9 @@ namespace spartan
         // save the initial layout
         RHI_Image_Layout source_layout_initial = source->GetLayout(0);
         if (source_layout_initial == RHI_Image_Layout::Max)
+        {
             source_layout_initial = RHI_Image_Layout::General;
+        }
 
         // transition source to transfer source
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
@@ -2087,7 +2151,9 @@ namespace spartan
         // transition to blit appropriate layouts
         RHI_Image_Layout layout_initial_source = source->GetLayout(0);
         if (layout_initial_source == RHI_Image_Layout::Max)
+        {
             layout_initial_source = RHI_Image_Layout::General;
+        }
 
         source->SetLayout(RHI_Image_Layout::Transfer_Source, this);
         InsertBarrier(destination->GetRhiRt(), destination->GetFormat(), 0, 1, 1, RHI_Image_Layout::Transfer_Destination);
@@ -2223,7 +2289,9 @@ namespace spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         if (m_cull_mode == cull_mode)
+        {
             return;
+        }
 
         m_cull_mode = cull_mode;
         vkCmdSetCullMode(
@@ -2277,7 +2345,9 @@ namespace spartan
         SP_ASSERT(buffer->GetRhiResource() != nullptr);
 
         if (m_buffer_id_index == buffer->GetObjectId())
+        {
             return;
+        }
 
         bool is_16bit = buffer->GetStride() == sizeof(uint16_t);
 
@@ -2301,7 +2371,9 @@ namespace spartan
 
         uint32_t stages = m_pipeline->GetPushConstantStages();
         if (stages == 0)
+        {
             return;
+        }
 
         VkPushConstantsInfo push_info = {};
         push_info.sType      = VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO;
@@ -2348,7 +2420,9 @@ namespace spartan
 
         // if the texture is null or it's still loading, ignore it
         if (!texture || texture->GetResourceState() != ResourceState::PreparedForGpu)
+        {
             return;
+        }
 
         // get some texture info
         const uint32_t mip_count        = texture->GetMipCount();
@@ -2585,7 +2659,9 @@ namespace spartan
 
         // guard against unsigned underflow (stale or not-yet-ready query data)
         if (end <= start)
+        {
             return 0.0f;
+        }
 
         uint64_t duration = end - start;
         float duration_ms = static_cast<float>(duration * RHI_Device::PropertyGetTimestampPeriod() * 1e-6f);
@@ -2653,7 +2729,9 @@ namespace spartan
     void RHI_CommandList::EndOcclusionQuery()
     {
         if (!queries::occlusion::occlusion_query_active)
+        {
             return;
+        }
 
         vkCmdEndQuery(
             static_cast<VkCommandBuffer>(m_rhi_resource),
@@ -2667,7 +2745,9 @@ namespace spartan
     bool RHI_CommandList::GetOcclusionQueryResult(const uint64_t entity_id)
     {
         if (queries::occlusion::id_to_index.find(entity_id) == queries::occlusion::id_to_index.end())
+        {
             return false;
+        }
 
         uint32_t index  = queries::occlusion::id_to_index[entity_id];
         uint64_t result = queries::occlusion::data[index]; // visible pixel count

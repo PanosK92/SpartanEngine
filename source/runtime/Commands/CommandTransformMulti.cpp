@@ -48,7 +48,9 @@ namespace spartan
         for (size_t i = 0; i < entities.size(); ++i)
         {
             if (!entities[i])
+            {
                 continue;
+            }
 
             EntityTransformData data;
             data.entity_id = entities[i]->GetObjectId();
@@ -69,7 +71,9 @@ namespace spartan
         {
             Entity* entity = World::GetEntityById(data.entity_id);
             if (!entity)
+            {
                 continue;
+            }
 
             entity->SetPosition(data.new_position);
             entity->SetRotation(data.new_rotation);
@@ -83,7 +87,9 @@ namespace spartan
         {
             Entity* entity = World::GetEntityById(data.entity_id);
             if (!entity)
+            {
                 continue;
+            }
 
             entity->SetPosition(data.old_position);
             entity->SetRotation(data.old_rotation);

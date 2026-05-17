@@ -77,11 +77,15 @@ namespace spartan
     {
         std::ifstream stream(path, std::ios::binary);
         if (!stream.is_open())
+        {
             return false;
+        }
 
         uint64_t file_size = 0;
         if (!try_get_file_size(stream, file_size))
+        {
             return false;
+        }
 
         BoundedReader reader(stream, file_size);
 
@@ -92,7 +96,9 @@ namespace spartan
         }
 
         if (header.magic != clip_magic || header.version != clip_version)
+        {
             return false;
+        }
 
         if (header.joint_count > animation_limits::joint_count ||
             header.position_channel_count > animation_limits::channel_count ||
@@ -153,10 +159,14 @@ namespace spartan
         }
 
         if (reader.remaining != 0)
+        {
             return false;
+        }
 
         if (!ValidateClip(clip, nullptr))
+        {
             return false;
+        }
 
         return true;
     }
@@ -164,11 +174,15 @@ namespace spartan
     bool AnimationClipWriter::WriteToFile(const AnimationClip& clip, const std::string& path)
     {
         if (!ValidateClip(clip, nullptr))
+        {
             return false;
+        }
 
         std::ofstream stream(path, std::ios::binary | std::ios::trunc);
         if (!stream.is_open())
+        {
             return false;
+        }
 
         ClipHeader header = {};
         header.joint_count = clip.joint_count;

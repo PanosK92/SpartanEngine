@@ -46,7 +46,9 @@ void Widget::Tick()
     OnTick();
 
     if (!m_is_window || !m_visible)
+    {
         return;
+    }
 
     // Begin
     {

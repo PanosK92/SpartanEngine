@@ -28,7 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 void* operator new(size_t size)
 {
     void* ptr = spartan::Allocator::Allocate(size);
-    if (!ptr) throw std::bad_alloc();
+    if (!ptr)
+    {
+        throw std::bad_alloc();
+    }
     return ptr;
 }
 
@@ -40,7 +43,10 @@ void operator delete(void* ptr) noexcept
 void* operator new[](size_t size)
 {
     void* ptr = spartan::Allocator::Allocate(size);
-    if (!ptr) throw std::bad_alloc();
+    if (!ptr)
+    {
+        throw std::bad_alloc();
+    }
     return ptr;
 }
 
@@ -64,7 +70,10 @@ void operator delete[](void* ptr, size_t) noexcept
 void* operator new(size_t size, std::align_val_t alignment)
 {
     void* ptr = spartan::Allocator::Allocate(size, static_cast<size_t>(alignment));
-    if (!ptr) throw std::bad_alloc();
+    if (!ptr)
+    {
+        throw std::bad_alloc();
+    }
     return ptr;
 }
 
@@ -76,7 +85,10 @@ void operator delete(void* ptr, std::align_val_t) noexcept
 void* operator new[](size_t size, std::align_val_t alignment)
 {
     void* ptr = spartan::Allocator::Allocate(size, static_cast<size_t>(alignment));
-    if (!ptr) throw std::bad_alloc();
+    if (!ptr)
+    {
+        throw std::bad_alloc();
+    }
     return ptr;
 }
 

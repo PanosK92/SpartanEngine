@@ -194,8 +194,14 @@ namespace spartan
         // set initial layout matching the initial state
         {
             RHI_Image_Layout layout = RHI_Image_Layout::General;
-            if (initial_state == D3D12_RESOURCE_STATE_DEPTH_WRITE) layout = RHI_Image_Layout::Attachment;
-            else if (initial_state == D3D12_RESOURCE_STATE_COPY_DEST) layout = RHI_Image_Layout::Transfer_Destination;
+            if (initial_state == D3D12_RESOURCE_STATE_DEPTH_WRITE)
+            {
+                layout = RHI_Image_Layout::Attachment;
+            }
+            else if (initial_state == D3D12_RESOURCE_STATE_COPY_DEST)
+            {
+                layout = RHI_Image_Layout::Transfer_Destination;
+            }
             SetLayoutDirect(0, m_mip_count, layout);
         }
 

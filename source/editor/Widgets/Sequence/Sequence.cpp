@@ -56,9 +56,18 @@ namespace spartan
 
         SequenceTrackType string_to_track_type(const string& str)
         {
-            if (str == "camera_cut") return SequenceTrackType::CameraCut;
-            if (str == "transform")  return SequenceTrackType::Transform;
-            if (str == "event")      return SequenceTrackType::Event;
+            if (str == "camera_cut")
+            {
+                return SequenceTrackType::CameraCut;
+            }
+            if (str == "transform")
+            {
+                return SequenceTrackType::Transform;
+            }
+            if (str == "event")
+            {
+                return SequenceTrackType::Event;
+            }
             return SequenceTrackType::Max;
         }
 
@@ -77,11 +86,26 @@ namespace spartan
 
         SequenceEventAction string_to_event_action(const string& str)
         {
-            if (str == "car_enter")                 return SequenceEventAction::CarEnter;
-            if (str == "car_exit")                  return SequenceEventAction::CarExit;
-            if (str == "set_spline_follower_speed") return SequenceEventAction::SetSplineFollowerSpeed;
-            if (str == "play_audio")                return SequenceEventAction::PlayAudio;
-            if (str == "stop_audio")                return SequenceEventAction::StopAudio;
+            if (str == "car_enter")
+            {
+                return SequenceEventAction::CarEnter;
+            }
+            if (str == "car_exit")
+            {
+                return SequenceEventAction::CarExit;
+            }
+            if (str == "set_spline_follower_speed")
+            {
+                return SequenceEventAction::SetSplineFollowerSpeed;
+            }
+            if (str == "play_audio")
+            {
+                return SequenceEventAction::PlayAudio;
+            }
+            if (str == "stop_audio")
+            {
+                return SequenceEventAction::StopAudio;
+            }
             return SequenceEventAction::Max;
         }
 
@@ -100,11 +124,26 @@ namespace spartan
 
         InterpolationMode string_to_interpolation_mode(const string& str)
         {
-            if (str == "linear")      return InterpolationMode::Linear;
-            if (str == "catmull_rom") return InterpolationMode::CatmullRom;
-            if (str == "ease_in")     return InterpolationMode::EaseIn;
-            if (str == "ease_out")    return InterpolationMode::EaseOut;
-            if (str == "ease_in_out") return InterpolationMode::EaseInOut;
+            if (str == "linear")
+            {
+                return InterpolationMode::Linear;
+            }
+            if (str == "catmull_rom")
+            {
+                return InterpolationMode::CatmullRom;
+            }
+            if (str == "ease_in")
+            {
+                return InterpolationMode::EaseIn;
+            }
+            if (str == "ease_out")
+            {
+                return InterpolationMode::EaseOut;
+            }
+            if (str == "ease_in_out")
+            {
+                return InterpolationMode::EaseInOut;
+            }
             return InterpolationMode::CatmullRom;
         }
 
@@ -145,7 +184,9 @@ namespace spartan
     void Sequence::Tick()
     {
         if (!m_playing || m_paused)
+        {
             return;
+        }
 
         float delta = static_cast<float>(Timer::GetDeltaTimeSec()) * m_playback_speed;
         m_playback_time += delta;
@@ -241,9 +282,13 @@ namespace spartan
 
             // skip muted tracks; if any track is solo'd, only evaluate solo'd tracks
             if (track.muted)
+            {
                 continue;
+            }
             if (any_solo && !track.solo)
+            {
                 continue;
+            }
 
             switch (track.type)
             {
@@ -258,7 +303,9 @@ namespace spartan
     void Sequence::EvaluateCameraCutTrack(const SequenceTrack& track, float time)
     {
         if (track.camera_clips.empty())
+        {
             return;
+        }
 
         const SequenceCameraCutClip* active_clip = nullptr;
         for (const auto& clip : track.camera_clips)
@@ -296,11 +343,15 @@ namespace spartan
     void Sequence::EvaluateTransformTrack(const SequenceTrack& track, float time)
     {
         if (track.keyframes.size() < 2)
+        {
             return;
+        }
 
         Entity* entity = World::GetEntityById(track.target_entity_id);
         if (!entity)
+        {
             return;
+        }
 
         const auto& kfs = track.keyframes;
 
@@ -357,7 +408,9 @@ namespace spartan
     void Sequence::EvaluateEventTrack(const SequenceTrack& track, float time)
     {
         if (track.event_clips.empty())
+        {
             return;
+        }
 
         uint32_t track_index = 0;
         uint32_t event_track_counter = 0;
@@ -386,7 +439,9 @@ namespace spartan
             const SequenceEventClip& evt = track.event_clips[i];
 
             if (evt.time > time)
+            {
                 break;
+            }
 
             Entity* target = World::GetEntityById(evt.target_entity_id);
 

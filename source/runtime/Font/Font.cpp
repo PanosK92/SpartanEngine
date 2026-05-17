@@ -107,7 +107,9 @@ namespace spartan
 
             // check if adding this character would exceed the vertex limit
             if (m_vertices.size() + 6 > max_vertices)
+            {
                 return;
+            }
     
             Glyph& glyph = m_glyphs[character];
     

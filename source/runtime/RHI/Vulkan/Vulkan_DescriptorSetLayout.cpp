@@ -52,9 +52,13 @@ namespace spartan
         for (const RHI_Descriptor& desc : m_descriptors)
         {
             if (desc.type == RHI_Descriptor_Type::PushConstantBuffer)
+            {
                 continue;
+            }
             if (desc.as_array && desc.array_length == rhi_max_array_size)
+            {
                 continue;
+            }
             filtered.push_back(desc);
         }
 
@@ -92,14 +96,38 @@ namespace spartan
 
             // convert stage mask to vulkan flags
             VkShaderStageFlags stage_flags = 0;
-            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Vertex))        stage_flags |= VK_SHADER_STAGE_VERTEX_BIT;
-            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Hull))          stage_flags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))        stage_flags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))         stage_flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute))       stage_flags |= VK_SHADER_STAGE_COMPUTE_BIT;
-            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayGeneration)) stage_flags |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayMiss))       stage_flags |= VK_SHADER_STAGE_MISS_BIT_KHR;
-            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayHit))        stage_flags |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Vertex))
+            {
+                stage_flags |= VK_SHADER_STAGE_VERTEX_BIT;
+            }
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Hull))
+            {
+                stage_flags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+            }
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Domain))
+            {
+                stage_flags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            }
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Pixel))
+            {
+                stage_flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+            }
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::Compute))
+            {
+                stage_flags |= VK_SHADER_STAGE_COMPUTE_BIT;
+            }
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayGeneration))
+            {
+                stage_flags |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+            }
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayMiss))
+            {
+                stage_flags |= VK_SHADER_STAGE_MISS_BIT_KHR;
+            }
+            if (desc.stage & rhi_shader_type_to_mask(RHI_Shader_Type::RayHit))
+            {
+                stage_flags |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+            }
 
             auto& binding              = layout_bindings[i];
             binding.binding            = desc.slot;

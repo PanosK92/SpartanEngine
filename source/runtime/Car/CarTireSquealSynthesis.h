@@ -104,8 +104,14 @@ namespace tire_squeal_sound
             bp = v1;
             hp = input - k * v1 - v2;
 
-            if (fabsf(ic1eq) < 1e-15f) ic1eq = 0.0f;
-            if (fabsf(ic2eq) < 1e-15f) ic2eq = 0.0f;
+            if (fabsf(ic1eq) < 1e-15f)
+            {
+                ic1eq = 0.0f;
+            }
+            if (fabsf(ic2eq) < 1e-15f)
+            {
+                ic2eq = 0.0f;
+            }
         }
 
         float lowpass(float input)
@@ -357,7 +363,10 @@ namespace tire_squeal_sound
                 output *= 0.7f;
 
                 output_sum += output * output;
-                if (fabsf(output) > peak) peak = fabsf(output);
+                if (fabsf(output) > peak)
+                {
+                    peak = fabsf(output);
+                }
 
                 if (stereo)
                 {

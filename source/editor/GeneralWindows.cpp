@@ -56,7 +56,10 @@ namespace
 
         void window()
         {
-            if (!visible) return;
+            if (!visible)
+            {
+                return;
+            }
 
             ImGui::SetNextWindowPos(
                 editor->GetWidget<Viewport>()->GetCenter(),
@@ -186,15 +189,21 @@ namespace
             ImGui::AlignTextToFramePadding();
 
             if (ImGuiSp::button("Panos Karabelas"))
+            {
                 spartan::FileSystem::OpenUrl("https://panoskarabelas.com/");
+            }
 
             ImGui::SameLine();
             if (ImGuiSp::button("GitHub"))
+            {
                 spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
+            }
 
             ImGui::SameLine();
             if (ImGuiSp::button("X"))
+            {
                 spartan::FileSystem::OpenUrl("https://twitter.com/panoskarabelas");
+            }
 
             ImGui::Spacing();
             ImGui::Separator();
@@ -294,7 +303,10 @@ namespace
 
         void window()
         {
-            if (!visible) return;
+            if (!visible)
+            {
+                return;
+            }
 
             center_next_window(editor);
 
@@ -505,7 +517,9 @@ namespace
         void window()
         {
             if (!visible)
+            {
                 return;
+            }
 
             // center the window on first use, but let user move it freely afterwards
             ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));

@@ -87,15 +87,39 @@ namespace spartan
                 bool left   = x < resize_margin;
                 bool right  = x >= w - resize_margin;
 
-                if (top && left)     return SDL_HITTEST_RESIZE_TOPLEFT;
-                if (top && right)    return SDL_HITTEST_RESIZE_TOPRIGHT;
-                if (bottom && left)  return SDL_HITTEST_RESIZE_BOTTOMLEFT;
-                if (bottom && right) return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
+                if (top && left)
+                {
+                    return SDL_HITTEST_RESIZE_TOPLEFT;
+                }
+                if (top && right)
+                {
+                    return SDL_HITTEST_RESIZE_TOPRIGHT;
+                }
+                if (bottom && left)
+                {
+                    return SDL_HITTEST_RESIZE_BOTTOMLEFT;
+                }
+                if (bottom && right)
+                {
+                    return SDL_HITTEST_RESIZE_BOTTOMRIGHT;
+                }
 
-                if (top)    return SDL_HITTEST_RESIZE_TOP;
-                if (bottom) return SDL_HITTEST_RESIZE_BOTTOM;
-                if (left)   return SDL_HITTEST_RESIZE_LEFT;
-                if (right)  return SDL_HITTEST_RESIZE_RIGHT;
+                if (top)
+                {
+                    return SDL_HITTEST_RESIZE_TOP;
+                }
+                if (bottom)
+                {
+                    return SDL_HITTEST_RESIZE_BOTTOM;
+                }
+                if (left)
+                {
+                    return SDL_HITTEST_RESIZE_LEFT;
+                }
+                if (right)
+                {
+                    return SDL_HITTEST_RESIZE_RIGHT;
+                }
             }
 
             // remaining titlebar area is draggable when imgui is not interacting with anything
@@ -369,7 +393,9 @@ namespace spartan
     void Window::ProcessFullScreenToggle()
     {
         if (!fullscreen_toggle_pending)
+        {
             return;
+        }
 
         fullscreen_toggle_pending = false;
 
@@ -453,15 +479,21 @@ namespace spartan
         
         // windows
         if (void* handle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr))
+        {
             return handle;
+        }
         
         // wayland
         if (void* handle = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr))
+        {
             return handle;
+        }
         
         // x11
         if (Uint64 x11_window = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0))
+        {
             return reinterpret_cast<void*>(x11_window);
+        }
 
         return nullptr;
     }
@@ -555,7 +587,9 @@ namespace spartan
     void Window::SetSplashScreenVisible(bool visible)
     {
         if (!m_splash_screen_window)
+        {
             return;
+        }
 
         if (visible)
         {

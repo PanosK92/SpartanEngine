@@ -46,7 +46,9 @@ namespace spartan
         for (const RHI_DescriptorWithBinding& desc : m_descriptors)
         {
             if (desc.binding.resource == resource)
+            {
                 return true;
+            }
         }
         return false;
     }

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_SyncPrimitive.h"
 #include "../RHI_VendorTechnology.h"
 #include "../Core/Debugging.h"
-#include "../Core/Breadcrumbs.h"
+#include "../../Profiling/Breadcrumbs.h"
 //==================================
 
 //= NAMESPACES =====

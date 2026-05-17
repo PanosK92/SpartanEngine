@@ -281,9 +281,7 @@ namespace spartan
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         template<typename F = std::nullptr_t>
         static void Pass_Compute(RHI_CommandList* cmd_list, const char* name, Renderer_Shader shader_enum,
-                                 RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr,
-                                 bool bind_common_textures = false, RHI_Texture* tex_in2 = nullptr,
-                                 float dispatch_resolution_scale = 1.0f);
+                                 RHI_Texture* tex_in, RHI_Texture* tex_out, F setup = nullptr);
         // passes - utility
         static void Pass_Blit(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Downscale(RHI_CommandList* cmd_list, RHI_Texture* tex, const Renderer_DownsampleFilter filter);

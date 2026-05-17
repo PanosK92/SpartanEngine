@@ -74,7 +74,9 @@ namespace spartan
         bool handle_error(int error_code)
         {
             if (error_code == FT_Err_Ok)
+            {
                 return true;
+            }
 
             switch (error_code)
             {
@@ -222,7 +224,9 @@ namespace spartan
             for (uint32_t char_code = GLYPH_START; char_code < GLYPH_END; char_code++)
             {
                 if (!load_glyph(face, char_code))
+                {
                     continue;
+                }
 
                 FT_Bitmap* bitmap = &face->glyph->bitmap;
                 width             = max(width,  bitmap->width);
@@ -253,7 +257,9 @@ namespace spartan
         {
             // load glyph
             if (!load_glyph(ft_font, char_code, stroker ? FT_LOAD_NO_BITMAP : g_glyph_load_flags))
+            {
                 return;
+            }
 
             FT_Bitmap* bitmap_temp = nullptr; // will deallocate it's buffer the moment will load another glyph
 
@@ -387,11 +393,15 @@ namespace spartan
     {
         // initialize library
         if (!ft_helper::handle_error(FT_Init_FreeType(&library)))
+        {
             return;
+        }
 
         // initialize stroker
         if (!ft_helper::handle_error(FT_Stroker_New(library, &stroker)))
+        {
             return;
+        }
 
     }
 

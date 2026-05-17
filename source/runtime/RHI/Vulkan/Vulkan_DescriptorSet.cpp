@@ -172,11 +172,15 @@ namespace spartan
 
             // skip unbound descriptors (except images which use fallback)
             if (!binding.IsBound() && layout.type != RHI_Descriptor_Type::Image)
+            {
                 continue;
+            }
 
             // skip bindless arrays - they have their own descriptor sets
             if (layout.as_array && layout.array_length == rhi_max_array_size)
+            {
                 continue;
+            }
 
             VkDescriptorType vk_type = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(layout));
 

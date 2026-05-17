@@ -73,7 +73,9 @@ namespace
     void CollectEntitiesInTreeOrder(Entity* entity, vector<Entity*>& out_entities)
     {
         if (!entity || !entity->GetActive())
+        {
             return;
+        }
 
         out_entities.push_back(entity);
 
@@ -101,11 +103,15 @@ namespace
     void SelectEntitiesInRange(Entity* entity_a, Entity* entity_b)
     {
         if (!entity_a || !entity_b)
+        {
             return;
+        }
 
         Camera* camera = World::GetCamera();
         if (!camera)
+        {
             return;
+        }
 
         RefreshEntitiesInTreeOrder();
 
@@ -115,17 +121,25 @@ namespace
         for (int i = 0; i < static_cast<int>(entities_in_tree_order.size()); ++i)
         {
             if (entities_in_tree_order[i]->GetObjectId() == entity_a->GetObjectId())
+            {
                 index_a = i;
+            }
             if (entities_in_tree_order[i]->GetObjectId() == entity_b->GetObjectId())
+            {
                 index_b = i;
+            }
         }
 
         if (index_a == -1 || index_b == -1)
+        {
             return;
+        }
 
         // ensure index_a <= index_b
         if (index_a > index_b)
+        {
             std::swap(index_a, index_b);
+        }
 
         // clear current selection and select range
         camera->ClearSelection();
@@ -140,7 +154,9 @@ namespace
     {
         Entity* entity = World::CreateEntity();
         if (!entity)
+        {
             return nullptr;
+        }
 
         // use the prefab file name (without extension) as the entity name
         std::string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
@@ -244,7 +260,9 @@ namespace
         }
 
         if (match_count > 1)
+        {
             return ResourceCache::GetIcon(IconType::Hybrid);
+        }
     
         return icon ? icon : ResourceCache::GetIcon(IconType::Entity);
     }
@@ -442,7 +460,9 @@ void WorldViewer::TreeAddEntity(Entity* entity)
 {
     // early exit if entity is null
     if (!entity)
+    {
         return;
+    }
 
     // set up tree node flags - we handle highlighting manually, so no SpanFullWidth or Selected
     ImGuiTreeNodeFlags node_flags            = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_OpenOnArrow;
@@ -710,7 +730,9 @@ void WorldViewer::HandleClicking()
 
     // since we are handling clicking manually, we must ensure we are inside the window
     if (!is_window_hovered)
+    {
         return;
+    }
 
     // double-click on item - Focus camera on entity
     if (double_click && entity_hovered)
@@ -769,7 +791,9 @@ void WorldViewer::SetSelectedEntity(Entity* entity)
     // while in game mode the tree is not interactive, so don't allow selection
     bool is_in_game_mode = Engine::IsFlagSet(EngineMode::Playing);
     if (is_in_game_mode)
+    {
         return;
+    }
 
     if (Camera* camera = World::GetCamera())
     {
@@ -787,7 +811,9 @@ void WorldViewer::Popups()
 void WorldViewer::PopupContextMenu() const
 {
     if (!ImGui::BeginPopup("##HierarchyContextMenu"))
+    {
         return;
+    }
 
     // get selected entities
     Camera* camera = World::GetCamera();
@@ -971,7 +997,9 @@ void WorldViewer::HandleKeyShortcuts()
 {
     // skip engine shortcuts while inline rename input or any other text field is active
     if (rename_entity_id != 0 || ImGui::GetIO().WantTextInput)
+    {
         return;
+    }
 
     // Delete - deletes all selected entities
     if (Input::GetKey(KeyCode::Delete))
@@ -1080,7 +1108,9 @@ void WorldViewer::ActionEntityDelete(Entity* entity)
 
     // check if entity still exists (might have been deleted as a child of another entity)
     if (!World::EntityExists(entity))
+    {
         return;
+    }
 
     // create undo command (stores entity state before deletion)
     auto command = std::make_shared<CommandEntityDelete>(entity);

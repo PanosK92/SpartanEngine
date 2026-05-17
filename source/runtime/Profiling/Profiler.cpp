@@ -191,7 +191,9 @@ namespace spartan
             for (const TimeBlock& time_block : m_time_blocks_read)
             {
                 if (!time_block.IsComplete())
+                {
                     continue;
+                }
                 if (!time_block.GetParent() && time_block.GetType() == TimeBlockType::Cpu)
                 {
                     time_cpu_last += time_block.GetDuration();
@@ -360,12 +362,16 @@ namespace spartan
     void Profiler::TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/, RHI_Queue_Type queue_type /*= RHI_Queue_Type::Max*/)
     {
         if (!poll)
+        {
             return;
+        }
 
         const bool can_profile_cpu = (type == TimeBlockType::Cpu) && profile_cpu;
         const bool can_profile_gpu = (type == TimeBlockType::Gpu) && profile_gpu && Debugging::IsGpuTimingEnabled();
         if (!can_profile_cpu && !can_profile_gpu)
+        {
             return;
+        }
 
         SP_ASSERT(m_time_block_index < static_cast<int>(max_timeblocks) - 1);
 
@@ -489,7 +495,9 @@ namespace spartan
                 if (!time_block.IsComplete())
                 {
                     if (cmd_list == nullptr || time_block.GetCmdList() == cmd_list)
+                    {
                         return &time_block;
+                    }
                 }
             }
         }

@@ -85,7 +85,9 @@ namespace spartan
             // track the logical initial state, buffers in COMMON auto-promote to UAV on first access
             d3d12_state::SetState(resource, initial_state);
             if (name)
+            {
                 d3d12_utility::debug::set_name(resource, name);
+            }
 
             return resource;
         }
@@ -131,7 +133,9 @@ namespace spartan
 
             d3d12_state::SetState(resource, D3D12_RESOURCE_STATE_GENERIC_READ);
             if (name)
+            {
                 d3d12_utility::debug::set_name(resource, name);
+            }
 
             return resource;
         }
@@ -274,7 +278,10 @@ namespace spartan
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
         inputs.Type           = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
         inputs.Flags          = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-        if (allow_update) inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+        if (allow_update)
+        {
+            inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+        }
         inputs.DescsLayout    = D3D12_ELEMENTS_LAYOUT_ARRAY;
         inputs.NumDescs       = static_cast<UINT>(d3d_geometries.size());
         inputs.pGeometryDescs = d3d_geometries.data();
@@ -348,7 +355,9 @@ namespace spartan
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmd4;
         ID3D12GraphicsCommandList* base_cmd = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
         if (FAILED(base_cmd->QueryInterface(IID_PPV_ARGS(&cmd4))))
+        {
             return;
+        }
 
         vector<D3D12_RAYTRACING_GEOMETRY_DESC> d3d_geometries;
         d3d_geometries.reserve(geometries.size());
@@ -399,12 +408,16 @@ namespace spartan
 
         Microsoft::WRL::ComPtr<ID3D12Device5> device5;
         if (FAILED(RHI_Context::device->QueryInterface(IID_PPV_ARGS(&device5))))
+        {
             return;
+        }
 
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmd4;
         ID3D12GraphicsCommandList* base_cmd = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
         if (FAILED(base_cmd->QueryInterface(IID_PPV_ARGS(&cmd4))))
+        {
             return;
+        }
 
         // double buffer the instance descriptor uploads so frame N gpu reads do not race frame N+1 cpu writes
         uint32_t buf_idx = m_buffer_index;
@@ -432,7 +445,9 @@ namespace spartan
         if (!m_staging_buffer[buf_idx] || data_size > m_staging_buffer_size[buf_idx])
         {
             if (m_staging_buffer[buf_idx])
+            {
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_staging_buffer[buf_idx]);
+            }
 
             m_staging_buffer[buf_idx]      = create_upload_buffer(data_size, (m_object_name + "_staging_" + to_string(buf_idx)).c_str());
             m_staging_buffer_size[buf_idx] = data_size;
@@ -474,7 +489,9 @@ namespace spartan
 
             m_rhi_resource_results = create_buffer(prebuild.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, m_object_name.c_str());
             if (!m_rhi_resource_results)
+            {
                 return;
+            }
 
             m_rhi_resource = m_rhi_resource_results;
             m_size         = prebuild.ResultDataMaxSizeInBytes;
@@ -487,12 +504,16 @@ namespace spartan
         if (!m_scratch_buffer || required_scratch_size > m_scratch_buffer_size)
         {
             if (m_scratch_buffer)
+            {
                 RHI_Device::DeletionQueueAdd(RHI_Resource_Type::Buffer, m_scratch_buffer);
+            }
 
             m_scratch_buffer      = create_buffer(required_scratch_size, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, (m_object_name + "_scratch").c_str());
             m_scratch_buffer_size = m_scratch_buffer ? required_scratch_size : 0;
             if (!m_scratch_buffer)
+            {
                 return;
+            }
         }
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc = {};
@@ -509,7 +530,9 @@ namespace spartan
     uint64_t RHI_AccelerationStructure::GetDeviceAddress()
     {
         if (!m_rhi_resource_results)
+        {
             return 0;
+        }
 
         // on d3d12 the as is just a buffer, the gpu virtual address of the result buffer is the reference
         return static_cast<ID3D12Resource*>(m_rhi_resource_results)->GetGPUVirtualAddress();

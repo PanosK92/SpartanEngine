@@ -39,13 +39,19 @@ namespace car
     // derived from com z-offset and wheelbase, no need to store separately
     inline float get_weight_distribution_front()
     {
-        if (cfg.wheelbase < 0.01f) return 0.5f;
+        if (cfg.wheelbase < 0.01f)
+        {
+            return 0.5f;
+        }
         return PxClamp(0.5f + tuning::spec.center_of_mass_z / cfg.wheelbase, 0.0f, 1.0f);
     }
 
     inline float load_sensitive_grip(float load)
     {
-        if (load <= 0.0f) return 0.0f;
+        if (load <= 0.0f)
+        {
+            return 0.0f;
+        }
         return load * powf(load / tuning::spec.load_reference, tuning::spec.load_sensitivity - 1.0f);
     }
 
@@ -78,7 +84,9 @@ namespace car
     inline float get_brake_efficiency(float temp)
     {
         if (temp >= tuning::spec.brake_fade_temp)
+        {
             return 0.6f;
+        }
 
         if (temp < tuning::spec.brake_optimal_temp)
         {

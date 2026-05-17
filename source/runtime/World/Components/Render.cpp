@@ -84,7 +84,9 @@ namespace spartan
         auto save_override = [&node](const char* name, float v)
         {
             if (MaterialOverride::is_set(v))
+            {
                 node.append_attribute(name) = v;
+            }
         };
         save_override("ovr_uv_tiling_x",    m_material_override.uv_tiling_x);
         save_override("ovr_uv_tiling_y",    m_material_override.uv_tiling_y);
@@ -188,7 +190,9 @@ namespace spartan
         auto load_override = [&node](const char* name, float& target)
         {
             if (auto attr = node.attribute(name))
+            {
                 target = attr.as_float();
+            }
         };
         load_override("ovr_uv_tiling_x",    m_material_override.uv_tiling_x);
         load_override("ovr_uv_tiling_y",    m_material_override.uv_tiling_y);
@@ -320,7 +324,9 @@ namespace spartan
     float Render::ResolveUvTilingX() const
     {
         if (MaterialOverride::is_set(m_material_override.uv_tiling_x))
+        {
             return m_material_override.uv_tiling_x;
+        }
 
         return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingX) : 1.0f;
     }
@@ -328,7 +334,9 @@ namespace spartan
     float Render::ResolveUvTilingY() const
     {
         if (MaterialOverride::is_set(m_material_override.uv_tiling_y))
+        {
             return m_material_override.uv_tiling_y;
+        }
 
         return m_material ? m_material->GetProperty(MaterialProperty::TextureTilingY) : 1.0f;
     }
@@ -336,7 +344,9 @@ namespace spartan
     float Render::ResolveUvOffsetX() const
     {
         if (MaterialOverride::is_set(m_material_override.uv_offset_x))
+        {
             return m_material_override.uv_offset_x;
+        }
 
         return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetX) : 0.0f;
     }
@@ -344,7 +354,9 @@ namespace spartan
     float Render::ResolveUvOffsetY() const
     {
         if (MaterialOverride::is_set(m_material_override.uv_offset_y))
+        {
             return m_material_override.uv_offset_y;
+        }
 
         return m_material ? m_material->GetProperty(MaterialProperty::TextureOffsetY) : 0.0f;
     }
@@ -352,7 +364,9 @@ namespace spartan
     float Render::ResolveUvRotation() const
     {
         if (MaterialOverride::is_set(m_material_override.uv_rotation))
+        {
             return m_material_override.uv_rotation;
+        }
 
         return m_material ? m_material->GetProperty(MaterialProperty::TextureRotation) : 0.0f;
     }
@@ -360,7 +374,9 @@ namespace spartan
     float Render::ResolveUvInvertX() const
     {
         if (MaterialOverride::is_set(m_material_override.uv_invert_x))
+        {
             return m_material_override.uv_invert_x;
+        }
 
         return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertX) : 0.0f;
     }
@@ -368,7 +384,9 @@ namespace spartan
     float Render::ResolveUvInvertY() const
     {
         if (MaterialOverride::is_set(m_material_override.uv_invert_y))
+        {
             return m_material_override.uv_invert_y;
+        }
 
         return m_material ? m_material->GetProperty(MaterialProperty::TextureInvertY) : 0.0f;
     }
@@ -376,7 +394,9 @@ namespace spartan
     float Render::ResolveUvWorldSpace() const
     {
         if (MaterialOverride::is_set(m_material_override.uv_world_space))
+        {
             return m_material_override.uv_world_space;
+        }
 
         return m_material ? m_material->GetProperty(MaterialProperty::WorldSpaceUv) : 0.0f;
     }
@@ -489,7 +509,9 @@ namespace spartan
     RHI_Buffer* Render::GetIndexBuffer() const
 	{
         if (!m_mesh)
+        {
             return nullptr;
+        }
 
         return m_mesh->GetIndexBuffer();
 	}
@@ -497,7 +519,9 @@ namespace spartan
     RHI_Buffer* Render::GetVertexBuffer() const
     {
         if (!m_mesh)
+        {
             return nullptr;
+        }
 
         return m_mesh->GetVertexBuffer();
     }
@@ -506,7 +530,9 @@ namespace spartan
     {
         static string no_mesh = "N/A";
         if (!m_mesh)
+        {
             return no_mesh;
+        }
 
         return m_mesh->GetObjectName();
     }
@@ -514,7 +540,9 @@ namespace spartan
     void Render::BuildAccelerationStructure(RHI_CommandList* cmd_list)
     {
         if (!m_mesh)
+        {
             return;
+        }
 
         m_mesh->BuildAccelerationStructure(cmd_list, m_allow_blas_update);
     }
@@ -522,7 +550,9 @@ namespace spartan
     void Render::RefitAccelerationStructure(RHI_CommandList* cmd_list)
     {
         if (!m_mesh)
+        {
             return;
+        }
 
         m_mesh->RefitBlas(cmd_list, m_sub_mesh_index);
     }
@@ -530,7 +560,9 @@ namespace spartan
     bool Render::HasAccelerationStructure() const
     {
         if (!m_mesh)
+        {
             return false;
+        }
 
         return m_mesh->HasBlas(m_sub_mesh_index);
     }
@@ -546,11 +578,15 @@ namespace spartan
     uint64_t Render::GetAccelerationStructureDeviceAddress() const
     {
         if (!m_mesh)
+        {
             return 0;
+        }
 
         RHI_AccelerationStructure* blas = m_mesh->GetBlas(m_sub_mesh_index);
         if (!blas)
+        {
             return 0;
+        }
 
         return blas->GetDeviceAddress();
     }
@@ -604,7 +640,9 @@ namespace spartan
     uint32_t Render::GetLodCount() const
     {
         if (!m_mesh)
+        {
             return 0;
+        }
 
         return static_cast<uint32_t>(m_mesh->GetSubMesh(m_sub_mesh_index).lods.size());
     }

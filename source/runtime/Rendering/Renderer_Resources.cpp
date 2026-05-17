@@ -500,7 +500,9 @@ namespace spartan
 
             // stereo output, 2-layer array for xr swapchain blit (only when vr is active)
             if (xr_stereo)
+            {
                 at(render_targets, Renderer_RenderTarget::frame_output_stereo) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2DArray, width_output, height_output, Xr::eye_count, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_output_stereo");
+            }
 
             at(render_targets, Renderer_RenderTarget::bloom)                       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "bloom");
             at(render_targets, Renderer_RenderTarget::outline)                     = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_output, height_output, 1, 1,         RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv,         "outline");
@@ -716,7 +718,9 @@ namespace spartan
         for (const ShaderEntry& e : table)
         {
             if (e.rt_only && !rt)
+            {
                 continue;
+            }
             compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define);
         }
     }

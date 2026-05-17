@@ -113,7 +113,9 @@ namespace spartan
         void context_create()
         {
             if (!RHI_Device::IsSupportedXess())
+            {
                 return;
+            }
 
             context_destroy();
             SP_ASSERT(xessD3D12CreateContext(RHI_Context::device, &context) == xess_result_t::XESS_RESULT_SUCCESS);
@@ -238,7 +240,9 @@ namespace spartan
         // restart the sequence whenever history is wiped so the first accumulated frame
         // samples a known sub-pixel position rather than continuing from an arbitrary phase
         if (common::reset_history)
+        {
             halton_index = 0;
+        }
 
         if (halton_points.empty())
         {
@@ -279,7 +283,9 @@ namespace spartan
     {
     #ifdef _WIN32
         if (!intel::context)
+        {
             return;
+        }
 
         // d3d12 xess wants NON_PIXEL_SHADER_RESOURCE for inputs and UNORDERED_ACCESS for output
         // SetLayout to General gives us read+write states; xess only reads inputs and writes output

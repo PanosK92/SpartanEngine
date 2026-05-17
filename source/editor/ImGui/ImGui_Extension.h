@@ -444,7 +444,9 @@ namespace ImGuiSp
             item_width          -= axis_spacing;
 
             if (item_width < 1.0f)
+            {
                 item_width = 1.0f;
+            }
         }
 
         float* values[3]           = { &vector.x, &vector.y, &vector.z };
@@ -495,7 +497,9 @@ namespace ImGuiSp
     {
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         if (window->SkipItems)
+        {
             return false;
+        }
 
         ImGuiContext& g         = *GImGui;
         const ImGuiStyle& style = g.Style;
@@ -516,7 +520,9 @@ namespace ImGuiSp
 
         ImGui::ItemSize(total_bb, style.FramePadding.y);
         if (!ImGui::ItemAdd(total_bb, id))
+        {
             return false;
+        }
 
         // input handling
         bool hovered, held;
@@ -537,9 +543,13 @@ namespace ImGuiSp
         // smooth interpolation
         float animation_speed = 12.0f;
         if (t < target)
+        {
             t = ImMin(t + g.IO.DeltaTime * animation_speed, target);
+        }
         else if (t > target)
+        {
             t = ImMax(t - g.IO.DeltaTime * animation_speed, target);
+        }
 
         // colors - use imgui style for the active color
         ImU32 col_bg_off      = ImGui::GetColorU32(ImGuiCol_FrameBg);

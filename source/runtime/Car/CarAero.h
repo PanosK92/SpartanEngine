@@ -37,7 +37,9 @@ namespace car
     inline void compute_aero_from_shape(const std::vector<PxVec3>& vertices)
     {
         if (vertices.size() < 4)
+        {
             return;
+        }
 
         PxVec3 min_pt(FLT_MAX, FLT_MAX, FLT_MAX);
         PxVec3 max_pt(-FLT_MAX, -FLT_MAX, -FLT_MAX);
@@ -101,9 +103,13 @@ namespace car
             centroid_z += v.z * weight;
 
             if (v.z > mid_z)
+            {
                 front_area += weight;
+            }
             else
+            {
                 rear_area += weight;
+            }
         }
 
         float total_weight = 0.0f;
@@ -125,9 +131,18 @@ namespace car
         float computed_aero_center_front_z = max_pt.z * 0.8f;
         float computed_aero_center_rear_z  = min_pt.z * 0.8f;
 
-        if (tuning::spec.aero_center_height == 0.0f)   tuning::spec.aero_center_height   = centroid_y;
-        if (tuning::spec.aero_center_front_z == 0.0f)  tuning::spec.aero_center_front_z  = computed_aero_center_front_z;
-        if (tuning::spec.aero_center_rear_z == 0.0f)   tuning::spec.aero_center_rear_z   = computed_aero_center_rear_z;
+        if (tuning::spec.aero_center_height == 0.0f)
+        {
+            tuning::spec.aero_center_height   = centroid_y;
+        }
+        if (tuning::spec.aero_center_front_z == 0.0f)
+        {
+            tuning::spec.aero_center_front_z  = computed_aero_center_front_z;
+        }
+        if (tuning::spec.aero_center_rear_z == 0.0f)
+        {
+            tuning::spec.aero_center_rear_z   = computed_aero_center_rear_z;
+        }
 
         SP_LOG_INFO("aero: dimensions %.2f x %.2f x %.2f m (L x W x H)", length, width, height);
         SP_LOG_INFO("aero: center height=%.2f, front_z=%.2f, rear_z=%.2f",
@@ -146,7 +161,9 @@ namespace car
     inline std::vector<std::pair<float, float>> graham_scan_hull_2d(std::vector<std::pair<float, float>> points)
     {
         if (points.size() < 3)
+        {
             return points;
+        }
 
         size_t pivot_idx = 0;
         for (size_t i = 1; i < points.size(); i++)
@@ -306,7 +323,9 @@ namespace car
 
             // drs reduces rear downforce for higher straight-line speed
             if (tuning::spec.drs_enabled && drs_active)
+            {
                 rear_cl *= tuning::spec.drs_rear_cl_factor;
+            }
 
             if (tuning::spec.ground_effect_enabled)
             {
@@ -327,7 +346,9 @@ namespace car
 
             float yaw_downforce_factor = 1.0f;
             if (tuning::spec.yaw_aero_enabled && yaw_angle > 0.1f)
+            {
                 yaw_downforce_factor = PxMax(0.3f, 1.0f - sinf(yaw_angle) * 0.7f);
+            }
 
             float front_downforce = front_cl * dyn_pressure * tuning::spec.frontal_area * ground_effect_factor * yaw_downforce_factor;
             float rear_downforce  = rear_cl  * dyn_pressure * tuning::spec.frontal_area * ground_effect_factor * yaw_downforce_factor;

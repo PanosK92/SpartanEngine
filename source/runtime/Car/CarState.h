@@ -255,14 +255,22 @@ namespace car
 
         bool open_if_needed()
         {
-            if (file) return true;
+            if (file)
+            {
+                return true;
+            }
             fopen_s(&file, "car_telemetry.csv", "w");
-            if (!file) return false;
+            if (!file)
+            {
+                return false;
+            }
 
             // log absolute path so the user can find the file
             char abs_path[1024] = {};
             if (_fullpath(abs_path, "car_telemetry.csv", sizeof(abs_path)))
+            {
                 SP_LOG_INFO("car telemetry: writing to %s", abs_path);
+            }
 
             fprintf(file,
                 // time + body state
@@ -298,8 +306,14 @@ namespace car
         void tick(float dt, float speed_kmh)
         {
             if (!tuning::log_to_file) { close(); return; }
-            if (!open_if_needed())    return;
-            if (!body)                return;
+            if (!open_if_needed())
+            {
+                return;
+            }
+            if (!body)
+            {
+                return;
+            }
 
             elapsed_time += dt;
 
@@ -318,7 +332,9 @@ namespace car
             // a stable car holds this near zero, a spinning car has it growing toward 90+
             float body_slip_deg = 0.0f;
             if (vel.magnitude() > 0.5f)
+            {
                 body_slip_deg = atan2f(lateral_speed, forward_speed) * 180.0f / PxPi;
+            }
 
             fprintf(file,
                 "%d,%.3f,%.4f,"
@@ -365,7 +381,9 @@ namespace car
                 engine_brake_torque);
 
             if (frame_counter % 200 == 0)
+            {
                 fflush(file);
+            }
             frame_counter++;
         }
     };
@@ -403,8 +421,14 @@ namespace car
     inline bool  is_rear(int i)                 { return i == rear_left || i == rear_right; }
     inline bool  is_driven(int i)
     {
-        if (tuning::spec.drivetrain_type == 0) return is_rear(i);   // rwd
-        if (tuning::spec.drivetrain_type == 1) return is_front(i);  // fwd
+        if (tuning::spec.drivetrain_type == 0)
+        {
+            return is_rear(i);
+        }   // rwd
+        if (tuning::spec.drivetrain_type == 1)
+        {
+            return is_front(i);
+        }  // fwd
         return true;                                                // awd
     }
     inline float lerp(float a, float b, float t){ return a + (b - a) * t; }

@@ -55,7 +55,9 @@ namespace spartan
     void Xr::SetStereoMode(bool enabled)
     {
         if (m_stereo_3d == enabled)
+        {
             return;
+        }
 
         m_stereo_3d = enabled;
         Renderer::RecreateRenderTargets();

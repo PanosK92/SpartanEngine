@@ -537,7 +537,9 @@ namespace spartan
                     {
                         mesh_grass_blade->LoadFromFile(grass_cache_path);
                         if (mesh_grass_blade->GetVertexCount() > 0)
+                        {
                             return;
+                        }
                     }
 
                     mesh_grass_blade->SetObjectName("grass_blade");
@@ -579,7 +581,9 @@ namespace spartan
                     {
                         mesh_flower->LoadFromFile(flower_cache_path);
                         if (mesh_flower->GetVertexCount() > 0)
+                        {
                             return;
+                        }
                     }
 
                     mesh_flower->SetObjectName("flower");
@@ -1007,7 +1011,9 @@ namespace spartan
                 Camera*  camera  = World::GetCamera();
                 Terrain* terrain = default_terrain->GetComponent<Terrain>();
                 if (!camera || !terrain)
+                {
                     return;
+                }
 
                 bool is_below_water_level = camera->GetEntity()->GetPosition().y < 0.0f;
 
@@ -1179,7 +1185,9 @@ namespace spartan
     void Game::RegisterPrefabs()
     {
         if (prefabs_registered)
+        {
             return;
+        }
 
         Prefab::Register("car", Car::CreatePrefab);
         prefabs_registered = true;

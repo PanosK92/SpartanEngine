@@ -64,7 +64,9 @@ namespace
     {
         Camera* camera = World::GetCamera();
         if (!camera)
+        {
             return nullptr;
+        }
 
         return camera->FindEntityUnderCursor();
     }
@@ -79,7 +81,9 @@ namespace
     void revert_material_preview()
     {
         if (preview_entity_id == 0)
+        {
             return;
+        }
 
         if (Entity* entity = World::GetEntityById(preview_entity_id))
         {
@@ -102,11 +106,15 @@ namespace
     void apply_material_preview(Entity* entity, const char* material_path)
     {
         if (!entity || !material_path || !*material_path)
+        {
             return;
+        }
 
         Render* render = entity->GetComponent<Render>();
         if (!render)
+        {
             return;
+        }
 
         // remember what to restore, the default flag short-circuits the path lookup for engine-owned defaults
         bool was_default = render->IsUsingDefaultMaterial();
@@ -119,7 +127,9 @@ namespace
         // cache-aware load, no-op if the material is already in the resource cache
         shared_ptr<Material> dragged = ResourceCache::Load<Material>(material_path);
         if (!dragged)
+        {
             return;
+        }
 
         render->SetMaterial(dragged);
 
@@ -134,14 +144,20 @@ namespace
     {
         const ImGuiPayload* payload = ImGui::GetDragDropPayload();
         if (!payload || !payload->IsDataType(ImGuiSp::GDragDropTypes[(int)ImGuiSp::DragPayloadType::Material].data()))
+        {
             return nullptr;
+        }
 
         if (payload->DataSize < static_cast<int>(sizeof(ImGuiSp::DragDropPayload)))
+        {
             return nullptr;
+        }
 
         const ImGuiSp::DragDropPayload* sp_payload = static_cast<const ImGuiSp::DragDropPayload*>(payload->Data);
         if (!std::holds_alternative<const char*>(sp_payload->data))
+        {
             return nullptr;
+        }
 
         return std::get<const char*>(sp_payload->data);
     }

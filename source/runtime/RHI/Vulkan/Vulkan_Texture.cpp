@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_Texture.h"
 #include "../RHI_CommandList.h"
-#include "../../Core/Breadcrumbs.h"
+#include "../../Profiling/Breadcrumbs.h"
 //================================
 
 //= NAMESPACES ===============
@@ -323,13 +323,19 @@ namespace spartan
             // priority: uav (requires general) > rt (requires attachment) > srv (shader read)
             // uav takes highest priority because vulkan mandates general layout for storage images
             if (texture->IsUav())
+            {
                 return RHI_Image_Layout::General;
+            }
 
             if (texture->IsRt())
+            {
                 return RHI_Image_Layout::Attachment;
+            }
 
             if (texture->IsSrv())
+            {
                 return RHI_Image_Layout::Shader_Read;
+            }
 
             return RHI_Image_Layout::Preinitialized;
         }

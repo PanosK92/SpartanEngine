@@ -277,10 +277,14 @@ namespace spartan
                 pugi::xml_node prefab_node = node.append_child("prefab");
 
                 if (!m_prefab_type.empty())
+                {
                     prefab_node.append_attribute("type") = m_prefab_type.c_str();
+                }
 
                 if (!m_prefab_file_path.empty())
+                {
                     prefab_node.append_attribute("file") = m_prefab_file_path.c_str();
+                }
 
                 for (const auto& [key, value] : m_prefab_attributes)
                 {
@@ -306,7 +310,9 @@ namespace spartan
             for (Entity* child : m_children)
             {
                 if (child->IsTransient())
+                {
                     continue;
+                }
 
                 pugi::xml_node child_node = node.append_child("Entity");
                 child->Save(child_node);
@@ -363,7 +369,9 @@ namespace spartan
             {
                 string type_name = component_node.name();
                 if (type_name == "Entity")
-                    continue; // skip children, handled below
+                {
+                    continue;
+                } // skip children, handled below
 
                 // check for prefab node - creates complex entity hierarchies
                 if (type_name == "prefab")
@@ -377,13 +385,17 @@ namespace spartan
                     {
                         string attr_name = attr.name();
                         if (attr_name == "file")
-                            continue; // file path is stored separately
+                        {
+                            continue;
+                        } // file path is stored separately
                         prefab_attributes[attr_name] = attr.value();
                     }
                     SetPrefabData(prefab_type, prefab_attributes);
 
                     if (!prefab_file.empty())
+                    {
                         SetPrefabFilePath(prefab_file);
+                    }
 
                     // code prefab - use registered factory function
                     if (!prefab_type.empty() && Prefab::IsRegistered(prefab_type))
@@ -434,7 +446,9 @@ namespace spartan
     void Entity::SetActive(const bool active)
     {
         if (active == m_is_active)
+        {
             return;
+        }
 
         m_is_active = active;
     }
@@ -594,7 +608,9 @@ namespace spartan
     void Entity::SetPosition(const Vector3& position)
     {
         if (GetPosition() == position)
+        {
             return;
+        }
 
         SetPositionLocal(!GetParent() ? position : position * GetParent()->GetMatrix().Inverted());
     }
@@ -602,7 +618,9 @@ namespace spartan
     void Entity::SetPositionLocal(const Vector3& position)
     {
         if (m_position_local == position)
+        {
             return;
+        }
 
         m_position_local = position;
         UpdateTransform();
@@ -644,7 +662,9 @@ namespace spartan
     void Entity::SetRotationLocal(const Quaternion& rotation)
     {
         if (m_rotation_local == rotation)
+        {
             return;
+        }
 
         m_rotation_local = rotation;
         UpdateTransform();
@@ -653,7 +673,9 @@ namespace spartan
     void Entity::SetScale(const Vector3& scale)
     {
         if (GetScale() == scale)
+        {
             return;
+        }
 
         SetScaleLocal(!GetParent() ? scale : scale / GetParent()->GetScale());
     }
@@ -661,7 +683,9 @@ namespace spartan
     void Entity::SetScaleLocal(const Vector3& scale)
     {
         if (m_scale_local == scale)
+        {
             return;
+        }
 
         m_scale_local = scale;
 
@@ -703,7 +727,9 @@ namespace spartan
     Entity* Entity::GetChildByIndex(const uint32_t index)
     {
         if (!HasChildren() || index >= GetChildrenCount())
+        {
             return nullptr;
+        }
 
         return m_children[index];
     }
@@ -713,7 +739,9 @@ namespace spartan
         for (Entity* child : m_children)
         {
             if (child->GetObjectName() == name)
+            {
                 return child;
+            }
         }
 
         return nullptr;
@@ -727,11 +755,15 @@ namespace spartan
         {
             // early exit if the parent is this entity
             if (GetObjectId() == new_parent->GetObjectId())
+            {
                 return;
+            }
 
             // early exit if the parent is already set
             if (m_parent && m_parent->GetObjectId() == new_parent->GetObjectId())
+            {
                 return;
+            }
 
             // if the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children)
             if (new_parent->IsDescendantOf(this))
@@ -770,7 +802,9 @@ namespace spartan
 
         // ensure that the child is not this transform
         if (child->GetObjectId() == GetObjectId())
+        {
             return;
+        }
 
         // if this is not already a child, add it
         if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
@@ -787,7 +821,9 @@ namespace spartan
         // find the child in the list
         auto it = find(m_children.begin(), m_children.end(), child);
         if (it == m_children.end())
-            return; // child not found
+        {
+            return;
+        } // child not found
 
         // get current position before removing
         uint32_t current_index = static_cast<uint32_t>(distance(m_children.begin(), it));
@@ -798,11 +834,15 @@ namespace spartan
         // adjust target index if the child was before the target position
         // (removing it shifts all subsequent indices down by 1)
         if (current_index < index && index > 0)
+        {
             index--;
+        }
 
         // clamp index to valid range
         if (index > m_children.size())
+        {
             index = static_cast<uint32_t>(m_children.size());
+        }
 
         // insert at new position
         m_children.insert(m_children.begin() + index, child);
@@ -814,7 +854,9 @@ namespace spartan
 
         // ensure the transform is not itself
         if (child->GetObjectId() == GetObjectId())
+        {
             return;
+        }
 
         lock_guard lock(m_mutex_children);
 
@@ -840,7 +882,9 @@ namespace spartan
         for (Entity* possible_child : entities)
         {
             if (!possible_child || !possible_child->GetParent() || possible_child->GetObjectId() == GetObjectId())
+            {
                 continue;
+            }
 
             // if it's parent matches this transform
             if (possible_child->GetParent()->GetObjectId() == GetObjectId())
@@ -859,15 +903,21 @@ namespace spartan
         SP_ASSERT(transform != nullptr);
 
         if (!m_parent)
+        {
             return false;
+        }
 
         if (m_parent->GetObjectId() == transform->GetObjectId())
+        {
             return true;
+        }
 
         for (Entity* child : transform->GetChildren())
         {
             if (IsDescendantOf(child))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -894,7 +944,9 @@ namespace spartan
         for (Entity* entity : descendants)
         {
             if (entity->GetObjectName() == name)
+            {
                 return entity;
+            }
         }
 
         return nullptr;

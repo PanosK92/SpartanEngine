@@ -103,11 +103,15 @@ namespace spartan::math
     
             // if the cube is completely outside any plane, then it's outside
             if (d + r < 0.0f)
+            {
                 return Intersection::Outside;
+            }
     
             // if the cube intersects the plane, mark as intersecting
             if (d - r < 0.0f)
+            {
                 intersects = true;
+            }
         }
     
         // return the final classification
@@ -131,11 +135,15 @@ namespace spartan::math
     
             // if this distance is < -sphere.radius, we are outside
             if (distance < -radius)
+            {
                 return Intersection::Outside;
+            }
     
             // else if the distance is between +- radius, then we intersect
             if (distance < radius)
+            {
                 return Intersection::Intersects;
+            }
         }
     
         // otherwise we are fully in view

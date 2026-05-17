@@ -143,7 +143,10 @@ float main_ps_depth(VsOut v) : SV_Depth
 
     static void initialize_internal()
     {
-        if (initialized) return;
+        if (initialized)
+        {
+            return;
+        }
 
         // compile shaders
         vs_bytecode       = compile_blob("main_vs",       "vs_6_6");
@@ -211,7 +214,10 @@ float main_ps_depth(VsOut v) : SV_Depth
                 SP_LOG_ERROR("Failed to serialize blit root signature: %s", static_cast<char*>(error_blob->GetBufferPointer()));
                 error_blob->Release();
             }
-            if (signature_blob) signature_blob->Release();
+            if (signature_blob)
+            {
+                signature_blob->Release();
+            }
             return;
         }
 
@@ -221,8 +227,14 @@ float main_ps_depth(VsOut v) : SV_Depth
             signature_blob->GetBufferSize(),
             IID_PPV_ARGS(&root_signature)
         );
-        if (signature_blob) signature_blob->Release();
-        if (error_blob)     error_blob->Release();
+        if (signature_blob)
+        {
+            signature_blob->Release();
+        }
+        if (error_blob)
+        {
+            error_blob->Release();
+        }
 
         initialized = (root_signature != nullptr) && (vs_bytecode != nullptr) && (ps_color_bytecode != nullptr) && (ps_depth_bytecode != nullptr);
     }
@@ -241,11 +253,19 @@ float main_ps_depth(VsOut v) : SV_Depth
             lock_guard<mutex> lock(pso_cache_mutex);
             auto it = pso_cache.find(key);
             if (it != pso_cache.end())
+            {
                 return it->second;
+            }
         }
 
-        if (!initialized) initialize();
-        if (!initialized) return nullptr;
+        if (!initialized)
+        {
+            initialize();
+        }
+        if (!initialized)
+        {
+            return nullptr;
+        }
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
         desc.pRootSignature                          = root_signature;
@@ -313,13 +333,22 @@ float main_ps_depth(VsOut v) : SV_Depth
         const BlitParams&          params
     )
     {
-        if (!initialized) initialize();
-        if (!initialized) return;
+        if (!initialized)
+        {
+            initialize();
+        }
+        if (!initialized)
+        {
+            return;
+        }
 
         const bool is_depth        = params.is_depth_destination;
         DXGI_FORMAT target_format  = params.destination_format;
         ID3D12PipelineState* pso   = get_or_create_pso(target_format, is_depth);
-        if (!pso) return;
+        if (!pso)
+        {
+            return;
+        }
 
         // allocate a transient ring slot in the shader-visible cbv/srv/uav heap and copy the source srv into it
         // the source texture's existing srv lives in the cpu-only staging heap, so it can't be referenced directly by the gpu

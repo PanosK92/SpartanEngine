@@ -425,7 +425,9 @@ namespace spartan
                         {
                             RHI_Texture* texture = m_state.render_target_color_textures[i];
                             if (texture == nullptr)
+                            {
                                 break;
+                            }
                 
                             attachment_formats_color.push_back(vulkan_format[rhi_format_to_index(texture->GetFormat())]);
                         }

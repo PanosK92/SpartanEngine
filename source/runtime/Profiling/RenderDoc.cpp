@@ -61,8 +61,10 @@ namespace spartan
         static const wchar_t* installer_folders_path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\Folders");
 
         HKEY hkey;
-        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, installer_folders_path, 0, KEY_READ, &hkey) != ERROR_SUCCESS) 
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, installer_folders_path, 0, KEY_READ, &hkey) != ERROR_SUCCESS)
+        {
             return dll_paths;
+        }
 
         TCHAR    achClass[MAX_PATH] = TEXT(""); // buffer for class name
         DWORD    cchClassName = MAX_PATH;       // size of class string
@@ -112,7 +114,9 @@ namespace spartan
                     &size);
 
                 if (type != REG_SZ || retCode != ERROR_SUCCESS)
+                {
                     continue;
+                }
 
                 wstring path(ach_value);
                 if (path.find(L"RenderDoc") != wstring::npos)
@@ -162,7 +166,10 @@ namespace spartan
                 for (const auto& path : RDocDllPaths)
                 {
                     rdc_module = ::LoadLibraryW(path.c_str());
-                    if (rdc_module) break;
+                    if (rdc_module)
+                    {
+                        break;
+                    }
                 }
             }
 

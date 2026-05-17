@@ -440,7 +440,10 @@ namespace spartan
                 SP_LOG_ERROR("Failed to serialize bindless root signature: %s", static_cast<char*>(error_blob->GetBufferPointer()));
                 error_blob->Release();
             }
-            if (signature_blob) signature_blob->Release();
+            if (signature_blob)
+            {
+                signature_blob->Release();
+            }
             return;
         }
 
@@ -453,8 +456,14 @@ namespace spartan
         }
         pipeline->SetRhiResourceLayout(layout);
 
-        if (signature_blob) signature_blob->Release();
-        if (error_blob) error_blob->Release();
+        if (signature_blob)
+        {
+            signature_blob->Release();
+        }
+        if (error_blob)
+        {
+            error_blob->Release();
+        }
     }
 
     // build a dxr ray tracing pipeline state object using the bindless root signature as the global root sig
@@ -473,7 +482,9 @@ namespace spartan
         // global root signature, reuse the bindless one so descriptor bindings line up across pipelines
         create_root_signature_bindless(pipeline);
         if (!pipeline->GetRhiResourceLayout())
+        {
             return;
+        }
 
         // collect ray tracing shaders, the bytecode comes from dxc compiling lib_6_x targets
         RHI_Shader* shader_raygen  = state.shaders[RHI_Shader_Type::RayGeneration];

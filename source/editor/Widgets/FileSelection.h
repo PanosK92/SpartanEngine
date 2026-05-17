@@ -55,7 +55,9 @@ namespace file_selection
     inline void tick()
     {
         if (!visible || !editor)
+        {
             return;
+        }
 
         std::string selected_path;
         if (dialog->Show(&visible, editor, nullptr, &selected_path))

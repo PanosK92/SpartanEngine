@@ -264,11 +264,15 @@ namespace spartan
     {
         // already up or a previous init is still running
         if (IsAvailable() || xr_init_in_progress.load())
+        {
             return;
+        }
 
         // reap any previous attempt so we can spawn a fresh one (e.g. ctrl+0 retry)
         if (xr_init_thread.joinable())
+        {
             xr_init_thread.join();
+        }
 
         xr_init_in_progress = true;
         SP_LOG_INFO("openxr: initializing on background thread");
@@ -287,12 +291,16 @@ namespace spartan
     {
         // wait for any in-flight init so we don't race on the xr/vulkan handles
         if (xr_init_thread.joinable())
+        {
             xr_init_thread.join();
+        }
 
         xr_post_init_pending = false;
 
         if (!m_initialized.load())
+        {
             return;
+        }
 
         SetStereoMode(false);
 
@@ -319,7 +327,9 @@ namespace spartan
     void Xr::Tick()
     {
         if (!m_initialized.load())
+        {
             return;
+        }
 
         // apply deferred post-init actions that must run on the main thread
         if (xr_post_init_pending.exchange(false))
@@ -329,7 +339,9 @@ namespace spartan
         }
 
         if (!m_hmd_connected)
+        {
             return;
+        }
 
         ProcessEvents();
     }
@@ -337,7 +349,9 @@ namespace spartan
     bool Xr::CreateSession()
     {
         if (xr_session != XR_NULL_HANDLE)
+        {
             return true;
+        }
 
         if (!RHI_Context::device || !RHI_Context::device_physical || !RHI_Context::instance)
         {
@@ -430,15 +444,21 @@ namespace spartan
         session_info.systemId = xr_system_id;
 
         if (!xr_check(xrCreateSession(xr_instance, &session_info, &xr_session), "create session"))
+        {
             return false;
+        }
 
         // create reference space (local = seated, stage = standing)
         if (!CreateReferenceSpace())
+        {
             return false;
+        }
 
         // create swapchain
         if (!CreateSwapchain())
+        {
             return false;
+        }
 
         SP_LOG_INFO("openxr: session created successfully");
         return true;
@@ -466,10 +486,14 @@ namespace spartan
     bool Xr::CreateSwapchain()
     {
         if (xr_swapchain != XR_NULL_HANDLE)
+        {
             return true;
+        }
 
         if (xr_session == XR_NULL_HANDLE || xr_view_configs.empty())
+        {
             return false;
+        }
 
         // query supported formats
         uint32_t format_count = 0;
@@ -511,7 +535,9 @@ namespace spartan
         swapchain_info.mipCount    = 1;
 
         if (!xr_check(xrCreateSwapchain(xr_session, &swapchain_info, &xr_swapchain), "create swapchain"))
+        {
             return false;
+        }
 
         // get swapchain images
         xrEnumerateSwapchainImages(xr_swapchain, 0, &swapchain_length, nullptr);
@@ -689,7 +715,9 @@ namespace spartan
     void Xr::UpdateViews()
     {
         if (xr_session == XR_NULL_HANDLE || xr_reference_space == XR_NULL_HANDLE)
+        {
             return;
+        }
 
         XrViewLocateInfo view_locate_info = { XR_TYPE_VIEW_LOCATE_INFO };
         view_locate_info.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
@@ -703,14 +731,18 @@ namespace spartan
             static_cast<uint32_t>(xr_views.size()), &view_count, xr_views.data());
 
         if (XR_FAILED(result) || view_count < eye_count)
+        {
             return;
+        }
 
         // check if pose is valid
         bool pose_valid = (xr_view_state.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) &&
                           (xr_view_state.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT);
 
         if (!pose_valid)
+        {
             return;
+        }
 
         // calculate head position (average of both eyes), still in rig-local / openxr space
         XrVector3f head_pos = {
@@ -802,16 +834,22 @@ namespace spartan
     bool Xr::BeginFrame()
     {
         if (!m_session_running || xr_session == XR_NULL_HANDLE)
+        {
             return false;
+        }
 
         // wait for frame
         xr_frame_state = { XR_TYPE_FRAME_STATE };
         if (!xr_check(xrWaitFrame(xr_session, nullptr, &xr_frame_state), "wait frame"))
+        {
             return false;
+        }
 
         // begin frame
         if (!xr_check(xrBeginFrame(xr_session, nullptr), "begin frame"))
+        {
             return false;
+        }
 
         m_frame_began                         = true;
         swapchain_image_released_this_frame   = false;
@@ -827,7 +865,9 @@ namespace spartan
     void Xr::EndFrame()
     {
         if (!m_frame_began || xr_session == XR_NULL_HANDLE)
+        {
             return;
+        }
 
         // prepare projection views for submission
         array<XrCompositionLayerProjectionView, eye_count> projection_views;
@@ -879,16 +919,22 @@ namespace spartan
     bool Xr::AcquireSwapchainImage()
     {
         if (xr_swapchain == XR_NULL_HANDLE)
+        {
             return false;
+        }
 
         XrSwapchainImageAcquireInfo acquire_info = { XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO };
         if (!xr_check(xrAcquireSwapchainImage(xr_swapchain, &acquire_info, &swapchain_image_index), "acquire swapchain image"))
+        {
             return false;
+        }
 
         XrSwapchainImageWaitInfo wait_info = { XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO };
         wait_info.timeout = XR_INFINITE_DURATION;
         if (!xr_check(xrWaitSwapchainImage(xr_swapchain, &wait_info), "wait swapchain image"))
+        {
             return false;
+        }
 
         return true;
     }
@@ -896,7 +942,9 @@ namespace spartan
     void Xr::ReleaseSwapchainImage()
     {
         if (xr_swapchain == XR_NULL_HANDLE)
+        {
             return;
+        }
 
         XrSwapchainImageReleaseInfo release_info = { XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO };
         if (xr_check(xrReleaseSwapchainImage(xr_swapchain, &release_info), "release swapchain image"))
@@ -916,14 +964,18 @@ namespace spartan
     void* Xr::GetSwapchainImage()
     {
         if (swapchain_images.empty() || swapchain_image_index >= swapchain_images.size())
+        {
             return nullptr;
+        }
         return swapchain_images[swapchain_image_index].image;
     }
 
     void* Xr::GetSwapchainImageView()
     {
         if (swapchain_image_views.empty() || swapchain_image_index >= swapchain_image_views.size())
+        {
             return nullptr;
+        }
         return swapchain_image_views[swapchain_image_index];
     }
 

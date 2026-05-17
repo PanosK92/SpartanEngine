@@ -193,12 +193,16 @@ namespace spartan
         for (Entity* entity : entities)
         {
             if (!entity->GetComponent<Render>())
+            {
                 continue;
+            }
 
             const BoundingBox& aabb = entity->GetComponent<Render>()->GetBoundingBox();
             float distance          = ray.HitDistance(aabb);
             if (distance == numeric_limits<float>::infinity())
+            {
                 continue;
+            }
 
             m_pick_hits.emplace_back(entity, Vector3::Zero, distance, distance == 0.0f);
         }
@@ -217,7 +221,9 @@ namespace spartan
         for (RayHitResult& broad_hit : m_pick_hits)
         {
             if (broad_hit.m_distance >= best_depth)
+            {
                 break;
+            }
 
             Render* renderable = broad_hit.m_entity->GetComponent<Render>();
 
@@ -242,7 +248,9 @@ namespace spartan
 
             renderable->GetGeometry(&m_pick_indices, &m_pick_vertices);
             if (m_pick_indices.empty() || m_pick_vertices.empty())
+            {
                 continue;
+            }
 
             const Matrix& transform = broad_hit.m_entity->GetMatrix();
 
@@ -258,7 +266,9 @@ namespace spartan
 
                 float distance = ray.HitDistance(p1, p2, p3);
                 if (distance == numeric_limits<float>::infinity())
+                {
                     continue;
+                }
 
                 if (distance < best_depth)
                 {
@@ -304,20 +314,26 @@ namespace spartan
             {
                 Spline* spline = entity->GetComponent<Spline>();
                 if (!spline)
+                {
                     continue;
+                }
 
                 for (uint32_t i = 0; i < entity->GetChildrenCount(); i++)
                 {
                     Entity* point_entity = entity->GetChildByIndex(i);
                     if (!point_entity)
+                    {
                         continue;
+                    }
 
                     Vector3 world_pos = point_entity->GetPosition();
 
                     // depth along the ray direction
                     float depth = (world_pos - ray_origin).Dot(ray_dir);
                     if (depth <= 0.0f)
+                    {
                         continue;
+                    }
 
                     // perpendicular distance from the ray to this point: ||(P - O) x D||
                     Vector3 to_point        = world_pos - ray_origin;
@@ -329,7 +345,9 @@ namespace spartan
                     float pick_threshold   = pick_radius_px * meters_per_pixel;
 
                     if (distance_from_ray > pick_threshold)
+                    {
                         continue;
+                    }
                     if (distance_from_ray < best_spline_dist)
                     {
                         best_spline_dist   = distance_from_ray;
@@ -382,13 +400,17 @@ namespace spartan
     void Camera::AddToSelection(Entity* entity)
     {
         if (!entity)
+        {
             return;
+        }
         
         // check if already selected
         for (Entity* e : m_selected_entities)
         {
             if (e && e->GetObjectId() == entity->GetObjectId())
+            {
                 return;
+            }
         }
         
         m_selected_entities.push_back(entity);
@@ -397,7 +419,9 @@ namespace spartan
     void Camera::RemoveFromSelection(Entity* entity)
     {
         if (!entity)
+        {
             return;
+        }
         
         m_selected_entities.erase(
             remove_if(m_selected_entities.begin(), m_selected_entities.end(),
@@ -409,7 +433,9 @@ namespace spartan
     void Camera::ToggleSelection(Entity* entity)
     {
         if (!entity)
+        {
             return;
+        }
         
         if (IsSelected(entity))
         {
@@ -429,12 +455,16 @@ namespace spartan
     bool Camera::IsSelected(Entity* entity) const
     {
         if (!entity)
+        {
             return false;
+        }
         
         for (Entity* e : m_selected_entities)
         {
             if (e && e->GetObjectId() == entity->GetObjectId())
+            {
                 return true;
+            }
         }
         return false;
     }
@@ -495,7 +525,9 @@ namespace spartan
     void Camera::ComputeMatrices()
     {
         if (!GetFlag(CameraFlags::IsDirty))
+        {
             return;
+        }
 
         m_view                          = UpdateViewMatrix();
         m_projection                    = ComputeProjection(m_far_plane, m_near_plane);
@@ -558,7 +590,9 @@ namespace spartan
         auto update_flashlight = [&]()
         {
             if (!m_flashlight && !is_playing && !GetFlag(CameraFlags::Flashlight) && !button_flashlight)
+            {
                 return;
+            }
 
             // create flashlight entity once
             if (!m_flashlight)
@@ -715,12 +749,30 @@ namespace spartan
             // Keyboard and gamepad movement direction
             if (is_controlled)
             {
-                if (button_move_forward)  movement_direction += GetEntity()->GetForward();
-                if (button_move_backward) movement_direction += GetEntity()->GetBackward();
-                if (button_move_right)    movement_direction += GetEntity()->GetRight();
-                if (button_move_left)     movement_direction += GetEntity()->GetLeft();
-                if (button_move_up)       movement_direction += Vector3::Up;
-                if (button_move_down)     movement_direction += Vector3::Down;
+                if (button_move_forward)
+                {
+                    movement_direction += GetEntity()->GetForward();
+                }
+                if (button_move_backward)
+                {
+                    movement_direction += GetEntity()->GetBackward();
+                }
+                if (button_move_right)
+                {
+                    movement_direction += GetEntity()->GetRight();
+                }
+                if (button_move_left)
+                {
+                    movement_direction += GetEntity()->GetLeft();
+                }
+                if (button_move_up)
+                {
+                    movement_direction += Vector3::Up;
+                }
+                if (button_move_down)
+                {
+                    movement_direction += Vector3::Down;
+                }
             }
             else if (is_gamepad_connected)
             {
@@ -953,7 +1005,9 @@ namespace spartan
     {
         // only do this in editor mode
         if (Engine::IsFlagSet(EngineMode::Playing))
+        {
             return;
+        }
 
         if (Entity* entity = GetSelectedEntity())
         {

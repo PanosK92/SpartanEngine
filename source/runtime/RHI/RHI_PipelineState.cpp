@@ -108,7 +108,9 @@ namespace spartan
             for (RHI_Shader* shader : pso.shaders)
             {
                 if (!shader)
+                {
                     continue;
+                }
 
                 hash = rhi_hash_combine(hash, shader->GetHash());
             }
@@ -152,18 +154,36 @@ namespace spartan
 
             if (pso.render_target_swapchain)
             {
-                if (width)  *width  = pso.render_target_swapchain->GetWidth();
-                if (height) *height = pso.render_target_swapchain->GetHeight();
+                if (width)
+                {
+                    *width  = pso.render_target_swapchain->GetWidth();
+                }
+                if (height)
+                {
+                    *height = pso.render_target_swapchain->GetHeight();
+                }
             }
             else if (pso.render_target_color_textures[0])
             {
-                if (width)  *width  = pso.render_target_color_textures[0]->GetWidth();
-                if (height) *height = pso.render_target_color_textures[0]->GetHeight();
+                if (width)
+                {
+                    *width  = pso.render_target_color_textures[0]->GetWidth();
+                }
+                if (height)
+                {
+                    *height = pso.render_target_color_textures[0]->GetHeight();
+                }
             }
             else if (pso.render_target_depth_texture)
             {
-                if (width)  *width  = pso.render_target_depth_texture->GetWidth();
-                if (height) *height = pso.render_target_depth_texture->GetHeight();
+                if (width)
+                {
+                    *width  = pso.render_target_depth_texture->GetWidth();
+                }
+                if (height)
+                {
+                    *height = pso.render_target_depth_texture->GetHeight();
+                }
             }
 
             if (pso.resolution_scale)
@@ -195,15 +215,21 @@ namespace spartan
     bool RHI_PipelineState::HasClearValues() const
     {
         if (clear_depth != rhi_depth_load && clear_depth != rhi_depth_dont_care)
+        {
             return true;
+        }
 
         if (clear_stencil != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care)
+        {
             return true;
+        }
 
         for (const Color& color : clear_color)
         {
             if (color != rhi_color_load && color != rhi_color_dont_care)
+            {
                 return true;
+            }
         }
 
         return false;

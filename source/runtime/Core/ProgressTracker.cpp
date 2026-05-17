@@ -69,7 +69,9 @@ namespace spartan
         }
 
         if (m_job_count == 0)
+        {
             return 1.0f;
+        }
 
         return static_cast<float>(m_jobs_done) / static_cast<float>(m_job_count);
     }
@@ -115,12 +117,16 @@ namespace spartan
         lock_guard lock(mutex_jobs);
 
         if (anonymous_jobs > 0)
+        {
             return true;
+        }
 
         for (const Progress& progress : progresses)
         {
             if (progress.IsProgressing())
+            {
                 return true;
+            }
         }
 
         return false; 

@@ -80,10 +80,14 @@ namespace spartan::math
     constexpr uint32_t power_of_two_next(uint32_t x)
     {
         if (x < 2)
+        {
             return 2;
+        }
 
         if (x % 2 == 0)
+        {
             return x << 1;
+        }
 
         --x;
         x |= x >> 1;

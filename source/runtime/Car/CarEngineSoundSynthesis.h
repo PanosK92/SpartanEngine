@@ -212,8 +212,14 @@ namespace engine_sound
             bp = v1;
             hp = input - k * v1 - v2;
 
-            if (fabsf(ic1eq) < 1e-15f) ic1eq = 0.0f;
-            if (fabsf(ic2eq) < 1e-15f) ic2eq = 0.0f;
+            if (fabsf(ic1eq) < 1e-15f)
+            {
+                ic1eq = 0.0f;
+            }
+            if (fabsf(ic2eq) < 1e-15f)
+            {
+                ic2eq = 0.0f;
+            }
         }
 
         float lowpass(float input)
@@ -353,7 +359,10 @@ namespace engine_sound
         float process(float input)
         {
             const int n = (int)ir.size();
-            if (n == 0) return input;
+            if (n == 0)
+            {
+                return input;
+            }
 
             shift[head] = input;
 
@@ -426,7 +435,9 @@ namespace engine_sound
         uint8_t* wav_buffer    = nullptr;
         uint32_t wav_length    = 0;
         if (!SDL_LoadWAV(path, &wav_spec, &wav_buffer, &wav_length))
+        {
             return ir_out;
+        }
 
         // resample to running sample rate so conv runs at the correct rate
         SDL_AudioSpec target_spec = {};
@@ -451,7 +462,9 @@ namespace engine_sound
         for (int i = 0; i < num_samples; ++i)
         {
             if (fabsf(samples[i]) > silence_threshold)
+            {
                 trimmed = i + 1;
+            }
         }
         int taps = std::min(max_taps, trimmed > 0 ? trimmed : num_samples);
 
@@ -666,7 +679,10 @@ namespace engine_sound
     {
         FILE* f = nullptr;
         fopen_s(&f, path, "wb");
-        if (!f) return false;
+        if (!f)
+        {
+            return false;
+        }
 
         uint32_t data_bytes  = (uint32_t)(frames * 2 * sizeof(int16_t));
         uint32_t riff_size   = 36 + data_bytes;
@@ -847,9 +863,18 @@ namespace engine_sound
                     float pulse = cyl.tick(load, rpm_norm);
                     combustion_raw += pulse;
                     combustion_derivative += (pulse - cyl.prev_pressure);
-                    if (cyl.bank_left) bank_l += pulse;
-                    else               bank_r += pulse;
-                    if (cyl.is_firing) firing_count++;
+                    if (cyl.bank_left)
+                    {
+                        bank_l += pulse;
+                    }
+                    else
+                    {
+                        bank_r += pulse;
+                    }
+                    if (cyl.is_firing)
+                    {
+                        firing_count++;
+                    }
                 }
 
                 combustion_raw /= 3.0f;
@@ -970,9 +995,13 @@ namespace engine_sound
                     // spool dynamics
                     float spool_diff = m_turbo_target_spool - m_turbo_spool;
                     if (spool_diff > 0)
+                    {
                         m_turbo_spool += spool_diff * tuning::turbo_spool_up * dt;
+                    }
                     else
+                    {
                         m_turbo_spool += spool_diff * tuning::turbo_spool_down * dt;
+                    }
                     m_turbo_spool = std::clamp(m_turbo_spool, 0.0f, 1.0f);
 
                     float spool_rate = (m_turbo_spool - prev_spool) * m_sample_rate;
@@ -988,7 +1017,9 @@ namespace engine_sound
                     // wastegate on boost drop
                     float boost_delta = m_boost_pressure - m_prev_boost;
                     if (boost_delta < -0.08f && m_turbo_spool > 0.3f)
+                    {
                         m_wastegate_env = std::max(m_wastegate_env, fabsf(boost_delta) * 2.5f);
+                    }
 
                     m_prev_throttle = raw_throttle;
                     m_prev_boost = m_boost_pressure;
@@ -1018,7 +1049,10 @@ namespace engine_sound
                         float whistle_freq = 2000.0f + m_turbo_spool * 6000.0f;
 
                         m_turbo_phase += whistle_freq / m_sample_rate;
-                        if (m_turbo_phase > 1.0f) m_turbo_phase -= 1.0f;
+                        if (m_turbo_phase > 1.0f)
+                        {
+                            m_turbo_phase -= 1.0f;
+                        }
 
                         float whistle = sinf(m_turbo_phase * TWO_PI) * 0.6f;
                         whistle += sinf(m_turbo_phase * TWO_PI * 2.0f) * 0.2f;
@@ -1035,7 +1069,10 @@ namespace engine_sound
                     {
                         float flutter_freq = tuning::flutter_freq * (0.7f + (1.0f - m_turbo_flutter_env) * 0.8f);
                         m_turbo_flutter_phase += flutter_freq / m_sample_rate;
-                        if (m_turbo_flutter_phase > 1.0f) m_turbo_flutter_phase -= 1.0f;
+                        if (m_turbo_flutter_phase > 1.0f)
+                        {
+                            m_turbo_flutter_phase -= 1.0f;
+                        }
 
                         float fp = m_turbo_flutter_phase;
 
@@ -1120,7 +1157,10 @@ namespace engine_sound
                 mechanical_sum += mechanical * mechanical;
                 turbo_sum      += turbo * turbo;
                 output_sum     += output * output;
-                if (fabsf(output) > output_peak) output_peak = fabsf(output);
+                if (fabsf(output) > output_peak)
+                {
+                    output_peak = fabsf(output);
+                }
 
                 if ((i % 4) == 0)
                 {
@@ -1260,7 +1300,10 @@ namespace engine_sound
         // begin a fresh dump capture, returns false if one is already running
         bool begin_dump(float seconds)
         {
-            if (m_dump_active) return false;
+            if (m_dump_active)
+            {
+                return false;
+            }
             int frames = (int)(seconds * m_sample_rate);
             m_dump_buffer.assign((size_t)frames * 2, 0.0f);
             m_dump_total       = frames;
@@ -1276,7 +1319,10 @@ namespace engine_sound
 
         bool save_dump(const char* path)
         {
-            if (!m_debug.dump_ready || m_dump_buffer.empty()) return false;
+            if (!m_debug.dump_ready || m_dump_buffer.empty())
+            {
+                return false;
+            }
             bool ok = write_wav_int16_stereo(path, m_dump_buffer.data(), m_dump_total, (int)m_sample_rate);
             m_debug.dump_ready = false;
             m_dump_buffer.clear();

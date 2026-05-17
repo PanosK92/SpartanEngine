@@ -174,7 +174,9 @@ namespace spartan
             VkMemoryPropertyFlags flags_memory = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
             RHI_Device::MemoryBufferCreate(m_rhi_resource, m_object_size, flags_usage, flags_memory, nullptr, m_object_name.c_str());
             if (!m_rhi_resource)
+            {
                 return;
+            }
 
             m_device_address = RHI_Device::GetBufferDeviceAddress(m_rhi_resource);
         
@@ -212,7 +214,9 @@ namespace spartan
         // skip if backing allocation failed (e.g. vmaCreateBuffer ran out of device memory)
         // recording vkCmdCopyBuffer with a null vkbuffer crashes the driver
         if (!m_rhi_resource)
+        {
             return;
+        }
 
         if (m_mappable)
         {
@@ -306,9 +310,18 @@ namespace spartan
     RHI_StridedDeviceAddressRegion RHI_Buffer::GetRegion(const RHI_Shader_Type group_type, const uint32_t stride_extra /*= 0*/) const
     {
         uint64_t offset = 0;
-        if (group_type == RHI_Shader_Type::RayGeneration) offset = m_raygen_offset;
-        else if (group_type == RHI_Shader_Type::RayMiss)  offset = m_miss_offset;
-        else if (group_type == RHI_Shader_Type::RayHit)   offset = m_hit_offset;
+        if (group_type == RHI_Shader_Type::RayGeneration)
+        {
+            offset = m_raygen_offset;
+        }
+        else if (group_type == RHI_Shader_Type::RayMiss)
+        {
+            offset = m_miss_offset;
+        }
+        else if (group_type == RHI_Shader_Type::RayHit)
+        {
+            offset = m_hit_offset;
+        }
 
         RHI_StridedDeviceAddressRegion region = {};
         region.device_address                 = m_device_address + offset;

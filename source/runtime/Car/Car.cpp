@@ -190,7 +190,9 @@ namespace spartan
     void Car::Enter()
     {
         if (m_is_occupied || !m_is_drivable)
+        {
             return;
+        }
 
         m_is_occupied = true;
         m_chase_camera.initialized = false;
@@ -245,7 +247,9 @@ namespace spartan
     void Car::Exit()
     {
         if (!m_is_occupied)
+        {
             return;
+        }
 
         m_is_occupied = false;
         m_chase_camera.initialized = false;
@@ -365,7 +369,9 @@ namespace spartan
     void Car::SetThrottle(float value)
     {
         if (!m_vehicle_entity)
+        {
             return;
+        }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
             physics->SetVehicleThrottle(value);
@@ -375,7 +381,9 @@ namespace spartan
     void Car::SetBrake(float value)
     {
         if (!m_vehicle_entity)
+        {
             return;
+        }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
             physics->SetVehicleBrake(value);
@@ -385,7 +393,9 @@ namespace spartan
     void Car::SetSteering(float value)
     {
         if (!m_vehicle_entity)
+        {
             return;
+        }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
             physics->SetVehicleSteering(value);
@@ -395,7 +405,9 @@ namespace spartan
     void Car::SetHandbrake(float value)
     {
         if (!m_vehicle_entity)
+        {
             return;
+        }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
             physics->SetVehicleHandbrake(value);
@@ -405,7 +417,9 @@ namespace spartan
     void Car::ResetToSpawn()
     {
         if (!m_vehicle_entity)
+        {
             return;
+        }
         if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
         {
             // lift the car above ground to prevent collision issues on reset
@@ -449,8 +463,14 @@ namespace spartan
         m_chase_camera.yaw_bias += delta;
         // wrap to keep float precision after many rotations, sin and cos give identical results
         const float two_pi = 2.0f * math::pi;
-        if (m_chase_camera.yaw_bias >  math::pi) m_chase_camera.yaw_bias -= two_pi;
-        if (m_chase_camera.yaw_bias < -math::pi) m_chase_camera.yaw_bias += two_pi;
+        if (m_chase_camera.yaw_bias >  math::pi)
+        {
+            m_chase_camera.yaw_bias -= two_pi;
+        }
+        if (m_chase_camera.yaw_bias < -math::pi)
+        {
+            m_chase_camera.yaw_bias += two_pi;
+        }
     }
 
     void Car::AddCameraOrbitPitch(float delta)
@@ -482,7 +502,9 @@ namespace spartan
     math::BoundingBox Car::GetCarAABB() const
     {
         if (!m_body_entity)
+        {
             return math::BoundingBox::Unit;
+        }
 
         math::BoundingBox combined(math::Vector3::Infinity, math::Vector3::InfinityNeg);
         std::vector<Entity*> descendants;
@@ -508,11 +530,15 @@ namespace spartan
 
         std::shared_ptr<Mesh> mesh_car = ResourceCache::Load<Mesh>("project\\models\\ferrari_laferrari\\scene.gltf", mesh_flags);
         if (!mesh_car)
+        {
             return nullptr;
+        }
 
         Entity* mesh_root = mesh_car->GetRootEntity();
         if (!mesh_root)
+        {
             return nullptr;
+        }
 
         // mesh root is shared via the resource cache, clone so every car instance gets its own hierarchy
         Entity* car_entity = mesh_root->Clone();
@@ -661,15 +687,21 @@ namespace spartan
 
         std::shared_ptr<Mesh> mesh = ResourceCache::Load<Mesh>("project\\models\\wheel\\model.blend", mesh_flags);
         if (!mesh)
+        {
             return;
+        }
 
         Entity* wheel_root = mesh->GetRootEntity();
         if (!wheel_root)
+        {
             return;
+        }
 
         Entity* wheel_base = wheel_root->GetChildByIndex(0);
         if (!wheel_base)
+        {
             return;
+        }
 
         wheel_base->SetParent(nullptr);
         World::RemoveEntityImmediate(wheel_root);
@@ -782,7 +814,9 @@ namespace spartan
     void Car::Tick()
     {
         if (!m_body_entity)
+        {
             return;
+        }
 
         // lazy camera finding - needed because parallel entity loading means camera might not exist during prefab creation
         if (m_camera_follows && !default_camera)
@@ -805,7 +839,9 @@ namespace spartan
                     }
                 }
                 if (default_camera)
+                {
                     break;
+                }
             }
         }
 
@@ -830,7 +866,9 @@ namespace spartan
             Physics* hud_physics = m_vehicle_entity ? m_vehicle_entity->GetComponent<Physics>() : nullptr;
             car_hud::draw_driver_hud(hud_physics);
             if (m_show_telemetry)
+            {
                 car_hud::draw_telemetry_window(hud_physics, &m_show_telemetry);
+            }
         }
 
         // osd hint, sits just above the driver hud so it stays visible
@@ -844,11 +882,15 @@ namespace spartan
     void Car::TickInput()
     {
         if (!m_vehicle_entity || !m_is_occupied)
+        {
             return;
+        }
 
         Physics* physics = m_vehicle_entity->GetComponent<Physics>();
         if (!physics || !Engine::IsFlagSet(EngineMode::Playing))
+        {
             return;
+        }
 
         bool is_gamepad_connected = Input::IsGamepadConnected();
         float dt = static_cast<float>(Timer::GetDeltaTimeSec());
@@ -856,25 +898,39 @@ namespace spartan
         // throttle
         float throttle = 0.0f;
         if (is_gamepad_connected)
+        {
             throttle = Input::GetGamepadTriggerRight();
+        }
         if (Input::GetKey(KeyCode::Arrow_Up))
+        {
             throttle = 1.0f;
+        }
 
         // brake
         float brake = 0.0f;
         if (is_gamepad_connected)
+        {
             brake = Input::GetGamepadTriggerLeft();
+        }
         if (Input::GetKey(KeyCode::Arrow_Down))
+        {
             brake = 1.0f;
+        }
 
         // steering
         float steering = 0.0f;
         if (is_gamepad_connected)
+        {
             steering = Input::GetGamepadThumbStickLeft().x;
+        }
         if (Input::GetKey(KeyCode::Arrow_Left))
+        {
             steering = -1.0f;
+        }
         if (Input::GetKey(KeyCode::Arrow_Right))
+        {
             steering = 1.0f;
+        }
 
         // handbrake
         float handbrake = (Input::GetKey(KeyCode::Space) || Input::GetKey(KeyCode::Button_East)) ? 1.0f : 0.0f;
@@ -1017,7 +1073,9 @@ namespace spartan
     void Car::TickSounds()
     {
         if (!m_vehicle_entity)
+        {
             return;
+        }
 
         Entity* sound_engine_entity = m_vehicle_entity->GetChildByName("sound_engine");
         Entity* sound_tire_entity   = m_vehicle_entity->GetChildByName("sound_tire_squeal");
@@ -1041,7 +1099,9 @@ namespace spartan
             });
 
             if (!audio_engine->IsPlaying())
+            {
                 audio_engine->StartSynthesis();
+            }
 
             // update synthesizer parameters
             float load = throttle * (0.5f + rpm_normalized * 0.5f);
@@ -1109,7 +1169,9 @@ namespace spartan
                 });
 
                 if (!audio_tire->IsPlaying())
+                {
                     audio_tire->StartSynthesis();
+                }
 
                 const float max_volume = 0.25f;
                 audio_tire->SetVolume(m_tire_squeal_volume * max_volume);
@@ -1118,7 +1180,9 @@ namespace spartan
             {
                 m_tire_squeal_volume = 0.0f;
                 if (audio_tire->IsPlaying())
+                {
                     audio_tire->StopSynthesis();
+                }
             }
         }
     }
@@ -1126,14 +1190,18 @@ namespace spartan
     void Car::TickChaseCamera()
     {
         if (!m_is_occupied || m_current_view != CarView::Chase || !m_vehicle_entity || !default_camera)
+        {
             return;
+        }
 
         Entity* camera = default_camera->GetChildByName("component_camera");
         if (!camera)
         {
             camera = m_vehicle_entity->GetChildByName("component_camera");
             if (!camera)
+            {
                 camera = m_body_entity->GetChildByName("component_camera");
+            }
             if (camera)
             {
                 camera->SetParent(default_camera);
@@ -1142,7 +1210,9 @@ namespace spartan
         }
 
         if (!camera)
+        {
             return;
+        }
 
         Physics* car_physics = m_vehicle_entity->GetComponent<Physics>();
         float dt = static_cast<float>(Timer::GetDeltaTimeSec());
@@ -1210,7 +1280,9 @@ namespace spartan
     void Car::TickEnterExit()
     {
         if (!m_is_drivable)
+        {
             return;
+        }
 
         // keyboard: E, gamepad: west button (X on xbox, square on playstation)
         if (Input::GetKeyDown(KeyCode::E) || Input::GetKeyDown(KeyCode::Button_West))
@@ -1225,7 +1297,9 @@ namespace spartan
                     {
                         float speed_kmh = physics->GetLinearVelocity().Length() * 3.6f;
                         if (speed_kmh > max_exit_speed_kmh)
+                        {
                             return;
+                        }
                     }
                 }
 
@@ -1241,7 +1315,9 @@ namespace spartan
     void Car::TickViewSwitch()
     {
         if (!m_is_occupied)
+        {
             return;
+        }
 
         // triangle for view change (gran turismo style)
         if (Input::GetKeyDown(KeyCode::V) || Input::GetKeyDown(KeyCode::Button_North))

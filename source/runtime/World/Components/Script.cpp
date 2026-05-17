@@ -102,7 +102,9 @@ void Script::Remove()
 void Script::PreTick()
 {
     if (!is_simulation_active())
+    {
         return;
+    }
 
     if (script.valid())
     {
@@ -117,7 +119,9 @@ void Script::PreTick()
 void Script::Tick()
 {
     if (!is_simulation_active())
+    {
         return;
+    }
 
     if (script.valid())
     {

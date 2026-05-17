@@ -106,7 +106,9 @@ namespace spartan
         // a previous BuildIfDirty hit oom at this size, drop the new instances so we don't grow the
         // cpu-side vector unboundedly and don't retry ever-larger allocations every frame
         if (m_instance_capacity_failed_at != 0 && base_offset + count >= m_instance_capacity_failed_at)
+        {
             return base_offset;
+        }
 
         if (count > 0)
         {
@@ -137,7 +139,9 @@ namespace spartan
         lock_guard<mutex> lock(m_mutex);
 
         if (!m_dirty || m_vertices.empty() || m_indices.empty())
+        {
             return;
+        }
 
         uint32_t vertex_count         = static_cast<uint32_t>(m_vertices.size());
         uint32_t index_count          = static_cast<uint32_t>(m_indices.size());

@@ -518,7 +518,10 @@ namespace spartan::geometry_generation
         // stem: tapered cylinder
         auto stem_radius_factor = [=](float t) -> float
         {
-            if (t <= stem_thinning_start) return 1.0f;
+            if (t <= stem_thinning_start)
+            {
+                return 1.0f;
+            }
             float x = (t - stem_thinning_start) / (1.0f - stem_thinning_start);
             return std::pow(1.0f - std::clamp(x, 0.0f, 1.0f), stem_thinning_power);
         };

@@ -46,7 +46,9 @@ namespace car
             target = tuning::spec.boost_max_pressure * PxMin((rpm - tuning::spec.boost_min_rpm) / 4000.0f, 1.0f);
 
             if (rpm > tuning::spec.boost_wastegate_rpm)
+            {
                 target *= PxMax(0.0f, 1.0f - (rpm - tuning::spec.boost_wastegate_rpm) / 2000.0f);
+            }
         }
 
         float rate = (target > boost_pressure) ? tuning::spec.boost_spool_rate : tuning::spec.boost_spool_rate * 2.0f;
@@ -70,18 +72,26 @@ namespace car
 
         float factor;
         if (rpm < bp1)
+        {
             factor = 0.55f + ((rpm - idle) / (bp1 - idle)) * 0.15f;
+        }
         else if (rpm < bp2)
+        {
             factor = 0.70f + ((rpm - bp1) / (bp2 - bp1)) * 0.15f;
+        }
         else if (rpm < peak)
+        {
             factor = 0.85f + ((rpm - bp2) / (peak - bp2)) * 0.15f;
+        }
         else if (rpm < redline)
         {
             float t = (rpm - peak) / (redline - peak);
             factor = 1.0f - t * t * 0.20f;
         }
         else
+        {
             factor = 0.80f * (1.0f - ((rpm - redline) / (max_rpm - redline)) * 0.8f);
+        }
 
         return tuning::spec.engine_peak_torque * factor;
     }
@@ -89,13 +99,18 @@ namespace car
     inline float wheel_rpm_to_engine_rpm(float wheel_rpm, int gear)
     {
         if (gear < 0 || gear >= tuning::spec.gear_count || gear == 1)
+        {
             return tuning::spec.engine_idle_rpm;
+        }
         return fabsf(wheel_rpm * tuning::spec.gear_ratios[gear] * tuning::spec.final_drive);
     }
 
     inline float get_upshift_speed(int from_gear, float throttle)
     {
-        if (from_gear < 2 || from_gear >= tuning::spec.gear_count - 1) return 999.0f;
+        if (from_gear < 2 || from_gear >= tuning::spec.gear_count - 1)
+        {
+            return 999.0f;
+        }
         float t = PxClamp((throttle - 0.3f) / 0.5f, 0.0f, 1.0f);
         return tuning::spec.upshift_speed_base[from_gear] + t * (tuning::spec.upshift_speed_sport[from_gear] - tuning::spec.upshift_speed_base[from_gear]);
     }
@@ -108,7 +123,9 @@ namespace car
     inline void update_automatic_gearbox(float dt, float throttle, float forward_speed)
     {
         if (shift_cooldown > 0.0f)
+        {
             shift_cooldown -= dt;
+        }
 
         if (is_shifting)
         {
@@ -123,7 +140,9 @@ namespace car
         }
 
         if (tuning::spec.manual_transmission)
+        {
             return;
+        }
 
         float speed_kmh = forward_speed * 3.6f;
 
@@ -165,16 +184,22 @@ namespace car
 
             float upshift_threshold = get_upshift_speed(current_gear, throttle);
             if (last_shift_direction == -1)
+            {
                 upshift_threshold += 10.0f;
+            }
 
             bool speed_trigger = speed_kmh > upshift_threshold;
             bool rpm_trigger   = engine_rpm > tuning::spec.shift_up_rpm;
 
             // track how long the engine has been sitting at redline
             if (engine_rpm > tuning::spec.shift_up_rpm)
+            {
                 redline_hold_timer += dt;
+            }
             else
+            {
                 redline_hold_timer = 0.0f;
+            }
 
             // force upshift after 0.5s at redline despite wheelspin
             if (rpm_trigger && !speed_trigger)
@@ -193,11 +218,15 @@ namespace car
                     }
                 }
                 if (grounded_count > 0)
+                {
                     avg_slip /= (float)grounded_count;
+                }
 
                 // block upshift during wheelspin, but not past the redline timer
                 if (avg_slip > slip_threshold && redline_hold_timer < 0.5f)
+                {
                     rpm_trigger = false;
+                }
             }
 
             if (can_shift && (speed_trigger || rpm_trigger) && current_gear < tuning::spec.gear_count - 1 && throttle > 0.1f)
@@ -211,7 +240,9 @@ namespace car
 
             float downshift_threshold = get_downshift_speed(current_gear);
             if (last_shift_direction == 1)
+            {
                 downshift_threshold -= 10.0f;
+            }
 
             if (can_shift && speed_kmh < downshift_threshold && current_gear > 2)
             {
@@ -237,7 +268,9 @@ namespace car
                     }
                 }
                 if (grounded > 0)
+                {
                     avg_slip /= (float)grounded;
+                }
 
                 if (avg_slip < 0.15f)
                 {
@@ -248,9 +281,13 @@ namespace car
                         float driven_r = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
                         float potential_rpm = (forward_speed / driven_r) * (60.0f / (2.0f * PxPi)) * ratio;
                         if (potential_rpm < tuning::spec.shift_up_rpm * 0.85f)
+                        {
                             target = g;
+                        }
                         else
+                        {
                             break;
+                        }
                     }
 
                     if (target < current_gear)
@@ -346,7 +383,9 @@ namespace car
         float free_rev_rpm = tuning::spec.engine_idle_rpm + effective_throttle_for_rpm * (tuning::spec.engine_redline_rpm - tuning::spec.engine_idle_rpm) * 0.7f;
 
         if (is_in_neutral())
+        {
             return free_rev_rpm;
+        }
 
         // throttle floor decays with clutch to avoid decoupling engine from wheels
         float throttle_floor = tuning::spec.engine_idle_rpm + effective_throttle_for_rpm * 500.0f * (1.0f - clutch * 0.8f);
@@ -379,16 +418,28 @@ namespace car
     inline void apply_engine_braking(int driven_count)
     {
         engine_brake_torque = 0.0f;
-        if (driven_count <= 0) return;
-        if (input.throttle > tuning::spec.input_deadzone) return;
-        if (clutch <= 0.5f || !is_in_forward_gear()) return;
+        if (driven_count <= 0)
+        {
+            return;
+        }
+        if (input.throttle > tuning::spec.input_deadzone)
+        {
+            return;
+        }
+        if (clutch <= 0.5f || !is_in_forward_gear())
+        {
+            return;
+        }
 
         float eb_total = tuning::spec.engine_friction * engine_rpm * 0.1f * fabsf(tuning::spec.gear_ratios[current_gear]) * tuning::spec.final_drive;
         engine_brake_torque = eb_total;
         float share = eb_total / (float)driven_count;
         for (int i = 0; i < wheel_count; i++)
         {
-            if (!is_driven(i)) continue;
+            if (!is_driven(i))
+            {
+                continue;
+            }
             float s = (wheels[i].angular_velocity > 0.0f) ? -1.0f : (wheels[i].angular_velocity < 0.0f) ? 1.0f : 0.0f;
             wheels[i].net_torque += s * share;
         }
@@ -409,11 +460,16 @@ namespace car
         float max_slip = 0.0f;
         for (int i = 0; i < wheel_count; i++)
         {
-            if (!is_driven(i) || !wheels[i].grounded) continue;
+            if (!is_driven(i) || !wheels[i].grounded)
+            {
+                continue;
+            }
             float wheel_v = fabsf(wheels[i].angular_velocity * cfg.wheel_radius_for(i));
             float raw_slip = (wheel_v - ground_v) / PxMax(wheel_v, ground_v);
             if (raw_slip > 0.0f)
+            {
                 max_slip = PxMax(max_slip, raw_slip);
+            }
         }
 
         float target_reduction = 0.0f;
@@ -492,7 +548,10 @@ namespace car
             float rear_t  = total_torque * (1.0f - tuning::spec.brake_bias_front) * 0.5f;
 
             abs_phase += tuning::spec.abs_pulse_frequency * dt;
-            if (abs_phase > 1.0f) abs_phase -= 1.0f;
+            if (abs_phase > 1.0f)
+            {
+                abs_phase -= 1.0f;
+            }
 
             for (int i = 0; i < wheel_count; i++)
             {
@@ -544,7 +603,9 @@ namespace car
         update_automatic_gearbox(dt, input.throttle, forward_speed_ms);
 
         if (downshift_blip_timer > 0.0f)
+        {
             downshift_blip_timer -= dt;
+        }
 
         // average angular velocity of driven wheels (used for rpm tracking)
         float driven_w_sum = 0.0f;
@@ -566,10 +627,22 @@ namespace car
         }
 
         // clutch schedule
-        if (is_shifting)                                                  clutch = 0.8f;
-        else if (is_in_neutral())                                         clutch = 0.0f;
-        else if (fabsf(forward_speed_ms) < 2.0f && input.throttle > 0.1f) clutch = lerp(clutch, 1.0f, exp_decay(tuning::spec.clutch_engagement_rate, dt));
-        else                                                              clutch = 1.0f;
+        if (is_shifting)
+        {
+            clutch = 0.8f;
+        }
+        else if (is_in_neutral())
+        {
+            clutch = 0.0f;
+        }
+        else if (fabsf(forward_speed_ms) < 2.0f && input.throttle > 0.1f)
+        {
+            clutch = lerp(clutch, 1.0f, exp_decay(tuning::spec.clutch_engagement_rate, dt));
+        }
+        else
+        {
+            clutch = 1.0f;
+        }
 
         update_engine_rpm(compute_target_engine_rpm(wheel_driven_rpm), dt);
 
@@ -578,17 +651,27 @@ namespace car
 
         // rev limiter hysteresis
         if (engine_rpm >= tuning::spec.engine_redline_rpm)
+        {
             rev_limiter_active = true;
+        }
         else if (engine_rpm < tuning::spec.engine_redline_rpm - 200.0f)
+        {
             rev_limiter_active = false;
+        }
 
         // drive-torque path selection
         if (input.throttle > tuning::spec.input_deadzone && is_in_forward_gear())
+        {
             apply_forward_drive_torque(forward_speed_ms, dt);
+        }
         else if (input.brake > tuning::spec.input_deadzone && is_in_reverse())
+        {
             apply_reverse_drive_torque(dt);
+        }
         else
+        {
             relax_drivetrain(dt);
+        }
 
         apply_service_brakes(forward_speed_kmh, forward_speed_ms, dt);
 

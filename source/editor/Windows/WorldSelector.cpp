@@ -105,7 +105,9 @@ namespace
     {
         // make sure the directory exists before trying to iterate
         if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
+        {
             return;
+        }
 
         // scan files in this directory
         vector<string> files = spartan::FileSystem::GetFilesInDirectory(directory);
@@ -160,7 +162,9 @@ namespace
         spartan::ThreadPool::AddTask([]()
         {
             if (!spartan::FileSystem::Exists(assets_destination))
+            {
                 return;
+            }
 
             string local_hash = spartan::FileSystem::ComputeFileSha256(assets_destination);
             if (!local_hash.empty() && local_hash != assets_expected_sha)
@@ -213,7 +217,9 @@ namespace
     void window_download_prompt()
     {
         if (!visible_download_prompt)
+        {
             return;
+        }
 
         ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
         if (ImGui::Begin("Default worlds", &visible_download_prompt,
@@ -247,7 +253,9 @@ namespace
     void window_update_prompt()
     {
         if (!visible_update_prompt)
+        {
             return;
+        }
 
         // close world list when update prompt appears
         visible_world_list = false;
@@ -301,16 +309,31 @@ namespace
 
     ImU32 get_status_color(const char* status)
     {
-        if (strcmp(status, "Complete") == 0)  return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_ok);
-        if (strcmp(status, "Prototype") == 0) return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_warning);
+        if (strcmp(status, "Complete") == 0)
+        {
+            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_ok);
+        }
+        if (strcmp(status, "Prototype") == 0)
+        {
+            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_warning);
+        }
         return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_info);
     }
 
     ImU32 get_performance_color(const char* performance)
     {
-        if (strcmp(performance, "Light") == 0)          return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_ok);
-        if (strcmp(performance, "Demanding") == 0)      return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_warning);
-        if (strcmp(performance, "Very demanding") == 0) return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_error);
+        if (strcmp(performance, "Light") == 0)
+        {
+            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_ok);
+        }
+        if (strcmp(performance, "Demanding") == 0)
+        {
+            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_warning);
+        }
+        if (strcmp(performance, "Very demanding") == 0)
+        {
+            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_error);
+        }
         return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_info);
     }
 
@@ -321,7 +344,9 @@ namespace
         for (int i = 0; i < default_world_count; i++)
         {
             if (!search_filter.PassFilter(default_worlds[i].name))
+            {
                 continue;
+            }
 
             if (col > 0)
             {
@@ -489,7 +514,9 @@ namespace
         for (int i = 0; i < static_cast<int>(world_files.size()); i++)
         {
             if (!search_filter.PassFilter(world_files[i].name.c_str()))
+            {
                 continue;
+            }
 
             if (col > 0)
             {
@@ -659,7 +686,9 @@ namespace
     void window_world_list()
     {
         if (!visible_world_list)
+        {
             return;
+        }
 
         float dpi = spartan::Window::GetDpiScale();
 
@@ -713,7 +742,9 @@ namespace
             float bottom_height = detail_height + line_h * 2.0f + ImGui::GetFrameHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y * 4.0f;
             float grid_height   = ImGui::GetContentRegionAvail().y - bottom_height;
             if (grid_height < 80.0f)
+            {
                 grid_height = 80.0f;
+            }
 
             ImGui::BeginChild("##card_grid", ImVec2(0, grid_height), false);
             {
@@ -795,7 +826,9 @@ namespace
             float button_h     = ImGui::GetFrameHeight();
             float pad_y        = (remaining_h - button_h) * 0.5f;
             if (pad_y > 0.0f)
+            {
                 ImGui::SetCursorPosY(ImGui::GetCursorPosY() + pad_y);
+            }
 
             float button_w  = 100.0f * dpi;
             float total_w   = button_w * 3 + ImGui::GetStyle().ItemSpacing.x * 2;

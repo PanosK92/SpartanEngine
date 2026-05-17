@@ -172,15 +172,36 @@ void ButtonColorPicker::Update()
 
         // picker style
         flags |= m_show_wheel ? ImGuiColorEditFlags_PickerHueWheel : ImGuiColorEditFlags_PickerHueBar;
-        if (!m_show_preview)      flags |= ImGuiColorEditFlags_NoSidePreview;
+        if (!m_show_preview)
+        {
+            flags |= ImGuiColorEditFlags_NoSidePreview;
+        }
         
         // display options (ensure hsv is visible if checked)
-        if (m_show_rgb)           flags |= ImGuiColorEditFlags_DisplayRGB;
-        if (m_show_hsv)           flags |= ImGuiColorEditFlags_DisplayHSV; // this ensures hsv is shown in the picker
-        if (m_show_hex)           flags |= ImGuiColorEditFlags_DisplayHex;
-        if (m_hdr)                flags |= ImGuiColorEditFlags_HDR;
-        if (m_alpha_half_preview) flags |= ImGuiColorEditFlags_AlphaPreviewHalf;
-        if (!m_options_menu)      flags |= ImGuiColorEditFlags_NoOptions;
+        if (m_show_rgb)
+        {
+            flags |= ImGuiColorEditFlags_DisplayRGB;
+        }
+        if (m_show_hsv)
+        {
+            flags |= ImGuiColorEditFlags_DisplayHSV;
+        } // this ensures hsv is shown in the picker
+        if (m_show_hex)
+        {
+            flags |= ImGuiColorEditFlags_DisplayHex;
+        }
+        if (m_hdr)
+        {
+            flags |= ImGuiColorEditFlags_HDR;
+        }
+        if (m_alpha_half_preview)
+        {
+            flags |= ImGuiColorEditFlags_AlphaPreviewHalf;
+        }
+        if (!m_options_menu)
+        {
+            flags |= ImGuiColorEditFlags_NoOptions;
+        }
 
         // use colorpicker4 to edit the color
         ImGui::ColorPicker4(m_color_picker_label.c_str(), (float*)&m_color, flags);

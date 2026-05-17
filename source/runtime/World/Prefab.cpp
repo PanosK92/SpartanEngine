@@ -116,7 +116,9 @@ namespace spartan
         for (Entity* child : entity->GetChildren())
         {
             if (child->IsTransient())
+            {
                 continue;
+            }
 
             pugi::xml_node child_node = prefab_node.append_child("Entity");
             child->Save(child_node);
@@ -167,7 +169,9 @@ namespace spartan
         {
             string type_name = component_node.name();
             if (type_name == "Entity")
-                continue; // children are handled below
+            {
+                continue;
+            } // children are handled below
 
             ComponentType type = Component::StringToType(type_name);
             if (type != ComponentType::Max)

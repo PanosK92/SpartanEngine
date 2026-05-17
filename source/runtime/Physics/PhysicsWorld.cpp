@@ -79,7 +79,9 @@ namespace spartan
             // get camera
             Camera* camera = World::GetCamera();
             if (!camera)
+            {
                 return;
+            }
 
             // get picking ray
             Ray picking_ray = camera->ComputePickingRay();
@@ -155,11 +157,15 @@ namespace spartan
         void MovePickedBody()
         {
             if (!picked_body || !dummy_actor || !joint)
+            {
                 return;
+            }
 
             Camera* camera = World::GetCamera();
             if (!camera)
+            {
                 return;
+            }
 
             Ray picking_ray = camera->ComputePickingRay();
             PxVec3 origin(picking_ray.GetStart().x, picking_ray.GetStart().y, picking_ray.GetStart().z);
@@ -219,7 +225,9 @@ namespace spartan
                 (filter_data0.word2 == 2 && filter_data1.word2 == 1);
 
             if (is_character_vs_vehicle)
+            {
                 return PxFilterFlag::eSUPPRESS;
+            }
 
             return PxDefaultSimulationFilterShader(attributes0, filter_data0, attributes1, filter_data1,
                 pair_flags, constant_block, constant_block_size);
@@ -285,7 +293,9 @@ namespace spartan
 
         // skip if loading
         if (ProgressTracker::IsLoading())
+        {
             return;
+        }
 
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
@@ -407,7 +417,9 @@ namespace spartan
         hit_entity = nullptr;
 
         if (!scene)
+        {
             return false;
+        }
 
         PxVec3 px_origin(origin.x, origin.y, origin.z);
         PxVec3 px_direction(direction.x, direction.y, direction.z);

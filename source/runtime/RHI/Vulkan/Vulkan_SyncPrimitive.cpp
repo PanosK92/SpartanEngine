@@ -137,7 +137,9 @@ namespace spartan
     RHI_SyncPrimitive::~RHI_SyncPrimitive()
     {
         if (!m_rhi_resource)
+        {
             return;
+        }
 
         RHI_Device::DeletionQueueAdd(m_type == RHI_SyncPrimitive_Type::Fence ? RHI_Resource_Type::Fence : RHI_Resource_Type::Semaphore, m_rhi_resource);
 
@@ -170,7 +172,9 @@ namespace spartan
         SP_ASSERT(m_type != RHI_SyncPrimitive_Type::Semaphore);
 
         if (m_type == RHI_SyncPrimitive_Type::Fence)
+        {
             return fence::is_signaled(m_rhi_resource);
+        }
 
         return semaphore::get_value(m_rhi_resource) == m_value;
     }

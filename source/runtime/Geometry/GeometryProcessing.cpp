@@ -51,10 +51,14 @@ namespace spartan::geometry_processing
 
         // early exit conditions
         if (target_index_count >= index_count)
+        {
             return;
+        }
 
         if (vertex_count <= 16 || index_count < 12)
+        {
             return;
+        }
 
         target_index_count = std::max(target_index_count, static_cast<size_t>(12));
 
@@ -293,7 +297,9 @@ namespace spartan::geometry_processing
         const size_t index_count  = indices.size();
         const size_t vertex_count = vertices.size();
         if (index_count == 0 || vertex_count == 0)
+        {
             return;
+        }
 
         // worst case meshlet count, used for buffer allocation
         const size_t max_meshlets = meshopt_buildMeshletsBound(index_count, meshlet_max_vertices, meshlet_max_triangles);
@@ -318,7 +324,9 @@ namespace spartan::geometry_processing
         );
 
         if (meshlet_count == 0)
+        {
             return;
+        }
 
         // trim the worst-case allocation and tightly-pack the last meshlet (per meshopt docs)
         const meshopt_Meshlet& last = meshlets[meshlet_count - 1];

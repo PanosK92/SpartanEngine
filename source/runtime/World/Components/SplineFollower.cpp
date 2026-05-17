@@ -66,25 +66,33 @@ namespace spartan
     {
         // only move during play mode
         if (!Engine::IsFlagSet(EngineMode::Playing))
+        {
             return;
+        }
 
         // resolve the spline entity pointer if needed
         if (!m_spline_entity)
         {
             ResolveSplineEntity();
             if (!m_spline_entity)
+            {
                 return;
+            }
         }
 
         // grab the spline component from the referenced entity
         Spline* spline = m_spline_entity->GetComponent<Spline>();
         if (!spline || spline->GetControlPointCount() < 2)
+        {
             return;
+        }
 
         // compute arc length so speed is in world units per second
         float spline_length = spline->GetLength();
         if (spline_length <= 0.0f)
+        {
             return;
+        }
 
         float delta_time = static_cast<float>(Timer::GetDeltaTimeSec());
 

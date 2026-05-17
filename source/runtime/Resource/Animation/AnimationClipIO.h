@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================================
-#include "../../Rendering/Animation/AnimationClip.h"
+#include "../../Animation/AnimationClip.h"
 #include <string>
 //=============================================
 

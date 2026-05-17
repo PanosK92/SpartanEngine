@@ -230,7 +230,9 @@ namespace ImGui::RHI
         // frame 0: pipeline layouts and descriptor sets are still being created.
         // frame 1: bindless draw_data buffer descriptor may not have been written yet.
         if (Renderer::GetFrameNumber() < 2)
+        {
             return;
+        }
 
         // get resources
         bool is_main_window                 = window_data == nullptr;
@@ -255,7 +257,9 @@ namespace ImGui::RHI
 
         // when the engine splash screen is shown, the command list is not valid as the renderer is initializing
         if (!cmd_list || cmd_list->GetState() != RHI_CommandListState::Recording)
+        {
             return;
+        }
 
         // update vertex and index buffers
         {

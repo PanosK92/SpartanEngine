@@ -246,7 +246,9 @@ namespace spartan
         }
 
         if (!m_is_playing)
+        {
             return;
+        }
 
         if (m_is_3d)
         {
@@ -303,7 +305,9 @@ namespace spartan
             {
                 Volume* volume = entity->GetComponent<Volume>();
                 if (!volume || !volume->GetReverbEnabled())
+                {
                     continue;
+                }
 
                 // transform the volume's local bounding box into world space
                 BoundingBox transformed_box = volume->GetBoundingBox() * entity->GetMatrix();
@@ -343,9 +347,13 @@ namespace spartan
 
         // feed audio based on mode
         if (m_synthesis_mode)
+        {
             FeedSynthesizedChunk();
+        }
         else
+        {
             FeedAudioChunk();
+        }
     }
 
     void AudioSource::SetSynthesisMode(bool enabled, SynthesisCallback callback)
@@ -354,9 +362,13 @@ namespace spartan
         if (m_is_playing && enabled != m_synthesis_mode)
         {
             if (m_synthesis_mode)
+            {
                 StopSynthesis();
+            }
             else
+            {
                 StopClip();
+            }
         }
 
         m_synthesis_mode     = enabled;
@@ -398,7 +410,9 @@ namespace spartan
     void AudioSource::StopSynthesis()
     {
         if (!m_is_playing)
+        {
             return;
+        }
 
         if (m_stream)
         {
@@ -412,12 +426,16 @@ namespace spartan
     void AudioSource::FeedSynthesizedChunk()
     {
         if (!m_stream || !m_is_playing || !m_synthesis_callback)
+        {
             return;
+        }
 
         int queued               = SDL_GetAudioStreamQueued(m_stream);
         const int low_water_mark = 16384;
         if (queued >= low_water_mark)
+        {
             return;
+        }
 
         const uint32_t num_samples = 2048;
         m_stereo_chunk.resize(num_samples * 2);
@@ -570,7 +588,9 @@ namespace spartan
     void AudioSource::StopClip()
     {
         if (!m_is_playing)
+        {
             return;
+        }
 
         if (m_stream)
         {
@@ -585,7 +605,9 @@ namespace spartan
     float AudioSource::GetProgress() const
     {
         if (!m_clip || m_clip->length == 0)
+        {
             return 0.0f;
+        }
 
         return static_cast<float>(m_position) / static_cast<float>(m_clip->length);
     }
@@ -593,7 +615,9 @@ namespace spartan
     void AudioSource::SetMute(bool mute)
     {
         if (m_mute == mute)
+        {
             return;
+        }
 
         m_mute = mute;
     }
@@ -632,12 +656,16 @@ namespace spartan
     void AudioSource::FeedAudioChunk()
     {
         if (!m_stream || !m_is_playing)
+        {
             return;
+        }
 
         int queued               = SDL_GetAudioStreamQueued(m_stream);
         const int low_water_mark = 16384;
         if (queued >= low_water_mark)
+        {
             return;
+        }
 
         const uint32_t target_mono_samples = 2048;
         uint32_t bytes_to_add = target_mono_samples * sizeof(float);

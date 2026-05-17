@@ -106,7 +106,10 @@ namespace spartan
             math::Quaternion quat_yaw  = quat_align.Conjugate() * quat;
             float half_angle           = std::atan2(-quat_yaw.y, quat_yaw.w);
             float yaw                  = half_angle * 2.0f;
-            if (yaw < 0.0f) yaw       += math::pi_2;
+            if (yaw < 0.0f)
+            {
+                yaw       += math::pi_2;
+            }
             yaw_packed                 = static_cast<uint8_t>((yaw / math::pi_2) * 255.0f);
 
             // pack scale
@@ -167,8 +170,14 @@ namespace spartan
             uint32_t sign = (u.i >> 16) & 0x8000;
             int32_t exponent = ((u.i >> 23) & 0xFF) - 127;
             uint32_t mantissa = u.i & 0x7FFFFF;
-            if (exponent <= -15) return sign;
-            if (exponent > 15) return sign | 0x7C00;
+            if (exponent <= -15)
+            {
+                return sign;
+            }
+            if (exponent > 15)
+            {
+                return sign | 0x7C00;
+            }
             if (exponent <= -14)
             {
                 mantissa |= 0x800000;

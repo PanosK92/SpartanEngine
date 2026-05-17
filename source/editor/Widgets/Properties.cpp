@@ -427,7 +427,10 @@ namespace
     {
         layout::begin_property(label, tooltip);
         ImGuiInputTextFlags flags = ImGuiInputTextFlags_AutoSelectAll;
-        if (readonly) flags |= ImGuiInputTextFlags_ReadOnly;
+        if (readonly)
+        {
+            flags |= ImGuiInputTextFlags_ReadOnly;
+        }
         ImGui::InputText(("##" + string(label)).c_str(), text, flags);
     }
 
@@ -476,7 +479,10 @@ namespace
 
         for (int i = 0; i < 3; ++i)
         {
-            if (i > 0) ImGui::SameLine(0, between_groups);
+            if (i > 0)
+            {
+                ImGui::SameLine(0, between_groups);
+            }
 
             // axis label with color
             ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(colors[i]));
@@ -764,7 +770,9 @@ void Properties::ShowEntity(Entity* entity) const
                 for (const auto& [key, value] : entity->GetPrefabAttributes())
                 {
                     if (key == "type")
-                        continue; // already shown above
+                    {
+                        continue;
+                    } // already shown above
                     property_text(key.c_str(), value, "prefab attribute (read-only)");
                 }
             }
@@ -821,7 +829,9 @@ void Properties::ShowEntity(Entity* entity) const
 void Properties::ShowScript(spartan::Script* script) const
 {
     if (!script)
+    {
         return;
+    }
 
     if (component_begin("Script", design::accent_script(), script))
     {
@@ -939,7 +949,9 @@ void Properties::ShowScript(spartan::Script* script) const
 void Properties::ShowLight(spartan::Light* light) const
 {
     if (!light)
+    {
         return;
+    }
 
     if (component_begin("Light", design::accent_light(), light))
     {
@@ -1083,9 +1095,18 @@ void Properties::ShowLight(spartan::Light* light) const
             float draw_distance       = light->GetDrawDistance();
             float shadow_distance     = light->GetShadowDistance();
             float volumetric_distance = light->GetVolumetricDistance();
-            if (property_float("Draw Distance",       &draw_distance,       1.0f, 0.0f, 10000.0f, "beyond this distance from the camera the light is fully culled",                  "%.0f m")) light->SetDrawDistance(draw_distance);
-            if (property_float("Shadow Distance",     &shadow_distance,     1.0f, 0.0f, 10000.0f, "beyond this distance the shadow map stops being rendered for this light",        "%.0f m")) light->SetShadowDistance(shadow_distance);
-            if (property_float("Volumetric Distance", &volumetric_distance, 1.0f, 0.0f, 10000.0f, "beyond this distance volumetric scattering stops being computed for this light", "%.0f m")) light->SetVolumetricDistance(volumetric_distance);
+            if (property_float("Draw Distance",       &draw_distance,       1.0f, 0.0f, 10000.0f, "beyond this distance from the camera the light is fully culled",                  "%.0f m"))
+            {
+                light->SetDrawDistance(draw_distance);
+            }
+            if (property_float("Shadow Distance",     &shadow_distance,     1.0f, 0.0f, 10000.0f, "beyond this distance the shadow map stops being rendered for this light",        "%.0f m"))
+            {
+                light->SetShadowDistance(shadow_distance);
+            }
+            if (property_float("Volumetric Distance", &volumetric_distance, 1.0f, 0.0f, 10000.0f, "beyond this distance volumetric scattering stops being computed for this light", "%.0f m"))
+            {
+                light->SetVolumetricDistance(volumetric_distance);
+            }
         }
 
         // spot angle
@@ -1104,13 +1125,34 @@ void Properties::ShowLight(spartan::Light* light) const
         }
 
         //= MAP ===================================================================================================
-        if (intensity != light->GetIntensityPhotometric())        light->SetIntensity(intensity);
-        if (angle != light->GetAngle() * math::rad_to_deg * 2.0f) light->SetAngle(angle * math::deg_to_rad * 0.5f);
-        if (range != light->GetRange())                           light->SetRange(range);
-        if (area_width != light->GetAreaWidth())                  light->SetAreaWidth(area_width);
-        if (area_height != light->GetAreaHeight())                light->SetAreaHeight(area_height);
-        if (m_colorPicker_light->GetColor() != light->GetColor()) light->SetColor(m_colorPicker_light->GetColor());
-        if (temperature_kelvin != light->GetTemperature())        light->SetTemperature(temperature_kelvin);
+        if (intensity != light->GetIntensityPhotometric())
+        {
+            light->SetIntensity(intensity);
+        }
+        if (angle != light->GetAngle() * math::rad_to_deg * 2.0f)
+        {
+            light->SetAngle(angle * math::deg_to_rad * 0.5f);
+        }
+        if (range != light->GetRange())
+        {
+            light->SetRange(range);
+        }
+        if (area_width != light->GetAreaWidth())
+        {
+            light->SetAreaWidth(area_width);
+        }
+        if (area_height != light->GetAreaHeight())
+        {
+            light->SetAreaHeight(area_height);
+        }
+        if (m_colorPicker_light->GetColor() != light->GetColor())
+        {
+            light->SetColor(m_colorPicker_light->GetColor());
+        }
+        if (temperature_kelvin != light->GetTemperature())
+        {
+            light->SetTemperature(temperature_kelvin);
+        }
         light->SetFlag(spartan::LightFlags::ShadowsScreenSpace, is_directional && shadows_screen_space);
         light->SetFlag(spartan::LightFlags::Volumetric, volumetric);
         light->SetFlag(spartan::LightFlags::Shadows, shadows);
@@ -1122,7 +1164,9 @@ void Properties::ShowLight(spartan::Light* light) const
 void Properties::ShowRender(spartan::Render* renderable) const
 {
     if (!renderable)
+    {
         return;
+    }
 
     if (component_begin("Render", design::accent_renderable(), renderable))
     {
@@ -1323,7 +1367,9 @@ void Properties::ShowRender(spartan::Render* renderable) const
 void Properties::ShowPhysics(Physics* body) const
 {
     if (!body)
+    {
         return;
+    }
 
     if (component_begin("Physics", design::accent_physics(), body))
     {
@@ -1446,16 +1492,37 @@ void Properties::ShowPhysics(Physics* body) const
                 body->SetClothWindEnabled(cloth_wind);
             }
 
-            if (cloth_stiffness != body->GetClothStiffness())                                      body->SetClothStiffness(cloth_stiffness);
-            if (cloth_damping != body->GetClothDamping())                                          body->SetClothDamping(cloth_damping);
-            if (static_cast<uint32_t>(cloth_iterations) != body->GetClothIterations()) body->SetClothIterations(static_cast<uint32_t>(cloth_iterations));
+            if (cloth_stiffness != body->GetClothStiffness())
+            {
+                body->SetClothStiffness(cloth_stiffness);
+            }
+            if (cloth_damping != body->GetClothDamping())
+            {
+                body->SetClothDamping(cloth_damping);
+            }
+            if (static_cast<uint32_t>(cloth_iterations) != body->GetClothIterations())
+            {
+                body->SetClothIterations(static_cast<uint32_t>(cloth_iterations));
+            }
         }
 
         // map values back
-        if (mass != body->GetMass())                        body->SetMass(mass);
-        if (friction != body->GetFriction())                body->SetFriction(friction);
-        if (friction_rolling != body->GetFrictionRolling()) body->SetFrictionRolling(friction_rolling);
-        if (restitution != body->GetRestitution())          body->SetRestitution(restitution);
+        if (mass != body->GetMass())
+        {
+            body->SetMass(mass);
+        }
+        if (friction != body->GetFriction())
+        {
+            body->SetFriction(friction);
+        }
+        if (friction_rolling != body->GetFrictionRolling())
+        {
+            body->SetFrictionRolling(friction_rolling);
+        }
+        if (restitution != body->GetRestitution())
+        {
+            body->SetRestitution(restitution);
+        }
 
         if (freeze_pos_x != static_cast<bool>(body->GetPositionLock().x) ||
             freeze_pos_y != static_cast<bool>(body->GetPositionLock().y) ||
@@ -1471,9 +1538,18 @@ void Properties::ShowPhysics(Physics* body) const
             body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         }
 
-        if (center_of_mass != body->GetCenterOfMass()) body->SetCenterOfMass(center_of_mass);
-        if (is_static != body->IsStatic())             body->SetStatic(is_static);
-        if (is_kinematic != body->IsKinematic())       body->SetKinematic(is_kinematic);
+        if (center_of_mass != body->GetCenterOfMass())
+        {
+            body->SetCenterOfMass(center_of_mass);
+        }
+        if (is_static != body->IsStatic())
+        {
+            body->SetStatic(is_static);
+        }
+        if (is_kinematic != body->IsKinematic())
+        {
+            body->SetKinematic(is_kinematic);
+        }
     }
     component_end();
 }
@@ -1481,7 +1557,9 @@ void Properties::ShowPhysics(Physics* body) const
 void Properties::ShowMaterial(Material* material, Render* renderable) const
 {
     if (!material)
+    {
         return;
+    }
 
     if (component_begin("Material", design::accent_material(), nullptr, false))
     {
@@ -1542,7 +1620,10 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
                         material->SetTexture(texture_type, texture, slot);
                     };
 
-                    if (slot > 0) ImGui::SameLine();
+                    if (slot > 0)
+                    {
+                        ImGui::SameLine();
+                    }
 
                     // push unique id for each slot to avoid id collisions in image_slot
                     ImGui::PushID(static_cast<int>(slot));
@@ -1562,7 +1643,10 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
                     ImGui::PopID();
                 }
 
-                if (show_modifier) ImGui::SameLine();
+                if (show_modifier)
+                {
+                    ImGui::SameLine();
+                }
             }
 
             // modifier/multiplier
@@ -1760,7 +1844,9 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
         auto write_override = [](float& target, float new_value, float resolved_value)
         {
             if (new_value != resolved_value)
+            {
                 target = new_value;
+            }
         };
         if (uv_per_renderable)
         {
@@ -1794,7 +1880,9 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
 void Properties::ShowCamera(Camera* camera) const
 {
     if (!camera)
+    {
         return;
+    }
 
     if (component_begin("Camera", design::accent_camera(), camera))
     {
@@ -1846,11 +1934,26 @@ void Properties::ShowCamera(Camera* camera) const
         property_toggle("First Person Control", &first_person_control_enabled, "enable WASD + mouse control");
 
         //= MAP =======================================================================================================================================================
-        if (aperture != camera->GetAperture())          camera->SetAperture(aperture);
-        if (shutter_speed != camera->GetShutterSpeed()) camera->SetShutterSpeed(shutter_speed);
-        if (iso != camera->GetIso())                    camera->SetIso(iso);
-        if (fov != camera->GetFovHorizontalDeg())       camera->SetFovHorizontalDeg(fov);
-        if (first_person_control_enabled != camera->GetFlag(CameraFlags::CanBeControlled)) camera->SetFlag(CameraFlags::CanBeControlled, first_person_control_enabled);
+        if (aperture != camera->GetAperture())
+        {
+            camera->SetAperture(aperture);
+        }
+        if (shutter_speed != camera->GetShutterSpeed())
+        {
+            camera->SetShutterSpeed(shutter_speed);
+        }
+        if (iso != camera->GetIso())
+        {
+            camera->SetIso(iso);
+        }
+        if (fov != camera->GetFovHorizontalDeg())
+        {
+            camera->SetFovHorizontalDeg(fov);
+        }
+        if (first_person_control_enabled != camera->GetFlag(CameraFlags::CanBeControlled))
+        {
+            camera->SetFlag(CameraFlags::CanBeControlled, first_person_control_enabled);
+        }
         //=============================================================================================================================================================
     }
     component_end();
@@ -1859,7 +1962,9 @@ void Properties::ShowCamera(Camera* camera) const
 void Properties::ShowTerrain(Terrain* terrain) const
 {
     if (!terrain)
+    {
         return;
+    }
 
     if (component_begin("Terrain", design::accent_terrain(), terrain))
     {
@@ -1940,8 +2045,14 @@ void Properties::ShowTerrain(Terrain* terrain) const
         property_text("Indices", stat_buf);
 
         //= MAP =================================================
-        if (min_y != terrain->GetMinY()) terrain->SetMinY(min_y);
-        if (max_y != terrain->GetMaxY()) terrain->SetMaxY(max_y);
+        if (min_y != terrain->GetMinY())
+        {
+            terrain->SetMinY(min_y);
+        }
+        if (max_y != terrain->GetMaxY())
+        {
+            terrain->SetMaxY(max_y);
+        }
         //=======================================================
     }
     component_end();
@@ -1950,7 +2061,9 @@ void Properties::ShowTerrain(Terrain* terrain) const
 void Properties::ShowSpline(spartan::Spline* spline) const
 {
     if (!spline)
+    {
         return;
+    }
 
     if (component_begin("Spline", design::accent_spline(), spline))
     {
@@ -2021,7 +2134,9 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         for (Entity* candidate : all_entities_attach)
         {
             if (!candidate || candidate == spline->GetEntity())
+            {
                 continue;
+            }
 
             if (candidate->GetComponent<spartan::Spline>())
             {
@@ -2255,7 +2370,9 @@ void Properties::ShowSpline(spartan::Spline* spline) const
         for (Entity* candidate : all_entities)
         {
             if (!candidate || candidate == spline->GetEntity())
+            {
                 continue;
+            }
 
             template_ids.push_back(candidate->GetObjectId());
             template_names.push_back(candidate->GetObjectName());
@@ -2339,7 +2456,9 @@ void Properties::ShowSpline(spartan::Spline* spline) const
 void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
 {
     if (!follower)
+    {
         return;
+    }
 
     if (component_begin("Spline Follower", design::accent_spline_follower(), follower))
     {
@@ -2416,7 +2535,9 @@ void Properties::ShowSplineFollower(spartan::SplineFollower* follower) const
 void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 {
     if (!audio_source)
+    {
         return;
+    }
 
     if (component_begin("Audio Source", design::accent_audio(), audio_source))
     {
@@ -2502,16 +2623,46 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
         ImGui::EndDisabled();
 
         //= MAP =========================================================================================
-        if (mute != audio_source->GetMute())                       audio_source->SetMute(mute);
-        if (play_on_start != audio_source->GetPlayOnStart())       audio_source->SetPlayOnStart(play_on_start);
-        if (loop != audio_source->GetLoop())                       audio_source->SetLoop(loop);
-        if (is_3d != audio_source->GetIs3d())                      audio_source->SetIs3d(is_3d);
-        if (volume != audio_source->GetVolume())                   audio_source->SetVolume(volume);
-        if (pitch != audio_source->GetPitch())                     audio_source->SetPitch(pitch);
-        if (reverb_enabled != audio_source->GetReverbEnabled())    audio_source->SetReverbEnabled(reverb_enabled);
-        if (reverb_room_size != audio_source->GetReverbRoomSize()) audio_source->SetReverbRoomSize(reverb_room_size);
-        if (reverb_decay != audio_source->GetReverbDecay())        audio_source->SetReverbDecay(reverb_decay);
-        if (reverb_wet != audio_source->GetReverbWet())            audio_source->SetReverbWet(reverb_wet);
+        if (mute != audio_source->GetMute())
+        {
+            audio_source->SetMute(mute);
+        }
+        if (play_on_start != audio_source->GetPlayOnStart())
+        {
+            audio_source->SetPlayOnStart(play_on_start);
+        }
+        if (loop != audio_source->GetLoop())
+        {
+            audio_source->SetLoop(loop);
+        }
+        if (is_3d != audio_source->GetIs3d())
+        {
+            audio_source->SetIs3d(is_3d);
+        }
+        if (volume != audio_source->GetVolume())
+        {
+            audio_source->SetVolume(volume);
+        }
+        if (pitch != audio_source->GetPitch())
+        {
+            audio_source->SetPitch(pitch);
+        }
+        if (reverb_enabled != audio_source->GetReverbEnabled())
+        {
+            audio_source->SetReverbEnabled(reverb_enabled);
+        }
+        if (reverb_room_size != audio_source->GetReverbRoomSize())
+        {
+            audio_source->SetReverbRoomSize(reverb_room_size);
+        }
+        if (reverb_decay != audio_source->GetReverbDecay())
+        {
+            audio_source->SetReverbDecay(reverb_decay);
+        }
+        if (reverb_wet != audio_source->GetReverbWet())
+        {
+            audio_source->SetReverbWet(reverb_wet);
+        }
         //===============================================================================================
     }
     component_end();
@@ -2520,7 +2671,9 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 void Properties::ShowVolume(spartan::Volume* volume) const
 {
     if (!volume)
+    {
         return;
+    }
 
     if (component_begin("Volume", design::accent_volume(), volume))
     {
@@ -2554,7 +2707,9 @@ void Properties::ShowVolume(spartan::Volume* volume) const
             {
                 // only include renderer options
                 if (cvar_name.size() < 2 || cvar_name[0] != 'r' || cvar_name[1] != '.')
+                {
                     continue;
+                }
 
                 string name(cvar_name);
                 float global_value = get<float>(*cvar.m_value_ptr);
@@ -2609,7 +2764,9 @@ void Properties::ShowVolume(spartan::Volume* volume) const
         property_toggle("Enabled", &reverb_enabled, "apply reverb to audio sources inside this volume (derived from volume size)");
 
         if (reverb_enabled != volume->GetReverbEnabled())
+        {
             volume->SetReverbEnabled(reverb_enabled);
+        }
     }
     component_end();
 }
@@ -2617,7 +2774,9 @@ void Properties::ShowVolume(spartan::Volume* volume) const
 void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) const
 {
     if (!particle_system)
+    {
         return;
+    }
 
     if (component_begin("Particle System", design::accent_particles(), particle_system))
     {

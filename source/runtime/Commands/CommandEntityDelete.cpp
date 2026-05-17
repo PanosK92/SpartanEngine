@@ -39,7 +39,9 @@ namespace spartan
     CommandEntityDelete::CommandEntityDelete(Entity* entity)
     {
         if (!entity)
+        {
             return;
+        }
 
         m_entity_id = entity->GetObjectId();
 

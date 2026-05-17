@@ -39,7 +39,9 @@ namespace spartan::math
     {
         // check for ray origin being inside the box
         if (box.Intersects(m_origin) == Intersection::Inside)
+        {
             return 0.0f;
+        }
 
         float distance = std::numeric_limits<float>::infinity();
 
@@ -179,9 +181,13 @@ namespace spartan::math
                     {
                         // There is an intersection, so calculate distance & optional normal
                         if (out_normal)
+                        {
                             *out_normal = edge1.Cross(edge2);
+                        }
                         if (out_bary)
+                        {
                             *out_bary = Vector3(1 - (u / det) - (v / det), u / det, v / det);
+                        }
 
                         return distance;
                     }
@@ -199,7 +205,9 @@ namespace spartan::math
 
         // Check if ray originates inside the sphere
         if (centeredOrigin.LengthSquared() <= squaredRadius)
+        {
             return 0.0f;
+        }
 
         // Calculate intersection by quadratic equation
         float a = m_direction.Dot(m_direction);
@@ -209,15 +217,21 @@ namespace spartan::math
     
         // No solution
         if (d < 0.0f)
+        {
             return std::numeric_limits<float>::infinity();
+        }
 
         // Get the nearer solution
         float dSqrt = sqrtf(d);
         float dist = (-b - dSqrt) / (2.0f * a);
         if (dist >= 0.0f)
+        {
             return dist;
+        }
         else
+        {
             return (-b + dSqrt) / (2.0f * a);
+        }
     }
 
     float Ray::Distance(const Vector3& point) const
@@ -247,7 +261,9 @@ namespace spartan::math
         
         float d = d2121 * d4343 - d4321 * d4321;
         if (abs(d) < std::numeric_limits<float>::min())
+        {
             return m_origin;
+        }
 
         float n = d1343 * d4321 - d1321 * d4343;
         float a = n / d;

@@ -392,7 +392,9 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         m_is_dirty     = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+    {
         ImGui::SetTooltip("alt+left");
+    }
     ImGui::EndDisabled();
     ImGui::SameLine();
 
@@ -406,7 +408,9 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         m_is_dirty     = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+    {
         ImGui::SetTooltip("alt+right");
+    }
     ImGui::EndDisabled();
     ImGui::SameLine();
 
@@ -423,7 +427,9 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         }
     }
     if (ImGui::IsItemHovered())
+    {
         ImGui::SetTooltip("alt+up");
+    }
     ImGui::SameLine();
 
     // navigation: refresh button
@@ -432,7 +438,9 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
         m_is_dirty = true;
     }
     if (ImGui::IsItemHovered())
+    {
         ImGui::SetTooltip("f5");
+    }
 
     ImGui::SameLine(0, 12);
 
@@ -527,24 +535,32 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
 
         // grid view button
         if (is_grid_mode)
+        {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0.15f));
+        }
         if (ImGui::Button("Grid"))
         {
             m_view_mode = View_Grid;
         }
         if (is_grid_mode)
+        {
             ImGui::PopStyleColor();
+        }
         ImGui::SameLine();
 
         // list view button
         if (is_list_mode)
+        {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0.15f));
+        }
         if (ImGui::Button("List"))
         {
             m_view_mode = View_List;
         }
         if (is_list_mode)
+        {
             ImGui::PopStyleColor();
+        }
 
         // size slider (grid view only)
         if (is_grid_mode)
@@ -719,7 +735,10 @@ void FileDialog::RenderGridView()
     const float item_height   = icon_size + label_height + grid_item_padding * 2;
 
     int columns = static_cast<int>((content_width - 16) / item_width);
-    if (columns < 1) columns = 1;
+    if (columns < 1)
+    {
+        columns = 1;
+    }
 
     // initial padding
     ImGui::Dummy(ImVec2(0, 4));
@@ -733,7 +752,9 @@ void FileDialog::RenderGridView()
     {
         auto& item = m_items[i];
         if (!m_search_filter.PassFilter(item.GetLabel().c_str()))
+        {
             continue;
+        }
 
         m_displayed_item_count++;
 
@@ -858,7 +879,9 @@ void FileDialog::RenderGridView()
             if (is_single_click)
             {
                 if (m_callback_on_item_clicked)
+                {
                     m_callback_on_item_clicked(item.GetPath());
+                }
             }
             else
             {
@@ -940,7 +963,9 @@ void FileDialog::RenderListView()
         {
             auto& item = m_items[i];
             if (!m_search_filter.PassFilter(item.GetLabel().c_str()))
+            {
                 continue;
+            }
 
             m_displayed_item_count++;
 
@@ -966,7 +991,9 @@ void FileDialog::RenderListView()
                 if (is_single_click)
                 {
                     if (m_callback_on_item_clicked)
+                    {
                         m_callback_on_item_clicked(item.GetPath());
+                    }
                 }
                 else
                 {
@@ -1134,7 +1161,9 @@ void FileDialog::RenderItem(FileDialogItem* item, const ImVec2& size, bool is_li
 void FileDialog::ItemDrag(FileDialogItem* item)
 {
     if (!item || m_type != FileDialog_Type_Browser)
+    {
         return;
+    }
 
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
     {
@@ -1171,7 +1200,9 @@ void FileDialog::ItemDrag(FileDialogItem* item)
 void FileDialog::ItemClick(FileDialogItem* item) const
 {
     if (!item || !m_is_hovering_window)
+    {
         return;
+    }
 
     if (ImGui::IsItemClicked(ImGuiMouseButton_Right))
     {
@@ -1183,7 +1214,9 @@ void FileDialog::ItemClick(FileDialogItem* item) const
 void FileDialog::ItemContextMenu(FileDialogItem* item)
 {
     if (m_context_menu_id != item->GetId())
+    {
         return;
+    }
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
     ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 6.0f);
@@ -1350,18 +1383,26 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
 
         // directories always first
         if (a_is_dir != b_is_dir)
+        {
             return a_is_dir;
+        }
 
         if (m_sort_column == Sort_Name)
+        {
             return m_sort_ascending ? a.GetLabel() < b.GetLabel() : a.GetLabel() > b.GetLabel();
+        }
 
         if (m_sort_column == Sort_Type)
+        {
             return m_sort_ascending ? FileSystem::GetExtensionFromFilePath(a.GetPath()) < FileSystem::GetExtensionFromFilePath(b.GetPath()) :
                                       FileSystem::GetExtensionFromFilePath(a.GetPath()) > FileSystem::GetExtensionFromFilePath(b.GetPath());
+        }
 
         if (m_sort_column == Sort_Modified)
+        {
             return m_sort_ascending ? FileSystem::GetLastWriteTime(a.GetPath()) < FileSystem::GetLastWriteTime(b.GetPath()) :
                                       FileSystem::GetLastWriteTime(a.GetPath()) > FileSystem::GetLastWriteTime(b.GetPath());
+        }
 
         return false;
     });
@@ -1417,7 +1458,9 @@ void FileDialog::WatchDirectory()
     // throttle polling so we don't hit the filesystem every frame
     auto now = chrono::steady_clock::now();
     if (now - m_watch_last_check < chrono::milliseconds(500))
+    {
         return;
+    }
 
     m_watch_last_check = now;
 
@@ -1429,7 +1472,9 @@ void FileDialog::WatchDirectory()
     }
 
     if (!FileSystem::IsDirectory(dir))
+    {
         return;
+    }
 
     // if the watched path changed, just sync the baseline without triggering a refresh
     if (dir != m_watch_path)
@@ -1513,7 +1558,9 @@ void FileDialog::EmptyAreaContextMenu()
 void FileDialog::HandleKeyboardNavigation()
 {
     if (!m_is_hovering_window || m_is_renaming)
+    {
         return;
+    }
 
     // enter to confirm selection
     if (ImGui::IsKeyPressed(ImGuiKey_Enter) && !m_input_box.empty())

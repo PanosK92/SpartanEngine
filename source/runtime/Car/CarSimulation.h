@@ -248,7 +248,9 @@ namespace car
     inline bool setup(const setup_params& params)
     {
         if (!params.physics || !params.scene)
+        {
             return false;
+        }
 
         cfg = params.car_config;
         compute_constants();
@@ -282,7 +284,9 @@ namespace car
 
         material = params.physics->createMaterial(0.8f, 0.7f, 0.1f);
         if (!material)
+        {
             return false;
+        }
 
         float front_mass_per_wheel = cfg.mass * get_weight_distribution_front() * 0.5f;
         float front_omega = 2.0f * PxPi * tuning::spec.front_spring_freq;
@@ -334,7 +338,9 @@ namespace car
         params.scene->addActor(*body);
 
         if (!params.vertices.empty())
+        {
             compute_aero_from_shape(params.vertices);
+        }
 
         // cook a convex cylinder for wheel sweep queries
         if (!wheel_sweep_mesh)
@@ -369,7 +375,9 @@ namespace car
             PxConvexMeshCookingResult::Enum cook_result;
             wheel_sweep_mesh = PxCreateConvexMesh(cook_params, desc, *PxGetStandaloneInsertionCallback(), &cook_result);
             if (!wheel_sweep_mesh || cook_result != PxConvexMeshCookingResult::eSUCCESS)
+            {
                 SP_LOG_WARNING("failed to create wheel sweep cylinder mesh");
+            }
         }
 
         SP_LOG_INFO("car setup complete: mass=%.0f kg", cfg.mass);
@@ -379,7 +387,9 @@ namespace car
     inline bool set_chassis(PxConvexMesh* mesh, const std::vector<PxVec3>& vertices, PxPhysics* physics)
     {
         if (!body || !physics)
+        {
             return false;
+        }
 
         PxU32 shape_count = body->getNbShapes();
         if (shape_count > 0)
@@ -406,7 +416,9 @@ namespace car
         PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
 
         if (!vertices.empty())
+        {
             compute_aero_from_shape(vertices);
+        }
 
         return true;
     }
@@ -414,7 +426,9 @@ namespace car
     inline void update_mass_properties()
     {
         if (!body)
+        {
             return;
+        }
 
         PxVec3 com(tuning::spec.center_of_mass_x, tuning::spec.center_of_mass_y, tuning::spec.center_of_mass_z);
         PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
@@ -478,12 +492,18 @@ namespace car
 
     inline void tick(float dt)
     {
-        if (!body) return;
+        if (!body)
+        {
+            return;
+        }
 
         // caller (physics::tickvehicle) already runs this at a fixed sub-step, no clamp needed
         update_input(dt);
         PxScene* scene = body->getScene();
-        if (!scene) return;
+        if (!scene)
+        {
+            return;
+        }
 
         PxTransform pose = body->getGlobalPose();
         PxVec3 fwd = pose.q.rotate(PxVec3(0, 0, 1));
@@ -552,7 +572,10 @@ namespace car
         if (tuning::log_telemetry)
         {
             float avg_wheel_w = 0.0f;
-            { int dc = 0; for (int i = 0; i < wheel_count; i++) if (is_driven(i)) { avg_wheel_w += wheels[i].angular_velocity; dc++; } if (dc > 0) avg_wheel_w /= dc; }
+            { int dc = 0; for (int i = 0; i < wheel_count; i++) if (is_driven(i)) { avg_wheel_w += wheels[i].angular_velocity; dc++; } if (dc > 0)
+            {
+                avg_wheel_w /= dc;
+            } }
             float driven_r_tel = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
             float wheel_surface_speed = avg_wheel_w * driven_r_tel * 3.6f;
             SP_LOG_INFO("rpm=%.0f, speed=%.0f km/h, gear=%s%s, wheel_speed=%.0f km/h, throttle=%.0f%%",
@@ -588,7 +611,10 @@ namespace car
 
     inline float get_wheel_suspension_force(int i)
     {
-        if (!is_valid_wheel(i) || !wheels[i].grounded) return 0.0f;
+        if (!is_valid_wheel(i) || !wheels[i].grounded)
+        {
+            return 0.0f;
+        }
         return spring_stiffness[i] * wheels[i].compression * cfg.suspension_travel;
     }
 
@@ -619,7 +645,10 @@ namespace car
     inline void set_abs_enabled(bool enabled) { tuning::spec.abs_enabled = enabled; }
     inline bool get_abs_enabled()             { return tuning::spec.abs_enabled; }
     inline bool is_abs_active(int i)          { return is_valid_wheel(i) && abs_active[i]; }
-    inline bool is_abs_active_any()           { for (int i = 0; i < wheel_count; i++) if (abs_active[i]) return true; return false; }
+    inline bool is_abs_active_any()           { for (int i = 0; i < wheel_count; i++) if (abs_active[i])
+    {
+        return true;
+    } return false; }
 
     inline void  set_tc_enabled(bool enabled) { tuning::spec.tc_enabled = enabled; }
     inline bool  get_tc_enabled()             { return tuning::spec.tc_enabled; }
@@ -638,21 +667,30 @@ namespace car
 
     inline void shift_up()
     {
-        if (!tuning::spec.manual_transmission || is_shifting || current_gear >= tuning::spec.gear_count - 1) return;
+        if (!tuning::spec.manual_transmission || is_shifting || current_gear >= tuning::spec.gear_count - 1)
+        {
+            return;
+        }
         current_gear = (current_gear == 0) ? 1 : current_gear + 1; // from reverse, go to neutral first
         begin_shift(1);
     }
 
     inline void shift_down()
     {
-        if (!tuning::spec.manual_transmission || is_shifting || current_gear <= 0) return;
+        if (!tuning::spec.manual_transmission || is_shifting || current_gear <= 0)
+        {
+            return;
+        }
         current_gear = (current_gear == 1) ? 0 : current_gear - 1; // from neutral, go to reverse
         begin_shift(-1);
     }
 
     inline void shift_to_neutral()
     {
-        if (!tuning::spec.manual_transmission || is_shifting) return;
+        if (!tuning::spec.manual_transmission || is_shifting)
+        {
+            return;
+        }
         current_gear = 1;
         begin_shift(0);
     }
@@ -711,7 +749,9 @@ namespace car
     inline void set_wheel_surface(int i, surface_type surface)
     {
         if (is_valid_wheel(i))
+        {
             wheels[i].contact_surface = surface;
+        }
     }
     inline surface_type get_wheel_surface(int i) { return is_valid_wheel(i) ? wheels[i].contact_surface : surface_asphalt; }
     inline const char* get_surface_name(surface_type surface)
@@ -738,7 +778,9 @@ namespace car
     inline PxVec3 get_wheel_offset(int wheel)
     {
         if (wheel >= 0 && wheel < wheel_count)
+        {
             return wheel_offsets[wheel];
+        }
         return PxVec3(0);
     }
 

@@ -167,8 +167,14 @@ namespace car
         {
             float diff = (wheels[left].compression - wheels[right].compression) * cfg.suspension_travel;
             float arb_force = diff * stiffness;
-            if (wheels[left].grounded)  forces[left]  += arb_force;
-            if (wheels[right].grounded) forces[right] -= arb_force;
+            if (wheels[left].grounded)
+            {
+                forces[left]  += arb_force;
+            }
+            if (wheels[right].grounded)
+            {
+                forces[right] -= arb_force;
+            }
         };
         apply_arb(front_left, front_right, tuning::spec.front_arb_stiffness);
         apply_arb(rear_left, rear_right, tuning::spec.rear_arb_stiffness);
@@ -215,9 +221,13 @@ namespace car
             if (wheels[i].grounded)
             {
                 if (is_front(i))
+                {
                     wheels[i].tire_load -= transfer_per_wheel;
+                }
                 else
+                {
                     wheels[i].tire_load += transfer_per_wheel;
+                }
                 wheels[i].tire_load = PxMax(wheels[i].tire_load, 0.0f);
             }
         }
@@ -240,9 +250,13 @@ namespace car
                 bool is_left = (i == front_left || i == rear_left);
                 float axle_transfer = is_front(i) ? front_lat_transfer : rear_lat_transfer;
                 if (is_left)
+                {
                     wheels[i].tire_load += axle_transfer;
+                }
                 else
+                {
                     wheels[i].tire_load -= axle_transfer;
+                }
                 wheels[i].tire_load = PxMax(wheels[i].tire_load, 0.0f);
             }
         }

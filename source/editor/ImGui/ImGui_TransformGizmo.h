@@ -94,21 +94,29 @@ namespace ImGui::TransformGizmo
     static void tick()
     {
         if (spartan::Engine::IsFlagSet(spartan::EngineMode::Playing))
+        {
             return;
+        }
 
         spartan::Camera* camera = spartan::World::GetCamera();
         if (!camera)
+        {
             return;
+        }
 
         // get selected entities
         const std::vector<spartan::Entity*>& selected_entities = camera->GetSelectedEntities();
         if (selected_entities.empty())
+        {
             return;
+        }
             
         // use the first entity as the primary for rotation/scale reference
         spartan::Entity* primary_entity = selected_entities[0];
         if (!primary_entity)
+        {
             return;
+        }
 
         // switch between position, rotation and scale operations, with W, E and R respectively
         static ImGuizmo::OPERATION transform_operation = ImGuizmo::TRANSLATE;
@@ -229,11 +237,15 @@ namespace ImGui::TransformGizmo
                             if (sel == other) { is_selected = true; break; }
                         }
                         if (is_selected)
+                        {
                             continue;
+                        }
 
                         spartan::Render* other_render = other->GetComponent<spartan::Render>();
                         if (!other_render)
+                        {
                             continue;
+                        }
 
                         const spartan::math::BoundingBox& other_box = other_render->GetBoundingBox();
                         float o_min[3] = { other_box.GetMin().x, other_box.GetMin().y, other_box.GetMin().z };
@@ -249,7 +261,9 @@ namespace ImGui::TransformGizmo
                             bool overlap = s_min[a1] < o_max[a1] && s_max[a1] > o_min[a1]
                                         && s_min[a2] < o_max[a2] && s_max[a2] > o_min[a2];
                             if (!overlap)
+                            {
                                 continue;
+                            }
 
                             float cur_min = (&cur_box.GetMin().x)[axis];
                             float cur_max = (&cur_box.GetMax().x)[axis];
@@ -296,7 +310,9 @@ namespace ImGui::TransformGizmo
             for (spartan::Entity* entity : selected_entities)
             {
                 if (!entity)
+                {
                     continue;
+                }
                     
                 if (use_world_space)
                 {

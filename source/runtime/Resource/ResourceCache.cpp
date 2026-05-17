@@ -248,7 +248,9 @@ namespace spartan
         lock_guard<mutex> lock(m_in_flight_map_mutex);
         auto it = m_in_flight_mutexes.find(path);
         if (it == m_in_flight_mutexes.end())
+        {
             it = m_in_flight_mutexes.emplace(path, make_unique<mutex>()).first;
+        }
         return *it->second;
     }
 
@@ -268,7 +270,7 @@ namespace spartan
 
         if (it != m_default_icons.end())
             return it->second.get();
-    
+
         return m_default_icons[IconType::File].get();
     }
 }

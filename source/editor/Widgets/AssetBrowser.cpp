@@ -161,7 +161,9 @@ void AssetBrowser::ShowMeshImportDialog(const string& file_path)
 void AssetBrowser::OnPathClicked(const string& path) const
 {
     if (!FileSystem::IsFile(path))
+    {
         return;
+    }
 
     if (FileSystem::IsEngineMaterialFile(path))
     {

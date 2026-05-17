@@ -213,7 +213,9 @@ namespace spartan
                     *output = string(data, data_size);
                 }
                 if (data)
+                {
                     SDL_free(data);
+                }
 
                 SDL_DestroyProcess(process);
             }
@@ -224,13 +226,17 @@ namespace spartan
     {
         // Check if it's empty
         if (var.empty())
+        {
             return true;
+        }
 
         // Check if it's made out of whitespace characters
         for (char _char : var)
         {
             if (!isspace(_char))
+            {
                 return false;
+            }
         }
 
         return true;
@@ -239,12 +245,16 @@ namespace spartan
     bool FileSystem::IsAlphanumeric(const string& var)
     {
         if (IsEmptyOrWhitespace(var))
+        {
             return false;
+        }
 
         for (char _char : var)
         {
             if (!isalnum(_char))
+            {
                 return false;
+            }
         }
 
         return true;
@@ -266,7 +276,9 @@ namespace spartan
 
         // If this is a valid path, return it (otherwise it's a name)
         if (IsDirectory(text_legal))
+        {
             return text_legal;
+        }
 
         // Remove slashes which are illegal characters for names
         illegal = "\\/";
@@ -345,7 +357,9 @@ namespace spartan
         try
         {
             if (filesystem::exists(path))
+            {
                 return true;
+            }
         }
         catch (filesystem::filesystem_error& e)
         {
@@ -360,10 +374,14 @@ namespace spartan
         try
         {
             if (!filesystem::exists(path))
-                return false; // directory doesn't exist
+            {
+                return false;
+            } // directory doesn't exist
 
             if (!filesystem::is_directory(path))
-                return false; // path exists but is not a directory
+            {
+                return false;
+            } // path exists but is not a directory
 
             // check if the directory is empty
             return filesystem::directory_iterator(path) == filesystem::directory_iterator();
@@ -380,7 +398,9 @@ namespace spartan
         try
         {
             if (filesystem::exists(path) && filesystem::is_directory(path))
+            {
                 return true;
+            }
         }
         catch (filesystem::filesystem_error& e)
         {
@@ -393,12 +413,16 @@ namespace spartan
     bool FileSystem::IsFile(const string& path)
     {
         if (path.empty())
+        {
             return false;
+        }
 
         try
         {
             if (filesystem::exists(path) && filesystem::is_regular_file(path))
+            {
                 return true;
+            }
         }
         catch (filesystem::filesystem_error& e)
         {
@@ -419,7 +443,9 @@ namespace spartan
         const size_t last_index = file_name.find_last_of('.');
 
         if (last_index != string::npos)
+        {
             return file_name.substr(0, last_index);
+        }
 
         return "";
     }
@@ -429,7 +455,9 @@ namespace spartan
         const size_t last_index = path.find_last_of("\\/");
 
         if (last_index != string::npos)
+        {
             return path.substr(0, last_index + 1);
+        }
 
         return "";
     }
@@ -470,7 +498,9 @@ namespace spartan
         for (filesystem::directory_iterator it(path); it != it_end; ++it)
         {
             if (!filesystem::is_directory(it->status()))
+            {
                 continue;
+            }
 
             string path_it;
 
@@ -503,7 +533,9 @@ namespace spartan
         for (filesystem::directory_iterator it(path); it != it_end; ++it)
         {
             if (!filesystem::is_regular_file(it->status()))
+            {
                 continue;
+            }
 
             try
             {
@@ -593,7 +625,9 @@ namespace spartan
         for (const auto& format : supported_formats_audio)
         {
             if (extension == format || extension == ConvertToUppercase(format))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -606,7 +640,9 @@ namespace spartan
         for (const auto& format : supported_formats_image)
         {
             if (extension == format || extension == ConvertToUppercase(format))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -619,7 +655,9 @@ namespace spartan
         for (const auto& format : supported_formats_model)
         {
             if (extension == format || extension == ConvertToUppercase(format))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -632,7 +670,9 @@ namespace spartan
         for (const auto& format : supported_formats_shader)
         {
             if (extension == format || extension == ConvertToUppercase(format))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -645,7 +685,9 @@ namespace spartan
         for (const auto& format : supported_formats_font)
         {
             if (extension == format || extension == ConvertToUppercase(format))
+            {
                 return true;
+            }
         }
 
         return false;
@@ -743,7 +785,9 @@ namespace spartan
         for (const auto& path : paths)
         {
             if (!IsSupportedImageFile(path))
+            {
                 continue;
+            }
 
             files.emplace_back(path);
         }
@@ -757,7 +801,9 @@ namespace spartan
         for (const auto& path : paths)
         {
             if (!IsSupportedAudioFile(path))
+            {
                 continue;
+            }
 
             files.emplace_back(path);
         }
@@ -771,7 +817,9 @@ namespace spartan
         for (const auto& path : paths)
         {
             if (!IsSupportedModelFile(path))
+            {
                 continue;
+            }
 
             files.emplace_back(path);
         }
@@ -792,7 +840,9 @@ namespace spartan
         for (const auto& file : files)
         {
             if (!IsEngineSceneFile(file))
+            {
                 continue;
+            }
 
             sceneFiles.emplace_back(file);
         }
@@ -803,7 +853,9 @@ namespace spartan
     string FileSystem::GetRelativePath(const string& path)
     {
         if (filesystem::path(path).is_relative())
+        {
             return path;
+        }
 
         // create absolute paths
         const filesystem::path p = filesystem::absolute(path);
@@ -811,7 +863,9 @@ namespace spartan
 
         // if root paths are different, return absolute path
         if( p.root_path() != r.root_path())
+        {
             return p.generic_string();
+        }
 
         // initialize relative path
         filesystem::path result;
@@ -857,7 +911,9 @@ namespace spartan
 
         // If there is not parent path, return path as is
         if (parent_path.empty())
+        {
             return path;
+        }
 
         return parent_path.generic_string();
     }
@@ -910,7 +966,9 @@ namespace spartan
         try
         {
             if (filesystem::exists(path) && filesystem::remove_all(path))
+            {
                 return true;
+            }
         }
         catch (filesystem::filesystem_error& e)
         {
@@ -925,7 +983,9 @@ namespace spartan
         try
         {
             if (filesystem::create_directories(path))
+            {
                 return true;
+            }
         }
         catch (filesystem::filesystem_error& e)
         {
@@ -938,7 +998,9 @@ namespace spartan
     bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
     {
         if (source == destination)
+        {
             return true;
+        }
 
         // In case the destination path doesn't exist, create it
         if (!Exists(GetDirectoryFromFilePath(destination)))
@@ -1107,14 +1169,18 @@ namespace spartan
         if (success)
         {
             if (progress_callback)
+            {
                 progress_callback(1.0f);
+            }
             SP_LOG_INFO("Downloaded: %s (%zu bytes)", destination.c_str(), final_size);
             return true;
         }
         else
         {
             if (fs::exists(destination, ec))
+            {
                 fs::remove(destination, ec);
+            }
             SP_LOG_ERROR("Failed to download: %s", url.c_str());
             return false;
         }
@@ -1232,22 +1298,30 @@ namespace spartan
         error_code ec;
 
         if (!fs::exists(path, ec))
+        {
             return "";
+        }
 
         // detect which hash utility is available at runtime
         bool use_certutil = IsExecutableInPath("certutil");
         vector<string> args;
         if (use_certutil)
+        {
             args = {"certutil", "-hashfile", path, "SHA256"};
+        }
         else
+        {
             args = {"sha256sum", path};
+        }
 
         // run process and capture output
         string result;
         run_silent_process(args, &result);
 
         if (result.empty())
+        {
             return "";
+        }
 
         // parse hash from output - handle both certutil and sha256sum formats
         string hash;
@@ -1273,9 +1347,13 @@ namespace spartan
             {
                 size_t space = line.find(' ');
                 if (space != string::npos)
+                {
                     hash = line.substr(0, space);
+                }
                 else
+                {
                     hash = line;
+                }
                 break;
             }
         }
@@ -1291,7 +1369,9 @@ namespace spartan
         // get PATH using sdl's cross-platform environment api
         const char* path_env = SDL_GetEnvironmentVariable(SDL_GetEnvironment(), "PATH");
         if (!path_env)
+        {
             return false;
+        }
 
         string path_str = path_env;
 
@@ -1316,7 +1396,9 @@ namespace spartan
             filesystem::path exe_path = filesystem::path(dir) / (executable + exe_suffix);
             error_code ec;
             if (filesystem::exists(exe_path, ec) && filesystem::is_regular_file(exe_path, ec))
+            {
                 return true;
+            }
         }
 
         return false;

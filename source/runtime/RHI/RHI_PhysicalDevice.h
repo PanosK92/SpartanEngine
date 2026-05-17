@@ -112,11 +112,26 @@ namespace spartan
     private:
         const char* get_vendor_name()
         {
-            if (IsNvidia())   return "Nvidia";
-            if (IsAmd())      return "Amd";
-            if (IsIntel())    return "Intel";
-            if (IsArm())      return "Arm";
-            if (IsQualcomm()) return "Qualcomm";
+            if (IsNvidia())
+            {
+                return "Nvidia";
+            }
+            if (IsAmd())
+            {
+                return "Amd";
+            }
+            if (IsIntel())
+            {
+                return "Intel";
+            }
+            if (IsArm())
+            {
+                return "Arm";
+            }
+            if (IsQualcomm())
+            {
+                return "Qualcomm";
+            }
 
             return "Unknown";
         }

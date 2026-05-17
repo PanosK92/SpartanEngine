@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Core/ProgressTracker.h"
-#include "../Core/Breadcrumbs.h"
+#include "../Profiling/Breadcrumbs.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -181,7 +181,9 @@ namespace spartan
             SP_ASSERT(texture != nullptr);
 
             if (RHI_Device::IsDeviceLost())
+            {
                 return false;
+            }
 
             // select shader based on target format
             Renderer_Shader shader_type;
@@ -214,7 +216,9 @@ namespace spartan
 
             RHI_Shader* shader = Renderer::GetShader(shader_type);
             if (!shader || !shader->IsCompiled())
+            {
                 return false;
+            }
 
             lock_guard<mutex> lock(compress_mutex);
 
@@ -436,8 +440,14 @@ namespace spartan
             uint32_t new_height = height >> 1;
             
             // ensure minimum size
-            if (new_width < 1) new_width = 1;
-            if (new_height < 1) new_height = 1;
+            if (new_width < 1)
+            {
+                new_width = 1;
+            }
+            if (new_height < 1)
+            {
+                new_height = 1;
+            }
             
             // bilinear downsample, rows are independent so parallelize across rows
             // small mips are too cheap to parallelize, fall back to sequential
@@ -777,10 +787,14 @@ namespace spartan
     RHI_Texture_Mip* RHI_Texture::GetMip(const uint32_t array_index, const uint32_t mip_index)
     {
         if (array_index >= m_slices.size())
+        {
             return nullptr;
+        }
 
         if (mip_index >= m_slices[array_index].mips.size())
+        {
             return nullptr;
+        }
 
         return &m_slices[array_index].mips[mip_index];
     }
@@ -788,7 +802,9 @@ namespace spartan
     RHI_Texture_Slice* RHI_Texture::GetSlice(const uint32_t array_index)
     {
         if (array_index >= m_slices.size())
+        {
             return nullptr;
+        }
 
         return &m_slices[array_index];
     }
@@ -875,7 +891,9 @@ namespace spartan
         // atomically transition from idle to preparing so only one thread can enter
         ResourceState expected = ResourceState::Max;
         if (!m_resource_state.compare_exchange_strong(expected, ResourceState::PreparingForGpu))
+        {
             return;
+        }
 
         // skip textures with invalid dimensions (failed to load)
         if (m_width == 0 || m_height == 0)

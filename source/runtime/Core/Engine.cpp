@@ -181,7 +181,9 @@ namespace spartan
         for (const auto& arg : arguments)
         {
             if (arg == argument)
+            {
                 return true;
+            }
         }
 
         return false;

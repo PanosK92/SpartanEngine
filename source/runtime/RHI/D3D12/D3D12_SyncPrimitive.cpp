@@ -66,15 +66,21 @@ namespace spartan
     void RHI_SyncPrimitive::Wait(const uint64_t timeout)
     {
         if (!m_rhi_resource)
+        {
             return;
+        }
 
         ID3D12Fence* fence = static_cast<ID3D12Fence*>(m_rhi_resource);
         if (fence->GetCompletedValue() >= m_value)
+        {
             return;
+        }
 
         HANDLE event_handle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
         if (!event_handle)
+        {
             return;
+        }
 
         if (SUCCEEDED(fence->SetEventOnCompletion(m_value, event_handle)))
         {
@@ -94,7 +100,9 @@ namespace spartan
     void RHI_SyncPrimitive::Signal(const uint64_t value)
     {
         if (!m_rhi_resource)
+        {
             return;
+        }
 
         m_value = value;
         static_cast<ID3D12Fence*>(m_rhi_resource)->Signal(value);
@@ -103,7 +111,9 @@ namespace spartan
     bool RHI_SyncPrimitive::IsSignaled()
     {
         if (!m_rhi_resource)
+        {
             return true;
+        }
 
         return static_cast<ID3D12Fence*>(m_rhi_resource)->GetCompletedValue() >= m_value;
     }

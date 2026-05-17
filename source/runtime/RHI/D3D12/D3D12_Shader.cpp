@@ -105,7 +105,9 @@ namespace spartan
         {
             // skip samplers, both backends bind them bindlessly
             if (bind_desc.Type == D3D_SIT_SAMPLER)
+            {
                 return;
+            }
 
             RHI_Descriptor_Type descriptor_type = RHI_Descriptor_Type::Max;
             RHI_Image_Layout layout             = RHI_Image_Layout::Max;
@@ -123,7 +125,9 @@ namespace spartan
                         {
                             D3D12_SHADER_BUFFER_DESC cb_desc = {};
                             if (SUCCEEDED(cb->GetDesc(&cb_desc)))
+                            {
                                 struct_size = cb_desc.Size;
+                            }
                         }
                     }
                     shifted_slot += rhi_shader_register_shift_b;
@@ -191,7 +195,9 @@ namespace spartan
             }
 
             if (descriptor_type == RHI_Descriptor_Type::Max)
+            {
                 return;
+            }
 
             // bindcount semantics, 0 means unbounded, 1 means single, >1 means fixed array
             bool is_array         = bind_desc.BindCount != 1;
@@ -261,7 +267,9 @@ namespace spartan
             {
                 ID3D12FunctionReflection* fn = lib_reflection->GetFunctionByIndex(static_cast<INT>(f));
                 if (!fn)
+                {
                     continue;
+                }
 
                 D3D12_FUNCTION_DESC fn_desc = {};
                 fn->GetDesc(&fn_desc);
@@ -270,7 +278,9 @@ namespace spartan
                 {
                     D3D12_SHADER_INPUT_BIND_DESC bind_desc = {};
                     if (FAILED(fn->GetResourceBindingDesc(i, &bind_desc)))
+                    {
                         continue;
+                    }
 
                     emit_descriptor(bind_desc, nullptr, shader_type, m_descriptors);
                 }
@@ -294,7 +304,9 @@ namespace spartan
             {
                 D3D12_SHADER_INPUT_BIND_DESC bind_desc = {};
                 if (FAILED(shader_reflection->GetResourceBindingDesc(i, &bind_desc)))
+                {
                     continue;
+                }
 
                 emit_descriptor(bind_desc, shader_reflection, shader_type, m_descriptors);
             }

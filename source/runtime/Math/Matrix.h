@@ -122,7 +122,9 @@ namespace spartan::math
         {
             const Vector3 scale = GetScale();
             if (scale.x == 0.0f || scale.y == 0.0f || scale.z == 0.0f)
+            {
                 return Quaternion::Identity;
+            }
         
             Matrix normalized;
         #if defined(__AVX2__)
@@ -385,7 +387,9 @@ namespace spartan::math
 
             float det = i00 * matrix.m00 + i10 * matrix.m01 + i20 * matrix.m02 + i30 * matrix.m03;
             if (std::isnan(det))
+            {
                 return Matrix::Identity;
+            }
 
             const float inv_det = 1.0f / det;
 
@@ -633,7 +637,9 @@ namespace spartan::math
             for (unsigned i = 0; i < 16; ++i)
             {
                 if (data_left[i] != data_right[i])
+                {
                     return false;
+                }
             }
 
             return true;
@@ -677,7 +683,9 @@ namespace spartan::math
             for (unsigned i = 0; i < 16; ++i)
             {
                 if (!approximate_equals(data_left[i], data_right[i]))
+                {
                     return false;
+                }
             }
 
             return true;

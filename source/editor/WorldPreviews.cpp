@@ -163,7 +163,9 @@ namespace
     spartan::RHI_Texture* get_texture(const string& preview_path)
     {
         if (!spartan::FileSystem::Exists(preview_path))
+        {
             return nullptr;
+        }
 
         auto invalidate_preview = [&](const string& path)
         {
@@ -197,14 +199,18 @@ namespace
             }
 
             if (texture->GetResourceState() != spartan::ResourceState::PreparedForGpu || texture->GetRhiResource() == nullptr)
+            {
                 return nullptr;
+            }
 
             return texture.get();
         }
 
         shared_ptr<spartan::RHI_Texture> texture = make_shared<spartan::RHI_Texture>(preview_path);
         if (!texture)
+        {
             return nullptr;
+        }
 
         if (texture->GetWidth() == 0 || texture->GetHeight() == 0)
         {
@@ -214,7 +220,9 @@ namespace
 
         preview_textures[preview_path] = texture;
         if (texture->GetResourceState() != spartan::ResourceState::PreparedForGpu || texture->GetRhiResource() == nullptr)
+        {
             return nullptr;
+        }
 
         return texture.get();
     }
@@ -224,10 +232,14 @@ namespace
         clear_request();
 
         if (spartan::FileSystem::Exists(preview_path))
+        {
             return;
+        }
 
         if (!ensure_preview_directory_exists())
+        {
             return;
+        }
 
         preview_request.type                  = type;
         preview_request.preview_path          = preview_path;
@@ -242,7 +254,9 @@ namespace
 void WorldPreviews::Tick()
 {
     if (preview_request.type == preview_request_type::none)
+    {
         return;
+    }
 
     if (spartan::FileSystem::Exists(preview_request.preview_path))
     {
@@ -276,7 +290,9 @@ void WorldPreviews::Tick()
     if (preview_request.waiting_for_load_finish)
     {
         if (is_loading)
+        {
             return;
+        }
 
         preview_request.waiting_for_load_finish = false;
         if (!is_current_request_world_loaded())
@@ -289,7 +305,9 @@ void WorldPreviews::Tick()
     }
 
     if (preview_request.capture_delay_remaining_sec <= 0.0)
+    {
         return;
+    }
 
     if (is_loading)
     {
@@ -300,7 +318,9 @@ void WorldPreviews::Tick()
 
     preview_request.capture_delay_remaining_sec -= spartan::Timer::GetDeltaTimeSec();
     if (preview_request.capture_delay_remaining_sec > 0.0)
+    {
         return;
+    }
 
     if (!is_current_request_world_loaded())
     {

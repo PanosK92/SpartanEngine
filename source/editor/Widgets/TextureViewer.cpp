@@ -97,7 +97,9 @@ void TextureViewer::OnVisible()
 void TextureViewer::OnTickVisible()
 {
     if (render_targets.empty())
+    {
         return;
+    }
 
     // clamp texture index to valid range (textures may have been deallocated)
     if (m_texture_index >= render_targets.size())

@@ -37,9 +37,7 @@ namespace spartan
     {
         // fetch
         optional<shared_ptr<Command>> optional_undo_command = m_undo_buffer.Pop();
-        if (!optional_undo_command.has_value()) {
-            return;
-        }
+        if (!optional_undo_command.has_value()) return;
         shared_ptr<Command> undo_command = optional_undo_command.value();
 
         // undo
@@ -53,9 +51,7 @@ namespace spartan
     {
         // fetch
         optional<shared_ptr<Command>> optional_redo_command = m_redo_buffer.Pop();
-        if (!optional_redo_command.has_value()) {
-            return;
-        }
+        if (!optional_redo_command.has_value()) return;
         shared_ptr<Command> redo_command = optional_redo_command.value();
 
         // redo

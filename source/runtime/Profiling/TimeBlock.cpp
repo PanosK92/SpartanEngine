@@ -98,7 +98,9 @@ namespace spartan
     void TimeBlock::ResolveGpuTimestamps(uint64_t global_reference_tick, float timestamp_period, uint64_t end_tick_override /*= 0*/)
     {
         if (m_type != TimeBlockType::Gpu || !m_cmd_list)
+        {
             return;
+        }
 
         uint64_t start_tick = m_cmd_list->GetTimestampRawTick(m_timestamp_index_start);
         uint64_t end_tick   = end_tick_override != 0 ? end_tick_override : m_cmd_list->GetTimestampRawTick(m_timestamp_index_end);
@@ -124,7 +126,9 @@ namespace spartan
     void TimeBlock::ResolveGpuDuration(uint64_t end_tick_override /*= 0*/)
     {
         if (m_type != TimeBlockType::Gpu || !m_cmd_list)
+        {
             return;
+        }
 
         uint64_t start_tick = m_cmd_list->GetTimestampRawTick(m_timestamp_index_start);
         uint64_t end_tick   = end_tick_override != 0 ? end_tick_override : m_cmd_list->GetTimestampRawTick(m_timestamp_index_end);

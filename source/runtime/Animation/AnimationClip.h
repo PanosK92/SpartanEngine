@@ -21,17 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
-#include "../../Math/Quaternion.h"
+//= INCLUDES ==================
+#include "../Math/Quaternion.h"
 #include <cstdint>
 #include <vector>
-//===============================
+//=============================
 
 namespace spartan
 {
     struct AnimChannel
     {
-        uint32_t bone_index = 0;
+        uint32_t bone_index   = 0;
         uint32_t first_sample = 0;
         uint32_t sample_count = 0;
     };

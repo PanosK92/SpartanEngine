@@ -246,7 +246,9 @@ namespace spartan
 
         // skip if backing allocation failed (out of device memory)
         if (!m_rhi_resource)
+        {
             return;
+        }
 
         if (m_data_gpu)
         {
@@ -315,7 +317,9 @@ namespace spartan
     void RHI_Buffer::Update(RHI_CommandList* cmd_list, void* data_cpu, const uint32_t size)
     {
         if (!data_cpu || size == 0)
+        {
             return;
+        }
 
         // constant buffers are ring-allocated by advancing m_offset by the aligned stride per update
         if (m_type == RHI_Buffer_Type::Constant)
@@ -354,16 +358,22 @@ namespace spartan
         SP_ASSERT(m_data_gpu);
 
         if (!cmd_list)
+        {
             return;
+        }
 
         // dxr exposes shader identifiers via ID3D12StateObjectProperties, query them from the bound state object
         ID3D12StateObject* state_object = static_cast<ID3D12StateObject*>(cmd_list->GetRhiResourcePipeline());
         if (!state_object)
+        {
             return;
+        }
 
         Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> properties;
         if (FAILED(state_object->QueryInterface(IID_PPV_ARGS(&properties))))
+        {
             return;
+        }
 
         uint8_t* dst = static_cast<uint8_t*>(m_data_gpu);
         memset(dst, 0, m_object_size);
@@ -374,17 +384,35 @@ namespace spartan
         void* miss_id   = properties->GetShaderIdentifier(L"Miss");
         void* hit_id    = properties->GetShaderIdentifier(L"HitGroup");
 
-        if (raygen_id) memcpy(dst + m_raygen_offset, raygen_id, handle_size);
-        if (miss_id)   memcpy(dst + m_miss_offset,   miss_id,   handle_size);
-        if (hit_id)    memcpy(dst + m_hit_offset,    hit_id,    handle_size);
+        if (raygen_id)
+        {
+            memcpy(dst + m_raygen_offset, raygen_id, handle_size);
+        }
+        if (miss_id)
+        {
+            memcpy(dst + m_miss_offset,   miss_id,   handle_size);
+        }
+        if (hit_id)
+        {
+            memcpy(dst + m_hit_offset,    hit_id,    handle_size);
+        }
     }
 
     RHI_StridedDeviceAddressRegion RHI_Buffer::GetRegion(const RHI_Shader_Type group_type, const uint32_t stride_extra) const
     {
         uint64_t offset = 0;
-        if (group_type == RHI_Shader_Type::RayGeneration) offset = m_raygen_offset;
-        else if (group_type == RHI_Shader_Type::RayMiss)  offset = m_miss_offset;
-        else if (group_type == RHI_Shader_Type::RayHit)   offset = m_hit_offset;
+        if (group_type == RHI_Shader_Type::RayGeneration)
+        {
+            offset = m_raygen_offset;
+        }
+        else if (group_type == RHI_Shader_Type::RayMiss)
+        {
+            offset = m_miss_offset;
+        }
+        else if (group_type == RHI_Shader_Type::RayHit)
+        {
+            offset = m_hit_offset;
+        }
 
         RHI_StridedDeviceAddressRegion region = {};
         region.device_address                 = m_device_address + offset;
