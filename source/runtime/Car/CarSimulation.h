@@ -197,19 +197,50 @@ namespace car
         cfg.track_rear  = wheel_offsets[rear_right].x  - wheel_offsets[rear_left].x;
     }
 
+    // overlay only handling params, leaving the chassis and suspension geometry at engine defaults so the body does not spawn under the ground
+    inline void apply_preset_geometry(const car_preset& spec)
+    {
+        if (spec.mass        > 0.0f)
+        {
+            cfg.mass = spec.mass;
+        }
+        if (spec.wheelbase   > 0.0f)
+        {
+            cfg.wheelbase = spec.wheelbase;
+        }
+        if (spec.track_front > 0.0f)
+        {
+            cfg.track_front = spec.track_front;
+        }
+        if (spec.track_rear  > 0.0f)
+        {
+            cfg.track_rear = spec.track_rear;
+        }
+    }
+
     inline void compute_constants()
     {
-        float front_z = cfg.length * 0.35f;
-        float rear_z  = -cfg.length * 0.35f;
-        float half_w  = cfg.width * 0.5f - (cfg.front_wheel_width + cfg.rear_wheel_width) * 0.25f;
+        // floors prevent zero geometry from collapsing wheels to chassis center and feeding nan forces to physx
+        float wb_safe = PxMax(cfg.wheelbase,   0.5f);
+        float tf_safe = PxMax(cfg.track_front, 0.5f);
+        float tr_safe = PxMax(cfg.track_rear,  0.5f);
+
+        float front_z = wb_safe * 0.5f;
+        float rear_z  = -wb_safe * 0.5f;
+        float half_tf = tf_safe * 0.5f;
+        float half_tr = tr_safe * 0.5f;
         float y       = -cfg.suspension_height;
 
-        wheel_offsets[front_left]  = PxVec3(-half_w, y, front_z);
-        wheel_offsets[front_right] = PxVec3( half_w, y, front_z);
-        wheel_offsets[rear_left]   = PxVec3(-half_w, y, rear_z);
-        wheel_offsets[rear_right]  = PxVec3( half_w, y, rear_z);
+        wheel_offsets[front_left]  = PxVec3(-half_tf, y, front_z);
+        wheel_offsets[front_right] = PxVec3( half_tf, y, front_z);
+        wheel_offsets[rear_left]   = PxVec3(-half_tr, y, rear_z);
+        wheel_offsets[rear_right]  = PxVec3( half_tr, y, rear_z);
 
         refresh_geometry_cache();
+
+        // a zero or nan wheel mass collapses wheel_moi to zero and every wheel torque integration
+        // becomes a division by zero, which is the actual upstream source of nan wheel rotation
+        float wheel_mass_safe = (std::isfinite(cfg.wheel_mass) && cfg.wheel_mass > 0.0f) ? cfg.wheel_mass : 20.0f;
 
         float wdf = get_weight_distribution_front();
         float axle_mass[2] = { cfg.mass * wdf * 0.5f, cfg.mass * (1.0f - wdf) * 0.5f };
@@ -221,8 +252,13 @@ namespace car
             float mass = axle_mass[axle];
             float omega = 2.0f * PxPi * freq[axle];
 
-            float r = cfg.wheel_radius_for(i);
-            wheel_moi[i]        = 0.7f * cfg.wheel_mass * r * r;
+            // same story as wheel_mass, a zero or nan radius bricks wheel_moi which then bricks the
+            // semi implicit euler step in apply_tire_forces
+            float r_raw  = cfg.wheel_radius_for(i);
+            float r      = (std::isfinite(r_raw) && r_raw > 0.0f) ? r_raw : 0.34f;
+            float r_safe = PxMax(r, 0.05f);
+
+            wheel_moi[i]        = 0.7f * wheel_mass_safe * r_safe * r_safe;
             spring_stiffness[i] = mass * omega * omega;
             float dr = is_front(i) ? tuning::spec.front_damping_ratio : tuning::spec.rear_damping_ratio;
             spring_damping[i]   = 2.0f * dr * sqrtf(spring_stiffness[i] * mass);
@@ -234,6 +270,55 @@ namespace car
         if (body)             { body->release();             body = nullptr; }
         if (material)         { material->release();         material = nullptr; }
         if (wheel_sweep_mesh) { wheel_sweep_mesh->release(); wheel_sweep_mesh = nullptr; }
+    }
+
+    // sweep mesh must match the actual visual wheel radius, otherwise sweep distance overshoots
+    // suspension_travel, target_compression clamps to zero and the body falls through onto the chassis
+    inline void rebuild_wheel_sweep_mesh()
+    {
+        if (wheel_sweep_mesh)
+        {
+            wheel_sweep_mesh->release();
+            wheel_sweep_mesh = nullptr;
+        }
+
+        const int segments = 16;
+        std::vector<PxVec3> cyl_verts;
+        cyl_verts.reserve(segments * 2);
+        float sweep_r = PxMax(PxMax(cfg.front_wheel_radius, cfg.rear_wheel_radius), 0.05f);
+        float sweep_w = PxMax(PxMax(cfg.front_wheel_width,  cfg.rear_wheel_width),  0.05f);
+        float half_w  = sweep_w * 0.5f;
+        for (int s = 0; s < segments; s++)
+        {
+            float angle = (2.0f * PxPi * s) / segments;
+            float cy = cosf(angle) * sweep_r;
+            float cz = sinf(angle) * sweep_r;
+            cyl_verts.push_back(PxVec3(-half_w, cy, cz));
+            cyl_verts.push_back(PxVec3( half_w, cy, cz));
+        }
+
+        PxTolerancesScale px_scale;
+        px_scale.length = 1.0f;
+        px_scale.speed  = 9.81f;
+        PxCookingParams cook_params(px_scale);
+        cook_params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
+
+        PxConvexMeshDesc desc;
+        desc.points.count  = static_cast<PxU32>(cyl_verts.size());
+        desc.points.stride = sizeof(PxVec3);
+        desc.points.data   = cyl_verts.data();
+        desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
+
+        PxConvexMeshCookingResult::Enum cook_result;
+        wheel_sweep_mesh = PxCreateConvexMesh(cook_params, desc, *PxGetStandaloneInsertionCallback(), &cook_result);
+        if (!wheel_sweep_mesh || cook_result != PxConvexMeshCookingResult::eSUCCESS)
+        {
+            SP_LOG_WARNING("failed to create wheel sweep cylinder mesh (r=%.3f, w=%.3f)", sweep_r, sweep_w);
+        }
+        else
+        {
+            SP_LOG_INFO("wheel sweep cylinder mesh cooked: r=%.3f, w=%.3f", sweep_r, sweep_w);
+        }
     }
 
     struct setup_params
@@ -253,6 +338,9 @@ namespace car
         }
 
         cfg = params.car_config;
+        // overlay the active preset's physical parameters before deriving anything,
+        // so the body, springs and inertias all use this car's real numbers
+        apply_preset_geometry(tuning::spec);
         compute_constants();
 
         for (int i = 0; i < wheel_count; i++)
@@ -288,12 +376,14 @@ namespace car
             return false;
         }
 
+        // spawn at the spring equilibrium height instead of above it, plus a small clearance so
+        // the wheel sweep cylinder doesn't start already overlapping the ground on the first tick
         float front_mass_per_wheel = cfg.mass * get_weight_distribution_front() * 0.5f;
         float front_omega = 2.0f * PxPi * tuning::spec.front_spring_freq;
         float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
         float expected_sag = PxClamp((front_mass_per_wheel * 9.81f) / front_stiffness, 0.0f, cfg.suspension_travel * 0.8f);
         float avg_wheel_r = (cfg.front_wheel_radius + cfg.rear_wheel_radius) * 0.5f;
-        float spawn_y = avg_wheel_r + cfg.suspension_height + expected_sag;
+        float spawn_y = avg_wheel_r + cfg.suspension_height - expected_sag + 0.02f;
 
         body = params.physics->createRigidDynamic(PxTransform(PxVec3(0, spawn_y, 0)));
         if (!body)
@@ -342,43 +432,7 @@ namespace car
             compute_aero_from_shape(params.vertices);
         }
 
-        // cook a convex cylinder for wheel sweep queries
-        if (!wheel_sweep_mesh)
-        {
-            const int segments = 16;
-            std::vector<PxVec3> cyl_verts;
-            cyl_verts.reserve(segments * 2);
-            float sweep_r = PxMax(cfg.front_wheel_radius, cfg.rear_wheel_radius);
-            float sweep_w = PxMax(cfg.front_wheel_width, cfg.rear_wheel_width);
-            float half_w = sweep_w * 0.5f;
-            for (int s = 0; s < segments; s++)
-            {
-                float angle = (2.0f * PxPi * s) / segments;
-                float cy = cosf(angle) * sweep_r;
-                float cz = sinf(angle) * sweep_r;
-                cyl_verts.push_back(PxVec3(-half_w, cy, cz));
-                cyl_verts.push_back(PxVec3( half_w, cy, cz));
-            }
-
-            PxTolerancesScale px_scale;
-            px_scale.length = 1.0f;
-            px_scale.speed  = 9.81f;
-            PxCookingParams cook_params(px_scale);
-            cook_params.convexMeshCookingType = PxConvexMeshCookingType::eQUICKHULL;
-
-            PxConvexMeshDesc desc;
-            desc.points.count  = static_cast<PxU32>(cyl_verts.size());
-            desc.points.stride = sizeof(PxVec3);
-            desc.points.data   = cyl_verts.data();
-            desc.flags         = PxConvexFlag::eCOMPUTE_CONVEX;
-
-            PxConvexMeshCookingResult::Enum cook_result;
-            wheel_sweep_mesh = PxCreateConvexMesh(cook_params, desc, *PxGetStandaloneInsertionCallback(), &cook_result);
-            if (!wheel_sweep_mesh || cook_result != PxConvexMeshCookingResult::eSUCCESS)
-            {
-                SP_LOG_WARNING("failed to create wheel sweep cylinder mesh");
-            }
-        }
+        rebuild_wheel_sweep_mesh();
 
         SP_LOG_INFO("car setup complete: mass=%.0f kg", cfg.mass);
         return true;
@@ -434,6 +488,25 @@ namespace car
         PxRigidBodyExt::setMassAndUpdateInertia(*body, cfg.mass, &com);
 
         SP_LOG_INFO("car center of mass set to (%.2f, %.2f, %.2f)", com.x, com.y, com.z);
+    }
+
+    // swap the active car preset at runtime
+    // this is the real entry point, the forward declaration in CarState.h points here.
+    // it has to live in CarSimulation.h because it touches the physics body and recomputes geometry.
+    inline void load_car(const car_preset& new_spec)
+    {
+        tuning::spec = new_spec;
+
+        apply_preset_geometry(new_spec);
+        compute_constants();
+
+        // also push the new wheel offsets out so the next sync from visuals respects them
+        update_mass_properties();
+
+        SP_LOG_INFO("loaded car preset: %s (mass=%.0f kg, wheelbase=%.3f m, track f/r=%.3f/%.3f m, drivetrain=%s)",
+            new_spec.name ? new_spec.name : "?",
+            cfg.mass, cfg.wheelbase, cfg.track_front, cfg.track_rear,
+            new_spec.drivetrain_type == 0 ? "rwd" : new_spec.drivetrain_type == 1 ? "fwd" : "awd");
     }
 
     inline void set_center_of_mass(float x, float y, float z)
@@ -495,6 +568,46 @@ namespace car
         if (!body)
         {
             return;
+        }
+
+        // heal any nan that crept into per wheel state on a previous tick before it gets
+        // multiplied into a fresh batch of forces and torques and re-poisons the rigid body
+        for (int i = 0; i < wheel_count; i++)
+        {
+            if (sanitize_wheel_state(i))
+            {
+                SP_LOG_WARNING("car::tick: scrubbed non finite state from wheel %d before tick", i);
+            }
+        }
+
+        // a pose or velocity with nan would feed nan into every per wheel calculation this tick.
+        // reset the body cleanly if that ever happens so the sim recovers instead of looping warnings
+        {
+            PxTransform pose = body->getGlobalPose();
+            PxVec3 lin = body->getLinearVelocity();
+            PxVec3 ang = body->getAngularVelocity();
+            bool pose_bad = !is_finite_vec(pose.p) || !std::isfinite(pose.q.x) || !std::isfinite(pose.q.y) || !std::isfinite(pose.q.z) || !std::isfinite(pose.q.w);
+            bool lin_bad  = !is_finite_vec(lin);
+            bool ang_bad  = !is_finite_vec(ang);
+            if (pose_bad)
+            {
+                SP_LOG_WARNING("car::tick: body pose is non finite, resetting to identity");
+                body->setGlobalPose(PxTransform(PxVec3(0, 1.0f, 0)));
+            }
+            if (lin_bad)
+            {
+                SP_LOG_WARNING("car::tick: body linear velocity is non finite, zeroing");
+                body->setLinearVelocity(PxVec3(0));
+            }
+            if (ang_bad)
+            {
+                SP_LOG_WARNING("car::tick: body angular velocity is non finite, zeroing");
+                body->setAngularVelocity(PxVec3(0));
+            }
+            if (!std::isfinite(prev_velocity.x) || !std::isfinite(prev_velocity.y) || !std::isfinite(prev_velocity.z))
+            {
+                prev_velocity = PxVec3(0);
+            }
         }
 
         // caller (physics::tickvehicle) already runs this at a fixed sub-step, no clamp needed
@@ -560,12 +673,12 @@ namespace car
             float yaw_rate      = body->getAngularVelocity().dot(up);
             float speed_scale   = PxClamp(speed_kmh / 60.0f, 0.0f, 1.0f);
             float yaw_damp_torque = -yaw_rate * tuning::spec.yaw_damping * speed_scale;
-            body->addTorque(up * yaw_damp_torque, PxForceMode::eFORCE);
+            safe_add_torque(body, up * yaw_damp_torque);
         }
 
         apply_aero_and_resistance();
 
-        body->addForce(PxVec3(0, -9.81f * cfg.mass, 0), PxForceMode::eFORCE);
+        safe_add_force(body, PxVec3(0, -9.81f * cfg.mass, 0));
 
 
         // --- telemetry ---
@@ -592,6 +705,26 @@ namespace car
     inline float get_throttle()         { return input.throttle; }
     inline float get_brake()            { return input.brake; }
     inline float get_steering()         { return input.steering; }
+
+    // wheel sim setters so the visual layer can heal back nan rotation or angular velocity
+    // without these the renderer clamps the display value to zero but the underlying sim
+    // state stays nan and keeps re-poisoning every following tick
+    inline void set_wheel_rotation(int i, float v)
+    {
+        if (is_valid_wheel(i))
+        {
+            wheels[i].rotation = std::isfinite(v) ? v : 0.0f;
+        }
+    }
+
+    inline void set_wheel_angular_velocity(int i, float v)
+    {
+        if (is_valid_wheel(i))
+        {
+            wheels[i].angular_velocity = std::isfinite(v) ? v : 0.0f;
+        }
+    }
+
     inline float get_handbrake()        { return input.handbrake; }
     inline float get_suspension_travel(){ return cfg.suspension_travel; }
 

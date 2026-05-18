@@ -37,6 +37,19 @@ namespace car
 
         const char* name;
 
+        // chassis (physical dimensions and mass)
+        // these drive the simulation geometry, weight transfer, inertia and the
+        // body itself so swapping presets actually changes the car's physical footprint
+        float mass;                  // kg, curb weight with fluids
+        float length;                // m, overall vehicle length
+        float width;                 // m, overall vehicle width (no mirrors)
+        float height;                // m, overall vehicle height
+        float wheelbase;             // m, axle to axle distance
+        float track_front;           // m, distance between front wheel centers
+        float track_rear;            // m, distance between rear wheel centers
+        float suspension_height;     // m, ride height of chassis bottom above wheel center
+        float suspension_travel;     // m, available compression travel per wheel
+
         // engine
         float engine_idle_rpm;
         float engine_redline_rpm;
@@ -242,14 +255,27 @@ namespace car
 
     //= car presets ================================================================
 
-    // ferrari laferrari - 6.3l v12 hybrid, 963 hp combined, 7-speed dct, mid-engine rwd
+    // ferrari laferrari (2013-2018) - 6.262l v12 + hy-kers, 963 ps combined,
+    // 7-speed dct, mid-rear longitudinal v12, rwd
     struct laferrari_preset : car_preset
     {
         laferrari_preset()
         {
             name = "Ferrari LaFerrari";
 
-            // engine - 6.3l v12 + hy-kers electric motor
+            // chassis - carbon monocoque, 41/59 f/r curb weight distribution
+            mass              = 1430.0f;  // curb weight with fluids (dry is 1255 kg)
+            length            = 4.702f;
+            width             = 1.992f;
+            height            = 1.116f;
+            wheelbase         = 2.650f;
+            track_front       = 1.656f;
+            track_rear        = 1.640f;
+            suspension_height = 0.30f;
+            suspension_travel = 0.10f;
+
+            // engine - 6.262l f140fe v12, 800 ps @ 9000 rpm, plus hy-kers electric motor
+            // peak torque is the v12 alone, kers adds electric torque on top (not modeled here)
             engine_idle_rpm         = 1000.0f;
             engine_redline_rpm      = 9250.0f;
             engine_max_rpm          = 9500.0f;
@@ -261,26 +287,26 @@ namespace car
             downshift_blip_amount   = 0.35f;
             downshift_blip_duration = 0.15f;
 
-            // gearbox - 7-speed dual-clutch (f1 derived)
-            gear_ratios[0]          = -2.79f;  // reverse
+            // gearbox - 7-speed getrag dual-clutch (f1-dct), rear-mounted
+            gear_ratios[0]          = -3.230f; // reverse
             gear_ratios[1]          =  0.0f;   // neutral
-            gear_ratios[2]          =  3.08f;  // 1st
-            gear_ratios[3]          =  2.19f;  // 2nd
-            gear_ratios[4]          =  1.63f;  // 3rd
-            gear_ratios[5]          =  1.29f;  // 4th
-            gear_ratios[6]          =  1.03f;  // 5th
-            gear_ratios[7]          =  0.84f;  // 6th
-            gear_ratios[8]          =  0.69f;  // 7th
+            gear_ratios[2]          =  3.083f; // 1st
+            gear_ratios[3]          =  2.190f; // 2nd
+            gear_ratios[4]          =  1.633f; // 3rd
+            gear_ratios[5]          =  1.290f; // 4th
+            gear_ratios[6]          =  1.029f; // 5th
+            gear_ratios[7]          =  0.846f; // 6th
+            gear_ratios[8]          =  0.691f; // 7th
             gear_count              = 9;
-            final_drive             = 4.44f;
-            shift_up_rpm            = 8500.0f;
+            final_drive             = 4.443f;
+            shift_up_rpm            = 8800.0f;
             shift_down_rpm          = 3500.0f;
             shift_time              = 0.08f;
             clutch_engagement_rate  = 20.0f;
-            drivetrain_efficiency   = 0.88f;
+            drivetrain_efficiency   = 0.92f;
             manual_transmission     = false;
 
-            // shift speed thresholds calibrated for final_drive 4.44
+            // shift speed thresholds calibrated for final_drive 4.443 and laferrari gear set
             float up_base[]  = { 0, 0, 60, 85, 115, 150, 190, 230, 0, 0, 0 };
             float up_sport[] = { 0, 0, 80, 115, 155, 195, 245, 300, 0, 0, 0 };
             float down[]     = { 0, 0, 0, 30, 55, 80, 110, 150, 200, 0, 0 };
@@ -291,9 +317,9 @@ namespace car
                 downshift_speeds[i]    = down[i];
             }
 
-            // brakes - carbon-ceramic
+            // brakes - brembo ccm3 carbon-ceramic, 398mm front / 380mm rear
             brake_force            = 12000.0f;
-            brake_bias_front       = 0.65f;
+            brake_bias_front       = 0.62f;
             reverse_power_ratio    = 0.5f;
             brake_ambient_temp     = 30.0f;
             brake_optimal_temp     = 400.0f;
@@ -369,12 +395,13 @@ namespace car
             front_roll_center_height = 0.04f;
             rear_roll_center_height  = 0.06f;
 
-            // aerodynamics - active aero flaps, flat underbody
+            // aerodynamics - active flaps front/rear, flat underbody with diffuser
+            // claimed downforce ~360 kg at 200 km/h, max ~3:1 downforce/drag
             rolling_resistance       = 0.011f;
             drag_coeff               = 0.35f;
-            frontal_area             = 2.2f;
-            lift_coeff_front         = -0.3f;
-            lift_coeff_rear          = -0.4f;
+            frontal_area             = 1.98f;
+            lift_coeff_front         = -0.30f;
+            lift_coeff_rear          = -0.45f;
             drs_enabled              = false;
             drs_rear_cl_factor       = 0.3f;
             side_area                = 4.0f;
@@ -391,10 +418,11 @@ namespace car
             aero_center_front_z      = 0.0f;
             aero_center_rear_z       = 0.0f;
 
-            // center of mass - mid-rear v12, battery pack in floor, very low cg
+            // center of mass - mid-rear v12, kers battery pack low in floor, very low cg
+            // z is derived from 41/59 distribution over a 2.65 m wheelbase
             center_of_mass_x = 0.0f;
             center_of_mass_y = -0.15f;
-            center_of_mass_z = -0.24f;
+            center_of_mass_z = -0.238f;
 
             // steering
             max_steer_angle            = 0.65f;
@@ -415,14 +443,15 @@ namespace car
             airborne_wheel_decay     = 0.99f;
             bearing_friction         = 0.2f;
             ground_match_rate        = 8.0f;
+            // electronic parking brake only, no traditional handbrake lever
             handbrake_sliding_factor = 0.75f;
-            handbrake_torque         = 5000.0f;
+            handbrake_torque         = 2500.0f;
 
             // drivetrain layout - rear wheel drive
             drivetrain_type      = 0;
             torque_split_front   = 0.0f;
 
-            // differential - e-diff (electronic lsd)
+            // differential - e-diff (electronically controlled lsd, tied to f1-trac)
             lsd_preload          = 150.0f;
             lsd_lock_ratio_accel = 0.5f;
             lsd_lock_ratio_decel = 0.3f;
@@ -462,48 +491,60 @@ namespace car
         }
     };
 
-    // porsche 911 gt3 (992) - 4.0l flat-6, 450 Nm, 7-speed pdk, rear-engine rwd
+    // porsche 911 gt3 (992, 2022+) - 4.0l naturally-aspirated flat-6,
+    // 510 ps @ 8400 rpm, 470 nm @ 6100 rpm, 7-speed pdk, rear-engine rwd
     struct gt3_992_preset : car_preset
     {
         gt3_992_preset()
         {
-            name = "Porsche 911 GT3 992";
+            name = "Porsche 911 GT3 (992)";
 
-            // engine - 4.0l naturally aspirated flat-6, 510 ps
-            engine_idle_rpm         = 950.0f;
+            // chassis - 39/61 f/r curb weight distribution (pdk)
+            mass              = 1435.0f;
+            length            = 4.573f;
+            width             = 1.852f;
+            height            = 1.279f;
+            wheelbase         = 2.457f;
+            track_front       = 1.575f;
+            track_rear        = 1.558f;
+            suspension_height = 0.28f;
+            suspension_travel = 0.10f;
+
+            // engine - 4.0l flat-6 boxer naturally aspirated, peak power 510 ps at 8400 rpm
+            engine_idle_rpm         = 800.0f;
             engine_redline_rpm      = 9000.0f;
             engine_max_rpm          = 9200.0f;
-            engine_peak_torque      = 450.0f;
-            engine_peak_torque_rpm  = 6250.0f;
+            engine_peak_torque      = 470.0f;
+            engine_peak_torque_rpm  = 6100.0f;
             engine_inertia          = 0.20f;
             engine_friction         = 0.02f;
             engine_rpm_smoothing    = 6.0f;
             downshift_blip_amount   = 0.40f;
             downshift_blip_duration = 0.12f;
 
-            // gearbox - 7-speed pdk
-            gear_ratios[0]          = -3.42f;  // reverse
+            // gearbox - 7-speed pdk dual-clutch
+            gear_ratios[0]          = -3.550f; // reverse
             gear_ratios[1]          =  0.0f;   // neutral
-            gear_ratios[2]          =  3.75f;  // 1st
-            gear_ratios[3]          =  2.38f;  // 2nd
-            gear_ratios[4]          =  1.72f;  // 3rd
-            gear_ratios[5]          =  1.34f;  // 4th
-            gear_ratios[6]          =  1.11f;  // 5th
-            gear_ratios[7]          =  0.96f;  // 6th
-            gear_ratios[8]          =  0.84f;  // 7th
+            gear_ratios[2]          =  3.910f; // 1st
+            gear_ratios[3]          =  2.290f; // 2nd
+            gear_ratios[4]          =  1.580f; // 3rd
+            gear_ratios[5]          =  1.190f; // 4th
+            gear_ratios[6]          =  0.970f; // 5th
+            gear_ratios[7]          =  0.830f; // 6th
+            gear_ratios[8]          =  0.680f; // 7th
             gear_count              = 9;
-            final_drive             = 4.54f;
-            shift_up_rpm            = 8500.0f;
+            final_drive             = 3.970f;
+            shift_up_rpm            = 8800.0f;
             shift_down_rpm          = 3500.0f;
             shift_time              = 0.08f;
             clutch_engagement_rate  = 20.0f;
-            drivetrain_efficiency   = 0.90f;
+            drivetrain_efficiency   = 0.92f;
             manual_transmission     = false;
 
-            // shift speed thresholds recalibrated for final_drive 4.54
-            float up_base[]  = { 0, 0, 45, 70, 100, 130, 160, 190, 0, 0, 0 };
-            float up_sport[] = { 0, 0, 60, 95, 130, 170, 205, 250, 0, 0, 0 };
-            float down[]     = { 0, 0, 0, 20, 40, 65, 95, 125, 160, 0, 0 };
+            // shift speed thresholds recalibrated for final_drive 3.97 and gt3 ratios
+            float up_base[]  = { 0, 0, 50, 80, 115, 155, 195, 240, 0, 0, 0 };
+            float up_sport[] = { 0, 0, 70, 110, 150, 195, 245, 310, 0, 0, 0 };
+            float down[]     = { 0, 0, 0, 25, 50, 80, 115, 155, 200, 0, 0 };
             for (int i = 0; i < max_gears; i++)
             {
                 upshift_speed_base[i]  = up_base[i];
@@ -511,7 +552,7 @@ namespace car
                 downshift_speeds[i]    = down[i];
             }
 
-            // brakes - pccb carbon-ceramic
+            // brakes - 408mm front / 380mm rear cast iron (pccb optional, similar response)
             brake_force            = 10000.0f;
             brake_bias_front       = 0.62f;
             reverse_power_ratio    = 0.5f;
@@ -589,12 +630,13 @@ namespace car
             front_roll_center_height = 0.03f;
             rear_roll_center_height  = 0.08f;
 
-            // aerodynamics - gt wing, front splitter
+            // aerodynamics - swan-neck gooseneck rear wing, front splitter and diffuser
+            // claimed 385 kg downforce at 200 km/h in performance setting
             rolling_resistance       = 0.012f;
             drag_coeff               = 0.39f;
-            frontal_area             = 2.1f;
+            frontal_area             = 2.00f;
             lift_coeff_front         = -0.35f;
-            lift_coeff_rear          = -0.6f;
+            lift_coeff_rear          = -0.65f;
             drs_enabled              = false;
             drs_rear_cl_factor       = 0.3f;
             side_area                = 3.8f;
@@ -611,10 +653,11 @@ namespace car
             aero_center_front_z      = 0.0f;
             aero_center_rear_z       = 0.0f;
 
-            // center of mass - rear-hung flat-6 behind rear axle
+            // center of mass - flat-6 hung behind the rear axle (classic 911 layout)
+            // z derived from 39/61 distribution over a 2.457 m wheelbase
             center_of_mass_x = 0.0f;
             center_of_mass_y = -0.10f;
-            center_of_mass_z = -0.30f;
+            center_of_mass_z = -0.270f;
 
             // steering
             max_steer_angle            = 0.65f;
@@ -635,14 +678,15 @@ namespace car
             airborne_wheel_decay     = 0.99f;
             bearing_friction         = 0.2f;
             ground_match_rate        = 8.0f;
+            // electronic parking brake, no traditional handbrake lever in road car
             handbrake_sliding_factor = 0.75f;
-            handbrake_torque         = 5000.0f;
+            handbrake_torque         = 2500.0f;
 
             // drivetrain layout - rear wheel drive
             drivetrain_type      = 0;
             torque_split_front   = 0.0f;
 
-            // differential - mechanical lsd
+            // differential - psm-controlled mechanical lsd (variable lock 30/37%)
             lsd_preload          = 120.0f;
             lsd_lock_ratio_accel = 0.4f;
             lsd_lock_ratio_decel = 0.25f;
@@ -682,45 +726,58 @@ namespace car
         }
     };
 
-    // mitsubishi lancer evolution ix - 4g63 2.0l turbo i4, 286 hp, 392 Nm, 5-speed, front-engine awd
+    // mitsubishi lancer evolution ix gsr (2005-2007) - 4g63t 2.0l twin-scroll turbo i4,
+    // 286 hp / 392 nm, 5-speed manual, front transverse engine, awd (acd + super-ayc)
     struct evo_ix_preset : car_preset
     {
         evo_ix_preset()
         {
-            name = "Mitsubishi Evo IX";
+            name = "Mitsubishi Lancer Evolution IX";
 
-            // engine - 4g63 2.0l turbo inline-4, 286 hp
-            engine_idle_rpm         = 850.0f;
-            engine_redline_rpm      = 7500.0f;
-            engine_max_rpm          = 7800.0f;
+            // chassis - 57/43 f/r weight distribution typical of the gsr
+            mass              = 1420.0f;
+            length            = 4.490f;
+            width             = 1.770f;
+            height            = 1.450f;
+            wheelbase         = 2.625f;
+            track_front       = 1.515f;
+            track_rear        = 1.515f;
+            suspension_height = 0.36f;
+            suspension_travel = 0.15f;
+
+            // engine - 4g63t mivec 2.0l turbo i4, peak torque at the bottom of the rev range
+            engine_idle_rpm         = 800.0f;
+            engine_redline_rpm      = 7000.0f;
+            engine_max_rpm          = 7200.0f;
             engine_peak_torque      = 392.0f;
-            engine_peak_torque_rpm  = 3500.0f;
+            engine_peak_torque_rpm  = 3000.0f;
             engine_inertia          = 0.30f;
             engine_friction         = 0.025f;
             engine_rpm_smoothing    = 5.0f;
             downshift_blip_amount   = 0.35f;
             downshift_blip_duration = 0.15f;
 
-            // gearbox - 5-speed manual
-            gear_ratios[0]          = -3.416f;  // reverse
-            gear_ratios[1]          =  0.0f;    // neutral
-            gear_ratios[2]          =  2.785f;  // 1st
-            gear_ratios[3]          =  1.950f;  // 2nd
-            gear_ratios[4]          =  1.444f;  // 3rd
-            gear_ratios[5]          =  1.096f;  // 4th
-            gear_ratios[6]          =  0.761f;  // 5th
-            gear_count              = 7;  // r + n + 5 forward
+            // gearbox - 5-speed h-pattern manual (gsr trim)
+            gear_ratios[0]          = -3.416f; // reverse
+            gear_ratios[1]          =  0.0f;   // neutral
+            gear_ratios[2]          =  2.928f; // 1st
+            gear_ratios[3]          =  1.950f; // 2nd
+            gear_ratios[4]          =  1.407f; // 3rd
+            gear_ratios[5]          =  1.031f; // 4th
+            gear_ratios[6]          =  0.720f; // 5th
+            gear_count              = 7;       // r + n + 5 forward
             final_drive             = 4.529f;
-            shift_up_rpm            = 7000.0f;
+            shift_up_rpm            = 6500.0f;
             shift_down_rpm          = 3000.0f;
-            shift_time              = 0.15f;
-            clutch_engagement_rate  = 15.0f;
-            drivetrain_efficiency   = 0.85f;
-            manual_transmission     = false;
+            shift_time              = 0.25f;
+            clutch_engagement_rate  = 12.0f;
+            drivetrain_efficiency   = 0.82f;
+            // real evo ix is a true manual, the hud can still force auto if the user prefers
+            manual_transmission     = true;
 
-            // shift speed thresholds calibrated for evo ratios + final drive
-            float up_base[]  = { 0, 0, 45, 80, 120, 160, 0, 0, 0, 0, 0 };
-            float up_sport[] = { 0, 0, 60, 105, 150, 195, 0, 0, 0, 0, 0 };
+            // shift speed thresholds calibrated for the 5-speed gsr ratios + 4.529 final
+            float up_base[]  = { 0, 0, 40, 70, 105, 145, 0, 0, 0, 0, 0 };
+            float up_sport[] = { 0, 0, 55, 95, 140, 195, 0, 0, 0, 0, 0 };
             float down[]     = { 0, 0, 0, 20, 45, 75, 110, 0, 0, 0, 0 };
             for (int i = 0; i < max_gears; i++)
             {
@@ -829,10 +886,11 @@ namespace car
             aero_center_front_z      = 0.0f;
             aero_center_rear_z       = 0.0f;
 
-            // center of mass - front longitudinal 4g63, 60/40 split
+            // center of mass - front transverse 4g63t with awd transfer case
+            // z derived from 57/43 distribution over a 2.625 m wheelbase
             center_of_mass_x = 0.0f;
             center_of_mass_y = -0.08f;
-            center_of_mass_z = 0.26f;
+            center_of_mass_z = 0.184f;
 
             // steering
             max_steer_angle            = 0.62f;
@@ -853,14 +911,15 @@ namespace car
             airborne_wheel_decay     = 0.99f;
             bearing_friction         = 0.2f;
             ground_match_rate        = 8.0f;
+            // proper hydraulic handbrake, strongest of the three (rally heritage)
             handbrake_sliding_factor = 0.80f;
-            handbrake_torque         = 4500.0f;
+            handbrake_torque         = 6000.0f;
 
-            // drivetrain layout - awd, acd center diff, nominally 50/50 biasing rear under load
+            // drivetrain layout - awd via acd (active center diff), nominally 50/50
             drivetrain_type      = 2;
             torque_split_front   = 0.50f;
 
-            // differential - super ayc rear, lsd front
+            // differentials - helical lsd front, super-ayc planetary rear
             lsd_preload          = 100.0f;
             lsd_lock_ratio_accel = 0.45f;
             lsd_lock_ratio_decel = 0.20f;
@@ -915,9 +974,9 @@ namespace car
     // add new presets here - the osd combo box picks them up automatically
     inline preset_entry preset_registry[] =
     {
-        { "Ferrari LaFerrari",    &_preset_laferrari },
-        { "Porsche 911 GT3 992",  &_preset_gt3_992   },
-        { "Mitsubishi Evo IX",    &_preset_evo_ix    },
+        { "Ferrari LaFerrari",            &_preset_laferrari },
+        { "Porsche 911 GT3 (992)",        &_preset_gt3_992   },
+        { "Mitsubishi Lancer Evolution IX", &_preset_evo_ix  },
     };
 
     inline constexpr int preset_count = sizeof(preset_registry) / sizeof(preset_registry[0]);

@@ -160,6 +160,7 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
     m_hover_animation                 = 0.0f;
     m_is_renaming                     = false;
     m_rename_request_focus            = false;
+    m_rename_select_pending           = false;
     m_rename_item_id                  = UINT32_MAX;
     m_context_menu_id                 = 0;
 }
@@ -291,6 +292,8 @@ void FileDialog::ShowOverwriteDialog(string* directory, string* file_path)
     ImGui::SetNextWindowSize(ImVec2(420, 0), ImGuiCond_Appearing);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 16));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    // suppress the dim overlay that imgui draws behind modal popups so the rest of the editor stays visible
+    ImGui::PushStyleColor(ImGuiCol_ModalWindowDimBg, ImVec4(0, 0, 0, 0));
 
     if (ImGui::BeginPopupModal("##overwrite_dialog", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
     {
@@ -337,6 +340,7 @@ void FileDialog::ShowOverwriteDialog(string* directory, string* file_path)
         ImGui::EndPopup();
     }
 
+    ImGui::PopStyleColor();
     ImGui::PopStyleVar(2);
 }
 
@@ -766,13 +770,17 @@ void FileDialog::RenderGridView()
 
         ImGui::PushID(static_cast<int>(i));
 
+        // wrap the whole cell in a group so the rename input text (if any) cannot
+        // become the trailing item that SameLine() snaps to, which would break tiling
+        ImGui::BeginGroup();
+
         ImVec2 screen_pos = ImGui::GetCursorScreenPos();
 
         // card dimensions
         ImVec2 card_min = screen_pos;
         ImVec2 card_max = ImVec2(screen_pos.x + item_width - 4, screen_pos.y + item_height - 4);
 
-        // invisible button for interaction - this is the only item we submit
+        // invisible button for interaction
         ImGui::InvisibleButton("##card", ImVec2(item_width - 4, item_height - 4));
         bool is_hovered  = ImGui::IsItemHovered();
         bool is_selected = (m_selected_item_id == item.GetId());
@@ -918,6 +926,8 @@ void FileDialog::RenderGridView()
 
         ItemClick(&item);
         ItemContextMenu(&item);
+
+        ImGui::EndGroup();
 
         ImGui::PopID();
 
@@ -1170,9 +1180,8 @@ void FileDialog::ItemDrag(FileDialogItem* item)
         m_was_dragging = true;
         const auto set_payload = [this](const ImGuiSp::DragPayloadType type, const string& path_full, const string& path_relative)
         {
-            m_drag_drop_payload.type          = type;
-            m_drag_drop_payload.data          = path_full.c_str();
-            m_drag_drop_payload.path_relative = path_relative.c_str();
+            m_drag_drop_payload.type = type;
+            m_drag_drop_payload.set_paths(path_full.c_str(), path_relative.c_str());
             ImGuiSp::create_drag_drop_payload(m_drag_drop_payload);
         };
 
@@ -1227,10 +1236,11 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
 
         if (ImGui::MenuItem("Rename"))
         {
-            m_is_renaming          = true;
-            m_rename_request_focus = true;
-            m_rename_buffer        = item->GetLabel();
-            m_rename_item_id       = item->GetId();
+            m_is_renaming           = true;
+            m_rename_request_focus  = true;
+            m_rename_select_pending = true;
+            m_rename_buffer         = item->GetLabel();
+            m_rename_item_id        = item->GetId();
         }
 
         if (FileSystem::IsEngineLuaFile(item->GetPath()))
@@ -1288,10 +1298,11 @@ void FileDialog::DialogUpdateFromDirectory(const string& file_path)
 
     lock_guard<mutex> lock(m_mutex_items);
     m_items.clear();
-    m_selected_item_id     = UINT32_MAX;
-    m_is_renaming          = false;
-    m_rename_request_focus = false;
-    m_rename_item_id       = UINT32_MAX;
+    m_selected_item_id      = UINT32_MAX;
+    m_is_renaming           = false;
+    m_rename_request_focus  = false;
+    m_rename_select_pending = false;
+    m_rename_item_id        = UINT32_MAX;
 
     // directories first
     auto directories = FileSystem::GetDirectoriesInDirectory(file_path);
@@ -1420,8 +1431,32 @@ void FileDialog::RenameItemInline(FileDialogItem* item, float width)
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 2));
     ImGui::SetNextItemWidth(width);
 
-    const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll;
-    const bool committed            = ImGui::InputText("##rename_inline", &m_rename_buffer, flags);
+    // on first activation, select only the stem (filename without the extension)
+    // so the user does not accidentally type over the dot extension
+    auto select_stem_callback = [](ImGuiInputTextCallbackData* data) -> int
+    {
+        bool* pending = static_cast<bool*>(data->UserData);
+        if (pending && *pending)
+        {
+            int stem_len = data->BufTextLen;
+            for (int i = data->BufTextLen - 1; i > 0; --i)
+            {
+                if (data->Buf[i] == '.')
+                {
+                    stem_len = i;
+                    break;
+                }
+            }
+            data->SelectionStart = 0;
+            data->SelectionEnd   = stem_len;
+            data->CursorPos      = stem_len;
+            *pending             = false;
+        }
+        return 0;
+    };
+
+    const ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackAlways;
+    const bool committed            = ImGui::InputText("##rename_inline", &m_rename_buffer, flags, select_stem_callback, &m_rename_select_pending);
     const bool deactivated          = ImGui::IsItemDeactivated();
     const bool escape_pressed       = ImGui::IsKeyPressed(ImGuiKey_Escape);
 

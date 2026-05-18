@@ -1587,9 +1587,18 @@ namespace spartan
         Quaternion chassis_world_rot = chassis_entity->GetRotation();
         Quaternion chassis_world_rot_inv = chassis_world_rot.Conjugate();
 
+        // the chassis hull must never dip below where the wheels attach in body local space.
+        // if it does, the body lands on its own hull before the wheels can touch the ground,
+        // target_compression clamps to zero, no spring force is produced and the car can't move
+        // even though the wheels appear grounded. clamp every chassis vert y up to this floor
+        const float chassis_hull_min_y = -car::cfg.suspension_height;
+
         // collect ALL vertices from all meshes into a single list, transformed to vehicle body space
         vector<PxVec3> all_vertices;
         all_vertices.reserve(10000); // pre-allocate for performance
+
+        float pre_clip_min_y = std::numeric_limits<float>::infinity();
+        size_t clipped_count = 0;
 
         for (const auto& [ent, renderable] : renderable_entities)
         {
@@ -1626,8 +1635,24 @@ namespace spartan
 
                 Vector3 body_local_v = chassis_local_rot * chassis_local_v + chassis_local_pos;
 
+                if (body_local_v.y < pre_clip_min_y)
+                {
+                    pre_clip_min_y = body_local_v.y;
+                }
+                if (body_local_v.y < chassis_hull_min_y)
+                {
+                    body_local_v.y = chassis_hull_min_y;
+                    clipped_count++;
+                }
+
                 all_vertices.emplace_back(body_local_v.x, body_local_v.y, body_local_v.z);
             }
+        }
+
+        if (clipped_count > 0)
+        {
+            SP_LOG_INFO("BuildChassisConvexShapes: clipped %zu verts up to y=%.3f (was as low as %.3f)",
+                clipped_count, chassis_hull_min_y, pre_clip_min_y);
         }
 
         if (all_vertices.empty())
@@ -1715,10 +1740,26 @@ namespace spartan
             return;
         }
 
+        // a non finite or non positive radius lands in cfg.wheel_radius_for(i), then in wheel_moi,
+        // then in every divide in apply_tire_forces. reject it at the entry point and keep going
+        // with a sane default so the sim never has to deal with a zero radius wheel
+        if (!std::isfinite(radius) || radius <= 0.0f)
+        {
+            SP_LOG_WARNING("SetWheelRadius: refusing non finite or non positive radius %.3f, keeping %.3f", radius, m_wheel_radius);
+            return;
+        }
+
+        radius = std::max(radius, 0.05f);
+
         m_wheel_radius = radius;
 
         car::cfg.front_wheel_radius = radius;
         car::cfg.rear_wheel_radius  = radius;
+
+        // rebuild the sweep cylinder so its radius matches the actual visual wheel
+        // without this, sweep distance always exceeds suspension_travel, target_compression
+        // clamps to zero, no spring force is produced and the chassis falls through onto the ground
+        car::rebuild_wheel_sweep_mesh();
 
         // recalculate and update body height based on actual wheel radius
         if (car::body)
@@ -1726,13 +1767,17 @@ namespace spartan
             // car::body is in the scene, async load reaches this from car prefab workers
             lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
-            // calculate correct body height using actual spring stiffness
+            // equilibrium body height: at rest the spring is compressed by expected_sag and the
+            // wheel center sits at radius above the ground. wheel center in body local space is
+            // -suspension_height + compression*travel, so body_y = radius + suspension_height - sag.
+            // spawning at this height puts the car immediately at rest instead of letting it bounce
+            // through 2*sag of vertical travel on the first ticks
             float front_mass_per_wheel = car::cfg.mass * 0.40f * 0.5f;
             float front_omega = 2.0f * math::pi * car::tuning::spec.front_spring_freq;
             float front_stiffness = front_mass_per_wheel * front_omega * front_omega;
             float front_load = front_mass_per_wheel * 9.81f;
             float expected_sag = std::clamp(front_load / front_stiffness, 0.0f, car::cfg.suspension_travel * 0.8f);
-            const float correct_body_height = radius + car::cfg.suspension_height + expected_sag;
+            const float correct_body_height = radius + car::cfg.suspension_height - expected_sag + 0.02f;
 
             // update body position with correct height
             PxTransform pose = car::body->getGlobalPose();
@@ -1772,15 +1817,34 @@ namespace spartan
         BoundingBox aabb = renderable->GetBoundingBox();
         Vector3 extents = aabb.GetExtents(); // half-sizes, already scaled
 
+        // a default constructed bbox has m_min = inf and m_max = -inf which produces a non finite
+        // center and a negative infinity extent. refuse to feed that into SetWheelRadius
+        Vector3 aabb_center = aabb.GetCenter();
+        if (extents.IsNaN() || aabb_center.IsNaN() || !std::isfinite(extents.x) || !std::isfinite(extents.y) || !std::isfinite(extents.z))
+        {
+            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: non finite bbox on '%s', keeping previous radius %.3f",
+                wheel_entity->GetObjectName().c_str(), m_wheel_radius);
+            return;
+        }
+
         // the wheel radius is the largest extent (wheels are usually symmetric)
         // for a wheel mesh, this gives us the actual visual radius
         float radius = max(max(extents.x, extents.y), extents.z);
+        if (!std::isfinite(radius) || radius <= 0.0f)
+        {
+            SP_LOG_WARNING("ComputeWheelRadiusFromEntity: computed radius %.3f on '%s' is invalid, keeping previous radius %.3f",
+                radius, wheel_entity->GetObjectName().c_str(), m_wheel_radius);
+            return;
+        }
 
         // compute the offset from entity origin to mesh center
         // this handles meshes that don't have their origin at geometric center
-        Vector3 aabb_center = aabb.GetCenter();
         Vector3 entity_pos = wheel_entity->GetPosition();
         m_wheel_mesh_center_offset_y = aabb_center.y - entity_pos.y;
+        if (!std::isfinite(m_wheel_mesh_center_offset_y))
+        {
+            m_wheel_mesh_center_offset_y = 0.0f;
+        }
 
         SetWheelRadius(radius);
 
@@ -1795,6 +1859,87 @@ namespace spartan
             return 0.0f;
         }
         return car::cfg.suspension_height;
+    }
+
+    float Physics::GetTargetWheelRadius() const
+    {
+        // the front wheel radius from car cfg is the source of truth, the visual mesh must be
+        // scaled to match this so the cooked sweep cylinder, the spring math and the rendered
+        // wheel all agree on the actual physical size
+        float r = car::cfg.front_wheel_radius;
+        if (!std::isfinite(r) || r <= 0.0f)
+        {
+            return 0.34f;
+        }
+        return r;
+    }
+
+    void Physics::ScaleWheelEntityToRadius(Entity* wheel_entity, float target_radius)
+    {
+        if (!wheel_entity)
+        {
+            SP_LOG_WARNING("ScaleWheelEntityToRadius: null wheel_entity");
+            return;
+        }
+        if (!std::isfinite(target_radius) || target_radius <= 0.0f)
+        {
+            SP_LOG_WARNING("ScaleWheelEntityToRadius: invalid target_radius %.3f", target_radius);
+            return;
+        }
+
+        Render* renderable = wheel_entity->GetComponent<Render>();
+        if (!renderable)
+        {
+            SP_LOG_WARNING("ScaleWheelEntityToRadius: '%s' has no Render component", wheel_entity->GetObjectName().c_str());
+            return;
+        }
+
+        // refresh the aabb so it reflects the current local scale before we read its extents
+        renderable->Tick();
+
+        BoundingBox aabb    = renderable->GetBoundingBox();
+        Vector3     extents = aabb.GetExtents();
+        Vector3     center  = aabb.GetCenter();
+        if (extents.IsNaN() || center.IsNaN() || !std::isfinite(extents.x) || !std::isfinite(extents.y) || !std::isfinite(extents.z))
+        {
+            SP_LOG_WARNING("ScaleWheelEntityToRadius: non finite bbox on '%s', cannot rescale", wheel_entity->GetObjectName().c_str());
+            return;
+        }
+
+        float measured_radius = std::max({ extents.x, extents.y, extents.z });
+        if (!std::isfinite(measured_radius) || measured_radius <= 1e-5f)
+        {
+            SP_LOG_WARNING("ScaleWheelEntityToRadius: measured radius %.4f on '%s' is degenerate, skipping",
+                measured_radius, wheel_entity->GetObjectName().c_str());
+            return;
+        }
+
+        float scale_factor = target_radius / measured_radius;
+        if (!std::isfinite(scale_factor) || scale_factor <= 0.0f)
+        {
+            SP_LOG_WARNING("ScaleWheelEntityToRadius: invalid scale factor %.4f, skipping", scale_factor);
+            return;
+        }
+
+        Vector3 current_scale = wheel_entity->GetScaleLocal();
+        Vector3 new_scale(
+            current_scale.x * scale_factor,
+            current_scale.y * scale_factor,
+            current_scale.z * scale_factor);
+
+        if (!new_scale.IsFinite() || new_scale.x <= 0.0f || new_scale.y <= 0.0f || new_scale.z <= 0.0f)
+        {
+            SP_LOG_WARNING("ScaleWheelEntityToRadius: new scale would be invalid (%.3f, %.3f, %.3f), skipping",
+                new_scale.x, new_scale.y, new_scale.z);
+            return;
+        }
+
+        wheel_entity->SetScale(new_scale);
+        renderable->Tick();
+
+        SP_LOG_INFO("ScaleWheelEntityToRadius: '%s' measured r=%.3f, target r=%.3f, scale factor %.3f -> new scale (%.3f, %.3f, %.3f)",
+            wheel_entity->GetObjectName().c_str(), measured_radius, target_radius, scale_factor,
+            new_scale.x, new_scale.y, new_scale.z);
     }
 
     float Physics::GetVehicleThrottle() const
@@ -2341,12 +2486,27 @@ namespace spartan
                 continue;
             }
 
-            // get the wheel mesh aabb center, refreshing the renderable so it reflects the latest entity transform
+            // skip wheels with non finite world transforms, the bbox derived from such a transform
+            // would otherwise crash the frustum culler assert when wheel_render->Tick runs below
+            if (!wheel_entity->GetMatrix().IsFinite())
+            {
+                SP_LOG_WARNING("non finite world matrix on wheel '%s' in DrawDebugVisualization, skipping", wheel_entity->GetObjectName().c_str());
+                continue;
+            }
+
             Vector3 wheel_center_v = wheel_entity->GetPosition();
             if (Render* wheel_render = wheel_entity->GetComponent<Render>())
             {
                 wheel_render->Tick();
-                wheel_center_v = wheel_render->GetBoundingBox().GetCenter();
+                Vector3 bbox_center = wheel_render->GetBoundingBox().GetCenter();
+                if (!bbox_center.IsNaN())
+                {
+                    wheel_center_v = bbox_center;
+                }
+                else
+                {
+                    SP_LOG_WARNING("non finite bbox center on wheel '%s' in DrawDebugVisualization, using entity origin", wheel_entity->GetObjectName().c_str());
+                }
             }
 
             // suspension top mount on the chassis, computed from the wheel offset stored in the physics module
@@ -2438,6 +2598,14 @@ namespace spartan
                 continue;
             }
 
+            // skip wheels with non finite world transforms, the bbox derived from such a transform
+            // would otherwise crash the frustum culler assert when renderable->Tick runs below
+            if (!wheel_entity->GetMatrix().IsFinite())
+            {
+                SP_LOG_WARNING("non finite world matrix on wheel '%s' in SyncWheelOffsetsFromEntities, skipping", wheel_entity->GetObjectName().c_str());
+                continue;
+            }
+
             // try to get the actual mesh center from the renderable's bounding box
             // this handles meshes where the origin is not at the geometric center
             Vector3 wheel_world_pos = wheel_entity->GetPosition();
@@ -2447,7 +2615,15 @@ namespace spartan
             {
                 renderable->Tick(); // ensure bounding box is up to date
                 BoundingBox aabb = renderable->GetBoundingBox();
-                wheel_world_pos = aabb.GetCenter(); // use mesh center instead of entity origin
+                Vector3 aabb_center = aabb.GetCenter();
+                if (!aabb_center.IsNaN())
+                {
+                    wheel_world_pos = aabb_center;
+                }
+                else
+                {
+                    SP_LOG_WARNING("non finite bbox center on wheel '%s' in SyncWheelOffsetsFromEntities, using entity origin", wheel_entity->GetObjectName().c_str());
+                }
             }
 
             // transform to vehicle-local space
@@ -2505,6 +2681,11 @@ namespace spartan
 
         // get steering angle from vehicle system
         float steering = car::get_steering();
+        if (!std::isfinite(steering))
+        {
+            SP_LOG_WARNING("non finite steering from car sim, clamping to 0");
+            steering = 0.0f;
+        }
         const float max_steering_angle = 35.0f * math::deg_to_rad;
         float steering_angle = steering * max_steering_angle;
 
@@ -2524,9 +2705,29 @@ namespace spartan
             bool is_front_wheel = (i == static_cast<int>(WheelIndex::FrontLeft) || i == static_cast<int>(WheelIndex::FrontRight));
             bool is_right_wheel = (i == static_cast<int>(WheelIndex::FrontRight) || i == static_cast<int>(WheelIndex::RearRight));
 
+            // pull the raw sim values and sanitize, a NaN here would seep into the entity transform
+            // and produce a NaN bbox that trips the frustum culler assert from the renderer tick.
+            // also heal back the underlying sim state, otherwise the next tick reads the same NaN
+            // and we just keep clamping the visual to 0 forever
+            float compression    = car::get_wheel_compression(i);
+            float wheel_rotation = car::get_wheel_rotation(i);
+            if (!std::isfinite(compression))
+            {
+                SP_LOG_WARNING("non finite compression from car sim on wheel %d, healing to 0", i);
+                compression = 0.0f;
+                car::sanitize_wheel_state(i);
+            }
+            if (!std::isfinite(wheel_rotation))
+            {
+                SP_LOG_WARNING("non finite wheel rotation from car sim on wheel %d, healing to 0", i);
+                wheel_rotation = 0.0f;
+                car::set_wheel_rotation(i, 0.0f);
+                car::set_wheel_angular_velocity(i, 0.0f);
+                car::sanitize_wheel_state(i);
+            }
+
             // update wheel Y position based on suspension compression
             // compression: 0 = fully extended (wheel at lowest), 1 = fully compressed (wheel at highest)
-            float compression = car::get_wheel_compression(i);
             Vector3 current_pos = wheel_entity->GetPositionLocal();
 
             // base Y is at -suspension_height (fully extended position)
@@ -2536,7 +2737,6 @@ namespace spartan
             wheel_entity->SetPositionLocal(Vector3(current_pos.x, visual_y, current_pos.z));
 
             // get wheel rotation from physics (each wheel has its own rotation)
-            float wheel_rotation = car::get_wheel_rotation(i);
             Quaternion spin_rotation = Quaternion::FromAxisAngle(Vector3::Right, wheel_rotation);
 
             // steering rotation for front wheels only (around Y axis)

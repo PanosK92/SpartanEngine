@@ -49,7 +49,13 @@ namespace car
         {
             wheel& w = wheels[i];
             const char* wheel_name = wheel_names[i];
-            float wr = cfg.wheel_radius_for(i);
+
+            // floor wr and the wheel moi so the divisions in the airborne branch, the slip
+            // calculation, the semi implicit euler step and the ground match step can never
+            // be 0 / 0 or x / 0. without this a single bad wheel radius poisons the entire sim
+            float wr_raw  = cfg.wheel_radius_for(i);
+            float wr      = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
+            float wmoi    = (std::isfinite(wheel_moi[i]) && wheel_moi[i] > 0.0f) ? wheel_moi[i] : 1.0f;
 
             // --- airborne branch ---
             if (!w.grounded || w.tire_load <= 0.0f)
@@ -69,7 +75,7 @@ namespace car
                     // progressive handbrake friction even when airborne
                     float hb_torque = tuning::spec.handbrake_torque * input.handbrake;
                     float hb_sign = (w.angular_velocity > 0.0f) ? -1.0f : 1.0f;
-                    float new_w = w.angular_velocity + hb_sign * hb_torque / wheel_moi[i] * dt;
+                    float new_w = w.angular_velocity + hb_sign * hb_torque / wmoi * dt;
                     w.angular_velocity = ((w.angular_velocity > 0.0f && new_w < 0.0f) || (w.angular_velocity < 0.0f && new_w > 0.0f)) ? 0.0f : new_w;
                 }
                 else
@@ -297,11 +303,11 @@ namespace car
             w.lateral_force = lat_f;
             w.longitudinal_force = long_f;
 
-            PxRigidBodyExt::addForceAtPos(*body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos, PxForceMode::eFORCE);
+            safe_add_force_at_pos(body, wheel_lat * lat_f + wheel_fwd * long_f, world_pos);
 
             // accumulate all torques on the wheel, then integrate once (semi-implicit euler)
             w.net_torque += -long_f * wr; // tire longitudinal reaction
-            w.net_torque -= w.angular_velocity * tuning::spec.bearing_friction * wheel_moi[i]; // bearing drag
+            w.net_torque -= w.angular_velocity * tuning::spec.bearing_friction * wmoi; // bearing drag
 
             if (is_rear(i) && input.handbrake > tuning::spec.input_deadzone)
             {
@@ -310,7 +316,7 @@ namespace car
             }
 
             // semi-implicit euler: compute new velocity from net torque, use new velocity for position
-            float new_w = w.angular_velocity + (w.net_torque / wheel_moi[i]) * dt;
+            float new_w = w.angular_velocity + (w.net_torque / wmoi) * dt;
 
             // prevent sign reversal when a brake input is locking the wheel - any sign flip
             // from brake/handbrake torque should clamp to zero rather than spin the wheel backwards
@@ -379,6 +385,6 @@ namespace car
         }
 
         PxVec3 up = body->getGlobalPose().q.rotate(PxVec3(0, 1, 0));
-        body->addTorque(up * (front_sat + rear_damp) * tuning::spec.self_align_gain, PxForceMode::eFORCE);
+        safe_add_torque(body, up * (front_sat + rear_damp) * tuning::spec.self_align_gain);
     }
 }

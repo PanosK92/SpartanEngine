@@ -292,7 +292,7 @@ namespace car
             }
 
             drag_force_vec = -vel.getNormalized() * base_drag * yaw_drag_factor;
-            body->addForce(drag_force_vec, PxForceMode::eFORCE);
+            safe_add_force(body, drag_force_vec);
         }
 
         // side force, applied at the geometric centre of the side silhouette (mid-z between
@@ -306,7 +306,7 @@ namespace car
             side_force_vec = -local_right * side_force;
             float side_aero_z = (tuning::spec.aero_center_front_z + tuning::spec.aero_center_rear_z) * 0.5f;
             PxVec3 side_aero_pos = pose.p + pose.q.rotate(PxVec3(0, aero_height, side_aero_z));
-            PxRigidBodyExt::addForceAtPos(*body, side_force_vec, side_aero_pos, PxForceMode::eFORCE);
+            safe_add_force_at_pos(body, side_force_vec, side_aero_pos);
         }
 
         // downforce
@@ -356,8 +356,8 @@ namespace car
             front_downforce_vec = local_up * front_downforce;
             rear_downforce_vec  = local_up * rear_downforce;
 
-            PxRigidBodyExt::addForceAtPos(*body, front_downforce_vec, front_pos, PxForceMode::eFORCE);
-            PxRigidBodyExt::addForceAtPos(*body, rear_downforce_vec, rear_pos, PxForceMode::eFORCE);
+            safe_add_force_at_pos(body, front_downforce_vec, front_pos);
+            safe_add_force_at_pos(body, rear_downforce_vec, rear_pos);
         }
 
         // per-wheel rolling resistance: higher pressure = lower rr
@@ -369,7 +369,7 @@ namespace car
                 float rr_sign = (forward_speed > 0.0f) ? -1.0f : 1.0f;
                 PxVec3 rr_force = local_fwd * rr_sign * tuning::spec.rolling_resistance * rr_pressure_scale * wheels[i].tire_load;
                 PxVec3 wheel_pos = pose.transform(wheel_offsets[i]);
-                PxRigidBodyExt::addForceAtPos(*body, rr_force, wheel_pos, PxForceMode::eFORCE);
+                safe_add_force_at_pos(body, rr_force, wheel_pos);
             }
         }
 

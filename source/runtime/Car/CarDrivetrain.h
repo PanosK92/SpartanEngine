@@ -278,7 +278,8 @@ namespace car
                     for (int g = current_gear - 1; g >= 2; g--)
                     {
                         float ratio = fabsf(tuning::spec.gear_ratios[g]) * tuning::spec.final_drive;
-                        float driven_r = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
+                        float driven_r_raw = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
+                        float driven_r = (std::isfinite(driven_r_raw) && driven_r_raw > 0.0f) ? PxMax(driven_r_raw, 0.05f) : 0.34f;
                         float potential_rpm = (forward_speed / driven_r) * (60.0f / (2.0f * PxPi)) * ratio;
                         if (potential_rpm < tuning::spec.shift_up_rpm * 0.85f)
                         {
@@ -434,14 +435,18 @@ namespace car
         float eb_total = tuning::spec.engine_friction * engine_rpm * 0.1f * fabsf(tuning::spec.gear_ratios[current_gear]) * tuning::spec.final_drive;
         engine_brake_torque = eb_total;
         float share = eb_total / (float)driven_count;
+        // ramp the brake direction smoothly through zero instead of a hard sign flip.
+        // a hard sign flip with a 14 nm share oscillates the rear wheels every tick at
+        // rest, which shows up in telemetry as alternating positive and negative net torque
+        constexpr float brake_dir_band = 1.0f;
         for (int i = 0; i < wheel_count; i++)
         {
             if (!is_driven(i))
             {
                 continue;
             }
-            float s = (wheels[i].angular_velocity > 0.0f) ? -1.0f : (wheels[i].angular_velocity < 0.0f) ? 1.0f : 0.0f;
-            wheels[i].net_torque += s * share;
+            float w_sign = PxClamp(wheels[i].angular_velocity / brake_dir_band, -1.0f, 1.0f);
+            wheels[i].net_torque += -w_sign * share;
         }
     }
 
@@ -620,7 +625,8 @@ namespace car
         bool coasting = input.throttle < tuning::spec.input_deadzone && input.brake < tuning::spec.input_deadzone;
         if (coasting && is_in_forward_gear())
         {
-            float driven_r          = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
+            float driven_r_raw      = (tuning::spec.drivetrain_type == 1) ? cfg.front_wheel_radius : cfg.rear_wheel_radius;
+            float driven_r          = (std::isfinite(driven_r_raw) && driven_r_raw > 0.0f) ? PxMax(driven_r_raw, 0.05f) : 0.34f;
             float ground_wheel_rpm  = fabsf(forward_speed_ms) / driven_r * 60.0f / (2.0f * PxPi);
             float ground_driven_rpm = wheel_rpm_to_engine_rpm(ground_wheel_rpm, current_gear);
             wheel_driven_rpm        = PxMax(wheel_driven_rpm, ground_driven_rpm);

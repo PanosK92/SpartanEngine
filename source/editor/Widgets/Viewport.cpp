@@ -56,6 +56,7 @@ namespace
     uint64_t             preview_entity_id            = 0;
     shared_ptr<Material> preview_original_material;
     bool                 preview_original_was_default = false;
+    bool                 preview_drag_was_active      = false;
 
     // resolves the renderable under the mouse cursor using triangle precision,
     // aabb-only was insufficient because parent renderables (eg a gltf scene wrapper)
@@ -154,12 +155,12 @@ namespace
         }
 
         const ImGuiSp::DragDropPayload* sp_payload = static_cast<const ImGuiSp::DragDropPayload*>(payload->Data);
-        if (!std::holds_alternative<const char*>(sp_payload->data))
+        if (sp_payload->path[0] == '\0')
         {
             return nullptr;
         }
 
-        return std::get<const char*>(sp_payload->data);
+        return sp_payload->path;
     }
 }
 
@@ -227,8 +228,9 @@ void Viewport::OnTickVisible()
     // material drag-preview, runs before the drop handlers so the drop just clears state without reverting
     {
         const char* drag_path  = peek_material_drag_path();
+        bool        drag_active = drag_path != nullptr;
         bool        in_image   = ImGui::IsMouseHoveringRect(image_rect_min, image_rect_max);
-        bool        previewing = drag_path && in_image;
+        bool        previewing = drag_active && in_image;
 
         if (previewing)
         {
@@ -243,27 +245,40 @@ void Viewport::OnTickVisible()
                 }
             }
         }
-        else
+        else if (drag_active)
         {
-            // drag ended outside the viewport or moved off the image, restore the original
+            // drag still active but cursor moved off the image, restore the original
             revert_material_preview();
         }
+        else if (preview_drag_was_active)
+        {
+            // drag ended this frame, commit the preview by clearing state without reverting
+            // the imgui drop handler may not always fire on the release frame due to hover
+            // detection edge cases during drag-drop, this preserves the material change so
+            // the save reflects what the user saw
+            clear_preview_state();
+        }
+
+        preview_drag_was_active = drag_active;
     }
 
     // handle model drop
     if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
     {
-        m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(get<const char*>(payload->data));
+        if (payload->path[0] != '\0')
+        {
+            m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(payload->path);
+        }
     }
 
     // handle prefab drop
     if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Prefab))
     {
-        const char* file_path = get<const char*>(payload->data);
-        if (file_path)
+        if (payload->path[0] != '\0')
         {
-            Entity* entity = World::CreateEntity();
-            string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+            const char* file_path = payload->path;
+            Entity* entity        = World::CreateEntity();
+            string name           = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
             entity->SetObjectName(name);
             if (Prefab::LoadFromFile(file_path, entity))
             {
@@ -284,14 +299,14 @@ void Viewport::OnTickVisible()
         {
             clear_preview_state();
         }
-        else if (const char* file_path = get<const char*>(payload->data))
+        else if (payload->path[0] != '\0')
         {
             // fallback for the unlikely case the drop fires without a prior hover frame
             if (Entity* hovered = pick_entity_under_cursor())
             {
                 if (Render* render = hovered->GetComponent<Render>())
                 {
-                    render->SetMaterial(file_path);
+                    render->SetMaterial(payload->path);
                 }
             }
         }

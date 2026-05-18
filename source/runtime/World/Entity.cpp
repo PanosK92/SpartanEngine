@@ -622,6 +622,14 @@ namespace spartan
             return;
         }
 
+        // refuse non finite inputs, a NaN or inf position seeps into the world matrix and
+        // then into every renderable bbox derived from it, which crashes the frustum culler
+        if (!position.IsFinite())
+        {
+            SP_LOG_WARNING("Entity::SetPositionLocal: rejecting non finite position on '%s'", GetObjectName().c_str());
+            return;
+        }
+
         m_position_local = position;
         UpdateTransform();
     }
@@ -666,6 +674,14 @@ namespace spartan
             return;
         }
 
+        // refuse non finite inputs, a NaN quaternion produces a NaN 3x3 rotation block in the
+        // world matrix even when translation stays finite, which still NaNs every derived bbox
+        if (!rotation.IsFinite())
+        {
+            SP_LOG_WARNING("Entity::SetRotationLocal: rejecting non finite rotation on '%s'", GetObjectName().c_str());
+            return;
+        }
+
         m_rotation_local = rotation;
         UpdateTransform();
     }
@@ -684,6 +700,14 @@ namespace spartan
     {
         if (m_scale_local == scale)
         {
+            return;
+        }
+
+        // refuse non finite inputs, a NaN scale propagates into the world matrix and every
+        // bbox computed off it, which crashes the frustum culler assert downstream
+        if (!scale.IsFinite())
+        {
+            SP_LOG_WARNING("Entity::SetScaleLocal: rejecting non finite scale on '%s'", GetObjectName().c_str());
             return;
         }
 

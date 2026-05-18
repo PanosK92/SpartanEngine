@@ -41,27 +41,39 @@ namespace car
         filter.flags = PxQueryFlag::eSTATIC | PxQueryFlag::eDYNAMIC | PxQueryFlag::ePREFILTER;
         self_filter.ignore = body;
 
+        // floor geometry that participates in divisions and force scaling, otherwise a 0 from a
+        // missing preset overlay propagates straight into wheel_accel and tire_load as nan
+        float susp_travel_safe = PxMax(cfg.suspension_travel, 0.01f);
+        float wheel_mass_safe  = (std::isfinite(cfg.wheel_mass) && cfg.wheel_mass > 0.0f) ? cfg.wheel_mass : 20.0f;
+
         float max_wheel_r = PxMax(cfg.front_wheel_radius, cfg.rear_wheel_radius);
-        float sweep_dist = cfg.suspension_travel + max_wheel_r + 0.5f;
+        float sweep_dist  = susp_travel_safe + max_wheel_r + 0.5f;
 
         for (int i = 0; i < wheel_count; i++)
         {
             wheel& w = wheels[i];
             w.prev_compression = w.compression;
-            float wr = cfg.wheel_radius_for(i);
-            float ww = cfg.wheel_width_for(i);
+            float wr_raw = cfg.wheel_radius_for(i);
+            float wr     = (std::isfinite(wr_raw) && wr_raw > 0.0f) ? PxMax(wr_raw, 0.05f) : 0.34f;
+            float ww     = cfg.wheel_width_for(i);
 
             PxVec3 attach = wheel_offsets[i];
-            attach.y += cfg.suspension_travel;
+            attach.y += susp_travel_safe;
             PxVec3 world_attach = pose.transform(attach);
 
             PxTransform sweep_pose(world_attach, pose.q);
             PxConvexMeshGeometry cylinder_geom(wheel_sweep_mesh);
             PxSweepBuffer hit;
 
+            // eMTD makes physx return a valid position and normal even when the cylinder starts
+            // already overlapping the ground. without it the suspension multiplies forces[i] by
+            // a zero contact_normal once the body sinks below the spring rest line, the chassis
+            // never gets pushed back up and the wheels stay visually buried with no traction
+            const PxHitFlags sweep_flags = PxHitFlag::ePOSITION | PxHitFlag::eNORMAL | PxHitFlag::eMTD;
+
             bool swept = wheel_sweep_mesh
                 && scene->sweep(cylinder_geom, sweep_pose, local_down, sweep_dist, hit,
-                    PxHitFlag::eDEFAULT, filter, &self_filter)
+                    sweep_flags, filter, &self_filter)
                 && hit.block.actor;
 
             debug_sweep[i].origin = world_attach;
@@ -71,10 +83,28 @@ namespace car
             {
                 debug_sweep[i].hit_point = hit.block.position;
 
+                // fall back to body up when the normal is degenerate, the suspension force is
+                // (contact_normal * forces[i]) so a zero normal silently kills all spring support
+                PxVec3 sweep_normal = hit.block.normal;
+                float normal_len_sq = sweep_normal.dot(sweep_normal);
+                if (!is_finite_vec(sweep_normal) || normal_len_sq < 1e-6f)
+                {
+                    sweep_normal = -local_down;
+                }
+                else
+                {
+                    sweep_normal *= 1.0f / sqrtf(normal_len_sq);
+                }
+
+                // an initial overlap sweep returns distance 0 and a negative penetration depth in
+                // hit.block.distance with eMTD. clamp to 0 so target_compression saturates at 1
+                // instead of producing a spurious negative dist that the clamp turns into target 0
+                sweep_distance[i]    = hit.block.distance;
+                float dist_from_rest = PxMax(hit.block.distance, 0.0f);
+
                 w.grounded       = true;
                 w.contact_point  = hit.block.position;
-                w.contact_normal = hit.block.normal;
-                float dist_from_rest = hit.block.distance;
+                w.contact_normal = sweep_normal;
 
                 float speed = body->getLinearVelocity().magnitude();
                 if (speed > 1.0f && tuning::road_bump_amplitude > 0.0f)
@@ -85,9 +115,9 @@ namespace car
                     dist_from_rest += bump * tuning::road_bump_amplitude;
                 }
 
-                w.target_compression = PxClamp(1.0f - dist_from_rest / cfg.suspension_travel, 0.0f, 1.0f);
+                w.target_compression = PxClamp(1.0f - dist_from_rest / susp_travel_safe, 0.0f, 1.0f);
 
-                PxVec3 wheel_center = world_attach + local_down * (cfg.suspension_travel * (1.0f - w.compression) + wr);
+                PxVec3 wheel_center = world_attach + local_down * (susp_travel_safe * (1.0f - w.compression) + wr);
                 float probe_len     = wr + 0.3f;
                 float half_width    = ww * 0.4f;
                 PxVec3 probe_origins[3] = {
@@ -112,17 +142,18 @@ namespace car
                 w.grounded               = false;
                 w.target_compression     = 0.0f;
                 w.contact_normal         = PxVec3(0, 1, 0);
+                sweep_distance[i]        = sweep_dist;
             }
 
             debug_suspension_top[i] = world_attach;
-            PxVec3 wheel_center_dbg = world_attach + local_down * (cfg.suspension_travel * (1.0f - w.compression) + wr);
+            PxVec3 wheel_center_dbg = world_attach + local_down * (susp_travel_safe * (1.0f - w.compression) + wr);
             debug_suspension_bottom[i] = wheel_center_dbg;
 
             // wheel tracking
             float compression_error  = w.target_compression - w.compression;
             float wheel_spring_force = spring_stiffness[i] * compression_error;
             float wheel_damper_force = -spring_damping[i] * w.compression_velocity * 0.5f;
-            float wheel_accel        = (wheel_spring_force + wheel_damper_force) / cfg.wheel_mass;
+            float wheel_accel        = (wheel_spring_force + wheel_damper_force) / wheel_mass_safe;
 
             w.compression_velocity += wheel_accel * dt;
             w.compression          += w.compression_velocity * dt;
@@ -197,15 +228,19 @@ namespace car
                 forces[i] *= scale;
         }
 
+        float wheel_mass_safe = (std::isfinite(cfg.wheel_mass) && cfg.wheel_mass > 0.0f) ? cfg.wheel_mass : 20.0f;
         for (int i = 0; i < wheel_count; i++)
         {
-            wheels[i].tire_load = forces[i] + cfg.wheel_mass * 9.81f;
+            // mirror the final spring force into car state so telemetry can show whether
+            // springs are actually doing work even when tire_load looks plausible
+            spring_force[i]     = forces[i];
+            wheels[i].tire_load = forces[i] + wheel_mass_safe * 9.81f;
 
             if (forces[i] > 0.0f && wheels[i].grounded)
             {
                 PxVec3 force = wheels[i].contact_normal * forces[i];
                 PxVec3 pos = pose.transform(wheel_offsets[i]);
-                PxRigidBodyExt::addForceAtPos(*body, force, pos, PxForceMode::eFORCE);
+                safe_add_force_at_pos(body, force, pos);
             }
         }
 

@@ -847,7 +847,10 @@ void Properties::ShowScript(spartan::Script* script) const
         // drag-drop support for lua files
         if (auto* payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Lua))
         {
-            script->LoadScriptFile(std::get<const char*>(payload->data));
+            if (payload->path[0] != '\0')
+            {
+                script->LoadScriptFile(payload->path);
+            }
         }
 
         // status
@@ -1319,7 +1322,10 @@ void Properties::ShowRender(spartan::Render* renderable) const
             // drag drop for material
             if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
             {
-                renderable->SetMaterial(std::get<const char*>(payload->data));
+                if (payload->path[0] != '\0')
+                {
+                    renderable->SetMaterial(payload->path);
+                }
             }
 
             // browse
@@ -1561,7 +1567,8 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
         return;
     }
 
-    if (component_begin("Material", design::accent_material(), nullptr, false))
+    const bool default_open = renderable == nullptr;
+    if (component_begin("Material", design::accent_material(), nullptr, false, true, default_open))
     {
         // when shown with a renderable, uv edits go to the renderable's override, not the material asset,
         // so multiple renderables sharing this material can each have their own uv tweak
@@ -2565,7 +2572,10 @@ void Properties::ShowAudioSource(spartan::AudioSource* audio_source) const
 
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Audio))
         {
-            audio_source->SetAudioClip(std::get<const char*>(payload->data));
+            if (payload->path[0] != '\0')
+            {
+                audio_source->SetAudioClip(payload->path);
+            }
         }
 
         layout::separator();

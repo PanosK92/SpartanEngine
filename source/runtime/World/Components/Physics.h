@@ -178,6 +178,14 @@ namespace spartan
         float GetWheelRadius() const { return m_wheel_radius; }
         float GetSuspensionHeight() const; // distance from body center to wheel center
         void ComputeWheelRadiusFromEntity(Entity* wheel_entity); // auto-compute from mesh AABB
+        // target wheel radius the visual mesh should match, sourced from car::cfg.front_wheel_radius.
+        // visual wheels scaled smaller than this leave the chassis hull bottoming out on the ground
+        // before the wheels can touch, so the springs never produce force and the car can't move
+        float GetTargetWheelRadius() const;
+        // scale a wheel entity uniformly so its largest aabb half extent matches target_radius.
+        // must be called before SyncWheelOffsetsFromEntities or ComputeWheelRadiusFromEntity to
+        // ensure the cooked sweep cylinder and visual wheel agree on the actual physical size
+        void ScaleWheelEntityToRadius(Entity* wheel_entity, float target_radius);
 
         // vehicle metrics (read-only, for display/debugging)
         float GetVehicleThrottle() const;

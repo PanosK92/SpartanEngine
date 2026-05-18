@@ -190,6 +190,7 @@ private:
     // renaming
     bool m_is_renaming;
     bool m_rename_request_focus;
+    bool m_rename_select_pending;
     std::string m_rename_buffer;
     uint32_t m_rename_item_id;
 

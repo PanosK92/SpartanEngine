@@ -65,7 +65,9 @@ namespace spartan
 
             Physics* physics = car->m_vehicle_entity->AddComponent<Physics>();
             physics->SetStatic(false);
-            physics->SetMass(1500.0f);
+            // mass comes from the active car preset, applied inside car::setup
+            // we seed a sensible fallback so Physics::GetMass returns something useful before vehicle setup
+            physics->SetMass(::car::tuning::spec.mass > 0.0f ? ::car::tuning::spec.mass : 1500.0f);
             physics->SetBodyType(BodyType::Vehicle);
             physics->SetCar(car);  // car ticks automatically through entity system
 
@@ -706,7 +708,11 @@ namespace spartan
         wheel_base->SetParent(nullptr);
         World::RemoveEntityImmediate(wheel_root);
         mesh->SetRootEntity(nullptr);
-        wheel_base->SetScale(0.2f);
+        // start at unit scale so ScaleWheelEntityToRadius can measure the natural mesh size
+        // and rescale it to match the preset's target wheel radius. a hardcoded 0.2 here was
+        // undersizing the wheel to ~0.21 m so the cooked sweep cylinder could never reach the
+        // ground and target_compression was permanently clamped to zero in steady state
+        wheel_base->SetScale(1.0f);
 
         if (Render* renderable = wheel_base->GetComponent<Render>())
         {
@@ -717,37 +723,52 @@ namespace spartan
             material->SetTexture(MaterialTextureType::Roughness, "project\\models\\wheel\\roughness.png");
         }
 
+        // rescale wheel mesh so its visual radius matches the physics target radius.
+        // ComputeWheelRadiusFromEntity is still called so it can update the mesh center
+        // offset used to place the visual wheel, but its measured radius is unreliable
+        // in some load orderings, so SetWheelRadius is called last with the target to
+        // guarantee the cooked sweep cylinder, body height and wheel moi all agree
+        const float target_wheel_radius = physics->GetTargetWheelRadius();
+        physics->ScaleWheelEntityToRadius(wheel_base, target_wheel_radius);
         physics->ComputeWheelRadiusFromEntity(wheel_base);
-        const float suspension_height = physics->GetSuspensionHeight();
-        const float wheel_x           = 0.95f;
-        const float wheel_y           = -suspension_height;
-        const float front_z           = 1.45f;
-        const float rear_z            = -1.35f;
+        physics->SetWheelRadius(target_wheel_radius);
+
+        // read from tuning spec instead of cfg, cfg can be raced to zero by a parallel car setup
+        const ::car::car_preset& preset = ::car::tuning::spec;
+        const float suspension_height   = physics->GetSuspensionHeight();
+        const float preset_wheelbase    = preset.wheelbase   > 0.0f ? preset.wheelbase   : 2.6f;
+        const float preset_track_front  = preset.track_front > 0.0f ? preset.track_front : 1.6f;
+        const float preset_track_rear   = preset.track_rear  > 0.0f ? preset.track_rear  : 1.6f;
+        const float front_z             = preset_wheelbase   * 0.5f;
+        const float rear_z              = -preset_wheelbase  * 0.5f;
+        const float half_track_front    = preset_track_front * 0.5f;
+        const float half_track_rear     = preset_track_rear  * 0.5f;
+        const float wheel_y             = -suspension_height;
 
         // front left
         Entity* wheel_fl = wheel_base;
         wheel_fl->SetObjectName("wheel_front_left");
         wheel_fl->SetParent(vehicle_ent);
-        wheel_fl->SetPositionLocal(math::Vector3(-wheel_x, wheel_y, front_z));
+        wheel_fl->SetPositionLocal(math::Vector3(-half_track_front, wheel_y, front_z));
 
         // front right
         Entity* wheel_fr = wheel_base->Clone();
         wheel_fr->SetObjectName("wheel_front_right");
         wheel_fr->SetParent(vehicle_ent);
-        wheel_fr->SetPositionLocal(math::Vector3(wheel_x, wheel_y, front_z));
+        wheel_fr->SetPositionLocal(math::Vector3(half_track_front, wheel_y, front_z));
         wheel_fr->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, math::pi));
 
         // rear left
         Entity* wheel_rl = wheel_base->Clone();
         wheel_rl->SetObjectName("wheel_rear_left");
         wheel_rl->SetParent(vehicle_ent);
-        wheel_rl->SetPositionLocal(math::Vector3(-wheel_x, wheel_y, rear_z));
+        wheel_rl->SetPositionLocal(math::Vector3(-half_track_rear, wheel_y, rear_z));
 
         // rear right
         Entity* wheel_rr = wheel_base->Clone();
         wheel_rr->SetObjectName("wheel_rear_right");
         wheel_rr->SetParent(vehicle_ent);
-        wheel_rr->SetPositionLocal(math::Vector3(wheel_x, wheel_y, rear_z));
+        wheel_rr->SetPositionLocal(math::Vector3(half_track_rear, wheel_y, rear_z));
         wheel_rr->SetRotationLocal(math::Quaternion::FromAxisAngle(math::Vector3::Up, math::pi));
 
         physics->SetWheelEntity(WheelIndex::FrontLeft,  wheel_fl);

@@ -669,6 +669,15 @@ namespace spartan
     void Render::UpdateAabb()
     {
         const Matrix transform = (GetEntity() && GetEntity()->GetActive()) ? GetEntity()->GetMatrix() : Matrix::Identity;
+
+        // refuse to fold a non finite transform into the world bbox, doing so would
+        // poison m_bounding_box with NaN and trip the frustum culler assert downstream
+        if (!transform.IsFinite())
+        {
+            SP_LOG_WARNING("non finite world matrix on '%s', keeping last bbox", GetEntity() ? GetEntity()->GetObjectName().c_str() : "?");
+            return;
+        }
+
         if (m_bounding_box_dirty || m_transform_previous != transform)
         {
             if (m_instances.empty()) // non-instanced
@@ -696,6 +705,15 @@ namespace spartan
             Vector3 camera_position = camera->GetEntity()->GetPosition();
 
             const BoundingBox& bounding_box = GetBoundingBox();
+
+            // a non finite bbox would crash the frustum culler assert, treat it as invisible
+            if (bounding_box.GetCenter().IsNaN() || bounding_box.GetExtents().IsNaN())
+            {
+                SP_LOG_WARNING("non finite bbox on '%s', marking invisible", GetEntity() ? GetEntity()->GetObjectName().c_str() : "?");
+                m_is_visible       = false;
+                m_distance_squared = 0.0f;
+                return;
+            }
 
             // first, check if the bounding box is in the frustum
             if (camera->IsInViewFrustum(bounding_box))

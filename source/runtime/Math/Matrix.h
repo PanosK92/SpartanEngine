@@ -695,6 +695,32 @@ namespace spartan::math
         [[nodiscard]] const float* Data() const { return &m00; }
         [[nodiscard]] std::string ToString() const;
 
+        [[nodiscard]] bool IsNaN() const
+        {
+            const float* d = Data();
+            for (int i = 0; i < 16; ++i)
+            {
+                if (std::isnan(d[i]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        [[nodiscard]] bool IsFinite() const
+        {
+            const float* d = Data();
+            for (int i = 0; i < 16; ++i)
+            {
+                if (!std::isfinite(d[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         float m00 = 0.0f, m10 = 0.0f, m20 = 0.0f, m30 = 0.0f;
         float m01 = 0.0f, m11 = 0.0f, m21 = 0.0f, m31 = 0.0f;
         float m02 = 0.0f, m12 = 0.0f, m22 = 0.0f, m32 = 0.0f;

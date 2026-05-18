@@ -422,10 +422,13 @@ void WorldViewer::TreeShow()
         // handle prefab drop from asset browser - instantiate as a root entity
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(ImGuiSp::GDragDropTypes[static_cast<int>(ImGuiSp::DragPayloadType::Prefab)].data()))
         {
-            const auto* prefab_payload = static_cast<const ImGuiSp::DragDropPayload*>(payload->Data);
-            if (const char* file_path = std::get<const char*>(prefab_payload->data))
+            if (payload->DataSize >= static_cast<int>(sizeof(ImGuiSp::DragDropPayload)))
             {
-                instantiate_prefab(file_path);
+                const auto* prefab_payload = static_cast<const ImGuiSp::DragDropPayload*>(payload->Data);
+                if (prefab_payload->path[0] != '\0')
+                {
+                    instantiate_prefab(prefab_payload->path);
+                }
             }
         }
 
@@ -660,10 +663,13 @@ void WorldViewer::TreeAddEntity(Entity* entity)
         // prefab drop from asset browser - instantiate as a child of the target entity
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(ImGuiSp::GDragDropTypes[static_cast<int>(ImGuiSp::DragPayloadType::Prefab)].data()))
         {
-            const auto* prefab_payload = static_cast<const ImGuiSp::DragDropPayload*>(payload->Data);
-            if (const char* file_path = std::get<const char*>(prefab_payload->data))
+            if (payload->DataSize >= static_cast<int>(sizeof(ImGuiSp::DragDropPayload)))
             {
-                instantiate_prefab(file_path, entity);
+                const auto* prefab_payload = static_cast<const ImGuiSp::DragDropPayload*>(payload->Data);
+                if (prefab_payload->path[0] != '\0')
+                {
+                    instantiate_prefab(prefab_payload->path, entity);
+                }
             }
         }
 

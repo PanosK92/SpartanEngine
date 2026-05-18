@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include <string>
-#include <variant>
+#include <cstring>
 #include <unordered_map>
 #include "Definitions.h"
 #include "Logging/Log.h"
@@ -198,18 +198,28 @@ namespace ImGuiSp
         );
     }
 
+    // self contained drag drop payload, paths are embedded directly so the
+    // payload survives any reallocation or refresh of the source asset list
     struct DragDropPayload
     {
-        using DataVariant = std::variant<const char*, uint64_t>;
-        DragDropPayload(const DragPayloadType type = DragPayloadType::Undefined, const DataVariant data = nullptr, const char* path_relative = nullptr)
+        static constexpr size_t max_path_length = 512;
+        DragPayloadType type                    = DragPayloadType::Undefined;
+        char path[max_path_length]              = {};
+        char path_relative[max_path_length]     = {};
+
+        void set_paths(const char* full, const char* relative)
         {
-            this->type          = type;
-            this->data          = data;
-            this->path_relative = path_relative;
+            path[0]          = '\0';
+            path_relative[0] = '\0';
+            if (full)
+            {
+                strncpy_s(path, max_path_length, full, _TRUNCATE);
+            }
+            if (relative)
+            {
+                strncpy_s(path_relative, max_path_length, relative, _TRUNCATE);
+            }
         }
-        DragPayloadType type;
-        DataVariant data;               // full/absolute path (for backward compatibility)
-        const char* path_relative;      // relative path
     };
 
     static void create_drag_drop_payload(const DragDropPayload& payload)
@@ -221,11 +231,12 @@ namespace ImGuiSp
     {
         if (ImGui::BeginDragDropTarget())
         {
-            if (const ImGuiPayload* payload_imgui = ImGui::AcceptDragDropPayload(GDragDropTypes[(int)type].data()))
+            const ImGuiPayload* payload_imgui = ImGui::AcceptDragDropPayload(GDragDropTypes[(int)type].data());
+            ImGui::EndDragDropTarget();
+            if (payload_imgui && payload_imgui->DataSize >= static_cast<int>(sizeof(DragDropPayload)))
             {
                 return static_cast<DragDropPayload*>(payload_imgui->Data);
             }
-            ImGui::EndDragDropTarget();
         }
 
         return nullptr;
@@ -306,14 +317,13 @@ namespace ImGuiSp
         // drop target
         if (auto payload = receive_drag_drop_payload(DragPayloadType::Texture))
         {
-            try
+            if (payload->path[0] != '\0')
             {
-                if (const auto tex = spartan::ResourceCache::Load<spartan::RHI_Texture>(std::get<const char*>(payload->data)).get())
+                if (const auto tex = spartan::ResourceCache::Load<spartan::RHI_Texture>(payload->path).get())
                 {
                     setter(tex);
                 }
             }
-            catch (const std::bad_variant_access& e) { SP_LOG_ERROR("%s", e.what()); }
         }
 
         return clicked_for_browse;

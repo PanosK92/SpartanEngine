@@ -89,6 +89,23 @@ namespace
             show_file_dialog = true;
         }
 
+        // save the current world to its existing path, falls back to the save-as dialog
+        // when there is no loaded world yet so the user can pick a destination
+        void SaveWorld()
+        {
+            const std::string& world_file_path = spartan::World::GetFilePath();
+            if (world_file_path.empty())
+            {
+                ShowWorldSaveDialog();
+                return;
+            }
+
+            spartan::ThreadPool::AddTask([world_file_path]()
+            {
+                spartan::World::SaveToFile(world_file_path);
+            });
+        }
+
         void ShowWorldLoadDialog()
         {
             file_dialog->SetOperation(FileDialog_Op_Load);
@@ -192,10 +209,10 @@ namespace
 
                 if (ImGui::MenuItem("Save", "Ctrl+S"))
                 {
-                    windows::ShowWorldSaveDialog();
+                    windows::SaveWorld();
                 }
 
-                if (ImGui::MenuItem("Save As...", "Ctrl+S"))
+                if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
                 {
                     windows::ShowWorldSaveDialog();
                 }
@@ -661,6 +678,24 @@ void MenuBar::Tick()
         if (ImGui::IsKeyPressed(ImGuiKey_F6, false))
         {
             buttons_toolbar::toggle_paused();
+        }
+
+        // world save shortcuts, gated on no text input so we don't hijack typing in fields
+        if (!ImGui::GetIO().WantTextInput)
+        {
+            const bool ctrl  = ImGui::GetIO().KeyCtrl;
+            const bool shift = ImGui::GetIO().KeyShift;
+            if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false))
+            {
+                if (shift)
+                {
+                    windows::ShowWorldSaveDialog();
+                }
+                else
+                {
+                    windows::SaveWorld();
+                }
+            }
         }
     }
 

@@ -338,6 +338,10 @@ namespace spartan::math
         bool Equals(const Quaternion& rhs)     const { return approximate_equals(x, rhs.x) && approximate_equals(y, rhs.y) && approximate_equals(z, rhs.z) && approximate_equals(w, rhs.w); }
 
         std::string ToString() const;
+
+        bool IsNaN()    const { return std::isnan(x) || std::isnan(y) || std::isnan(z) || std::isnan(w); }
+        bool IsFinite() const { return std::isfinite(x) && std::isfinite(y) && std::isfinite(z) && std::isfinite(w); }
+
         float x, y, z, w;
         static const Quaternion Identity;
     };
