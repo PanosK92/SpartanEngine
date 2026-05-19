@@ -75,6 +75,83 @@ float3 clamp_history(float3 history, float3 mean, float3 sigma, float3 minimum_v
     return clamp(history, lower, upper);
 }
 
+// edge-aware 4-tap reprojection, fetches the 4 nearest history samples around prev_uv and
+// reweights them by depth + normal compatibility before bilinear blending; this stops history
+// leaking across surface edges when motion lands prev_uv between two surfaces of different depth
+float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float current_depth, float2 history_resolution)
+{
+    float2 prev_pixel_f = prev_uv * history_resolution - 0.5f;
+    float2 base_f       = floor(prev_pixel_f);
+    float2 frac_f       = saturate(prev_pixel_f - base_f);
+
+    float4 bilinear_w = float4(
+        (1.0f - frac_f.x) * (1.0f - frac_f.y),
+        frac_f.x         * (1.0f - frac_f.y),
+        (1.0f - frac_f.x) * frac_f.y,
+        frac_f.x         * frac_f.y
+    );
+
+    int2 offsets[4] =
+    {
+        int2(0, 0), int2(1, 0), int2(0, 1), int2(1, 1)
+    };
+
+    float4 accumulated = 0.0f;
+    float  weight_sum  = 0.0f;
+    float  depth_phi   = max(current_depth * 0.05f, 1e-3f);
+
+    for (uint i = 0; i < 4; i++)
+    {
+        int2 tap_pixel = int2(base_f) + offsets[i];
+        if (tap_pixel.x < 0 || tap_pixel.x >= (int)history_resolution.x ||
+            tap_pixel.y < 0 || tap_pixel.y >= (int)history_resolution.y)
+        {
+            continue;
+        }
+
+        float2 tap_uv     = (tap_pixel + 0.5f) / history_resolution;
+        float  tap_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), tap_uv, 0).r;
+        if (tap_depth_raw <= 0.0f)
+        {
+            continue;
+        }
+
+        float  tap_depth   = linearize_depth(tap_depth_raw);
+        float  depth_delta = abs(tap_depth - current_depth) / max(current_depth, 1e-3f);
+        if (depth_delta > 0.1f)
+        {
+            continue;
+        }
+
+        float3 tap_normal      = get_normal(tap_uv);
+        float  normal_similarity = saturate(dot(tap_normal, current_normal));
+        if (normal_similarity < 0.7f)
+        {
+            continue;
+        }
+
+        float depth_weight   = exp(-depth_delta / 0.05f);
+        float normal_weight  = pow(normal_similarity, 8.0f);
+        float w = bilinear_w[i] * depth_weight * normal_weight;
+        if (w <= 0.0f)
+        {
+            continue;
+        }
+
+        accumulated += tex2.Load(int3(tap_pixel, 0)) * w;
+        weight_sum  += w;
+    }
+
+    if (weight_sum > 0.0f)
+    {
+        return accumulated / weight_sum;
+    }
+
+    // all taps rejected, fall back to point sample at the rounded center
+    int2 fallback_pixel = clamp(int2(round(prev_pixel_f)), int2(0, 0), int2(history_resolution) - 1);
+    return tex2.Load(int3(fallback_pixel, 0));
+}
+
 bool is_history_valid(float2 current_uv, float2 prev_uv, float3 current_position, float3 current_normal, float current_depth, float2 history_resolution, out float confidence)
 {
     confidence = 0.0f;
@@ -143,7 +220,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 current_position   = get_position(uv);
     float3 current_normal     = get_normal(uv);
     float  current_linear_z   = linearize_depth(depth);
-    float  current_confidence = saturate(tex_reservoir_prev4[pixel].y);
+    // confidence is the high f16 of tex4.w, see reservoir packing layout
+    uint   age_conf           = asuint(tex_reservoir_prev4[pixel].w);
+    float  current_confidence = saturate(f16tof32(age_conf >> 16u));
 
     float3 mean_color;
     float3 sigma_color;
@@ -164,7 +243,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     if (is_history_valid(uv, prev_uv, current_position, current_normal, current_linear_z, resolution, temporal_confidence))
     {
-        float4 history_sample = tex2.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), prev_uv, 0);
+        float4 history_sample = sample_history_edge_aware(prev_uv, current_normal, current_linear_z, float2(resolution));
         history_confidence    = saturate(history_sample.a);
         history_color         = clamp_history(max(history_sample.rgb, 0.0f), mean_color, sigma_color, minimum_color, maximum_color, current_confidence, history_confidence);
 

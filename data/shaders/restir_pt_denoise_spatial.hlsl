@@ -61,7 +61,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float4 center_sample      = tex.Load(int3(pixel, 0));
     float3 center_color       = max(center_sample.rgb, 0.0f);
     float  center_history     = saturate(center_sample.a);
-    float  reservoir_confidence = saturate(tex_reservoir_prev4[pixel].y);
+    // confidence is the high f16 of tex4.w, see reservoir packing layout
+    uint   center_age_conf    = asuint(tex_reservoir_prev4[pixel].w);
+    float  reservoir_confidence = saturate(f16tof32(center_age_conf >> 16u));
     float  center_confidence  = saturate(center_history * 0.6f + reservoir_confidence * 0.4f);
     float  center_luma        = dot(center_color, luminance_weights);
     float  center_depth       = linearize_depth(depth);
@@ -95,7 +97,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float  sample_depth   = linearize_depth(sample_depth_raw);
         float3 sample_normal  = get_normal(sample_uv);
         float4 sample_history = tex.Load(int3(sample_pixel, 0));
-        float  sample_reservoir_confidence = saturate(tex_reservoir_prev4[sample_pixel].y);
+        uint   sample_age_conf = asuint(tex_reservoir_prev4[sample_pixel].w);
+        float  sample_reservoir_confidence = saturate(f16tof32(sample_age_conf >> 16u));
         float3 sample_color   = max(sample_history.rgb, 0.0f);
         float  sample_luma    = dot(sample_color, luminance_weights);
 

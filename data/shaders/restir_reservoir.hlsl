@@ -28,25 +28,34 @@ static const uint  RESTIR_M_CAP              = 256;
 static const uint  RESTIR_SPATIAL_SAMPLES    = 8;
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.75f;
-static const float RESTIR_TEMPORAL_DECAY     = 0.97f;
+// raised from 0.97 so a stable surface reaches the m cap in ~10 frames instead of ~100,
+// the validity gate already drops temporal entirely on hard rejection so this only governs
+// the rate at which we adapt to gradual lighting changes
+static const float RESTIR_TEMPORAL_DECAY     = 0.995f;
 static const float RESTIR_RAY_T_MIN          = 0.001f;
 
 // sky / environment
-static const float RESTIR_SKY_RADIANCE_CLAMP = 50.0f;
-static const float RESTIR_SKY_W_CLAMP        = 30.0f;
+// sun disk radiance can far exceed any sane clamp, so this only catches numerical blowups
+static const float RESTIR_SKY_RADIANCE_CLAMP = 200.0f;
+static const float RESTIR_SKY_W_CLAMP        = 500.0f;
 static const float RESTIR_SKY_DISTANCE       = 1e10f;
 
 // reconnection criteria (lin 2022 hybrid shift, reconnection leg)
 static const float RESTIR_RC_MIN_DISTANCE    = 0.1f;
 static const float RESTIR_RC_MIN_ROUGHNESS   = 0.2f;
 static const float RESTIR_RC_COS_FRONT       = 0.05f;
-static const float RESTIR_JACOBIAN_CLAMP     = 50.0f;
+// large jacobians signal a near-degenerate shift, the shift result is rejected as failed
+// instead of being clamped so the bias from squashing the energy into a clamp does not
+// accumulate over neighbors; this acts as a safety guard rather than a soft firefly cap
+static const float RESTIR_JACOBIAN_REJECT    = 64.0f;
 
 // brdf / numerics
 static const float RESTIR_MIN_PDF            = 1e-6f;
-static const float RESTIR_W_CLAMP_DEFAULT    = 50.0f;
+// generous safety net only, the pairwise mis + visibility checks + m cap already bound energy
+// and the hybrid shift gives the estimator the dynamic range it needs for concentrated emitters
+static const float RESTIR_W_CLAMP_DEFAULT    = 500.0f;
 
-// firefly suppression (applied once at storage time to rc_radiance)
+// retained constant for historical reference (rc_radiance is no longer clamped at storage)
 static const float RESTIR_FIREFLY_LUMA       = 150.0f;
 
 // nee
@@ -386,7 +395,68 @@ float compute_spec_probability(float roughness, float metallic, float n_dot_v)
     return clamp(spec_prob, 0.1f, 0.9f);
 }
 
-// full ggx+lambert brdf evaluator returning f_r * cos(n,l) and the matching mixture pdf
+// brdf helpers ported from brdf.hlsl so restir matches the engine's main shading exactly
+// (same diffuse_burley + d_ggx with the cod-wwii roughness remap + v_smithggx + fdez-aguera
+// multiscatter compensation). these are inline copies, not includes, since brdf.hlsl pulls in
+// the Surface/AngularInfo structs which aren't available in the compute / raytrace passes
+float restir_pow5(float x)
+{
+    float x2 = x * x;
+    return x2 * x2 * x;
+}
+
+float restir_d_ggx_alpha(float roughness)
+{
+    float gloss = 1.0f - roughness;
+    return sqrt(2.0f / (1.0f + pow(2.0f, 18.0f * gloss)));
+}
+
+float3 restir_compute_f90(float3 f0)
+{
+    return saturate(50.0f * dot(f0, 1.0f / 3.0f));
+}
+
+float3 restir_f_schlick(float3 f0, float3 f90, float v_dot_h)
+{
+    return f0 + (f90 - f0) * restir_pow5(1.0f - v_dot_h);
+}
+
+float restir_f_schlick_scalar(float f0, float f90, float v_dot_h)
+{
+    return f0 + (f90 - f0) * restir_pow5(1.0f - v_dot_h);
+}
+
+float restir_v_smithggx(float n_dot_v, float n_dot_l, float a2)
+{
+    float ggxv = n_dot_l * sqrt(n_dot_v * n_dot_v * (1.0f - a2) + a2);
+    float ggxl = n_dot_v * sqrt(n_dot_l * n_dot_l * (1.0f - a2) + a2);
+    return 0.5f / max(ggxv + ggxl, 1e-6f);
+}
+
+float restir_d_ggx(float n_dot_h, float a2)
+{
+    float d = n_dot_h * n_dot_h * (a2 - 1.0f) + 1.0f;
+    return a2 / (PI * d * d + 1e-6f);
+}
+
+float3 restir_diffuse_burley(float3 diffuse_color, float roughness, float n_dot_v, float n_dot_l, float v_dot_h)
+{
+    float f90           = 0.5f + 2.0f * v_dot_h * v_dot_h * roughness;
+    float light_scatter = restir_f_schlick_scalar(1.0f, f90, n_dot_l);
+    float view_scatter  = restir_f_schlick_scalar(1.0f, f90, n_dot_v);
+    return diffuse_color * (light_scatter * view_scatter * (1.0f / PI));
+}
+
+float3 restir_compute_multiscatter_energy(float3 f0, float n_dot_v, float roughness)
+{
+    float  dhr        = lerp(1.0f - roughness * 0.7f, 1.0f, restir_pow5(1.0f - n_dot_v));
+    float3 energy_loss = (1.0f - dhr) * (1.0f - f0);
+    return 1.0f + f0 * energy_loss / max(1.0f - energy_loss, 1e-6f);
+}
+
+// full ggx+burley brdf evaluator returning f_r * cos(n,l) and the matching mixture pdf
+// matches the engine's main shading model (brdf.hlsl) so restir and direct light shading
+// produce consistent results on the same surface material
 float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf)
 {
     float3 h_unnorm = v + l;
@@ -410,37 +480,36 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
         return float3(0, 0, 0);
     }
 
-    float3 diffuse = albedo * (1.0f / PI);
+    // ggx specular with cod-wwii roughness remap and fdez-aguera multiscatter
+    float  a       = restir_d_ggx_alpha(roughness);
+    float  a2      = a * a;
+    float  d_term  = restir_d_ggx(n_dot_h, a2);
+    float  v_term  = restir_v_smithggx(n_dot_v, n_dot_l, a2);
+    float3 f0      = lerp(float3(0.04f, 0.04f, 0.04f), albedo, metallic);
+    float3 f90     = restir_compute_f90(f0);
+    float3 f_term  = restir_f_schlick(f0, f90, v_dot_h);
+    float3 fr      = d_term * v_term * f_term;
+    fr            *= restir_compute_multiscatter_energy(f0, n_dot_v, roughness);
+    // v_smithggx already absorbs the 4*n_dot_l*n_dot_v denominator, fr is per-(steradian * cos)
+    float3 specular_cos = fr * n_dot_l;
 
-    float alpha   = max(roughness * roughness, 0.001f);
-    float alpha2  = alpha * alpha;
-    float d_denom = n_dot_h * n_dot_h * (alpha2 - 1.0f) + 1.0f;
-    float d       = alpha2 / (PI * d_denom * d_denom + 1e-6f);
+    // burley diffuse, attenuated by fresnel and metallic in the same way light.hlsl does
+    float3 diffuse_color = albedo * (1.0f - metallic);
+    float3 diffuse       = restir_diffuse_burley(diffuse_color, roughness, n_dot_v, n_dot_l, v_dot_h);
+    float3 diffuse_cos   = diffuse * (1.0f - f_term) * n_dot_l;
 
-    float r_plus_1 = roughness + 1.0f;
-    float k   = (r_plus_1 * r_plus_1) / 8.0f;
-    float g_v = n_dot_v / (n_dot_v * (1.0f - k) + k + 1e-6f);
-    float g_l = n_dot_l / (n_dot_l * (1.0f - k) + k + 1e-6f);
-    float g   = g_v * g_l;
-
-    float3 f0 = lerp(float3(0.04f, 0.04f, 0.04f), albedo, metallic);
-    float3 f  = f0 + (1.0f - f0) * pow(1.0f - v_dot_h, 5.0f);
-
-    float3 specular = (d * g * f) / (4.0f * n_dot_v * n_dot_l + 1e-6f);
-    float3 f_avg       = f0 + (1.0f - f0) / 21.0f;
-    float  energy_bias = lerp(0.0f, 0.5f, roughness);
-    float3 energy_comp = 1.0f + f_avg * energy_bias;
-    specular *= energy_comp;
-
-    float3 kd   = (1.0f - f) * (1.0f - metallic);
-    float3 brdf = kd * diffuse + specular;
-
+    // importance sampling pdf still uses the squared-roughness ggx half-vector pdf because
+    // sample_brdf samples in that space; mixing pdfs match what produced the sample
+    float alpha_is  = max(roughness * roughness, 0.001f);
+    float alpha_is2 = alpha_is * alpha_is;
+    float d_denom_is = n_dot_h * n_dot_h * (alpha_is2 - 1.0f) + 1.0f;
+    float d_is       = alpha_is2 / (PI * d_denom_is * d_denom_is + 1e-6f);
     float diffuse_pdf = n_dot_l / PI;
-    float spec_pdf    = d * n_dot_h / (4.0f * v_dot_h + 1e-6f);
+    float spec_pdf    = d_is * n_dot_h / (4.0f * v_dot_h + 1e-6f);
     float spec_prob   = compute_spec_probability(roughness, metallic, n_dot_v);
     pdf = (1.0f - spec_prob) * diffuse_pdf + spec_prob * spec_pdf;
 
-    return brdf * n_dot_l;
+    return diffuse_cos + specular_cos;
 }
 
 // samples a direction proportional to diffuse+specular mixture, returns the sampled direction
@@ -596,14 +665,147 @@ ShiftResult try_reconnection_shift(
 
     // solid-angle jacobian at rc: (cos_dst * dist_src^2) / (cos_src * dist_dst^2)
     float jacobian = (cos_rc_dst * dist_src_sq) / max(cos_rc_src * dist_dst_sq, 1e-6f);
-    jacobian = clamp(jacobian, 0.0f, RESTIR_JACOBIAN_CLAMP);
-    if (jacobian <= 0.0f)
+    // reject the shift outright when the jacobian indicates a near-degenerate connection,
+    // a single rejected stream contributes nothing instead of darkening the result via a clamp
+    if (jacobian <= 0.0f || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
         return result;
 
     result.f_dst    = brdf_cos * src.rc_radiance;
     result.jacobian = jacobian;
     result.ok       = true;
     return result;
+}
+
+// random replay shift (lin 2022 hybrid shift, random-replay leg):
+// rebuilds the primary-vertex bounce at dst using the same xi that produced the src path,
+// then checks if the replayed bounce lands close enough to the stored rc to reuse the suffix.
+// the jacobian is the ratio of primary brdf pdfs at src and dst evaluated on each branch's
+// own sampled direction, which is the standard density change-of-variables factor for
+// random-replay shifts (volume preserving in xi-space)
+//
+// this is the fallback for samples that lack PATH_FLAG_HAS_RC (the reconnection shift's
+// roughness or distance gate failed); a single inline ray is cast from dst primary so the
+// added cost is paid only when the cheaper reconnection shift is not applicable
+//
+// rc_tolerance is the world-space slack on the rc match, scaled by the rc distance to keep
+// the relative tolerance well-bounded on far surfaces. visibility is implicit: if the
+// replayed ray hits within tolerance the connection is unoccluded by construction
+static const float RESTIR_REPLAY_RC_TOLERANCE_REL = 0.05f;
+static const float RESTIR_REPLAY_RC_TOLERANCE_MIN = 0.05f;
+
+ShiftResult try_random_replay_shift(
+    PathSample src,
+    float3 src_pos,
+    float3 src_normal,
+    float3 src_view_dir,
+    float3 src_albedo,
+    float src_roughness,
+    float src_metallic,
+    float3 dst_pos,
+    float3 dst_normal,
+    float3 dst_view_dir,
+    float3 dst_albedo,
+    float dst_roughness,
+    float dst_metallic)
+{
+    ShiftResult result;
+    result.f_dst    = float3(0, 0, 0);
+    result.jacobian = 0.0f;
+    result.ok       = false;
+
+    // sky samples have no scene-space rc to align with, so the reconnection shift already
+    // handles them correctly with a constant jacobian; replay would just duplicate that
+    if (is_sky_sample(src))
+        return result;
+
+    // replay xi at the stored seed; the seed is captured before the original xi was consumed
+    uint   replay_seed = src.seed_path;
+    float2 xi          = random_float2(replay_seed);
+
+    // sample brdf at src to get src's primary direction and pdf for the jacobian
+    float  pdf_src;
+    float3 dir_src = sample_brdf(src_albedo, src_roughness, src_metallic, src_normal, src_view_dir, xi, pdf_src);
+    if (pdf_src < RESTIR_MIN_PDF || dot(dir_src, src_normal) <= 0.0f)
+        return result;
+
+    // sample brdf at dst with the same xi for the replayed bounce
+    float  pdf_dst;
+    float3 dir_dst = sample_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, xi, pdf_dst);
+    if (pdf_dst < RESTIR_MIN_PDF || dot(dir_dst, dst_normal) <= 0.0f)
+        return result;
+
+    float offset = compute_ray_offset(dst_pos);
+    RayDesc ray;
+    ray.Origin    = dst_pos + dst_normal * offset;
+    ray.Direction = dir_dst;
+    ray.TMin      = RESTIR_RAY_T_MIN;
+    ray.TMax      = 1000.0f;
+
+    RayQuery<RAY_FLAG_NONE> query;
+    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+    query.Proceed();
+    if (query.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
+        return result;
+
+    float  hit_t   = query.CommittedRayT();
+    float3 hit_pos = ray.Origin + ray.Direction * hit_t;
+
+    // accept the replay only if the bounce landed near the stored rc, scaled tolerance keeps
+    // the test relative on far hits where small angular changes produce large position deltas
+    float3 to_rc        = src.rc_pos - hit_pos;
+    float  rc_dist      = length(src.rc_pos - dst_pos);
+    float  tol          = max(RESTIR_REPLAY_RC_TOLERANCE_REL * rc_dist, RESTIR_REPLAY_RC_TOLERANCE_MIN);
+    if (dot(to_rc, to_rc) > tol * tol)
+        return result;
+
+    // brdf at dst toward the replayed direction, multiplied by stored suffix radiance
+    float  pdf_eval;
+    float3 brdf_cos = evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, pdf_eval);
+    if (all(brdf_cos <= 0.0f))
+        return result;
+
+    // jacobian for replay is pdf_src / pdf_dst; the xi -> direction map is volume preserving
+    // in xi-space so the density change of variables in solid-angle is exactly this ratio
+    // f_dst stays in integrand form (brdf*cos*radiance), the pdf factor goes through the
+    // jacobian so the ris weight target/source remains in consistent units across shift types
+    float jacobian = pdf_src / max(pdf_dst, RESTIR_MIN_PDF);
+    if (jacobian <= 0.0f || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
+        return result;
+
+    result.f_dst    = brdf_cos * src.rc_radiance;
+    result.jacobian = jacobian;
+    result.ok       = true;
+    return result;
+}
+
+// hybrid shift: tries the cheap reconnection shift first, falls back to random replay when
+// reconnection is not applicable (no PATH_FLAG_HAS_RC); this is lin 2022's hybrid shift in
+// its most common practical form, where the choice between legs is driven by the rc roughness
+// gate at sample construction time
+ShiftResult try_hybrid_shift(
+    PathSample src,
+    float3 src_primary_pos,
+    float3 src_normal,
+    float3 src_view_dir,
+    float3 src_albedo,
+    float src_roughness,
+    float src_metallic,
+    float3 dst_pos,
+    float3 dst_normal,
+    float3 dst_view_dir,
+    float3 dst_albedo,
+    float dst_roughness,
+    float dst_metallic)
+{
+    ShiftResult reconnection = try_reconnection_shift(
+        src, src_primary_pos, dst_pos, dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic);
+    if (reconnection.ok)
+        return reconnection;
+
+    return try_random_replay_shift(
+        src,
+        src_primary_pos, src_normal, src_view_dir, src_albedo, src_roughness, src_metallic,
+        dst_pos,         dst_normal, dst_view_dir, dst_albedo, dst_roughness, dst_metallic);
 }
 
 // visibility ray from dst primary to rc

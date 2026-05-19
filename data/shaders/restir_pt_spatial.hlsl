@@ -168,23 +168,35 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float target_cur = target_pdf_self(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
 
-    // generalized balance heuristic at the canonical's domain (lin 2022 sec 5.2):
-    //   m_i(Y) = M_i * p_hat_canon(T_i(X_i)) / sum_j (M_j * p_hat_canon(T_j(X_j)))
-    //   per-stream contribution = m_i * p_hat_canon(T_i(X_i)) * W_i * |J_i|
-    // streaming form: insert with weight_stream_i = M_i * t_i^2 * W_i * |J_i| where
-    //   t_i = p_hat_canon(T_i(X_i)). the /denom factor cancels in the streaming reservoir
-    //   selection, and we post-scale weight_sum by 1/denom at the end so the stored W
-    //   matches the paper form W = weight_sum / target_pdf_y
+    // defensive pairwise MIS (bitterli 2020, used in lin 2022 algorithm 3):
+    //   for each (canonical, neighbor_j) pair, compute a balance weight using both directions
+    //   of the shift (neighbor->canonical AND canonical->neighbor); each pair contributes
+    //   1/(k+1) of the total MIS mass, plus a defensive 1/(k+1) bias toward canonical that
+    //   keeps the estimator stable when all neighbors are bad. this has strictly lower variance
+    //   than the generalized balance heuristic when canonical and neighbors disagree on lighting
     Reservoir combined  = create_empty_reservoir();
     combined.sample     = center.sample;
     combined.target_pdf = target_cur;
 
-    // canonical first (jacobian = 1 by self-shift)
-    float center_M  = max(center.M, 0.0f);
-    float denom     = center_M * target_cur;
-    float M_total   = center_M;
-    float weight_c  = center_M * target_cur * target_cur * center.W;
-    combined.weight_sum = max(weight_c, 0.0f);
+    float center_M = max(center.M, 0.0f);
+
+    // canonical weight starts with the defensive base (one share out of k+1)
+    // and accumulates the canonical side of each pairwise balance below
+    float canonical_pair_acc = 0.0f;
+    uint  valid_neighbors    = 0;
+
+    // collected per-neighbor in the loop so the canonical's defensive share is known before the
+    // streaming insert; with up to RESTIR_SPATIAL_SAMPLES neighbors this fits in registers
+    PathSample stream_samples [RESTIR_SPATIAL_SAMPLES];
+    float      stream_target  [RESTIR_SPATIAL_SAMPLES];
+    float      stream_jacobian[RESTIR_SPATIAL_SAMPLES];
+    float      stream_M       [RESTIR_SPATIAL_SAMPLES];
+    float      stream_W       [RESTIR_SPATIAL_SAMPLES];
+    float      stream_denom   [RESTIR_SPATIAL_SAMPLES];
+
+    float confidence_acc = center_M * center_confidence;
+    float confidence_w   = center_M;
+    float M_total        = center_M;
 
     float base_angle = random_float(seed) * 2.0f * PI;
 
@@ -225,10 +237,25 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float2 neighbor_uv     = (neighbor_pixel + 0.5f) / resolution;
         float3 neighbor_pos_ws = get_position(neighbor_uv);
 
-        // forward shift (neighbor's path evaluated at this pixel)
-        ShiftResult shift = try_reconnection_shift(
+        // we fetch neighbor material up front since both the forward (hybrid) shift and the
+        // backward (pairwise mis) shift need the destination's brdf parameters
+        float4 neighbor_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0);
+        float3 neighbor_albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).rgb);
+        float  neighbor_roughness = max(neighbor_material.r, 0.04f);
+        float  neighbor_metallic  = neighbor_material.g;
+        float3 neighbor_normal_ws = get_normal(neighbor_uv);
+        float3 neighbor_view_dir  = normalize(get_camera_position() - neighbor_pos_ws);
+
+        // forward shift (neighbor's path evaluated at this pixel) using hybrid shift so paths
+        // that lack a valid reconnection vertex are still reusable via random replay
+        ShiftResult shift_j_to_c = try_hybrid_shift(
             neighbor.sample,
             neighbor_pos_ws,
+            neighbor_normal_ws,
+            neighbor_view_dir,
+            neighbor_albedo,
+            neighbor_roughness,
+            neighbor_metallic,
             pos_ws,
             normal_ws,
             view_dir,
@@ -237,34 +264,84 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             metallic
         );
 
-        if (!shift.ok)
+        if (!shift_j_to_c.ok)
             continue;
 
         if (!trace_shift_visibility(neighbor.sample, pos_ws, normal_ws))
             continue;
 
-        float target_j_at_c = max(dot(shift.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f);
+        float target_j_at_c = max(dot(shift_j_to_c.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f);
         if (target_j_at_c <= 0.0f)
             continue;
 
-        float jacobian = shift.jacobian;
+        // backward shift (canonical sample evaluated at neighbor's pixel) for pairwise MIS
+        ShiftResult shift_c_to_j = try_hybrid_shift(
+            center.sample,
+            pos_ws,
+            normal_ws,
+            view_dir,
+            albedo,
+            roughness,
+            metallic,
+            neighbor_pos_ws,
+            neighbor_normal_ws,
+            neighbor_view_dir,
+            neighbor_albedo,
+            neighbor_roughness,
+            neighbor_metallic
+        );
 
-        denom    += neighbor.M * target_j_at_c;
-        M_total  += neighbor.M;
+        // canonical sample may not be reconnectable at the neighbor's pixel (e.g. invalid rc,
+        // backfacing surface). when this happens we fall back to single-sided balance for this
+        // pair by setting target_c_at_j = 0, which means the canonical does not "claim" any
+        // pairwise share and the neighbor takes its full balance weight against the canonical
+        float target_c_at_j = shift_c_to_j.ok
+            ? max(dot(shift_c_to_j.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f)
+            : 0.0f;
 
-        float weight_j = neighbor.M * target_j_at_c * target_j_at_c * neighbor.W * jacobian;
+        float jacobian = shift_j_to_c.jacobian;
+        float pair_denom = max(center_M * target_c_at_j + neighbor.M * target_j_at_c, 1e-12f);
+
+        stream_samples [valid_neighbors] = neighbor.sample;
+        stream_target  [valid_neighbors] = target_j_at_c;
+        stream_jacobian[valid_neighbors] = jacobian;
+        stream_M       [valid_neighbors] = neighbor.M;
+        stream_W       [valid_neighbors] = neighbor.W;
+        stream_denom   [valid_neighbors] = pair_denom;
+        valid_neighbors++;
+
+        canonical_pair_acc += (center_M * target_c_at_j) / pair_denom;
+
+        M_total        += neighbor.M;
+        confidence_acc += neighbor.M * neighbor_confidence;
+        confidence_w   += neighbor.M;
+
+        if (valid_neighbors >= RESTIR_SPATIAL_SAMPLES)
+            break;
+    }
+
+    // defensive pairwise mis weights: canonical gets (1/(k+1)) + (1/(k+1)) * sum over neighbors
+    // of (canonical share of pair), each neighbor j gets (1/(k+1)) * (neighbor share of pair)
+    // when k == 0 the canonical takes the full weight, when k > 0 it splits with neighbors
+    float k_inv = 1.0f / float(valid_neighbors + 1);
+
+    float weight_c = k_inv * (1.0f + canonical_pair_acc) * target_cur * center.W;
+    combined.weight_sum = max(weight_c, 0.0f);
+
+    for (uint j = 0; j < valid_neighbors; j++)
+    {
+        float target_at_c = stream_target[j];
+        float m_j         = k_inv * (stream_M[j] * target_at_c) / stream_denom[j];
+        float weight_j    = m_j * target_at_c * stream_W[j] * stream_jacobian[j];
+
         combined.weight_sum += max(weight_j, 0.0f);
 
         if (combined.weight_sum > 0.0f && random_float(seed) * combined.weight_sum < weight_j)
         {
-            combined.sample     = neighbor.sample;
-            combined.target_pdf = target_j_at_c;
+            combined.sample     = stream_samples[j];
+            combined.target_pdf = target_at_c;
         }
     }
-
-    // post-scale weight_sum by 1/denom to recover the paper form sum_i (m_i * t_i * W_i * J_i)
-    if (denom > 0.0f)
-        combined.weight_sum /= denom;
 
     combined.M = M_total;
     clamp_reservoir_M(combined, RESTIR_M_CAP);
@@ -277,7 +354,10 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float w_clamp = get_w_clamp_for_sample(combined.sample);
     combined.W    = min(combined.W, w_clamp);
 
-    combined.confidence = saturate(center_confidence);
+    // confidence is m-weighted across all merged streams, blended with the center so a single
+    // high-confidence neighbor does not overpower the canonical estimate
+    float merged_confidence = (confidence_w > 0.0f) ? (confidence_acc / confidence_w) : center_confidence;
+    combined.confidence = saturate(max(center_confidence, merged_confidence));
     combined.age        = center.age;
 
     float4 t0, t1, t2, t3, t4;

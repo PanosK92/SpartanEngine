@@ -33,7 +33,10 @@ float2 reproject_to_previous_frame(float2 current_uv)
     return current_uv - velocity_uv;
 }
 
-// validates temporal reprojection via surface similarity + reprojection distance
+// validates temporal reprojection via surface similarity + reprojection distance + depth gate
+// the depth gate compares the reprojected surface's depth at prev_uv against the expected depth
+// obtained by transforming current_pos through the previous view-projection, catching disocclusions
+// that screen-space normal / motion checks miss
 bool is_temporal_sample_valid(
     float2 current_uv,
     float2 prev_uv,
@@ -50,7 +53,7 @@ bool is_temporal_sample_valid(
 
     // reproject the current surface through the previous frame's transform and compare
     float4 prev_clip        = mul(float4(current_pos, 1.0f), get_view_projection_previous());
-    float3 prev_ndc         = prev_clip.xyz / prev_clip.w;
+    float3 prev_ndc         = prev_clip.xyz / max(prev_clip.w, FLT_MIN);
     float2 expected_prev_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
     float2 reproj_diff      = abs(prev_uv - expected_prev_uv) * screen_resolution;
     float  reproj_dist      = length(reproj_diff);
@@ -69,10 +72,23 @@ bool is_temporal_sample_valid(
     if (normal_similarity < normal_threshold)
         return false;
 
+    // disocclusion gate, compares the surface depth at prev_uv (current depth buffer) against
+    // current_depth; a stable surface should have matching screen-space depth at both pixels
+    float prev_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
+    if (prev_depth_raw <= 0.0f)
+        return false;
+
+    float prev_depth_linear = linearize_depth(prev_depth_raw);
+    float depth_delta       = abs(prev_depth_linear - current_depth) / max(current_depth, 1e-3f);
+    float depth_limit       = lerp(0.12f, 0.04f, motion_factor);
+    if (depth_delta > depth_limit)
+        return false;
+
     float reproj_confidence = saturate(1.0f - reproj_dist / reproj_tol);
     float normal_confidence = saturate((normal_similarity - normal_threshold) / max(1.0f - normal_threshold, 1e-4f));
     float motion_confidence = saturate(1.0f - motion_len / 32.0f);
-    confidence = reproj_confidence * normal_confidence * motion_confidence;
+    float depth_confidence  = saturate(1.0f - depth_delta / depth_limit);
+    confidence = reproj_confidence * normal_confidence * motion_confidence * depth_confidence;
 
     return confidence >= TEMPORAL_MIN_CONFIDENCE;
 }
@@ -133,6 +149,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     Reservoir temporal = create_empty_reservoir();
     float  target_temp          = 0.0f;
     float  jacobian_temp        = 0.0f;
+    float  target_cur_at_temp   = 0.0f;
 
     if (is_temporal_sample_valid(uv, prev_uv, pos_ws, normal_ws, linear_depth, buffer_frame.resolution_render, temporal_confidence))
     {
@@ -153,12 +170,31 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
             if (is_reservoir_valid(temporal) && temporal.M > 0.0f && temporal.W > 0.0f)
             {
-                // temporal reuse is always sub-pixel on a surface that passed the reprojection
-                // gate, so approximate src_primary == pos_ws which yields jacobian ~ 1 without
-                // requiring a prev-frame depth buffer
-                ShiftResult shift = try_reconnection_shift(
+                // reconstruct the source primary world position from the reprojected pixel so
+                // the reconnection jacobian correctly recovers the area-measure change between
+                // the previous primary (where the reservoir was built) and the current primary.
+                // for static geometry this is exact, for moving geometry the disocclusion gate
+                // above already rejects large depth deltas so the residual error stays bounded
+                float3 src_primary_pos = get_position(prev_uv);
+
+                // approximate src primary material with current g-buffer at prev_uv; for static
+                // surfaces this is exact, and the disocclusion gate above already rejected
+                // mismatched surfaces so the residual error stays bounded
+                float4 src_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0);
+                float3 src_albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).rgb);
+                float  src_roughness = max(src_material.r, 0.04f);
+                float  src_metallic  = src_material.g;
+                float3 src_normal_ws = get_normal(prev_uv);
+                float3 src_view_dir  = normalize(get_camera_position() - src_primary_pos);
+
+                ShiftResult shift_t_to_c = try_hybrid_shift(
                     temporal.sample,
-                    pos_ws,
+                    src_primary_pos,
+                    src_normal_ws,
+                    src_view_dir,
+                    src_albedo,
+                    src_roughness,
+                    src_metallic,
                     pos_ws,
                     normal_ws,
                     view_dir,
@@ -167,13 +203,37 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     metallic
                 );
 
-                if (shift.ok)
+                if (shift_t_to_c.ok)
                 {
                     bool visible = trace_shift_visibility(temporal.sample, pos_ws, normal_ws);
                     if (visible)
                     {
-                        target_temp   = max(dot(shift.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f);
-                        jacobian_temp = shift.jacobian;
+                        target_temp   = max(dot(shift_t_to_c.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f);
+                        jacobian_temp = shift_t_to_c.jacobian;
+
+                        // backward shift (canonical sample evaluated at temporal pixel) for
+                        // defensive pairwise mis. canonical's primary g-buffer is the current
+                        // frame's g-buffer at uv, and temporal pixel's g-buffer is the current
+                        // frame's at prev_uv (approximated, see comment above)
+                        ShiftResult shift_c_to_t = try_hybrid_shift(
+                            current.sample,
+                            pos_ws,
+                            normal_ws,
+                            view_dir,
+                            albedo,
+                            roughness,
+                            metallic,
+                            src_primary_pos,
+                            src_normal_ws,
+                            src_view_dir,
+                            src_albedo,
+                            src_roughness,
+                            src_metallic
+                        );
+                        target_cur_at_temp = shift_c_to_t.ok
+                            ? max(dot(shift_c_to_t.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f)
+                            : 0.0f;
+
                         have_temporal = (target_temp > 0.0f);
                     }
                 }
@@ -181,37 +241,45 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    // soft scale temporal M by reprojection confidence to fade out near surface
-    // boundaries, plus a small constant decay to adapt to lighting changes; the M cap
-    // bounds stale sample influence and the validity gate above already drops temporal
-    // entirely for hard surface mismatches, so no time-based staleness is needed
+    // scale temporal M by a confidence-gated decay: on a stable surface the temporal sample is
+    // fully trusted and we converge toward the M cap quickly, but as reprojection confidence
+    // drops we increase the decay so unstable history fades fast. the validity gate already
+    // rejects hard mismatches outright so we never decay past the trusted band here
     if (have_temporal)
     {
-        float M_scale = RESTIR_TEMPORAL_DECAY * temporal_confidence;
-        temporal.M    = max(temporal.M * M_scale, 0.0f);
+        float stability  = saturate(temporal_confidence);
+        float M_scale    = lerp(0.85f, RESTIR_TEMPORAL_DECAY, stability);
+        temporal.M       = max(temporal.M * M_scale, 0.0f);
         clamp_reservoir_M(temporal, RESTIR_M_CAP);
     }
 
-    // generalized balance heuristic for two streams (lin 2022 eq. 25):
-    //   m_i = (M_i * p_hat_dst(T_i(X_i))) / sum_j (M_j * p_hat_dst(T_j(X_j)))
-    //   w_i = m_i * p_hat_dst(T_i(X_i)) * W_i_src * |J_i|
-    //   W_out = sum_i w_i / p_hat_dst(Y), no extra /M_total since m_i absorbs normalization
-    float denom = current.M * target_cur;
-    if (have_temporal)
-        denom += temporal.M * target_temp;
-
+    // defensive pairwise mis with k=1 neighbor (the temporal stream):
+    //   pair_denom = M_c * t_c_at_t + M_t * t_t_at_c
+    //   canonical share of pair = M_c * t_c_at_t / pair_denom
+    //   temporal share of pair = M_t * t_t_at_c / pair_denom
+    //   m_c = (1/(k+1)) * (1 + canonical share) = (1/2) * (1 + canonical share)
+    //   m_t = (1/(k+1)) * (temporal share) = (1/2) * (temporal share)
+    //   this collapses to the generalized balance when canonical_share + temporal_share == 1,
+    //   but the defensive base makes the estimator stable when t_c_at_t is unreliable
     float weight_cur = 0.0f;
-    if (denom > 0.0f && target_cur > 0.0f)
-    {
-        float m_cur = (current.M * target_cur) / denom;
-        weight_cur  = m_cur * target_cur * current.W;
-    }
-
     float weight_tmp = 0.0f;
-    if (have_temporal && denom > 0.0f && target_temp > 0.0f)
+
+    if (have_temporal)
     {
-        float m_temp = (temporal.M * target_temp) / denom;
-        weight_tmp   = m_temp * target_temp * jacobian_temp * temporal.W;
+        float pair_denom = max(current.M * target_cur_at_temp + temporal.M * target_temp, 1e-12f);
+        float canon_share = (current.M * target_cur_at_temp) / pair_denom;
+        float temp_share  = (temporal.M * target_temp)        / pair_denom;
+
+        float m_cur  = 0.5f * (1.0f + canon_share);
+        float m_temp = 0.5f * temp_share;
+
+        weight_cur = (target_cur > 0.0f) ? (m_cur  * target_cur  * current.W)                : 0.0f;
+        weight_tmp = (target_temp > 0.0f) ? (m_temp * target_temp * jacobian_temp * temporal.W) : 0.0f;
+    }
+    else if (target_cur > 0.0f)
+    {
+        // no temporal candidate, canonical takes full mis mass
+        weight_cur = target_cur * current.W;
     }
 
     combined.weight_sum = max(weight_cur, 0.0f);
