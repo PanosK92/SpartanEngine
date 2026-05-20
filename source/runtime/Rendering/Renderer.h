@@ -75,6 +75,8 @@ namespace spartan
     extern TConsoleVar<float> cvar_restir_pt_rc_min_roughness;
     extern TConsoleVar<float> cvar_restir_pt_w_clamp;
     extern TConsoleVar<float> cvar_restir_pt_validation_period;
+    extern TConsoleVar<float> cvar_restir_pt_disable_temporal_reuse;
+    extern TConsoleVar<float> cvar_restir_pt_disable_spatial_reuse;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;
     extern TConsoleVar<float> cvar_film_grain;

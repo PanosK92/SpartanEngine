@@ -393,11 +393,15 @@ namespace spartan
             return false;
         }
 
-        // two passes propagate good samples across a wider neighborhood, reducing variance for the denoiser
+        // two a-trous-style passes with progressively expanding radii (lin 2022 §6.2), the
+        // first pass operates on a tight neighborhood for sharp signal preservation, the
+        // second pass widens the kernel so distant neighbors feed the canonical reservoir,
+        // pingpong routing keeps the final output in `reservoirs` so the next-frame swap
+        // cycle picks it up as the new previous-frame reservoir
         struct stage { const char* name; float param; RHI_Texture* const* src; RHI_Texture* const* dst; };
         const stage stages[2] = {
-            { "restir_pt_spatial",   0.0f, reservoirs,         reservoirs_spatial },
-            { "restir_pt_spatial_2", 1.0f, reservoirs_spatial, reservoirs         }
+            { "restir_pt_spatial",   0.0f, reservoirs,         reservoirs_spatial }, // tight
+            { "restir_pt_spatial_2", 1.0f, reservoirs_spatial, reservoirs         }  // wide
         };
 
         for (const stage& s : stages)
@@ -519,9 +523,19 @@ namespace spartan
         const uint32_t dispatch_x  = (width  + 7) / 8;
         const uint32_t dispatch_y  = (height + 7) / 8;
 
+        // bisection cvars allow isolating temporal- or spatial-only failures, when disabled
+        // the corresponding pass is simply skipped, the next stages reuse whatever reservoirs
+        // are in the canonical buffer (temporal output if spatial is off, initial ris output
+        // if both are off), this is a debugging aid not a quality knob
+        const bool disable_temporal = cvar_restir_pt_disable_temporal_reuse.GetValueAs<bool>();
+        const bool disable_spatial  = cvar_restir_pt_disable_spatial_reuse.GetValueAs<bool>();
+
         Pass_ReSTIR_TraceInitial(cmd_list, tlas, tex_gi, tex_skysphere, reservoirs, width, height);
-        Pass_ReSTIR_Temporal    (cmd_list, tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
-        const bool ran_spatial = Pass_ReSTIR_SpatialPair(cmd_list, tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
+        if (!disable_temporal)
+        {
+            Pass_ReSTIR_Temporal(cmd_list, tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
+        }
+        const bool ran_spatial = !disable_spatial && Pass_ReSTIR_SpatialPair(cmd_list, tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
 
         if (!ran_spatial)
         {
@@ -638,11 +652,16 @@ namespace spartan
         }
 
         // ping pong spatial passes, parameter is the kernel radius, src and dst alternate
+        // a-trous step doubling at each level (1, 2, 4, 8) matches lin 2022's reference svgf
+        // 4 levels gives us 1+3+7+15 effective tap radius which fully filters the half-res
+        // output without leaving residual noise on smooth diffuse surfaces, even count means
+        // the final write lands in tex_gi_denoised directly so no fallback blit is needed
         struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
-        const denoise_stage stages[3] = {
+        const denoise_stage stages[4] = {
             { "restir_pt_denoise_spatial",   1.0f, tex_gi_denoised, tex_gi_ping     },
             { "restir_pt_denoise_spatial_2", 2.0f, tex_gi_ping,     tex_gi_denoised },
             { "restir_pt_denoise_spatial_3", 4.0f, tex_gi_denoised, tex_gi_ping     },
+            { "restir_pt_denoise_spatial_4", 8.0f, tex_gi_ping,     tex_gi_denoised },
         };
 
         for (const denoise_stage& s : stages)
@@ -670,10 +689,12 @@ namespace spartan
             cmd_list->EndTimeblock();
         }
 
-        cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_gi_ping, tex_gi_denoised);
+        // 4 stages with even count means the final output lands in tex_gi_denoised already
+        // (stage 4 wrote ping -> denoised), no need to blit ping back, but we still blit the
+        // denoised result into the history texture so the next frame's svgf temporal pass has
+        // a freshly filtered starting point for its ema accumulation
         cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_gi_ping, tex_gi_history);
+        Pass_Blit(cmd_list, tex_gi_denoised, tex_gi_history);
         cmd_list->InsertBarrier(tex_gi_history,  RHI_BarrierType::EnsureWriteThenRead);
         cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
 

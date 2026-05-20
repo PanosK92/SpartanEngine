@@ -86,19 +86,27 @@ static const uint PATH_FLAG_SPECULAR = 1 << 2;  // diagnostic: primary surface i
 static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from light nee strategy, used for gris balance mis at the initial ris pool
 
 // a path sample stores the suffix of a path beginning at the current pixel's primary hit
+// paper-faithful split of the radiance leaving rc toward the source primary (lin 2022 §5):
+//
+//   L_at_rc = L_nee + f_rc(in_at_rc, rc_outgoing_dir) * L_post
+//
+// where L_nee is the direct lighting collected by nee at rc (with the rc bsdf baked in for
+// each nee direction, that residual view-dep is bounded by the rc roughness gate at >= 0.2),
+// L_post is the radiance arriving at rc from direction rc_outgoing_dir produced by the
+// suffix bounces past rc (with the rc bsdf factored out), and rc_outgoing_dir is the
+// direction leaving rc into the suffix
+//
+// at shift time the reconnection shift evaluates f_rc with the destination's incoming
+// direction at rc (-dir_dst), so the indirect specular at rc is correctly view-dependent
+// and the rc_radiance baked-in bias that used to dominate broken indirect specular is gone
+//
 // rc_pos is a world-space reconnection vertex (PATH_FLAG_HAS_RC) or a unit sky direction (PATH_FLAG_SKY)
-// rc_radiance is the outgoing radiance leaving rc toward the source primary, computed using
-// src's incoming direction at rc, the radiance is therefore view dependent at rc with respect
-// to the source path so reuse at a destination with a different rc incoming direction carries
-// a bounded bias, lin 2022 controls this by gating reconnection on rc roughness >= 0.2 (see
-// RESTIR_RC_MIN_ROUGHNESS) which keeps the rc bsdf nearly direction independent in the
-// outgoing argument, eliminating it entirely would require splitting rc_radiance into pre/post
-// rc_bsdf components and re-applying f_rc at shift time, which is the lin 2022 reference
-// approach but defeats the single scalar storage that makes the cache cheap, we keep the gate
-// rc_prev_pos is the position of the vertex immediately before rc in the source path
-// (equal to src_primary_pos when rc_length == 2, or the specular bounce position when rc_length == 3)
-// rc_outgoing_dir is the direction leaving rc to the next bounce, used by the hybrid shift to
-// re-evaluate the rc brdf when the reuse direction at rc differs from the source direction
+// rc_normal is the rc surface normal (or the negative sky direction for sky samples)
+// rc_outgoing_dir is the direction leaving rc into the suffix (unit vector), unused when L_post is zero
+// rc_L_post is radiance at rc from direction rc_outgoing_dir, bsdf at rc factored out (zero for sky/area-light samples that have no continuation past rc)
+// rc_L_nee is direct lighting at rc (rc bsdf baked in for surface rc, full radiance for sky/area light samples)
+// rc_albedo / rc_roughness / rc_metallic are the rc material parameters used to re-evaluate f_rc at shift time
+//
 // src_pos / src_normal / src_albedo / src_roughness / src_metallic capture the *source* pixel's
 // primary surface at the time the reservoir was generated, so temporal and spatial passes can
 // evaluate the source's primary brdf and jacobian without sampling the current g-buffer at a
@@ -107,9 +115,12 @@ struct PathSample
 {
     float3 rc_pos;
     float3 rc_normal;
-    float3 rc_radiance;
-    float3 rc_prev_pos;
     float3 rc_outgoing_dir;
+    float3 rc_L_post;
+    float3 rc_L_nee;
+    float3 rc_albedo;
+    float  rc_roughness;
+    float  rc_metallic;
     float3 src_pos;
     float3 src_normal;
     float3 src_albedo;
@@ -166,28 +177,35 @@ void unpack_path_info(uint packed, out uint path_length, out uint rc_length, out
     flags       = (packed >> 16u) & 0xFFFFu;
 }
 
-// reservoir texture packing (6 x RGBA32F = 24 floats), the 6th texture carries the source
-// primary g-buffer so temporal and spatial passes can evaluate the source brdf and jacobian
-// without sampling the current frame's g-buffer at a reprojected pixel, which is wrong for
-// moving objects and is the main cause of motion ghosting in the previous implementation
+// reservoir texture packing (6 x RGBA32F = 24 floats), the 4th and 5th textures carry the rc
+// material params and the source primary g-buffer so temporal and spatial passes can evaluate
+// f_rc at the destination's incoming direction (paper-faithful indirect specular, lin 2022 §5)
+// and the source brdf / jacobian without sampling the current g-buffer at a reprojected pixel
+// (which is wrong for moving objects and is the main cause of motion ghosting)
+//
+// further compression to 4 RGBA32F (r11g11b10 for hdr radiance, fp16 positions, uint8 albedo)
+// is feasible bandwidth-wise but trades hdr precision on rc_L_post / rc_L_nee and world-space
+// precision on rc_pos / src_pos for a 33% bandwidth reduction, deferred until profiling shows
+// the reservoir read/write loop is actually the bottleneck
 //
 // tex0.xyz = rc_pos
-// tex0.w   = rc_normal.oct.x
-// tex1.x   = rc_normal.oct.y
-// tex1.yzw = rc_radiance
+// tex0.w   = asfloat(pack_f16x2(rc_normal_oct.x, rc_normal_oct.y))
+// tex1.xyz = rc_L_post
+// tex1.w   = asfloat(pack_f16x2(rc_outgoing_oct.x, rc_outgoing_oct.y))
 // tex2.x   = asfloat(seed_path)
 // tex2.y   = asfloat(packed: path_length | rc_length | flags)
 // tex2.z   = weight_sum
 // tex2.w   = M
 // tex3.x   = W
 // tex3.y   = target_pdf
-// tex3.zw  = rc_outgoing_dir.oct (xy)
-// tex4.xyz = rc_prev_pos
-// tex4.w   = asfloat(pack_f16x2(age, confidence))
+// tex3.z   = asfloat(pack_f16x2(rc_roughness, confidence))
+// tex3.w   = asfloat(pack_uint8x4(rc_albedo.r, rc_albedo.g, rc_albedo.b, rc_metallic))
+// tex4.xyz = rc_L_nee
+// tex4.w   = asfloat(pack_uint8x4(src_albedo.r, src_albedo.g, src_albedo.b, src_metallic))
 // tex5.x   = asfloat(pack_f16x2(src_pos.x, src_pos.y))
 // tex5.y   = asfloat(pack_f16x2(src_pos.z, src_normal_oct.x))
 // tex5.z   = asfloat(pack_f16x2(src_normal_oct.y, src_roughness))
-// tex5.w   = asfloat(pack_uint8x4(src_albedo.r, src_albedo.g, src_albedo.b, src_metallic))
+// tex5.w   = asfloat(pack_f16x2(age, 0.0f))
 //
 // src_pos is stored as absolute world space in f16, which gives ~1cm precision near origin
 // degrading to ~1m at 1 km out, more than enough for the jacobian distance ratios used in the
@@ -226,61 +244,79 @@ float4 unpack_float_to_uint8x4(float p)
 
 void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4, out float4 tex5)
 {
-    float2 normal_oct      = octahedral_encode(r.sample.rc_normal);
-    float2 outgoing_oct    = octahedral_encode(r.sample.rc_outgoing_dir);
-    float2 src_normal_oct  = octahedral_encode(r.sample.src_normal);
-    uint   age_conf_packed = f32tof16(r.age) | (f32tof16(r.confidence) << 16u);
+    float2 rc_normal_oct  = octahedral_encode(r.sample.rc_normal);
+    float2 rc_out_oct     = octahedral_encode(r.sample.rc_outgoing_dir);
+    float2 src_normal_oct = octahedral_encode(r.sample.src_normal);
 
-    tex0 = float4(r.sample.rc_pos, normal_oct.x);
-    tex1 = float4(normal_oct.y, r.sample.rc_radiance);
+    tex0 = float4(r.sample.rc_pos, pack_f16x2_to_float(rc_normal_oct.x, rc_normal_oct.y));
+    tex1 = float4(r.sample.rc_L_post, pack_f16x2_to_float(rc_out_oct.x, rc_out_oct.y));
     tex2 = float4(
         asfloat(r.sample.seed_path),
         asfloat(pack_path_info(r.sample.path_length, r.sample.rc_length, r.sample.flags)),
         r.weight_sum,
         r.M
     );
-    tex3 = float4(r.W, r.target_pdf, outgoing_oct.x, outgoing_oct.y);
-    tex4 = float4(r.sample.rc_prev_pos, asfloat(age_conf_packed));
-    tex5 = float4(
-        pack_f16x2_to_float(r.sample.src_pos.x,    r.sample.src_pos.y),
-        pack_f16x2_to_float(r.sample.src_pos.z,    src_normal_oct.x),
-        pack_f16x2_to_float(src_normal_oct.y,      r.sample.src_roughness),
+    tex3 = float4(
+        r.W,
+        r.target_pdf,
+        pack_f16x2_to_float(r.sample.rc_roughness, r.confidence),
+        pack_uint8x4_to_float(r.sample.rc_albedo.r, r.sample.rc_albedo.g, r.sample.rc_albedo.b, r.sample.rc_metallic)
+    );
+    tex4 = float4(
+        r.sample.rc_L_nee,
         pack_uint8x4_to_float(r.sample.src_albedo.r, r.sample.src_albedo.g, r.sample.src_albedo.b, r.sample.src_metallic)
+    );
+    tex5 = float4(
+        pack_f16x2_to_float(r.sample.src_pos.x, r.sample.src_pos.y),
+        pack_f16x2_to_float(r.sample.src_pos.z, src_normal_oct.x),
+        pack_f16x2_to_float(src_normal_oct.y,   r.sample.src_roughness),
+        pack_f16x2_to_float(r.age,              0.0f)
     );
 }
 
 Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4, float4 tex5)
 {
     Reservoir r;
+
+    float2 rc_normal_oct = unpack_float_to_f16x2(tex0.w);
+    float2 rc_out_oct    = unpack_float_to_f16x2(tex1.w);
+
     r.sample.rc_pos          = tex0.xyz;
-    r.sample.rc_normal       = octahedral_decode(float2(tex0.w, tex1.x));
-    r.sample.rc_radiance     = tex1.yzw;
-    r.sample.rc_outgoing_dir = octahedral_decode(tex3.zw);
-    r.sample.rc_prev_pos     = tex4.xyz;
+    r.sample.rc_normal       = octahedral_decode(rc_normal_oct);
+    r.sample.rc_L_post       = tex1.xyz;
+    r.sample.rc_outgoing_dir = octahedral_decode(rc_out_oct);
     r.sample.seed_path       = asuint(tex2.x);
 
     uint packed_info = asuint(tex2.y);
     unpack_path_info(packed_info, r.sample.path_length, r.sample.rc_length, r.sample.flags);
 
-    float2 pos_xy = unpack_float_to_f16x2(tex5.x);
+    float2 rc_rough_conf = unpack_float_to_f16x2(tex3.z);
+    float4 rc_albedo_met = unpack_float_to_uint8x4(tex3.w);
+
+    r.sample.rc_roughness = max(rc_rough_conf.x, 0.04f);
+    r.sample.rc_albedo    = rc_albedo_met.rgb;
+    r.sample.rc_metallic  = rc_albedo_met.a;
+    r.confidence          = saturate(rc_rough_conf.y);
+
+    r.sample.rc_L_nee     = tex4.xyz;
+    float4 src_albedo_met = unpack_float_to_uint8x4(tex4.w);
+    r.sample.src_albedo   = src_albedo_met.rgb;
+    r.sample.src_metallic = src_albedo_met.a;
+
+    float2 pos_xy       = unpack_float_to_f16x2(tex5.x);
     float2 pos_z_norm_x = unpack_float_to_f16x2(tex5.y);
     float2 norm_y_rough = unpack_float_to_f16x2(tex5.z);
-    float4 albedo_metal = unpack_float_to_uint8x4(tex5.w);
+    float2 age_pad      = unpack_float_to_f16x2(tex5.w);
 
     r.sample.src_pos       = float3(pos_xy.x, pos_xy.y, pos_z_norm_x.x);
     r.sample.src_normal    = octahedral_decode(float2(pos_z_norm_x.y, norm_y_rough.x));
     r.sample.src_roughness = max(norm_y_rough.y, 0.04f);
-    r.sample.src_albedo    = albedo_metal.rgb;
-    r.sample.src_metallic  = albedo_metal.a;
 
     r.weight_sum = tex2.z;
     r.M          = tex2.w;
     r.W          = tex3.x;
     r.target_pdf = tex3.y;
-
-    uint age_conf = asuint(tex4.w);
-    r.age        = f16tof32(age_conf & 0xFFFFu);
-    r.confidence = f16tof32(age_conf >> 16u);
+    r.age        = age_pad.x;
 
     return r;
 }
@@ -291,12 +327,13 @@ bool is_nee_sample(PathSample s)     { return (s.flags & PATH_FLAG_NEE)    != 0;
 
 bool is_reservoir_valid(Reservoir r)
 {
-    if (any(isnan(r.sample.rc_pos))      || any(isinf(r.sample.rc_pos)))      return false;
-    if (any(isnan(r.sample.rc_radiance)) || any(isinf(r.sample.rc_radiance))) return false;
-    if (any(isnan(r.sample.rc_normal))   || any(isinf(r.sample.rc_normal)))   return false;
-    if (isnan(r.W) || isinf(r.W) || r.W < 0)                                  return false;
-    if (isnan(r.M) || r.M < 0)                                                return false;
-    if (r.sample.rc_length > RESTIR_MAX_PATH_LENGTH)                          return false;
+    if (any(isnan(r.sample.rc_pos))    || any(isinf(r.sample.rc_pos)))    return false;
+    if (any(isnan(r.sample.rc_L_post)) || any(isinf(r.sample.rc_L_post))) return false;
+    if (any(isnan(r.sample.rc_L_nee))  || any(isinf(r.sample.rc_L_nee)))  return false;
+    if (any(isnan(r.sample.rc_normal)) || any(isinf(r.sample.rc_normal))) return false;
+    if (isnan(r.W) || isinf(r.W) || r.W < 0)                              return false;
+    if (isnan(r.M) || r.M < 0)                                            return false;
+    if (r.sample.rc_length > RESTIR_MAX_PATH_LENGTH)                      return false;
     return true;
 }
 
@@ -305,14 +342,17 @@ Reservoir create_empty_reservoir()
     Reservoir r;
     r.sample.rc_pos          = float3(0, 0, 0);
     r.sample.rc_normal       = float3(0, 1, 0);
-    r.sample.rc_radiance     = float3(0, 0, 0);
-    r.sample.rc_prev_pos     = float3(0, 0, 0);
     r.sample.rc_outgoing_dir = float3(0, 1, 0);
+    r.sample.rc_L_post       = float3(0, 0, 0);
+    r.sample.rc_L_nee        = float3(0, 0, 0);
+    r.sample.rc_albedo       = float3(0, 0, 0);
+    r.sample.rc_roughness    = 1.0f;
+    r.sample.rc_metallic     = 0.0f;
     r.sample.src_pos         = float3(0, 0, 0);
     r.sample.src_normal      = float3(0, 1, 0);
     r.sample.src_albedo      = float3(0, 0, 0);
-    r.sample.src_roughness   = 0;
-    r.sample.src_metallic    = 0;
+    r.sample.src_roughness   = 1.0f;
+    r.sample.src_metallic    = 0.0f;
     r.sample.seed_path       = 0;
     r.sample.path_length     = 0;
     r.sample.rc_length       = 0;
@@ -786,6 +826,29 @@ struct ShiftResult
     bool   ok;
 };
 
+// computes the radiance leaving rc toward dst's primary, paper-faithful split:
+//   L_at_rc(dst_view) = L_nee + f_rc(dst_view, rc_outgoing_dir) * L_post
+// for sky and area-light nee samples L_post is zero so the f_rc term vanishes regardless of
+// the rc material params (the stored rc_albedo / rc_roughness / rc_metallic are ignored)
+// dir_primary_to_rc is the unit direction from dst's primary to rc, the incoming direction
+// at rc is therefore -dir_primary_to_rc (light flows toward primary, view flows away)
+float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
+{
+    // sky and area-light nee samples carry no continuation past rc, rc_L_post is exactly zero
+    // and the rc material params are unused, short-circuit to avoid evaluating a meaningless
+    // f_rc against a fake rc_normal (which is -sun_dir for sky) and rc_outgoing_dir
+    if (dot(src.rc_L_post, src.rc_L_post) <= 0.0f)
+    {
+        return src.rc_L_nee;
+    }
+
+    float3 view_at_rc = -dir_primary_to_rc;
+    float3 f_rc      = eval_surface_brdf_cos(src.rc_albedo, src.rc_roughness, src.rc_metallic,
+                                             src.rc_normal, view_at_rc, src.rc_outgoing_dir,
+                                             false);
+    return src.rc_L_nee + f_rc * src.rc_L_post;
+}
+
 // reconnection shift from source (its primary is src_primary_pos) to destination
 // returns ok=false if surfaces don't satisfy reconnection conditions or geometry is degenerate
 // visibility is checked separately via trace_shift_visibility so non-visibility-critical passes
@@ -815,7 +878,7 @@ ShiftResult try_reconnection_shift(
         if (all(brdf_cos <= 0.0f))
             return result;
 
-        result.f_dst    = brdf_cos * src.rc_radiance;
+        result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir);
         result.jacobian = 1.0f;
         result.ok       = true;
         return result;
@@ -859,7 +922,10 @@ ShiftResult try_reconnection_shift(
     if (jacobian <= 0.0f || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
         return result;
 
-    result.f_dst    = brdf_cos * src.rc_radiance;
+    // paper-faithful rc evaluation: re-evaluate f_rc at dst's incoming direction, this is the
+    // term that carries indirect specular at rc, baking it at src direction (the previous
+    // implementation's behavior) was the dominant source of broken indirect specular reuse
+    result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir_dst);
     result.jacobian = jacobian;
     result.ok       = true;
     return result;
@@ -951,6 +1017,17 @@ ShiftResult try_random_replay_shift(
 
     // accept the replay only if the bounce landed near the stored rc, scaled tolerance keeps
     // the test relative on far hits where small angular changes produce large position deltas
+    //
+    // note: this is a soft-reconnection variant of the lin 2022 random replay shift. the
+    // strict paper formulation would re-trace the entire suffix from dst with replayed xi
+    // (no rc proximity test, just rebuild the full path) and apply the volume-preserving
+    // jacobian over xi space. the tolerance test here is a cheap fallback that rejects
+    // replays whose reconnection point drifts far from the source rc, which trades a small
+    // amount of rejection bias for ~10x lower cost than full suffix retrace. with the new
+    // paper-faithful rc storage (rc_L_post + rc_outgoing_dir factoring f_rc out) this
+    // approximation remains usable because the reconnection shift handles the dominant
+    // cases, the replay shift is now only the fallback for short paths and near-specular
+    // primaries where reconnection would be near-degenerate
     float3 to_rc        = src.rc_pos - hit_pos;
     float  rc_dist      = length(src.rc_pos - dst_pos);
     float  tol          = max(RESTIR_REPLAY_RC_TOLERANCE_REL * rc_dist, RESTIR_REPLAY_RC_TOLERANCE_MIN);
@@ -977,7 +1054,8 @@ ShiftResult try_random_replay_shift(
     if (jacobian <= 0.0f || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
         return result;
 
-    result.f_dst    = brdf_cos * src.rc_radiance;
+    // re-evaluate f_rc at dst's incoming direction toward rc_outgoing_dir (paper-faithful)
+    result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir_dst);
     result.jacobian = jacobian;
     result.ok       = true;
     return result;
@@ -1089,7 +1167,10 @@ ShiftResult self_shift_evaluate(
     if (all(brdf_cos <= 0.0f))
         return result;
 
-    result.f_dst = brdf_cos * src.rc_radiance;
+    // self-shift can re-use the same rc_outgoing_radiance helper, the dst-incoming direction
+    // is the same as the src-incoming direction by construction so f_rc evaluates to the same
+    // value the path was originally constructed with, no view-dep drift here
+    result.f_dst = brdf_cos * rc_outgoing_radiance(src, dir);
     result.ok    = true;
     return result;
 }

@@ -298,7 +298,9 @@ void RenderOptions::OnTickVisible()
                         "Reservoir W",
                         "Reuse Ratio (M/M_cap)",
                         "Path Length",
-                        "Variance"
+                        "Variance",
+                        "Shift Type",
+                        "Target/W Stability"
                     };
 
                     option_check_box("Reflections", "r.ray_traced_reflections");
@@ -313,6 +315,8 @@ void RenderOptions::OnTickVisible()
                     option_value("ReSTIR rc min roughness",     "r.restir_pt_rc_min_roughness",   "Roughness floor for the reconnection vertex, lower lets reuse on glossier surfaces but adds bias",   0.01f, 0.0f, 1.0f, "%.2f");
                     option_value("ReSTIR W clamp",              "r.restir_pt_w_clamp",            "Unbiased reservoir weight clamp, higher trusts the variance denoiser more",                          25.0f, 100.0f, 5000.0f, "%.0f");
                     option_value("ReSTIR validation period",    "r.restir_pt_validation_period",  "Re-trace chosen sample every N frames per pixel (0 = off, ~8 is paper-typical)",                     1.0f,  0.0f, 64.0f, "%.0f");
+                    option_check_box("ReSTIR disable temporal", "r.restir_pt_disable_temporal_reuse", "Bisection toggle: skip the temporal reuse pass to isolate temporal-pass bugs");
+                    option_check_box("ReSTIR disable spatial",  "r.restir_pt_disable_spatial_reuse",  "Bisection toggle: skip the spatial reuse passes to isolate spatial-pass bugs");
                     uint32_t restir_debug_mode = cvar_restir_pt_debug_mode.GetValueAs<uint32_t>();
                     if (option_combo_box("ReSTIR debug view", restir_debug_modes, restir_debug_mode, "Visualize reservoir state, reuse, path length, and variance"))
                     {

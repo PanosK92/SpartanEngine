@@ -31,8 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
 static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
 static const float MIN_COS_AT_PRIMARY              = 1e-3f;
-static const float RUSSIAN_ROULETTE_PROB           = 0.85f;
-static const uint  RUSSIAN_ROULETTE_START          = 2;
+static const float RUSSIAN_ROULETTE_PROB           = 0.95f;
+static const uint  RUSSIAN_ROULETTE_START          = 3;
+// dim-throughput firefly guard, low continuation prob means rare survivors get throughput
+// inflated by 1/p, which is the dominant source of "boiling splotches" on shadowed indirect
+// paths, lin 2022 and standard production path tracers clamp p well above zero
+static const float RUSSIAN_ROULETTE_MIN_PROB       = 0.1f;
 static const float SKY_MIP_LEVEL               = 2.0f;
 // sun cone half angle, ~0.27 degrees matches the real sun's angular radius (vs the previous
 // 0.015 rad / ~0.86 degrees which was about 3x larger and produced shadows that were too soft
@@ -81,76 +85,151 @@ float3 probe_emission_estimate(MaterialParameters mat)
     return float3(0.0f, 0.0f, 0.0f);
 }
 
+// power-proportional light pick weight, lin 2022 §6.1 / restir di reference
+// returns 0 for lights ineligible for the restir nee pool (point/spot, zero intensity), so the
+// total weight only counts the lights that sample_light_candidate can actually emit candidates
+// for, this keeps light_pick_pdf_for_index consistent with the picker
+float light_pick_weight(LightParameters l)
+{
+    bool is_directional = (l.flags & (1u << 0)) != 0;
+    bool is_area        = (l.flags & (1u << 6)) != 0;
+    if (l.intensity <= 0.0f || (!is_directional && !is_area))
+        return 0.0f;
+
+    float lum = max(luminance(l.color.rgb), 1e-3f);
+    return l.intensity * lum;
+}
+
+// total nee pick weight, called once per evaluation, the loop is O(light_count) so this stays
+// cheap for typical scenes (<50 lights), large open worlds with many lights would benefit from
+// a cpu-built prefix sum buffer
+float compute_total_light_weight()
+{
+    uint light_count = (uint)buffer_frame.restir_pt_light_count;
+    float total = 0.0f;
+    for (uint i = 0; i < light_count; i++)
+    {
+        total += light_pick_weight(light_parameters[i]);
+    }
+    return total;
+}
+
+// importance pick pdf for a known light index, returns the same probability that the importance
+// picker assigns to this light, used by the brdf strategy's mis denominator on sky candidates
+float light_pick_pdf_for_index(uint light_idx, float total_weight)
+{
+    if (total_weight <= 0.0f)
+        return 0.0f;
+    return light_pick_weight(light_parameters[light_idx]) / total_weight;
+}
+
 // computes the nee strategy density at a brdf-sampled candidate, in solid angle at primary
-// returns 0 when the candidate's rc would not be reproducible by sample_light_candidate, this
-// closes the mis loop by replacing the previous "p_light(y) approx 0" approximation in the
-// initial ris pool weighting with the proper balance heuristic mixture density
+// returns the sun cone density for sky candidates that fall inside the cone, zero otherwise
+// area lights are not in the bvh so the brdf strategy can never produce paths whose rc lies
+// on an area light rectangle, the area light loop that used to live here was a fictitious
+// strategy density that darkened the brdf branch by ~50% near walls aligned with area lights
 float light_nee_pdf_for_candidate(PathSample candidate, float3 primary_pos)
 {
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
     if (light_count == 0)
         return 0.0f;
 
-    float pick_pdf = 1.0f / float(light_count);
-
-    // brdf bounce that missed into the sky, the sun cone is the only sky nee strategy
-    if (is_sky_sample(candidate))
-    {
-        LightParameters p = light_parameters[0];
-        bool is_directional = (p.flags & (1u << 0)) != 0;
-        if (!is_directional || p.intensity <= 0.0f)
-            return 0.0f;
-
-        float3 sun_dir     = -p.direction;
-        float  sun_cos_max = cos(SUN_CONE_HALF_ANGLE);
-        if (dot(candidate.rc_pos, sun_dir) < sun_cos_max)
-            return 0.0f;
-
-        float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-        return pick_pdf * sun_cone_pdf;
-    }
-
-    // surface hit, find any area light whose rectangle contains rc_pos and accumulate nee pdfs
-    if (!has_reconnection(candidate))
+    if (!is_sky_sample(candidate))
         return 0.0f;
 
-    float pdf_sum = 0.0f;
-    for (uint i = 0; i < light_count; i++)
+    LightParameters p = light_parameters[0];
+    bool is_directional = (p.flags & (1u << 0)) != 0;
+    if (!is_directional || p.intensity <= 0.0f)
+        return 0.0f;
+
+    float3 sun_dir     = -p.direction;
+    float  sun_cos_max = cos(SUN_CONE_HALF_ANGLE);
+    if (dot(candidate.rc_pos, sun_dir) < sun_cos_max)
+        return 0.0f;
+
+    float total = compute_total_light_weight();
+    if (total <= 0.0f)
+        return 0.0f;
+
+    float pick_pdf     = light_pick_pdf_for_index(0u, total);
+    float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
+    return pick_pdf * sun_cone_pdf;
+}
+
+// urena, fajardo, king 2013 spherical rectangle solid-angle sampling
+// samples uniformly in the solid angle subtended by a rectangle as seen from origin, replaces
+// the area-domain "sample uniformly on the rectangle and project to solid angle" approach
+// which has high variance for oblique angles where most of the area is grazing
+// rect_origin is the corner with smallest local coords, ex / ey are the edge vectors so the
+// rectangle is parametrized as { rect_origin + s*ex + t*ey | s,t in [0,1] }
+// returns the sampled position on the rectangle and the solid angle subtended (so the pdf in
+// solid-angle is 1 / solid_angle), the function is robust to the shading point being on the
+// negative side of the rectangle's plane (it flips the local frame internally)
+void sample_spherical_rectangle(
+    float3 origin,
+    float3 rect_origin,
+    float3 ex,
+    float3 ey,
+    float2 xi,
+    out float3 out_pos,
+    out float  out_solid_angle)
+{
+    float3 d   = rect_origin - origin;
+    float  exl = max(length(ex), 1e-6f);
+    float  eyl = max(length(ey), 1e-6f);
+    float3 x   = ex / exl;
+    float3 y   = ey / eyl;
+    float3 z   = cross(x, y);
+
+    float x0 = dot(d, x);
+    float y0 = dot(d, y);
+    float z0 = dot(d, z);
+    if (z0 > 0.0f)
     {
-        LightParameters l = light_parameters[i];
-        bool is_area = (l.flags & (1u << 6)) != 0;
-        if (!is_area || l.intensity <= 0.0f || l.area_width <= 0.0f || l.area_height <= 0.0f)
-            continue;
-
-        float3 light_normal = l.direction;
-        float3 light_to_rc  = candidate.rc_pos - l.position;
-        float  plane_dist   = dot(light_to_rc, light_normal);
-        if (abs(plane_dist) > 0.02f)
-            continue;
-
-        float3 light_right, light_up;
-        build_orthonormal_basis_fast(light_normal, light_right, light_up);
-        float u = dot(light_to_rc, light_right);
-        float v = dot(light_to_rc, light_up);
-        if (abs(u) > l.area_width * 0.5f || abs(v) > l.area_height * 0.5f)
-            continue;
-
-        float3 to_rc    = candidate.rc_pos - primary_pos;
-        float  dist     = length(to_rc);
-        if (dist < 1e-3f)
-            continue;
-        float3 dir      = to_rc / dist;
-        float  cos_light = dot(-dir, light_normal);
-        if (cos_light <= 0.0f)
-            continue;
-
-        // matches sample_light_candidate's area-domain sampling formula
-        float area     = l.area_width * l.area_height;
-        float area_pdf = 1.0f / area;
-        float sa_pdf   = area_pdf * dist * dist / max(cos_light, 1e-6f);
-        pdf_sum       += pick_pdf * sa_pdf;
+        z0 = -z0;
+        z  = -z;
     }
-    return pdf_sum;
+
+    float x1 = x0 + exl;
+    float y1 = y0 + eyl;
+
+    float3 v00 = float3(x0, y0, z0);
+    float3 v10 = float3(x1, y0, z0);
+    float3 v11 = float3(x1, y1, z0);
+    float3 v01 = float3(x0, y1, z0);
+
+    float3 n0 = normalize(cross(v00, v10));
+    float3 n1 = normalize(cross(v10, v11));
+    float3 n2 = normalize(cross(v11, v01));
+    float3 n3 = normalize(cross(v01, v00));
+
+    float g0 = acos(clamp(-dot(n0, n1), -1.0f, 1.0f));
+    float g1 = acos(clamp(-dot(n1, n2), -1.0f, 1.0f));
+    float g2 = acos(clamp(-dot(n2, n3), -1.0f, 1.0f));
+    float g3 = acos(clamp(-dot(n3, n0), -1.0f, 1.0f));
+
+    float b0 = n0.z;
+    float b1 = n2.z;
+    float k  = 2.0f * PI - g2 - g3;
+
+    out_solid_angle = max(g0 + g1 - k, 0.0f);
+
+    float au   = xi.x * out_solid_angle + k;
+    float fu   = (cos(au) * b0 - b1) / max(sin(au), 1e-7f);
+    float sgn  = fu > 0.0f ? 1.0f : -1.0f;
+    float cu   = clamp(sgn / sqrt(fu * fu + b0 * b0), -1.0f, 1.0f);
+
+    float xu_denom = max(sqrt(max(1.0f - cu * cu, 0.0f)), 1e-7f);
+    float xu       = clamp(-(cu * z0) / xu_denom, x0, x1);
+
+    float dsq = xu * xu + z0 * z0;
+    float h0  = y0 / sqrt(dsq + y0 * y0);
+    float h1  = y1 / sqrt(dsq + y1 * y1);
+    float hv  = h0 + xi.y * (h1 - h0);
+    float hv2 = hv * hv;
+    float yv  = (hv2 < 1.0f - 1e-6f) ? (hv * sqrt(dsq) / sqrt(1.0f - hv2)) : y1;
+
+    out_pos = origin + xu * x + yv * y + z0 * z;
 }
 
 // env nee density at a given direction for mis against brdf bounces that miss into the sky
@@ -234,61 +313,32 @@ float3 direct_lighting_at_vertex(
             float3 light_right, light_up;
             build_orthonormal_basis_fast(light_normal, light_right, light_up);
 
-            float half_width  = light.area_width * 0.5f;
-            float half_height = light.area_height * 0.5f;
-
-            float3 light_center = light.position;
-            float3 p0 = light_center - light_right * half_width - light_up * half_height;
-            float3 p1 = light_center + light_right * half_width - light_up * half_height;
-            float3 p2 = light_center + light_right * half_width + light_up * half_height;
-            float3 p3 = light_center - light_right * half_width + light_up * half_height;
-
-            float3 v0 = normalize(p0 - shading_pos);
-            float3 v1 = normalize(p1 - shading_pos);
-            float3 v2 = normalize(p2 - shading_pos);
-            float3 v3 = normalize(p3 - shading_pos);
-
-            float solid_angle_approx = 0.0f;
-            {
-                float a1 = acos(clamp(dot(v0, v1), -1.0f, 1.0f));
-                float a2 = acos(clamp(dot(v1, v2), -1.0f, 1.0f));
-                float a3 = acos(clamp(dot(v2, v0), -1.0f, 1.0f));
-                float s  = (a1 + a2 + a3) * 0.5f;
-                float excess1 = 4.0f * atan(sqrt(max(0.0f, tan(s * 0.5f) * tan((s - a1) * 0.5f) * tan((s - a2) * 0.5f) * tan((s - a3) * 0.5f))));
-
-                float b1 = acos(clamp(dot(v0, v2), -1.0f, 1.0f));
-                float b2 = acos(clamp(dot(v2, v3), -1.0f, 1.0f));
-                float b3 = acos(clamp(dot(v3, v0), -1.0f, 1.0f));
-                float t  = (b1 + b2 + b3) * 0.5f;
-                float excess2 = 4.0f * atan(sqrt(max(0.0f, tan(t * 0.5f) * tan((t - b1) * 0.5f) * tan((t - b2) * 0.5f) * tan((t - b3) * 0.5f))));
-
-                solid_angle_approx = excess1 + excess2;
-            }
+            // urena 2013 spherical rectangle solid-angle sampling, identical to the primary
+            // nee path so importance sampling is consistent at every vertex, the rectangle
+            // is parametrized as { rect_origin + s*ex + t*ey | s,t in [0,1] }
+            float3 ex          = light_right * light.area_width;
+            float3 ey          = light_up    * light.area_height;
+            float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
 
             float2 xi = random_float2(seed);
-            float3 light_sample_pos = light_center
-                + light_right * (xi.x - 0.5f) * light.area_width
-                + light_up * (xi.y - 0.5f) * light.area_height;
+            float3 light_sample_pos;
+            float  solid_angle;
+            sample_spherical_rectangle(shading_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
+
+            if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
+                continue;
 
             float3 to_light = light_sample_pos - shading_pos;
             light_dist      = length(to_light);
+            if (light_dist < 1e-3f)
+                continue;
             light_dir       = to_light / light_dist;
 
             float cos_light = dot(-light_dir, light_normal);
             if (cos_light <= 0.0f)
                 continue;
 
-            float area = light.area_width * light.area_height;
-            if (solid_angle_approx > MIN_AREA_LIGHT_SOLID_ANGLE)
-            {
-                light_pdf = 1.0f / solid_angle_approx;
-            }
-            else
-            {
-                float solid_angle = (area * cos_light) / (light_dist * light_dist);
-                solid_angle       = max(solid_angle, MIN_AREA_LIGHT_SOLID_ANGLE);
-                light_pdf         = 1.0f / solid_angle;
-            }
+            light_pdf   = 1.0f / solid_angle;
             // no extra distance falloff, the 1/d^2 term is already baked into the solid-angle pdf
             attenuation = 1.0f;
         }
@@ -327,7 +377,12 @@ float3 direct_lighting_at_vertex(
         float  brdf_pdf;
         float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, false);
 
-        float mis_weight = is_area ? power_heuristic(light_pdf, brdf_pdf) : 1.0f;
+        // analytical lights are not in the bvh, the brdf bounce can never sample to their
+        // direction so there is no second strategy to mis with, applying power_heuristic against
+        // a fictitious brdf strategy darkens the contribution by ~50%, single-strategy weight
+        // of 1.0 is the correct mis here, the env probe block below keeps power_heuristic
+        // because the brdf-into-sky branch in accumulate_subpath_radiance does sample sky
+        float mis_weight = 1.0f;
 
         float3 Li = light_color * light.intensity * attenuation;
         total += brdf * Li * mis_weight / max(light_pdf, 1e-6f);
@@ -440,46 +495,39 @@ float3 sample_sky(float3 dir)
     return clamp_sky_radiance(sky);
 }
 
-// traces the sub-path starting from a surface and returns the outgoing radiance toward the
-// previous vertex (used both for the rc vertex suffix and for continuation bounces)
-// every vertex uses its real brdf for nee and bounce sampling; the rc vertex's incoming
-// direction is src's primary, so the stored radiance is view-dependent at rc w.r.t. the
-// reconnection shift, but the rc roughness gate bounds the resulting bias during reuse
-// max_bounces is the remaining path budget after this vertex (including this vertex's nee)
-// out_first_dir receives the first outgoing direction sampled at `start` so the caller can
-// populate rc_outgoing_dir for future variable-rc shift work; it is zeroed when no bounce
-// actually leaves start (max_bounces < 2 or first sample was rejected)
-float3 accumulate_subpath_radiance(
-    PathPayload start,
-    float3 start_view_dir,
-    uint max_bounces,
+// traces the suffix past the rc vertex with the rc bsdf factored out, this enables paper-
+// faithful indirect specular re-evaluation at shift time (lin 2022 §5), throughput is
+// initialized to 1/pdf_at_rc so the standard brdf*cos*L/pdf monte carlo estimator at rc
+// becomes f_rc(in, rc_outgoing_dir) * L_post when the caller multiplies by f_rc later
+// max_bounces_remaining is the path budget past rc (rc itself does not consume budget here,
+// the rc nee + emission live in the L_nee component computed by accumulate_subpath_at_rc)
+// out_first_dir is the direction leaving rc into the suffix (rc_outgoing_dir for storage)
+void trace_rc_suffix(
+    PathPayload rc,
+    float3 rc_view_dir,
+    uint max_bounces_remaining,
     inout uint seed,
+    out float3 out_L_post,
     out float3 out_first_dir)
 {
-    out_first_dir     = float3(0, 0, 0);
-    float3 total      = float3(0, 0, 0);
-    float3 throughput = float3(1, 1, 1);
+    out_L_post    = float3(0, 0, 0);
+    out_first_dir = float3(0, 0, 0);
 
-    total += start.emission;
-    total += direct_lighting_at_vertex(
-        start.hit_position, start.hit_normal, start.geometric_normal,
-        start_view_dir, start.albedo, start.roughness, start.metallic, seed);
+    if (max_bounces_remaining < 1)
+        return;
 
-    if (max_bounces < 2)
-        return total;
+    PathPayload cur            = rc;
+    float3      view_dir       = rc_view_dir;
+    float3      throughput     = float3(1, 1, 1);
+    float       prev_brdf_pdf  = 0.0f;
+    float3      prev_normal    = rc.hit_normal;
+    bool        first_iter     = true;
 
-    // unified bounce loop: full brdf sampling + evaluation at every vertex including the rc vertex
-    PathPayload cur      = start;
-    float3      view_dir = start_view_dir;
-    float       prev_brdf_pdf = 0.0f;
-    float3      prev_normal   = start.hit_normal;
-    bool        first_dir_set = false;
-
-    for (uint bounce = 1; bounce < max_bounces; bounce++)
+    for (uint bounce = 0; bounce < max_bounces_remaining; bounce++)
     {
         if (bounce >= RUSSIAN_ROULETTE_START)
         {
-            float continuation_prob = min(luminance(throughput), RUSSIAN_ROULETTE_PROB);
+            float continuation_prob = clamp(luminance(throughput), RUSSIAN_ROULETTE_MIN_PROB, RUSSIAN_ROULETTE_PROB);
             if (random_float(seed) > continuation_prob)
                 break;
             throughput /= continuation_prob;
@@ -492,18 +540,25 @@ float3 accumulate_subpath_radiance(
         if (pdf < RESTIR_MIN_PDF || dot(nd, cur.hit_normal) <= 0.0f || any(isnan(nd)))
             break;
 
-        // capture the very first outgoing direction at the rc vertex
-        if (!first_dir_set)
+        if (first_iter)
         {
+            // factor out f_rc at the rc vertex, throughput becomes 1/pdf so the caller can
+            // re-multiply by f_rc(dst_in, rc_outgoing_dir) at shift time, this is the entire
+            // point of the rc storage refactor and removes the view-dep bias on indirect
+            // specular reuse that the previous rc_radiance baked in
             out_first_dir = nd;
-            first_dir_set = true;
+            throughput    = float3(1, 1, 1) / pdf;
+            first_iter    = false;
+        }
+        else
+        {
+            float  unused_pdf;
+            float3 brdf = evaluate_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, nd, unused_pdf, false);
+            throughput *= brdf / pdf;
         }
 
-        float  unused_pdf;
-        float3 brdf = evaluate_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, nd, unused_pdf, false);
-        throughput    *= brdf / pdf;
-        prev_brdf_pdf  = pdf;
-        prev_normal    = cur.hit_normal;
+        prev_brdf_pdf = pdf;
+        prev_normal   = cur.hit_normal;
 
         float ofs = compute_ray_offset(cur.hit_position);
         RayDesc ray;
@@ -519,20 +574,49 @@ float3 accumulate_subpath_radiance(
         if (!next.hit)
         {
             float w = power_heuristic(prev_brdf_pdf, sky_nee_pdf_at(nd, prev_normal));
-            total += throughput * sample_sky(nd) * w;
+            out_L_post += throughput * sample_sky(nd) * w;
             break;
         }
 
-        total += throughput * next.emission;
-        total += throughput * direct_lighting_at_vertex(
+        // emissive triangle hit via brdf bounce, collected single-strategy here, lin 2022
+        // suggests pairing this with an explicit emissive-triangle nee pool (mis between brdf-
+        // hit and area-sampled emissive triangles) for low variance on small bright emitters,
+        // that requires a cpu-built emissive triangle structured buffer which is not part of
+        // this rewrite, the bounce-emission path is unbiased so this is a variance-only win
+        out_L_post += throughput * next.emission;
+        out_L_post += throughput * direct_lighting_at_vertex(
             next.hit_position, next.hit_normal, next.geometric_normal,
             -nd, next.albedo, next.roughness, next.metallic, seed);
 
         cur      = next;
         view_dir = -nd;
     }
+}
 
-    return total;
+// gathers the rc vertex's nee + emission contribution (with rc bsdf baked in at src view dir,
+// view-dep bias bounded by RESTIR_RC_MIN_ROUGHNESS gate on rc reuse) and the suffix radiance
+// past rc (with rc bsdf factored out into rc_outgoing_dir for paper-faithful shift evaluation)
+void accumulate_subpath_at_rc(
+    PathPayload rc,
+    float3 rc_view_dir,
+    uint max_bounces,
+    inout uint seed,
+    out float3 out_L_nee,
+    out float3 out_L_post,
+    out float3 out_first_dir)
+{
+    out_L_nee  = rc.emission;
+    out_L_nee += direct_lighting_at_vertex(
+        rc.hit_position, rc.hit_normal, rc.geometric_normal,
+        rc_view_dir, rc.albedo, rc.roughness, rc.metallic, seed);
+
+    out_L_post    = float3(0, 0, 0);
+    out_first_dir = float3(0, 0, 0);
+
+    if (max_bounces < 2)
+        return;
+
+    trace_rc_suffix(rc, rc_view_dir, max_bounces - 1, seed, out_L_post, out_first_dir);
 }
 
 // builds a path sample candidate by directly sampling an analytical light or the sun cone
@@ -550,9 +634,17 @@ PathSample sample_light_candidate(
     PathSample s;
     s.rc_pos          = float3(0, 0, 0);
     s.rc_normal       = float3(0, 1, 0);
-    s.rc_radiance     = float3(0, 0, 0);
-    s.rc_prev_pos     = primary_pos;
     s.rc_outgoing_dir = float3(0, 1, 0);
+    s.rc_L_post       = float3(0, 0, 0);
+    s.rc_L_nee        = float3(0, 0, 0);
+    s.rc_albedo       = float3(0, 0, 0);
+    s.rc_roughness    = 1.0f;
+    s.rc_metallic     = 0.0f;
+    s.src_pos         = float3(0, 0, 0);
+    s.src_normal      = float3(0, 1, 0);
+    s.src_albedo      = float3(0, 0, 0);
+    s.src_roughness   = 1.0f;
+    s.src_metallic    = 0.0f;
     s.seed_path       = seed;
     s.path_length     = 1;
     s.rc_length       = 2;
@@ -563,45 +655,95 @@ PathSample sample_light_candidate(
     if (light_count == 0)
         return s;
 
-    uint light_idx = min((uint)(random_float(seed) * float(light_count)), light_count - 1);
+    // power-proportional pick, lin 2022 §6.1
+    // walks the per-light weight array once to compute the total then again to draw the index,
+    // matches light_pick_pdf_for_index used by the mis denominator so the source pdf is
+    // consistent across sample and reweight paths, uniform pick (the previous behavior) gave
+    // dim lights too much budget at the expense of bright ones, increasing variance on the
+    // dominant lighter contributors which the denoiser then has to smooth
+    float total_weight = compute_total_light_weight();
+    if (total_weight <= 0.0f)
+        return s;
+
+    float xi  = random_float(seed) * total_weight;
+    float cum = 0.0f;
+    uint  light_idx = light_count - 1;
+    for (uint i = 0; i < light_count; i++)
+    {
+        cum += light_pick_weight(light_parameters[i]);
+        if (xi <= cum)
+        {
+            light_idx = i;
+            break;
+        }
+    }
+
     LightParameters light = light_parameters[light_idx];
     if (light.intensity <= 0.0f)
         return s;
 
     bool is_directional = (light.flags & (1u << 0)) != 0;
     bool is_area        = (light.flags & (1u << 6)) != 0;
-    float pick_pdf      = 1.0f / float(light_count);
+    float pick_pdf      = light_pick_pdf_for_index(light_idx, total_weight);
+    if (pick_pdf <= 0.0f)
+        return s;
 
     if (is_directional)
     {
-        // delta sun, matches direct_lighting_at_vertex which treats the directional light as a
-        // dirac delta with pdf 1 and radiance light.color * light.intensity, the previous cone
-        // sampling baked a sun_cone_pdf into source_pdf but kept the radiance unscaled which
-        // disagreed with the analytical direct light by orders of magnitude
+        // continuous sun cone, matches sky_nee_pdf_at and light_nee_pdf_for_candidate which
+        // treat the sun as a continuous emitter over the cone of half angle SUN_CONE_HALF_ANGLE
+        // sampling a direction inside the cone with sun_cone_pdf gives consistent mis with the
+        // brdf-into-sky branch in the bounce loop, the radiance is constant inside the cone
         float3 sun_dir = -light.direction;
         if (dot(sun_dir, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
 
+        float  sun_cos_max  = cos(SUN_CONE_HALF_ANGLE);
+        float  sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
+
+        float2 xi      = random_float2(seed);
+        float  phi     = 2.0f * PI * xi.x;
+        float  cos_th  = lerp(sun_cos_max, 1.0f, xi.y);
+        float  sin_th  = sqrt(max(0.0f, 1.0f - cos_th * cos_th));
+        float3 local   = float3(cos(phi) * sin_th, sin(phi) * sin_th, cos_th);
+        float3 sampled = local_to_world(local, sun_dir);
+
+        if (dot(sampled, primary_normal) <= MIN_COS_AT_PRIMARY)
+            return s;
+
+        // sun cone, no continuation past rc, rc_L_post stays zero so the unified shift
+        // formula collapses to brdf_at_dst * rc_L_nee at evaluation time
         s.flags      |= PATH_FLAG_SKY | PATH_FLAG_NEE;
-        s.rc_pos      = sun_dir;
-        s.rc_normal   = -sun_dir;
-        s.rc_radiance = light.color.rgb * light.intensity;
-        source_pdf    = pick_pdf;
+        s.rc_pos      = sampled;
+        s.rc_normal   = -sampled;
+        s.rc_L_nee    = light.color.rgb * light.intensity;
+        s.rc_L_post   = float3(0, 0, 0);
+        source_pdf    = pick_pdf * sun_cone_pdf;
         return s;
     }
 
     if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
     {
+        // urena 2013 solid-angle sampling, lower variance than area-domain sampling at
+        // oblique angles where most of the rectangle's area projects to a sliver of solid
+        // angle, the source pdf is in solid angle directly (no jacobian conversion needed)
         float3 light_normal = light.direction;
         float3 light_right, light_up;
         build_orthonormal_basis_fast(light_normal, light_right, light_up);
 
-        float2 xi = random_float2(seed);
-        float3 p  = light.position
-                  + light_right * (xi.x - 0.5f) * light.area_width
-                  + light_up    * (xi.y - 0.5f) * light.area_height;
+        float3 ex          = light_right * light.area_width;
+        float3 ey          = light_up    * light.area_height;
+        float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
 
-        float3 to   = p - primary_pos;
+        float2 xi = random_float2(seed);
+        float3 sampled_pos;
+        float  solid_angle;
+        sample_spherical_rectangle(primary_pos, rect_origin, ex, ey, xi, sampled_pos, solid_angle);
+
+        if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
+            return s;
+
+        float3 to   = sampled_pos - primary_pos;
         float  dist = length(to);
         if (dist < 1e-3f)
             return s;
@@ -611,15 +753,17 @@ PathSample sample_light_candidate(
         if (cos_light <= 0.0f || dot(dir, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
 
-        s.rc_pos      = p;
+        // area light, rc is the light surface treated as a non-reflecting emitter, no
+        // continuation past rc so rc_L_post stays zero and the rc material params are
+        // unused at shift time
+        s.rc_pos      = sampled_pos;
         s.rc_normal   = light_normal;
-        s.rc_radiance = light.color.rgb * light.intensity;
+        s.rc_L_nee    = light.color.rgb * light.intensity;
+        s.rc_L_post   = float3(0, 0, 0);
         s.flags      |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
 
-        float area     = light.area_width * light.area_height;
-        float area_pdf = 1.0f / area;
-        float sa_pdf   = area_pdf * dist * dist / max(cos_light, 1e-6f);
-        source_pdf     = pick_pdf * sa_pdf;
+        float sa_pdf = 1.0f / solid_angle;
+        source_pdf   = pick_pdf * sa_pdf;
         return s;
     }
 
@@ -640,9 +784,17 @@ PathSample trace_path_from_primary(
     PathSample s;
     s.rc_pos          = float3(0, 0, 0);
     s.rc_normal       = float3(0, 1, 0);
-    s.rc_radiance     = float3(0, 0, 0);
-    s.rc_prev_pos     = primary_pos;
     s.rc_outgoing_dir = float3(0, 1, 0);
+    s.rc_L_post       = float3(0, 0, 0);
+    s.rc_L_nee        = float3(0, 0, 0);
+    s.rc_albedo       = float3(0, 0, 0);
+    s.rc_roughness    = 1.0f;
+    s.rc_metallic     = 0.0f;
+    s.src_pos         = float3(0, 0, 0);
+    s.src_normal      = float3(0, 1, 0);
+    s.src_albedo      = float3(0, 0, 0);
+    s.src_roughness   = 1.0f;
+    s.src_metallic    = 0.0f;
     // store the seed value that was used to generate xi for sample_brdf, so the random replay
     // shift can re-derive the same xi at a destination pixel and trace a matching prefix
     s.seed_path       = replay_seed;
@@ -666,37 +818,48 @@ PathSample trace_path_from_primary(
 
     if (!hit.hit)
     {
+        // brdf bounce missed into sky directly from primary, treat as a sky sample with no
+        // continuation past rc, store the sky radiance in rc_L_nee so the unified shift
+        // formula collapses to brdf_at_dst * rc_L_nee like the area-light nee branch
         s.flags      |= PATH_FLAG_SKY;
         s.rc_pos      = dir;
         s.rc_normal   = -dir;
-        s.rc_radiance = sample_sky(dir);
+        s.rc_L_nee    = sample_sky(dir);
+        s.rc_L_post   = float3(0, 0, 0);
         s.rc_length   = 0;
         s.path_length = 1;
         return s;
     }
 
-    s.rc_pos      = hit.hit_position;
-    s.rc_normal   = hit.geometric_normal;
-    s.rc_length   = 2;
+    s.rc_pos       = hit.hit_position;
+    s.rc_normal    = hit.geometric_normal;
+    s.rc_albedo    = hit.albedo;
+    s.rc_roughness = max(hit.roughness, 0.04f);
+    s.rc_metallic  = hit.metallic;
+    s.rc_length    = 2;
 
-    float3 first_outgoing_dir;
-    float3 suffix = accumulate_subpath_radiance(hit, -dir, max(get_restir_max_path_length(), 2u) - 1u, seed, first_outgoing_dir);
-    if (any(isnan(suffix)) || any(isinf(suffix)))
-        suffix = float3(0, 0, 0);
-    suffix = max(suffix, 0.0f);
+    float3 L_nee, L_post, first_outgoing_dir;
+    accumulate_subpath_at_rc(hit, -dir, max(get_restir_max_path_length(), 2u) - 1u, seed, L_nee, L_post, first_outgoing_dir);
+
+    if (any(isnan(L_nee))  || any(isinf(L_nee)))  L_nee  = float3(0, 0, 0);
+    if (any(isnan(L_post)) || any(isinf(L_post))) L_post = float3(0, 0, 0);
+    L_nee  = max(L_nee,  0.0f);
+    L_post = max(L_post, 0.0f);
 
     // no source side firefly clamp here, the lin 2022 estimator is unbiased and the energy
     // bound is provided by the m cap, the per sample W clamp, and the variance aware denoiser
     // downstream, scaling the suffix luminance was a downward bias on bright reflections that
     // also fought the denoiser's variance estimate
 
-    s.rc_radiance     = suffix;
-    s.path_length     = 2;
+    s.rc_L_nee        = L_nee;
+    s.rc_L_post       = L_post;
     s.rc_outgoing_dir = first_outgoing_dir;
+    s.path_length     = 2;
 
-    // reconnection validity: the rc vertex must be rough (stored radiance is view-dependent
-    // at rc w.r.t. src's incoming, and roughness bounds the shift error) and distant enough
-    // to keep the solid-angle jacobian well-conditioned
+    // reconnection validity: the rc vertex must be rough enough that the rc_L_nee view-dep
+    // bias (rc bsdf baked at src direction for the nee component) stays small, the suffix
+    // view-dep is now factored out via rc_L_post + rc_outgoing_dir + rc material, distance
+    // must be large enough to keep the solid-angle jacobian well-conditioned
     float rc_min_roughness = get_restir_rc_min_roughness();
     float dist_sq          = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
     bool rc_valid          = (hit.roughness >= rc_min_roughness)
@@ -824,25 +987,22 @@ void ray_gen()
             {
                 if (is_sky_sample(light_candidate))
                 {
-                    // delta sun, no continuous brdf strategy density can sample this direction
-                    // so m_nee = 1 and the weight collapses to target / (n_light * pick_pdf)
-                    light_weight = target_pdf / (n_light * light_source_pdf);
+                    // sun cone, the brdf-into-sky branch in accumulate_subpath_radiance can also
+                    // sample directions inside the cone, so balance with the brdf strategy density
+                    // at this direction, both densities are now in solid angle so the balance
+                    // heuristic is unbiased
+                    float  brdf_pdf_at_sun;
+                    evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, light_candidate.rc_pos, brdf_pdf_at_sun, restir_primary_diffuse_only(roughness));
+                    float mix_pdf = n_light * light_source_pdf + n_brdf * brdf_pdf_at_sun;
+                    if (mix_pdf > 0.0f)
+                        light_weight = target_pdf / mix_pdf;
                 }
                 else
                 {
-                    // area light, balance with the brdf mixture pdf at the nee direction so a
-                    // bright area light gets full credit when brdf would have sampled it too
-                    float3 to_light = light_candidate.rc_pos - pos_ws;
-                    float  dist_sq  = dot(to_light, to_light);
-                    if (dist_sq > 1e-6f)
-                    {
-                        float3 nee_dir  = to_light * rsqrt(dist_sq);
-                        float  brdf_pdf_at_nee;
-                        evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, nee_dir, brdf_pdf_at_nee, restir_primary_diffuse_only(roughness));
-                        float mix_pdf = n_brdf * brdf_pdf_at_nee + n_light * light_source_pdf;
-                        if (mix_pdf > 0.0f)
-                            light_weight = target_pdf / mix_pdf;
-                    }
+                    // area light, not in the bvh so brdf cannot produce paths landing on the
+                    // area light rectangle, the brdf strategy density in path space at this
+                    // candidate is zero, single-strategy weight is the unbiased mis weight
+                    light_weight = target_pdf / (n_light * light_source_pdf);
                 }
             }
         }

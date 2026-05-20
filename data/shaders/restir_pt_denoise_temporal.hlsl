@@ -295,6 +295,24 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         history_weight   = saturate(min(history_weight, 0.992f));
     }
 
+    // pre-ema firefly soft clamp, lin 2022 §6.4 / production svgf trick
+    // if the current sample's luma is way above the history band, soft-rescale it down before
+    // it poisons the moment update, otherwise a single hot pixel can pin the variance estimate
+    // for many frames and force the spatial filter to over-blur the neighborhood, the gate is
+    // applied only once temporal accumulation is established (n_eff > 4) so the bootstrap
+    // window stays unbiased
+    if (history_ok && history_moments.z > 4.0f)
+    {
+        float history_sigma = sqrt(max(history_moments.y - history_moments.x * history_moments.x, 0.0f));
+        float clamp_high    = history_moments.x + 8.0f * max(history_sigma, 0.05f);
+        if (current_luma > clamp_high && current_luma > 1e-3f)
+        {
+            float scale    = clamp_high / current_luma;
+            current_color *= scale;
+            current_luma   = clamp_high;
+        }
+    }
+
     // moment ema, in the schied 2017 formulation alpha is the new sample weight so the moment
     // update is m_new = (1 - alpha) * m_prev + alpha * sample, ema_alpha = 1 - history_weight
     float ema_alpha = 1.0f - history_weight;

@@ -160,10 +160,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float adaptive_radius = compute_adaptive_radius(linear_depth, roughness, edge_factor, normal_ws, view_dir);
     adaptive_radius      *= lerp(0.35f, 1.0f, center_confidence);
 
+    // a-trous expanding spatial reuse, lin 2022 §6.2 / svgf style
+    // pass 0 (tight): full adaptive radius, full sample count, captures the sharp signal at
+    // the canonical without averaging against far neighbors that may straddle disocclusion
+    // pass 1+ (wide): expand the kernel by ~1.6x per pass so neighbors at progressively
+    // larger distances feed the canonical reservoir, the increasing radius is what makes
+    // this an a-trous filter rather than a single-radius bilateral blur, the sample count
+    // can drop a little because each pass is on top of an already-converged input
     uint spatial_sample_count = RESTIR_SPATIAL_SAMPLES;
     if (spatial_pass_index > 0)
     {
-        adaptive_radius     *= lerp(0.4f, 0.65f, center_confidence);
+        adaptive_radius     *= 1.6f * float(spatial_pass_index + 1u) / 2.0f;
         spatial_sample_count = max(RESTIR_SPATIAL_SAMPLES - 2u, 4u);
     }
 

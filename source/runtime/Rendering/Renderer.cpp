@@ -821,7 +821,18 @@ namespace spartan
         m_cb_frame_cpu.cloud_coverage               = cvar_cloud_coverage.GetValue();
         m_cb_frame_cpu.cloud_shadows                = cvar_cloud_shadows.GetValue();
         m_cb_frame_cpu.restir_pt_light_count        = static_cast<float>(m_count_active_lights);
-        m_cb_frame_cpu.restir_pt_m_cap              = cvar_restir_pt_m_cap.GetValue();
+        // dynamic m cap, lin 2022 fig 5: 30-ish for moving scenes for responsiveness, ~100 for
+        // static scenes for deeper convergence, ramp between camera_last_movement_time gives a
+        // smooth transition that avoids a sudden visible step when the user stops moving the
+        // camera, the temporal validity gate already hard-rejects disoccluded reservoirs so a
+        // higher cap on static frames does not stall on motion edges
+        {
+            const float base_cap         = cvar_restir_pt_m_cap.GetValue();
+            const float static_seconds   = static_cast<float>(Timer::GetTimeSec()) - m_cb_frame_cpu.camera_last_movement_time;
+            const float static_factor    = std::clamp((static_seconds - 0.5f) / 1.0f, 0.0f, 1.0f);
+            const float static_cap       = std::max(base_cap, 100.0f);
+            m_cb_frame_cpu.restir_pt_m_cap = base_cap + (static_cap - base_cap) * static_factor;
+        }
         m_cb_frame_cpu.restir_pt_max_path_length    = cvar_restir_pt_max_path_length.GetValue();
         m_cb_frame_cpu.restir_pt_light_candidates   = cvar_restir_pt_light_candidates.GetValue();
         m_cb_frame_cpu.restir_pt_initial_candidates = cvar_restir_pt_initial_candidates.GetValue();

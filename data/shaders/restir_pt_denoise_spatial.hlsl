@@ -95,13 +95,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     int    step_width = max((int)pass_get_f3_value().x, 1);
 
-    // svgf phi parameters, schied 2017 typical values (their fig 4)
+    // svgf phi parameters, schied 2017 fig 4 plus lin 2022 follow-up tuning, phi_normal = 128
+    // is too edge-preserving for the typical roughness range and leaves residual noise on
+    // continuous normals (curved surfaces look noisy) so we lower it to 64 which still
+    // discriminates hard normal edges (creases) but trusts neighboring pixels on smoothly
+    // varying normals
     //   phi_luma  = 4.0 (multiplied by sqrt(blurred variance) per pixel)
     //   phi_depth = 1.0 (relative depth tolerance, scales with step_width and depth gradient)
-    //   phi_normal = 128 (cosine power)
+    //   phi_normal = 64  (cosine power)
     const float phi_luma   = 4.0f;
     const float phi_depth  = 1.0f;
-    const float phi_normal = 128.0f;
+    const float phi_normal = 64.0f;
 
     float blurred_variance = gaussian_filtered_variance(int2(pixel), resolution);
     float luma_sigma       = sqrt(max(blurred_variance, 1e-6f)) * phi_luma;
