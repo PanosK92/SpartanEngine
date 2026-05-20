@@ -59,54 +59,6 @@ namespace spartan
             *ConsoleRegistry::Get().Find("r.restir_pt_scale")->m_value_ptr = v;
         }
 
-        void on_restir_pt_debug_mode_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 0.0f, 5.0f);
-            *ConsoleRegistry::Get().Find("r.restir_pt_debug_mode")->m_value_ptr = v;
-        }
-
-        void on_restir_pt_m_cap_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 1.0f, 100.0f);
-            *ConsoleRegistry::Get().Find("r.restir_pt_m_cap")->m_value_ptr = v;
-        }
-
-        void on_restir_pt_max_path_length_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 2.0f, 12.0f);
-            *ConsoleRegistry::Get().Find("r.restir_pt_max_path_length")->m_value_ptr = v;
-        }
-
-        void on_restir_pt_light_candidates_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 1.0f, 64.0f);
-            *ConsoleRegistry::Get().Find("r.restir_pt_light_candidates")->m_value_ptr = v;
-        }
-
-        void on_restir_pt_initial_candidates_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 1.0f, 8.0f);
-            *ConsoleRegistry::Get().Find("r.restir_pt_initial_candidates")->m_value_ptr = v;
-        }
-
-        void on_restir_pt_rc_min_roughness_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 0.0f, 1.0f);
-            *ConsoleRegistry::Get().Find("r.restir_pt_rc_min_roughness")->m_value_ptr = v;
-        }
-
-        void on_restir_pt_w_clamp_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 1.0f, 5000.0f);
-            *ConsoleRegistry::Get().Find("r.restir_pt_w_clamp")->m_value_ptr = v;
-        }
-
-        void on_restir_pt_validation_period_change(const CVarVariant& value)
-        {
-            float v = clamp(get<float>(value), 0.0f, 64.0f);
-            *ConsoleRegistry::Get().Find("r.restir_pt_validation_period")->m_value_ptr = v;
-        }
-
         void on_hdr_change(const CVarVariant& value)
         {
             if (get<float>(value) == 1.0f && !Display::GetHdr())
@@ -209,17 +161,6 @@ namespace spartan
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights",       on_ray_traced_shadows_change);
     TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,                                                    "restir path tracing global illumination");
     TConsoleVar<float> cvar_restir_pt_scale                ("r.restir_pt_scale",                0.5f,                                                    "restir resolution scale (0.1-1.0)",       on_restir_pt_scale_change);
-    TConsoleVar<float> cvar_restir_pt_debug_mode           ("r.restir_pt_debug_mode",           0.0f,                                                    "restir debug mode",                    on_restir_pt_debug_mode_change);
-    // restir pt paper knobs, defaults match lin 2022 fig 5/8 recommendations for the dynamic case
-    TConsoleVar<float> cvar_restir_pt_m_cap                ("r.restir_pt_m_cap",                48.0f,                                                   "max effective sample count base value for moving scenes, lin 2022 recommends 30 for dynamic and 100 for static, the runtime cap ramps up to ~100 when the camera is static so a still scene converges further while a moving scene stays responsive", on_restir_pt_m_cap_change);
-    TConsoleVar<float> cvar_restir_pt_max_path_length      ("r.restir_pt_max_path_length",      8.0f,                                                    "max path length sampled at each pixel, indirect bounces beyond this are missing", on_restir_pt_max_path_length_change);
-    TConsoleVar<float> cvar_restir_pt_light_candidates     ("r.restir_pt_light_candidates",     32.0f,                                                   "nee candidates for direct lighting per pixel, restir di paper baseline is 32", on_restir_pt_light_candidates_change);
-    TConsoleVar<float> cvar_restir_pt_initial_candidates   ("r.restir_pt_initial_candidates",   2.0f,                                                    "brdf bounce candidates for indirect lighting per pixel, increases initial pool variance reduction", on_restir_pt_initial_candidates_change);
-    TConsoleVar<float> cvar_restir_pt_rc_min_roughness     ("r.restir_pt_rc_min_roughness",     0.1f,                                                    "minimum roughness at the reconnection vertex, lower lets more glossy surfaces reuse, the rc bsdf is now factored out for the suffix so the residual view-dep bias is bounded by the small rc nee contribution only", on_restir_pt_rc_min_roughness_change);
-    TConsoleVar<float> cvar_restir_pt_w_clamp              ("r.restir_pt_w_clamp",              1500.0f,                                                 "per sample W clamp, the unbiased upper bound on a single sample's contribution before the denoiser", on_restir_pt_w_clamp_change);
-    TConsoleVar<float> cvar_restir_pt_validation_period    ("r.restir_pt_validation_period",    8.0f,                                                    "lin 2022 sample validation period in frames, 0 disables, lower kills stale samples faster on moving lights", on_restir_pt_validation_period_change);
-    TConsoleVar<float> cvar_restir_pt_disable_temporal_reuse("r.restir_pt_disable_temporal_reuse", 0.0f,                                                  "bisection toggle, when nonzero skips the temporal reuse pass so only the initial ris pool feeds spatial, useful to isolate temporal-pass bugs");
-    TConsoleVar<float> cvar_restir_pt_disable_spatial_reuse ("r.restir_pt_disable_spatial_reuse",  0.0f,                                                  "bisection toggle, when nonzero skips the spatial reuse passes so only temporal feeds the denoiser, useful to isolate spatial-pass bugs");
     TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,                                                    "motion blur");
     TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,                                                    "depth of field");
     TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,                                                    "film grain effect");

@@ -157,16 +157,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // upsample (depth + normal aware) to avoid bleeding across edges
         // also multiply by surface.occlusion to recover contact shadows that
         // restir's spatial reuse and denoiser smear away at small scales
-        // debug mode writes a heatmap into the gi slot, the remodulator is skipped there so
-        // the viridis colors are not tinted by surface albedo
         if (is_restir_pt_enabled())
         {
             float depth_dst_lin = linearize_depth(surface.depth);
-            light_gi = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
-            if (uint(buffer_frame.restir_pt_debug_mode) == 0u)
-            {
-                light_gi *= restir_albedo_demodulator(surface.albedo);
-            }
+            light_gi  = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
+            light_gi *= restir_albedo_demodulator(surface.albedo);
             light_gi *= surface.occlusion;
         }
     }

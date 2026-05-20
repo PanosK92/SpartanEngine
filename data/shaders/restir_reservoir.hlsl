@@ -23,22 +23,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_RESTIR_RESERVOIR
 
 // core parameters
-// the runtime knobs (m cap, max path length, light/initial candidates, rc min roughness, w
-// clamp, validation period) come from cb_frame.restir_pt_* via the helpers below, the static
-// values here are absolute upper bounds for the unrolled loop counts and conservative fallbacks
-static const uint  RESTIR_MAX_PATH_LENGTH    = 8;
+// values are hardcoded so path tracing just works, lin 2022 fig 5/8 and §6 recommendations
+// drove the picks, the m_cap ramps from a moving baseline up to the static target as the
+// camera holds still so dynamic scenes stay responsive while still frames keep converging
+static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
 static const uint  RESTIR_M_CAP              = 32;
 static const uint  RESTIR_SPATIAL_SAMPLES    = 8;
 
-// runtime knob accessors, clamped on the cpu and on read so stale frames cannot escape the
-// safe range, the casts to uint round toward zero but the cvars only emit integral values
-float get_restir_m_cap()               { return max(buffer_frame.restir_pt_m_cap, 1.0f); }
-uint  get_restir_max_path_length()     { return clamp((uint)buffer_frame.restir_pt_max_path_length, 2u, RESTIR_MAX_PATH_LENGTH); }
-uint  get_restir_light_candidates()    { return max((uint)buffer_frame.restir_pt_light_candidates, 1u); }
-uint  get_restir_initial_candidates()  { return max((uint)buffer_frame.restir_pt_initial_candidates, 1u); }
-float get_restir_rc_min_roughness()    { return saturate(buffer_frame.restir_pt_rc_min_roughness); }
-float get_restir_w_clamp()             { return max(buffer_frame.restir_pt_w_clamp, 1.0f); }
-uint  get_restir_validation_period()   { return (uint)max(buffer_frame.restir_pt_validation_period, 0.0f); }
+// hardcoded knobs
+//   m_cap          ramps from 32 (moving) to 96 (static), validity gate kills disocclusions
+//   path length    5 bounces is enough for plausible multi-bounce gi without runaway cost
+//   light cands    8 nee samples covers the dominant lights, balance mis handles the rest
+//   initial cands  1 brdf bounce per pixel, temporal + spatial reuse builds the pool over time
+//   rc_min_rough   0.3 keeps glossy reconnection bias bounded, near mirrors fall back to replay
+//   w_clamp        single sample W cap, chosen high enough not to bias bright lights but low
+//                  enough that disocclusion fireflies cannot spike the denoiser
+//   validation     8 frames matches lin 2022 recommendation, kills stale samples on light change
+float get_restir_m_cap()
+{
+    float t = float(buffer_frame.time) - buffer_frame.camera_last_movement_time;
+    float ramp = saturate((t - 0.5f) / 1.0f);
+    return lerp(32.0f, 96.0f, ramp);
+}
+uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
+uint  get_restir_light_candidates()    { return 8u; }
+uint  get_restir_initial_candidates()  { return 1u; }
+float get_restir_rc_min_roughness()    { return 0.3f; }
+float get_restir_w_clamp()             { return 200.0f; }
+uint  get_restir_validation_period()   { return 8u; }
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.75f;
 // no soft decay, the validity gate already hard rejects on disocclusion and the m cap above
@@ -53,15 +65,10 @@ static const float RESTIR_SKY_W_CLAMP        = 1500.0f;
 static const float RESTIR_SKY_DISTANCE       = 1e10f;
 
 // reconnection criteria (lin 2022 hybrid shift, reconnection leg)
+// rc roughness floor lives in get_restir_rc_min_roughness() so it is co-located with the
+// other path tracer knobs, the distance and cos floors below are absolute safety guards
 static const float RESTIR_RC_MIN_DISTANCE    = 0.1f;
-static const float RESTIR_RC_MIN_ROUGHNESS   = 0.2f;
 static const float RESTIR_RC_COS_FRONT       = 0.05f;
-// specular ownership boundary at the primary vertex, below this roughness rt reflections owns
-// the specular lobe (its single bounce is high quality on near mirrors and the random replay
-// shift collapses anyway), at or above it restir samples the full brdf so glossy surfaces get
-// proper indirect specular through reservoir reuse, this matches the lin 2022 hybrid shift's
-// own gate on rough vs near specular vertices
-static const float RESTIR_PRIMARY_SPECULAR_OWNED_MIN = 0.2f;
 // large jacobians signal a near-degenerate shift, the shift result is rejected as failed
 // instead of being clamped so the bias from squashing the energy into a clamp does not
 // accumulate over neighbors; this acts as a safety guard rather than a soft firefly cap
@@ -69,12 +76,6 @@ static const float RESTIR_JACOBIAN_REJECT    = 64.0f;
 
 // brdf / numerics
 static const float RESTIR_MIN_PDF            = 1e-6f;
-// generous safety net only, the pairwise mis + visibility checks + m cap already bound energy
-// and the hybrid shift gives the estimator the dynamic range it needs for concentrated emitters
-// raised from 500 to 1500 since we no longer apply a source side firefly clamp on rc_radiance
-// and the variance aware denoiser handles bright single sample fireflies inside the spatial
-// filter weights, lowering the W clamp aggressively here would re-introduce darkening bias
-static const float RESTIR_W_CLAMP_DEFAULT    = 1500.0f;
 
 // nee
 static const float MIN_AREA_LIGHT_SOLID_ANGLE = 1e-4f;
@@ -788,19 +789,13 @@ float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, flo
     return evaluate_brdf(albedo, roughness, metallic, normal, view_dir, dir, unused_pdf, primary_diffuse_only);
 }
 
-// energy split at the primary vertex (lin 2022 paper-faithful hybrid):
-//   roughness >= RESTIR_PRIMARY_SPECULAR_OWNED_MIN  -> restir samples diffuse + specular
-//   roughness <  RESTIR_PRIMARY_SPECULAR_OWNED_MIN  -> restir samples diffuse only,
-//     ray traced reflections (or specular ibl as fallback) owns the near mirror lobe
-// using the same threshold as the rc gate keeps the energy ownership consistent with the
-// reconnection shift's own validity domain, so we never sample a primary lobe whose paths
-// the shift would reject anyway
+// restir owns the full brdf at the primary vertex regardless of roughness, so glossy primaries
+// get proper indirect specular through reservoir reuse, the previous hybrid that handed near
+// mirror lobes to rt reflections (or specular ibl) left glossy surfaces looking flat and
+// caused double counting whenever the routing did not match the consumer side, this matches
+// lin 2022 §5 which samples the full brdf at every primary in the path tracing reference
 bool restir_primary_diffuse_only(float roughness)
 {
-    if (is_ray_traced_reflections_enabled() && roughness < RESTIR_PRIMARY_SPECULAR_OWNED_MIN)
-    {
-        return true;
-    }
     return false;
 }
 

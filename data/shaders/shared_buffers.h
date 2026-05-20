@@ -85,7 +85,7 @@ struct FrameBufferData
     SHARED_FLOAT camera_last_movement_time;
     SHARED_FLOAT hdr_enabled;
     SHARED_FLOAT hdr_max_nits;
-    SHARED_FLOAT restir_pt_debug_mode;
+    SHARED_FLOAT padding_restir0;
 
     SHARED_FLOAT3 camera_position_previous;
     SHARED_FLOAT  resolution_scale;
@@ -105,18 +105,6 @@ struct FrameBufferData
     SHARED_FLOAT cloud_shadows;
     SHARED_FLOAT restir_pt_light_count;
     SHARED_FLOAT padding4;
-
-    // restir pt tunable knobs (paper figures 5/8 and §6 of lin 2022, exposed as cvars so the
-    // user can tune for static vs dynamic scenes, validation_period of 0 disables validation)
-    SHARED_FLOAT restir_pt_m_cap;
-    SHARED_FLOAT restir_pt_max_path_length;
-    SHARED_FLOAT restir_pt_light_candidates;
-    SHARED_FLOAT restir_pt_initial_candidates;
-
-    SHARED_FLOAT restir_pt_rc_min_roughness;
-    SHARED_FLOAT restir_pt_w_clamp;
-    SHARED_FLOAT restir_pt_validation_period;
-    SHARED_FLOAT restir_pt_knob_padding;
 
     // vr stereo - right eye matrices (left eye uses the primary matrices above)
     SHARED_MATRIX view_right;

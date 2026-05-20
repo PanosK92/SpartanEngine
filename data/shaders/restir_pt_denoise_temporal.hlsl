@@ -295,16 +295,27 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         history_weight   = saturate(min(history_weight, 0.992f));
     }
 
+    // small 3x3 mean+variance pre blur (schied 2017 §4.2) so isolated bright fireflies do not
+    // pin the variance estimate to a single pixel, this stabilizes the spatial filter weights
+    // and gives the firefly clamp below a reliable spatial sigma even when history is young
+    float3 mean_color, sigma_color, min_color, max_color;
+    compute_local_statistics(pixel, resolution, mean_color, sigma_color, min_color, max_color);
+    float spatial_sigma_luma = dot(sigma_color, luminance_weights);
+    float spatial_var_3x3    = spatial_sigma_luma * spatial_sigma_luma;
+
     // pre-ema firefly soft clamp, lin 2022 §6.4 / production svgf trick
     // if the current sample's luma is way above the history band, soft-rescale it down before
     // it poisons the moment update, otherwise a single hot pixel can pin the variance estimate
-    // for many frames and force the spatial filter to over-blur the neighborhood, the gate is
-    // applied only once temporal accumulation is established (n_eff > 4) so the bootstrap
-    // window stays unbiased
-    if (history_ok && history_moments.z > 4.0f)
+    // for many frames and force the spatial filter to over-blur the neighborhood, the gate
+    // fires as soon as we have a temporal partner so disocclusion fireflies do not boil for
+    // 4 frames before the clamp kicks in, the band widens via spatial sigma when history is
+    // young so the clamp does not over-bias on freshly accumulating pixels
+    if (history_ok)
     {
         float history_sigma = sqrt(max(history_moments.y - history_moments.x * history_moments.x, 0.0f));
-        float clamp_high    = history_moments.x + 8.0f * max(history_sigma, 0.05f);
+        float band_sigma    = max(history_sigma, spatial_sigma_luma);
+        float band_widen    = lerp(16.0f, 6.0f, saturate(history_moments.z / 4.0f));
+        float clamp_high    = history_moments.x + band_widen * max(band_sigma, 0.05f);
         if (current_luma > clamp_high && current_luma > 1e-3f)
         {
             float scale    = clamp_high / current_luma;
@@ -335,12 +346,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         variance_estimate = max(temporal_var, spatial_var * boost);
     }
 
-    // small 3x3 mean+variance pre blur (schied 2017 §4.2) so isolated bright fireflies do not
-    // pin the variance estimate to a single pixel, this stabilizes the spatial filter weights
-    float3 mean_color, sigma_color, min_color, max_color;
-    compute_local_statistics(pixel, resolution, mean_color, sigma_color, min_color, max_color);
-    float spatial_sigma_luma = dot(sigma_color, luminance_weights);
-    float spatial_var_3x3    = spatial_sigma_luma * spatial_sigma_luma;
     variance_estimate = max(variance_estimate, spatial_var_3x3 * 0.25f);
 
     // variance gated history clamp keeps chromatic stability even when the temporal accumulator

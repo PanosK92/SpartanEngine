@@ -24,10 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-// upper bounds on the per pixel ris pool sizes, the actual counts come from cvars
-//   r.restir_pt_initial_candidates  -> brdf stream (cap below)
-//   r.restir_pt_light_candidates    -> nee stream (cap below)
-// caps are sized so the unrolled loop pressure is bounded but the user can tune for quality
+// upper bounds on the per pixel ris pool sizes, the live counts come from get_restir_*
+// helpers in restir_reservoir.hlsl which return paper-faithful hardcoded values (1 brdf
+// candidate, 8 nee candidates), the caps below only bound the unrolled loop size
 static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
 static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
 static const float MIN_COS_AT_PRIMARY              = 1e-3f;
@@ -594,8 +593,8 @@ void trace_rc_suffix(
 }
 
 // gathers the rc vertex's nee + emission contribution (with rc bsdf baked in at src view dir,
-// view-dep bias bounded by RESTIR_RC_MIN_ROUGHNESS gate on rc reuse) and the suffix radiance
-// past rc (with rc bsdf factored out into rc_outgoing_dir for paper-faithful shift evaluation)
+// view-dep bias bounded by the get_restir_rc_min_roughness floor on rc reuse) and the suffix
+// radiance past rc (with rc bsdf factored out into rc_outgoing_dir for paper-faithful shifts)
 void accumulate_subpath_at_rc(
     PathPayload rc,
     float3 rc_view_dir,
@@ -846,10 +845,18 @@ PathSample trace_path_from_primary(
     L_nee  = max(L_nee,  0.0f);
     L_post = max(L_post, 0.0f);
 
-    // no source side firefly clamp here, the lin 2022 estimator is unbiased and the energy
-    // bound is provided by the m cap, the per sample W clamp, and the variance aware denoiser
-    // downstream, scaling the suffix luminance was a downward bias on bright reflections that
-    // also fought the denoiser's variance estimate
+    // soft luminance clamp, the W clamp + m cap bound the unbiased estimator energy but not
+    // single sample variance, when a glossy rc lands on a bright emitter the rc bsdf baked
+    // into rc_L_nee can spike to thousands of nits and a stable spatial neighbor will then
+    // stamp that pulse across many pixels (boiling), the soft scale preserves chromaticity so
+    // the residual downward bias is uniform across channels and the denoiser absorbs the rest
+    {
+        float lum_nee  = luminance(L_nee);
+        float lum_post = luminance(L_post);
+        const float firefly_ceiling = 250.0f;
+        if (lum_nee  > firefly_ceiling) L_nee  *= firefly_ceiling / lum_nee;
+        if (lum_post > firefly_ceiling) L_post *= firefly_ceiling / lum_post;
+    }
 
     s.rc_L_nee        = L_nee;
     s.rc_L_post       = L_post;

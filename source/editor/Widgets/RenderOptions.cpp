@@ -290,38 +290,11 @@ void RenderOptions::OnTickVisible()
                 if (option_header("Ray-traced Effects"))
                 {
                     ImGui::BeginDisabled(!RHI_Device::IsSupportedRayTracing());
-                    static vector<string> restir_debug_modes =
-                    {
-                        "Off",
-                        "Confidence",
-                        "Reservoir M",
-                        "Reservoir W",
-                        "Reuse Ratio (M/M_cap)",
-                        "Path Length",
-                        "Variance",
-                        "Shift Type",
-                        "Target/W Stability"
-                    };
-
                     option_check_box("Reflections", "r.ray_traced_reflections");
-                    option_check_box("Shadows", "r.ray_traced_shadows");
+                    option_check_box("Shadows",     "r.ray_traced_shadows");
                     option_check_box("ReSTIR Path Tracing (WIP)", "r.restir_pt");
                     ImGui::BeginDisabled(!cvar_restir_pt.GetValueAs<bool>());
-                    option_value("ReSTIR resolution scale",     "r.restir_pt_scale",              "Fraction of render resolution used for path tracing (0.1-1.0)",                                      0.05f, 0.1f, 1.0f, "%.2f");
-                    option_value("ReSTIR M cap",                "r.restir_pt_m_cap",              "Temporal sample count cap (paper recommends 100 for static, 30 for dynamic)",                       1.0f,  4.0f, 256.0f, "%.0f");
-                    option_value("ReSTIR max path length",      "r.restir_pt_max_path_length",    "Maximum path bounces (higher = better multi-bounce GI, more cost)",                                 1.0f,  2.0f, 8.0f, "%.0f");
-                    option_value("ReSTIR initial candidates",   "r.restir_pt_initial_candidates", "Per-pixel BRDF candidates in the initial RIS pool (1-8)",                                            1.0f,  1.0f, 8.0f, "%.0f");
-                    option_value("ReSTIR light candidates",     "r.restir_pt_light_candidates",   "Per-pixel NEE candidates in the initial RIS pool, paper baseline 32 (1-64)",                         1.0f,  1.0f, 64.0f, "%.0f");
-                    option_value("ReSTIR rc min roughness",     "r.restir_pt_rc_min_roughness",   "Roughness floor for the reconnection vertex, lower lets reuse on glossier surfaces but adds bias",   0.01f, 0.0f, 1.0f, "%.2f");
-                    option_value("ReSTIR W clamp",              "r.restir_pt_w_clamp",            "Unbiased reservoir weight clamp, higher trusts the variance denoiser more",                          25.0f, 100.0f, 5000.0f, "%.0f");
-                    option_value("ReSTIR validation period",    "r.restir_pt_validation_period",  "Re-trace chosen sample every N frames per pixel (0 = off, ~8 is paper-typical)",                     1.0f,  0.0f, 64.0f, "%.0f");
-                    option_check_box("ReSTIR disable temporal", "r.restir_pt_disable_temporal_reuse", "Bisection toggle: skip the temporal reuse pass to isolate temporal-pass bugs");
-                    option_check_box("ReSTIR disable spatial",  "r.restir_pt_disable_spatial_reuse",  "Bisection toggle: skip the spatial reuse passes to isolate spatial-pass bugs");
-                    uint32_t restir_debug_mode = cvar_restir_pt_debug_mode.GetValueAs<uint32_t>();
-                    if (option_combo_box("ReSTIR debug view", restir_debug_modes, restir_debug_mode, "Visualize reservoir state, reuse, path length, and variance"))
-                    {
-                        ConsoleRegistry::Get().SetValueFromString("r.restir_pt_debug_mode", to_string(static_cast<float>(restir_debug_mode)));
-                    }
+                    option_value("ReSTIR resolution scale", "r.restir_pt_scale", "Fraction of render resolution used for path tracing (0.1-1.0)", 0.05f, 0.1f, 1.0f, "%.2f");
                     ImGui::EndDisabled();
                     ImGui::EndDisabled();
                 }

@@ -237,7 +237,6 @@ namespace spartan
         restir_pt_spatial_c,
         restir_pt_denoise_temporal_c,
         restir_pt_denoise_spatial_c,
-        restir_pt_debug_c,
         // volumetric clouds
         cloud_noise_shape_c,
         cloud_noise_detail_c,

@@ -714,7 +714,6 @@ namespace spartan
             { Renderer_Shader::restir_pt_spatial_c,                   RHI_Shader_Type::Compute,       "restir_pt_spatial.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_denoise_temporal_c,          RHI_Shader_Type::Compute,       "restir_pt_denoise_temporal.hlsl",      RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_denoise_spatial_c,           RHI_Shader_Type::Compute,       "restir_pt_denoise_spatial.hlsl",       RHI_Vertex_Type::Max, nullptr,                       true,  true },
-            { Renderer_Shader::restir_pt_debug_c,                     RHI_Shader_Type::Compute,       "restir_pt_debug.hlsl",                 RHI_Vertex_Type::Max, nullptr,                       true,  true },
 
             // volumetric clouds
             { Renderer_Shader::cloud_noise_shape_c,                   RHI_Shader_Type::Compute, "sky/cloud_noise.hlsl",                       RHI_Vertex_Type::Max, "SHAPE_NOISE"                    },

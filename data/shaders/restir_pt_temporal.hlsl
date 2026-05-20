@@ -302,9 +302,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // lin 2022 §6.4 sample validation: every N frames a fixed subset of pixels re-traces the
     // chosen sample's primary->rc visibility ray, if rc is no longer reachable from the current
     // primary (light moved, geometry changed, occluder appeared) the reservoir is reset so we
-    // do not drag a stale path across many frames, the period is in cb_frame.restir_pt_validation_period
-    // and a value of 0 disables the pass, the pixel hash cycles deterministically with frame
-    // index so the cost is amortized to ~1/N pixels per frame
+    // do not drag a stale path across many frames, the period comes from get_restir_validation_period
+    // (hardcoded to 8 frames) and the pixel hash cycles deterministically with frame index so
+    // the cost is amortized to ~1/N pixels per frame
     uint validation_period = get_restir_validation_period();
     if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
     {

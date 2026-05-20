@@ -67,16 +67,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_ray_traced_shadows;
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
-    extern TConsoleVar<float> cvar_restir_pt_debug_mode;
-    extern TConsoleVar<float> cvar_restir_pt_m_cap;
-    extern TConsoleVar<float> cvar_restir_pt_max_path_length;
-    extern TConsoleVar<float> cvar_restir_pt_light_candidates;
-    extern TConsoleVar<float> cvar_restir_pt_initial_candidates;
-    extern TConsoleVar<float> cvar_restir_pt_rc_min_roughness;
-    extern TConsoleVar<float> cvar_restir_pt_w_clamp;
-    extern TConsoleVar<float> cvar_restir_pt_validation_period;
-    extern TConsoleVar<float> cvar_restir_pt_disable_temporal_reuse;
-    extern TConsoleVar<float> cvar_restir_pt_disable_spatial_reuse;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;
     extern TConsoleVar<float> cvar_film_grain;

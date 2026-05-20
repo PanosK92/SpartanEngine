@@ -100,7 +100,10 @@ namespace spartan
         {
             return;
         }
-        if (!cvar_ray_traced_reflections.GetValueAs<bool>() || !tex_reflections_position)
+        // restir path tracing owns the full brdf at the primary, running rt reflections on top
+        // would double count the specular indirect, so we short circuit and clear here
+        const bool rt_reflections_active = cvar_ray_traced_reflections.GetValueAs<bool>() && !cvar_restir_pt.GetValueAs<bool>();
+        if (!rt_reflections_active || !tex_reflections_position)
         {
             if (!m_pass_state.cleared_rt_reflections)
             {
@@ -165,7 +168,9 @@ namespace spartan
     
     void Renderer::Pass_Composite_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
+        // restir path tracing owns specular indirect when active, the rt reflections texture
+        // is cleared in Pass_RayTracedReflections so there is nothing meaningful to composite
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>())
         {
             return;
         }
@@ -523,19 +528,9 @@ namespace spartan
         const uint32_t dispatch_x  = (width  + 7) / 8;
         const uint32_t dispatch_y  = (height + 7) / 8;
 
-        // bisection cvars allow isolating temporal- or spatial-only failures, when disabled
-        // the corresponding pass is simply skipped, the next stages reuse whatever reservoirs
-        // are in the canonical buffer (temporal output if spatial is off, initial ris output
-        // if both are off), this is a debugging aid not a quality knob
-        const bool disable_temporal = cvar_restir_pt_disable_temporal_reuse.GetValueAs<bool>();
-        const bool disable_spatial  = cvar_restir_pt_disable_spatial_reuse.GetValueAs<bool>();
-
         Pass_ReSTIR_TraceInitial(cmd_list, tlas, tex_gi, tex_skysphere, reservoirs, width, height);
-        if (!disable_temporal)
-        {
-            Pass_ReSTIR_Temporal(cmd_list, tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
-        }
-        const bool ran_spatial = !disable_spatial && Pass_ReSTIR_SpatialPair(cmd_list, tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
+        Pass_ReSTIR_Temporal(cmd_list, tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
+        const bool ran_spatial = Pass_ReSTIR_SpatialPair(cmd_list, tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
 
         if (!ran_spatial)
         {
@@ -573,14 +568,11 @@ namespace spartan
 
         RHI_Shader* shader_temporal = GetShader(Renderer_Shader::restir_pt_denoise_temporal_c);
         RHI_Shader* shader_spatial  = GetShader(Renderer_Shader::restir_pt_denoise_spatial_c);
-        RHI_Shader* shader_debug    = GetShader(Renderer_Shader::restir_pt_debug_c);
         if (!shader_temporal || !shader_spatial || !shader_temporal->IsCompiled() || !shader_spatial->IsCompiled())
         {
             Pass_BlitRestirFallback(cmd_list, tex_gi_raw, tex_gi_denoised, tex_gi_history, false);
             return;
         }
-
-        const bool debug_mode_on = cvar_restir_pt_debug_mode.GetValue() > 0.0f;
 
         RHI_Texture* reservoirs[6];
         for (uint32_t i = 0; i < 6; i++)
@@ -620,36 +612,6 @@ namespace spartan
             cmd_list->InsertBarrier(tex_moments,     RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
-
-        // debug overlay short circuits the spatial filter, the temporal pass already wrote a
-        // valid color + variance(alpha) into tex_gi_denoised, the debug shader replaces the
-        // color slot with a viridis heatmap derived from reservoir state, alpha is preserved
-        if (debug_mode_on && shader_debug && shader_debug->IsCompiled())
-        {
-            cmd_list->BeginTimeblock("restir_pt_debug");
-            {
-                RHI_PipelineState pso;
-                pso.name             = "restir_pt_debug";
-                pso.shaders[Compute] = shader_debug;
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureReadThenWrite);
-                SetCommonTextures(cmd_list);
-                for (uint32_t i = 0; i < 6; i++)
-                    cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
-                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
-                cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
-                cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
-            }
-            cmd_list->EndTimeblock();
-
-            cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureReadThenWrite);
-            Pass_Blit(cmd_list, tex_gi_denoised, tex_gi_history);
-            cmd_list->InsertBarrier(tex_gi_history,  RHI_BarrierType::EnsureWriteThenRead);
-            cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
-            return;
-        }
 
         // ping pong spatial passes, parameter is the kernel radius, src and dst alternate
         // a-trous step doubling at each level (1, 2, 4, 8) matches lin 2022's reference svgf
