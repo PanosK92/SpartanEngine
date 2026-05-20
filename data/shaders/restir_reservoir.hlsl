@@ -23,11 +23,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPARTAN_RESTIR_RESERVOIR
 
 // core parameters
-static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
-// m cap lowered from 256 to the lin 2022 recommended range so the estimator reacts to lighting
-// changes within ~32 frames rather than dragging a several second ghost tail behind moving lights
+// the runtime knobs (m cap, max path length, light/initial candidates, rc min roughness, w
+// clamp, validation period) come from cb_frame.restir_pt_* via the helpers below, the static
+// values here are absolute upper bounds for the unrolled loop counts and conservative fallbacks
+static const uint  RESTIR_MAX_PATH_LENGTH    = 8;
 static const uint  RESTIR_M_CAP              = 32;
 static const uint  RESTIR_SPATIAL_SAMPLES    = 8;
+
+// runtime knob accessors, clamped on the cpu and on read so stale frames cannot escape the
+// safe range, the casts to uint round toward zero but the cvars only emit integral values
+float get_restir_m_cap()               { return max(buffer_frame.restir_pt_m_cap, 1.0f); }
+uint  get_restir_max_path_length()     { return clamp((uint)buffer_frame.restir_pt_max_path_length, 2u, RESTIR_MAX_PATH_LENGTH); }
+uint  get_restir_light_candidates()    { return max((uint)buffer_frame.restir_pt_light_candidates, 1u); }
+uint  get_restir_initial_candidates()  { return max((uint)buffer_frame.restir_pt_initial_candidates, 1u); }
+float get_restir_rc_min_roughness()    { return saturate(buffer_frame.restir_pt_rc_min_roughness); }
+float get_restir_w_clamp()             { return max(buffer_frame.restir_pt_w_clamp, 1.0f); }
+uint  get_restir_validation_period()   { return (uint)max(buffer_frame.restir_pt_validation_period, 0.0f); }
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.75f;
 // no soft decay, the validity gate already hard rejects on disocclusion and the m cap above
@@ -38,13 +49,19 @@ static const float RESTIR_RAY_T_MIN          = 0.001f;
 // sky / environment
 // sun disk radiance can far exceed any sane clamp, so this only catches numerical blowups
 static const float RESTIR_SKY_RADIANCE_CLAMP = 200.0f;
-static const float RESTIR_SKY_W_CLAMP        = 500.0f;
+static const float RESTIR_SKY_W_CLAMP        = 1500.0f;
 static const float RESTIR_SKY_DISTANCE       = 1e10f;
 
 // reconnection criteria (lin 2022 hybrid shift, reconnection leg)
 static const float RESTIR_RC_MIN_DISTANCE    = 0.1f;
 static const float RESTIR_RC_MIN_ROUGHNESS   = 0.2f;
 static const float RESTIR_RC_COS_FRONT       = 0.05f;
+// specular ownership boundary at the primary vertex, below this roughness rt reflections owns
+// the specular lobe (its single bounce is high quality on near mirrors and the random replay
+// shift collapses anyway), at or above it restir samples the full brdf so glossy surfaces get
+// proper indirect specular through reservoir reuse, this matches the lin 2022 hybrid shift's
+// own gate on rough vs near specular vertices
+static const float RESTIR_PRIMARY_SPECULAR_OWNED_MIN = 0.2f;
 // large jacobians signal a near-degenerate shift, the shift result is rejected as failed
 // instead of being clamped so the bias from squashing the energy into a clamp does not
 // accumulate over neighbors; this acts as a safety guard rather than a soft firefly cap
@@ -54,10 +71,10 @@ static const float RESTIR_JACOBIAN_REJECT    = 64.0f;
 static const float RESTIR_MIN_PDF            = 1e-6f;
 // generous safety net only, the pairwise mis + visibility checks + m cap already bound energy
 // and the hybrid shift gives the estimator the dynamic range it needs for concentrated emitters
-static const float RESTIR_W_CLAMP_DEFAULT    = 500.0f;
-
-// retained constant for historical reference (rc_radiance is no longer clamped at storage)
-static const float RESTIR_FIREFLY_LUMA       = 150.0f;
+// raised from 500 to 1500 since we no longer apply a source side firefly clamp on rc_radiance
+// and the variance aware denoiser handles bright single sample fireflies inside the spatial
+// filter weights, lowering the W clamp aggressively here would re-introduce darkening bias
+static const float RESTIR_W_CLAMP_DEFAULT    = 1500.0f;
 
 // nee
 static const float MIN_AREA_LIGHT_SOLID_ANGLE = 1e-4f;
@@ -70,7 +87,14 @@ static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from light nee
 
 // a path sample stores the suffix of a path beginning at the current pixel's primary hit
 // rc_pos is a world-space reconnection vertex (PATH_FLAG_HAS_RC) or a unit sky direction (PATH_FLAG_SKY)
-// rc_radiance is the outgoing radiance leaving rc toward the source primary
+// rc_radiance is the outgoing radiance leaving rc toward the source primary, computed using
+// src's incoming direction at rc, the radiance is therefore view dependent at rc with respect
+// to the source path so reuse at a destination with a different rc incoming direction carries
+// a bounded bias, lin 2022 controls this by gating reconnection on rc roughness >= 0.2 (see
+// RESTIR_RC_MIN_ROUGHNESS) which keeps the rc bsdf nearly direction independent in the
+// outgoing argument, eliminating it entirely would require splitting rc_radiance into pre/post
+// rc_bsdf components and re-applying f_rc at shift time, which is the lin 2022 reference
+// approach but defeats the single scalar storage that makes the cache cheap, we keep the gate
 // rc_prev_pos is the position of the vertex immediately before rc in the source path
 // (equal to src_primary_pos when rc_length == 2, or the specular bounce position when rc_length == 3)
 // rc_outgoing_dir is the direction leaving rc to the next bounce, used by the hybrid shift to
@@ -304,7 +328,10 @@ Reservoir create_empty_reservoir()
 
 float get_w_clamp_for_sample(PathSample s)
 {
-    return is_sky_sample(s) ? RESTIR_SKY_W_CLAMP : RESTIR_W_CLAMP_DEFAULT;
+    float w = get_restir_w_clamp();
+    // sky samples always use a high clamp because the sun disk radiance can far exceed it,
+    // we never want to darken sun glints to fight a bias-free clamp
+    return is_sky_sample(s) ? max(w, RESTIR_SKY_W_CLAMP) : w;
 }
 
 bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float weight, float random_value)
@@ -424,9 +451,12 @@ float3 world_to_local(float3 world_dir, float3 n)
 // removing the low pdf wasted samples that nf sampling produces at grazing angles, the result
 // has strictly lower variance than the legacy ndf sampling for non zero roughness
 // ve is the view direction in local tangent space, n = (0,0,1)
-float3 sample_ggx_vndf(float3 ve, float2 xi, float roughness)
+// alpha is the ggx alpha at this surface, callers pass restir_d_ggx_alpha(roughness) so the
+// sampler matches the engine's brdf model exactly, mismatched alpha leads to a sampler whose
+// pdf does not equal the brdf density and inflates variance (especially at glancing angles)
+float3 sample_ggx_vndf(float3 ve, float2 xi, float alpha)
 {
-    float a = max(roughness * roughness, 1e-3f);
+    float a = max(alpha, 1e-3f);
 
     float3 vh = normalize(float3(a * ve.x, a * ve.y, ve.z));
 
@@ -461,11 +491,17 @@ float3 clamp_sky_radiance(float3 radiance)
     return radiance;
 }
 
+// ray offset for self intersection avoidance, scaled with the dominant world-space coordinate
+// since float precision degrades with absolute magnitude (Wachter & Binder "A Fast and Robust
+// Method for Avoiding Self-Intersection" simplified form), the small camera-distance term
+// keeps long rays from wobbling at glancing angles, the floor of 2e-4 handles points near the
+// origin where the magnitude term collapses to zero
 float compute_ray_offset(float3 pos_ws)
 {
-    float3 to_cam = pos_ws - get_camera_position();
-    float  dist   = sqrt(dot(to_cam, to_cam));
-    return clamp(dist * 1e-4f, 2e-4f, 1e-2f);
+    float p_mag = max(abs(pos_ws.x), max(abs(pos_ws.y), abs(pos_ws.z)));
+    float dist  = length(pos_ws - get_camera_position());
+    float ofs   = max(max(p_mag * 1e-4f, dist * 1e-4f), 2e-4f);
+    return min(ofs, 1e-2f);
 }
 
 float3 soft_saturate_radiance(float3 radiance, float threshold)
@@ -480,14 +516,23 @@ float3 soft_saturate_radiance(float3 radiance, float threshold)
 }
 
 // diffuse-vs-specular selection probability used by the importance-sampled brdf
-float compute_spec_probability(float roughness, float metallic, float n_dot_v)
+// derived from approximate lobe energy at this view angle, the specular weight is the schlick
+// fresnel reflectance and the diffuse weight is the remaining albedo-tinted energy scaled by
+// (1 - metallic), this replaces the previous hand-tuned (0.1, 0.9) lerp with a value that
+// tracks actual lobe contribution and stays well-behaved across the full material range
+float compute_spec_probability(float3 albedo, float roughness, float metallic, float n_dot_v)
 {
-    float fresnel_factor   = pow(1.0f - n_dot_v, 5.0f);
-    float base_spec        = lerp(0.04f, 1.0f, metallic);
-    float spec_response    = lerp(base_spec, 1.0f, fresnel_factor);
-    float roughness_factor = 1.0f - roughness * roughness;
-    float spec_prob        = lerp(0.1f, 0.9f, spec_response * roughness_factor + metallic * 0.5f);
-    return clamp(spec_prob, 0.1f, 0.9f);
+    float albedo_lum = max(luminance(albedo), 1e-3f);
+    float f0_scalar  = lerp(0.04f, albedo_lum, metallic);
+    float fresnel    = f0_scalar + (1.0f - f0_scalar) * pow(1.0f - n_dot_v, 5.0f);
+    // smooth surfaces concentrate energy in the lobe and benefit from more specular sampling,
+    // rough surfaces spread energy and need more diffuse samples, this nudges the split a bit
+    float gloss_bias = lerp(0.85f, 1.15f, 1.0f - roughness);
+    float spec_w     = fresnel * gloss_bias;
+    float diff_w     = albedo_lum * (1.0f - metallic) * (1.0f - fresnel);
+    float total      = spec_w + diff_w;
+    float spec_prob  = total > 0.0f ? spec_w / total : 0.5f;
+    return clamp(spec_prob, 0.05f, 0.95f);
 }
 
 // brdf helpers ported from brdf.hlsl so restir matches the engine's main shading exactly
@@ -597,6 +642,9 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     }
 
     // ggx specular with cod-wwii roughness remap and fdez-aguera multiscatter
+    // the same alpha is used for the brdf D term, the importance sampling pdf, and the vndf
+    // sampler in sample_brdf so the sampler density matches the integrand density exactly,
+    // mismatched alpha is the dominant source of glossy gi variance ("fizzy" highlights)
     float  a       = restir_d_ggx_alpha(roughness);
     float  a2      = a * a;
     float  d_term  = restir_d_ggx(n_dot_h, a2);
@@ -606,17 +654,13 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     // v_smithggx already absorbs the 4*n_dot_l*n_dot_v denominator, fr is per-(steradian * cos)
     float3 specular_cos = fr * n_dot_l;
 
-    // importance sampling pdf, sample_brdf now uses vndf for specular so the matching pdf is
-    // pdf_l = D(h) * G1(v) / (4 * cos(theta_v)), which differs from the legacy ndf pdf above
-    float alpha_is    = max(roughness * roughness, 0.001f);
-    float alpha_is2   = alpha_is * alpha_is;
-    float d_denom_is  = n_dot_h * n_dot_h * (alpha_is2 - 1.0f) + 1.0f;
-    float d_is        = alpha_is2 / (PI * d_denom_is * d_denom_is + 1e-6f);
+    // importance sampling pdf for the vndf sampler in sample_brdf
+    // pdf_l = D(h) * G1(v) / (4 * cos(theta_v)) (heitz 2018 eq. 17)
     float n_dot_v_abs = max(n_dot_v, 1e-3f);
-    float g1_v_pdf    = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(alpha_is2 + (1.0f - alpha_is2) * n_dot_v_abs * n_dot_v_abs));
+    float g1_v_pdf    = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(a2 + (1.0f - a2) * n_dot_v_abs * n_dot_v_abs));
     float diffuse_pdf = n_dot_l / PI;
-    float spec_pdf    = d_is * g1_v_pdf / (4.0f * n_dot_v_abs);
-    float spec_prob   = compute_spec_probability(roughness, metallic, n_dot_v);
+    float spec_pdf    = d_term * g1_v_pdf / (4.0f * n_dot_v_abs);
+    float spec_prob   = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
     pdf = (1.0f - spec_prob) * diffuse_pdf + spec_prob * spec_pdf;
 
     return diffuse_cos + specular_cos;
@@ -637,7 +681,7 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     }
 
     float n_dot_v      = max(dot(n, v), 0.001f);
-    float spec_prob    = compute_spec_probability(roughness, metallic, n_dot_v);
+    float spec_prob    = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
     float prob_diffuse = 1.0f - spec_prob;
 
     float3 l;
@@ -653,10 +697,11 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
         xi.x = (xi.x - prob_diffuse) / (1.0f - prob_diffuse);
         // vndf sampling concentrates microfacet normals around those visible from v, removing
         // the dim grazing samples that legacy ndf sampling produced and lowering variance for
-        // glossy surfaces at oblique view angles
+        // glossy surfaces at oblique view angles, alpha is the cod-wwii remap so sampler and
+        // integrand share a single ggx lobe shape (matches evaluate_brdf and brdf.hlsl)
         float3 v_local = world_to_local(v, n);
         v_local.z      = max(v_local.z, 1e-4f);
-        float3 h_local = sample_ggx_vndf(v_local, xi, max(roughness, 0.04f));
+        float3 h_local = sample_ggx_vndf(v_local, xi, restir_d_ggx_alpha(roughness));
         float3 h_world = local_to_world(h_local, n);
         l = reflect(-v, h_world);
     }
@@ -675,15 +720,13 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
 
     float3 h       = h_unnorm * rsqrt(h_len_sq);
     float n_dot_h  = max(dot(n, h), 0.001f);
-    float v_dot_h  = max(dot(v, h), 0.001f);
-    float alpha    = max(roughness * roughness, 0.001f);
-    float alpha2   = alpha * alpha;
-    float d_denom  = n_dot_h * n_dot_h * (alpha2 - 1.0f) + 1.0f;
-    float d        = alpha2 / (PI * d_denom * d_denom + 1e-6f);
     // vndf pdf for the reflection direction l, see heitz 2018 eq. 17
     // pdf(l) = D(h) * G1(v) / (4 * cos(theta_v))
+    float a           = restir_d_ggx_alpha(roughness);
+    float a2          = a * a;
+    float d           = restir_d_ggx(n_dot_h, a2);
     float n_dot_v_abs = max(abs(dot(n, v)), 1e-3f);
-    float g1_v        = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(alpha2 + (1.0f - alpha2) * n_dot_v_abs * n_dot_v_abs));
+    float g1_v        = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(a2 + (1.0f - a2) * n_dot_v_abs * n_dot_v_abs));
     float spec_pdf    = d * g1_v / (4.0f * n_dot_v_abs);
 
     pdf = prob_diffuse * diffuse_pdf + spec_prob * spec_pdf;
@@ -705,13 +748,20 @@ float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, flo
     return evaluate_brdf(albedo, roughness, metallic, normal, view_dir, dir, unused_pdf, primary_diffuse_only);
 }
 
-// primary specular at the primary vertex is owned by either ray traced reflections (when on)
-// or by light_image_based.hlsl's specular_ibl term (when rt reflections is off), restir always
-// samples diffuse only at the primary so primary specular is never double counted regardless
-// of which specular pipeline is active
-bool restir_primary_diffuse_only()
+// energy split at the primary vertex (lin 2022 paper-faithful hybrid):
+//   roughness >= RESTIR_PRIMARY_SPECULAR_OWNED_MIN  -> restir samples diffuse + specular
+//   roughness <  RESTIR_PRIMARY_SPECULAR_OWNED_MIN  -> restir samples diffuse only,
+//     ray traced reflections (or specular ibl as fallback) owns the near mirror lobe
+// using the same threshold as the rc gate keeps the energy ownership consistent with the
+// reconnection shift's own validity domain, so we never sample a primary lobe whose paths
+// the shift would reject anyway
+bool restir_primary_diffuse_only(float roughness)
 {
-    return true;
+    if (is_ray_traced_reflections_enabled() && roughness < RESTIR_PRIMARY_SPECULAR_OWNED_MIN)
+    {
+        return true;
+    }
+    return false;
 }
 
 // lin 2022 reconnection conditions for reusing src's rc at a destination surface
@@ -761,7 +811,7 @@ ShiftResult try_reconnection_shift(
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
 
-        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_diffuse_only());
+        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_diffuse_only(dst_roughness));
         if (all(brdf_cos <= 0.0f))
             return result;
 
@@ -798,7 +848,7 @@ ShiftResult try_reconnection_shift(
     if (cos_rc_src <= RESTIR_RC_COS_FRONT || cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
-    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, restir_primary_diffuse_only());
+    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, restir_primary_diffuse_only(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -865,17 +915,21 @@ ShiftResult try_random_replay_shift(
     uint   replay_seed = src.seed_path;
     float2 xi          = random_float2(replay_seed);
 
-    bool diffuse_only = restir_primary_diffuse_only();
+    // each side picks its own primary lobe ownership based on its own roughness, the jacobian
+    // pdf_src / pdf_dst then captures the change of variables exactly because each pdf reflects
+    // the actual sampling distribution at that side
+    bool src_diffuse_only = restir_primary_diffuse_only(src_roughness);
+    bool dst_diffuse_only = restir_primary_diffuse_only(dst_roughness);
 
     // sample brdf at src to get src's primary direction and pdf for the jacobian
     float  pdf_src;
-    float3 dir_src = sample_brdf(src_albedo, src_roughness, src_metallic, src_normal, src_view_dir, xi, pdf_src, diffuse_only);
+    float3 dir_src = sample_brdf(src_albedo, src_roughness, src_metallic, src_normal, src_view_dir, xi, pdf_src, src_diffuse_only);
     if (pdf_src < RESTIR_MIN_PDF || dot(dir_src, src_normal) <= 0.0f)
         return result;
 
     // sample brdf at dst with the same xi for the replayed bounce
     float  pdf_dst;
-    float3 dir_dst = sample_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, xi, pdf_dst, diffuse_only);
+    float3 dir_dst = sample_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, xi, pdf_dst, dst_diffuse_only);
     if (pdf_dst < RESTIR_MIN_PDF || dot(dir_dst, dst_normal) <= 0.0f)
         return result;
 
@@ -911,7 +965,7 @@ ShiftResult try_random_replay_shift(
 
     // brdf at dst toward the replayed direction, multiplied by stored suffix radiance
     float  pdf_eval;
-    float3 brdf_cos = evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, pdf_eval, diffuse_only);
+    float3 brdf_cos = evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, pdf_eval, dst_diffuse_only);
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -1031,7 +1085,7 @@ ShiftResult self_shift_evaluate(
     if (dot(dst_normal, dir) <= 0.0f)
         return result;
 
-    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_diffuse_only());
+    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_diffuse_only(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -1097,8 +1151,22 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
+// the demodulator that shade_reservoir_path divides out so light_composition can re-apply
+// surface.albedo at full resolution, this is the dominant diffuse response factor at the
+// primary vertex, dividing it out and re-multiplying with the per pixel full res albedo
+// recovers fine material detail that the half res shading + bilateral upsample otherwise
+// blurs across neighboring texels, the 0.04 floor matches the dielectric f0 fallback so
+// black materials still carry the small specular component without dividing by zero,
+// must stay in sync with restir_albedo_demodulator in light_composition.hlsl
+float3 restir_albedo_demodulator(float3 albedo)
+{
+    return max(albedo, float3(0.04f, 0.04f, 0.04f));
+}
+
 // shades the reservoir's sample at the current pixel (self-shift, jacobian == 1)
 // traces the visibility ray (sky samples verify sky reachability) and returns f(y) * W
+// divided by the primary's albedo demodulator so the gi texture stores lighting only,
+// light_composition then multiplies the bilaterally upsampled signal by full res albedo
 float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, float3 dst_view_dir, float3 dst_albedo, float dst_roughness, float dst_metallic)
 {
     if (r.M <= 0.0f || r.W <= 0.0f)
@@ -1111,7 +1179,7 @@ float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, floa
     if (!trace_shift_visibility(r.sample, dst_pos, dst_normal))
         return float3(0, 0, 0);
 
-    return shift.f_dst * r.W;
+    return (shift.f_dst * r.W) / restir_albedo_demodulator(dst_albedo);
 }
 
 #endif // SPARTAN_RESTIR_RESERVOIR

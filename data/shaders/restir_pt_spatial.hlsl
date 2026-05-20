@@ -346,7 +346,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     combined.M = M_total;
-    clamp_reservoir_M(combined, RESTIR_M_CAP);
+    clamp_reservoir_M(combined, get_restir_m_cap());
 
     // finalize: W = weight_sum / p_hat_dst(Y) (no /M, m_i factors already normalized)
     float final_target = target_pdf_self(combined.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);

@@ -332,7 +332,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_ReSTIR_Temporal(RHI_CommandList* cmd_list, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_prev, uint32_t dispatch_x, uint32_t dispatch_y)
+    void Renderer::Pass_ReSTIR_Temporal(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_prev, uint32_t dispatch_x, uint32_t dispatch_y)
     {
         RHI_Shader* shader_temporal = GetShader(Renderer_Shader::restir_pt_temporal_c);
         if (!shader_temporal || !shader_temporal->IsCompiled())
@@ -349,13 +349,34 @@ namespace spartan
 
             SetCommonTextures(cmd_list);
 
+            // tlas is required for the lin 2022 sample validation step inside the temporal pass,
+            // periodically re-traces the chosen reservoir's primary->rc visibility ray to kill
+            // stale samples that no longer reach their reconnection vertex (moved lights, opened
+            // doors, broken geometry), validation cadence is set by r.restir_pt_validation_period
+            if (tlas)
+            {
+                cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+            }
+
             for (uint32_t i = 0; i < 6; i++)
             {
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs_prev[i]);
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, reservoirs[i], rhi_all_mips, 0, true);
             }
 
+            // bind previous frame depth so the temporal validity gate compares against the actual
+            // prior surface depth at prev_uv instead of the current depth at prev_uv, the latter
+            // mistreats moving objects as disocclusion and is the dominant cause of motion ghosting
+            if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
+            {
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, depth_prev);
+            }
+
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
+            // pipeline layout always declares the push constant range, vulkan validation requires
+            // a vkCmdPushConstants call before every dispatch even when the shader does not read
+            // any of the per pass values, this dispatches with whatever the renderer tagged
+            cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
 
             for (uint32_t i = 0; i < 6; i++)
@@ -423,6 +444,23 @@ namespace spartan
         }
     }
 
+    // cpu only pointer swap between gbuffer_depth and gbuffer_depth_previous, must be called at
+    // frame end after every consumer of the current depth has finished recording, so the slot
+    // that just held this frame's depth becomes next frame's gbuffer_depth_previous and the slot
+    // with stale data becomes next frame's gbuffer_depth which the depth pass will overwrite,
+    // this avoids the queue compatibility issue of cmd blit on the compute queue and removes a
+    // full screen depth copy from the per frame cost
+    void Renderer::Pass_ReSTIR_SwapDepth()
+    {
+        auto& render_targets = GetRenderTargets();
+        uint32_t idx_cur  = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_depth);
+        uint32_t idx_prev = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_depth_previous);
+        if (render_targets[idx_cur] && render_targets[idx_prev])
+        {
+            swap(render_targets[idx_cur], render_targets[idx_prev]);
+        }
+    }
+
     void Renderer::Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list)
     {
         if (Window::IsMinimized())
@@ -482,7 +520,7 @@ namespace spartan
         const uint32_t dispatch_y  = (height + 7) / 8;
 
         Pass_ReSTIR_TraceInitial(cmd_list, tlas, tex_gi, tex_skysphere, reservoirs, width, height);
-        Pass_ReSTIR_Temporal    (cmd_list, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
+        Pass_ReSTIR_Temporal    (cmd_list, tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
         const bool ran_spatial = Pass_ReSTIR_SpatialPair(cmd_list, tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
 
         if (!ran_spatial)
@@ -498,13 +536,15 @@ namespace spartan
         if (Window::IsMinimized())
             return;
 
-        RHI_Texture* tex_gi_raw      = GetRenderTarget(Renderer_RenderTarget::restir_output);
-        RHI_Texture* tex_gi_denoised = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
-        RHI_Texture* tex_gi_history  = GetRenderTarget(Renderer_RenderTarget::restir_denoised_history);
-        RHI_Texture* tex_gi_ping     = GetRenderTarget(Renderer_RenderTarget::restir_denoised_ping);
+        RHI_Texture* tex_gi_raw         = GetRenderTarget(Renderer_RenderTarget::restir_output);
+        RHI_Texture* tex_gi_denoised    = GetRenderTarget(Renderer_RenderTarget::restir_denoised);
+        RHI_Texture* tex_gi_history     = GetRenderTarget(Renderer_RenderTarget::restir_denoised_history);
+        RHI_Texture* tex_gi_ping        = GetRenderTarget(Renderer_RenderTarget::restir_denoised_ping);
+        RHI_Texture* tex_moments        = GetRenderTarget(Renderer_RenderTarget::restir_denoised_moments);
+        RHI_Texture* tex_moments_hist   = GetRenderTarget(Renderer_RenderTarget::restir_denoised_moments_history);
 
         // restir resources are gated by cvar_restir_pt, nothing to do when they are not allocated
-        if (!tex_gi_raw || !tex_gi_denoised || !tex_gi_history || !tex_gi_ping)
+        if (!tex_gi_raw || !tex_gi_denoised || !tex_gi_history || !tex_gi_ping || !tex_moments || !tex_moments_hist)
             return;
 
         const uint32_t min_rt_dimension = 64;
@@ -549,14 +589,21 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
 
             cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_moments,     RHI_BarrierType::EnsureReadThenWrite);
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_gi_raw);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_gi_history);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments_hist);
             for (uint32_t i = 0; i < 6; i++)
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_gi_denoised);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_moments);
+            // pipeline layout still carries the push constant range so vulkan requires a push
+            // before each dispatch even though this shader does not read any per pass values
+            cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
             cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_moments,     RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
 
@@ -577,6 +624,7 @@ namespace spartan
                 for (uint32_t i = 0; i < 6; i++)
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
                 cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
             }
@@ -611,7 +659,8 @@ namespace spartan
 
                 cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureReadThenWrite);
                 SetCommonTextures(cmd_list);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, s.src);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex,  s.src);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments);
                 for (uint32_t i = 0; i < 6; i++)
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, s.dst);
@@ -627,6 +676,11 @@ namespace spartan
         Pass_Blit(cmd_list, tex_gi_ping, tex_gi_history);
         cmd_list->InsertBarrier(tex_gi_history,  RHI_BarrierType::EnsureWriteThenRead);
         cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
+
+        // moments history copy for the next frame's svgf temporal accumulation
+        cmd_list->InsertBarrier(tex_moments_hist, RHI_BarrierType::EnsureReadThenWrite);
+        Pass_Blit(cmd_list, tex_moments, tex_moments_hist);
+        cmd_list->InsertBarrier(tex_moments_hist, RHI_BarrierType::EnsureWriteThenRead);
     }
 
     void Renderer::Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list)

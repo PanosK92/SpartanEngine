@@ -99,16 +99,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_ibl       = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl      = specular_skysphere * specular_energy * specular_occlusion;
 
-    // when ray traced reflections are enabled, they handle specular
+    // ray traced reflections owns specular indirect across the full roughness range when enabled
     if (is_ray_traced_reflections_enabled())
     {
-        specular_ibl *= 0.0f; // fully handled by ray traced reflections
+        specular_ibl *= 0.0f;
     }
 
-    // when restir path tracing is enabled, nearly disable ibl diffuse as restir fully replaces it
+    // restir path tracing owns diffuse indirect always, and the specular indirect lobe for
+    // moderate to high roughness surfaces (paper-faithful full brdf at the primary), zeroing
+    // specular_ibl in that range avoids double counting when rt reflections is off, near mirror
+    // surfaces still receive specular_ibl as the fallback when rt reflections is unavailable
     if (is_restir_pt_enabled())
     {
-        diffuse_ibl *= 0.0f; // restir fully handles indirect diffuse
+        diffuse_ibl *= 0.0f;
+        if (surface.roughness >= 0.2f)
+        {
+            specular_ibl *= 0.0f;
+        }
     }
 
     // transparents take full ibl, fresnel inside the split sum already governs the reflection split

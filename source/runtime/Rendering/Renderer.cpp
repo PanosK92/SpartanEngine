@@ -812,16 +812,23 @@ namespace spartan
         m_cb_frame_cpu.delta_time            = static_cast<float>(Timer::GetDeltaTimeSec());
         m_cb_frame_cpu.frame                 = static_cast<uint32_t>(m_frame_num);
         m_cb_frame_cpu.resolution_scale      = GetResolutionScale();
-        m_cb_frame_cpu.restir_pt_scale       = cvar_restir_pt_scale.GetValue();
-        m_cb_frame_cpu.restir_pt_debug_mode  = cvar_restir_pt_debug_mode.GetValue();
-        m_cb_frame_cpu.hdr_enabled           = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
-        m_cb_frame_cpu.hdr_max_nits          = Display::GetLuminanceMax();
-        m_cb_frame_cpu.gamma                 = cvar_gamma.GetValue();
-        m_cb_frame_cpu.camera_exposure       = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
-        m_cb_frame_cpu.cloud_coverage        = cvar_cloud_coverage.GetValue();
-        m_cb_frame_cpu.cloud_shadows         = cvar_cloud_shadows.GetValue();
-        m_cb_frame_cpu.restir_pt_light_count = static_cast<float>(m_count_active_lights);
-        m_cb_frame_cpu.wind                  = World::GetWind();
+        m_cb_frame_cpu.restir_pt_scale              = cvar_restir_pt_scale.GetValue();
+        m_cb_frame_cpu.restir_pt_debug_mode         = cvar_restir_pt_debug_mode.GetValue();
+        m_cb_frame_cpu.hdr_enabled                  = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
+        m_cb_frame_cpu.hdr_max_nits                 = Display::GetLuminanceMax();
+        m_cb_frame_cpu.gamma                        = cvar_gamma.GetValue();
+        m_cb_frame_cpu.camera_exposure              = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
+        m_cb_frame_cpu.cloud_coverage               = cvar_cloud_coverage.GetValue();
+        m_cb_frame_cpu.cloud_shadows                = cvar_cloud_shadows.GetValue();
+        m_cb_frame_cpu.restir_pt_light_count        = static_cast<float>(m_count_active_lights);
+        m_cb_frame_cpu.restir_pt_m_cap              = cvar_restir_pt_m_cap.GetValue();
+        m_cb_frame_cpu.restir_pt_max_path_length    = cvar_restir_pt_max_path_length.GetValue();
+        m_cb_frame_cpu.restir_pt_light_candidates   = cvar_restir_pt_light_candidates.GetValue();
+        m_cb_frame_cpu.restir_pt_initial_candidates = cvar_restir_pt_initial_candidates.GetValue();
+        m_cb_frame_cpu.restir_pt_rc_min_roughness   = cvar_restir_pt_rc_min_roughness.GetValue();
+        m_cb_frame_cpu.restir_pt_w_clamp            = cvar_restir_pt_w_clamp.GetValue();
+        m_cb_frame_cpu.restir_pt_validation_period  = cvar_restir_pt_validation_period.GetValue();
+        m_cb_frame_cpu.wind                         = World::GetWind();
     }
 
     void Renderer::UpdateFrameCb_ClusterLighting()
@@ -2368,6 +2375,12 @@ namespace spartan
         }
 
         Pass_Text(cmd_list_graphics_present, rt_output);
+
+        // swap gbuffer_depth with gbuffer_depth_previous on the cpu, after this point any
+        // GetRenderTarget(gbuffer_depth) call resolves to the slot the next frame will overwrite
+        // and gbuffer_depth_previous resolves to the slot holding this frame's depth, which is
+        // exactly what restir's temporal validity gate needs to read next frame
+        Pass_ReSTIR_SwapDepth();
 
         // early transitions for next frame
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics_present);

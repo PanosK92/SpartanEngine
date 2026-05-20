@@ -42,7 +42,6 @@ bool is_temporal_sample_valid(
     float2 prev_uv,
     float3 current_pos,
     float3 current_normal,
-    float current_depth,
     float2 screen_resolution,
     out float confidence)
 {
@@ -72,15 +71,20 @@ bool is_temporal_sample_valid(
     if (normal_similarity < normal_threshold)
         return false;
 
-    // disocclusion gate, compares the surface depth at prev_uv (current depth buffer) against
-    // current_depth; a stable surface should have matching screen-space depth at both pixels
-    float prev_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
+    // disocclusion gate, samples the actual previous frame depth at prev_uv (bound on tex slot
+    // as gbuffer_depth_previous), reproject current_pos through the previous view-projection to
+    // get the expected prior-frame depth and compare, this correctly distinguishes a moving
+    // dynamic surface (matching prior depth at prev_uv) from a true disocclusion (background
+    // depth behind the previous occluder), eliminating the motion ghosting that came from the
+    // current-frame-against-current-frame approximation
+    float prev_depth_raw = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
     if (prev_depth_raw <= 0.0f)
         return false;
 
-    float prev_depth_linear = linearize_depth(prev_depth_raw);
-    float depth_delta       = abs(prev_depth_linear - current_depth) / max(current_depth, 1e-3f);
-    float depth_limit       = lerp(0.12f, 0.04f, motion_factor);
+    float expected_prev_depth = linearize_depth(prev_ndc.z);
+    float prev_depth_linear   = linearize_depth(prev_depth_raw);
+    float depth_delta         = abs(prev_depth_linear - expected_prev_depth) / max(expected_prev_depth, 1e-3f);
+    float depth_limit         = lerp(0.12f, 0.04f, motion_factor);
     if (depth_delta > depth_limit)
         return false;
 
@@ -142,7 +146,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.sample      = current.sample;
     combined.target_pdf  = target_cur;
 
-    float linear_depth = linearize_depth(depth);
     float2 prev_uv     = reproject_to_previous_frame(uv);
     float  temporal_confidence = 0.0f;
 
@@ -152,7 +155,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float  jacobian_temp        = 0.0f;
     float  target_cur_at_temp   = 0.0f;
 
-    if (is_temporal_sample_valid(uv, prev_uv, pos_ws, normal_ws, linear_depth, buffer_frame.resolution_render, temporal_confidence))
+    if (is_temporal_sample_valid(uv, prev_uv, pos_ws, normal_ws, buffer_frame.resolution_render, temporal_confidence))
     {
         float2 prev_pixel_f = prev_uv * resolution;
         bool in_bounds = prev_pixel_f.x >= 0.5f && prev_pixel_f.x < resolution.x - 0.5f &&
@@ -247,7 +250,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float stability  = saturate(temporal_confidence);
         float M_scale    = lerp(0.85f, RESTIR_TEMPORAL_DECAY, stability);
         temporal.M       = max(temporal.M * M_scale, 0.0f);
-        clamp_reservoir_M(temporal, RESTIR_M_CAP);
+        clamp_reservoir_M(temporal, get_restir_m_cap());
     }
 
     // defensive pairwise mis with k=1 neighbor (the temporal stream):
@@ -294,7 +297,34 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    clamp_reservoir_M(combined, RESTIR_M_CAP);
+    clamp_reservoir_M(combined, get_restir_m_cap());
+
+    // lin 2022 §6.4 sample validation: every N frames a fixed subset of pixels re-traces the
+    // chosen sample's primary->rc visibility ray, if rc is no longer reachable from the current
+    // primary (light moved, geometry changed, occluder appeared) the reservoir is reset so we
+    // do not drag a stale path across many frames, the period is in cb_frame.restir_pt_validation_period
+    // and a value of 0 disables the pass, the pixel hash cycles deterministically with frame
+    // index so the cost is amortized to ~1/N pixels per frame
+    uint validation_period = get_restir_validation_period();
+    if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
+    {
+        uint hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
+        uint slot = (buffer_frame.frame + hash) % validation_period;
+        if (slot == 0u)
+        {
+            bool reachable = trace_shift_visibility(combined.sample, pos_ws, normal_ws);
+            if (!reachable)
+            {
+                combined            = create_empty_reservoir();
+                combined.sample     = current.sample;
+                combined.target_pdf = target_cur;
+                combined.weight_sum = 0.0f;
+                combined.M          = 0.0f;
+                combined.W          = 0.0f;
+                have_temporal       = false;
+            }
+        }
+    }
 
     // finalize: W = weight_sum / p_hat_dst(Y) (no /M, m_i factors already normalized)
     float final_target = target_pdf_self(combined.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);

@@ -271,6 +271,7 @@ namespace spartan
         gbuffer_material,
         gbuffer_velocity,
         gbuffer_depth,
+        gbuffer_depth_previous,
         gbuffer_depth_occluders,
         gbuffer_depth_occluders_hiz,
         gbuffer_depth_opaque_output,
@@ -307,6 +308,8 @@ namespace spartan
         restir_denoised,
         restir_denoised_history,
         restir_denoised_ping,
+        restir_denoised_moments,
+        restir_denoised_moments_history,
         // restir reservoir buffers (current frame)
         restir_reservoir0,
         restir_reservoir1,

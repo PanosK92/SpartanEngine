@@ -325,10 +325,12 @@ namespace spartan
         auto release_restir_resources = [&]()
         {
             for_restir_reservoir_slot([&](uint32_t, Renderer_RenderTarget rt) { at(render_targets, rt) = nullptr; });
-            at(render_targets, Renderer_RenderTarget::restir_output)           = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised)         = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_history) = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)    = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_moments)         = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_moments_history) = nullptr;
         };
 
         auto allocate_restir_resources = [&]()
@@ -347,10 +349,15 @@ namespace spartan
             {
                 at(render_targets, rt) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, reservoir_names[i]);
             });
-            at(render_targets, Renderer_RenderTarget::restir_output)           = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_output");
-            at(render_targets, Renderer_RenderTarget::restir_denoised)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised");
-            at(render_targets, Renderer_RenderTarget::restir_denoised_history) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_history");
-            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_ping");
+            at(render_targets, Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_output");
+            at(render_targets, Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised");
+            at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_history");
+            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_ping");
+            // svgf moments texture, packs (luma_M1, luma_M2, sample_count, unused) per pixel,
+            // sampled by the spatial pass to drive luma_phi by sqrt(variance) instead of a
+            // hand-tuned global scale, history copy ping pongs each frame for temporal accumulation
+            at(render_targets, Renderer_RenderTarget::restir_denoised_moments)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_moments");
+            at(render_targets, Renderer_RenderTarget::restir_denoised_moments_history) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_moments_history");
 
             last_restir_scale = restir_scale;
         };
@@ -387,6 +394,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_material)            = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity)            = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)               = nullptr;
+            at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous)      = nullptr;
             at(render_targets, Renderer_RenderTarget::light_diffuse)               = nullptr;
             at(render_targets, Renderer_RenderTarget::light_specular)              = nullptr;
             at(render_targets, Renderer_RenderTarget::light_volumetric)            = nullptr;
@@ -399,10 +407,12 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_normal)  = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)  = nullptr;
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_output)                = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised)              = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_history)      = nullptr;
-            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)         = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_moments)         = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_denoised_moments_history) = nullptr;
             for_restir_reservoir_slot([](uint32_t, Renderer_RenderTarget rt) { at(render_targets, rt) = nullptr; });
             at(render_targets, Renderer_RenderTarget::shading_rate)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::shadow_atlas)                 = nullptr;
@@ -459,6 +469,11 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_material) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R8G8B8A8_Unorm,     flags, "gbuffer_material");
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16_Float,       flags, "gbuffer_velocity");
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)    = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float,          flags, "gbuffer_depth");
+            // previous frame depth, used by restir's temporal validity gate so disocclusion is
+            // tested against the actual prior depth at prev_uv instead of the current frame's
+            // depth at prev_uv (the latter mistreats moving objects as disocclusion and is the
+            // dominant cause of motion ghosting on the gi term)
+            at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float, flags, "gbuffer_depth_previous");
 
             // hi-z occluders, amd depth format restrictions force a separate texture for uav and a manual blit
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv, "depth_occluders");

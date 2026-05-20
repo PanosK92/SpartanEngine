@@ -23,6 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //==============================
 
+// svgf style temporal accumulation (schied et al. 2017 spatiotemporal variance guided filter)
+// outputs:
+//   tex_uav  rgb = denoised color    a = per pixel luminance variance estimate
+//   tex_uav2 rg  = (luma_M1, luma_M2) ema   b = effective sample count   a = unused
+// the variance in alpha is the input that drives the spatial filter's luma_phi, replacing the
+// previous hand tuned global scale, the moments are accumulated with an exponential moving
+// average so disocclusions reset the variance estimate to the local 7x7 spatial sigma until
+// enough frames have been accumulated for the temporal estimator to take over
+
 static const float3 luminance_weights = float3(0.299f, 0.587f, 0.114f);
 
 float2 reproject_to_previous_frame(float2 current_uv)
@@ -63,21 +72,53 @@ void compute_local_statistics(uint2 pixel, uint2 resolution, out float3 mean, ou
     sigma = sqrt(variance);
 }
 
-float3 clamp_history(float3 history, float3 mean, float3 sigma, float3 minimum_value, float3 maximum_value, float current_confidence, float history_confidence)
+// 7x7 luma variance estimator used during the disocclusion bootstrap, schied 2017 §4.3
+// when the temporal accumulator has too few samples (n_eff < 4) the variance estimate from the
+// ema is unreliable, the spatial sigma over a wider neighborhood gives a more stable bootstrap
+// the kernel is a rough box (we ignore the gaussian weights for the spatial sigma estimate)
+void compute_spatial_luma_variance_7x7(uint2 pixel, uint2 resolution, out float spatial_var)
 {
-    float mean_luma   = dot(mean, luminance_weights);
-    float low_light_factor = saturate(1.0f - mean_luma / 0.2f);
-    float sigma_scale = lerp(0.9f, 2.0f, saturate(min(current_confidence, history_confidence)));
-    // tighten further in dark regions to preserve shadow-edge detail
-    sigma_scale      *= lerp(0.9f, 1.0f, 1.0f - low_light_factor);
-    float3 lower      = max(minimum_value, mean - sigma * sigma_scale);
-    float3 upper      = min(maximum_value, mean + sigma * sigma_scale);
-    return clamp(history, lower, upper);
+    float m1 = 0.0f;
+    float m2 = 0.0f;
+    float n  = 0.0f;
+    [unroll]
+    for (int y = -3; y <= 3; y++)
+    {
+        [unroll]
+        for (int x = -3; x <= 3; x++)
+        {
+            int2 sp = clamp(int2(pixel) + int2(x, y), int2(0, 0), int2(resolution) - 1);
+            float3 c = sample_input(sp, resolution);
+            float  l = dot(c, luminance_weights);
+            m1 += l;
+            m2 += l * l;
+            n  += 1.0f;
+        }
+    }
+    m1 /= n;
+    m2 /= n;
+    spatial_var = max(m2 - m1 * m1, 0.0f);
 }
 
-// edge-aware 4-tap reprojection, fetches the 4 nearest history samples around prev_uv and
-// reweights them by depth + normal compatibility before bilinear blending; this stops history
-// leaking across surface edges when motion lands prev_uv between two surfaces of different depth
+float3 clamp_history_variance(float3 history, float3 current, float current_luma, float variance)
+{
+    // variance gated history clamp (schied 2017 §4.4) replaces the previous fixed sigma scaler
+    // a high variance estimate widens the clamp window so noisy bright pixels are not bias
+    // pinned to a tight neighborhood mean, low variance tightens the window so contact shadows
+    // and small geometric features are preserved
+    float sigma         = sqrt(max(variance, 1e-8f));
+    float clamp_radius  = max(sigma * 4.0f, 0.05f);
+    float current_low   = max(current_luma - clamp_radius, 0.0f);
+    float current_high  = current_luma + clamp_radius;
+
+    // soft remap based on history luma vs current luma window, color is rescaled toward
+    // history but clamped to the variance gated band, keeps chroma stable while limiting luma
+    float history_luma = dot(history, luminance_weights);
+    float clamped_luma = clamp(history_luma, current_low, current_high);
+    float scale        = (history_luma > 1e-4f) ? (clamped_luma / history_luma) : 1.0f;
+    return history * scale;
+}
+
 float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float current_depth, float2 history_resolution)
 {
     float2 prev_pixel_f = prev_uv * history_resolution - 0.5f;
@@ -147,7 +188,6 @@ float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float cu
         return accumulated / weight_sum;
     }
 
-    // all taps rejected, fall back to point sample at the rounded center
     int2 fallback_pixel = clamp(int2(round(prev_pixel_f)), int2(0, 0), int2(history_resolution) - 1);
     return tex2.Load(int3(fallback_pixel, 0));
 }
@@ -212,52 +252,89 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float depth = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
     if (depth <= 0.0f)
     {
-        tex_uav[pixel] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav[pixel]  = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        tex_uav2[pixel] = float4(0.0f, 0.0f, 0.0f, 0.0f);
         return;
     }
 
-    float3 current_color      = sample_input(int2(pixel), resolution);
-    float3 current_position   = get_position(uv);
-    float3 current_normal     = get_normal(uv);
-    float  current_linear_z   = linearize_depth(depth);
-    // confidence is the high f16 of tex4.w, see reservoir packing layout
-    uint   age_conf           = asuint(tex_reservoir_prev4[pixel].w);
-    float  current_confidence = saturate(f16tof32(age_conf >> 16u));
-
-    float3 mean_color;
-    float3 sigma_color;
-    float3 minimum_color;
-    float3 maximum_color;
-    compute_local_statistics(pixel, resolution, mean_color, sigma_color, minimum_color, maximum_color);
-    float current_luma = dot(current_color, luminance_weights);
-    float mean_luma    = dot(mean_color, luminance_weights);
-    float sigma_luma   = dot(sigma_color, luminance_weights);
-    float low_light_factor = saturate(1.0f - current_luma / 0.2f);
-    float relative_variance = sigma_luma / max(mean_luma, 0.01f);
+    float3 current_color    = sample_input(int2(pixel), resolution);
+    float3 current_position = get_position(uv);
+    float3 current_normal   = get_normal(uv);
+    float  current_linear_z = linearize_depth(depth);
+    float  current_luma     = dot(current_color, luminance_weights);
 
     float2 prev_uv = reproject_to_previous_frame(uv);
     float  temporal_confidence = 0.0f;
     float  history_weight      = 0.0f;
     float3 history_color       = current_color;
-    float  history_confidence  = 0.0f;
+    float3 history_moments     = float3(current_luma, current_luma * current_luma, 0.0f);
 
-    if (is_history_valid(uv, prev_uv, current_position, current_normal, current_linear_z, resolution, temporal_confidence))
+    bool history_ok = is_history_valid(uv, prev_uv, current_position, current_normal, current_linear_z, resolution, temporal_confidence);
+
+    if (history_ok)
     {
         float4 history_sample = sample_history_edge_aware(prev_uv, current_normal, current_linear_z, float2(resolution));
-        history_confidence    = saturate(history_sample.a);
-        history_color         = clamp_history(max(history_sample.rgb, 0.0f), mean_color, sigma_color, minimum_color, maximum_color, current_confidence, history_confidence);
+        history_color         = max(history_sample.rgb, 0.0f);
 
-        history_weight = temporal_confidence;
-        history_weight *= lerp(0.55f, 1.0f, history_confidence);
-        history_weight *= lerp(0.65f, 0.95f, current_confidence);
-        history_weight *= lerp(1.0f, 1.35f, saturate(relative_variance * 0.5f));
-        history_weight *= lerp(1.0f, 1.45f, low_light_factor);
-        history_weight  = saturate(min(history_weight, 0.992f));
+        // history moments come from the moments_history texture (tex3 srv binding), keep the
+        // raw fp16 value so noise statistics propagate exactly across frames, the bilinear tap
+        // around prev_uv would average against neighbors but the existing edge aware history
+        // sampler already validates the neighborhood so we re-use the same nearest tap here
+        int2 prev_pixel_int = clamp(int2(prev_uv * resolution), int2(0, 0), int2(resolution) - 1);
+        float4 prev_moments = tex3.Load(int3(prev_pixel_int, 0));
+        history_moments     = prev_moments.xyz;
+
+        // the schied 2017 alpha equivalent, history weight is built from validity factors and
+        // dynamically adjusted by sample count so the first ~4 frames after disocclusion blend
+        // weakly toward the new measurement, beyond that we converge to a paper-typical alpha
+        // = 0.05 (history weight 0.95) for stationary frames
+        float n_eff      = history_moments.z;
+        float min_alpha  = saturate(1.0f / max(n_eff + 1.0f, 1.0f));
+        float ema_alpha  = max(min_alpha, 0.05f);
+        history_weight   = (1.0f - ema_alpha) * temporal_confidence;
+        history_weight   = saturate(min(history_weight, 0.992f));
+    }
+
+    // moment ema, in the schied 2017 formulation alpha is the new sample weight so the moment
+    // update is m_new = (1 - alpha) * m_prev + alpha * sample, ema_alpha = 1 - history_weight
+    float ema_alpha = 1.0f - history_weight;
+    float new_M1    = lerp(history_moments.x, current_luma, ema_alpha);
+    float new_M2    = lerp(history_moments.y, current_luma * current_luma, ema_alpha);
+    float new_n_eff = min(history_moments.z + 1.0f, 256.0f);
+
+    float temporal_var = max(new_M2 - new_M1 * new_M1, 0.0f);
+
+    // bootstrap fallback when the temporal estimator does not have enough samples yet, schied
+    // 2017 §4.3 uses a 7x7 spatial luma variance for the first 4 frames after disocclusion
+    float variance_estimate = temporal_var;
+    if (new_n_eff < 4.0f)
+    {
+        float spatial_var;
+        compute_spatial_luma_variance_7x7(pixel, resolution, spatial_var);
+        // boost spatial variance by 1/sqrt(N) to compensate for the low sample count, the SVGF
+        // paper applies a similar boost so disocclusion regions get filtered more aggressively
+        float boost = max(4.0f - new_n_eff, 1.0f);
+        variance_estimate = max(temporal_var, spatial_var * boost);
+    }
+
+    // small 3x3 mean+variance pre blur (schied 2017 §4.2) so isolated bright fireflies do not
+    // pin the variance estimate to a single pixel, this stabilizes the spatial filter weights
+    float3 mean_color, sigma_color, min_color, max_color;
+    compute_local_statistics(pixel, resolution, mean_color, sigma_color, min_color, max_color);
+    float spatial_sigma_luma = dot(sigma_color, luminance_weights);
+    float spatial_var_3x3    = spatial_sigma_luma * spatial_sigma_luma;
+    variance_estimate = max(variance_estimate, spatial_var_3x3 * 0.25f);
+
+    // variance gated history clamp keeps chromatic stability even when the temporal accumulator
+    // has converged, the previous neighborhood sigma scaler was hand tuned, this ties it to the
+    // actual per pixel variance estimate
+    if (history_ok)
+    {
+        history_color = clamp_history_variance(history_color, current_color, current_luma, variance_estimate);
     }
 
     float3 output_color = lerp(current_color, history_color, history_weight);
-    float output_confidence = saturate(max(current_confidence, history_confidence * history_weight));
-    output_confidence = max(output_confidence, current_confidence * (1.0f - history_weight));
 
-    tex_uav[pixel] = validate_output(float4(output_color, output_confidence));
+    tex_uav[pixel]  = validate_output(float4(output_color, max(variance_estimate, 0.0f)));
+    tex_uav2[pixel] = float4(new_M1, new_M2, new_n_eff, 0.0f);
 }

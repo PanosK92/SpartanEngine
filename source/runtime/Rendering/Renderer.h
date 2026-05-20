@@ -68,6 +68,13 @@ namespace spartan
     extern TConsoleVar<float> cvar_restir_pt;
     extern TConsoleVar<float> cvar_restir_pt_scale;
     extern TConsoleVar<float> cvar_restir_pt_debug_mode;
+    extern TConsoleVar<float> cvar_restir_pt_m_cap;
+    extern TConsoleVar<float> cvar_restir_pt_max_path_length;
+    extern TConsoleVar<float> cvar_restir_pt_light_candidates;
+    extern TConsoleVar<float> cvar_restir_pt_initial_candidates;
+    extern TConsoleVar<float> cvar_restir_pt_rc_min_roughness;
+    extern TConsoleVar<float> cvar_restir_pt_w_clamp;
+    extern TConsoleVar<float> cvar_restir_pt_validation_period;
     extern TConsoleVar<float> cvar_motion_blur;
     extern TConsoleVar<float> cvar_depth_of_field;
     extern TConsoleVar<float> cvar_film_grain;
@@ -243,9 +250,10 @@ namespace spartan
         static void Pass_RayTracedShadows(RHI_CommandList* cmd_list);
         static void Pass_ReSTIR_PathTracing(RHI_CommandList* cmd_list);
         static void Pass_ReSTIR_TraceInitial(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* tex_skysphere, RHI_Texture* const* reservoirs, uint32_t width, uint32_t height);
-        static void Pass_ReSTIR_Temporal(RHI_CommandList* cmd_list, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_prev, uint32_t dispatch_x, uint32_t dispatch_y);
+        static void Pass_ReSTIR_Temporal(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_prev, uint32_t dispatch_x, uint32_t dispatch_y);
         static bool Pass_ReSTIR_SpatialPair(RHI_CommandList* cmd_list, RHI_AccelerationStructure* tlas, RHI_Texture* tex_gi, RHI_Texture* const* reservoirs, RHI_Texture* const* reservoirs_spatial, uint32_t dispatch_x, uint32_t dispatch_y);
         static void Pass_ReSTIR_SwapReservoirs();
+        static void Pass_ReSTIR_SwapDepth();
         static void Pass_ReSTIR_Denoising(RHI_CommandList* cmd_list);
         static void Pass_Composite_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_ScreenSpaceShadows(RHI_CommandList* cmd_list);

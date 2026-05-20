@@ -24,6 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
+// must match restir_albedo_demodulator in restir_reservoir.hlsl, the half res restir shading
+// divides the gi by this and the bilateral upsample plus the multiply below re-applies the
+// full res value, recovering fine albedo detail that the upsample would otherwise blur away
+float3 restir_albedo_demodulator(float3 albedo)
+{
+    return max(albedo, float3(0.04f, 0.04f, 0.04f));
+}
+
 // edge-aware bilateral upsample of the half-res restir gi texture (tex6)
 // destination depth and normal come from the full-res g-buffer via Surface
 // source depth and normal are read at gi texel centers from the same g-buffer
@@ -141,16 +149,24 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         alpha                = surface.alpha;
         distance_from_camera = surface.camera_to_pixel_length;
 
-        // restir_pt outputs pre-shaded gi (diffuse_brdf * cos * radiance * W),
-        // so it bypasses the *albedo multiply below and is added directly
+        // restir_pt outputs gi already demodulated by the half res primary albedo so the
+        // bilateral upsample averages a smoother lighting only signal and we re-apply the
+        // full res albedo here, this preserves fine material detail that would otherwise be
+        // lost when the half res restir shading + upsample blurs the albedo into the gi
         // gi is at restir_pt_scale of render resolution, so use a join-bilateral
         // upsample (depth + normal aware) to avoid bleeding across edges
         // also multiply by surface.occlusion to recover contact shadows that
         // restir's spatial reuse and denoiser smear away at small scales
+        // debug mode writes a heatmap into the gi slot, the remodulator is skipped there so
+        // the viridis colors are not tinted by surface albedo
         if (is_restir_pt_enabled())
         {
             float depth_dst_lin = linearize_depth(surface.depth);
             light_gi = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
+            if (uint(buffer_frame.restir_pt_debug_mode) == 0u)
+            {
+                light_gi *= restir_albedo_demodulator(surface.albedo);
+            }
             light_gi *= surface.occlusion;
         }
     }

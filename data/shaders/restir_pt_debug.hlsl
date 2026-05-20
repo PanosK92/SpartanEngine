@@ -32,8 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //   1 = confidence (alpha of reservoir.tex4.w, mapped 0..1)
 //   2 = reservoir M (0..RESTIR_M_CAP)
 //   3 = reservoir W (log scaled since W has high dynamic range)
-//   4 = reuse ratio (placeholder, shows confidence for now)
-//   5 = temporal rejection (placeholder, shows 1 - confidence)
+//   4 = reuse ratio M/m_cap, saturation against the runtime cvar cap, identifies where temporal accumulation is healthy vs freshly reset
+//   5 = path length, the actual chosen sample's bounce count (1..max_path_length), highlights where paths are short and indirect contribution is missing
 //   6 = variance (alpha of the denoised gi, log scaled, the svgf per pixel luminance variance)
 
 // viridis colormap, approximated via a small polynomial fit, returns a perceptually uniform color from a [0,1] input
@@ -93,18 +93,22 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             visualization_t = saturate(log2(W + 1.0f) / 8.0f);
             break;
         }
-        case 4: // reuse ratio placeholder, shows confidence (proxy for how much we have reused this reservoir)
+        case 4: // reuse ratio M / runtime m_cap, hot pixels are saturated and benefit fully from temporal accumulation, cold pixels were reset by disocclusion / validation
         {
-            uint  age_conf   = asuint(tex_reservoir_prev4[pixel].w);
-            float confidence = saturate(f16tof32(age_conf >> 16u));
-            visualization_t  = confidence;
+            float M       = tex_reservoir_prev2[pixel].w;
+            float m_cap   = max(get_restir_m_cap(), 1.0f);
+            visualization_t = saturate(M / m_cap);
             break;
         }
-        case 5: // temporal rejection placeholder, shows 1 - confidence so freshly rejected pixels are hot
+        case 5: // path length, decoded from the packed path_info word so we can see whether paths actually reach max bounces
         {
-            uint  age_conf   = asuint(tex_reservoir_prev4[pixel].w);
-            float confidence = saturate(f16tof32(age_conf >> 16u));
-            visualization_t  = saturate(1.0f - confidence);
+            uint  packed_info = asuint(tex_reservoir_prev2[pixel].y);
+            uint  path_length;
+            uint  rc_length;
+            uint  flags;
+            unpack_path_info(packed_info, path_length, rc_length, flags);
+            float max_path  = max(float(get_restir_max_path_length()), 1.0f);
+            visualization_t = saturate(float(path_length) / max_path);
             break;
         }
         case 6: // variance (alpha of the denoised gi, log scaled because per pixel variance spans several decades on disocclusion edges)

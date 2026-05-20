@@ -24,17 +24,41 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-static const uint  INITIAL_CANDIDATE_SAMPLES   = 16;
-static const uint  LIGHT_RIS_CANDIDATE_SAMPLES = 4;
-static const float MIN_COS_AT_PRIMARY          = 1e-3f;
-static const float RUSSIAN_ROULETTE_PROB       = 0.85f;
-static const uint  RUSSIAN_ROULETTE_START      = 2;
+// upper bounds on the per pixel ris pool sizes, the actual counts come from cvars
+//   r.restir_pt_initial_candidates  -> brdf stream (cap below)
+//   r.restir_pt_light_candidates    -> nee stream (cap below)
+// caps are sized so the unrolled loop pressure is bounded but the user can tune for quality
+static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
+static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
+static const float MIN_COS_AT_PRIMARY              = 1e-3f;
+static const float RUSSIAN_ROULETTE_PROB           = 0.85f;
+static const uint  RUSSIAN_ROULETTE_START          = 2;
 static const float SKY_MIP_LEVEL               = 2.0f;
 // sun cone half angle, ~0.27 degrees matches the real sun's angular radius (vs the previous
 // 0.015 rad / ~0.86 degrees which was about 3x larger and produced shadows that were too soft
 static const float SUN_CONE_HALF_ANGLE         = 0.0047f;
-static const float SUN_SAMPLE_PROBABILITY      = 0.5f;
 // MIN_AREA_LIGHT_SOLID_ANGLE moved to restir_reservoir.hlsl since it is shared with the spatial pass nee
+
+// computes the sun-vs-cosine-hemisphere mixture weight from actual sun radiance, replaces the
+// previous fixed 0.5 magic constant which wasted samples on a sun-direction cone for dim or
+// missing suns and undersampled the cone for very bright suns, the weight is the balance
+// heuristic on solid-angle-scaled radiance with a tiny floor so a non-zero sun never gets
+// fully ignored
+float sun_sample_probability(bool has_sun, float sun_intensity, float3 sun_color, float sun_cos_max)
+{
+    if (!has_sun)
+    {
+        return 0.0f;
+    }
+    float sun_omega   = 2.0f * PI * (1.0f - sun_cos_max);
+    float sun_radiance = luminance(sun_color) * max(sun_intensity, 0.0f);
+    float sun_w       = sun_radiance * sun_omega;
+    // sky reference: hemispherical integral of a unit-luminance ambient probe, gives a stable
+    // denominator that does not require sampling the probe to estimate average radiance
+    float sky_w       = 2.0f * PI;
+    float prob        = sun_w / max(sun_w + sky_w, 1e-6f);
+    return clamp(prob, 0.05f, 0.95f);
+}
 
 struct [raypayload] PathPayload
 {
@@ -45,7 +69,6 @@ struct [raypayload] PathPayload
     float3 emission         : read(caller) : write(closesthit, miss);
     float  roughness        : read(caller) : write(closesthit);
     float  metallic         : read(caller) : write(closesthit);
-    float  triangle_area    : read(caller) : write(closesthit);
     bool   hit              : read(caller) : write(closesthit, miss);
 };
 
@@ -58,25 +81,101 @@ float3 probe_emission_estimate(MaterialParameters mat)
     return float3(0.0f, 0.0f, 0.0f);
 }
 
+// computes the nee strategy density at a brdf-sampled candidate, in solid angle at primary
+// returns 0 when the candidate's rc would not be reproducible by sample_light_candidate, this
+// closes the mis loop by replacing the previous "p_light(y) approx 0" approximation in the
+// initial ris pool weighting with the proper balance heuristic mixture density
+float light_nee_pdf_for_candidate(PathSample candidate, float3 primary_pos)
+{
+    uint light_count = (uint)buffer_frame.restir_pt_light_count;
+    if (light_count == 0)
+        return 0.0f;
+
+    float pick_pdf = 1.0f / float(light_count);
+
+    // brdf bounce that missed into the sky, the sun cone is the only sky nee strategy
+    if (is_sky_sample(candidate))
+    {
+        LightParameters p = light_parameters[0];
+        bool is_directional = (p.flags & (1u << 0)) != 0;
+        if (!is_directional || p.intensity <= 0.0f)
+            return 0.0f;
+
+        float3 sun_dir     = -p.direction;
+        float  sun_cos_max = cos(SUN_CONE_HALF_ANGLE);
+        if (dot(candidate.rc_pos, sun_dir) < sun_cos_max)
+            return 0.0f;
+
+        float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
+        return pick_pdf * sun_cone_pdf;
+    }
+
+    // surface hit, find any area light whose rectangle contains rc_pos and accumulate nee pdfs
+    if (!has_reconnection(candidate))
+        return 0.0f;
+
+    float pdf_sum = 0.0f;
+    for (uint i = 0; i < light_count; i++)
+    {
+        LightParameters l = light_parameters[i];
+        bool is_area = (l.flags & (1u << 6)) != 0;
+        if (!is_area || l.intensity <= 0.0f || l.area_width <= 0.0f || l.area_height <= 0.0f)
+            continue;
+
+        float3 light_normal = l.direction;
+        float3 light_to_rc  = candidate.rc_pos - l.position;
+        float  plane_dist   = dot(light_to_rc, light_normal);
+        if (abs(plane_dist) > 0.02f)
+            continue;
+
+        float3 light_right, light_up;
+        build_orthonormal_basis_fast(light_normal, light_right, light_up);
+        float u = dot(light_to_rc, light_right);
+        float v = dot(light_to_rc, light_up);
+        if (abs(u) > l.area_width * 0.5f || abs(v) > l.area_height * 0.5f)
+            continue;
+
+        float3 to_rc    = candidate.rc_pos - primary_pos;
+        float  dist     = length(to_rc);
+        if (dist < 1e-3f)
+            continue;
+        float3 dir      = to_rc / dist;
+        float  cos_light = dot(-dir, light_normal);
+        if (cos_light <= 0.0f)
+            continue;
+
+        // matches sample_light_candidate's area-domain sampling formula
+        float area     = l.area_width * l.area_height;
+        float area_pdf = 1.0f / area;
+        float sa_pdf   = area_pdf * dist * dist / max(cos_light, 1e-6f);
+        pdf_sum       += pick_pdf * sa_pdf;
+    }
+    return pdf_sum;
+}
+
 // env nee density at a given direction for mis against brdf bounces that miss into the sky
 float sky_nee_pdf_at(float3 dir, float3 shading_normal)
 {
-    float3 sun_dir = float3(0, 1, 0);
-    bool   has_sun = false;
+    float3 sun_dir       = float3(0, 1, 0);
+    float  sun_intensity = 0.0f;
+    float3 sun_color     = float3(1, 1, 1);
+    bool   has_sun       = false;
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
     if (light_count > 0)
     {
         LightParameters p = light_parameters[0];
         if ((p.flags & (1u << 0)) != 0 && p.intensity > 0.0f)
         {
-            sun_dir = -p.direction;
-            has_sun = true;
+            sun_dir       = -p.direction;
+            sun_intensity = p.intensity;
+            sun_color     = p.color.rgb;
+            has_sun       = true;
         }
     }
 
     float sun_cos_max  = cos(SUN_CONE_HALF_ANGLE);
     float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-    float sun_prob     = has_sun ? SUN_SAMPLE_PROBABILITY : 0.0f;
+    float sun_prob     = sun_sample_probability(has_sun, sun_intensity, sun_color, sun_cos_max);
 
     float pdf_cos = max(dot(dir, shading_normal), 0.0f) / PI;
     float pdf_sun = (has_sun && dot(dir, sun_dir) >= sun_cos_max) ? sun_cone_pdf : 0.0f;
@@ -238,21 +337,25 @@ float3 direct_lighting_at_vertex(
     {
         float2 env_xi = random_float2(seed);
 
-        float3 sun_dir = float3(0, 1, 0);
-        bool   has_sun = false;
+        float3 sun_dir       = float3(0, 1, 0);
+        float  sun_intensity = 0.0f;
+        float3 sun_color     = float3(1, 1, 1);
+        bool   has_sun       = false;
         if (light_count > 0)
         {
             LightParameters primary_light = light_parameters[0];
             if ((primary_light.flags & (1u << 0)) != 0 && primary_light.intensity > 0.0f)
             {
-                sun_dir = -primary_light.direction;
-                has_sun = true;
+                sun_dir       = -primary_light.direction;
+                sun_intensity = primary_light.intensity;
+                sun_color     = primary_light.color.rgb;
+                has_sun       = true;
             }
         }
 
         float sun_cos_max   = cos(SUN_CONE_HALF_ANGLE);
         float sun_cone_pdf  = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-        float sun_prob      = has_sun ? SUN_SAMPLE_PROBABILITY : 0.0f;
+        float sun_prob      = sun_sample_probability(has_sun, sun_intensity, sun_color, sun_cos_max);
 
         float3 env_dir;
         float  env_pdf_cos;
@@ -577,21 +680,15 @@ PathSample trace_path_from_primary(
     s.rc_length   = 2;
 
     float3 first_outgoing_dir;
-    float3 suffix = accumulate_subpath_radiance(hit, -dir, RESTIR_MAX_PATH_LENGTH - 1, seed, first_outgoing_dir);
+    float3 suffix = accumulate_subpath_radiance(hit, -dir, max(get_restir_max_path_length(), 2u) - 1u, seed, first_outgoing_dir);
     if (any(isnan(suffix)) || any(isinf(suffix)))
         suffix = float3(0, 0, 0);
     suffix = max(suffix, 0.0f);
 
-    // source-side firefly clamp, the rc radiance has been computed via one or more bsdf
-    // bounces with low pdf samples that can produce extreme outliers, scaling the suffix
-    // down preserves color while bounding the luminance contribution, this introduces a
-    // small downward bias on bright pixels but keeps the denoiser from oscillating around
-    // a few hot samples for many frames and is the standard real time path tracer trade
-    float suffix_luma = luminance(suffix);
-    if (suffix_luma > RESTIR_FIREFLY_LUMA)
-    {
-        suffix *= RESTIR_FIREFLY_LUMA / suffix_luma;
-    }
+    // no source side firefly clamp here, the lin 2022 estimator is unbiased and the energy
+    // bound is provided by the m cap, the per sample W clamp, and the variance aware denoiser
+    // downstream, scaling the suffix luminance was a downward bias on bright reflections that
+    // also fought the denoiser's variance estimate
 
     s.rc_radiance     = suffix;
     s.path_length     = 2;
@@ -600,13 +697,14 @@ PathSample trace_path_from_primary(
     // reconnection validity: the rc vertex must be rough (stored radiance is view-dependent
     // at rc w.r.t. src's incoming, and roughness bounds the shift error) and distant enough
     // to keep the solid-angle jacobian well-conditioned
-    float dist_sq = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
-    bool rc_valid = (hit.roughness >= RESTIR_RC_MIN_ROUGHNESS)
-                 && (dist_sq       >= RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE);
+    float rc_min_roughness = get_restir_rc_min_roughness();
+    float dist_sq          = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
+    bool rc_valid          = (hit.roughness >= rc_min_roughness)
+                          && (dist_sq       >= RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE);
     if (rc_valid)
         s.flags |= PATH_FLAG_HAS_RC;
 
-    if (primary_roughness < RESTIR_RC_MIN_ROUGHNESS)
+    if (primary_roughness < rc_min_roughness)
         s.flags |= PATH_FLAG_SPECULAR;
 
     return s;
@@ -664,10 +762,12 @@ void ray_gen()
     // sampling a delta light that brdf would hit with zero density) we get the standard
     // (target / source_pdf) / N_s weight, but for an area light direction sampled by both nee
     // and brdf the balance heuristic suppresses the larger-variance strategy automatically
-    const float n_brdf  = float(INITIAL_CANDIDATE_SAMPLES);
-    const float n_light = float(LIGHT_RIS_CANDIDATE_SAMPLES);
+    const uint  n_brdf_count  = clamp(get_restir_initial_candidates(), 1u, INITIAL_CANDIDATE_SAMPLES_MAX);
+    const uint  n_light_count = clamp(get_restir_light_candidates(),   1u, LIGHT_RIS_CANDIDATE_SAMPLES_MAX);
+    const float n_brdf        = float(n_brdf_count);
+    const float n_light       = float(n_light_count);
 
-    for (uint i = 0; i < INITIAL_CANDIDATE_SAMPLES; i++)
+    for (uint i = 0; i < n_brdf_count; i++)
     {
         // capture the seed just before consuming xi so the random replay shift can replay
         // the same primary-direction sample at a destination pixel
@@ -676,7 +776,7 @@ void ray_gen()
         uint   replay_seed = seed;
         float2 xi          = random_float2(seed);
         float  source_pdf;
-        float3 dir         = sample_brdf(albedo, roughness, metallic, normal_ws, view_dir, xi, source_pdf, restir_primary_diffuse_only());
+        float3 dir         = sample_brdf(albedo, roughness, metallic, normal_ws, view_dir, xi, source_pdf, restir_primary_diffuse_only(roughness));
 
         bool dir_valid = (source_pdf >= RESTIR_MIN_PDF) &&
                          (dot(dir, normal_ws) >= MIN_COS_AT_PRIMARY) &&
@@ -691,10 +791,17 @@ void ray_gen()
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
-                // brdf strategy weight, p_light(y) is treated as ~0 for typical surface hits,
-                // exact balance for the rare brdf-lands-on-light case would require evaluating
-                // nee pdf at the candidate's direction which is not worth the cost here
-                weight = target_pdf / (n_brdf * source_pdf);
+                // proper balance heuristic, the brdf strategy density is n_brdf * source_pdf
+                // and the nee strategy density at this same direction is n_light * nee_pdf
+                // when the brdf bounce lands on a sampleable light (area light or sun cone) the
+                // nee branch lights up and the balance heuristic suppresses the brdf branch's
+                // share, fixing the previous "p_light(y) approx 0" upward bias on bright lights
+                float nee_pdf = light_nee_pdf_for_candidate(candidate, pos_ws);
+                float mix_pdf = n_brdf * source_pdf + n_light * nee_pdf;
+                if (mix_pdf > 0.0f)
+                {
+                    weight = target_pdf / mix_pdf;
+                }
             }
         }
 
@@ -704,7 +811,7 @@ void ray_gen()
     // additional ris stream over direct light samples (sun cone + area lights); each candidate
     // is a single primary->light path with rc_radiance = emitted radiance and source_pdf in
     // solid-angle measure at the primary
-    for (uint li = 0; li < LIGHT_RIS_CANDIDATE_SAMPLES; li++)
+    for (uint li = 0; li < n_light_count; li++)
     {
         float light_source_pdf;
         PathSample light_candidate = sample_light_candidate(pos_ws, normal_ws, seed, light_source_pdf);
@@ -731,7 +838,7 @@ void ray_gen()
                     {
                         float3 nee_dir  = to_light * rsqrt(dist_sq);
                         float  brdf_pdf_at_nee;
-                        evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, nee_dir, brdf_pdf_at_nee, restir_primary_diffuse_only());
+                        evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, nee_dir, brdf_pdf_at_nee, restir_primary_diffuse_only(roughness));
                         float mix_pdf = n_brdf * brdf_pdf_at_nee + n_light * light_source_pdf;
                         if (mix_pdf > 0.0f)
                             light_weight = target_pdf / mix_pdf;
@@ -765,7 +872,7 @@ void ray_gen()
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);
     reservoir.W = min(reservoir.W, w_clamp);
 
-    float total_candidates     = float(INITIAL_CANDIDATE_SAMPLES + LIGHT_RIS_CANDIDATE_SAMPLES);
+    float total_candidates     = n_brdf + n_light;
     float sample_count_quality = saturate(reservoir.M / max(total_candidates, 1.0f));
     reservoir.confidence       = (final_target > 0.0f && !visibility_rejected) ? sample_count_quality : 0.0f;
     reservoir.age              = 0.0f;
@@ -885,7 +992,6 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     float3x3 obj_to_world_3x3 = (float3x3)ObjectToWorld4x3();
     float3 edge1_world   = mul(pv1.position - pv0.position, obj_to_world_3x3);
     float3 edge2_world   = mul(pv2.position - pv0.position, obj_to_world_3x3);
-    float triangle_area  = 0.5f * length(cross(edge1_world, edge2_world));
     float3 geometric_normal = normalize(cross(edge1_world, edge2_world));
 
     if (dot(geometric_normal, WorldRayDirection()) > 0.0f)
@@ -940,7 +1046,6 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
     payload.emission         = emission;
     payload.roughness        = roughness;
     payload.metallic         = metallic;
-    payload.triangle_area    = triangle_area;
 }
 
 [shader("miss")]
