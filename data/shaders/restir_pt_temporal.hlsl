@@ -123,7 +123,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir1[pixel],
         tex_reservoir2[pixel],
         tex_reservoir3[pixel],
-        tex_reservoir4[pixel]
+        tex_reservoir4[pixel],
+        tex_reservoir5[pixel]
     );
 
     if (!is_reservoir_valid(current))
@@ -165,27 +166,23 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 tex_reservoir_prev1[prev_pixel],
                 tex_reservoir_prev2[prev_pixel],
                 tex_reservoir_prev3[prev_pixel],
-                tex_reservoir_prev4[prev_pixel]
+                tex_reservoir_prev4[prev_pixel],
+                tex_reservoir_prev5[prev_pixel]
             );
 
             if (is_reservoir_valid(temporal) && temporal.M > 0.0f && temporal.W > 0.0f)
             {
-                // reconstruct the source primary world position from the reprojected pixel so
-                // the reconnection jacobian correctly recovers the area-measure change between
-                // the previous primary (where the reservoir was built) and the current primary.
-                // for static geometry this is exact, for moving geometry the disocclusion gate
-                // above already rejects large depth deltas so the residual error stays bounded
-                float3 src_primary_pos = get_position(prev_uv);
-
-                // approximate src primary material with current g-buffer at prev_uv; for static
-                // surfaces this is exact, and the disocclusion gate above already rejected
-                // mismatched surfaces so the residual error stays bounded
-                float4 src_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0);
-                float3 src_albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).rgb);
-                float  src_roughness = max(src_material.r, 0.04f);
-                float  src_metallic  = src_material.g;
-                float3 src_normal_ws = get_normal(prev_uv);
-                float3 src_view_dir  = normalize(get_camera_position() - src_primary_pos);
+                // use the stored source primary g-buffer that was captured at the time the
+                // reservoir was generated, this is the actual previous-frame primary surface
+                // and is correct even for moving objects, sampling the current g-buffer at
+                // prev_uv was wrong on motion and caused ghosting / inflated reconnection
+                // jacobians on dynamic scenes
+                float3 src_primary_pos = temporal.sample.src_pos;
+                float3 src_normal_ws   = temporal.sample.src_normal;
+                float3 src_albedo      = temporal.sample.src_albedo;
+                float  src_roughness   = max(temporal.sample.src_roughness, 0.04f);
+                float  src_metallic    = temporal.sample.src_metallic;
+                float3 src_view_dir    = normalize(get_camera_position() - src_primary_pos);
 
                 ShiftResult shift_t_to_c = try_hybrid_shift(
                     temporal.sample,
@@ -310,13 +307,23 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.age        = have_temporal ? (temporal.age + 1.0f) : 0.0f;
     combined.confidence = saturate(max(current.confidence, have_temporal ? temporal.confidence * temporal_confidence : 0.0f));
 
-    float4 t0, t1, t2, t3, t4;
-    pack_reservoir(combined, t0, t1, t2, t3, t4);
+    // re-stamp source primary g-buffer onto the chosen sample, the temporal combine may have
+    // copied a reservoir whose chosen sample came from this pixel (canonical) or from the
+    // previous frame, either way the source primary for downstream shifts is the current pixel
+    combined.sample.src_pos       = pos_ws;
+    combined.sample.src_normal    = normal_ws;
+    combined.sample.src_albedo    = albedo;
+    combined.sample.src_roughness = roughness;
+    combined.sample.src_metallic  = metallic;
+
+    float4 t0, t1, t2, t3, t4, t5;
+    pack_reservoir(combined, t0, t1, t2, t3, t4, t5);
     tex_reservoir0[pixel] = t0;
     tex_reservoir1[pixel] = t1;
     tex_reservoir2[pixel] = t2;
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
+    tex_reservoir5[pixel] = t5;
 
     float3 gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     if (any(isnan(gi)) || any(isinf(gi)))

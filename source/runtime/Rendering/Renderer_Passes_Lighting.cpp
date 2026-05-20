@@ -320,13 +320,13 @@ namespace spartan
 
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
 
-            for (uint32_t i = 0; i < 5; i++)
+            for (uint32_t i = 0; i < 6; i++)
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0) + i, reservoirs[i], rhi_all_mips, 0, true);
 
             cmd_list->PushConstants(m_pcb_pass_cpu);
             cmd_list->TraceRays(width, height);
 
-            for (uint32_t i = 0; i < 5; i++)
+            for (uint32_t i = 0; i < 6; i++)
                 cmd_list->InsertBarrier(reservoirs[i], RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
@@ -349,7 +349,7 @@ namespace spartan
 
             SetCommonTextures(cmd_list);
 
-            for (uint32_t i = 0; i < 5; i++)
+            for (uint32_t i = 0; i < 6; i++)
             {
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs_prev[i]);
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, reservoirs[i], rhi_all_mips, 0, true);
@@ -358,7 +358,7 @@ namespace spartan
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
 
-            for (uint32_t i = 0; i < 5; i++)
+            for (uint32_t i = 0; i < 6; i++)
                 cmd_list->InsertBarrier(reservoirs[i], RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
@@ -394,7 +394,7 @@ namespace spartan
                 SetCommonTextures(cmd_list);
                 cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
 
-                for (uint32_t i = 0; i < 5; i++)
+                for (uint32_t i = 0; i < 6; i++)
                 {
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, s.src[i]);
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::reservoir0)      + i, s.dst[i], rhi_all_mips, 0, true);
@@ -403,7 +403,7 @@ namespace spartan
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
                 cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
 
-                for (uint32_t i = 0; i < 5; i++)
+                for (uint32_t i = 0; i < 6; i++)
                     cmd_list->InsertBarrier(s.dst[i], RHI_BarrierType::EnsureWriteThenRead);
                 cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
             }
@@ -415,7 +415,7 @@ namespace spartan
     void Renderer::Pass_ReSTIR_SwapReservoirs()
     {
         auto& render_targets = GetRenderTargets();
-        for (uint32_t i = 0; i < 5; i++)
+        for (uint32_t i = 0; i < 6; i++)
         {
             uint32_t idx_cur  = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0)      + i;
             uint32_t idx_prev = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_prev0) + i;
@@ -466,10 +466,10 @@ namespace spartan
             return;
         }
 
-        RHI_Texture* reservoirs[5];
-        RHI_Texture* reservoirs_prev[5];
-        RHI_Texture* reservoirs_spatial[5];
-        for (uint32_t i = 0; i < 5; i++)
+        RHI_Texture* reservoirs[6];
+        RHI_Texture* reservoirs_prev[6];
+        RHI_Texture* reservoirs_spatial[6];
+        for (uint32_t i = 0; i < 6; i++)
         {
             reservoirs[i]         = GetRenderTarget(static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0)         + i));
             reservoirs_prev[i]    = GetRenderTarget(static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_prev0)    + i));
@@ -517,22 +517,19 @@ namespace spartan
             return;
         }
 
-        if (cvar_restir_pt_debug_mode.GetValue() > 0.0f)
-        {
-            Pass_BlitRestirFallback(cmd_list, tex_gi_raw, tex_gi_denoised, tex_gi_history, false);
-            return;
-        }
-
         RHI_Shader* shader_temporal = GetShader(Renderer_Shader::restir_pt_denoise_temporal_c);
         RHI_Shader* shader_spatial  = GetShader(Renderer_Shader::restir_pt_denoise_spatial_c);
+        RHI_Shader* shader_debug    = GetShader(Renderer_Shader::restir_pt_debug_c);
         if (!shader_temporal || !shader_spatial || !shader_temporal->IsCompiled() || !shader_spatial->IsCompiled())
         {
             Pass_BlitRestirFallback(cmd_list, tex_gi_raw, tex_gi_denoised, tex_gi_history, false);
             return;
         }
 
-        RHI_Texture* reservoirs[5];
-        for (uint32_t i = 0; i < 5; i++)
+        const bool debug_mode_on = cvar_restir_pt_debug_mode.GetValue() > 0.0f;
+
+        RHI_Texture* reservoirs[6];
+        for (uint32_t i = 0; i < 6; i++)
         {
             reservoirs[i] = GetRenderTarget(static_cast<Renderer_RenderTarget>(static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_prev0) + i));
         }
@@ -555,13 +552,42 @@ namespace spartan
             SetCommonTextures(cmd_list);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_gi_raw);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_gi_history);
-            for (uint32_t i = 0; i < 5; i++)
+            for (uint32_t i = 0; i < 6; i++)
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
             cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
             cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
+
+        // debug overlay short circuits the spatial filter, the temporal pass already wrote a
+        // valid color + variance(alpha) into tex_gi_denoised, the debug shader replaces the
+        // color slot with a viridis heatmap derived from reservoir state, alpha is preserved
+        if (debug_mode_on && shader_debug && shader_debug->IsCompiled())
+        {
+            cmd_list->BeginTimeblock("restir_pt_debug");
+            {
+                RHI_PipelineState pso;
+                pso.name             = "restir_pt_debug";
+                pso.shaders[Compute] = shader_debug;
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureReadThenWrite);
+                SetCommonTextures(cmd_list);
+                for (uint32_t i = 0; i < 6; i++)
+                    cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_gi_denoised);
+                cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+                cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
+            }
+            cmd_list->EndTimeblock();
+
+            cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureReadThenWrite);
+            Pass_Blit(cmd_list, tex_gi_denoised, tex_gi_history);
+            cmd_list->InsertBarrier(tex_gi_history,  RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
+            return;
+        }
 
         // ping pong spatial passes, parameter is the kernel radius, src and dst alternate
         struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
@@ -586,7 +612,7 @@ namespace spartan
                 cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureReadThenWrite);
                 SetCommonTextures(cmd_list);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, s.src);
-                for (uint32_t i = 0; i < 5; i++)
+                for (uint32_t i = 0; i < 6; i++)
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, s.dst);
                 cmd_list->Dispatch(dispatch_x, dispatch_y, 1);

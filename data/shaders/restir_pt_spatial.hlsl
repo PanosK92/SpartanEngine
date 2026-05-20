@@ -145,7 +145,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         tex_reservoir_prev1[pixel],
         tex_reservoir_prev2[pixel],
         tex_reservoir_prev3[pixel],
-        tex_reservoir_prev4[pixel]
+        tex_reservoir_prev4[pixel],
+        tex_reservoir_prev5[pixel]
     );
 
     if (!is_reservoir_valid(center))
@@ -224,7 +225,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             tex_reservoir_prev1[neighbor_pixel],
             tex_reservoir_prev2[neighbor_pixel],
             tex_reservoir_prev3[neighbor_pixel],
-            tex_reservoir_prev4[neighbor_pixel]
+            tex_reservoir_prev4[neighbor_pixel],
+            tex_reservoir_prev5[neighbor_pixel]
         );
 
         if (!is_reservoir_valid(neighbor) || neighbor.M <= 0.0f || neighbor.W <= 0.0f)
@@ -360,28 +362,32 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.confidence = saturate(max(center_confidence, merged_confidence));
     combined.age        = center.age;
 
-    float4 t0, t1, t2, t3, t4;
-    pack_reservoir(combined, t0, t1, t2, t3, t4);
+    // re-stamp source primary g-buffer onto the chosen sample, the spatial combine may have
+    // copied a neighbor's reservoir into combined.sample so the src_* fields may belong to
+    // that neighbor's pixel, downstream passes always want the current pixel's primary as the
+    // source for shifts originating from this pixel
+    combined.sample.src_pos       = pos_ws;
+    combined.sample.src_normal    = normal_ws;
+    combined.sample.src_albedo    = albedo;
+    combined.sample.src_roughness = roughness;
+    combined.sample.src_metallic  = metallic;
+
+    float4 t0, t1, t2, t3, t4, t5;
+    pack_reservoir(combined, t0, t1, t2, t3, t4, t5);
     tex_reservoir0[pixel] = t0;
     tex_reservoir1[pixel] = t1;
     tex_reservoir2[pixel] = t2;
     tex_reservoir3[pixel] = t3;
     tex_reservoir4[pixel] = t4;
+    tex_reservoir5[pixel] = t5;
 
     float3 gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
 
-    // primary direct from all analytical lights with ray-traced visibility
-    // light.hlsl skips analytical lights entirely when restir_pt is enabled, so this is the only
-    // path that adds direct contribution from the sun, area, point, and spot lights to the gi buffer
-    // ibl / sky / emissive geometry remain handled by light_image_based.hlsl and indirect bounces
-    uint direct_seed = create_seed_for_pass(pixel, buffer_frame.frame, 6 + spatial_pass_index);
-    float3 geometric_normal = normal_ws;
-    float3 direct = direct_lighting_at_primary_analytical(
-        pos_ws, normal_ws, geometric_normal, view_dir, albedo, roughness, metallic, direct_seed);
-    if (any(isnan(direct)) || any(isinf(direct)))
-        direct = float3(0, 0, 0);
-
-    tex_uav[pixel] = float4(gi + direct, saturate(combined.confidence));
+    // analytical direct lighting is no longer added here, the initial ris pass already streams
+    // light nee samples into the reservoir alongside brdf samples, so all primary direct +
+    // indirect contributions live inside the reservoir's chosen sample and are shaded above by
+    // shade_reservoir_path, doing both would double count the sun and the area lights
+    tex_uav[pixel] = float4(gi, saturate(combined.confidence));
 }

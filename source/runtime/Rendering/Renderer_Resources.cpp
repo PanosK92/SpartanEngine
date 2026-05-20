@@ -71,8 +71,12 @@ namespace spartan
         shared_ptr<Font>                                                                     standard_font;
         shared_ptr<Material>                                                                 standard_material;
 
-        // five reservoirs each across current, previous and spatial slots, abi mirrors restir_reservoir_prev0 and restir_reservoir_spatial0 stride
-        const uint32_t restir_reservoir_slot_count = 15;
+        // six reservoirs each across current, previous and spatial slots, abi mirrors restir_reservoir_prev0 and restir_reservoir_spatial0 stride
+        // the 6th slot per reservoir holds the source primary g-buffer for the chosen sample,
+        // used by the temporal and spatial passes to evaluate the source brdf and jacobian
+        // without sampling the current frame g-buffer at a reprojected pixel
+        const uint32_t restir_reservoirs_per_slot  = 6;
+        const uint32_t restir_reservoir_slot_count = restir_reservoirs_per_slot * 3;
 
         // visit every restir reservoir slot offset by index, fn signature is void(uint32_t i, Renderer_RenderTarget rt)
         template<typename F>
@@ -335,9 +339,9 @@ namespace spartan
 
             static const char* reservoir_names[] =
             {
-                "restir_reservoir0",         "restir_reservoir1",         "restir_reservoir2",         "restir_reservoir3",         "restir_reservoir4",
-                "restir_reservoir_prev0",    "restir_reservoir_prev1",    "restir_reservoir_prev2",    "restir_reservoir_prev3",    "restir_reservoir_prev4",
-                "restir_reservoir_spatial0", "restir_reservoir_spatial1", "restir_reservoir_spatial2", "restir_reservoir_spatial3", "restir_reservoir_spatial4",
+                "restir_reservoir0",         "restir_reservoir1",         "restir_reservoir2",         "restir_reservoir3",         "restir_reservoir4",         "restir_reservoir5",
+                "restir_reservoir_prev0",    "restir_reservoir_prev1",    "restir_reservoir_prev2",    "restir_reservoir_prev3",    "restir_reservoir_prev4",    "restir_reservoir_prev5",
+                "restir_reservoir_spatial0", "restir_reservoir_spatial1", "restir_reservoir_spatial2", "restir_reservoir_spatial3", "restir_reservoir_spatial4", "restir_reservoir_spatial5",
             };
             for_restir_reservoir_slot([&](uint32_t i, Renderer_RenderTarget rt)
             {
@@ -695,6 +699,7 @@ namespace spartan
             { Renderer_Shader::restir_pt_spatial_c,                   RHI_Shader_Type::Compute,       "restir_pt_spatial.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_denoise_temporal_c,          RHI_Shader_Type::Compute,       "restir_pt_denoise_temporal.hlsl",      RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_denoise_spatial_c,           RHI_Shader_Type::Compute,       "restir_pt_denoise_spatial.hlsl",       RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_debug_c,                     RHI_Shader_Type::Compute,       "restir_pt_debug.hlsl",                 RHI_Vertex_Type::Max, nullptr,                       true,  true },
 
             // volumetric clouds
             { Renderer_Shader::cloud_noise_shape_c,                   RHI_Shader_Type::Compute, "sky/cloud_noise.hlsl",                       RHI_Vertex_Type::Max, "SHAPE_NOISE"                    },

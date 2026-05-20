@@ -30,7 +30,9 @@ static const float MIN_COS_AT_PRIMARY          = 1e-3f;
 static const float RUSSIAN_ROULETTE_PROB       = 0.85f;
 static const uint  RUSSIAN_ROULETTE_START      = 2;
 static const float SKY_MIP_LEVEL               = 2.0f;
-static const float SUN_CONE_HALF_ANGLE         = 0.015f;
+// sun cone half angle, ~0.27 degrees matches the real sun's angular radius (vs the previous
+// 0.015 rad / ~0.86 degrees which was about 3x larger and produced shadows that were too soft
+static const float SUN_CONE_HALF_ANGLE         = 0.0047f;
 static const float SUN_SAMPLE_PROBABILITY      = 0.5f;
 // MIN_AREA_LIGHT_SOLID_ANGLE moved to restir_reservoir.hlsl since it is shared with the spatial pass nee
 
@@ -221,8 +223,10 @@ float3 direct_lighting_at_vertex(
         if (!trace_shadow_ray(ray_origin_light, light_dir, light_dist))
             continue;
 
+        // secondary vertex always uses the full brdf, primary specular routing only applies
+        // at the primary vertex itself which is shaded by self_shift_evaluate or the shifts
         float  brdf_pdf;
-        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf);
+        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, false);
 
         float mis_weight = is_area ? power_heuristic(light_pdf, brdf_pdf) : 1.0f;
 
@@ -301,7 +305,7 @@ float3 direct_lighting_at_vertex(
                 if (luminance(probe_emission) > 0.0f)
                 {
                     float  brdf_pdf_probe;
-                    float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe);
+                    float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, false);
 
                     float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
                     total += brdf_probe * probe_emission * mis_weight / env_pdf;
@@ -314,7 +318,7 @@ float3 direct_lighting_at_vertex(
                 env_radiance = clamp_sky_radiance(env_radiance);
 
                 float  brdf_pdf_env;
-                float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env);
+                float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, false);
 
                 float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
                 total += brdf_env * env_radiance * mis_weight_env / env_pdf;
@@ -380,7 +384,7 @@ float3 accumulate_subpath_radiance(
 
         float2 xi = random_float2(seed);
         float  pdf;
-        float3 nd = sample_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, xi, pdf);
+        float3 nd = sample_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, xi, pdf, false);
 
         if (pdf < RESTIR_MIN_PDF || dot(nd, cur.hit_normal) <= 0.0f || any(isnan(nd)))
             break;
@@ -393,7 +397,7 @@ float3 accumulate_subpath_radiance(
         }
 
         float  unused_pdf;
-        float3 brdf = evaluate_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, nd, unused_pdf);
+        float3 brdf = evaluate_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, nd, unused_pdf, false);
         throughput    *= brdf / pdf;
         prev_brdf_pdf  = pdf;
         prev_normal    = cur.hit_normal;
@@ -467,28 +471,19 @@ PathSample sample_light_candidate(
 
     if (is_directional)
     {
+        // delta sun, matches direct_lighting_at_vertex which treats the directional light as a
+        // dirac delta with pdf 1 and radiance light.color * light.intensity, the previous cone
+        // sampling baked a sun_cone_pdf into source_pdf but kept the radiance unscaled which
+        // disagreed with the analytical direct light by orders of magnitude
         float3 sun_dir = -light.direction;
-        float2 xi      = random_float2(seed);
-        float  cos_max = cos(SUN_CONE_HALF_ANGLE);
-        float  z       = lerp(cos_max, 1.0f, xi.x);
-        float  phi     = 2.0f * PI * xi.y;
-        float  r       = sqrt(max(1.0f - z * z, 0.0f));
-
-        float3 local = float3(cos(phi) * r, sin(phi) * r, z);
-        float3 t, b;
-        build_orthonormal_basis_fast(sun_dir, t, b);
-        float3 dir = normalize(t * local.x + b * local.y + sun_dir * z);
-
-        if (dot(dir, primary_normal) <= MIN_COS_AT_PRIMARY)
+        if (dot(sun_dir, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
 
-        s.flags      |= PATH_FLAG_SKY;
-        s.rc_pos      = dir;
-        s.rc_normal   = -dir;
+        s.flags      |= PATH_FLAG_SKY | PATH_FLAG_NEE;
+        s.rc_pos      = sun_dir;
+        s.rc_normal   = -sun_dir;
         s.rc_radiance = light.color.rgb * light.intensity;
-
-        float sun_cone_pdf = 1.0f / (2.0f * PI * max(1.0f - cos_max, 1e-6f));
-        source_pdf         = pick_pdf * sun_cone_pdf;
+        source_pdf    = pick_pdf;
         return s;
     }
 
@@ -516,7 +511,7 @@ PathSample sample_light_candidate(
         s.rc_pos      = p;
         s.rc_normal   = light_normal;
         s.rc_radiance = light.color.rgb * light.intensity;
-        s.flags      |= PATH_FLAG_HAS_RC;
+        s.flags      |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
 
         float area     = light.area_width * light.area_height;
         float area_pdf = 1.0f / area;
@@ -581,14 +576,24 @@ PathSample trace_path_from_primary(
     s.rc_normal   = hit.geometric_normal;
     s.rc_length   = 2;
 
-    // store the raw suffix radiance, firefly handling is deferred to the denoise temporal
-    // variance clamp and the composition stage so per-frame stochastic clamping does not
-    // flicker between frames or permanently darken bright bounces
     float3 first_outgoing_dir;
     float3 suffix = accumulate_subpath_radiance(hit, -dir, RESTIR_MAX_PATH_LENGTH - 1, seed, first_outgoing_dir);
     if (any(isnan(suffix)) || any(isinf(suffix)))
         suffix = float3(0, 0, 0);
-    s.rc_radiance     = max(suffix, 0.0f);
+    suffix = max(suffix, 0.0f);
+
+    // source-side firefly clamp, the rc radiance has been computed via one or more bsdf
+    // bounces with low pdf samples that can produce extreme outliers, scaling the suffix
+    // down preserves color while bounding the luminance contribution, this introduces a
+    // small downward bias on bright pixels but keeps the denoiser from oscillating around
+    // a few hot samples for many frames and is the standard real time path tracer trade
+    float suffix_luma = luminance(suffix);
+    if (suffix_luma > RESTIR_FIREFLY_LUMA)
+    {
+        suffix *= RESTIR_FIREFLY_LUMA / suffix_luma;
+    }
+
+    s.rc_radiance     = suffix;
     s.path_length     = 2;
     s.rc_outgoing_dir = first_outgoing_dir;
 
@@ -622,13 +627,14 @@ void ray_gen()
     if (depth <= 0.0f)
     {
         Reservoir empty = create_empty_reservoir();
-        float4 t0, t1, t2, t3, t4;
-        pack_reservoir(empty, t0, t1, t2, t3, t4);
+        float4 t0, t1, t2, t3, t4, t5;
+        pack_reservoir(empty, t0, t1, t2, t3, t4, t5);
         tex_reservoir0[launch_id] = t0;
         tex_reservoir1[launch_id] = t1;
         tex_reservoir2[launch_id] = t2;
         tex_reservoir3[launch_id] = t3;
         tex_reservoir4[launch_id] = t4;
+        tex_reservoir5[launch_id] = t5;
         tex_uav[launch_id] = float4(0, 0, 0, 1);
         return;
     }
@@ -646,17 +652,31 @@ void ray_gen()
 
     Reservoir reservoir = create_empty_reservoir();
 
-    // ris streaming over N brdf-sampled candidate paths
-    // source pdf matches the primary brdf lobe (diffuse+ggx) so specular hits don't explode
-    // every iteration calls update_reservoir so M counts every trial (paper-form unbiased ris)
+    // ris streaming with gris-style balance mis over a mixed pool of brdf and nee strategies
+    // each per-sample weight follows lin 2022 algorithm 1: w_i = m_i * target / source where
+    // m_i is the multiple importance sampling balance heuristic over the n_brdf brdf samples
+    // and n_light nee samples that could have produced this path, see derivation note below
+    //
+    // for a sample y from strategy s with N_s samples per strategy:
+    //   m_s(y)   = N_s * p_s(y) / sum_t(N_t * p_t(y))
+    //   w_i     = m_s * target / p_s = target / sum_t(N_t * p_t(y))
+    // so for the typical case where p_other(y) = 0 (brdf rays missing any direct light, or nee
+    // sampling a delta light that brdf would hit with zero density) we get the standard
+    // (target / source_pdf) / N_s weight, but for an area light direction sampled by both nee
+    // and brdf the balance heuristic suppresses the larger-variance strategy automatically
+    const float n_brdf  = float(INITIAL_CANDIDATE_SAMPLES);
+    const float n_light = float(LIGHT_RIS_CANDIDATE_SAMPLES);
+
     for (uint i = 0; i < INITIAL_CANDIDATE_SAMPLES; i++)
     {
         // capture the seed just before consuming xi so the random replay shift can replay
         // the same primary-direction sample at a destination pixel
+        // primary specular is owned by the ray traced reflections pipeline when enabled, so
+        // restir samples only the diffuse lobe at the primary to avoid double counting
         uint   replay_seed = seed;
         float2 xi          = random_float2(seed);
         float  source_pdf;
-        float3 dir         = sample_brdf(albedo, roughness, metallic, normal_ws, view_dir, xi, source_pdf);
+        float3 dir         = sample_brdf(albedo, roughness, metallic, normal_ws, view_dir, xi, source_pdf, restir_primary_diffuse_only());
 
         bool dir_valid = (source_pdf >= RESTIR_MIN_PDF) &&
                          (dot(dir, normal_ws) >= MIN_COS_AT_PRIMARY) &&
@@ -670,7 +690,12 @@ void ray_gen()
             candidate = trace_path_from_primary(pos_ws, normal_ws, roughness, dir, replay_seed, seed);
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
-                weight = target_pdf / source_pdf;
+            {
+                // brdf strategy weight, p_light(y) is treated as ~0 for typical surface hits,
+                // exact balance for the rare brdf-lands-on-light case would require evaluating
+                // nee pdf at the candidate's direction which is not worth the cost here
+                weight = target_pdf / (n_brdf * source_pdf);
+            }
         }
 
         update_reservoir(reservoir, candidate, weight, random_float(seed));
@@ -678,9 +703,7 @@ void ray_gen()
 
     // additional ris stream over direct light samples (sun cone + area lights); each candidate
     // is a single primary->light path with rc_radiance = emitted radiance and source_pdf in
-    // solid-angle measure at the primary. mixing strategies in the same reservoir keeps the
-    // estimator unbiased (each strategy independently satisfies E[weight] = integrand) and
-    // dramatically improves convergence on indirect bounces hitting concentrated emitters
+    // solid-angle measure at the primary
     for (uint li = 0; li < LIGHT_RIS_CANDIDATE_SAMPLES; li++)
     {
         float light_source_pdf;
@@ -691,29 +714,52 @@ void ray_gen()
         {
             float target_pdf = target_pdf_self(light_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
-                light_weight = target_pdf / light_source_pdf;
+            {
+                if (is_sky_sample(light_candidate))
+                {
+                    // delta sun, no continuous brdf strategy density can sample this direction
+                    // so m_nee = 1 and the weight collapses to target / (n_light * pick_pdf)
+                    light_weight = target_pdf / (n_light * light_source_pdf);
+                }
+                else
+                {
+                    // area light, balance with the brdf mixture pdf at the nee direction so a
+                    // bright area light gets full credit when brdf would have sampled it too
+                    float3 to_light = light_candidate.rc_pos - pos_ws;
+                    float  dist_sq  = dot(to_light, to_light);
+                    if (dist_sq > 1e-6f)
+                    {
+                        float3 nee_dir  = to_light * rsqrt(dist_sq);
+                        float  brdf_pdf_at_nee;
+                        evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, nee_dir, brdf_pdf_at_nee, restir_primary_diffuse_only());
+                        float mix_pdf = n_brdf * brdf_pdf_at_nee + n_light * light_source_pdf;
+                        if (mix_pdf > 0.0f)
+                            light_weight = target_pdf / mix_pdf;
+                    }
+                }
+            }
         }
 
         update_reservoir(reservoir, light_candidate, light_weight, random_float(seed));
     }
 
-    // finalize: m_i = 1/M for the initial pass, so weight_sum becomes (1/M) * sum(p_hat/p)
-    // and W = weight_sum / p_hat_y matches the paper-form output used by downstream merges
-    if (reservoir.M > 0.0f)
-        reservoir.weight_sum /= reservoir.M;
+    // no 1/M divide here, the balance mis weights above already encode the 1/N_s normalization,
+    // so weight_sum is the unbiased integral estimate up to the final divide by target_pdf below
 
     float final_target = target_pdf_self(reservoir.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     reservoir.target_pdf = final_target;
     reservoir.W = (final_target > 0.0f) ? (reservoir.weight_sum / final_target) : 0.0f;
 
     // post-ris visibility test: kill the chosen sample if it is occluded so an obviously dead
-    // path does not propagate into temporal accumulation. m is preserved so the validity gate
-    // still treats this pixel as having been sampled (no spurious confidence collapse)
+    // path does not propagate into temporal accumulation, M and the chosen sample are also
+    // cleared so the temporal validity gate sees no sample on this pixel rather than ratcheting
+    // confidence up on the rejected entry
+    bool visibility_rejected = false;
     if (reservoir.W > 0.0f && !trace_shift_visibility(reservoir.sample, pos_ws, normal_ws))
     {
-        reservoir.W           = 0.0f;
-        reservoir.weight_sum  = 0.0f;
-        reservoir.target_pdf  = 0.0f;
+        reservoir            = create_empty_reservoir();
+        final_target         = 0.0f;
+        visibility_rejected  = true;
     }
 
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);
@@ -721,16 +767,27 @@ void ray_gen()
 
     float total_candidates     = float(INITIAL_CANDIDATE_SAMPLES + LIGHT_RIS_CANDIDATE_SAMPLES);
     float sample_count_quality = saturate(reservoir.M / max(total_candidates, 1.0f));
-    reservoir.confidence       = (final_target > 0.0f) ? sample_count_quality : 0.0f;
+    reservoir.confidence       = (final_target > 0.0f && !visibility_rejected) ? sample_count_quality : 0.0f;
     reservoir.age              = 0.0f;
 
-    float4 t0, t1, t2, t3, t4;
-    pack_reservoir(reservoir, t0, t1, t2, t3, t4);
+    // stamp the source primary g-buffer onto the chosen sample, all candidates from this pixel
+    // share the same primary surface so we only need to write it once after ris finalization
+    // downstream passes read these instead of sampling the current g-buffer at a reprojected
+    // pixel, which fixes ghosting on moving objects
+    reservoir.sample.src_pos       = pos_ws;
+    reservoir.sample.src_normal    = normal_ws;
+    reservoir.sample.src_albedo    = albedo;
+    reservoir.sample.src_roughness = roughness;
+    reservoir.sample.src_metallic  = metallic;
+
+    float4 t0, t1, t2, t3, t4, t5;
+    pack_reservoir(reservoir, t0, t1, t2, t3, t4, t5);
     tex_reservoir0[launch_id] = t0;
     tex_reservoir1[launch_id] = t1;
     tex_reservoir2[launch_id] = t2;
     tex_reservoir3[launch_id] = t3;
     tex_reservoir4[launch_id] = t4;
+    tex_reservoir5[launch_id] = t5;
 
     // tex_uav is overwritten by temporal/spatial passes so no shading is needed here
     // confidence is forwarded so passes that early-out can read a sane value

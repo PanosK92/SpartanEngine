@@ -104,14 +104,16 @@ namespace spartan
         tex3d_cloud_shape  = 20,
         tex3d_cloud_detail = 21,
         // restir reservoir srv bindings (for temporal/spatial read)
+        // kept contiguous so a single loop can bind all six slots starting from reservoir_prev0
         reservoir_prev0    = 22,
         reservoir_prev1    = 23,
         reservoir_prev2    = 24,
         reservoir_prev3    = 25,
         reservoir_prev4    = 26,
+        reservoir_prev5    = 27,
 
         // baked wind field, sampled by all wind-driven geometry
-        tex_wind_field     = 27,
+        tex_wind_field     = 29,
     };
 
     enum class Renderer_BindingsUav
@@ -131,6 +133,7 @@ namespace spartan
         reservoir2    = 23,
         reservoir3    = 24,
         reservoir4    = 25,
+        reservoir5    = 26,
         // integer format textures (vrs, etc)
         tex_uint               = 30,
         // gpu-driven indirect drawing
@@ -234,6 +237,7 @@ namespace spartan
         restir_pt_spatial_c,
         restir_pt_denoise_temporal_c,
         restir_pt_denoise_spatial_c,
+        restir_pt_debug_c,
         // volumetric clouds
         cloud_noise_shape_c,
         cloud_noise_detail_c,
@@ -309,18 +313,21 @@ namespace spartan
         restir_reservoir2,
         restir_reservoir3,
         restir_reservoir4,
+        restir_reservoir5,
         // restir reservoir buffers (previous frame for temporal)
         restir_reservoir_prev0,
         restir_reservoir_prev1,
         restir_reservoir_prev2,
         restir_reservoir_prev3,
         restir_reservoir_prev4,
+        restir_reservoir_prev5,
         // restir reservoir buffers (spatial ping-pong)
         restir_reservoir_spatial0,
         restir_reservoir_spatial1,
         restir_reservoir_spatial2,
         restir_reservoir_spatial3,
         restir_reservoir_spatial4,
+        restir_reservoir_spatial5,
         // volumetric clouds
         cloud_noise_shape,
         cloud_noise_detail,

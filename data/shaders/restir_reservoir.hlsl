@@ -24,14 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // core parameters
 static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
-static const uint  RESTIR_M_CAP              = 256;
+// m cap lowered from 256 to the lin 2022 recommended range so the estimator reacts to lighting
+// changes within ~32 frames rather than dragging a several second ghost tail behind moving lights
+static const uint  RESTIR_M_CAP              = 32;
 static const uint  RESTIR_SPATIAL_SAMPLES    = 8;
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.75f;
-// raised from 0.97 so a stable surface reaches the m cap in ~10 frames instead of ~100,
-// the validity gate already drops temporal entirely on hard rejection so this only governs
-// the rate at which we adapt to gradual lighting changes
-static const float RESTIR_TEMPORAL_DECAY     = 0.995f;
+// no soft decay, the validity gate already hard rejects on disocclusion and the m cap above
+// is now low enough that we adapt within a fraction of a second on lighting changes
+static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
 static const float RESTIR_RAY_T_MIN          = 0.001f;
 
 // sky / environment
@@ -65,15 +66,19 @@ static const float MIN_AREA_LIGHT_SOLID_ANGLE = 1e-4f;
 static const uint PATH_FLAG_SKY      = 1 << 0;  // rc is the sky dome, rc_pos stores a unit direction
 static const uint PATH_FLAG_HAS_RC   = 1 << 1;  // reconnection vertex is valid for reconnection shift
 static const uint PATH_FLAG_SPECULAR = 1 << 2;  // diagnostic: primary surface is specular-leaning
+static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from light nee strategy, used for gris balance mis at the initial ris pool
 
 // a path sample stores the suffix of a path beginning at the current pixel's primary hit
-// the primary vertex is NOT stored; it is re-derived from the g-buffer each pass
 // rc_pos is a world-space reconnection vertex (PATH_FLAG_HAS_RC) or a unit sky direction (PATH_FLAG_SKY)
 // rc_radiance is the outgoing radiance leaving rc toward the source primary
 // rc_prev_pos is the position of the vertex immediately before rc in the source path
 // (equal to src_primary_pos when rc_length == 2, or the specular bounce position when rc_length == 3)
-// rc_outgoing_dir is the direction leaving rc to the next bounce; reserved for future brdf-at-rc
-// correction but currently unused by the shift (which relies on the rc roughness gate for bias)
+// rc_outgoing_dir is the direction leaving rc to the next bounce, used by the hybrid shift to
+// re-evaluate the rc brdf when the reuse direction at rc differs from the source direction
+// src_pos / src_normal / src_albedo / src_roughness / src_metallic capture the *source* pixel's
+// primary surface at the time the reservoir was generated, so temporal and spatial passes can
+// evaluate the source's primary brdf and jacobian without sampling the current g-buffer at a
+// reprojected pixel (which is wrong for moving objects and is the main cause of motion ghosting)
 struct PathSample
 {
     float3 rc_pos;
@@ -81,6 +86,11 @@ struct PathSample
     float3 rc_radiance;
     float3 rc_prev_pos;
     float3 rc_outgoing_dir;
+    float3 src_pos;
+    float3 src_normal;
+    float3 src_albedo;
+    float  src_roughness;
+    float  src_metallic;
     uint   seed_path;
     uint   path_length;
     uint   rc_length;
@@ -132,7 +142,11 @@ void unpack_path_info(uint packed, out uint path_length, out uint rc_length, out
     flags       = (packed >> 16u) & 0xFFFFu;
 }
 
-// reservoir texture packing (5 x RGBA32F = 20 floats)
+// reservoir texture packing (6 x RGBA32F = 24 floats), the 6th texture carries the source
+// primary g-buffer so temporal and spatial passes can evaluate the source brdf and jacobian
+// without sampling the current frame's g-buffer at a reprojected pixel, which is wrong for
+// moving objects and is the main cause of motion ghosting in the previous implementation
+//
 // tex0.xyz = rc_pos
 // tex0.w   = rc_normal.oct.x
 // tex1.x   = rc_normal.oct.y
@@ -146,10 +160,51 @@ void unpack_path_info(uint packed, out uint path_length, out uint rc_length, out
 // tex3.zw  = rc_outgoing_dir.oct (xy)
 // tex4.xyz = rc_prev_pos
 // tex4.w   = asfloat(pack_f16x2(age, confidence))
-void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4)
+// tex5.x   = asfloat(pack_f16x2(src_pos.x, src_pos.y))
+// tex5.y   = asfloat(pack_f16x2(src_pos.z, src_normal_oct.x))
+// tex5.z   = asfloat(pack_f16x2(src_normal_oct.y, src_roughness))
+// tex5.w   = asfloat(pack_uint8x4(src_albedo.r, src_albedo.g, src_albedo.b, src_metallic))
+//
+// src_pos is stored as absolute world space in f16, which gives ~1cm precision near origin
+// degrading to ~1m at 1 km out, more than enough for the jacobian distance ratios used in the
+// shifts, this trades reservoir memory for less ghosting on moving objects
+float pack_f16x2_to_float(float a, float b)
 {
-    float2 normal_oct  = octahedral_encode(r.sample.rc_normal);
-    float2 outgoing_oct = octahedral_encode(r.sample.rc_outgoing_dir);
+    uint packed = f32tof16(a) | (f32tof16(b) << 16u);
+    return asfloat(packed);
+}
+
+float2 unpack_float_to_f16x2(float p)
+{
+    uint packed = asuint(p);
+    return float2(f16tof32(packed & 0xFFFFu), f16tof32(packed >> 16u));
+}
+
+float pack_uint8x4_to_float(float r, float g, float b, float a)
+{
+    uint pr = uint(saturate(r) * 255.0f + 0.5f);
+    uint pg = uint(saturate(g) * 255.0f + 0.5f);
+    uint pb = uint(saturate(b) * 255.0f + 0.5f);
+    uint pa = uint(saturate(a) * 255.0f + 0.5f);
+    return asfloat(pr | (pg << 8u) | (pb << 16u) | (pa << 24u));
+}
+
+float4 unpack_float_to_uint8x4(float p)
+{
+    uint packed = asuint(p);
+    return float4(
+        float((packed      ) & 0xFFu) / 255.0f,
+        float((packed >>  8u) & 0xFFu) / 255.0f,
+        float((packed >> 16u) & 0xFFu) / 255.0f,
+        float((packed >> 24u) & 0xFFu) / 255.0f
+    );
+}
+
+void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 tex2, out float4 tex3, out float4 tex4, out float4 tex5)
+{
+    float2 normal_oct      = octahedral_encode(r.sample.rc_normal);
+    float2 outgoing_oct    = octahedral_encode(r.sample.rc_outgoing_dir);
+    float2 src_normal_oct  = octahedral_encode(r.sample.src_normal);
     uint   age_conf_packed = f32tof16(r.age) | (f32tof16(r.confidence) << 16u);
 
     tex0 = float4(r.sample.rc_pos, normal_oct.x);
@@ -162,9 +217,15 @@ void pack_reservoir(Reservoir r, out float4 tex0, out float4 tex1, out float4 te
     );
     tex3 = float4(r.W, r.target_pdf, outgoing_oct.x, outgoing_oct.y);
     tex4 = float4(r.sample.rc_prev_pos, asfloat(age_conf_packed));
+    tex5 = float4(
+        pack_f16x2_to_float(r.sample.src_pos.x,    r.sample.src_pos.y),
+        pack_f16x2_to_float(r.sample.src_pos.z,    src_normal_oct.x),
+        pack_f16x2_to_float(src_normal_oct.y,      r.sample.src_roughness),
+        pack_uint8x4_to_float(r.sample.src_albedo.r, r.sample.src_albedo.g, r.sample.src_albedo.b, r.sample.src_metallic)
+    );
 }
 
-Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4)
+Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, float4 tex4, float4 tex5)
 {
     Reservoir r;
     r.sample.rc_pos          = tex0.xyz;
@@ -176,6 +237,17 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
 
     uint packed_info = asuint(tex2.y);
     unpack_path_info(packed_info, r.sample.path_length, r.sample.rc_length, r.sample.flags);
+
+    float2 pos_xy = unpack_float_to_f16x2(tex5.x);
+    float2 pos_z_norm_x = unpack_float_to_f16x2(tex5.y);
+    float2 norm_y_rough = unpack_float_to_f16x2(tex5.z);
+    float4 albedo_metal = unpack_float_to_uint8x4(tex5.w);
+
+    r.sample.src_pos       = float3(pos_xy.x, pos_xy.y, pos_z_norm_x.x);
+    r.sample.src_normal    = octahedral_decode(float2(pos_z_norm_x.y, norm_y_rough.x));
+    r.sample.src_roughness = max(norm_y_rough.y, 0.04f);
+    r.sample.src_albedo    = albedo_metal.rgb;
+    r.sample.src_metallic  = albedo_metal.a;
 
     r.weight_sum = tex2.z;
     r.M          = tex2.w;
@@ -191,6 +263,7 @@ Reservoir unpack_reservoir(float4 tex0, float4 tex1, float4 tex2, float4 tex3, f
 
 bool is_sky_sample(PathSample s)     { return (s.flags & PATH_FLAG_SKY)    != 0; }
 bool has_reconnection(PathSample s)  { return (s.flags & PATH_FLAG_HAS_RC) != 0; }
+bool is_nee_sample(PathSample s)     { return (s.flags & PATH_FLAG_NEE)    != 0; }
 
 bool is_reservoir_valid(Reservoir r)
 {
@@ -211,6 +284,11 @@ Reservoir create_empty_reservoir()
     r.sample.rc_radiance     = float3(0, 0, 0);
     r.sample.rc_prev_pos     = float3(0, 0, 0);
     r.sample.rc_outgoing_dir = float3(0, 1, 0);
+    r.sample.src_pos         = float3(0, 0, 0);
+    r.sample.src_normal      = float3(0, 1, 0);
+    r.sample.src_albedo      = float3(0, 0, 0);
+    r.sample.src_roughness   = 0;
+    r.sample.src_metallic    = 0;
     r.sample.seed_path       = 0;
     r.sample.path_length     = 0;
     r.sample.rc_length       = 0;
@@ -311,23 +389,6 @@ float3 sample_cosine_hemisphere(float2 xi, out float pdf)
     return float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
 
-float3 sample_ggx(float2 xi, float roughness, out float pdf)
-{
-    float a  = roughness * roughness;
-    float a2 = a * a;
-
-    float phi       = 2.0f * PI * xi.x;
-    float cos_theta = sqrt((1.0f - xi.y) / (1.0f + (a2 - 1.0f) * xi.y));
-    float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
-
-    float3 h = float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
-
-    float d = (a2 - 1.0f) * cos_theta * cos_theta + 1.0f;
-    pdf = a2 * cos_theta / (PI * d * d);
-
-    return h;
-}
-
 void build_orthonormal_basis_fast(float3 n, out float3 t, out float3 b)
 {
     if (n.z < -0.9999999f)
@@ -349,6 +410,40 @@ float3 local_to_world(float3 local_dir, float3 n)
     float3 t, b;
     build_orthonormal_basis_fast(n, t, b);
     return normalize(t * local_dir.x + b * local_dir.y + n * local_dir.z);
+}
+
+float3 world_to_local(float3 world_dir, float3 n)
+{
+    float3 t, b;
+    build_orthonormal_basis_fast(n, t, b);
+    return float3(dot(world_dir, t), dot(world_dir, b), dot(world_dir, n));
+}
+
+// visible normal distribution function sampling (heitz 2018, sampling the ggx distribution of
+// visible normals), this concentrates samples around microfacets that face the view direction
+// removing the low pdf wasted samples that nf sampling produces at grazing angles, the result
+// has strictly lower variance than the legacy ndf sampling for non zero roughness
+// ve is the view direction in local tangent space, n = (0,0,1)
+float3 sample_ggx_vndf(float3 ve, float2 xi, float roughness)
+{
+    float a = max(roughness * roughness, 1e-3f);
+
+    float3 vh = normalize(float3(a * ve.x, a * ve.y, ve.z));
+
+    float  lensq = vh.x * vh.x + vh.y * vh.y;
+    float3 t1    = (lensq > 0.0f) ? (float3(-vh.y, vh.x, 0.0f) * rsqrt(lensq)) : float3(1.0f, 0.0f, 0.0f);
+    float3 t2    = cross(vh, t1);
+
+    float r        = sqrt(xi.x);
+    float phi      = 2.0f * PI * xi.y;
+    float t1_coeff = r * cos(phi);
+    float t2_coeff = r * sin(phi);
+    float s        = 0.5f * (1.0f + vh.z);
+    t2_coeff       = (1.0f - s) * sqrt(1.0f - t1_coeff * t1_coeff) + s * t2_coeff;
+
+    float3 nh = t1_coeff * t1 + t2_coeff * t2 + sqrt(max(0.0f, 1.0f - t1_coeff * t1_coeff - t2_coeff * t2_coeff)) * vh;
+
+    return normalize(float3(a * nh.x, a * nh.y, max(0.0f, nh.z)));
 }
 
 float power_heuristic(float pdf_a, float pdf_b)
@@ -457,7 +552,10 @@ float3 restir_compute_multiscatter_energy(float3 f0, float n_dot_v, float roughn
 // full ggx+burley brdf evaluator returning f_r * cos(n,l) and the matching mixture pdf
 // matches the engine's main shading model (brdf.hlsl) so restir and direct light shading
 // produce consistent results on the same surface material
-float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf)
+// when primary_diffuse_only is true, the specular lobe is zeroed and the pdf collapses to the
+// cosine-hemisphere pdf, so the primary surface is treated as pure diffuse, primary specular
+// is then exclusively owned by the ray traced reflections pipeline to avoid double counting
+float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf, bool primary_diffuse_only)
 {
     float3 h_unnorm = v + l;
     float h_len_sq  = dot(h_unnorm, h_unnorm);
@@ -480,32 +578,44 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
         return float3(0, 0, 0);
     }
 
-    // ggx specular with cod-wwii roughness remap and fdez-aguera multiscatter
-    float  a       = restir_d_ggx_alpha(roughness);
-    float  a2      = a * a;
-    float  d_term  = restir_d_ggx(n_dot_h, a2);
-    float  v_term  = restir_v_smithggx(n_dot_v, n_dot_l, a2);
-    float3 f0      = lerp(float3(0.04f, 0.04f, 0.04f), albedo, metallic);
-    float3 f90     = restir_compute_f90(f0);
-    float3 f_term  = restir_f_schlick(f0, f90, v_dot_h);
-    float3 fr      = d_term * v_term * f_term;
-    fr            *= restir_compute_multiscatter_energy(f0, n_dot_v, roughness);
-    // v_smithggx already absorbs the 4*n_dot_l*n_dot_v denominator, fr is per-(steradian * cos)
-    float3 specular_cos = fr * n_dot_l;
+    // fresnel is needed by both diffuse attenuation and the optional specular lobe
+    float3 f0     = lerp(float3(0.04f, 0.04f, 0.04f), albedo, metallic);
+    float3 f90    = restir_compute_f90(f0);
+    float3 f_term = restir_f_schlick(f0, f90, v_dot_h);
 
     // burley diffuse, attenuated by fresnel and metallic in the same way light.hlsl does
     float3 diffuse_color = albedo * (1.0f - metallic);
     float3 diffuse       = restir_diffuse_burley(diffuse_color, roughness, n_dot_v, n_dot_l, v_dot_h);
     float3 diffuse_cos   = diffuse * (1.0f - f_term) * n_dot_l;
 
-    // importance sampling pdf still uses the squared-roughness ggx half-vector pdf because
-    // sample_brdf samples in that space; mixing pdfs match what produced the sample
-    float alpha_is  = max(roughness * roughness, 0.001f);
-    float alpha_is2 = alpha_is * alpha_is;
-    float d_denom_is = n_dot_h * n_dot_h * (alpha_is2 - 1.0f) + 1.0f;
-    float d_is       = alpha_is2 / (PI * d_denom_is * d_denom_is + 1e-6f);
+    if (primary_diffuse_only)
+    {
+        // diffuse only path, pdf collapses to the cosine hemisphere pdf since sample_brdf
+        // also routes to the cosine sampler when called with primary_diffuse_only = true
+        pdf = n_dot_l / PI;
+        return diffuse_cos;
+    }
+
+    // ggx specular with cod-wwii roughness remap and fdez-aguera multiscatter
+    float  a       = restir_d_ggx_alpha(roughness);
+    float  a2      = a * a;
+    float  d_term  = restir_d_ggx(n_dot_h, a2);
+    float  v_term  = restir_v_smithggx(n_dot_v, n_dot_l, a2);
+    float3 fr      = d_term * v_term * f_term;
+    fr            *= restir_compute_multiscatter_energy(f0, n_dot_v, roughness);
+    // v_smithggx already absorbs the 4*n_dot_l*n_dot_v denominator, fr is per-(steradian * cos)
+    float3 specular_cos = fr * n_dot_l;
+
+    // importance sampling pdf, sample_brdf now uses vndf for specular so the matching pdf is
+    // pdf_l = D(h) * G1(v) / (4 * cos(theta_v)), which differs from the legacy ndf pdf above
+    float alpha_is    = max(roughness * roughness, 0.001f);
+    float alpha_is2   = alpha_is * alpha_is;
+    float d_denom_is  = n_dot_h * n_dot_h * (alpha_is2 - 1.0f) + 1.0f;
+    float d_is        = alpha_is2 / (PI * d_denom_is * d_denom_is + 1e-6f);
+    float n_dot_v_abs = max(n_dot_v, 1e-3f);
+    float g1_v_pdf    = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(alpha_is2 + (1.0f - alpha_is2) * n_dot_v_abs * n_dot_v_abs));
     float diffuse_pdf = n_dot_l / PI;
-    float spec_pdf    = d_is * n_dot_h / (4.0f * v_dot_h + 1e-6f);
+    float spec_pdf    = d_is * g1_v_pdf / (4.0f * n_dot_v_abs);
     float spec_prob   = compute_spec_probability(roughness, metallic, n_dot_v);
     pdf = (1.0f - spec_prob) * diffuse_pdf + spec_prob * spec_pdf;
 
@@ -514,8 +624,18 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
 
 // samples a direction proportional to diffuse+specular mixture, returns the sampled direction
 // and the mixture pdf so the caller can compute brdf*cos / pdf
-float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float2 xi, out float pdf)
+// when primary_diffuse_only is true, sampling collapses to pure cosine hemisphere so the
+// estimator stays consistent with evaluate_brdf's diffuse only branch
+float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float2 xi, out float pdf, bool primary_diffuse_only)
 {
+    if (primary_diffuse_only)
+    {
+        float  pdf_diffuse;
+        float3 local_dir = sample_cosine_hemisphere(xi, pdf_diffuse);
+        pdf = pdf_diffuse;
+        return local_to_world(local_dir, n);
+    }
+
     float n_dot_v      = max(dot(n, v), 0.001f);
     float spec_prob    = compute_spec_probability(roughness, metallic, n_dot_v);
     float prob_diffuse = 1.0f - spec_prob;
@@ -531,9 +651,13 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     else
     {
         xi.x = (xi.x - prob_diffuse) / (1.0f - prob_diffuse);
-        float pdf_h;
-        float3 h       = sample_ggx(xi, max(roughness, 0.04f), pdf_h);
-        float3 h_world = local_to_world(h, n);
+        // vndf sampling concentrates microfacet normals around those visible from v, removing
+        // the dim grazing samples that legacy ndf sampling produced and lowering variance for
+        // glossy surfaces at oblique view angles
+        float3 v_local = world_to_local(v, n);
+        v_local.z      = max(v_local.z, 1e-4f);
+        float3 h_local = sample_ggx_vndf(v_local, xi, max(roughness, 0.04f));
+        float3 h_world = local_to_world(h_local, n);
         l = reflect(-v, h_world);
     }
 
@@ -556,7 +680,11 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
     float alpha2   = alpha * alpha;
     float d_denom  = n_dot_h * n_dot_h * (alpha2 - 1.0f) + 1.0f;
     float d        = alpha2 / (PI * d_denom * d_denom + 1e-6f);
-    float spec_pdf = d * n_dot_h / (4.0f * v_dot_h + 1e-6f);
+    // vndf pdf for the reflection direction l, see heitz 2018 eq. 17
+    // pdf(l) = D(h) * G1(v) / (4 * cos(theta_v))
+    float n_dot_v_abs = max(abs(dot(n, v)), 1e-3f);
+    float g1_v        = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(alpha2 + (1.0f - alpha2) * n_dot_v_abs * n_dot_v_abs));
+    float spec_pdf    = d * g1_v / (4.0f * n_dot_v_abs);
 
     pdf = prob_diffuse * diffuse_pdf + spec_prob * spec_pdf;
     return l;
@@ -565,14 +693,25 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
 // full brdf*cos evaluator used at the primary vertex during shift and target-pdf evaluation
 // includes both diffuse and ggx specular, so metallic primaries receive proper gi contribution
 // (the reflection pipeline for pure mirror lobes should reconcile any overlap at shade time)
-float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, float3 normal, float3 view_dir, float3 dir)
+// when primary_diffuse_only is true, the specular lobe is dropped, primary specular is then
+// owned by the ray traced reflections pipeline to avoid double counting
+float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, float3 normal, float3 view_dir, float3 dir, bool primary_diffuse_only)
 {
     float n_dot_l = dot(normal, dir);
     if (n_dot_l <= 0.0f)
         return float3(0, 0, 0);
 
     float unused_pdf;
-    return evaluate_brdf(albedo, roughness, metallic, normal, view_dir, dir, unused_pdf);
+    return evaluate_brdf(albedo, roughness, metallic, normal, view_dir, dir, unused_pdf, primary_diffuse_only);
+}
+
+// primary specular at the primary vertex is owned by either ray traced reflections (when on)
+// or by light_image_based.hlsl's specular_ibl term (when rt reflections is off), restir always
+// samples diffuse only at the primary so primary specular is never double counted regardless
+// of which specular pipeline is active
+bool restir_primary_diffuse_only()
+{
+    return true;
 }
 
 // lin 2022 reconnection conditions for reusing src's rc at a destination surface
@@ -622,7 +761,7 @@ ShiftResult try_reconnection_shift(
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
 
-        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir);
+        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_diffuse_only());
         if (all(brdf_cos <= 0.0f))
             return result;
 
@@ -659,7 +798,7 @@ ShiftResult try_reconnection_shift(
     if (cos_rc_src <= RESTIR_RC_COS_FRONT || cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
-    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst);
+    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, restir_primary_diffuse_only());
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -693,6 +832,10 @@ ShiftResult try_reconnection_shift(
 static const float RESTIR_REPLAY_RC_TOLERANCE_REL = 0.05f;
 static const float RESTIR_REPLAY_RC_TOLERANCE_MIN = 0.05f;
 
+// forward declaration so the replay shift can call into the segment visibility helper which
+// is defined later in this header
+bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal);
+
 ShiftResult try_random_replay_shift(
     PathSample src,
     float3 src_pos,
@@ -722,15 +865,17 @@ ShiftResult try_random_replay_shift(
     uint   replay_seed = src.seed_path;
     float2 xi          = random_float2(replay_seed);
 
+    bool diffuse_only = restir_primary_diffuse_only();
+
     // sample brdf at src to get src's primary direction and pdf for the jacobian
     float  pdf_src;
-    float3 dir_src = sample_brdf(src_albedo, src_roughness, src_metallic, src_normal, src_view_dir, xi, pdf_src);
+    float3 dir_src = sample_brdf(src_albedo, src_roughness, src_metallic, src_normal, src_view_dir, xi, pdf_src, diffuse_only);
     if (pdf_src < RESTIR_MIN_PDF || dot(dir_src, src_normal) <= 0.0f)
         return result;
 
     // sample brdf at dst with the same xi for the replayed bounce
     float  pdf_dst;
-    float3 dir_dst = sample_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, xi, pdf_dst);
+    float3 dir_dst = sample_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, xi, pdf_dst, diffuse_only);
     if (pdf_dst < RESTIR_MIN_PDF || dot(dir_dst, dst_normal) <= 0.0f)
         return result;
 
@@ -758,9 +903,15 @@ ShiftResult try_random_replay_shift(
     if (dot(to_rc, to_rc) > tol * tol)
         return result;
 
+    // explicit visibility check from dst to src.rc_pos, the tolerance test above only ensures
+    // hit_pos is geographically close to src.rc_pos but does not catch concave geometry where
+    // the segment dst to src.rc_pos crosses a wall and the suffix would attach to the wrong side
+    if (!trace_shift_visibility(src, dst_pos, dst_normal))
+        return result;
+
     // brdf at dst toward the replayed direction, multiplied by stored suffix radiance
     float  pdf_eval;
-    float3 brdf_cos = evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, pdf_eval);
+    float3 brdf_cos = evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, pdf_eval, diffuse_only);
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -880,7 +1031,7 @@ ShiftResult self_shift_evaluate(
     if (dot(dst_normal, dir) <= 0.0f)
         return result;
 
-    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir);
+    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_diffuse_only());
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -944,155 +1095,6 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
     query.Proceed();
 
     return query.CommittedStatus() == COMMITTED_NOTHING;
-}
-
-// computes direct lighting at a surface vertex from analytical lights with ray-traced visibility
-// every shadow comes from a tlas ray query, so the cube under an area light or under a directional
-// gets a real path-traced shadow instead of a shadow map. env probe / sky / emissive geometry are
-// excluded since ibl handles primary sky and indirect bounces handle emissive geometry naturally.
-// intended to be called at the primary vertex during the spatial pass, in addition to gi
-float3 direct_lighting_at_primary_analytical(
-    float3 shading_pos,
-    float3 shading_normal,
-    float3 geometric_normal,
-    float3 view_dir,
-    float3 albedo,
-    float roughness,
-    float metallic,
-    inout uint seed)
-{
-    float3 total = float3(0, 0, 0);
-    uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    float shading_offset = compute_ray_offset(shading_pos);
-    float3 ray_origin_light = shading_pos + geometric_normal * shading_offset;
-
-    for (uint light_idx = 0; light_idx < light_count; light_idx++)
-    {
-        LightParameters light = light_parameters[light_idx];
-
-        if (light.intensity <= 0.0f)
-            continue;
-
-        uint light_flags    = light.flags;
-        bool is_directional = (light_flags & (1u << 0)) != 0;
-        bool is_point       = (light_flags & (1u << 1)) != 0;
-        bool is_spot        = (light_flags & (1u << 2)) != 0;
-        bool is_area        = (light_flags & (1u << 6)) != 0;
-
-        float3 light_color = light.color.rgb;
-        float3 light_dir;
-        float  light_dist;
-        float  light_pdf   = 1.0f;
-        float  attenuation = 1.0f;
-
-        if (is_directional)
-        {
-            // single ray to the sun for now, no disc sampling
-            // disc sampling could be added by jittering inside the SUN_CONE_HALF_ANGLE for true penumbra
-            light_dir  = -light.direction;
-            light_dist = 1000.0f;
-            light_pdf  = 1.0f;
-        }
-        else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
-        {
-            float3 light_normal = light.direction;
-            float3 light_right, light_up;
-            build_orthonormal_basis_fast(light_normal, light_right, light_up);
-
-            float3 light_center = light.position;
-            float3 p0 = light_center - light_right * light.area_width * 0.5f - light_up * light.area_height * 0.5f;
-            float3 p1 = light_center + light_right * light.area_width * 0.5f - light_up * light.area_height * 0.5f;
-            float3 p2 = light_center + light_right * light.area_width * 0.5f + light_up * light.area_height * 0.5f;
-            float3 p3 = light_center - light_right * light.area_width * 0.5f + light_up * light.area_height * 0.5f;
-
-            float3 v0 = normalize(p0 - shading_pos);
-            float3 v1 = normalize(p1 - shading_pos);
-            float3 v2 = normalize(p2 - shading_pos);
-            float3 v3 = normalize(p3 - shading_pos);
-
-            float solid_angle_approx = 0.0f;
-            {
-                float a1 = acos(clamp(dot(v0, v1), -1.0f, 1.0f));
-                float a2 = acos(clamp(dot(v1, v2), -1.0f, 1.0f));
-                float a3 = acos(clamp(dot(v2, v0), -1.0f, 1.0f));
-                float s  = (a1 + a2 + a3) * 0.5f;
-                float excess1 = 4.0f * atan(sqrt(max(0.0f, tan(s * 0.5f) * tan((s - a1) * 0.5f) * tan((s - a2) * 0.5f) * tan((s - a3) * 0.5f))));
-
-                float b1 = acos(clamp(dot(v0, v2), -1.0f, 1.0f));
-                float b2 = acos(clamp(dot(v2, v3), -1.0f, 1.0f));
-                float b3 = acos(clamp(dot(v3, v0), -1.0f, 1.0f));
-                float t  = (b1 + b2 + b3) * 0.5f;
-                float excess2 = 4.0f * atan(sqrt(max(0.0f, tan(t * 0.5f) * tan((t - b1) * 0.5f) * tan((t - b2) * 0.5f) * tan((t - b3) * 0.5f))));
-
-                solid_angle_approx = excess1 + excess2;
-            }
-
-            float2 xi = random_float2(seed);
-            float3 light_sample_pos = light_center
-                + light_right * (xi.x - 0.5f) * light.area_width
-                + light_up * (xi.y - 0.5f) * light.area_height;
-
-            float3 to_light = light_sample_pos - shading_pos;
-            light_dist      = length(to_light);
-            light_dir       = to_light / light_dist;
-
-            float cos_light = dot(-light_dir, light_normal);
-            if (cos_light <= 0.0f)
-                continue;
-
-            float area = light.area_width * light.area_height;
-            if (solid_angle_approx > MIN_AREA_LIGHT_SOLID_ANGLE)
-            {
-                light_pdf = 1.0f / solid_angle_approx;
-            }
-            else
-            {
-                float solid_angle = (area * cos_light) / (light_dist * light_dist);
-                solid_angle       = max(solid_angle, MIN_AREA_LIGHT_SOLID_ANGLE);
-                light_pdf         = 1.0f / solid_angle;
-            }
-            // 1/d^2 already baked into the solid-angle pdf
-            attenuation = 1.0f;
-        }
-        else if (is_point || is_spot)
-        {
-            float3 to_light = light.position - shading_pos;
-            light_dist      = length(to_light);
-            light_dir       = to_light / light_dist;
-            light_pdf       = 1.0f;
-
-            float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
-            attenuation = range_factor * range_factor / max(light_dist * light_dist, 0.01f);
-
-            if (is_spot)
-            {
-                float cos_angle = dot(-light_dir, light.direction);
-                float cos_outer = cos(light.angle);
-                float cos_inner = cos(light.angle * 0.8f);
-                attenuation *= saturate((cos_angle - cos_outer) / (cos_inner - cos_outer));
-            }
-        }
-        else
-        {
-            continue;
-        }
-
-        float n_dot_l = dot(shading_normal, light_dir);
-        if (n_dot_l <= 0.0f)
-            continue;
-
-        if (!trace_shadow_ray(ray_origin_light, light_dir, light_dist))
-            continue;
-
-        float  brdf_pdf;
-        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf);
-
-        float mis_weight = is_area ? power_heuristic(light_pdf, brdf_pdf) : 1.0f;
-        float3 Li = light_color * light.intensity * attenuation;
-        total += brdf * Li * mis_weight / max(light_pdf, 1e-6f);
-    }
-
-    return total;
 }
 
 // shades the reservoir's sample at the current pixel (self-shift, jacobian == 1)
