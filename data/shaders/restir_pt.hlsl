@@ -85,18 +85,43 @@ float3 probe_emission_estimate(MaterialParameters mat)
 }
 
 // power-proportional light pick weight, lin 2022 §6.1 / restir di reference
-// returns 0 for lights ineligible for the restir nee pool (point/spot, zero intensity), so the
-// total weight only counts the lights that sample_light_candidate can actually emit candidates
-// for, this keeps light_pick_pdf_for_index consistent with the picker
+// all four light types (directional, point, spot, area) are eligible, point/spot weights are
+// scaled by 1/distance_to_camera^2 approximation via 1/range^2 so a faraway lamp does not
+// dominate the picker for a primary near another light, this is the standard veach 1997
+// "important light" heuristic adapted for the dirac case where exact 1/r^2 at the primary
+// would require per-pixel weight evaluation (too expensive for restir's once-per-frame
+// light budget)
 float light_pick_weight(LightParameters l)
 {
-    bool is_directional = (l.flags & (1u << 0)) != 0;
-    bool is_area        = (l.flags & (1u << 6)) != 0;
-    if (l.intensity <= 0.0f || (!is_directional && !is_area))
+    if (l.intensity <= 0.0f)
         return 0.0f;
 
+    bool is_directional = (l.flags & (1u << 0)) != 0;
+    bool is_point       = (l.flags & (1u << 1)) != 0;
+    bool is_spot        = (l.flags & (1u << 2)) != 0;
+    bool is_area        = (l.flags & (1u << 6)) != 0;
+
     float lum = max(luminance(l.color.rgb), 1e-3f);
-    return l.intensity * lum;
+    if (is_directional || is_area)
+    {
+        return l.intensity * lum;
+    }
+    if (is_point || is_spot)
+    {
+        // dirac local light, weight by power proxy (intensity * radiated cone fraction)
+        // proportional to range^2 so a bright lamp with long reach beats a dim short one,
+        // spot lights are further weighted by their cone solid angle so a narrow cone gets
+        // proportionally less budget than a uniform sphere of equal intensity
+        float range_sq    = max(l.range * l.range, 1e-2f);
+        float cone_factor = 1.0f;
+        if (is_spot)
+        {
+            float cos_outer = cos(l.angle);
+            cone_factor     = max(1.0f - cos_outer, 0.05f);
+        }
+        return l.intensity * lum * range_sq * cone_factor;
+    }
+    return 0.0f;
 }
 
 // total nee pick weight, called once per evaluation, the loop is O(light_count) so this stays
@@ -125,8 +150,9 @@ float light_pick_pdf_for_index(uint light_idx, float total_weight)
 // computes the nee strategy density at a brdf-sampled candidate, in solid angle at primary
 // returns the sun cone density for sky candidates that fall inside the cone, zero otherwise
 // area lights are not in the bvh so the brdf strategy can never produce paths whose rc lies
-// on an area light rectangle, the area light loop that used to live here was a fictitious
-// strategy density that darkened the brdf branch by ~50% near walls aligned with area lights
+// on an area light rectangle, point/spot are dirac and likewise cannot be hit by a brdf
+// bounce, so the nee strategy contributes zero to the brdf-candidate mis denominator for
+// those light types and the brdf candidate gets its full single-strategy mis weight
 float light_nee_pdf_for_candidate(PathSample candidate, float3 primary_pos)
 {
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
@@ -262,9 +288,15 @@ float sky_nee_pdf_at(float3 dir, float3 shading_normal)
 
 // evaluates direct lighting (analytical lights + environment probe) at a surface vertex
 // returns the contribution in the direction of view_dir (i.e. back toward the previous vertex)
-// always uses the full brdf so metallic/glossy surfaces receive proper nee at every vertex
-// note: stored rc_radiance is therefore view-dependent at rc (w.r.t. src's incoming direction)
-// the bias introduced during reconnection shift is bounded by the rc roughness gate
+// when diffuse_only_brdf is false, the full brdf (diffuse + ggx specular) is used at this
+// vertex, this is correct for suffix vertices past rc which are baked into rc_L_post and not
+// individually reused across pixels
+// when diffuse_only_brdf is true, the specular lobe is dropped and only the lambert diffuse
+// term remains, this is the correct choice for the rc vertex itself because the resulting
+// nee radiance must be view-independent so the reconnection shift can reuse it at any dst
+// primary without re-evaluating the rc brdf against the dst-correct incoming direction, the
+// rc roughness gate at 0.3 makes the missing specular lobe a bounded, negligible energy loss
+// at the same vertex
 float3 direct_lighting_at_vertex(
     float3 shading_pos,
     float3 shading_normal,
@@ -273,6 +305,7 @@ float3 direct_lighting_at_vertex(
     float3 albedo,
     float roughness,
     float metallic,
+    bool   diffuse_only_brdf,
     inout uint seed)
 {
     float3 total = float3(0, 0, 0);
@@ -373,8 +406,9 @@ float3 direct_lighting_at_vertex(
 
         // secondary vertex always uses the full brdf, primary specular routing only applies
         // at the primary vertex itself which is shaded by self_shift_evaluate or the shifts
+        // at the rc vertex itself we use lambert only so the stored nee stays view-independent
         float  brdf_pdf;
-        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, false);
+        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, diffuse_only_brdf);
 
         // analytical lights are not in the bvh, the brdf bounce can never sample to their
         // direction so there is no second strategy to mis with, applying power_heuristic against
@@ -462,7 +496,7 @@ float3 direct_lighting_at_vertex(
                 if (luminance(probe_emission) > 0.0f)
                 {
                     float  brdf_pdf_probe;
-                    float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, false);
+                    float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, diffuse_only_brdf);
 
                     float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
                     total += brdf_probe * probe_emission * mis_weight / env_pdf;
@@ -475,7 +509,7 @@ float3 direct_lighting_at_vertex(
                 env_radiance = clamp_sky_radiance(env_radiance);
 
                 float  brdf_pdf_env;
-                float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, false);
+                float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, diffuse_only_brdf);
 
                 float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
                 total += brdf_env * env_radiance * mis_weight_env / env_pdf;
@@ -583,18 +617,23 @@ void trace_rc_suffix(
         // that requires a cpu-built emissive triangle structured buffer which is not part of
         // this rewrite, the bounce-emission path is unbiased so this is a variance-only win
         out_L_post += throughput * next.emission;
+        // suffix vertices past rc, full brdf is correct here because L_post is reused as a
+        // whole only via the rc bsdf factor at shift time, individual suffix vertices are not
+        // re-evaluated against a different primary direction
         out_L_post += throughput * direct_lighting_at_vertex(
             next.hit_position, next.hit_normal, next.geometric_normal,
-            -nd, next.albedo, next.roughness, next.metallic, seed);
+            -nd, next.albedo, next.roughness, next.metallic, false, seed);
 
         cur      = next;
         view_dir = -nd;
     }
 }
 
-// gathers the rc vertex's nee + emission contribution (with rc bsdf baked in at src view dir,
-// view-dep bias bounded by the get_restir_rc_min_roughness floor on rc reuse) and the suffix
-// radiance past rc (with rc bsdf factored out into rc_outgoing_dir for paper-faithful shifts)
+// gathers the rc vertex's nee + emission contribution (with the rc brdf reduced to lambert
+// only so the stored radiance is view-independent and reuses correctly at any dst primary,
+// missing specular-lobe energy at rc is bounded by the get_restir_rc_min_roughness floor)
+// and the suffix radiance past rc (with the rc brdf factored out into rc_outgoing_dir for
+// paper-faithful reconnection shifts)
 void accumulate_subpath_at_rc(
     PathPayload rc,
     float3 rc_view_dir,
@@ -605,9 +644,13 @@ void accumulate_subpath_at_rc(
     out float3 out_first_dir)
 {
     out_L_nee  = rc.emission;
+    // diffuse-only brdf at rc keeps the stored nee radiance view-independent so the
+    // reconnection shift can reuse it at any dst primary without re-evaluating the rc brdf
+    // against the dst-correct incoming direction, the rc roughness gate at 0.3 bounds the
+    // missing specular lobe energy at this same vertex
     out_L_nee += direct_lighting_at_vertex(
         rc.hit_position, rc.hit_normal, rc.geometric_normal,
-        rc_view_dir, rc.albedo, rc.roughness, rc.metallic, seed);
+        rc_view_dir, rc.albedo, rc.roughness, rc.metallic, true, seed);
 
     out_L_post    = float3(0, 0, 0);
     out_first_dir = float3(0, 0, 0);
@@ -766,6 +809,56 @@ PathSample sample_light_candidate(
         return s;
     }
 
+    bool is_point = (light.flags & (1u << 1)) != 0;
+    bool is_spot  = (light.flags & (1u << 2)) != 0;
+    if (is_point || is_spot)
+    {
+        // dirac local light, rc is the light position treated as a point emitter, distance
+        // attenuation and spot cone are folded into rc_L_nee so the shift-time evaluation
+        // collapses to brdf_dst * rc_L_nee like the area-light branch, the BRDF strategy
+        // cannot produce paths that land on a point/spot light (they have zero volume in
+        // the bvh) so the MIS denominator is single-strategy and we use a unit solid-angle
+        // pdf to keep ris weights in the same scale as area light candidates (the pdf
+        // really is a dirac, but a single-strategy weight target/pdf does not care about
+        // the absolute scale of pdf as long as it is consistent across same-strategy samples)
+        float3 to        = light.position - primary_pos;
+        float  light_dist = length(to);
+        if (light_dist < 1e-3f)
+            return s;
+
+        float3 dir = to / light_dist;
+        if (dot(dir, primary_normal) <= MIN_COS_AT_PRIMARY)
+            return s;
+
+        float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
+        float attenuation  = range_factor * range_factor / max(light_dist * light_dist, 0.01f);
+
+        if (is_spot)
+        {
+            float cos_angle = dot(-dir, light.direction);
+            float cos_outer = cos(light.angle);
+            float cos_inner = cos(light.angle * 0.8f);
+            float spot      = saturate((cos_angle - cos_outer) / max(cos_inner - cos_outer, 1e-4f));
+            attenuation    *= spot;
+            if (attenuation <= 0.0f)
+                return s;
+        }
+
+        s.rc_pos      = light.position;
+        s.rc_normal   = -dir;
+        s.rc_L_nee    = light.color.rgb * light.intensity * attenuation;
+        s.rc_L_post   = float3(0, 0, 0);
+        s.flags      |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
+
+        // unit solid-angle pdf keeps dirac candidates on the same numerical scale as the
+        // area branch so the ris ordering is stable across mixed light types, the actual
+        // dirac density is infinite which would zero out weights through 1/pdf in mis,
+        // single-strategy w = target/(n_light * 1) yields the correct estimator for the
+        // collapsed dirac case (no brdf strategy contribution to balance against)
+        source_pdf = pick_pdf;
+        return s;
+    }
+
     return s;
 }
 
@@ -845,28 +938,20 @@ PathSample trace_path_from_primary(
     L_nee  = max(L_nee,  0.0f);
     L_post = max(L_post, 0.0f);
 
-    // soft luminance clamp, the W clamp + m cap bound the unbiased estimator energy but not
-    // single sample variance, when a glossy rc lands on a bright emitter the rc bsdf baked
-    // into rc_L_nee can spike to thousands of nits and a stable spatial neighbor will then
-    // stamp that pulse across many pixels (boiling), the soft scale preserves chromaticity so
-    // the residual downward bias is uniform across channels and the denoiser absorbs the rest
-    {
-        float lum_nee  = luminance(L_nee);
-        float lum_post = luminance(L_post);
-        const float firefly_ceiling = 250.0f;
-        if (lum_nee  > firefly_ceiling) L_nee  *= firefly_ceiling / lum_nee;
-        if (lum_post > firefly_ceiling) L_post *= firefly_ceiling / lum_post;
-    }
-
+    // stored radiance is left unmodified at sample construction so the resampler scores the
+    // true integrand, per-sample firefly safety is provided downstream via the w clamp at
+    // shade time (get_w_clamp_for_sample) and the denoiser's spatial firefly suppression,
+    // squashing radiance pre-ris would bias the integrand the resampler is trying to estimate
     s.rc_L_nee        = L_nee;
     s.rc_L_post       = L_post;
     s.rc_outgoing_dir = first_outgoing_dir;
     s.path_length     = 2;
 
-    // reconnection validity: the rc vertex must be rough enough that the rc_L_nee view-dep
-    // bias (rc bsdf baked at src direction for the nee component) stays small, the suffix
-    // view-dep is now factored out via rc_L_post + rc_outgoing_dir + rc material, distance
-    // must be large enough to keep the solid-angle jacobian well-conditioned
+    // reconnection validity: the rc vertex must be rough enough that the lambert-only nee at
+    // rc captures most of the energy (the dropped ggx specular lobe at rc is the remaining
+    // bias source, bounded by the roughness floor), the suffix view-dep is factored out via
+    // rc_L_post + rc_outgoing_dir + rc material, distance must be large enough to keep the
+    // solid-angle jacobian well-conditioned
     float rc_min_roughness = get_restir_rc_min_roughness();
     float dist_sq          = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
     bool rc_valid          = (hit.roughness >= rc_min_roughness)

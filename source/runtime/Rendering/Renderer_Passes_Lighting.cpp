@@ -100,9 +100,12 @@ namespace spartan
         {
             return;
         }
-        // restir path tracing owns the full brdf at the primary, running rt reflections on top
-        // would double count the specular indirect, so we short circuit and clear here
-        const bool rt_reflections_active = cvar_ray_traced_reflections.GetValueAs<bool>() && !cvar_restir_pt.GetValueAs<bool>();
+        // lobe split: rt reflections owns the narrow specular lobe (roughness below the
+        // restir_primary_diffuse_only threshold), restir pt owns diffuse + glossy indirect.
+        // the shader-side gate in ray_traced_reflections.hlsl skips the trace for high
+        // roughness pixels, and restir's primary brdf is reduced to lambert for low
+        // roughness pixels, so no double counting at any roughness
+        const bool rt_reflections_active = cvar_ray_traced_reflections.GetValueAs<bool>();
         if (!rt_reflections_active || !tex_reflections_position)
         {
             if (!m_pass_state.cleared_rt_reflections)
@@ -168,9 +171,11 @@ namespace spartan
     
     void Renderer::Pass_Composite_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        // restir path tracing owns specular indirect when active, the rt reflections texture
-        // is cleared in Pass_RayTracedReflections so there is nothing meaningful to composite
-        if (!cvar_ray_traced_reflections.GetValueAs<bool>() || cvar_restir_pt.GetValueAs<bool>())
+        // lobe split: rt reflections shades the narrow specular lobe at every roughness the
+        // tracer fired for, restir pt owns diffuse + glossy. when restir is also on the gate
+        // partition is enforced in the shaders (see ray_traced_reflections.hlsl roughness
+        // cutoff and restir_primary_diffuse_only in restir_reservoir.hlsl)
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
         {
             return;
         }
@@ -357,7 +362,7 @@ namespace spartan
             // tlas is required for the lin 2022 sample validation step inside the temporal pass,
             // periodically re-traces the chosen reservoir's primary->rc visibility ray to kill
             // stale samples that no longer reach their reconnection vertex (moved lights, opened
-            // doors, broken geometry), validation cadence is set by r.restir_pt_validation_period
+            // doors, broken geometry), validation cadence is set by get_restir_validation_period
             if (tlas)
             {
                 cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
@@ -528,6 +533,34 @@ namespace spartan
         const uint32_t dispatch_x  = (width  + 7) / 8;
         const uint32_t dispatch_y  = (height + 7) / 8;
 
+        // one-shot clear of every reservoir slot after (re)allocation, the rhi cannot guarantee
+        // freshly-created textures contain zero-initialized memory and the temporal pass would
+        // otherwise read garbage on the first frame; is_reservoir_valid catches most of it but
+        // a stray valid-looking sample can propagate noise for several frames before the cap
+        // ratchets it out
+        //
+        // gbuffer_depth_previous is also cleared here on the same one-shot, on the very first
+        // frame of a restir enable the temporal pass calls evaluate_disocclusion which reads
+        // tex_depth_previous before the end-of-frame swap has copied anything into it,
+        // initializing to 1.0 (far) makes disocclusion fail closed so the first frame falls
+        // back to the canonical sample instead of merging against garbage history
+        if (!m_pass_state.restir_reservoirs_initialized)
+        {
+            for (uint32_t i = 0; i < 6; i++)
+            {
+                cmd_list->ClearTexture(reservoirs[i],         Color::standard_transparent);
+                cmd_list->ClearTexture(reservoirs_prev[i],    Color::standard_transparent);
+                cmd_list->ClearTexture(reservoirs_spatial[i], Color::standard_transparent);
+            }
+
+            if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
+            {
+                cmd_list->ClearTexture(depth_prev, Color::standard_white, 1.0f);
+            }
+
+            m_pass_state.restir_reservoirs_initialized = true;
+        }
+
         Pass_ReSTIR_TraceInitial(cmd_list, tlas, tex_gi, tex_skysphere, reservoirs, width, height);
         Pass_ReSTIR_Temporal(cmd_list, tlas, tex_gi, reservoirs, reservoirs_prev, dispatch_x, dispatch_y);
         const bool ran_spatial = Pass_ReSTIR_SpatialPair(cmd_list, tlas, tex_gi, reservoirs, reservoirs_spatial, dispatch_x, dispatch_y);
@@ -600,6 +633,15 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_gi_raw);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_gi_history);
             cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments_hist);
+            // bind previous frame depth on tex4 so the denoiser's disocclusion gate uses the
+            // same prev-depth-vs-reprojected-expected-depth formulation as the reservoir
+            // temporal pass, fixes asymmetric ghosting between the two passes on moving
+            // objects (the previous code compared current depth at prev_uv vs current pixel
+            // depth which mistreats dynamic surfaces as disocclusions)
+            if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
+            {
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex4, depth_prev);
+            }
             for (uint32_t i = 0; i < 6; i++)
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);
             cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_gi_denoised);

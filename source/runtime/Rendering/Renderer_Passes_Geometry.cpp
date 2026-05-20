@@ -48,7 +48,9 @@ namespace spartan
             return;
         }
 
-        // light.hlsl never samples the atlas when rt-shadows or restir owns the shadow term
+        // light.hlsl skips the analytical shading path entirely when rt shadows or restir
+        // own every light type (restir now covers directional, point, spot and area through
+        // its initial nee pool, traces inline rt shadow rays inside trace_shift_visibility)
         const bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
         if ((cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available) || cvar_restir_pt.GetValueAs<bool>())
         {

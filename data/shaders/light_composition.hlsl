@@ -155,14 +155,14 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         // lost when the half res restir shading + upsample blurs the albedo into the gi
         // gi is at restir_pt_scale of render resolution, so use a join-bilateral
         // upsample (depth + normal aware) to avoid bleeding across edges
-        // also multiply by surface.occlusion to recover contact shadows that
-        // restir's spatial reuse and denoiser smear away at small scales
+        // ssao occlusion is intentionally not multiplied in here, the path tracer already
+        // accounts for indirect visibility through bounce ray tracing so applying ssao on top
+        // double-counts occlusion in contact regions and produces the muddy contact shadow look
         if (is_restir_pt_enabled())
         {
             float depth_dst_lin = linearize_depth(surface.depth);
             light_gi  = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
             light_gi *= restir_albedo_demodulator(surface.albedo);
-            light_gi *= surface.occlusion;
         }
     }
     

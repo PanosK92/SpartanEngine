@@ -366,15 +366,18 @@ namespace spartan
         {
             release_restir_resources();
             allocate_restir_resources();
+            m_pass_state.restir_reservoirs_initialized = false;
         }
         else if (need_restir && !at(render_targets, Renderer_RenderTarget::restir_reservoir0))
         {
             allocate_restir_resources();
+            m_pass_state.restir_reservoirs_initialized = false;
         }
         else if (!need_restir && at(render_targets, Renderer_RenderTarget::restir_reservoir0))
         {
             release_restir_resources();
             last_restir_scale = -1.0f;
+            m_pass_state.restir_reservoirs_initialized = false;
         }
     }
 

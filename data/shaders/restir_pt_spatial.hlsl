@@ -279,7 +279,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (!trace_shift_visibility(neighbor.sample, pos_ws, normal_ws))
             continue;
 
-        float target_j_at_c = max(dot(shift_j_to_c.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f);
+        float target_j_at_c = target_scalar(shift_j_to_c.f_dst);
         if (target_j_at_c <= 0.0f)
             continue;
 
@@ -305,7 +305,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         // pair by setting target_c_at_j = 0, which means the canonical does not "claim" any
         // pairwise share and the neighbor takes its full balance weight against the canonical
         float target_c_at_j = shift_c_to_j.ok
-            ? max(dot(shift_c_to_j.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f)
+            ? target_scalar(shift_c_to_j.f_dst)
             : 0.0f;
 
         float jacobian = shift_j_to_c.jacobian;
@@ -354,6 +354,31 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     combined.M = M_total;
     clamp_reservoir_M(combined, get_restir_m_cap());
+
+    // lin 2022 §6.4 sample validation: stale paths can survive purely through spatial reuse
+    // (a temporal sample propagates outward into neighbors that never get re-validated by the
+    // temporal pass), running the same hashed periodic check here kills them before they can
+    // boil across the scene, the period is shared with the temporal pass so the total cost is
+    // still ~1/N pixels per frame for the combined temporal+spatial validation budget
+    uint validation_period = get_restir_validation_period();
+    if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
+    {
+        uint hash = (pixel.x * 73856093u) ^ (pixel.y * 19349663u);
+        uint slot = (buffer_frame.frame + hash + spatial_pass_index * 11u) % validation_period;
+        if (slot == 0u)
+        {
+            bool reachable = trace_shift_visibility(combined.sample, pos_ws, normal_ws);
+            if (!reachable)
+            {
+                combined            = create_empty_reservoir();
+                combined.sample     = center.sample;
+                combined.target_pdf = target_cur;
+                combined.weight_sum = 0.0f;
+                combined.M          = 0.0f;
+                combined.W          = 0.0f;
+            }
+        }
+    }
 
     // finalize: W = weight_sum / p_hat_dst(Y) (no /M, m_i factors already normalized)
     float final_target = target_pdf_self(combined.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);

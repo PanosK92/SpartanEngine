@@ -27,29 +27,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // drove the picks, the m_cap ramps from a moving baseline up to the static target as the
 // camera holds still so dynamic scenes stay responsive while still frames keep converging
 static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
-static const uint  RESTIR_M_CAP              = 32;
+static const uint  RESTIR_M_CAP_MIN          = 32;
+static const uint  RESTIR_M_CAP_MAX          = 256;
 static const uint  RESTIR_SPATIAL_SAMPLES    = 8;
 
 // hardcoded knobs
-//   m_cap          ramps from 32 (moving) to 96 (static), validity gate kills disocclusions
+//   m_cap          ramps from 32 (moving) to 256 (static, paper-typical for static pt), the
+//                  validity gate kills disocclusions before they accumulate stale samples
 //   path length    5 bounces is enough for plausible multi-bounce gi without runaway cost
 //   light cands    8 nee samples covers the dominant lights, balance mis handles the rest
-//   initial cands  1 brdf bounce per pixel, temporal + spatial reuse builds the pool over time
+//   initial cands  4 brdf bounces per pixel so the indirect strategy is not starved by the
+//                  light nee branch, temporal + spatial reuse then builds the pool over time
 //   rc_min_rough   0.3 keeps glossy reconnection bias bounded, near mirrors fall back to replay
-//   w_clamp        single sample W cap, chosen high enough not to bias bright lights but low
-//                  enough that disocclusion fireflies cannot spike the denoiser
+//   w_clamp        single sample W cap, sized for hdr scenes (sun-lit interiors hit several
+//                  thousand nits on bright bounces, the previous fixed cap clipped them and
+//                  systematically darkened indirect lighting), exposed as r.restir_pt_w_clamp
+//                  so the user can trade firefly safety for highlight energy without a
+//                  recompile, sky band derives from this via RESTIR_SKY_W_CLAMP_FACTOR so
+//                  one knob controls the whole hdr range
 //   validation     8 frames matches lin 2022 recommendation, kills stale samples on light change
 float get_restir_m_cap()
 {
-    float t = float(buffer_frame.time) - buffer_frame.camera_last_movement_time;
+    float t    = float(buffer_frame.time) - buffer_frame.camera_last_movement_time;
     float ramp = saturate((t - 0.5f) / 1.0f);
-    return lerp(32.0f, 96.0f, ramp);
+    return lerp(float(RESTIR_M_CAP_MIN), float(RESTIR_M_CAP_MAX), ramp);
 }
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
 uint  get_restir_light_candidates()    { return 8u; }
-uint  get_restir_initial_candidates()  { return 1u; }
+uint  get_restir_initial_candidates()  { return 4u; }
 float get_restir_rc_min_roughness()    { return 0.3f; }
-float get_restir_w_clamp()             { return 200.0f; }
+// single-sample contribution cap from cb so the user can trade firefly safety for highlight
+// energy without recompiling shaders, clamped on the cpu side to keep the floor sensible
+float get_restir_w_clamp()             { return buffer_frame.restir_pt_w_clamp; }
 uint  get_restir_validation_period()   { return 8u; }
 static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
 static const float RESTIR_NORMAL_THRESHOLD   = 0.75f;
@@ -59,10 +68,13 @@ static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
 static const float RESTIR_RAY_T_MIN          = 0.001f;
 
 // sky / environment
-// sun disk radiance can far exceed any sane clamp, so this only catches numerical blowups
-static const float RESTIR_SKY_RADIANCE_CLAMP = 200.0f;
-static const float RESTIR_SKY_W_CLAMP        = 1500.0f;
-static const float RESTIR_SKY_DISTANCE       = 1e10f;
+// sun disk radiance can far exceed any sane clamp, so this only catches numerical blowups,
+// the sky W clamp is derived from the surface w clamp by a fixed 10x multiplier (sun radiance
+// is typically an order of magnitude brighter than any surface bounce signal) so the same
+// hardcoded surface w_clamp scales the whole hdr range proportionally
+static const float RESTIR_SKY_RADIANCE_CLAMP_FACTOR = 4.0f;  // multiplier over surface w clamp
+static const float RESTIR_SKY_W_CLAMP_FACTOR        = 10.0f; // multiplier over surface w clamp
+static const float RESTIR_SKY_DISTANCE              = 1e10f;
 
 // reconnection criteria (lin 2022 hybrid shift, reconnection leg)
 // rc roughness floor lives in get_restir_rc_min_roughness() so it is co-located with the
@@ -91,8 +103,10 @@ static const uint PATH_FLAG_NEE      = 1 << 3;  // candidate came from light nee
 //
 //   L_at_rc = L_nee + f_rc(in_at_rc, rc_outgoing_dir) * L_post
 //
-// where L_nee is the direct lighting collected by nee at rc (with the rc bsdf baked in for
-// each nee direction, that residual view-dep is bounded by the rc roughness gate at >= 0.2),
+// where L_nee is the direct lighting collected by nee at rc (the rc brdf used during nee
+// collection is the lambert lobe only, so L_nee is view-independent w.r.t. the rc-incoming
+// direction and stays exactly correct when the path is reused at a different dst primary;
+// the rc roughness gate at >= 0.3 bounds the dropped specular-lobe energy at this vertex),
 // L_post is the radiance arriving at rc from direction rc_outgoing_dir produced by the
 // suffix bounces past rc (with the rc bsdf factored out), and rc_outgoing_dir is the
 // direction leaving rc into the suffix
@@ -370,16 +384,22 @@ Reservoir create_empty_reservoir()
 float get_w_clamp_for_sample(PathSample s)
 {
     float w = get_restir_w_clamp();
-    // sky samples always use a high clamp because the sun disk radiance can far exceed it,
-    // we never want to darken sun glints to fight a bias-free clamp
-    return is_sky_sample(s) ? max(w, RESTIR_SKY_W_CLAMP) : w;
+    // sky samples always use a higher clamp because the sun disk radiance can far exceed
+    // the surface band, both bands derive from the single surface w_clamp via
+    // RESTIR_SKY_W_CLAMP_FACTOR so one constant scales the whole hdr range
+    return is_sky_sample(s) ? w * RESTIR_SKY_W_CLAMP_FACTOR : w;
 }
 
+// streaming ris sample insert (lin 2022 algorithm 1), the textbook formulation does not
+// increment M on zero weight candidates because they did not actually contribute to the
+// integral, inflating M skews pairwise mis denominators in temporal and spatial reuse and
+// suppresses legitimately bright reused samples (the dominant cause of "dark indirect"
+// when many initial brdf bounces miss into shadow), so we early-out without bumping M
+// when the candidate is unusable
 bool update_reservoir(inout Reservoir reservoir, PathSample new_sample, float weight, float random_value)
 {
     if (weight <= 0.0f || isnan(weight) || isinf(weight))
     {
-        reservoir.M += 1.0f;
         return false;
     }
 
@@ -402,6 +422,80 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
 {
     if (reservoir.M > max_M)
         reservoir.M = max_M;
+}
+
+// unified disocclusion gate used by both the reservoir temporal pass and the denoiser
+// temporal accumulator, transforms the current surface position through the previous
+// view-projection and compares the expected previous-frame depth to the actual previous
+// depth sampled at prev_uv, this correctly distinguishes a moving dynamic surface
+// (matching prior depth at prev_uv) from a true disocclusion (background depth behind
+// the previous occluder), which the prev-depth-vs-current-depth approximation conflates
+// and which caused asymmetric ghosting between the two passes
+//
+// requires `prev_depth_tex` to be bound to gbuffer_depth_previous (the temporal pass
+// already binds this on tex slot, the denoiser pass needs to bind it too)
+//
+// returns true when the history is consistent enough to reuse, fills `confidence` with a
+// scalar [0,1] factor that the caller multiplies into per-pass blend weights
+bool evaluate_disocclusion(
+    Texture2D prev_depth_tex,
+    float2 current_uv,
+    float2 prev_uv,
+    float3 current_position,
+    float3 current_normal,
+    float2 resolution,
+    float reproj_tol_min,
+    float reproj_tol_max,
+    float normal_min,
+    float normal_max,
+    float depth_min,
+    float depth_max,
+    float motion_reference,
+    out float confidence)
+{
+    confidence = 0.0f;
+
+    if (prev_uv.x < 0.0f || prev_uv.x > 1.0f || prev_uv.y < 0.0f || prev_uv.y > 1.0f)
+        return false;
+
+    float4 prev_clip        = mul(float4(current_position, 1.0f), get_view_projection_previous());
+    float3 prev_ndc         = prev_clip.xyz / max(prev_clip.w, 1e-9f);
+    float2 expected_prev_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
+    float2 reproj_diff      = abs(prev_uv - expected_prev_uv) * resolution;
+    float  reproj_dist      = length(reproj_diff);
+
+    float2 motion        = (current_uv - prev_uv) * resolution;
+    float  motion_len    = length(motion);
+    float  motion_factor = saturate(motion_len / max(motion_reference, 1.0f));
+
+    float reproj_tol = lerp(reproj_tol_min, reproj_tol_max, motion_factor);
+    if (reproj_dist > reproj_tol)
+        return false;
+
+    float3 prev_normal       = get_normal(prev_uv);
+    float  normal_similarity = dot(current_normal, prev_normal);
+    float  normal_threshold  = lerp(normal_min, normal_max, motion_factor);
+    if (normal_similarity < normal_threshold)
+        return false;
+
+    float prev_depth_raw = prev_depth_tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
+    if (prev_depth_raw <= 0.0f)
+        return false;
+
+    float expected_prev_depth = linearize_depth(prev_ndc.z);
+    float prev_depth_linear   = linearize_depth(prev_depth_raw);
+    float depth_delta         = abs(prev_depth_linear - expected_prev_depth) / max(expected_prev_depth, 1e-3f);
+    float depth_limit         = lerp(depth_min, depth_max, motion_factor);
+    if (depth_delta > depth_limit)
+        return false;
+
+    float reproj_conf = saturate(1.0f - reproj_dist / reproj_tol);
+    float normal_conf = saturate((normal_similarity - normal_threshold) / max(1.0f - normal_threshold, 1e-4f));
+    float motion_conf = saturate(1.0f - motion_len / max(motion_reference, 1.0f));
+    float depth_conf  = saturate(1.0f - depth_delta / depth_limit);
+    confidence        = reproj_conf * normal_conf * motion_conf * depth_conf;
+
+    return true;
 }
 
 // rng
@@ -524,12 +618,38 @@ float power_heuristic(float pdf_a, float pdf_b)
     return a2 / max(a2 + b2, 1e-6f);
 }
 
-float3 clamp_sky_radiance(float3 radiance)
+// scalar target function for ris and pairwise mis weights, l1/3 treats r,g,b equally so
+// chromatic indirect light (red wall bouncing on white floor, cool sky bouncing on warm
+// surfaces) is not biased toward green-yellow contributions the way bt.709 luminance would,
+// this is the conservative choice from lin 2022 §4 / alg. 1 for an unbiased scalar target
+float target_scalar(float3 f)
+{
+    return max(f.r + f.g + f.b, 0.0f) * (1.0f / 3.0f);
+}
+
+// soft luminance compressor, preserves chromaticity (rescales all channels by the same
+// factor) and approaches `threshold` asymptotically from above instead of clipping hard
+// at the threshold, this keeps glossy highlights and bright skydomes contributing energy
+// in the long tail without becoming variance hotspots for the denoiser
+float3 soft_saturate_radiance(float3 radiance, float threshold)
 {
     float lum = dot(radiance, float3(0.299f, 0.587f, 0.114f));
-    if (lum > RESTIR_SKY_RADIANCE_CLAMP)
-        radiance *= RESTIR_SKY_RADIANCE_CLAMP / lum;
+    if (lum > threshold)
+    {
+        float scale = threshold + (lum - threshold) / (1.0f + (lum - threshold) / threshold);
+        radiance *= scale / lum;
+    }
     return radiance;
+}
+
+float3 clamp_sky_radiance(float3 radiance)
+{
+    // sky radiance ceiling tracks the w clamp via RESTIR_SKY_RADIANCE_CLAMP_FACTOR so the
+    // sun band scales with the same user-facing knob as the surface band, the soft form
+    // preserves chromaticity better than a hard luminance scale and prevents fireflies in
+    // the sun cone from poisoning the variance estimate at the denoiser stage
+    float threshold = get_restir_w_clamp() * RESTIR_SKY_RADIANCE_CLAMP_FACTOR;
+    return soft_saturate_radiance(radiance, threshold);
 }
 
 // ray offset for self intersection avoidance, scaled with the dominant world-space coordinate
@@ -543,17 +663,6 @@ float compute_ray_offset(float3 pos_ws)
     float dist  = length(pos_ws - get_camera_position());
     float ofs   = max(max(p_mag * 1e-4f, dist * 1e-4f), 2e-4f);
     return min(ofs, 1e-2f);
-}
-
-float3 soft_saturate_radiance(float3 radiance, float threshold)
-{
-    float lum = dot(radiance, float3(0.299f, 0.587f, 0.114f));
-    if (lum > threshold)
-    {
-        float scale = threshold + (lum - threshold) / (1.0f + (lum - threshold) / threshold);
-        radiance *= scale / lum;
-    }
-    return radiance;
 }
 
 // diffuse-vs-specular selection probability used by the importance-sampled brdf
@@ -775,10 +884,11 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
 }
 
 // full brdf*cos evaluator used at the primary vertex during shift and target-pdf evaluation
-// includes both diffuse and ggx specular, so metallic primaries receive proper gi contribution
-// (the reflection pipeline for pure mirror lobes should reconcile any overlap at shade time)
+// includes both diffuse and ggx specular, so glossy primaries (roughness above the lobe
+// split threshold) receive proper indirect specular through reservoir reuse
 // when primary_diffuse_only is true, the specular lobe is dropped, primary specular is then
-// owned by the ray traced reflections pipeline to avoid double counting
+// owned by the ray traced reflections pipeline (gated to the same roughness threshold) so
+// the two pipelines partition the lobe space cleanly with no double counting
 float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, float3 normal, float3 view_dir, float3 dir, bool primary_diffuse_only)
 {
     float n_dot_l = dot(normal, dir);
@@ -789,14 +899,19 @@ float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, flo
     return evaluate_brdf(albedo, roughness, metallic, normal, view_dir, dir, unused_pdf, primary_diffuse_only);
 }
 
-// restir owns the full brdf at the primary vertex regardless of roughness, so glossy primaries
-// get proper indirect specular through reservoir reuse, the previous hybrid that handed near
-// mirror lobes to rt reflections (or specular ibl) left glossy surfaces looking flat and
-// caused double counting whenever the routing did not match the consumer side, this matches
-// lin 2022 §5 which samples the full brdf at every primary in the path tracing reference
+// lobe split between restir pt and rt reflections at the primary vertex:
+//   roughness <  RESTIR_SPECULAR_HANDOFF_ROUGHNESS -> rt reflections owns specular, restir
+//     drops the specular lobe here (lambert only at primary) so the two pipelines do not
+//     double count, reservoir reuse on near mirror surfaces is poor anyway because the
+//     narrow specular lobe changes direction every pixel which defeats spatial sharing
+//   roughness >= RESTIR_SPECULAR_HANDOFF_ROUGHNESS -> restir owns the full brdf and rt
+//     reflections is gated off in ray_traced_reflections.hlsl, the broad glossy lobe is
+//     handled well by reservoir reuse and matches the lin 2022 §5 reference
+// the threshold must match the gate in ray_traced_reflections.hlsl
+static const float RESTIR_SPECULAR_HANDOFF_ROUGHNESS = 0.4f;
 bool restir_primary_diffuse_only(float roughness)
 {
-    return false;
+    return roughness < RESTIR_SPECULAR_HANDOFF_ROUGHNESS;
 }
 
 // lin 2022 reconnection conditions for reusing src's rc at a destination surface
@@ -940,8 +1055,14 @@ ShiftResult try_reconnection_shift(
 // rc_tolerance is the world-space slack on the rc match, scaled by the rc distance to keep
 // the relative tolerance well-bounded on far surfaces. visibility is implicit: if the
 // replayed ray hits within tolerance the connection is unoccluded by construction
-static const float RESTIR_REPLAY_RC_TOLERANCE_REL = 0.05f;
-static const float RESTIR_REPLAY_RC_TOLERANCE_MIN = 0.05f;
+// the tolerance is intentionally tight: the random-replay shift is an approximation to the
+// paper-faithful full suffix retrace (lin 2022 §5), accepting only near-perfect rc matches
+// keeps the residual energy bias small in exchange for occasionally rejecting reusable
+// samples (which is unbiased: a rejected shift contributes zero, not a distorted value),
+// the reconnection shift handles the dominant cases so this fallback only needs to be
+// occasionally correct, not always available
+static const float RESTIR_REPLAY_RC_TOLERANCE_REL = 0.02f;
+static const float RESTIR_REPLAY_RC_TOLERANCE_MIN = 0.02f;
 
 // forward declaration so the replay shift can call into the segment visibility helper which
 // is defined later in this header
@@ -1187,8 +1308,7 @@ float target_pdf_at_dst(
     if (!r.ok)
         return 0.0f;
 
-    float lum = dot(r.f_dst, float3(0.299f, 0.587f, 0.114f));
-    return max(lum, 0.0f);
+    return target_scalar(r.f_dst);
 }
 
 float target_pdf_self(
@@ -1204,8 +1324,7 @@ float target_pdf_self(
     if (!r.ok)
         return 0.0f;
 
-    float lum = dot(r.f_dst, float3(0.299f, 0.587f, 0.114f));
-    return max(lum, 0.0f);
+    return target_scalar(r.f_dst);
 }
 
 // inline ray-traced shadow ray, returns true if the segment is unoccluded

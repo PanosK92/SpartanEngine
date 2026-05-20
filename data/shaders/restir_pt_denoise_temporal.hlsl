@@ -19,9 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES ====================
 #include "common.hlsl"
-//==============================
+#include "restir_reservoir.hlsl"
+//===============================
 
 // svgf style temporal accumulation (schied et al. 2017 spatiotemporal variance guided filter)
 // outputs:
@@ -192,49 +193,28 @@ float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float cu
     return tex2.Load(int3(fallback_pixel, 0));
 }
 
+// uses the shared evaluate_disocclusion helper in restir_reservoir.hlsl so the denoiser
+// temporal accumulator and the reservoir temporal pass apply identical gating semantics
+// (previous frame depth at prev_uv vs current position reprojected through prev vp), the
+// previous formulation here compared current depth at prev_uv vs the current pixel's depth
+// which mistreats dynamic surfaces as disocclusions and caused asymmetric ghosting between
+// the two passes, the previous depth is bound on tex4 by Pass_ReSTIR_Denoising
 bool is_history_valid(float2 current_uv, float2 prev_uv, float3 current_position, float3 current_normal, float current_depth, float2 history_resolution, out float confidence)
 {
-    confidence = 0.0f;
-
-    if (!is_valid_uv(prev_uv))
-        return false;
-
-    float4 prev_clip        = mul(float4(current_position, 1.0f), get_view_projection_previous());
-    float3 prev_ndc         = prev_clip.xyz / max(prev_clip.w, FLT_MIN);
-    float2 expected_prev_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
-    float2 reproj_diff      = abs(prev_uv - expected_prev_uv) * history_resolution;
-    float reproj_dist       = length(reproj_diff);
-
-    float2 motion        = (current_uv - prev_uv) * history_resolution;
-    float motion_length  = length(motion);
-    float motion_factor  = saturate(motion_length / 24.0f);
-    float reproj_limit   = lerp(1.75f, 0.75f, motion_factor);
-    if (reproj_dist > reproj_limit)
-        return false;
-
-    float3 prev_normal      = get_normal(prev_uv);
-    float normal_similarity = dot(current_normal, prev_normal);
-    float normal_limit      = lerp(0.88f, 0.96f, motion_factor);
-    if (normal_similarity < normal_limit)
-        return false;
-
-    float prev_depth_raw = tex_depth.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
-    if (prev_depth_raw <= 0.0f)
-        return false;
-
-    float prev_depth        = linearize_depth(prev_depth_raw);
-    float relative_depth_delta = abs(prev_depth - current_depth) / max(current_depth, 1e-3f);
-    float depth_limit          = lerp(0.12f, 0.04f, motion_factor);
-    if (relative_depth_delta > depth_limit)
-        return false;
-
-    float reproj_confidence = saturate(1.0f - reproj_dist / reproj_limit);
-    float normal_confidence = saturate((normal_similarity - normal_limit) / (1.0f - normal_limit));
-    float depth_confidence  = saturate(1.0f - relative_depth_delta / depth_limit);
-    float motion_confidence = saturate(1.0f - motion_length / 24.0f);
-    confidence = reproj_confidence * normal_confidence * depth_confidence * motion_confidence;
-
-    return confidence > 0.012f;
+    bool ok = evaluate_disocclusion(
+        tex4,
+        current_uv,
+        prev_uv,
+        current_position,
+        current_normal,
+        history_resolution,
+        1.75f, 0.75f, // reproj tol min/max in pixels
+        0.88f, 0.96f, // normal threshold min/max
+        0.12f, 0.04f, // relative depth delta min/max
+        24.0f,        // motion length reference in pixels
+        confidence
+    );
+    return ok && confidence > 0.012f;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

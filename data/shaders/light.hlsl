@@ -320,11 +320,11 @@ void evaluate_light(
     Light light;
     light.Build(light_index, surface);
 
-    // when restir pt is enabled, only directional and area lights are owned by the restir nee
-    // pool, point and spot lights are dirac/near-dirac and not part of the nee mixture so they
-    // must keep evaluating analytically here, otherwise their direct contribution at the primary
-    // disappears entirely in restir mode
-    bool restir_owns_light     = is_restir_pt_enabled() && (light.is_directional() || light.is_area());
+    // when restir pt is enabled the initial ris pool now samples every light type
+    // (directional, point, spot, area) so all direct lighting at the primary is owned by
+    // restir, skip the analytical surface eval entirely to avoid double counting, volumetric
+    // contributions still flow through the analytical path because restir does not own fog
+    bool restir_owns_light     = is_restir_pt_enabled();
     bool skip_surface_lighting = restir_owns_light;
 
     float  L_shadow        = 1.0f;
@@ -472,9 +472,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // clustered point, spot and area lights, only iterated for non sky pixels where surface shading runs
-    // when restir is on the cluster loop still runs so point and spot lights can evaluate
-    // analytically here, evaluate_light internally skips area lights to avoid double counting
-    // the restir nee pool, area lights without restir keep their full analytical path
+    // when restir is on the cluster loop still runs so volumetric contributions are
+    // accumulated, evaluate_light internally short-circuits the surface lighting path so the
+    // direct lighting at the primary remains owned by the restir nee pool
     if (!surface.is_sky() && total_lights > 1u)
     {
         // the cluster grid lives in the left eye (or mono camera) view-projection space, both vr eyes share it

@@ -34,9 +34,9 @@ float2 reproject_to_previous_frame(float2 current_uv)
 }
 
 // validates temporal reprojection via surface similarity + reprojection distance + depth gate
-// the depth gate compares the reprojected surface's depth at prev_uv against the expected depth
-// obtained by transforming current_pos through the previous view-projection, catching disocclusions
-// that screen-space normal / motion checks miss
+// delegated to the shared evaluate_disocclusion helper in restir_reservoir.hlsl so the
+// reservoir temporal pass and the denoiser temporal accumulator apply identical semantics,
+// previous depth is bound on tex slot by Pass_ReSTIR_Temporal
 bool is_temporal_sample_valid(
     float2 current_uv,
     float2 prev_uv,
@@ -45,56 +45,20 @@ bool is_temporal_sample_valid(
     float2 screen_resolution,
     out float confidence)
 {
-    confidence = 0.0f;
-
-    if (!is_valid_uv(prev_uv))
-        return false;
-
-    // reproject the current surface through the previous frame's transform and compare
-    float4 prev_clip        = mul(float4(current_pos, 1.0f), get_view_projection_previous());
-    float3 prev_ndc         = prev_clip.xyz / max(prev_clip.w, FLT_MIN);
-    float2 expected_prev_uv = prev_ndc.xy * float2(0.5f, -0.5f) + 0.5f;
-    float2 reproj_diff      = abs(prev_uv - expected_prev_uv) * screen_resolution;
-    float  reproj_dist      = length(reproj_diff);
-
-    float2 motion       = (current_uv - prev_uv) * screen_resolution;
-    float  motion_len   = length(motion);
-    float  motion_factor = saturate(motion_len / 32.0f);
-
-    float reproj_tol = lerp(1.5f, 0.75f, motion_factor);
-    if (reproj_dist > reproj_tol)
-        return false;
-
-    float normal_threshold   = lerp(0.9f, 0.97f, motion_factor);
-    float3 prev_normal       = get_normal(prev_uv);
-    float  normal_similarity = dot(current_normal, prev_normal);
-    if (normal_similarity < normal_threshold)
-        return false;
-
-    // disocclusion gate, samples the actual previous frame depth at prev_uv (bound on tex slot
-    // as gbuffer_depth_previous), reproject current_pos through the previous view-projection to
-    // get the expected prior-frame depth and compare, this correctly distinguishes a moving
-    // dynamic surface (matching prior depth at prev_uv) from a true disocclusion (background
-    // depth behind the previous occluder), eliminating the motion ghosting that came from the
-    // current-frame-against-current-frame approximation
-    float prev_depth_raw = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
-    if (prev_depth_raw <= 0.0f)
-        return false;
-
-    float expected_prev_depth = linearize_depth(prev_ndc.z);
-    float prev_depth_linear   = linearize_depth(prev_depth_raw);
-    float depth_delta         = abs(prev_depth_linear - expected_prev_depth) / max(expected_prev_depth, 1e-3f);
-    float depth_limit         = lerp(0.12f, 0.04f, motion_factor);
-    if (depth_delta > depth_limit)
-        return false;
-
-    float reproj_confidence = saturate(1.0f - reproj_dist / reproj_tol);
-    float normal_confidence = saturate((normal_similarity - normal_threshold) / max(1.0f - normal_threshold, 1e-4f));
-    float motion_confidence = saturate(1.0f - motion_len / 32.0f);
-    float depth_confidence  = saturate(1.0f - depth_delta / depth_limit);
-    confidence = reproj_confidence * normal_confidence * motion_confidence * depth_confidence;
-
-    return confidence >= TEMPORAL_MIN_CONFIDENCE;
+    bool ok = evaluate_disocclusion(
+        tex,
+        current_uv,
+        prev_uv,
+        current_pos,
+        current_normal,
+        screen_resolution,
+        1.5f, 0.75f,  // reproj tol min/max in pixels
+        0.9f, 0.97f,  // normal threshold min/max
+        0.12f, 0.04f, // relative depth delta min/max
+        32.0f,        // motion length reference in pixels
+        confidence
+    );
+    return ok && confidence >= TEMPORAL_MIN_CONFIDENCE;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -208,7 +172,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                     bool visible = trace_shift_visibility(temporal.sample, pos_ws, normal_ws);
                     if (visible)
                     {
-                        target_temp   = max(dot(shift_t_to_c.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f);
+                        target_temp   = target_scalar(shift_t_to_c.f_dst);
                         jacobian_temp = shift_t_to_c.jacobian;
 
                         // backward shift (canonical sample evaluated at temporal pixel) for
@@ -231,7 +195,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                             src_metallic
                         );
                         target_cur_at_temp = shift_c_to_t.ok
-                            ? max(dot(shift_c_to_t.f_dst, float3(0.299f, 0.587f, 0.114f)), 0.0f)
+                            ? target_scalar(shift_c_to_t.f_dst)
                             : 0.0f;
 
                         have_temporal = (target_temp > 0.0f);

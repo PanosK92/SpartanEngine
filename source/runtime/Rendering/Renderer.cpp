@@ -813,6 +813,7 @@ namespace spartan
         m_cb_frame_cpu.frame                 = static_cast<uint32_t>(m_frame_num);
         m_cb_frame_cpu.resolution_scale      = GetResolutionScale();
         m_cb_frame_cpu.restir_pt_scale              = cvar_restir_pt_scale.GetValue();
+        m_cb_frame_cpu.restir_pt_w_clamp            = std::max(cvar_restir_pt_w_clamp.GetValue(), 100.0f);
         m_cb_frame_cpu.hdr_enabled                  = cvar_hdr.GetValueAs<bool>() ? 1.0f : 0.0f;
         m_cb_frame_cpu.hdr_max_nits                 = Display::GetLuminanceMax();
         m_cb_frame_cpu.gamma                        = cvar_gamma.GetValue();
