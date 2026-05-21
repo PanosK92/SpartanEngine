@@ -381,12 +381,6 @@ void RenderOptions::OnTickVisible()
 
                 option_value("Fog density", "r.fog", "Controls atmospheric fog strength", 0.1f);
 
-                if (option_header("Volumetric Clouds"))
-                {
-                    option_value("Coverage", "r.cloud_coverage", "Sky coverage (0=clear, 1=overcast)", 0.05f, 0.0f, 1.0f, "%.2f");
-                    option_value("Shadow Intensity", "r.cloud_shadows", "Cloud shadow intensity on ground", 0.1f, 0.0f, 2.0f, "%.2f");
-                }
-
                 if (option_header("Wind"))
                 {
                     Vector3 wind = World::GetWind();
@@ -404,8 +398,8 @@ void RenderOptions::OnTickVisible()
                         wind.z = cosf(radians) * strength;
                         World::SetWind(wind);
                     }
-                    
-                    ImGuiSp::tooltip("Wind affects clouds, vegetation, and cloth simulation");
+
+                    ImGuiSp::tooltip("Wind affects vegetation and cloth simulation");
                 }
 
                 ImGui::EndTable();

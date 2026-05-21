@@ -90,8 +90,6 @@ namespace spartan
     extern TConsoleVar<float> cvar_cluster_visualize;
     extern TConsoleVar<float> cvar_cluster_visualize_cap;
     extern TConsoleVar<float> cvar_auto_exposure_adaptation_speed;
-    extern TConsoleVar<float> cvar_cloud_coverage;
-    extern TConsoleVar<float> cvar_cloud_shadows;
 
     struct ShadowSlice
     {
@@ -223,7 +221,7 @@ namespace spartan
         // passes - core
         static void ProduceFrame(RHI_CommandList* cmd_list_graphics_present, RHI_CommandList* cmd_list_compute);
         static bool UpdateSkysphereConvergenceState();
-        static void Pass_ComputeBatchA(RHI_CommandList* cmd_list, bool update_skysphere, bool clouds_visible, Light* directional_light);
+        static void Pass_ComputeBatchA(RHI_CommandList* cmd_list, bool update_skysphere, Light* directional_light);
         static void Pass_GraphicsPhase1_Geometry(RHI_CommandList* cmd_list);
         static void Pass_ComputeBatchB(RHI_CommandList* cmd_list);
         static void Pass_GraphicsPhase2_ShadowsAndRT(RHI_CommandList* cmd_list);
@@ -259,11 +257,9 @@ namespace spartan
         static void Pass_Light_Ibl(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_Lut_BrdfSpecular(RHI_CommandList* cmd_list);
         static void Pass_Lut_AtmosphericScattering(RHI_CommandList* cmd_list);
+        static void Pass_CloudNoise(RHI_CommandList* cmd_list);
         // passes - particles
         static void Pass_Particles(RHI_CommandList* cmd_list);
-        // passes - volumetric clouds
-        static void Pass_CloudNoise(RHI_CommandList* cmd_list);
-        static void Pass_CloudShadow(RHI_CommandList* cmd_list);
         // passes - wind field
         static void Pass_WindField(RHI_CommandList* cmd_list);
         // passes - debug/editor
@@ -388,7 +384,6 @@ namespace spartan
             // skysphere convergence tracking
             bool     sky_first_frame           = true;
             bool     sky_had_directional_light = false;
-            float    sky_last_coverage         = -1.0f;
             uint32_t sky_frames_remaining      = 0;
 
             // vrs
@@ -425,7 +420,7 @@ namespace spartan
             RHI_SyncPrimitive* pending_compute_timeline       = nullptr;
             uint64_t           pending_compute_timeline_value = 0;
             // compute batch a waits on the previous frame's last graphics submit so it does not
-            // overwrite resources still in flight (e.g. cloud_shadow, tlas, skysphere)
+            // overwrite resources still in flight (e.g. tlas, skysphere)
             RHI_SyncPrimitive* previous_present_timeline       = nullptr;
             uint64_t           previous_present_timeline_value = 0;
         };

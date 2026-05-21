@@ -643,9 +643,9 @@ namespace spartan
                 }
             }
 
-            // the layout reset above invalidates one-shot render targets (luts, cloud noise,
-            // skysphere) because the Undefined transition discards their contents
-            m_pass_state.brdf_lut_produced      = false;
+            // the layout reset above invalidates one-shot render targets (luts, skysphere)
+            // because the Undefined transition discards their contents
+            m_pass_state.brdf_lut_produced       = false;
             m_pass_state.atmosphere_lut_produced = false;
             m_pass_state.cloud_noise_produced    = false;
             m_pass_state.sky_first_frame         = true;
@@ -818,8 +818,6 @@ namespace spartan
         m_cb_frame_cpu.hdr_max_nits                 = Display::GetLuminanceMax();
         m_cb_frame_cpu.gamma                        = cvar_gamma.GetValue();
         m_cb_frame_cpu.camera_exposure              = World::GetCamera() ? World::GetCamera()->GetExposure() : 1.0f;
-        m_cb_frame_cpu.cloud_coverage               = cvar_cloud_coverage.GetValue();
-        m_cb_frame_cpu.cloud_shadows                = cvar_cloud_shadows.GetValue();
         m_cb_frame_cpu.restir_pt_light_count        = static_cast<float>(m_count_active_lights);
         m_cb_frame_cpu.wind                         = World::GetWind();
     }
@@ -2243,18 +2241,16 @@ namespace spartan
 
     bool Renderer::UpdateSkysphereConvergenceState()
     {
-        // re-arm temporal convergence whenever the directional light or cloud coverage changes
+        // re-arm temporal convergence whenever the directional light changes
         const uint32_t temporal_convergence_frames = 8;
 
         Light* directional_light         = World::GetDirectionalLight();
         const bool has_directional_light = directional_light != nullptr;
-        const float current_coverage     = cvar_cloud_coverage.GetValue();
 
-        const bool light_changed        = (has_directional_light && directional_light->NeedsSkysphereUpdate()) ||
-                                          (has_directional_light != m_pass_state.sky_had_directional_light);
-        const bool cloud_params_changed = current_coverage != m_pass_state.sky_last_coverage;
+        const bool light_changed = (has_directional_light && directional_light->NeedsSkysphereUpdate()) ||
+                                   (has_directional_light != m_pass_state.sky_had_directional_light);
 
-        if (m_pass_state.sky_first_frame || light_changed || cloud_params_changed)
+        if (m_pass_state.sky_first_frame || light_changed)
         {
             m_pass_state.sky_frames_remaining = temporal_convergence_frames;
         }
@@ -2267,7 +2263,6 @@ namespace spartan
 
         m_pass_state.sky_first_frame           = false;
         m_pass_state.sky_had_directional_light = has_directional_light;
-        m_pass_state.sky_last_coverage         = current_coverage;
         return update_skysphere;
     }
 
@@ -2321,7 +2316,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_ComputeBatchA(RHI_CommandList* cmd_list, bool update_skysphere, bool clouds_visible, Light* directional_light)
+    void Renderer::Pass_ComputeBatchA(RHI_CommandList* cmd_list, bool update_skysphere, Light* directional_light)
     {
         cmd_list->BeginMarker("compute_batch_a");
 
@@ -2334,8 +2329,6 @@ namespace spartan
             m_pass_state.brdf_lut_produced = true;
         }
 
-        Pass_CloudNoise(cmd_list);
-
         if (update_skysphere)
         {
             if (!m_pass_state.atmosphere_lut_produced || (directional_light && directional_light->NeedsSkysphereUpdate()))
@@ -2343,12 +2336,12 @@ namespace spartan
                 Pass_Lut_AtmosphericScattering(cmd_list);
                 m_pass_state.atmosphere_lut_produced = true;
             }
+            if (!m_pass_state.cloud_noise_produced)
+            {
+                Pass_CloudNoise(cmd_list);
+                m_pass_state.cloud_noise_produced = true;
+            }
             Pass_Skysphere(cmd_list);
-        }
-
-        if (clouds_visible)
-        {
-            Pass_CloudShadow(cmd_list);
         }
 
         cmd_list->EndMarker();
@@ -2448,12 +2441,11 @@ namespace spartan
         }
 
         RHI_Texture* rt_output         = GetRenderTarget(Renderer_RenderTarget::frame_output);
-        const bool clouds_visible      = cvar_cloud_coverage.GetValue() > 0.0f;
         const bool update_skysphere    = UpdateSkysphereConvergenceState();
         Light* directional_light       = World::GetDirectionalLight();
 
         // compute batch a, view independent prep, runs alongside graphics phase 1
-        Pass_ComputeBatchA(cmd_list_compute, update_skysphere, clouds_visible, directional_light);
+        Pass_ComputeBatchA(cmd_list_compute, update_skysphere, directional_light);
 
         // wind field stays on graphics queue, must precede gbuffer for vertex animation sampling
         Pass_WindField(cmd_list_graphics_present);

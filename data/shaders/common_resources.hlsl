@@ -49,9 +49,6 @@ Texture3D tex3d : register(t13);
 // noise
 Texture2D tex_perlin : register(t14);
 
-// volumetric cloud 3D noise textures
-Texture3D tex3d_cloud_shape  : register(t20); // 128^3 Perlin-Worley + Worley FBM
-Texture3D tex3d_cloud_detail : register(t21); // 32^3 high-frequency detail
 // restir reservoir textures (shared across path tracing, temporal, and spatial passes)
 // kept contiguous so a single loop can bind all six slots starting from tex_reservoir_prev0
 // the 6th slot carries the source primary g-buffer for the chosen path so the temporal and

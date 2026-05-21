@@ -83,7 +83,7 @@ The renderer is built around one principle: **the GPU owns the data.** Every res
 - **Universal HLSL** compiled for both Vulkan (SPIR-V) and DirectX 12
 - **GPU-side asset processing**: mip generation (FidelityFX SPD) and texture compression (Compressonator) at load time, not baked offline
 - **Unified deferred rendering**, opaque and transparent surfaces share the same BSDF and render path
-- **Async compute** for SSAO, screen-space shadows, and cloud shadows, parallel with shadow rasterization
+- **Async compute** for SSAO and screen-space shadows, parallel with shadow rasterization
 
 ### Lighting and Global Illumination
 
@@ -91,7 +91,8 @@ The renderer is built around one principle: **the GPU owns the data.** Every res
 - **ReSTIR path tracing** with spatiotemporal reservoir resampling for real-time multi-bounce global illumination
 - **Hardware ray-traced reflections and shadows** via ray queries
 - **Atmospheric scattering** and image-based lighting with bent normals
-- **Volumetric fog and clouds** with temporal reprojection and shadow casting
+- **Volumetric clouds** (Nubis-style) baked into the sky panorama, with cumulus and cirrus layers, multi-scatter lighting and aerial perspective
+- **Volumetric fog** with temporal reprojection and shadow casting
 - **Screen-space shadows** (inspired by Days Gone) and **XeGTAO** ambient occlusion
 - **Shadow map atlas** with fast filtering and penumbra estimation
 

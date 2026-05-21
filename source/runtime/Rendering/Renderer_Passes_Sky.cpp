@@ -38,11 +38,9 @@ namespace spartan
     void Renderer::Pass_Skysphere(RHI_CommandList* cmd_list)
     {
         RHI_Texture* tex_skysphere                    = GetRenderTarget(Renderer_RenderTarget::skysphere);
-        RHI_Texture* tex_lut_atmosphere_scatter       = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_scatter);
         RHI_Texture* tex_lut_atmosphere_transmittance = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_transmittance);
         RHI_Texture* tex_lut_atmosphere_multiscatter  = GetRenderTarget(Renderer_RenderTarget::lut_atmosphere_multiscatter);
-        RHI_Texture* tex_cloud_shape                  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-        RHI_Texture* tex_cloud_detail                 = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
+        RHI_Texture* tex_cloud_noise                  = GetRenderTarget(Renderer_RenderTarget::cloud_noise);
 
         cmd_list->BeginTimeblock("skysphere");
         {
@@ -52,20 +50,13 @@ namespace spartan
                 pso.name             = "skysphere_atmospheric_scattering";
                 pso.shaders[Compute] = GetShader(Renderer_Shader::skysphere_c);
                 cmd_list->SetPipelineState(pso);
-    
+
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_skysphere);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_lut_atmosphere_transmittance);
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_lut_atmosphere_multiscatter);
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_lut_atmosphere_scatter);
-                
-                if (tex_cloud_shape)
-                {
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape, tex_cloud_shape);
-                }
-                if (tex_cloud_detail)
-                {
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_cloud_detail);
-                }
+                // cloud noise volume reuses the tex3d srv slot, the legacy lut_atmosphere_scatter
+                // 3d binding here was dead since the equirectangular kernel never sampled it
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3d, tex_cloud_noise);
 
                 // shader reads buffer_pass via get_camera_position so push constants must be set
                 cmd_list->PushConstants(m_pcb_pass_cpu);
@@ -179,54 +170,33 @@ namespace spartan
 
     void Renderer::Pass_CloudNoise(RHI_CommandList* cmd_list)
     {
-        if (m_pass_state.cloud_noise_produced)
+        // bakes the 3d noise volume sampled by the cloud raymarch inside Pass_Skysphere
+        // expensive but only runs once at startup, output stays resident in shader read layout
+        RHI_Texture* tex_cloud_noise = GetRenderTarget(Renderer_RenderTarget::cloud_noise);
+        if (!tex_cloud_noise)
         {
             return;
         }
 
-        RHI_Texture* tex_shape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-        RHI_Texture* tex_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
-
-        if (!tex_shape || !tex_detail)
-        {
-            return;
-        }
-
-        RHI_Shader* shader_shape  = GetShader(Renderer_Shader::cloud_noise_shape_c);
-        RHI_Shader* shader_detail = GetShader(Renderer_Shader::cloud_noise_detail_c);
-        if (!shader_shape || !shader_shape->IsCompiled() || !shader_detail || !shader_detail->IsCompiled())
+        RHI_Shader* shader = GetShader(Renderer_Shader::clouds_noise_c);
+        if (!shader || !shader->IsCompiled())
         {
             return;
         }
 
         cmd_list->BeginTimeblock("cloud_noise");
         {
-            {
-                RHI_PipelineState pso;
-                pso.name             = "cloud_noise_shape";
-                pso.shaders[Compute] = shader_shape;
-                cmd_list->SetPipelineState(pso);
+            RHI_PipelineState pso;
+            pso.name             = "cloud_noise";
+            pso.shaders[Compute] = shader;
+            cmd_list->SetPipelineState(pso);
 
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_shape);
-                cmd_list->Dispatch(tex_shape);
-            }
+            cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_cloud_noise);
+            cmd_list->Dispatch(tex_cloud_noise);
 
-            {
-                RHI_PipelineState pso;
-                pso.name             = "cloud_noise_detail";
-                pso.shaders[Compute] = shader_detail;
-                cmd_list->SetPipelineState(pso);
-
-                cmd_list->SetTexture(Renderer_BindingsUav::tex3d, tex_detail);
-                cmd_list->Dispatch(tex_detail);
-            }
-
-            tex_shape->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-            tex_detail->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+            tex_cloud_noise->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
-
-        m_pass_state.cloud_noise_produced = true;
     }
 
     void Renderer::Pass_WindField(RHI_CommandList* cmd_list)
@@ -258,49 +228,6 @@ namespace spartan
             cmd_list->Dispatch(tex_wind);
 
             tex_wind->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
-        }
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_CloudShadow(RHI_CommandList* cmd_list)
-    {
-        if (cvar_cloud_coverage.GetValue() <= 0.0f || cvar_cloud_shadows.GetValue() <= 0.0f)
-        {
-            return;
-        }
-
-        if (!World::GetDirectionalLight())
-        {
-            return;
-        }
-
-        RHI_Shader* shader = GetShader(Renderer_Shader::cloud_shadow_c);
-        if (!shader || !shader->IsCompiled())
-        {
-            return;
-        }
-
-        RHI_Texture* tex_shadow = GetRenderTarget(Renderer_RenderTarget::cloud_shadow);
-        RHI_Texture* tex_shape  = GetRenderTarget(Renderer_RenderTarget::cloud_noise_shape);
-        RHI_Texture* tex_detail = GetRenderTarget(Renderer_RenderTarget::cloud_noise_detail);
-
-        if (!tex_shadow || !tex_shape || !tex_detail)
-        {
-            return;
-        }
-
-        cmd_list->BeginTimeblock("cloud_shadow");
-        {
-            RHI_PipelineState pso;
-            pso.name             = "cloud_shadow";
-            pso.shaders[Compute] = shader;
-            cmd_list->SetPipelineState(pso);
-
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_shape,  tex_shape);
-            cmd_list->SetTexture(Renderer_BindingsSrv::tex3d_cloud_detail, tex_detail);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_shadow);
-
-            cmd_list->Dispatch(tex_shadow);
         }
         cmd_list->EndTimeblock();
     }

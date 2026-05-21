@@ -100,15 +100,14 @@ struct FrameBufferData
     SHARED_FLOAT3 camera_right;
     SHARED_FLOAT  camera_exposure;
 
-    // clouds
-    SHARED_FLOAT cloud_coverage;
-    SHARED_FLOAT cloud_shadows;
     SHARED_FLOAT restir_pt_light_count;
     // emissive triangle nee pool count, set by Renderer::UpdateAccelerationStructures, when
     // zero the restir initial ris pass falls back to the brdf + analytical light strategies
     // only, when non zero a third strategy area samples a random emissive triangle and the
     // balance heuristic mis denominator includes its solid angle pdf, see restir_pt.hlsl
     SHARED_FLOAT restir_pt_emissive_tri_count;
+    SHARED_FLOAT padding_a;
+    SHARED_FLOAT padding_b;
 
     // vr stereo - right eye matrices (left eye uses the primary matrices above)
     SHARED_MATRIX view_right;

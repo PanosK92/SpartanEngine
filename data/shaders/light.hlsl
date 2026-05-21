@@ -27,38 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "light_cluster.hlsl"
 //============================
 
-// Cloud shadow map sampling
-// tex3 is bound as the cloud shadow map in Pass_Light
-float sample_cloud_shadow(float3 world_pos)
-{
-    // skip if cloud shadows are disabled
-    if (buffer_frame.cloud_shadows <= 0.0 || buffer_frame.cloud_coverage <= 0.0)
-        return 1.0;
-    
-    // cloud shadow map covers 10km x 10km area
-    float shadow_map_size = 10000.0;
-    
-    // get shadow map dimensions for texel size calculation
-    float2 shadow_dims;
-    tex3.GetDimensions(shadow_dims.x, shadow_dims.y);
-    float texel_size = shadow_map_size / shadow_dims.x;
-    
-    // snap center to texel grid (must match cloud_shadow.hlsl)
-    float2 snapped_center = floor(buffer_frame.camera_position.xz / texel_size) * texel_size;
-    
-    float2 relative_pos = world_pos.xz - snapped_center;
-    float2 uv = relative_pos / shadow_map_size + 0.5;
-    
-    // out of bounds check
-    if (any(uv < 0.0) || any(uv > 1.0))
-        return 1.0;
-    
-    // sample cloud shadow (tex3 is the cloud shadow map)
-    float shadow = tex3.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
-    
-    return shadow;
-}
-
 // ray traced shadow sampling
 // tex4 is bound as the ray traced shadow texture in Pass_Light
 float sample_ray_traced_shadow(float2 uv)
@@ -365,14 +333,6 @@ void evaluate_light(
             }
 
             light.radiance *= L_shadow;
-        }
-
-        // cloud shadows apply to directional lights regardless of shadow method
-        if (light.is_directional())
-        {
-            float cloud_shadow = sample_cloud_shadow(surface.position);
-            L_shadow           = min(L_shadow, cloud_shadow);
-            light.radiance    *= cloud_shadow;
         }
 
         AngularInfo angular_info;

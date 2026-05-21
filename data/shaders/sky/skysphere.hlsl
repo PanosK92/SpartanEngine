@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= includes =========
 #include "../common.hlsl"
+#include "clouds.hlsl"
 //====================
 
 // constants - atmosphere
@@ -540,7 +541,7 @@ float3 night_compute_milky_way(float3 view_dir)
     return col * intensity * band * 0.030;
 }
 
-// moon split into disc and halo so they can be composited differently against clouds
+// moon split into disc and halo so they can be composited differently
 struct moon_result
 {
     float3 disc;
@@ -670,445 +671,6 @@ float3 night_compute_atmosphere(float3 view_dir, float3 sun_dir, float3 cam_pos,
     return base + airglow + moon_scatter;
 }
 
-// =====================================================================
-// volumetric clouds, planet curvature shell, nubis style
-// only built for the main sky pass
-// =====================================================================
-
-#if !defined(LUT) && !defined(TRANSMITTANCE_LUT) && !defined(MULTISCATTER_LUT)
-
-// shell geometry, narrow band for cumulus humilis style flat bottomed puffs
-static const float cloud_inner_radius = earth_radius + 1500.0;
-static const float cloud_outer_radius = earth_radius + 3500.0;
-static const float cloud_layer_height = cloud_outer_radius - cloud_inner_radius;
-static const float cloud_mid_alt      = (cloud_inner_radius + cloud_outer_radius) * 0.5 - earth_radius;
-
-// noise frequencies in inverse meters, vertical multipliers give puffy clouds in a thin shell
-static const float cloud_shape_scale     = 1.0 / 11000.0;
-static const float cloud_shape_y_mult    = 2.5;
-static const float cloud_detail_scale    = 1.0 / 2200.0;
-static const float cloud_detail_y_mult   = 2.0;
-static const float cloud_weather_scale   = 1.0 / 9000.0;
-
-// physical and tuning constants
-static const float cloud_extinction      = 0.10;
-static const float cloud_wind_speed      = 1.5;
-static const float cloud_detail_strength = 0.30;
-static const float cloud_density_sharp   = 1.6;
-static const float cloud_max_dist_low    = 22000.0;
-static const float cloud_max_dist_high   = 65000.0;
-// camera relative density fade so horizon rays do not stack many puff silhouettes into a veil
-// fade is independent of the per ray march cap, kicks in based on absolute camera distance
-// start late enough to leave the mid range cloud field untouched, end well past the march cap
-static const float cloud_cam_fade_start  = 8000.0;
-static const float cloud_cam_fade_end    = 22000.0;
-
-// sampling budgets
-static const int cloud_steps_max   = 128;
-static const int cloud_steps_min   = 64;
-static const int cloud_light_steps = 6;
-
-struct cloud_result { float3 color; float alpha; float3 transmittance; float3 inscatter; };
-
-float cloud_remap(float v, float a, float b, float c, float d)
-{
-    return c + saturate((v - a) / max(b - a, 1e-6)) * (d - c);
-}
-
-float cloud_hg(float cos_t, float g)
-{
-    // floor on the denominator caps the lobe at a sane peak so g near 1 cannot blow up to white
-    float g2 = g * g;
-    return (1.0 - g2) / (4.0 * PI * pow(max(1.0 + g2 - 2.0 * g * cos_t, 0.01), 1.5));
-}
-
-// dual lobe hg with a silver lining lobe near the sun
-float cloud_phase(float cos_t)
-{
-    float forward  = cloud_hg(cos_t,  0.80);
-    float backward = cloud_hg(cos_t, -0.50);
-    float silver   = cloud_hg(cos_t,  0.99);
-    float base     = lerp(forward, backward, 0.5);
-    return lerp(base, silver, saturate(cos_t) * 0.30);
-}
-
-// 0 at inner shell, 1 at outer
-float cloud_height_frac(float3 pos)
-{
-    float r = length(pos - earth_center);
-    return saturate((r - cloud_inner_radius) / cloud_layer_height);
-}
-
-// per type vertical density gradients
-float cloud_grad_stratus(float h)
-{
-    return cloud_remap(h, 0.0,  0.10, 0.0, 1.0) *
-           cloud_remap(h, 0.20, 0.35, 1.0, 0.0);
-}
-
-float cloud_grad_cumulus(float h)
-{
-    // sharp flat bottom around h 0.05, peak density 0.20 to 0.55, taper to wispy top 0.90
-    // this narrow band keeps each puff compact instead of stretching across the shell
-    float ramp_in  = cloud_remap(h, 0.05, 0.20, 0.0, 1.0);
-    float fade_out = cloud_remap(h, 0.55, 0.90, 1.0, 0.0);
-    return ramp_in * fade_out;
-}
-
-float cloud_grad_cumulonimbus(float h)
-{
-    return cloud_remap(h, 0.0,  0.10, 0.0, 1.0) *
-           cloud_remap(h, 0.85, 1.0,  1.0, 0.0);
-}
-
-float cloud_height_gradient(float h, float cloud_type)
-{
-    float a = cloud_grad_stratus(h);
-    float b = cloud_grad_cumulus(h);
-    float c = cloud_grad_cumulonimbus(h);
-
-    float t  = cloud_type * 2.0;
-    float ab = lerp(a, b, saturate(t));
-    return lerp(ab, c, saturate(t - 1.0));
-}
-
-// cheap procedural 2d weather, returns coverage and cloud type from two scales of 3d slices
-float3 cloud_weather(float2 world_xz)
-{
-    // two octaves at different scales for broad regions with internal variation
-    float3 uvw0 = float3(world_xz * cloud_weather_scale,             0.45);
-    float3 uvw1 = float3(world_xz * cloud_weather_scale * 2.7 + 7.3, 0.55);
-
-    float4 w0 = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uvw0, 0);
-    float4 w1 = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), uvw1, 0);
-
-    // smoothstep on the raw noise gives true clear vs cloudy regions instead of uniform mid grey
-    float raw        = w0.r * 0.6 + w1.r * 0.4;
-    float coverage   = smoothstep(0.30, 0.75, raw);
-    float cloud_type = saturate(w0.g * 0.6 + w1.b * 0.4);
-    return float3(coverage, cloud_type, 0.0);
-}
-
-float3 cloud_animate(float3 pos, float time)
-{
-    float3 wind = buffer_frame.wind;
-    float  wlen = length(wind);
-    float3 wdir = wlen > 1e-4 ? wind / wlen : float3(1, 0, 0);
-    return pos + wdir * (wlen * cloud_wind_speed) * time;
-}
-
-float cloud_density(float3 pos, float time, bool with_detail, float detail_fade)
-{
-    float h = cloud_height_frac(pos);
-    if (h <= 0.0 || h >= 1.0) return 0.0;
-
-    float3 weather        = cloud_weather(pos.xz);
-    // multiplicative coverage so weather low gives clear sky and weather high gives dense regions
-    // 1.6 cap gives a populated cumulus field at default coverage 0.45 while still leaving
-    // gaps for the noise threshold, distance fade in the march keeps the horizon veil under control
-    float  coverage_local = saturate(buffer_frame.cloud_coverage * 1.6 * weather.x);
-    if (coverage_local <= 0.001) return 0.0;
-
-    float3 sample_pos = cloud_animate(pos, time);
-
-    // anisotropic uvw, vertical sampling is much faster so a 4 km shell carries multiple noise features
-    float3 shape_uvw = sample_pos * cloud_shape_scale;
-    shape_uvw.y     *= cloud_shape_y_mult;
-
-    // base shape from perlin worley plus low frequency worley fbm
-    float4 shape         = tex3d_cloud_shape.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), shape_uvw, 0);
-    float  low_freq_fbm  = dot(shape.gba, float3(0.625, 0.25, 0.125));
-    float  base_shape    = cloud_remap(shape.r, low_freq_fbm - 1.0, 1.0, 0.0, 1.0);
-
-    // height gradient by cloud type
-    float gradient = cloud_height_gradient(h, weather.y);
-    base_shape *= gradient;
-
-    // coverage remap, the key nubis trick
-    float density = cloud_remap(base_shape, 1.0 - coverage_local, 1.0, 0.0, 1.0);
-    if (density <= 0.0) return 0.0;
-
-    if (with_detail && detail_fade > 0.001)
-    {
-        float3 detail_uvw  = sample_pos * cloud_detail_scale;
-        detail_uvw.y      *= cloud_detail_y_mult;
-        detail_uvw        += float3(0, time * 0.05, 0);
-        float4 detail      = tex3d_cloud_detail.SampleLevel(GET_SAMPLER(sampler_anisotropic_wrap), detail_uvw, 0);
-        float  detail_fbm  = dot(detail.rgb, float3(0.625, 0.25, 0.125));
-        // less erosion at the base for rounded bottoms, more at the top for wispy edges
-        float  erosion     = lerp(detail_fbm, 1.0 - detail_fbm, saturate(h * 5.0));
-        density = saturate(cloud_remap(density, erosion * cloud_detail_strength * detail_fade, 1.0, 0.0, 1.0));
-    }
-
-    // power curve sharpens the density falloff so cloud edges read as crisp puffs
-    // not soft fog, low values are pushed toward zero, high values stay near one
-    return pow(density, cloud_density_sharp);
-}
-
-// random unit vectors for the sun light cone march
-static const float3 cloud_cone_offsets[6] =
-{
-    float3( 0.38051305,  0.92453449, -0.02111345),
-    float3(-0.50625799, -0.03590792, -0.86163418),
-    float3(-0.32509218, -0.94557439,  0.01428793),
-    float3( 0.09026238, -0.27376545,  0.95755165),
-    float3( 0.28128598,  0.42443639, -0.86065785),
-    float3(-0.16852403,  0.14748697,  0.97460106),
-};
-
-// optical depth toward the sun via a cone jittered march plus a long jump
-float cloud_light_optical_depth(float3 pos, float3 light_dir, float time)
-{
-    float optical = 0.0;
-    float step    = 50.0;
-    float cone_r  = 50.0;
-
-    [unroll]
-    for (int i = 0; i < cloud_light_steps; i++)
-    {
-        float3 sample_pos = pos + light_dir * step + cloud_cone_offsets[i] * cone_r;
-        float  h          = cloud_height_frac(sample_pos);
-        if (h > 0.0 && h < 1.0)
-        {
-            // skip detail on far cone steps to save work
-            float detail_fade  = 1.0 - float(i) / float(cloud_light_steps);
-            optical           += cloud_density(sample_pos, time, i < 4, detail_fade) * step;
-        }
-        step   *= 1.6;
-        cone_r *= 1.6;
-    }
-
-    // long jump captures distant self shadowing cheaply
-    float3 far_pos  = pos + light_dir * 3000.0;
-    optical        += cloud_density(far_pos, time, false, 0.0) * 1500.0;
-
-    return optical;
-}
-
-// frostbite multi octave beer law with per octave dual lobe hg and silver lining
-// each iteration is more attenuated, more isotropic, contributing less, modeling deeper bounces
-float cloud_multi_scatter(float optical_depth, float cos_theta)
-{
-    float lum = 0.0;
-    float a   = 1.0;
-    float b   = 1.0;
-    float c   = 1.0;
-
-    [unroll]
-    for (int i = 0; i < 4; i++)
-    {
-        float beer  = exp(-b * optical_depth * cloud_extinction);
-        float fwd   = cloud_hg(cos_theta,  0.80 * c);
-        float bwd   = cloud_hg(cos_theta, -0.50 * c);
-        float silv  = cloud_hg(cos_theta,  0.85 * c);
-        float phase = lerp(lerp(fwd, bwd, 0.5), silv, saturate(cos_theta) * 0.15);
-        lum += a * beer * phase;
-        a *= 0.5;
-        b *= 0.5;
-        c *= 0.5;
-    }
-    return lum;
-}
-
-// ambient sky from the multiscatter lut plus a simple ground bounce, scaled by light_color
-// bottom of cloud receives less sky, more ground; top receives more sky, no ground
-float3 cloud_ambient(float3 light_dir, float3 light_color, float h_frac,
-                     Texture2D ms_lut, SamplerState samp)
-{
-    float2 ms_uv = float2(saturate(light_dir.y) * 0.5 + 0.5, 0.02);
-    float3 sky   = ms_lut.SampleLevel(samp, ms_uv, 0).rgb;
-
-    float3 ambient_sky   = sky * light_color;
-    float3 ground_bounce = light_color * ground_albedo * saturate(light_dir.y);
-
-    float top_w = saturate(h_frac);
-    return ambient_sky * lerp(0.4, 1.0, top_w) + ground_bounce * lerp(0.5, 0.05, top_w);
-}
-
-// midpoint atmosphere extinction and inscatter from camera to cloud, scaled by light_color
-void cloud_aerial(float3 cam_pos, float3 view_dir, float distance,
-                  float3 light_dir, float3 light_color,
-                  Texture2D trans_lut, SamplerState samp,
-                  out float3 inscatter, out float3 trans_atm)
-{
-    float3 mid       = cam_pos + view_dir * (distance * 0.5);
-    float  h         = max(0.0, get_height(mid));
-    float  cos_theta = dot(view_dir, light_dir);
-
-    float3 ext = get_extinction(h);
-    float  rd  = get_rayleigh_density(h);
-    float  md  = get_mie_density(h);
-
-    float3 up      = normalize(mid - earth_center);
-    float  cos_sun = dot(up, light_dir);
-    float2 sun_uv  = transmittance_lut_params_to_uv(h + earth_radius, max(cos_sun, 0.0));
-    float3 sun_t   = trans_lut.SampleLevel(samp, sun_uv, 0).rgb;
-    sun_t         *= smoothstep(-0.05, 0.05, cos_sun);
-
-    float3 scatter = (rayleigh_scatter * rd * rayleigh_phase(cos_theta) +
-                      mie_scatter      * md * cornette_shanks_phase(cos_theta, mie_g)) * sun_t;
-
-    trans_atm = exp(-ext * distance);
-    inscatter = scatter * (1.0 - trans_atm) / max(ext, 1e-6) * light_color;
-}
-
-// horizontal march cap, smaller for grazing rays
-float cloud_march_cap(float3 view_dir)
-{
-    float t = saturate(view_dir.y * 4.0 + 0.05);
-    return lerp(cloud_max_dist_low, cloud_max_dist_high, t);
-}
-
-cloud_result cloud_compute(
-    float3 cam_pos, float3 view_dir,
-    float3 light_dir, float3 light_color,
-    float time, float2 uv,
-    Texture2D trans_lut, Texture2D ms_lut, SamplerState samp)
-{
-    cloud_result r;
-    r.color         = float3(0, 0, 0);
-    r.alpha         = 0.0;
-    r.transmittance = float3(1, 1, 1);
-    r.inscatter     = float3(0, 0, 0);
-
-    if (buffer_frame.cloud_coverage <= 0.0) return r;
-
-    // ray entry and exit through the spherical shell
-    float2 inner_hit = ray_sphere_intersect(cam_pos, view_dir, earth_center, cloud_inner_radius);
-    float2 outer_hit = ray_sphere_intersect(cam_pos, view_dir, earth_center, cloud_outer_radius);
-    if (outer_hit.y < 0.0) return r;
-
-    float cam_alt = get_height(cam_pos);
-    float t_enter, t_exit;
-
-    if (cam_alt < cloud_inner_radius - earth_radius)
-    {
-        // camera below the layer, march from inner shell to outer shell
-        if (inner_hit.y < 0.0) return r;
-        t_enter = inner_hit.y;
-        t_exit  = outer_hit.y;
-    }
-    else if (cam_alt > cloud_outer_radius - earth_radius)
-    {
-        // camera above the layer, march from outer entry to inner entry or outer exit
-        if (outer_hit.x < 0.0) return r;
-        t_enter = outer_hit.x;
-        t_exit  = inner_hit.x > 0.0 ? inner_hit.x : outer_hit.y;
-    }
-    else
-    {
-        // camera inside the layer
-        t_enter = 0.0;
-        t_exit  = inner_hit.x > 0.0 ? inner_hit.x : outer_hit.y;
-    }
-
-    // ground cull and march cap
-    float2 ground_hit = ray_sphere_intersect(cam_pos, view_dir, earth_center, earth_radius);
-    if (ground_hit.x > 0.0) t_exit = min(t_exit, ground_hit.x);
-
-    float march_cap = cloud_march_cap(view_dir);
-    t_exit = min(t_exit, t_enter + march_cap);
-
-    if (t_exit <= t_enter) return r;
-
-    float ray_len   = t_exit - t_enter;
-    int   num_steps = clamp(int(ray_len / 60.0), cloud_steps_min, cloud_steps_max);
-    float step_base = ray_len / float(num_steps);
-
-    // jitter dominated by frame, small spatial component breaks step banding within a frame
-    // temporal blend between frames covers the discrete step pattern over time
-    float t_jitter   = frac(float(buffer_frame.frame) * 0.618033988749);
-    float sp_jitter  = noise_interleaved_gradient(uv * buffer_frame.resolution_render, true);
-    float jitter     = frac(t_jitter + sp_jitter * 0.2);
-
-    float  t        = t_enter + step_base * jitter;
-    float  trans    = 1.0;
-    float3 lum      = float3(0, 0, 0);
-    float  first_t  = 0.0;
-    float  last_t   = 0.0;
-    bool   any_hit  = false;
-
-    float cos_theta = dot(view_dir, light_dir);
-    float backlit   = saturate(-cos_theta * 0.5 + 0.5);
-
-    int empty_streak = 0;
-
-    [loop] for (int i = 0; i < cloud_steps_max; i++)
-    {
-        if (i >= num_steps) break;
-        if (t >= t_exit)    break;
-        if (trans < 0.005)  break;
-
-        // camera relative density fade, overhead clouds at 1.5 to 3.5 km untouched,
-        // horizon rays beyond the fade end contribute zero density so no veil stacks up
-        float dist_fade = saturate(1.0 - (t - cloud_cam_fade_start) /
-                                         (cloud_cam_fade_end - cloud_cam_fade_start));
-
-        float3 pos = cam_pos + view_dir * t;
-
-        // cheap density first for empty space skipping
-        float density_cheap = cloud_density(pos, time, false, 0.0) * dist_fade;
-
-        if (density_cheap <= 0.0)
-        {
-            empty_streak  = min(empty_streak + 1, 3);
-            t            += step_base * (1.0 + float(empty_streak));
-            continue;
-        }
-
-        empty_streak = 0;
-
-        // distance based detail fade to suppress shimmer
-        float detail_fade = saturate(1.0 - t / 50000.0);
-        float density     = cloud_density(pos, time, true, detail_fade) * dist_fade;
-
-        if (density > 0.0)
-        {
-            if (!any_hit) { first_t = t; any_hit = true; }
-            last_t = t;
-
-            float optical = cloud_light_optical_depth(pos, light_dir, time);
-            // ms already bakes the dual lobe hg phase per octave, do not multiply by phase again
-            float ms      = cloud_multi_scatter(optical, cos_theta);
-
-            // powder dark edge term, only on the back side
-            float  powder   = (1.0 - exp(-density * 6.0)) * backlit;
-            float3 sun_lobe = (ms + powder * 0.20) * light_color;
-
-            float  h_frac   = cloud_height_frac(pos);
-            float3 ambient  = cloud_ambient(light_dir, light_color, h_frac, ms_lut, samp);
-
-            // energy conserving step, radiance is in scattered radiance not the source term
-            // so the integral collapses to radiance times the absorbed fraction of this step
-            float3 radiance   = sun_lobe + ambient;
-            float  sigma      = density * cloud_extinction;
-            float  trans_step = exp(-sigma * step_base);
-            float3 step_lum   = radiance * (1.0 - trans_step);
-
-            lum   += trans * step_lum;
-            trans *= trans_step;
-        }
-
-        t += step_base;
-    }
-
-    r.color = lum;
-    r.alpha = saturate(1.0 - trans);
-
-    if (any_hit)
-    {
-        // representative cloud distance is the geometric center of the hit span
-        // not the first hit, so grazing rays do not under estimate atmospheric attenuation
-        float mid_t = (first_t + last_t) * 0.5;
-        cloud_aerial(cam_pos, view_dir, mid_t, light_dir, light_color, trans_lut, samp,
-                     r.inscatter, r.transmittance);
-    }
-
-    return r;
-}
-
-#endif
-
 // compute shaders
 
 #if defined(TRANSMITTANCE_LUT)
@@ -1205,6 +767,23 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 luminance = compute_sky_luminance(cam_pos, view_dir, sun_dir, tex, tex2,
                                               GET_SAMPLER(sampler_bilinear_clamp), 0.5);
     
+    // volumetric clouds, only marched above the actual horizon so the bottom hemisphere mirror
+    // for ibl stays clean. uses orig_view because view_dir was already flipped for the mirror.
+    // cloud_in_scatter is kept out of luminance so it can survive the day_factor scaling
+    // applied below, otherwise the moon/airglow contribution baked into the cloud march would
+    // also be multiplied by ~0 at night and the clouds would still go pitch black
+    float3 cloud_in_scatter = float3(0.0, 0.0, 0.0);
+    float  cloud_trans      = 1.0;
+    if (!below_horizon)
+    {
+        float cloud_jitter = noise_interleaved_gradient(float2(tid.xy));
+        clouds_evaluate(cam_pos, orig_view, sun_dir,
+            tex3d, tex,
+            GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp),
+            cloud_jitter, cloud_in_scatter, cloud_trans);
+        luminance = luminance * cloud_trans;
+    }
+    
     // sun disc only, all night celestials are gathered below
     float3 sun_col = float3(0, 0, 0);
     
@@ -1233,167 +812,50 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float intensity = lerp(0.5, 1.5, saturate(light.intensity / 100000.0));
     luminance *= day_factor;
     
-    // night sky, atmosphere is sky-dome and goes through clouds, celestials are occluded by clouds
-    float night_factor    = 1.0 - day_factor;
+    // night sky, atmosphere is sky-dome, celestials ride behind the atmosphere
+    float night_factor      = 1.0 - day_factor;
     float3 night_ambient    = float3(0, 0, 0);
     float3 night_celestials = float3(0, 0, 0);
     if (night_factor > 0.001)
     {
         float time_val = (float)buffer_frame.time * 0.001f;
-        
+
         night_ambient = night_compute_atmosphere(view_dir, sun_dir, cam_pos,
             tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
-        
+
         if (!below_horizon)
         {
-            // stars and milky way ride behind the atmosphere and dim toward the horizon
             float3 ext = night_atmospheric_extinction(orig_view);
             night_celestials += night_compute_milky_way(orig_view) * ext;
             night_celestials += night_compute_stars(orig_view, time_val) * ext;
-            
-            // moon disc reads as a celestial, halo bleeds into the atmosphere lobe
-            moon_result mr     = night_compute_moon(orig_view, sun_dir);
-            night_ambient     += mr.halo;
-            night_celestials  += mr.disc;
+
+            moon_result mr    = night_compute_moon(orig_view, sun_dir);
+            night_ambient    += mr.halo;
+            night_celestials += mr.disc;
         }
         else
         {
-            // mirrored direction would pillar the moon halo straight down, fade it out
             night_ambient *= ground_fade;
         }
-        
+
         night_ambient    *= night_factor;
         night_celestials *= night_factor;
     }
-    
-    // clouds with checkerboard temporal distribution
-    // only compute clouds for half the pixels per frame, interpolate the rest
-    cloud_result clouds_sun = (cloud_result)0;
-    clouds_sun.transmittance = float3(1, 1, 1);
-    cloud_result clouds_moon = (cloud_result)0;
-    clouds_moon.transmittance = float3(1, 1, 1);
-    
-    // checkerboard pattern: compute clouds on alternating pixels each frame
-    uint2 pixel = tid.xy;
-    uint frame_parity = buffer_frame.frame & 1;
-    bool compute_clouds = ((pixel.x + pixel.y + frame_parity) & 1) == 0;
-    
-    if (!below_horizon && buffer_frame.cloud_coverage > 0.0 && compute_clouds)
+
+    // clouds occlude the sun disc, night ambient atmosphere, stars, moon and milky way
+    // luminance carries the day sky already attenuated by cloud_trans and scaled by day_factor
+    // cloud_in_scatter is added separately so its night component (moon + airglow) survives
+    // the day_factor multiplication and clouds stay faintly visible after sunset
+    float3 final_color = (luminance + cloud_in_scatter + (night_ambient + sun_col + night_celestials) * cloud_trans) * intensity;
+    final_color        = min(final_color, 100.0);
+
+    // temporal accumulation, smooths step banding from low sample counts
+    float4 prev = tex_uav[tid.xy];
+    if (prev.a > 0.5)
     {
-        float3 moon_dir = -sun_dir;
-        float moon_elev = dot(moon_dir, up_direction);
-        float time_val = (float)buffer_frame.time * 0.001f;
-        
-        if (sun_elev > -0.10)
-        {
-            // sharper twilight cutoff so clouds go dark quickly once the sun dips below horizon
-            float  day_fade = smoothstep(-0.06, 0.05, sun_elev);
-            float2 sun_uv   = transmittance_lut_params_to_uv(earth_radius + cloud_mid_alt, max(sun_dir.y, 0.0));
-            float3 sun_t    = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), sun_uv, 0).rgb;
-            float3 sun_col  = sun_illuminance * sun_t * day_fade;
-
-            clouds_sun = cloud_compute(cam_pos, orig_view, sun_dir, sun_col, time_val, uv,
-                                       tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
-
-            // alpha and inscatter follow the sun fade so cloud silhouettes vanish at night
-            clouds_sun.alpha     *= day_fade;
-            clouds_sun.inscatter *= day_fade;
-        }
-
-        if (moon_elev > 0.0 && sun_elev < 0.1)
-        {
-            // moonlight at the cloud mid altitude, cool tinted and ~0.5% of sun irradiance
-            // real moon is ~1e-6 of sun, this is artistic so clouds remain just barely visible
-            float  fade      = saturate((0.1 - sun_elev) * 5.0) * saturate(moon_elev * 3.0);
-            float2 moon_uv   = transmittance_lut_params_to_uv(earth_radius + cloud_mid_alt, max(moon_dir.y, 0.0));
-            float3 moon_t    = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), moon_uv, 0).rgb;
-            float3 moon_tint = float3(0.55, 0.7, 1.0);
-            float3 moon_col  = sun_illuminance * 0.005 * moon_tint * moon_t * fade;
-
-            clouds_moon = cloud_compute(cam_pos, orig_view, moon_dir, moon_col, time_val, uv,
-                                        tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
-
-            clouds_moon.alpha     *= fade;
-            clouds_moon.inscatter *= fade;
-        }
+        final_color = lerp(prev.rgb, final_color, 0.5);
     }
-    
-    // combine clouds
-    float cloud_alpha = max(clouds_sun.alpha, clouds_moon.alpha);
-    float3 cloud_color = clouds_sun.color + clouds_moon.color;
-    float3 cloud_trans = clouds_sun.transmittance * clouds_moon.transmittance;
-    float3 cloud_inscatter = clouds_sun.inscatter + clouds_moon.inscatter;
-    
-    // final composition
-    float3 final_color;
-    
-    // for checkerboard-skipped pixels: don't add sun/moon - let temporal blend handle it
-    // this prevents sun from appearing in front of clouds on skipped pixels
-    bool has_clouds_coverage = buffer_frame.cloud_coverage > 0.0 && !below_horizon;
-    bool should_add_celestials = compute_clouds || !has_clouds_coverage;
-    
-    if (cloud_alpha > 0.0)
-    {
-        // atmospheric perspective on the cloud, distant clouds blend into the sky color
-        // emission attenuated by atmospheric transmittance, alpha faded by the same so the
-        // silhouette weakens with distance instead of stamping a dense band along the horizon
-        float  trans_lum       = dot(cloud_trans, float3(0.2126, 0.7152, 0.0722));
-        float3 cloud_col_persp = cloud_color * cloud_trans + cloud_inscatter;
-        float  cloud_alpha_eff = cloud_alpha * trans_lum;
 
-        // celestials read as occluded once clouds become non trivial
-        float celestial_occ = smoothstep(0.02, 0.15, cloud_alpha_eff);
-
-        // sky dome is at infinity, no extra cloud_trans on it, otherwise the unoccluded
-        // portion of the pixel under reads the sky color
-        float3 sky_dome = (luminance + night_ambient) * intensity;
-
-        final_color = sky_dome * (1.0 - cloud_alpha_eff) + cloud_col_persp * intensity;
-
-        // celestial bodies behind clouds, strongly attenuated by cloud transmittance squared
-        float3 celestials = (sun_col + night_celestials) * cloud_trans * cloud_trans;
-        final_color += celestials * (1.0 - celestial_occ) * intensity;
-    }
-    else if (should_add_celestials)
-    {
-        // no clouds computed and either we ran clouds this frame or there is no coverage at all
-        final_color = (luminance + night_ambient + sun_col + night_celestials) * intensity;
-    }
-    else
-    {
-        // checkerboard-skipped pixel with cloud coverage - DON'T add sun, use sky only
-        // temporal blend will bring in the properly occluded result from neighboring frames
-        final_color = (luminance + night_ambient) * intensity;
-    }
-    
-    final_color = min(final_color, 100.0);
-    
-    // temporal accumulation with checkerboard reconstruction
-    float4 prev    = tex_uav[tid.xy];
-    float3 blended = final_color;
-
-    if (!compute_clouds && has_clouds_coverage && prev.a > 0.5)
-    {
-        // skipped pixel reads its own previous value, this pixel was the computed one last
-        // frame so the data is at most one frame stale, no box filter smear, no streaks
-        // the spatial reconstruction box filter was averaging neighbors with subtly different
-        // cloud edges and producing visible streaks once temporally accumulated
-        blended = prev.rgb;
-    }
-    else if (cloud_alpha > 0.0 && prev.a > 0.5)
-    {
-        // computed pixel with clouds, mostly current frame so cloud silhouettes stay crisp
-        // and do not ghost when wind moves the noise field, history smooths step banding
-        float color_diff = dot(abs(final_color - prev.rgb), float3(0.299, 0.587, 0.114));
-        float blend      = lerp(0.65, 0.9, saturate(color_diff * 3.0));
-        blended          = lerp(prev.rgb, final_color, blend);
-    }
-    else if (prev.a > 0.5)
-    {
-        // no clouds this frame but have history, blend smoothly for transitions
-        blended = lerp(prev.rgb, final_color, 0.5);
-    }
-    
-    tex_uav[tid.xy] = float4(blended, 1.0);
+    tex_uav[tid.xy] = float4(final_color, 1.0);
 }
 #endif

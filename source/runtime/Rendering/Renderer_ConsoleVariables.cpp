@@ -188,7 +188,4 @@ namespace spartan
     TConsoleVar<float> cvar_cluster_visualize              ("r.cluster_visualize",              0.0f,                                                    "clustered lighting debug heatmap written to debug_output (0 off, 1 lights per cluster, 2 cluster slice z)");
     TConsoleVar<float> cvar_cluster_visualize_cap          ("r.cluster_visualize_cap",          4.0f,                                                    "lights per cluster mapped to full red on the heatmap, lower for more contrast in lightly populated scenes");
     TConsoleVar<float> cvar_auto_exposure_adaptation_speed ("r.auto_exposure_adaptation_speed", 0.5f,                                                    "auto exposure adaptation speed, 0 or negative disables");
-    // volumetric clouds
-    TConsoleVar<float> cvar_cloud_coverage                 ("r.cloud_coverage",                 0.45f,                                                   "sky coverage (0=clear, 1=overcast)");
-    TConsoleVar<float> cvar_cloud_shadows                  ("r.cloud_shadows",                  1.0f,                                                    "cloud shadow intensity on ground");
 }

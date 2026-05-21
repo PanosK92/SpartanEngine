@@ -546,6 +546,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::lut_atmosphere_scatter)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 256, 256, 32, 1,                                                  RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "lut_atmosphere_scatter");
             at(render_targets, Renderer_RenderTarget::lut_atmosphere_transmittance) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 64,    1, 1,                                                  RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "lut_atmosphere_transmittance");
             at(render_targets, Renderer_RenderTarget::lut_atmosphere_multiscatter)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 32,  32,    1, 1,                                                  RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "lut_atmosphere_multiscatter");
+            at(render_targets, Renderer_RenderTarget::cloud_noise)                  = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 128, 128,  128, 1,                                                RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_noise");
 
             at(render_targets, Renderer_RenderTarget::blur)      = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_blur_scratch, renderer_resolution_blur_scratch, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "blur_scratch");
             const uint32_t lowest_dimension                 = 16; // lowest mip is 16x16, preserving directional detail for diffuse IBL (1x1 loses directionality)
@@ -555,15 +556,10 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::auto_exposure_previous) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1, 1, 1, 1, RHI_Format::R32_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit, "auto_exposure_2");
         };
 
-        auto create_clouds_and_wind = [&]()
+        auto create_wind = [&]()
         {
-            // r16g16b16a16 to avoid material texture detection
-            at(render_targets, Renderer_RenderTarget::cloud_noise_shape)  = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 128, 128, 128, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_noise_shape");
-            at(render_targets, Renderer_RenderTarget::cloud_noise_detail) = make_shared<RHI_Texture>(RHI_Texture_Type::Type3D, 32,  32,  32,  1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_noise_detail");
-            at(render_targets, Renderer_RenderTarget::cloud_shadow)       = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 1024, 1024, 1, 1, RHI_Format::R16_Float,          RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "cloud_shadow");
-
             // wind field, baked once per frame, sampled by all wind-driven geometry
-            at(render_targets, Renderer_RenderTarget::wind_field)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 256, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "wind_field");
+            at(render_targets, Renderer_RenderTarget::wind_field) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, 256, 256, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ConcurrentSharing, "wind_field");
         };
 
         if (create_render)
@@ -583,7 +579,7 @@ namespace spartan
         if (!at(render_targets, Renderer_RenderTarget::lut_brdf_specular))
         {
             create_atmosphere_luts();
-            create_clouds_and_wind();
+            create_wind();
         }
     }
 
@@ -678,6 +674,7 @@ namespace spartan
             { Renderer_Shader::skysphere_lut_c,                       RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "LUT"               },
             { Renderer_Shader::skysphere_transmittance_lut_c,         RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "TRANSMITTANCE_LUT", false },
             { Renderer_Shader::skysphere_multiscatter_lut_c,          RHI_Shader_Type::Compute, "sky/skysphere.hlsl",                         RHI_Vertex_Type::Max, "MULTISCATTER_LUT",  false },
+            { Renderer_Shader::clouds_noise_c,                        RHI_Shader_Type::Compute, "sky/clouds.hlsl",                            RHI_Vertex_Type::Max, "CLOUD_NOISE",       false },
 
             // post-process
             { Renderer_Shader::fxaa_c,                                RHI_Shader_Type::Compute, "fxaa/fxaa.hlsl"                                                             },
@@ -726,11 +723,6 @@ namespace spartan
             { Renderer_Shader::restir_pt_spatial_c,                   RHI_Shader_Type::Compute,       "restir_pt_spatial.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_denoise_temporal_c,          RHI_Shader_Type::Compute,       "restir_pt_denoise_temporal.hlsl",      RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_denoise_spatial_c,           RHI_Shader_Type::Compute,       "restir_pt_denoise_spatial.hlsl",       RHI_Vertex_Type::Max, nullptr,                       true,  true },
-
-            // volumetric clouds
-            { Renderer_Shader::cloud_noise_shape_c,                   RHI_Shader_Type::Compute, "sky/cloud_noise.hlsl",                       RHI_Vertex_Type::Max, "SHAPE_NOISE"                    },
-            { Renderer_Shader::cloud_noise_detail_c,                  RHI_Shader_Type::Compute, "sky/cloud_noise.hlsl",                       RHI_Vertex_Type::Max, "DETAIL_NOISE"                   },
-            { Renderer_Shader::cloud_shadow_c,                        RHI_Shader_Type::Compute, "sky/cloud_shadow.hlsl"                                                                              },
 
             // wind field
             { Renderer_Shader::wind_field_c,                          RHI_Shader_Type::Compute, "wind_field.hlsl"                                                                                    },

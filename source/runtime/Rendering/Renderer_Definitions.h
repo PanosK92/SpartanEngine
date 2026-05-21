@@ -102,10 +102,7 @@ namespace spartan
         bindless_light_parameters    = 17,
         bindless_aabbs               = 18,
         bindless_draw_data           = 19,
-        
-        // volumetric clouds 3D noise
-        tex3d_cloud_shape  = 20,
-        tex3d_cloud_detail = 21,
+
         // restir reservoir srv bindings (for temporal/spatial read)
         // kept contiguous so a single loop can bind all six slots starting from reservoir_prev0
         reservoir_prev0    = 22,
@@ -218,6 +215,7 @@ namespace spartan
         skysphere_lut_c,
         skysphere_transmittance_lut_c,
         skysphere_multiscatter_lut_c,
+        clouds_noise_c,
         blur_gaussian_c,
         blur_gaussian_bilateral_c,
         variable_rate_shading_c,
@@ -245,10 +243,6 @@ namespace spartan
         restir_pt_spatial_c,
         restir_pt_denoise_temporal_c,
         restir_pt_denoise_spatial_c,
-        // volumetric clouds
-        cloud_noise_shape_c,
-        cloud_noise_detail_c,
-        cloud_shadow_c,
         // baked wind field
         wind_field_c,
         light_reflections_c,
@@ -286,6 +280,7 @@ namespace spartan
         lut_atmosphere_scatter,
         lut_atmosphere_transmittance,
         lut_atmosphere_multiscatter,
+        cloud_noise,
         light_diffuse,
         light_specular,
         light_volumetric,
@@ -338,10 +333,6 @@ namespace spartan
         restir_reservoir_spatial3,
         restir_reservoir_spatial4,
         restir_reservoir_spatial5,
-        // volumetric clouds
-        cloud_noise_shape,
-        cloud_noise_detail,
-        cloud_shadow,
         // baked wind field, written each frame, sampled by depth_prepass/g_buffer/depth_light
         wind_field,
         // debug
