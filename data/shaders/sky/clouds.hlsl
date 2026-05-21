@@ -47,10 +47,20 @@ static const float cumulus_density_mul    = 0.80;
 static const float cumulus_sigma_t        = 0.045;          // base extinction coefficient per meter
 
 // domain warp, breaks up the visible grid alignment of the noise volume so cloud puffs
-// do not appear in lanes and neighbouring puffs do not share shapes
-static const float cumulus_warp_scale     = 1.0 / 45000.0;
-static const float cumulus_warp_amplitude = 7000.0;
-static const float cumulus_shape_warp     = 1500.0;
+// do not appear in lanes and neighbouring puffs do not share shapes. the shape warp varies
+// on a scale ~5x slower than the shape tile, so whole puffs get translated organically
+// without any internal shearing that would stretch them into strips
+static const float cumulus_warp_scale         = 1.0 / 45000.0;
+static const float cumulus_warp_amplitude     = 7000.0;
+static const float cumulus_shape_warp_scale   = 1.0 / 22000.0;
+static const float cumulus_shape_warp         = 1700.0;
+
+// per-cloud altitude offset, breaks up the visual sense of a uniform invisible dome that
+// all clouds hug. each cloud gets its own base altitude within +/- this amplitude, sampled
+// from a slow horizontal noise so neighbouring clouds drift together rather than randomly
+static const float cumulus_base_variation     = 700.0;
+static const float cumulus_base_var_scale     = 1.0 / 22000.0;
+static const float cumulus_shell_padding      = 900.0;
 
 // cirrus layer
 static const float cirrus_bottom_alt      = 6500.0;
@@ -228,16 +238,30 @@ float3 cloud_domain_warp(Texture3D noise, SamplerState samp, float3 pos, float s
     return v * amplitude;
 }
 
+// per-cloud altitude offset in meters, sampled from a slow horizontal noise so each cloud
+// region has its own base altitude. without this all cumulus end up parked on the same
+// invisible ceiling at cumulus_bottom_alt which reads as an unnatural dome
+float cloud_base_offset(Texture3D noise, SamplerState samp, float3 pos)
+{
+    float3 uvw = pos * cumulus_base_var_scale + 0.781;
+    uvw.y      = 0.5;
+    float4 n   = cloud_sample_noise(noise, samp, uvw);
+    return (n.g * 2.0 - 1.0) * cumulus_base_variation;
+}
+
 // =====================================================================
 // shape / density
 // =====================================================================
 
 // cumulus vertical profile, flat-ish bottom and rounded top, mirrors the schneider cumulus curve
+// the bottom ramp starts slightly below zero so wispy tendrils can hang under the nominal base
+// instead of getting chopped off by a hard horizontal floor, the top fades smoothly over the
+// upper half of the layer so the silhouette has continuously curving tops
 float cloud_height_profile_cumulus(float h_norm)
 {
-    float bottom = saturate(cloud_remap(h_norm, 0.0, 0.15, 0.0, 1.0));
-    float top    = saturate(cloud_remap(h_norm, 0.65, 1.0, 1.0, 0.0));
-    return bottom * top;
+    float bottom = smoothstep(-0.05, 0.22, h_norm);
+    float top    = smoothstep(1.00, 0.55, h_norm);
+    return saturate(bottom * top);
 }
 
 // cirrus vertical profile, soft hump centered in the layer
@@ -277,16 +301,18 @@ float cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
 
 float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, float weather)
 {
-    float h         = length(pos - cloud_earth_center) - cloud_earth_radius;
-    float h_norm    = saturate((h - cumulus_bottom_alt) / cumulus_thickness);
-    float profile   = cloud_height_profile_cumulus(h_norm);
+    float h           = length(pos - cloud_earth_center) - cloud_earth_radius;
+    float base_offset = cloud_base_offset(noise, samp, pos);
+    float h_norm      = (h - (cumulus_bottom_alt + base_offset)) / cumulus_thickness;
+    float profile     = cloud_height_profile_cumulus(h_norm);
     if (profile <= 0.0 || weather <= 0.0) return 0.0;
     
-    // domain warp the shape sample too, smaller amplitude than the weather warp so individual
-    // puffs stay coherent but two puffs in the same noise cell of different tiles get different shapes
-    float3 shape_warp = cloud_domain_warp(noise, samp, pos, cumulus_warp_scale * 2.0, cumulus_shape_warp);
-    float3 uvw      = (pos + cumulus_wind_offset + shape_warp) * cumulus_shape_scale;
-    float4 shape_n  = cloud_sample_noise(noise, samp, uvw);
+    // single-octave domain warp at a scale ~3.5x slower than the shape tile, so whole puffs
+    // get curved as units instead of being internally sheared into smoke trails. enough to
+    // bend worley cell boundaries off the axis grid without dissolving the cumulus character
+    float3 shape_warp = cloud_domain_warp(noise, samp, pos, cumulus_shape_warp_scale, cumulus_shape_warp);
+    float3 uvw        = (pos + cumulus_wind_offset + shape_warp) * cumulus_shape_scale;
+    float4 shape_n    = cloud_sample_noise(noise, samp, uvw);
     
     // base shape from low-freq perlin-worley (r), eroded by mid-frequency worley fbm (g, b)
     // channel a is the high-freq perlin used by cirrus, mixing it here gave a wispy smudge
@@ -543,10 +569,12 @@ void cloud_march_cumulus(
     float jitter,
     inout float3 in_scatter, inout float transmittance)
 {
+    // shell is padded by the per-cloud base variation so the lowest-based and highest-topped
+    // clouds are not clipped off when their offset moves them outside the nominal layer
     float2 shell = cloud_ray_shell(cam_pos,
         view_dir,
-        cloud_earth_radius + cumulus_bottom_alt,
-        cloud_earth_radius + cumulus_top_alt);
+        cloud_earth_radius + cumulus_bottom_alt - cumulus_shell_padding,
+        cloud_earth_radius + cumulus_top_alt    + cumulus_shell_padding);
     if (shell.y < 0.0) return;
     
     float t_max  = min(shell.y, 100000.0); // cap at 100 km, atmospheric perspective absorbs whatever is further
