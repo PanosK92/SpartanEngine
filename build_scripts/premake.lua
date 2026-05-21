@@ -36,7 +36,7 @@ newaction {
 }
 
 local generation_actions = { vs2026 = true, vs2022 = true, gmake2 = true, gmake = true, codelite = true, xcode4 = true }
-if generation_actions[_ACTION] and not setup.is_already_set_up() then
+if generation_actions[_ACTION] then
     setup.run()
 end
 

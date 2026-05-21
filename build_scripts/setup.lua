@@ -175,15 +175,6 @@ local function ensure_archive()
     end
 end
 
-function setup.is_already_set_up()
-    for _, dll in ipairs(RUNTIME_DLLS) do
-        if not file_exists(dll) then return false end
-    end
-    if not os.isdir(path.join(BINARIES_DIR, "data")) then return false end
-    if not file_exists(path.join(BINARIES_DIR, "7z.exe")) then return false end
-    return true
-end
-
 function setup.run()
     print("\n[1/4] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
