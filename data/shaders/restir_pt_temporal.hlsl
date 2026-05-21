@@ -239,6 +239,16 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
         weight_cur = (target_cur > 0.0f) ? (m_cur  * target_cur  * current.W)                : 0.0f;
         weight_tmp = (target_temp > 0.0f) ? (m_temp * target_temp * jacobian_temp * temporal.W) : 0.0f;
+
+        // soft cap on the temporal weight so a frame whose temporal sample happens to land
+        // on a bright outlier cannot dominate the current pixel at 100x and then carry that
+        // value through the next frame's temporal stream, see the matching streaming firefly
+        // cap in restir_pt_spatial.hlsl, 4x weight_cur softly bounded so legitimate strong
+        // history still wins routinely but the long tail is suppressed, tightened from 8x
+        // to 4x to chase the last surviving splotches that came through moderately elevated
+        // temporal weights rather than extreme outliers
+        float temporal_cap = max(weight_cur, 1.0f) * 4.0f;
+        weight_tmp         = soft_clamp_w(max(weight_tmp, 0.0f), temporal_cap);
     }
     else if (target_cur > 0.0f)
     {
@@ -295,8 +305,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.target_pdf = final_target;
     combined.W          = (final_target > 0.0f) ? (combined.weight_sum / final_target) : 0.0f;
 
+    // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
     float w_clamp = get_w_clamp_for_sample(combined.sample);
-    combined.W    = min(combined.W, w_clamp);
+    combined.W    = soft_clamp_w(combined.W, w_clamp);
 
     combined.age        = have_temporal ? (temporal.age + 1.0f) : 0.0f;
     combined.confidence = saturate(max(current.confidence, have_temporal ? temporal.confidence * temporal_confidence : 0.0f));
@@ -322,6 +333,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
+
+    // final firefly catcher, see clamp_gi_radiance in restir_reservoir.hlsl
+    gi = clamp_gi_radiance(gi);
 
     tex_uav[pixel] = float4(gi, saturate(combined.confidence));
 }

@@ -59,14 +59,18 @@ void ray_gen()
         return;
     }
     
-    // lobe split with restir pt: rt reflections owns the narrow specular lobe only, broader
-    // glossy + diffuse indirect is handled by restir pt's path tracer. the threshold must
-    // match RESTIR_SPECULAR_HANDOFF_ROUGHNESS in restir_reservoir.hlsl so the two pipelines
-    // partition the lobe space cleanly with no overlap and no gap
-    float4 material_sample = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
-    float roughness        = material_sample.r;
-    const float specular_handoff_roughness = 0.4f;
-    if (roughness >= specular_handoff_roughness)
+    // smooth lobe split with restir pt across the [0.3, 0.4] roughness band, see
+    // restir_primary_specular_blend in restir_reservoir.hlsl
+    //   roughness <= 0.3 -> rt owns the full specular (blend = 0)
+    //   roughness >= 0.4 -> restir owns the full specular (blend = 1), rt skips the trace
+    //   in between        -> both contribute, light_reflections.hlsl scales this output by
+    //                        (1 - blend) and restir scales its specular by blend, the two
+    //                        contributions sum to the full specular term with no step
+    // the thresholds must match restir's so the partition is gap-free at any roughness
+    float4 material_sample           = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
+    float roughness                  = material_sample.r;
+    const float specular_handoff_hi  = 0.4f;
+    if (roughness >= specular_handoff_hi)
     {
         tex_uav[launch_id]  = float4(0, 0, 0, -1);
         tex_uav2[launch_id] = float4(0, 0, 0, 0);

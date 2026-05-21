@@ -104,7 +104,11 @@ struct FrameBufferData
     SHARED_FLOAT cloud_coverage;
     SHARED_FLOAT cloud_shadows;
     SHARED_FLOAT restir_pt_light_count;
-    SHARED_FLOAT padding4;
+    // emissive triangle nee pool count, set by Renderer::UpdateAccelerationStructures, when
+    // zero the restir initial ris pass falls back to the brdf + analytical light strategies
+    // only, when non zero a third strategy area samples a random emissive triangle and the
+    // balance heuristic mis denominator includes its solid angle pdf, see restir_pt.hlsl
+    SHARED_FLOAT restir_pt_emissive_tri_count;
 
     // vr stereo - right eye matrices (left eye uses the primary matrices above)
     SHARED_MATRIX view_right;
@@ -251,6 +255,28 @@ struct GeometryInfo
     SHARED_FLOAT2 uv_invert      SHARED_DEFAULT(spartan::math::Vector2::Zero);
     SHARED_FLOAT  uv_rotation    SHARED_DEFAULT(0.0f);
     SHARED_FLOAT  uv_world_space SHARED_DEFAULT(0.0f);
+};
+
+// emissive triangle for the restir nee pool, 64 bytes
+// built once per frame on the cpu by walking renderables with non-zero emission, world space
+// positions and normal are precomputed, area is in world units, the rgb radiance is the
+// material emission radiance estimate (color * intensity), the shader samples a triangle by
+// stepping a linear prefix sum stored in the alpha channels of v0.w (cumulative weight) and
+// v1.w (per triangle weight = area * lum(emission)), the last triangle's cumulative weight is
+// the total weight used to normalize the area pdf to a probability density
+// see sample_emissive_tri_candidate in restir_pt.hlsl
+struct EmissiveTriangle
+{
+    SHARED_FLOAT3 v0;          // world space vertex 0
+    SHARED_FLOAT  weight;      // per triangle picking weight (area * lum(emission))
+    SHARED_FLOAT3 v1;          // world space vertex 1
+    SHARED_FLOAT  cdf;         // prefix sum of weight up to and including this triangle
+    SHARED_FLOAT3 v2;          // world space vertex 2
+    SHARED_FLOAT  area;        // world space triangle area
+    SHARED_FLOAT3 normal;      // world space triangle normal (front side)
+    SHARED_FLOAT  pad0         SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT3 emission;    // emitted radiance per unit projected area (world units)
+    SHARED_FLOAT  pad1         SHARED_DEFAULT(0.0f);
 };
 
 // gpu-driven indirect draw arguments (matches VkDrawIndexedIndirectCommand layout)
@@ -418,6 +444,7 @@ namespace spartan
     using Sb_Light            = LightParameters;
     using Sb_Aabb             = Aabb;
     using Sb_GeometryInfo     = GeometryInfo;
+    using Sb_EmissiveTriangle = EmissiveTriangle;
     using Sb_IndirectDrawArgs     = IndirectDrawArgs;
     using Sb_IndirectDispatchArgs = IndirectDispatchArgs;
     using Sb_DrawData         = DrawData;

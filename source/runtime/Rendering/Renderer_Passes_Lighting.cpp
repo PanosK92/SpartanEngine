@@ -100,11 +100,12 @@ namespace spartan
         {
             return;
         }
-        // lobe split: rt reflections owns the narrow specular lobe (roughness below the
-        // restir_primary_diffuse_only threshold), restir pt owns diffuse + glossy indirect.
-        // the shader-side gate in ray_traced_reflections.hlsl skips the trace for high
-        // roughness pixels, and restir's primary brdf is reduced to lambert for low
-        // roughness pixels, so no double counting at any roughness
+        // smooth lobe split: rt reflections and restir pt share the primary specular lobe
+        // through a continuous [0, 1] blend across the [0.3, 0.4] roughness band, see
+        // restir_primary_specular_blend in restir_reservoir.hlsl, ray_traced_reflections.hlsl
+        // skips the trace at roughness >= 0.4 where the blend hits 1.0, light_reflections.hlsl
+        // scales its output by (1 - blend) and restir scales its primary specular by blend,
+        // the two contributions sum to the full specular term with no step at the boundary
         const bool rt_reflections_active = cvar_ray_traced_reflections.GetValueAs<bool>();
         if (!rt_reflections_active || !tex_reflections_position)
         {
@@ -328,6 +329,10 @@ namespace spartan
             GetBuffer(Renderer_Buffer::GeometryInfo)->ResetOffset();
             cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info, GetBuffer(Renderer_Buffer::GeometryInfo));
 
+            // emissive triangle nee pool, prefix sum and per-triangle data populated by
+            // BuildEmissiveTriangleNeePool, count comes through buffer_frame.restir_pt_emissive_tri_count
+            cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
 
             for (uint32_t i = 0; i < 6; i++)
@@ -368,6 +373,14 @@ namespace spartan
                 cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
             }
 
+            // bind the per renderable geometry info ring and the emissive triangle nee pool so
+            // the random replay shift can do its full suffix retrace inline, the retrace pulls
+            // material / geometry data via the bindless arrays which require geometry_infos to
+            // be bound, the emissive triangle buffer is bound here too so future use of emtri
+            // nee inside the inline retrace (if added) finds the pool populated
+            cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info,      GetBuffer(Renderer_Buffer::GeometryInfo));
+            cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+
             for (uint32_t i = 0; i < 6; i++)
             {
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs_prev[i]);
@@ -403,15 +416,19 @@ namespace spartan
             return false;
         }
 
-        // two a-trous-style passes with progressively expanding radii (lin 2022 §6.2), the
-        // first pass operates on a tight neighborhood for sharp signal preservation, the
-        // second pass widens the kernel so distant neighbors feed the canonical reservoir,
-        // pingpong routing keeps the final output in `reservoirs` so the next-frame swap
-        // cycle picks it up as the new previous-frame reservoir
+        // three a-trous-style passes with progressively expanding radii (lin 2022 §6.2),
+        // the first pass operates on a tight neighborhood for sharp signal preservation, the
+        // second and third widen the kernel so distant neighbors feed the canonical
+        // reservoir, radius progression is 1x, 1.6x, 2.56x (1.6 ^ pass_index) so 3 passes
+        // cover the same effective radius as the old 4 level denoiser but in the reservoir
+        // domain where the m cap clamps influence to bounded confidence per neighbor
+        // ping pong routing leaves the final output in reservoirs_spatial which the swap
+        // below moves back into the canonical reservoirs slot
         struct stage { const char* name; float param; RHI_Texture* const* src; RHI_Texture* const* dst; };
-        const stage stages[2] = {
+        const stage stages[3] = {
             { "restir_pt_spatial",   0.0f, reservoirs,         reservoirs_spatial }, // tight
-            { "restir_pt_spatial_2", 1.0f, reservoirs_spatial, reservoirs         }  // wide
+            { "restir_pt_spatial_2", 1.0f, reservoirs_spatial, reservoirs         }, // wide
+            { "restir_pt_spatial_3", 2.0f, reservoirs,         reservoirs_spatial }  // widest
         };
 
         for (const stage& s : stages)
@@ -429,6 +446,12 @@ namespace spartan
                 SetCommonTextures(cmd_list);
                 cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
 
+                // bind the per renderable geometry info ring and the emissive triangle nee pool so
+                // the random replay shift can do its full suffix retrace inline, see the matching
+                // comment in Pass_ReSTIR_Temporal for details
+                cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info,      GetBuffer(Renderer_Buffer::GeometryInfo));
+                cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
+
                 for (uint32_t i = 0; i < 6; i++)
                 {
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, s.src[i]);
@@ -444,6 +467,19 @@ namespace spartan
             }
             cmd_list->EndTimeblock();
         }
+
+        // 3 stages end with the latest spatial output sitting in reservoirs_spatial, swap the
+        // canonical and spatial render target pointers so subsequent passes reading
+        // restir_reservoir0..5 see the freshly filtered reservoirs, the pointer swap is free
+        // compared to blitting 6 reservoir textures and keeps the per-frame swap chain stable
+        auto& render_targets = GetRenderTargets();
+        for (uint32_t i = 0; i < 6; i++)
+        {
+            uint32_t idx_cur     = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir0)         + i;
+            uint32_t idx_spatial = static_cast<uint32_t>(Renderer_RenderTarget::restir_reservoir_spatial0) + i;
+            swap(render_targets[idx_cur], render_targets[idx_spatial]);
+        }
+
         return true;
     }
 
@@ -656,10 +692,14 @@ namespace spartan
         cmd_list->EndTimeblock();
 
         // ping pong spatial passes, parameter is the kernel radius, src and dst alternate
-        // a-trous step doubling at each level (1, 2, 4, 8) matches lin 2022's reference svgf
-        // 4 levels gives us 1+3+7+15 effective tap radius which fully filters the half-res
-        // output without leaving residual noise on smooth diffuse surfaces, even count means
-        // the final write lands in tex_gi_denoised directly so no fallback blit is needed
+        // a-trous step doubling at each level matches lin 2022's reference svgf, 4 levels
+        // (1, 2, 4, 8) give an effective tap radius of 1+3+7+15 = 26 pixels which is the
+        // standard schied 2017 / lin 2022 configuration, the previous 3 level (1, 2, 4)
+        // attempt to preserve contact detail left visible firefly clumps in the output
+        // because the kernel never reached the scale where bright outliers get averaged
+        // down, with the reservoir firefly cap and 4 levels back we trade a small amount
+        // of crevice softness for a stable image, ping pong routing ends with the final
+        // write in tex_gi_denoised (even pass count) so no extra blit is needed
         struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
         const denoise_stage stages[4] = {
             { "restir_pt_denoise_spatial",   1.0f, tex_gi_denoised, tex_gi_ping     },
@@ -693,10 +733,9 @@ namespace spartan
             cmd_list->EndTimeblock();
         }
 
-        // 4 stages with even count means the final output lands in tex_gi_denoised already
-        // (stage 4 wrote ping -> denoised), no need to blit ping back, but we still blit the
-        // denoised result into the history texture so the next frame's svgf temporal pass has
-        // a freshly filtered starting point for its ema accumulation
+        // 4 stages with even count means the final write landed in tex_gi_denoised, no extra
+        // blit needed; blit denoised into history for the next frame's svgf temporal pass to
+        // use as its ema accumulator
         cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureReadThenWrite);
         Pass_Blit(cmd_list, tex_gi_denoised, tex_gi_history);
         cmd_list->InsertBarrier(tex_gi_history,  RHI_BarrierType::EnsureWriteThenRead);

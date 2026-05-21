@@ -95,14 +95,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     int    step_width = max((int)pass_get_f3_value().x, 1);
 
-    // svgf phi parameters, schied 2017 fig 4 plus lin 2022 follow-up tuning, phi_normal = 128
-    // is too edge-preserving for the typical roughness range and leaves residual noise on
-    // continuous normals (curved surfaces look noisy) so we lower it to 64 which still
-    // discriminates hard normal edges (creases) but trusts neighboring pixels on smoothly
-    // varying normals
+    // svgf phi parameters, schied 2017 fig 4 plus lin 2022 follow-up tuning, the previous
+    // tier 2 tightening to (128 / 0.5) was preserving micro detail at the cost of leaving
+    // visible firefly clumps in the output because the denoiser refused to smooth across
+    // any feature boundary the gates barely registered, the reverted (64 / 1.0) pair gives
+    // back the broader smoothing kernel that production svgf relies on, the upstream
+    // spatial reuse and reservoir firefly cap already keep the contact shadow signal
+    // (a-trous variance estimation pulls the per pixel sigma down on stable surfaces so
+    // the kernel still respects edges, it just trusts continuous geometry more)
     //   phi_luma  = 4.0 (multiplied by sqrt(blurred variance) per pixel)
     //   phi_depth = 1.0 (relative depth tolerance, scales with step_width and depth gradient)
-    //   phi_normal = 64  (cosine power)
+    //   phi_normal = 64 (cosine power, ~14 deg discrimination)
     const float phi_luma   = 4.0f;
     const float phi_depth  = 1.0f;
     const float phi_normal = 64.0f;

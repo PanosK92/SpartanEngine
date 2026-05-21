@@ -161,7 +161,7 @@ namespace spartan
     TConsoleVar<float> cvar_ray_traced_shadows             ("r.ray_traced_shadows",             static_cast<float>(RHI_Device::IsSupportedRayTracing()), "ray traced shadows for all lights",       on_ray_traced_shadows_change);
     TConsoleVar<float> cvar_restir_pt                      ("r.restir_pt",                      0.0f,                                                    "restir path tracing global illumination");
     TConsoleVar<float> cvar_restir_pt_scale                ("r.restir_pt_scale",                1.0f,                                                    "restir resolution scale (0.1-1.0)",       on_restir_pt_scale_change);
-    TConsoleVar<float> cvar_restir_pt_w_clamp              ("r.restir_pt_w_clamp",              8000.0f,                                                 "restir path tracing single-sample contribution cap (firefly safety, lower clamps energy, higher preserves highlights)");
+    TConsoleVar<float> cvar_restir_pt_w_clamp              ("r.restir_pt_w_clamp",              3000.0f,                                                 "restir path tracing single-sample contribution cap (firefly safety, lower clamps energy, higher preserves highlights)");
     TConsoleVar<float> cvar_motion_blur                    ("r.motion_blur",                    1.0f,                                                    "motion blur");
     TConsoleVar<float> cvar_depth_of_field                 ("r.depth_of_field",                 1.0f,                                                    "depth of field");
     TConsoleVar<float> cvar_film_grain                     ("r.film_grain",                     0.0f,                                                    "film grain effect");

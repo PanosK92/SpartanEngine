@@ -29,6 +29,9 @@ namespace spartan
 {
     const uint32_t renderer_max_draw_calls         = 20000;
     const uint32_t renderer_max_instance_count     = 1024;
+    // hard cap on the restir nee pool, the cpu walker stops appending once this many emissive
+    // triangles have been recorded so worst case upload size is bounded at 80 * 16384 = 1.25 mb
+    const uint32_t restir_emissive_tri_max         = 16384;
     const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
     const uint32_t renderer_max_indirect_draws     = 131072;  // per-renderable lod draw data, cull shader clamps writes
     const uint32_t renderer_max_cull_tasks         = 524288;  // per (renderable, meshlet) cull tasks, drives meshlet cull dispatch size
@@ -164,6 +167,11 @@ namespace spartan
         // cluster stats and compacted volumetric light index list
         cluster_stats          = 47,
         volumetric_light_indices = 48,
+        // restir path tracing nee pool, world space emissive triangles built each frame on the
+        // cpu by Renderer::BuildEmissiveTriangleNeePool, declared rw to match the engine pattern
+        // for per-pass structured buffers (cull_tasks, meshlet_bounds, etc.) even though the
+        // shader treats it read-only
+        emissive_triangles     = 49,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -378,6 +386,8 @@ namespace spartan
         ClusterLightIndices,       // flat list of light indices, sliced by cluster in chunks of CLUSTER_MAX_LIGHTS
         ClusterStats,              // tiny stats buffer for the cluster assign pass (overflow counter)
         VolumetricLightIndices,    // compact list of volumetric light indices, built on cpu each frame
+        // restir path tracing emissive triangle nee pool, rebuilt each frame from renderables with non-zero emission
+        EmissiveTriangles,
         // gpu-driven particles
         ParticleBufferA,
         ParticleCounter,

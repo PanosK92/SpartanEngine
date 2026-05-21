@@ -53,15 +53,34 @@ float get_restir_m_cap()
     return lerp(float(RESTIR_M_CAP_MIN), float(RESTIR_M_CAP_MAX), ramp);
 }
 uint  get_restir_max_path_length()     { return RESTIR_MAX_PATH_LENGTH; }
-uint  get_restir_light_candidates()    { return 8u; }
-uint  get_restir_initial_candidates()  { return 4u; }
-float get_restir_rc_min_roughness()    { return 0.3f; }
+// initial ris pool sizes, lin 2022 typically runs 8-32 of each strategy, the higher counts
+// lift per frame quality so the temporal pool converges in fewer frames and reduces the
+// denoiser's job, the cost roughly doubles at the initial trace pass which is far cheaper
+// than letting the denoiser smooth out the variance for the user
+uint  get_restir_light_candidates()    { return 16u; }
+uint  get_restir_initial_candidates()  { return 8u; }
+// emissive triangle nee candidates per pixel per frame, paper recommends a comparable count
+// to the analytical nee budget, the cpu only populates the buffer when restir is on and the
+// shader skips this strategy when the pool count is zero so the loop iterations are free
+uint  get_restir_emtri_candidates()    { return 8u; }
+// rc roughness floor, the reconnection shift requires the rc vertex to be rough enough that
+// a lambert only nee approximation captures most of its energy and the rc bsdf reuse stays
+// bounded across destinations, lowering from 0.3 to 0.2 expands the applicable surface band
+// by ~30% which means fewer pixels fall back to the lossier random replay shift, the missing
+// specular lobe energy at rc grows but stays bounded by the new floor and bounded further by
+// the suffix radiance trace which factors out the rc bsdf via rc_outgoing_dir
+float get_restir_rc_min_roughness()    { return 0.2f; }
 // single-sample contribution cap from cb so the user can trade firefly safety for highlight
 // energy without recompiling shaders, clamped on the cpu side to keep the floor sensible
 float get_restir_w_clamp()             { return buffer_frame.restir_pt_w_clamp; }
 uint  get_restir_validation_period()   { return 8u; }
-static const float RESTIR_DEPTH_THRESHOLD    = 0.05f;
-static const float RESTIR_NORMAL_THRESHOLD   = 0.75f;
+// tightened depth and normal gates for spatial reservoir reuse and the temporal validity
+// check, the previous 0.05 / 0.75 (~41 deg) values let two facing crevice walls share each
+// other's reservoirs, the indirect lighting was averaged across the crevice and the
+// occluded contact lost contrast, 0.03 / 0.9 (~26 deg) keeps reuse aggressive on continuous
+// surfaces while rejecting micro features that carry the contact shadow signal
+static const float RESTIR_DEPTH_THRESHOLD    = 0.03f;
+static const float RESTIR_NORMAL_THRESHOLD   = 0.9f;
 // no soft decay, the validity gate already hard rejects on disocclusion and the m cap above
 // is now low enough that we adapt within a fraction of a second on lighting changes
 static const float RESTIR_TEMPORAL_DECAY     = 1.0f;
@@ -84,13 +103,95 @@ static const float RESTIR_RC_COS_FRONT       = 0.05f;
 // large jacobians signal a near-degenerate shift, the shift result is rejected as failed
 // instead of being clamped so the bias from squashing the energy into a clamp does not
 // accumulate over neighbors; this acts as a safety guard rather than a soft firefly cap
-static const float RESTIR_JACOBIAN_REJECT    = 64.0f;
+// tightened from 64 -> 16 -> 8, typical adjacent pixel jacobians sit near 1 and grow
+// modestly with distance and grazing so 8 still admits the vast majority of legitimate
+// reconnections, the firefly survivors after the 16 cut were riding on jacobians in the
+// 8 to 16 band paired with moderately elevated targets, capping at 8 closes that gap
+static const float RESTIR_JACOBIAN_REJECT    = 8.0f;
 
 // brdf / numerics
 static const float RESTIR_MIN_PDF            = 1e-6f;
 
 // nee
 static const float MIN_AREA_LIGHT_SOLID_ANGLE = 1e-4f;
+
+// urena, fajardo, king 2013 spherical rectangle solid-angle sampling
+// samples uniformly in the solid angle subtended by a rectangle as seen from origin, replaces
+// the area-domain "sample uniformly on the rectangle and project to solid angle" approach
+// which has high variance for oblique angles where most of the area is grazing
+// rect_origin is the corner with smallest local coords, ex / ey are the edge vectors so the
+// rectangle is parametrized as { rect_origin + s*ex + t*ey | s,t in [0,1] }
+// returns the sampled position on the rectangle and the solid angle subtended (so the pdf in
+// solid-angle is 1 / solid_angle), the function is robust to the shading point being on the
+// negative side of the rectangle's plane (it flips the local frame internally)
+// lives here (rather than in restir_pt.hlsl) so the replay shift's inline next event
+// estimation can call it from compute shader contexts that do not include restir_pt.hlsl
+void sample_spherical_rectangle(
+    float3 origin,
+    float3 rect_origin,
+    float3 ex,
+    float3 ey,
+    float2 xi,
+    out float3 out_pos,
+    out float  out_solid_angle)
+{
+    float3 d   = rect_origin - origin;
+    float  exl = max(length(ex), 1e-6f);
+    float  eyl = max(length(ey), 1e-6f);
+    float3 x   = ex / exl;
+    float3 y   = ey / eyl;
+    float3 z   = cross(x, y);
+
+    float x0 = dot(d, x);
+    float y0 = dot(d, y);
+    float z0 = dot(d, z);
+    if (z0 > 0.0f)
+    {
+        z0 = -z0;
+        z  = -z;
+    }
+
+    float x1 = x0 + exl;
+    float y1 = y0 + eyl;
+
+    float3 v00 = float3(x0, y0, z0);
+    float3 v10 = float3(x1, y0, z0);
+    float3 v11 = float3(x1, y1, z0);
+    float3 v01 = float3(x0, y1, z0);
+
+    float3 n0 = normalize(cross(v00, v10));
+    float3 n1 = normalize(cross(v10, v11));
+    float3 n2 = normalize(cross(v11, v01));
+    float3 n3 = normalize(cross(v01, v00));
+
+    float g0 = acos(clamp(-dot(n0, n1), -1.0f, 1.0f));
+    float g1 = acos(clamp(-dot(n1, n2), -1.0f, 1.0f));
+    float g2 = acos(clamp(-dot(n2, n3), -1.0f, 1.0f));
+    float g3 = acos(clamp(-dot(n3, n0), -1.0f, 1.0f));
+
+    float b0 = n0.z;
+    float b1 = n2.z;
+    float k  = 2.0f * PI - g2 - g3;
+
+    out_solid_angle = max(g0 + g1 - k, 0.0f);
+
+    float au   = xi.x * out_solid_angle + k;
+    float fu   = (cos(au) * b0 - b1) / max(sin(au), 1e-7f);
+    float sgn  = fu > 0.0f ? 1.0f : -1.0f;
+    float cu   = clamp(sgn / sqrt(fu * fu + b0 * b0), -1.0f, 1.0f);
+
+    float xu_denom = max(sqrt(max(1.0f - cu * cu, 0.0f)), 1e-7f);
+    float xu       = clamp(-(cu * z0) / xu_denom, x0, x1);
+
+    float dsq = xu * xu + z0 * z0;
+    float h0  = y0 / sqrt(dsq + y0 * y0);
+    float h1  = y1 / sqrt(dsq + y1 * y1);
+    float hv  = h0 + xi.y * (h1 - h0);
+    float hv2 = hv * hv;
+    float yv  = (hv2 < 1.0f - 1e-6f) ? (hv * sqrt(dsq) / sqrt(1.0f - hv2)) : y1;
+
+    out_pos = origin + xu * x + yv * y + z0 * z;
+}
 
 // path flags
 static const uint PATH_FLAG_SKY      = 1 << 0;  // rc is the sky dome, rc_pos stores a unit direction
@@ -627,6 +728,23 @@ float target_scalar(float3 f)
     return max(f.r + f.g + f.b, 0.0f) * (1.0f / 3.0f);
 }
 
+// smooth scalar saturator for the reservoir W cap, pass through below c, asymptote at 2c
+// above, the c0 derivative is continuous at c (slope 1 from below, slope 1 from above so
+// the transition is smooth, slope falls to 0 at infinity), removes the step a hard min
+// creates at the clamp boundary which produced flicker on pixels whose natural W bounced
+// across the threshold from one frame to the next, max effective W rises from c to 2c so
+// the firefly ceiling roughly doubles but in exchange the contribution is a smooth
+// monotonic function of input W everywhere; same mathematical form as
+// soft_saturate_radiance for consistency with the existing sky compressor
+float soft_clamp_w(float w, float c)
+{
+    if (c <= 0.0f)
+        return 0.0f;
+    if (w <= c)
+        return w;
+    return c + (w - c) / (1.0f + (w - c) / c);
+}
+
 // soft luminance compressor, preserves chromaticity (rescales all channels by the same
 // factor) and approaches `threshold` asymptotically from above instead of clipping hard
 // at the threshold, this keeps glossy highlights and bright skydomes contributing energy
@@ -650,6 +768,24 @@ float3 clamp_sky_radiance(float3 radiance)
     // the sun cone from poisoning the variance estimate at the denoiser stage
     float threshold = get_restir_w_clamp() * RESTIR_SKY_RADIANCE_CLAMP_FACTOR;
     return soft_saturate_radiance(radiance, threshold);
+}
+
+// final firefly catcher applied to the shaded gi output of every restir pass before the
+// denoiser sees it, gi already passes through the per stream w cap and the per neighbor
+// pairwise mis cap so the typical signal is bounded, but the demodulator divides by an
+// albedo luminance floor of 0.04 which still amplifies any survivor by 25x and produces
+// the bright clumped splotches the user observes, soft saturation at this stage caps the
+// per pixel luminance at ~2x the threshold while preserving chromaticity and the relative
+// values below the threshold are untouched so legitimate bright bounces pass through, the
+// threshold scales with the user facing w clamp cvar so one knob still controls the
+// overall hdr range, tightened from 0.05 -> 0.025 to chase the last remaining splotches,
+// at the default w_clamp of 3000 this caps per pixel gi at ~75 with asymptote at ~150
+// which is still well above any plausible indirect bounce contribution
+static const float RESTIR_GI_CAP_FACTOR = 0.025f;
+float3 clamp_gi_radiance(float3 gi)
+{
+    float threshold = get_restir_w_clamp() * RESTIR_GI_CAP_FACTOR;
+    return soft_saturate_radiance(gi, threshold);
 }
 
 // ray offset for self intersection avoidance, scaled with the dominant world-space coordinate
@@ -747,10 +883,11 @@ float3 restir_compute_multiscatter_energy(float3 f0, float n_dot_v, float roughn
 // full ggx+burley brdf evaluator returning f_r * cos(n,l) and the matching mixture pdf
 // matches the engine's main shading model (brdf.hlsl) so restir and direct light shading
 // produce consistent results on the same surface material
-// when primary_diffuse_only is true, the specular lobe is zeroed and the pdf collapses to the
-// cosine-hemisphere pdf, so the primary surface is treated as pure diffuse, primary specular
-// is then exclusively owned by the ray traced reflections pipeline to avoid double counting
-float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf, bool primary_diffuse_only)
+// specular_blend is a continuous [0, 1] weight on the specular lobe, 0 collapses to pure
+// burley diffuse and the matching cosine pdf, 1 keeps the full mixture, intermediate values
+// fade the specular contribution smoothly so the lobe handoff to ray traced reflections has
+// no visible step at the partition boundary (paper lin 2022 uses a similar smooth handoff)
+float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float3 l, out float pdf, float specular_blend)
 {
     float3 h_unnorm = v + l;
     float h_len_sq  = dot(h_unnorm, h_unnorm);
@@ -763,11 +900,22 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
 
     float3 h      = h_unnorm * rsqrt(h_len_sq);
     float n_dot_l = max(dot(n, l), 0.0f);
-    float n_dot_v = max(dot(n, v), 0.001f);
+    float n_dot_v = dot(n, v);
     float n_dot_h = max(dot(n, h), 0.0f);
     float v_dot_h = max(dot(v, h), 0.0f);
 
     if (n_dot_l <= 0.0f)
+    {
+        pdf = 0.0f;
+        return float3(0, 0, 0);
+    }
+
+    // grazing-view reject, the previous code clamped n_dot_v to 0.001 which let the
+    // 1 / (4 * cos_v) factor in the ggx pdf and the smith G1 denominator inflate up to 1000x
+    // at near tangential views, that inflation was a per-frame source of fireflies for the
+    // brdf strategy whenever the camera looked along a near-horizontal surface, paper recipe
+    // is to drop the sample below a cos threshold of about 0.05 (87 degrees from normal)
+    if (n_dot_v <= 0.05f)
     {
         pdf = 0.0f;
         return float3(0, 0, 0);
@@ -783,10 +931,10 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
     float3 diffuse       = restir_diffuse_burley(diffuse_color, roughness, n_dot_v, n_dot_l, v_dot_h);
     float3 diffuse_cos   = diffuse * (1.0f - f_term) * n_dot_l;
 
-    if (primary_diffuse_only)
+    if (specular_blend <= 0.0f)
     {
         // diffuse only path, pdf collapses to the cosine hemisphere pdf since sample_brdf
-        // also routes to the cosine sampler when called with primary_diffuse_only = true
+        // also routes to the cosine sampler when specular_blend is zero
         pdf = n_dot_l / PI;
         return diffuse_cos;
     }
@@ -806,23 +954,28 @@ float3 evaluate_brdf(float3 albedo, float roughness, float metallic, float3 n, f
 
     // importance sampling pdf for the vndf sampler in sample_brdf
     // pdf_l = D(h) * G1(v) / (4 * cos(theta_v)) (heitz 2018 eq. 17)
+    // the effective specular pick probability is spec_prob_full * specular_blend so the
+    // mixture pdf fades continuously as the blend interpolates, matching the integrand fade
     float n_dot_v_abs = max(n_dot_v, 1e-3f);
     float g1_v_pdf    = 2.0f * n_dot_v_abs / (n_dot_v_abs + sqrt(a2 + (1.0f - a2) * n_dot_v_abs * n_dot_v_abs));
     float diffuse_pdf = n_dot_l / PI;
     float spec_pdf    = d_term * g1_v_pdf / (4.0f * n_dot_v_abs);
-    float spec_prob   = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
-    pdf = (1.0f - spec_prob) * diffuse_pdf + spec_prob * spec_pdf;
+    float spec_prob_full = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
+    float spec_prob_eff  = saturate(spec_prob_full * specular_blend);
+    pdf = (1.0f - spec_prob_eff) * diffuse_pdf + spec_prob_eff * spec_pdf;
 
-    return diffuse_cos + specular_cos;
+    return diffuse_cos + specular_cos * specular_blend;
 }
 
-// samples a direction proportional to diffuse+specular mixture, returns the sampled direction
-// and the mixture pdf so the caller can compute brdf*cos / pdf
-// when primary_diffuse_only is true, sampling collapses to pure cosine hemisphere so the
-// estimator stays consistent with evaluate_brdf's diffuse only branch
-float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float2 xi, out float pdf, bool primary_diffuse_only)
+// samples a direction proportional to diffuse+(blend*specular) mixture, returns the sampled
+// direction and the mixture pdf so the caller can compute brdf*cos / pdf
+// specular_blend is a continuous [0, 1] weight on the specular lobe, 0 collapses to a pure
+// cosine hemisphere sampler (matches evaluate_brdf's diffuse only branch), 1 keeps the full
+// vndf mixture, intermediate values pick the diffuse lobe more often by the same blend
+// factor used in evaluate_brdf's mixture pdf so the two stay numerically consistent
+float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, float3 v, float2 xi, out float pdf, float specular_blend)
 {
-    if (primary_diffuse_only)
+    if (specular_blend <= 0.0f)
     {
         float  pdf_diffuse;
         float3 local_dir = sample_cosine_hemisphere(xi, pdf_diffuse);
@@ -830,21 +983,31 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
         return local_to_world(local_dir, n);
     }
 
-    float n_dot_v      = max(dot(n, v), 0.001f);
-    float spec_prob    = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
-    float prob_diffuse = 1.0f - spec_prob;
+    // grazing-view reject, evaluate_brdf rejects below the same cos threshold so producing a
+    // sampled direction here when n_dot_v is tiny just wastes a ray and burns through the
+    // candidate budget on a candidate that will get zero target_pdf downstream
+    float n_dot_v_raw = dot(n, v);
+    if (n_dot_v_raw <= 0.05f)
+    {
+        pdf = 0.0f;
+        return n;
+    }
+    float n_dot_v        = n_dot_v_raw;
+    float spec_prob_full = compute_spec_probability(albedo, roughness, metallic, n_dot_v);
+    float spec_prob      = saturate(spec_prob_full * specular_blend);
+    float prob_diffuse   = 1.0f - spec_prob;
 
     float3 l;
     if (xi.x < prob_diffuse)
     {
-        xi.x = xi.x / prob_diffuse;
+        xi.x = xi.x / max(prob_diffuse, 1e-6f);
         float pdf_diffuse;
         float3 local_dir = sample_cosine_hemisphere(xi, pdf_diffuse);
         l = local_to_world(local_dir, n);
     }
     else
     {
-        xi.x = (xi.x - prob_diffuse) / (1.0f - prob_diffuse);
+        xi.x = (xi.x - prob_diffuse) / max(1.0f - prob_diffuse, 1e-6f);
         // vndf sampling concentrates microfacet normals around those visible from v, removing
         // the dim grazing samples that legacy ndf sampling produced and lowering variance for
         // glossy surfaces at oblique view angles, alpha is the cod-wwii remap so sampler and
@@ -886,32 +1049,37 @@ float3 sample_brdf(float3 albedo, float roughness, float metallic, float3 n, flo
 // full brdf*cos evaluator used at the primary vertex during shift and target-pdf evaluation
 // includes both diffuse and ggx specular, so glossy primaries (roughness above the lobe
 // split threshold) receive proper indirect specular through reservoir reuse
-// when primary_diffuse_only is true, the specular lobe is dropped, primary specular is then
-// owned by the ray traced reflections pipeline (gated to the same roughness threshold) so
-// the two pipelines partition the lobe space cleanly with no double counting
-float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, float3 normal, float3 view_dir, float3 dir, bool primary_diffuse_only)
+// specular_blend is the continuous [0, 1] weight forwarded to evaluate_brdf, primary specular
+// outside the restir band is then owned by the ray traced reflections pipeline (the two
+// pipelines blend on the same factor so they partition the lobe space without a hard step)
+float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, float3 normal, float3 view_dir, float3 dir, float specular_blend)
 {
     float n_dot_l = dot(normal, dir);
     if (n_dot_l <= 0.0f)
         return float3(0, 0, 0);
 
     float unused_pdf;
-    return evaluate_brdf(albedo, roughness, metallic, normal, view_dir, dir, unused_pdf, primary_diffuse_only);
+    return evaluate_brdf(albedo, roughness, metallic, normal, view_dir, dir, unused_pdf, specular_blend);
 }
 
-// lobe split between restir pt and rt reflections at the primary vertex:
-//   roughness <  RESTIR_SPECULAR_HANDOFF_ROUGHNESS -> rt reflections owns specular, restir
-//     drops the specular lobe here (lambert only at primary) so the two pipelines do not
-//     double count, reservoir reuse on near mirror surfaces is poor anyway because the
-//     narrow specular lobe changes direction every pixel which defeats spatial sharing
-//   roughness >= RESTIR_SPECULAR_HANDOFF_ROUGHNESS -> restir owns the full brdf and rt
-//     reflections is gated off in ray_traced_reflections.hlsl, the broad glossy lobe is
-//     handled well by reservoir reuse and matches the lin 2022 §5 reference
-// the threshold must match the gate in ray_traced_reflections.hlsl
-static const float RESTIR_SPECULAR_HANDOFF_ROUGHNESS = 0.4f;
-bool restir_primary_diffuse_only(float roughness)
+// smooth lobe split between restir pt and rt reflections at the primary vertex
+// returns the [0, 1] weight applied to the specular lobe inside restir, the rt reflections
+// pipeline applies the complementary (1 - blend) weight on the same factor so the two
+// pipelines partition the specular lobe with zero gap and no visible step across the
+// transition band, the partition is:
+//   roughness <= RESTIR_SPECULAR_HANDOFF_LO -> blend = 0, rt reflections owns the full
+//     specular (near mirror, reservoir reuse is poor because the lobe direction changes
+//     every pixel and spatial sharing breaks down)
+//   roughness >= RESTIR_SPECULAR_HANDOFF_HI -> blend = 1, restir owns the full specular
+//     (broad glossy, well captured by reservoir reuse, paper lin 2022 §5)
+//   in between -> linear ramp, both pipelines emit a partial specular contribution that sums
+//     to the full specular term so the lobe is conserved
+// the thresholds must match the gate in ray_traced_reflections.hlsl
+static const float RESTIR_SPECULAR_HANDOFF_LO = 0.3f;
+static const float RESTIR_SPECULAR_HANDOFF_HI = 0.4f;
+float restir_primary_specular_blend(float roughness)
 {
-    return roughness < RESTIR_SPECULAR_HANDOFF_ROUGHNESS;
+    return saturate((roughness - RESTIR_SPECULAR_HANDOFF_LO) / (RESTIR_SPECULAR_HANDOFF_HI - RESTIR_SPECULAR_HANDOFF_LO));
 }
 
 // lin 2022 reconnection conditions for reusing src's rc at a destination surface
@@ -953,9 +1121,11 @@ float3 rc_outgoing_radiance(PathSample src, float3 dir_primary_to_rc)
     }
 
     float3 view_at_rc = -dir_primary_to_rc;
+    // rc is a suffix vertex, the lobe split only applies at the primary so the full brdf is
+    // always active at rc (specular_blend = 1)
     float3 f_rc      = eval_surface_brdf_cos(src.rc_albedo, src.rc_roughness, src.rc_metallic,
                                              src.rc_normal, view_at_rc, src.rc_outgoing_dir,
-                                             false);
+                                             1.0f);
     return src.rc_L_nee + f_rc * src.rc_L_post;
 }
 
@@ -984,7 +1154,7 @@ ShiftResult try_reconnection_shift(
         if (dot(dst_normal, dir) <= RESTIR_RC_COS_FRONT)
             return result;
 
-        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_diffuse_only(dst_roughness));
+        float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
         if (all(brdf_cos <= 0.0f))
             return result;
 
@@ -1021,7 +1191,7 @@ ShiftResult try_reconnection_shift(
     if (cos_rc_src <= RESTIR_RC_COS_FRONT || cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
-    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, restir_primary_diffuse_only(dst_roughness));
+    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, restir_primary_specular_blend(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -1042,31 +1212,381 @@ ShiftResult try_reconnection_shift(
 }
 
 // random replay shift (lin 2022 hybrid shift, random-replay leg):
-// rebuilds the primary-vertex bounce at dst using the same xi that produced the src path,
-// then checks if the replayed bounce lands close enough to the stored rc to reuse the suffix.
-// the jacobian is the ratio of primary brdf pdfs at src and dst evaluated on each branch's
-// own sampled direction, which is the standard density change-of-variables factor for
-// random-replay shifts (volume preserving in xi-space)
-//
-// this is the fallback for samples that lack PATH_FLAG_HAS_RC (the reconnection shift's
-// roughness or distance gate failed); a single inline ray is cast from dst primary so the
-// added cost is paid only when the cheaper reconnection shift is not applicable
-//
-// rc_tolerance is the world-space slack on the rc match, scaled by the rc distance to keep
-// the relative tolerance well-bounded on far surfaces. visibility is implicit: if the
-// replayed ray hits within tolerance the connection is unoccluded by construction
-// the tolerance is intentionally tight: the random-replay shift is an approximation to the
-// paper-faithful full suffix retrace (lin 2022 §5), accepting only near-perfect rc matches
-// keeps the residual energy bias small in exchange for occasionally rejecting reusable
-// samples (which is unbiased: a rejected shift contributes zero, not a distorted value),
-// the reconnection shift handles the dominant cases so this fallback only needs to be
-// occasionally correct, not always available
-static const float RESTIR_REPLAY_RC_TOLERANCE_REL = 0.02f;
-static const float RESTIR_REPLAY_RC_TOLERANCE_MIN = 0.02f;
+// the paper formulation rebuilds the primary bounce at dst using the same xi that produced
+// the src path and then re-traces the full suffix from dst's actual replayed hit, using the
+// freshly traced suffix radiance as f_dst, the jacobian is the volume preserving ratio of
+// primary brdf pdfs (xi-space change of variables), the previous implementation took a soft
+// shortcut and rejected replays whose primary bounce did not land near src.rc, that bias was
+// invisible for diffuse / glossy primaries because the reconnection shift carries those, but
+// for near-mirror primaries (roughness < rc_min_roughness) the replay shift is the only
+// reuse path and the rejection bias darkened mirror-on-mirror chains, the strict paper
+// version below removes the proximity test and re-traces, cost is bounded because this leg
+// only fires for near-mirror primaries (a small fraction of pixels) and the suffix retrace
+// is capped at RESTIR_REPLAY_MAX_BOUNCES with russian roulette termination
+static const uint RESTIR_REPLAY_MAX_BOUNCES = 3u;
 
-// forward declaration so the replay shift can call into the segment visibility helper which
-// is defined later in this header
+// forward declarations so the replay shift's inline retrace and visibility helpers can call
+// into the segment visibility / shadow ray helpers which are defined later in this header
 bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal);
+bool trace_shadow_ray(float3 origin, float3 direction, float max_dist);
+
+// minimal inline hit record used by the replay shift's suffix retrace, mirrors the fields
+// of PathPayload from restir_pt.hlsl but lives here so the shift is self-contained and
+// callable from compute shader contexts where the raygen PathPayload is unavailable
+struct InlineHit
+{
+    bool   hit;
+    float3 hit_position;
+    float3 hit_normal;
+    float3 geometric_normal;
+    float3 albedo;
+    float3 emission;
+    float  roughness;
+    float  metallic;
+};
+
+// compact replica of restir_pt.hlsl's closest hit shader, pulls per triangle material and
+// geometry data via the bindless arrays from a successful inline RayQuery hit, normal mapping
+// is intentionally skipped (geometric normal is used as the shading normal) so the function
+// stays compact, the replay shift only fires for near mirror primaries which are a small
+// fraction of pixels and the missing normal map perturbation at suffix vertices is a bounded
+// approximation, all other material params (albedo, roughness, metallic, emission) match the
+// full closest hit pipeline so the brdf evaluation and emission accumulation stay consistent
+void inline_pull_hit_data(
+    uint  instance_id,
+    uint  instance_index,
+    uint  primitive_index,
+    float2 bary_xy,
+    float3 ray_origin,
+    float3 ray_dir,
+    float  hit_t,
+    float4x3 obj_to_world_4x3,
+    out InlineHit hit_out)
+{
+    // instance_id is the user defined material index set per blas, instance_index is the
+    // index of the instance in the tlas array, these are generally different, the closest
+    // hit shader in restir_pt.hlsl uses InstanceID() for material lookup and InstanceIndex()
+    // for geometry info lookup, this function must do the same so the two index spaces stay
+    // consistent across the raygen and inline ray paths
+    MaterialParameters mat = material_parameters[instance_id];
+    GeometryInfo       geo = geometry_infos[instance_index];
+
+    uint index_base = geo.index_offset + primitive_index * 3u;
+    uint i0 = geometry_indices[index_base + 0u];
+    uint i1 = geometry_indices[index_base + 1u];
+    uint i2 = geometry_indices[index_base + 2u];
+
+    PulledVertex pv0 = geometry_vertices[geo.vertex_offset + i0];
+    PulledVertex pv1 = geometry_vertices[geo.vertex_offset + i1];
+    PulledVertex pv2 = geometry_vertices[geo.vertex_offset + i2];
+
+    float3 bary = float3(1.0f - bary_xy.x - bary_xy.y, bary_xy.x, bary_xy.y);
+
+    float3 n0 = unpack_vertex_oct(pv0.normal);
+    float3 n1 = unpack_vertex_oct(pv1.normal);
+    float3 n2 = unpack_vertex_oct(pv2.normal);
+    float2 uv0 = unpack_vertex_uv(pv0.uv);
+    float2 uv1 = unpack_vertex_uv(pv1.uv);
+    float2 uv2 = unpack_vertex_uv(pv2.uv);
+
+    float3 normal_object = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
+    float2 texcoord      = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
+
+    // 4x3 form stores rows 0..2 as world space basis vectors, casting to 3x3 takes those
+    // first 3 rows, mul(v, M) then computes v_obj.x * row0 + v_obj.y * row1 + v_obj.z * row2
+    // which gives the world space transform, this matches the existing closest hit shader
+    float3x3 obj_to_world_3x3 = (float3x3)obj_to_world_4x3;
+    float3   normal_world     = normalize(mul(normal_object, obj_to_world_3x3));
+
+    float3 hit_position = ray_origin + ray_dir * hit_t;
+    if (geo.uv_world_space > 0.0f)
+    {
+        texcoord = compute_world_space_uv(hit_position, normal_world);
+    }
+    texcoord = texcoord * geo.uv_tiling + geo.uv_offset;
+    if (geo.uv_rotation != 0.0f)
+        texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
+
+    float3 edge1_world = mul(pv1.position - pv0.position, obj_to_world_3x3);
+    float3 edge2_world = mul(pv2.position - pv0.position, obj_to_world_3x3);
+    float3 geometric_normal = normalize(cross(edge1_world, edge2_world));
+    if (dot(geometric_normal, ray_dir) > 0.0f)
+        geometric_normal = -geometric_normal;
+    if (dot(normal_world, geometric_normal) < 0.0f)
+        normal_world = -normal_world;
+
+    // mip 0 is acceptable because the replay shift is only used at near mirror primaries
+    // where the suffix bounces are sparse and per pixel filtering quality is dominated by
+    // the rest of the pipeline
+    float mip_level = 0.0f;
+
+    // bindless material textures are indexed by material_index + per-type offset, the same
+    // formula the closest hit shader uses, instance_id == InstanceID() carries the material
+    // index here
+    float3 albedo = mat.color.rgb;
+    if (mat.has_texture_albedo())
+    {
+        uint   albedo_idx = instance_id + material_texture_index_albedo;
+        float4 s          = material_textures[albedo_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
+        albedo = s.rgb * mat.color.rgb;
+    }
+    albedo = saturate(albedo);
+
+    float roughness = mat.roughness;
+    if (mat.has_texture_roughness())
+    {
+        uint roughness_idx = instance_id + material_texture_index_roughness;
+        roughness *= material_textures[roughness_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).g;
+    }
+    roughness = max(roughness, 0.04f);
+
+    float metallic = mat.metalness;
+    if (mat.has_texture_metalness())
+    {
+        uint metallic_idx = instance_id + material_texture_index_metalness;
+        metallic *= material_textures[metallic_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).r;
+    }
+
+    float3 emission = float3(0, 0, 0);
+    if (mat.has_texture_emissive())
+    {
+        uint emissive_idx = instance_id + material_texture_index_emission;
+        emission = material_textures[emissive_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
+    }
+    if (mat.emissive_from_albedo())
+        emission += albedo;
+
+    hit_out.hit              = true;
+    hit_out.hit_position     = hit_position;
+    hit_out.hit_normal       = normal_world;
+    hit_out.geometric_normal = geometric_normal;
+    hit_out.albedo           = albedo;
+    hit_out.emission         = emission;
+    hit_out.roughness        = roughness;
+    hit_out.metallic         = metallic;
+}
+
+// inline ray cast + closest hit data fetch, returns false on miss so the caller knows the
+// ray escaped to the sky (handled separately as a sky radiance contribution)
+bool inline_trace_hit(float3 origin, float3 dir, float t_max, out InlineHit hit_out)
+{
+    hit_out.hit              = false;
+    hit_out.hit_position     = float3(0, 0, 0);
+    hit_out.hit_normal       = float3(0, 1, 0);
+    hit_out.geometric_normal = float3(0, 1, 0);
+    hit_out.albedo           = float3(0, 0, 0);
+    hit_out.emission         = float3(0, 0, 0);
+    hit_out.roughness        = 1.0f;
+    hit_out.metallic         = 0.0f;
+
+    RayDesc ray;
+    ray.Origin    = origin;
+    ray.Direction = dir;
+    ray.TMin      = RESTIR_RAY_T_MIN;
+    ray.TMax      = t_max;
+
+    RayQuery<RAY_FLAG_NONE> q;
+    q.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
+    q.Proceed();
+
+    if (q.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
+        return false;
+
+    uint     inst_id   = q.CommittedInstanceID();
+    uint     inst_idx  = q.CommittedInstanceIndex();
+    uint     prim_idx  = q.CommittedPrimitiveIndex();
+    float2   bary_xy   = q.CommittedTriangleBarycentrics();
+    float    hit_t     = q.CommittedRayT();
+    float4x3 obj_to_w  = q.CommittedObjectToWorld4x3();
+
+    inline_pull_hit_data(inst_id, inst_idx, prim_idx, bary_xy, origin, dir, hit_t, obj_to_w, hit_out);
+    return true;
+}
+
+// minimal inline next event estimation against the analytical light pool, equivalent to the
+// analytical loop in direct_lighting_at_vertex (restir_pt.hlsl) but self contained so it can
+// run from compute shader contexts that do not include restir_pt.hlsl, env probe nee is
+// intentionally skipped here because the suffix bounce loop catches sky on a miss anyway,
+// and emissive triangle nee is skipped because hit.emission already accumulates emission
+// from bounce-hit emissive triangles which is the same radiance the emtri nee would carry
+// (with a worse pdf which would only matter for low variance optimization, not correctness)
+float3 inline_replay_nee_analytical(
+    float3 hit_pos,
+    float3 hit_normal,
+    float3 geom_normal,
+    float3 view_dir,
+    float3 albedo,
+    float  roughness,
+    float  metallic,
+    float  specular_blend,
+    inout uint seed)
+{
+    float3 total           = float3(0, 0, 0);
+    uint   light_count     = (uint)buffer_frame.restir_pt_light_count;
+    float  shading_offset  = compute_ray_offset(hit_pos);
+    float3 ray_origin_nee  = hit_pos + geom_normal * shading_offset;
+
+    for (uint light_idx = 0u; light_idx < light_count; light_idx++)
+    {
+        LightParameters light = light_parameters[light_idx];
+        if (light.intensity <= 0.0f)
+            continue;
+
+        uint light_flags    = light.flags;
+        bool is_directional = (light_flags & (1u << 0)) != 0;
+        bool is_point       = (light_flags & (1u << 1)) != 0;
+        bool is_spot        = (light_flags & (1u << 2)) != 0;
+        bool is_area        = (light_flags & (1u << 6)) != 0;
+
+        float3 light_color = light.color.rgb;
+        float3 light_dir;
+        float  light_dist;
+        float  light_pdf   = 1.0f;
+        float  attenuation = 1.0f;
+
+        if (is_directional)
+        {
+            light_dir  = -light.direction;
+            light_dist = 1000.0f;
+        }
+        else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
+        {
+            float3 light_normal = light.direction;
+            float3 light_right, light_up;
+            build_orthonormal_basis_fast(light_normal, light_right, light_up);
+
+            float3 ex          = light_right * light.area_width;
+            float3 ey          = light_up    * light.area_height;
+            float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
+
+            float2 xi = random_float2(seed);
+            float3 light_sample_pos;
+            float  solid_angle;
+            sample_spherical_rectangle(hit_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
+
+            if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
+                continue;
+
+            float3 to_light = light_sample_pos - hit_pos;
+            light_dist      = length(to_light);
+            if (light_dist < 1e-3f)
+                continue;
+            light_dir = to_light / light_dist;
+
+            float cos_light = dot(-light_dir, light_normal);
+            if (cos_light <= 0.0f)
+                continue;
+
+            light_pdf = 1.0f / solid_angle;
+        }
+        else if (is_point || is_spot)
+        {
+            float3 to_light = light.position - hit_pos;
+            light_dist      = length(to_light);
+            light_dir       = to_light / light_dist;
+
+            float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
+            attenuation = range_factor * range_factor / max(light_dist * light_dist, 0.01f);
+
+            if (is_spot)
+            {
+                float cos_angle = dot(-light_dir, light.direction);
+                float cos_outer = cos(light.angle);
+                float cos_inner = cos(light.angle * 0.8f);
+                attenuation *= saturate((cos_angle - cos_outer) / (cos_inner - cos_outer));
+            }
+        }
+        else
+        {
+            continue;
+        }
+
+        float n_dot_l = dot(hit_normal, light_dir);
+        if (n_dot_l <= 0.0f)
+            continue;
+
+        if (!trace_shadow_ray(ray_origin_nee, light_dir, light_dist))
+            continue;
+
+        float  brdf_pdf;
+        float3 brdf = evaluate_brdf(albedo, roughness, metallic, hit_normal, view_dir, light_dir, brdf_pdf, specular_blend);
+
+        float3 Li = light_color * light.intensity * attenuation;
+        total += brdf * Li / max(light_pdf, 1e-6f);
+    }
+
+    return total;
+}
+
+// inline suffix retrace from dst's replayed primary hit, mirrors trace_rc_suffix +
+// accumulate_subpath_at_rc from restir_pt.hlsl but uses inline RayQuery + inline material
+// fetch so the shift stays callable from compute shader contexts, returns the radiance
+// leaving start_hit toward start_view_dir, max_bounces caps the depth so cost is bounded
+float3 accumulate_replay_suffix(
+    InlineHit start_hit,
+    float3    start_view_dir,
+    uint      max_bounces,
+    inout uint seed)
+{
+    // first vertex emission + nee contribution at the replayed primary hit
+    float3 result    = start_hit.emission;
+    float3 nee_at_v0 = inline_replay_nee_analytical(
+        start_hit.hit_position,
+        start_hit.hit_normal,
+        start_hit.geometric_normal,
+        start_view_dir,
+        start_hit.albedo,
+        start_hit.roughness,
+        start_hit.metallic,
+        1.0f,
+        seed);
+    result += nee_at_v0;
+
+    if (max_bounces < 2u)
+        return result;
+
+    InlineHit cur        = start_hit;
+    float3    view_dir   = start_view_dir;
+    float3    throughput = float3(1, 1, 1);
+
+    for (uint b = 1u; b < max_bounces; b++)
+    {
+        // russian roulette from bounce 2 onwards, veach-style adjusted continuation
+        if (b >= 2u)
+        {
+            float continuation_prob = clamp(luminance(throughput * cur.albedo), 0.25f, 0.95f);
+            if (random_float(seed) > continuation_prob)
+                break;
+            throughput /= continuation_prob;
+        }
+
+        float2 xi = random_float2(seed);
+        float  pdf;
+        float3 nd = sample_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, xi, pdf, 1.0f);
+        if (pdf < RESTIR_MIN_PDF || dot(nd, cur.hit_normal) <= 0.0f || any(isnan(nd)))
+            break;
+
+        float  unused_pdf;
+        float3 brdf = evaluate_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, nd, unused_pdf, 1.0f);
+        throughput *= brdf / pdf;
+
+        float ofs = compute_ray_offset(cur.hit_position);
+        InlineHit next;
+        if (!inline_trace_hit(cur.hit_position + cur.geometric_normal * ofs, nd, 1000.0f, next))
+            break;
+
+        // bounce hit emission + analytical nee at the new vertex
+        result += throughput * next.emission;
+        result += throughput * inline_replay_nee_analytical(
+            next.hit_position, next.hit_normal, next.geometric_normal,
+            -nd, next.albedo, next.roughness, next.metallic, 1.0f, seed);
+
+        cur      = next;
+        view_dir = -nd;
+    }
+
+    return result;
+}
 
 ShiftResult try_random_replay_shift(
     PathSample src,
@@ -1093,85 +1613,70 @@ ShiftResult try_random_replay_shift(
     if (is_sky_sample(src))
         return result;
 
+    // gate the strict full suffix retrace to near mirror primaries (roughness below the
+    // rc roughness floor), this is where the reconnection shift gates off and the replay
+    // shift is the only reuse path, on diffuse / glossy primaries the reconnection shift
+    // carries the sample so paying for a full suffix retrace would not improve quality and
+    // would multiply spatial / temporal cost by RESTIR_REPLAY_MAX_BOUNCES inline rays per
+    // shift evaluation, the gate keeps total cost bounded by the fraction of near mirror
+    // pixels in the scene
+    float rc_min_roughness = get_restir_rc_min_roughness();
+    if (src_roughness >= rc_min_roughness || dst_roughness >= rc_min_roughness)
+        return result;
+
     // replay xi at the stored seed; the seed is captured before the original xi was consumed
     uint   replay_seed = src.seed_path;
     float2 xi          = random_float2(replay_seed);
 
-    // each side picks its own primary lobe ownership based on its own roughness, the jacobian
+    // each side picks its own primary lobe blend based on its own roughness, the jacobian
     // pdf_src / pdf_dst then captures the change of variables exactly because each pdf reflects
     // the actual sampling distribution at that side
-    bool src_diffuse_only = restir_primary_diffuse_only(src_roughness);
-    bool dst_diffuse_only = restir_primary_diffuse_only(dst_roughness);
+    float src_specular_blend = restir_primary_specular_blend(src_roughness);
+    float dst_specular_blend = restir_primary_specular_blend(dst_roughness);
 
     // sample brdf at src to get src's primary direction and pdf for the jacobian
     float  pdf_src;
-    float3 dir_src = sample_brdf(src_albedo, src_roughness, src_metallic, src_normal, src_view_dir, xi, pdf_src, src_diffuse_only);
+    float3 dir_src = sample_brdf(src_albedo, src_roughness, src_metallic, src_normal, src_view_dir, xi, pdf_src, src_specular_blend);
     if (pdf_src < RESTIR_MIN_PDF || dot(dir_src, src_normal) <= 0.0f)
         return result;
 
     // sample brdf at dst with the same xi for the replayed bounce
     float  pdf_dst;
-    float3 dir_dst = sample_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, xi, pdf_dst, dst_diffuse_only);
+    float3 dir_dst = sample_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, xi, pdf_dst, dst_specular_blend);
     if (pdf_dst < RESTIR_MIN_PDF || dot(dir_dst, dst_normal) <= 0.0f)
         return result;
 
-    float offset = compute_ray_offset(dst_pos);
-    RayDesc ray;
-    ray.Origin    = dst_pos + dst_normal * offset;
-    ray.Direction = dir_dst;
-    ray.TMin      = RESTIR_RAY_T_MIN;
-    ray.TMax      = 1000.0f;
-
-    RayQuery<RAY_FLAG_NONE> query;
-    query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, ray);
-    query.Proceed();
-    if (query.CommittedStatus() != COMMITTED_TRIANGLE_HIT)
+    // trace dst's primary bounce inline and pull the full closest hit data, this is the
+    // first vertex of the replayed suffix path, we no longer test proximity to src.rc, the
+    // suffix is re traced from this dst specific hit so the proximity test is unnecessary
+    float ofs = compute_ray_offset(dst_pos);
+    InlineHit first_hit;
+    if (!inline_trace_hit(dst_pos + dst_normal * ofs, dir_dst, 1000.0f, first_hit))
         return result;
 
-    float  hit_t   = query.CommittedRayT();
-    float3 hit_pos = ray.Origin + ray.Direction * hit_t;
-
-    // accept the replay only if the bounce landed near the stored rc, scaled tolerance keeps
-    // the test relative on far hits where small angular changes produce large position deltas
-    //
-    // note: this is a soft-reconnection variant of the lin 2022 random replay shift. the
-    // strict paper formulation would re-trace the entire suffix from dst with replayed xi
-    // (no rc proximity test, just rebuild the full path) and apply the volume-preserving
-    // jacobian over xi space. the tolerance test here is a cheap fallback that rejects
-    // replays whose reconnection point drifts far from the source rc, which trades a small
-    // amount of rejection bias for ~10x lower cost than full suffix retrace. with the new
-    // paper-faithful rc storage (rc_L_post + rc_outgoing_dir factoring f_rc out) this
-    // approximation remains usable because the reconnection shift handles the dominant
-    // cases, the replay shift is now only the fallback for short paths and near-specular
-    // primaries where reconnection would be near-degenerate
-    float3 to_rc        = src.rc_pos - hit_pos;
-    float  rc_dist      = length(src.rc_pos - dst_pos);
-    float  tol          = max(RESTIR_REPLAY_RC_TOLERANCE_REL * rc_dist, RESTIR_REPLAY_RC_TOLERANCE_MIN);
-    if (dot(to_rc, to_rc) > tol * tol)
-        return result;
-
-    // explicit visibility check from dst to src.rc_pos, the tolerance test above only ensures
-    // hit_pos is geographically close to src.rc_pos but does not catch concave geometry where
-    // the segment dst to src.rc_pos crosses a wall and the suffix would attach to the wrong side
-    if (!trace_shift_visibility(src, dst_pos, dst_normal))
-        return result;
-
-    // brdf at dst toward the replayed direction, multiplied by stored suffix radiance
+    // brdf at dst toward the replayed direction, this is the primary brdf factor of the
+    // shift's f_dst, the suffix radiance is multiplied by it to produce the integrand value
     float  pdf_eval;
-    float3 brdf_cos = evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, pdf_eval, dst_diffuse_only);
+    float3 brdf_cos = evaluate_brdf(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, pdf_eval, dst_specular_blend);
     if (all(brdf_cos <= 0.0f))
         return result;
 
-    // jacobian for replay is pdf_src / pdf_dst; the xi -> direction map is volume preserving
-    // in xi-space so the density change of variables in solid-angle is exactly this ratio
-    // f_dst stays in integrand form (brdf*cos*radiance), the pdf factor goes through the
-    // jacobian so the ris weight target/source remains in consistent units across shift types
+    // jacobian for replay is pdf_src / pdf_dst, the xi -> direction map is volume preserving
+    // in xi-space so the density change of variables in solid-angle is exactly this ratio,
+    // f_dst stays in integrand form (brdf * cos * radiance) and the pdf factor goes through
+    // the jacobian so the ris weight target/source remains in consistent units across shifts
     float jacobian = pdf_src / max(pdf_dst, RESTIR_MIN_PDF);
     if (jacobian <= 0.0f || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
         return result;
 
-    // re-evaluate f_rc at dst's incoming direction toward rc_outgoing_dir (paper-faithful)
-    result.f_dst    = brdf_cos * rc_outgoing_radiance(src, dir_dst);
+    // strict paper formulation, retrace the suffix from dst's replayed primary hit and use
+    // the freshly accumulated radiance as the suffix term, bounded by RESTIR_REPLAY_MAX_BOUNCES
+    // with russian roulette termination inside, replay_seed continues from where the primary
+    // xi was consumed so the suffix xi sequence matches the source path's suffix structure
+    uint   suffix_seed     = replay_seed;
+    float3 suffix_radiance = accumulate_replay_suffix(first_hit, -dir_dst, RESTIR_REPLAY_MAX_BOUNCES, suffix_seed);
+
+    result.f_dst    = brdf_cos * suffix_radiance;
     result.jacobian = jacobian;
     result.ok       = true;
     return result;
@@ -1279,7 +1784,7 @@ ShiftResult self_shift_evaluate(
     if (dot(dst_normal, dir) <= 0.0f)
         return result;
 
-    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_diffuse_only(dst_roughness));
+    float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir, restir_primary_specular_blend(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
 
@@ -1346,16 +1851,18 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-// the demodulator that shade_reservoir_path divides out so light_composition can re-apply
-// surface.albedo at full resolution, this is the dominant diffuse response factor at the
-// primary vertex, dividing it out and re-multiplying with the per pixel full res albedo
-// recovers fine material detail that the half res shading + bilateral upsample otherwise
-// blurs across neighboring texels, the 0.04 floor matches the dielectric f0 fallback so
-// black materials still carry the small specular component without dividing by zero,
+// scalar luminance demodulator, paper-aligned choice that avoids the chromatic blow-up of
+// the previous per channel max(albedo, 0.04) form, for saturated diffuse surfaces (e.g. a
+// fully red wall (1,0,0)) the per channel demod divided the green and blue channels by 0.04
+// inflating any specular or rim contribution 25x, then the bilateral upsample averaged that
+// against neighboring pixels with different albedos and the off channel inflation never
+// fully cancelled at re-modulation, producing chromatic noise / colorful splotches on
+// stationary frames, the scalar form keeps the demod commensurate across pixels so the
+// upsample averages chromatically consistent values
 // must stay in sync with restir_albedo_demodulator in light_composition.hlsl
-float3 restir_albedo_demodulator(float3 albedo)
+float restir_albedo_demodulator(float3 albedo)
 {
-    return max(albedo, float3(0.04f, 0.04f, 0.04f));
+    return max(luminance(albedo), 0.04f);
 }
 
 // shades the reservoir's sample at the current pixel (self-shift, jacobian == 1)
@@ -1374,7 +1881,8 @@ float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, floa
     if (!trace_shift_visibility(r.sample, dst_pos, dst_normal))
         return float3(0, 0, 0);
 
-    return (shift.f_dst * r.W) / restir_albedo_demodulator(dst_albedo);
+    float demod = restir_albedo_demodulator(dst_albedo);
+    return (shift.f_dst * r.W) / max(demod, 1e-4f);
 }
 
 #endif // SPARTAN_RESTIR_RESERVOIR

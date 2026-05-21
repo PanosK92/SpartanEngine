@@ -170,6 +170,12 @@ RWStructuredBuffer<uint> cluster_stats : register(u47);
 // declared rw for binding uniformity with the other indirect/cluster buffers, treated as read only inside the shader
 RWStructuredBuffer<uint> volumetric_light_indices : register(u48);
 
+// restir nee pool, world space emissive triangles populated by Renderer::BuildEmissiveTriangleNeePool
+// each entry packs the world space triangle, area, normal, emission radiance, picking weight and
+// a cumulative prefix sum used for area-weighted sampling, count comes via buffer_frame.restir_pt_emissive_tri_count
+// declared rw to match the engine pattern for per-pass structured buffers but treated read-only
+RWStructuredBuffer<EmissiveTriangle> emissive_triangles : register(u49);
+
 // buffers
 #ifdef API_D3D12
 // d3d12 path: root 32-bit constants at b1 (vk::push_constant is ignored by dxil)

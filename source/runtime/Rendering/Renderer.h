@@ -318,6 +318,13 @@ namespace spartan
         static void UpdateDrawCalls_BuildIndirectAndCullTasks();
         static void UpdateDrawCalls_SelectOccluders();
         static void UpdateAccelerationStructures(RHI_CommandList* cmd_list);
+        // walk every visible renderable with a non zero emission property and write an entry
+        // into the EmissiveTriangles structured buffer for each of its lod 0 triangles, the
+        // entries carry world space positions, area, normal and emission radiance plus a
+        // per triangle weight = area * lum(emission) and a running prefix sum used by the
+        // restir initial trace pass to area sample a triangle in o(log n), the count gets
+        // written into buffer_frame.restir_pt_emissive_tri_count, zero disables the strategy
+        static void BuildEmissiveTriangleNeePool(RHI_CommandList* cmd_list);
         static void RotateFrameBuffers();
 
         // draw calls

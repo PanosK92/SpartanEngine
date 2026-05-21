@@ -235,7 +235,11 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 ray_dir         = position; // direction stored in position for misses
         float2 sky_uv          = direction_sphere_uv(ray_dir);
         float3 sky_color       = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, sky_mip).rgb;
-        tex_uav[thread_id.xy]  = float4(sky_color, 1.0f);
+        // smooth lobe split fade, see comments at the bottom of the hit branch for details
+        const float specular_handoff_lo_miss = 0.3f;
+        const float specular_handoff_hi_miss = 0.4f;
+        float specular_blend_miss            = saturate((source_roughness - specular_handoff_lo_miss) / (specular_handoff_hi_miss - specular_handoff_lo_miss));
+        tex_uav[thread_id.xy]                = float4(sky_color * (1.0f - specular_blend_miss), 1.0f);
         return;
     }
     
@@ -358,6 +362,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     // bounce off the sky is both expensive and not what drives primary reflection visibility,
     // direct lights and the diffuse ibl are what determine how bright the reflection looks
     float3 final_color = out_diffuse + out_specular + ibl_diffuse;
-    
+
+    // smooth lobe split with restir pt: scale this rt reflection contribution by (1 - blend)
+    // so it fades out across the same [0.3, 0.4] band that restir uses to fade in its primary
+    // specular lobe, the two contributions sum to the full specular term with no step at the
+    // partition boundary, must stay in sync with restir_primary_specular_blend in
+    // restir_reservoir.hlsl, the source roughness is sampled from the source pixel material
+    // texture which is the same value restir reads when computing its blend
+    const float specular_handoff_lo = 0.3f;
+    const float specular_handoff_hi = 0.4f;
+    float source_roughness          = tex_material[thread_id.xy].r;
+    float specular_blend            = saturate((source_roughness - specular_handoff_lo) / (specular_handoff_hi - specular_handoff_lo));
+    final_color                    *= (1.0f - specular_blend);
+
     tex_uav[thread_id.xy] = validate_output(float4(final_color, 1.0f));
 }

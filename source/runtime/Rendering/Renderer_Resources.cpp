@@ -194,6 +194,15 @@ namespace spartan
             1, nullptr, true, "cluster_stats"
         );
 
+        // restir path tracing emissive triangle nee pool, rebuilt each frame on the cpu inside
+        // UpdateAccelerationStructures by walking every renderable whose material has non-zero
+        // emission, capped at restir_emissive_tri_max to bound the cpu walk cost on dense scenes
+        // (handful of glowing surfaces is the common case, a million tri ferns are not)
+        at(buffers, Renderer_Buffer::EmissiveTriangles) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmissiveTriangle)),
+            restir_emissive_tri_max, nullptr, true, "emissive_triangles"
+        );
+
         // volumetric light index list, compact list of light slot indices with the volumetric flag set
         // built each frame on the cpu in UpdateLights, scanned per pixel by the volumetric fog loop
         at(buffers, Renderer_Buffer::VolumetricLightIndices) = make_shared<RHI_Buffer>(

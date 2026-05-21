@@ -74,14 +74,15 @@ bool is_neighbor_gbuffer_compatible(
     if (normal_similarity < adaptive_normal_threshold)
         return false;
 
-    if (center_linear_depth > 50.0f)
-    {
-        float3 neighbor_pos = get_position(neighbor_uv);
-        float world_dist = length(neighbor_pos - center_pos);
-        float max_world_dist = center_linear_depth * 0.05f;
-        if (world_dist > max_world_dist)
-            return false;
-    }
+    // unconditional world distance gate, the previous "depth > 50" guard let near surfaces
+    // share reservoirs across cracks at near plane scales where a 5cm step still represents
+    // distinct geometry, the new threshold scales with depth (0.02 * depth) with a 5cm floor,
+    // so a crevice across two facing walls always rejects regardless of camera distance
+    float3 neighbor_pos  = get_position(neighbor_uv);
+    float  world_dist    = length(neighbor_pos - center_pos);
+    float  max_world_dist = max(center_linear_depth * 0.02f, 0.05f);
+    if (world_dist > max_world_dist)
+        return false;
 
     return true;
 }
@@ -167,10 +168,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // larger distances feed the canonical reservoir, the increasing radius is what makes
     // this an a-trous filter rather than a single-radius bilateral blur, the sample count
     // can drop a little because each pass is on top of an already-converged input
+    // radius grows by 1.6^pass_index so 3 passes cover 1.0x, 1.6x and 2.56x the adaptive
+    // baseline, matching lin 2022's a-trous progression for spatial reservoir reuse
     uint spatial_sample_count = RESTIR_SPATIAL_SAMPLES;
     if (spatial_pass_index > 0)
     {
-        adaptive_radius     *= 1.6f * float(spatial_pass_index + 1u) / 2.0f;
+        adaptive_radius     *= pow(1.6f, float(spatial_pass_index));
         spatial_sample_count = max(RESTIR_SPATIAL_SAMPLES - 2u, 4u);
     }
 
@@ -337,13 +340,25 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float weight_c = k_inv * (1.0f + canonical_pair_acc) * target_cur * center.W;
     combined.weight_sum = max(weight_c, 0.0f);
 
+    // per neighbor weight cap, the canonical's full pairwise mis weight is weight_c, every
+    // neighbor's streaming weight is softly capped at 4x that value so a single outlier with
+    // a target_at_c that happens to be huge cannot win the reservoir selection by 1000x and
+    // spread itself across neighbors via the next spatial pass and temporal carry, the
+    // soft_clamp_w saturator passes through below the threshold and asymptotes at 2x so
+    // legitimate strong neighbors still contribute meaningfully (up to 8x weight_c) while
+    // the extreme tail is bounded, tightened from 8x to 4x after the first pass cut 80%
+    // of the splotches but the survivors still came in through pairs of neighbors with
+    // moderately elevated weights, 4x catches those without rejecting useful sample sharing
+    float neighbor_cap = max(weight_c, 1.0f) * 4.0f;
     for (uint j = 0; j < valid_neighbors; j++)
     {
         float target_at_c = stream_target[j];
         float m_j         = k_inv * (stream_M[j] * target_at_c) / stream_denom[j];
         float weight_j    = m_j * target_at_c * stream_W[j] * stream_jacobian[j];
 
-        combined.weight_sum += max(weight_j, 0.0f);
+        weight_j = soft_clamp_w(max(weight_j, 0.0f), neighbor_cap);
+
+        combined.weight_sum += weight_j;
 
         if (combined.weight_sum > 0.0f && random_float(seed) * combined.weight_sum < weight_j)
         {
@@ -385,8 +400,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.target_pdf = final_target;
     combined.W          = (final_target > 0.0f) ? (combined.weight_sum / final_target) : 0.0f;
 
+    // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
     float w_clamp = get_w_clamp_for_sample(combined.sample);
-    combined.W    = min(combined.W, w_clamp);
+    combined.W    = soft_clamp_w(combined.W, w_clamp);
 
     // confidence is m-weighted across all merged streams, blended with the center so a single
     // high-confidence neighbor does not overpower the canonical estimate
@@ -416,6 +432,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
+
+    // final firefly catcher, see clamp_gi_radiance in restir_reservoir.hlsl
+    gi = clamp_gi_radiance(gi);
 
     // analytical direct lighting is no longer added here, the initial ris pass already streams
     // light nee samples into the reservoir alongside brdf samples, so all primary direct +

@@ -24,12 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
-// must match restir_albedo_demodulator in restir_reservoir.hlsl, the half res restir shading
-// divides the gi by this and the bilateral upsample plus the multiply below re-applies the
-// full res value, recovering fine albedo detail that the upsample would otherwise blur away
-float3 restir_albedo_demodulator(float3 albedo)
+// must match restir_albedo_demodulator in restir_reservoir.hlsl, scalar luminance form so
+// the demod is commensurate across pixels with different albedos (per channel max with a
+// 0.04 floor inflated off channels 25x on saturated diffuse surfaces and produced chromatic
+// noise on the bilateral upsample), the chromatic content of the lighting stays inside the
+// stored gi via f_dst, the per pixel re-modulation only restores the intensity scale
+float restir_albedo_demodulator(float3 albedo)
 {
-    return max(albedo, float3(0.04f, 0.04f, 0.04f));
+    return max(luminance(albedo), 0.04f);
 }
 
 // edge-aware bilateral upsample of the half-res restir gi texture (tex6)
@@ -73,6 +75,13 @@ float3 sample_gi_bilateral(float2 uv_dst, float depth_dst_lin, float3 normal_dst
         float d_lin = linearize_depth(d_raw);
         float3 n_src = get_normal(src_uv);
 
+        // bilateral upsample weights, reverted to the original 64 / 16 pair, the tier 2
+        // tightening to 128 / 32 was rejecting too many bilinear corners and falling through
+        // to nearest neighbor wherever the gates flipped, leaving per pixel splotches on
+        // subtly varying surfaces; the denoiser handles the contact contrast at the a-trous
+        // stage so the upsample's job is just to interpolate the half-res gi as smoothly as
+        // possible without crossing thin geometry, 64 / 16 (~4 deg depth, ~14 deg normal)
+        // is the standard schied 2017 starting point and matches our denoiser phi values
         float depth_diff = abs(d_lin - depth_dst_lin) / max(depth_dst_lin, 1e-3f);
         float w_depth    = exp(-depth_diff * 64.0f);
 
@@ -164,6 +173,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             light_gi  = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
             light_gi *= restir_albedo_demodulator(surface.albedo);
         }
+        // scalar demod returns a single scalar so the multiply above broadcasts uniformly
+        // across r, g, b, preserving the chromatic content the bilateral upsample averaged
     }
     
     // fog

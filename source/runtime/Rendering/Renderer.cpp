@@ -913,7 +913,154 @@ namespace spartan
         UpdateFrameCb_FeatureBits();
         UpdateFrameCb_StereoXr();
 
+        // emissive triangle nee pool, must precede the cb upload because it writes the count
+        // into m_cb_frame_cpu, the buffer upload itself piggybacks on the same cmd_list
+        BuildEmissiveTriangleNeePool(cmd_list);
+
         GetBuffer(Renderer_Buffer::ConstantFrame)->Update(cmd_list, &m_cb_frame_cpu);
+    }
+
+    void Renderer::BuildEmissiveTriangleNeePool(RHI_CommandList* cmd_list)
+    {
+        // skip when restir off, the buffer stays at whatever data it had previously, the count
+        // is set to zero so the shader treats the pool as empty regardless of buffer contents
+        if (!cvar_restir_pt.GetValueAs<bool>())
+        {
+            m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
+            return;
+        }
+
+        // statics avoid per frame heap thrash, the vectors are reused across frames and the
+        // capacity ratchets up to the largest emissive renderable seen so far
+        static vector<Sb_EmissiveTriangle>      tris;
+        static vector<uint32_t>                 indices;
+        static vector<RHI_Vertex_PosTexNorTan>  vertices;
+        tris.clear();
+
+        for (Entity* entity : World::GetEntitiesRenderables())
+        {
+            Render* renderable = entity->GetComponent<Render>();
+            if (!renderable)
+            {
+                continue;
+            }
+
+            Material* material = renderable->GetMaterial();
+            if (!material)
+            {
+                continue;
+            }
+
+            // emission test, accept either the synthetic albedo->emission path or an explicit
+            // emission texture, the radiance estimate uses the material base color which is
+            // the same heuristic used by probe_emission_estimate in the existing path tracer
+            bool has_emission =
+                material->GetProperty(MaterialProperty::EmissiveFromAlbedo) > 0.5f ||
+                material->HasTextureOfType(MaterialTextureType::Emission);
+            if (!has_emission)
+            {
+                continue;
+            }
+
+            Vector3 emission(
+                material->GetProperty(MaterialProperty::ColorR),
+                material->GetProperty(MaterialProperty::ColorG),
+                material->GetProperty(MaterialProperty::ColorB)
+            );
+            float emission_lum = 0.299f * emission.x + 0.587f * emission.y + 0.114f * emission.z;
+            if (emission_lum <= 0.0f)
+            {
+                continue;
+            }
+
+            // pull lod 0 geometry, GetGeometry copies into the static vectors so the inner
+            // loop reads from contiguous memory without further indirection
+            indices.clear();
+            vertices.clear();
+            renderable->GetGeometry(&indices, &vertices);
+            if (indices.empty() || vertices.empty() || (indices.size() % 3u) != 0)
+            {
+                continue;
+            }
+
+            const Matrix& transform = entity->GetMatrix();
+
+            uint32_t tri_count = static_cast<uint32_t>(indices.size() / 3u);
+            for (uint32_t i = 0; i < tri_count; i++)
+            {
+                if (tris.size() >= restir_emissive_tri_max)
+                {
+                    break;
+                }
+
+                uint32_t i0 = indices[i * 3u + 0u];
+                uint32_t i1 = indices[i * 3u + 1u];
+                uint32_t i2 = indices[i * 3u + 2u];
+                if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size())
+                {
+                    continue;
+                }
+
+                Vector3 p0(vertices[i0].pos[0], vertices[i0].pos[1], vertices[i0].pos[2]);
+                Vector3 p1(vertices[i1].pos[0], vertices[i1].pos[1], vertices[i1].pos[2]);
+                Vector3 p2(vertices[i2].pos[0], vertices[i2].pos[1], vertices[i2].pos[2]);
+
+                p0 = transform * p0;
+                p1 = transform * p1;
+                p2 = transform * p2;
+
+                Vector3 e1     = p1 - p0;
+                Vector3 e2     = p2 - p0;
+                Vector3 cross  = Vector3::Cross(e1, e2);
+                float   nx_len = cross.Length();
+                if (nx_len <= 1e-12f)
+                {
+                    continue;
+                }
+
+                float   area   = nx_len * 0.5f;
+                Vector3 normal = cross / nx_len;
+
+                Sb_EmissiveTriangle tri = {};
+                tri.v0       = p0;
+                tri.v1       = p1;
+                tri.v2       = p2;
+                tri.normal   = normal;
+                tri.area     = area;
+                tri.emission = emission;
+                tri.weight   = area * emission_lum;
+                tri.cdf      = 0.0f;
+                tris.push_back(tri);
+            }
+
+            if (tris.size() >= restir_emissive_tri_max)
+            {
+                break;
+            }
+        }
+
+        // build the prefix sum over picking weight, the last entry's cdf is the total weight
+        // and the shader normalizes a uniform xi against it to area sample a triangle
+        float total_weight = 0.0f;
+        for (auto& t : tris)
+        {
+            total_weight += t.weight;
+            t.cdf         = total_weight;
+        }
+
+        if (!tris.empty() && total_weight > 0.0f)
+        {
+            GetBuffer(Renderer_Buffer::EmissiveTriangles)->Update(
+                cmd_list,
+                tris.data(),
+                static_cast<uint32_t>(tris.size() * sizeof(Sb_EmissiveTriangle))
+            );
+            m_cb_frame_cpu.restir_pt_emissive_tri_count = static_cast<float>(tris.size());
+        }
+        else
+        {
+            m_cb_frame_cpu.restir_pt_emissive_tri_count = 0.0f;
+        }
     }
 
     const Vector3& Renderer::GetWind()
