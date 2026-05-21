@@ -849,11 +849,15 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 final_color = (luminance + cloud_in_scatter + (night_ambient + sun_col + night_celestials) * cloud_trans) * intensity;
     final_color        = min(final_color, 100.0);
 
-    // temporal accumulation, smooths step banding from low sample counts
+    // temporal accumulation, smooths step banding from low sample counts. low blend factor
+    // integrates ~10 frames of jittered samples per converged pixel so the underlying ign
+    // pattern that drives the cloud march origin gets fully averaged out, instead of leaving
+    // a visible high-frequency texture on the cloud surface. converges over ~25-30 frames
+    // after a sun direction change which is still under half a second at 60 fps
     float4 prev = tex_uav[tid.xy];
     if (prev.a > 0.5)
     {
-        final_color = lerp(prev.rgb, final_color, 0.5);
+        final_color = lerp(prev.rgb, final_color, 0.1);
     }
 
     tex_uav[tid.xy] = float4(final_color, 1.0);

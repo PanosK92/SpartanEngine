@@ -40,7 +40,7 @@ static const float cumulus_bottom_alt     = 1500.0;
 static const float cumulus_top_alt        = 4000.0;
 static const float cumulus_thickness      = cumulus_top_alt - cumulus_bottom_alt;
 static const float cumulus_shape_scale    = 1.0 / 4500.0;   // one tile of the noise volume covers 4.5 km horizontally
-static const float cumulus_detail_scale   = 1.0 / 600.0;    // detail at one tenth scale
+static const float cumulus_detail_scale   = 1.0 / 2200.0;   // detail features now ~370m at the highest surviving octave, well above the 40m step nyquist
 static const float cumulus_coverage_scale = 1.0 / 26000.0;  // weather map domain, pushes tile repeats out toward the horizon
 static const float cumulus_coverage       = 0.40;           // 0 = no clouds, 1 = overcast, fair weather sits around 0.30 - 0.45
 static const float cumulus_density_mul    = 0.80;
@@ -71,7 +71,7 @@ static const float3 cloud_ambient_bottom  = float3(0.18, 0.22, 0.30); // cool da
 static const float3 cloud_ambient_top     = float3(0.95, 0.95, 0.99); // bright lit top
 static const float  cloud_ambient_factor  = 0.15;   // ambient strength relative to sun luminance
 static const float  cloud_albedo          = 0.97;   // single scattering albedo, near 1 for water clouds
-static const float  cloud_sun_step_base   = 60.0;   // first sun-march step length, in meters
+static const float  cloud_sun_step_base   = 30.0;   // first sun-march step length, finer to avoid noisy self-shadow
 static const float  cloud_sun_step_growth = 2.0;    // geometric growth between sun samples
 
 // night lighting, faint cool blue glow so cumulus do not go pitch black after sunset. the
@@ -87,9 +87,9 @@ static const float  cloud_aerial_falloff  = 1.0e-4;
 
 // raymarch sample budget, paid only on sky re-bake
 // cumulus uses an adaptive coarse/fine march, so the budget here is the max iteration cap
-static const int    cumulus_view_steps    = 224;
+static const int    cumulus_view_steps    = 256;
 static const int    cirrus_view_steps     = 24;
-static const int    cumulus_sun_steps     = 6;
+static const int    cumulus_sun_steps     = 8;
 
 // =====================================================================
 // noise generation (used by the CLOUD_NOISE compute kernel)
@@ -296,14 +296,20 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     base            = cloud_remap(base * profile, 1.0 - weather, 1.0, 0.0, 1.0);
     if (base <= 0.0) return 0.0;
     
-    // erode by high-frequency detail at the cloud edges, gives cauliflower micro structure
+    // erode by mid-frequency detail at the cloud edges, gives cauliflower micro structure
+    // only the medium worley fbm channel is used, the high-frequency .b channel has features
+    // below the march nyquist rate and shows up as grain rather than as detail no matter how
+    // many samples we average temporally
     float3 uvw_d    = (pos + cumulus_wind_offset * 1.7) * cumulus_detail_scale;
     float4 detail_n = cloud_sample_noise(noise, samp, uvw_d);
-    float detail    = detail_n.b * 0.65 + detail_n.g * 0.35;
+    float detail    = detail_n.g;
     
     // wispy edges low in the layer, harder edges high in the layer
+    // detail erosion amplitude kept moderate so the high-frequency channel does not dominate
+    // the cloud surface as grain. cumulus get their puffy character from the base shape, the
+    // detail just breaks up the edges so they do not read as smooth blobs
     float detail_mod = lerp(1.0 - detail, detail, saturate(h_norm * 4.0));
-    float density    = cloud_remap(base, detail_mod * 0.45, 1.0, 0.0, 1.0);
+    float density    = cloud_remap(base, detail_mod * 0.30, 1.0, 0.0, 1.0);
     return saturate(density) * cumulus_density_mul;
 }
 
@@ -525,10 +531,11 @@ float2 cloud_ray_shell(float3 origin, float3 dir, float radius_low, float radius
 }
 
 // raymarch a single cloud layer, accumulating in_scatter and modulating transmittance
-// uses an adaptive two-step march, coarse strides through empty space and fine steps inside
-// any detected cloud body, switching back to coarse after a run of empty fine samples. this
-// gives constant in-cloud sample density regardless of view angle, which is what makes the
-// difference between fluffy clouds and visibly striped noise pads on grazing rays
+// uses a fixed-step march with weather-driven empty-space skipping. the weather function is
+// a 2d horizontal lookup so where it is zero there are no clouds for kilometres horizontally
+// regardless of altitude, and we can safely stride past those regions cheaply. the fixed step
+// inside cloud-bearing regions avoids the state-flipping artifacts of a coarse/fine state
+// machine that would otherwise produce thin dark cracks at the boundaries
 void cloud_march_cumulus(
     float3 cam_pos, float3 view_dir, float3 sun_dir,
     Texture3D noise_tex, Texture2D transmittance_lut,
@@ -547,16 +554,11 @@ void cloud_march_cumulus(
     
     float cos_th = dot(view_dir, sun_dir);
     
-    // step lengths in world meters, tuned so the cloud body always gets ~40 fine samples
-    // through its 2.5 km vertical thickness even at near-horizon view angles
-    const float step_coarse  = 320.0;
-    const float step_fine    = 60.0;
-    const int   miss_to_skip = 6;
+    const float step_size      = 40.0;     // fixed in-volume step
+    const float empty_skip     = 1600.0;   // stride when the weather map says no clouds here
+    const float density_thresh = 1e-4;     // lower than before, avoids binary state flicker at edges
     
-    float t          = shell.x + step_coarse * jitter;
-    float step       = step_coarse;
-    bool  in_cloud   = false;
-    int   miss_count = 0;
+    float t = shell.x + step_size * jitter;
     
     [loop]
     for (int i = 0; i < cumulus_view_steps; i++)
@@ -566,22 +568,21 @@ void cloud_march_cumulus(
         
         float3 pos    = cam_pos + view_dir * t;
         float weather = cloud_weather(noise_tex, samp_noise, pos);
+        
+        // weather is a horizontal 2d lookup with cells ~26km across, so when it returns zero
+        // we can safely skip a big chunk of horizontal distance without missing any cloud
+        if (weather <= 0.0)
+        {
+            t += empty_skip;
+            continue;
+        }
+        
         float density = cloud_density_cumulus(pos, noise_tex, samp_noise, weather);
         
-        if (density > 0.001)
+        if (density > density_thresh)
         {
-            // first contact, back up one coarse stride and resample with fine steps so
-            // we don't miss the leading edge of the cloud which is what looks like a soft puff
-            if (!in_cloud)
-            {
-                t        = max(shell.x, t - step_coarse);
-                step     = step_fine;
-                in_cloud = true;
-                continue;
-            }
-            
             float ext         = density * cumulus_sigma_t;
-            float step_trans  = exp(-ext * step);
+            float step_trans  = exp(-ext * step_size);
             
             float sun_od      = cloud_sun_optical_depth_cumulus(pos, sun_dir, noise_tex, samp_noise, weather);
             float3 sun_light  = cloud_sun_illuminance(pos, sun_dir, transmittance_lut, samp_lut);
@@ -617,28 +618,9 @@ void cloud_march_cumulus(
             
             in_scatter    += transmittance * s_int * aerial_t;
             transmittance *= effective_trans;
-            
-            miss_count = 0;
-            t         += step_fine;
         }
-        else
-        {
-            if (in_cloud)
-            {
-                miss_count++;
-                if (miss_count >= miss_to_skip)
-                {
-                    in_cloud   = false;
-                    step       = step_coarse;
-                    miss_count = 0;
-                }
-                t += step_fine;
-            }
-            else
-            {
-                t += step_coarse;
-            }
-        }
+        
+        t += step_size;
     }
 }
 
