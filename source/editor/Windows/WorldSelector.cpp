@@ -401,11 +401,11 @@ namespace
             // card border
             if (is_selected)
             {
-                draw_list->AddRect(card_min, card_max, col_card_border_accent, card_rounding, 0, 2.0f);
+                draw_list->AddRect(card_min, card_max, col_card_border_accent, card_rounding, 2.0f);
             }
             else if (is_hovered)
             {
-                draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 0, 1.0f);
+                draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 1.0f);
             }
 
             // world icon centered in the upper portion
@@ -567,11 +567,11 @@ namespace
 
             if (is_selected)
             {
-                draw_list->AddRect(card_min, card_max, col_card_border_accent, card_rounding, 0, 2.0f);
+                draw_list->AddRect(card_min, card_max, col_card_border_accent, card_rounding, 2.0f);
             }
             else if (is_hovered)
             {
-                draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 0, 1.0f);
+                draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 1.0f);
             }
 
             // world icon
@@ -622,7 +622,7 @@ namespace
                     draw_list,
                     ImVec2(card_min.x + card_padding, text_y),
                     ImVec2(clip_right, card_max.y),
-                    clip_right, clip_right,
+                    clip_right,
                     name, nullptr, nullptr
                 );
             }
@@ -638,7 +638,7 @@ namespace
                     draw_list,
                     ImVec2(card_min.x + card_padding, desc_y),
                     ImVec2(clip_right, card_max.y - 4.0f),
-                    clip_right, clip_right,
+                    clip_right,
                     desc, nullptr, nullptr
                 );
             }

@@ -73,7 +73,7 @@ void ShaderEditor::ShowShaderSource()
         if (m_shader)
         {
             // shader source tabs
-            if (ImGui::BeginTabBar("##shader_editor_tab_bar", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))
+            if (ImGui::BeginTabBar("##shader_editor_tab_bar", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyShrink))
             {
                 const std::vector<std::string>& names   = m_shader->GetNames();
                 const std::vector<std::string>& sources = m_shader->GetSources();

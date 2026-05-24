@@ -194,7 +194,7 @@ namespace
         {
             ImGui::Dummy(ImVec2(0, design::spacing_sm));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
-            ImGui::PushFont(Editor::font_bold);
+            ImGui::PushFont(Editor::font_bold, 0.0f);
             ImGui::TextUnformatted(title);
             ImGui::PopFont();
             ImGui::PopStyleColor();
@@ -309,7 +309,7 @@ namespace
             flags |= ImGuiTreeNodeFlags_DefaultOpen;
         }
 
-        ImGui::PushFont(Editor::font_bold);
+        ImGui::PushFont(Editor::font_bold, 0.0f);
         const bool is_expanded = ImGuiSp::collapsing_header(name, flags);
         ImGui::PopFont();
 
@@ -622,7 +622,7 @@ void Properties::OnTickVisible()
             ImGui::Dummy(ImVec2(0, design::spacing_md));
 
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.85f, 0.4f, 1.0f));
-            ImGui::PushFont(Editor::font_bold);
+            ImGui::PushFont(Editor::font_bold, 0.0f);
             char buf[64];
             std::snprintf(buf, sizeof(buf), "%d entities selected", selected_count);
             ImGui::TextUnformatted(buf);
@@ -726,7 +726,7 @@ void Properties::ShowEntity(Entity* entity) const
     {
         // entity name display
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-        ImGui::PushFont(Editor::font_bold);
+        ImGui::PushFont(Editor::font_bold, 0.0f);
         ImGui::TextUnformatted(entity->GetObjectName().c_str());
         ImGui::PopFont();
         ImGui::PopStyleColor();
@@ -742,7 +742,7 @@ void Properties::ShowEntity(Entity* entity) const
             ImVec4 badge_color = is_code ? ImVec4(0.55f, 0.35f, 0.70f, 1.0f) : ImVec4(0.30f, 0.60f, 0.45f, 1.0f);
 
             ImGui::PushStyleColor(ImGuiCol_Text, badge_color);
-            ImGui::PushFont(Editor::font_bold);
+            ImGui::PushFont(Editor::font_bold, 0.0f);
             ImGui::TextUnformatted(is_code ? "[prefab:code]" : "[prefab:file]");
             ImGui::PopFont();
             ImGui::PopStyleColor();
@@ -1594,7 +1594,7 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
 
         // material name
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-        ImGui::PushFont(Editor::font_bold);
+        ImGui::PushFont(Editor::font_bold, 0.0f);
         ImGui::TextUnformatted(material->GetObjectName().c_str());
         ImGui::PopFont();
         ImGui::PopStyleColor();
@@ -2986,7 +2986,7 @@ void Properties::ShowSaveAsPrefabPopup(spartan::Entity* entity) const
     if (ImGui::BeginPopup("##SaveAsPrefab"))
     {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.85f, 0.85f, 1.0f));
-        ImGui::PushFont(Editor::font_bold);
+        ImGui::PushFont(Editor::font_bold, 0.0f);
         ImGui::TextUnformatted("Save as Prefab");
         ImGui::PopFont();
         ImGui::PopStyleColor();

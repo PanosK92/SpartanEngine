@@ -275,7 +275,7 @@ static void DisplayLinks(Delegate& delegate,
             float highLightFactor = factor * (highlightCons ? 2.0f : 1.f);
             for (int pass = 0; pass < 2; pass++)
             {
-                drawList->AddPolyline(pts.data(), ptCount, pass ? col : 0xFF000000, false, (pass ? options.mLineThickness : (options.mLineThickness * 1.5f)) * highLightFactor);
+                drawList->AddPolyline(pts.data(), ptCount, pass ? col : 0xFF000000, (pass ? options.mLineThickness : (options.mLineThickness * 1.5f)) * highLightFactor);
             }
         }
     }
@@ -630,8 +630,8 @@ static bool DrawNode(ImDrawList* drawList,
                       nodeRectangleMax,
                       currentSelectedNode ? options.mSelectedNodeBorderColor : options.mNodeBorderColor,
                       options.mRounding,
-                      ImDrawFlags_RoundCornersAll,
-                      currentSelectedNode ? options.mBorderSelectionThickness : options.mBorderThickness);
+                      currentSelectedNode ? options.mBorderSelectionThickness : options.mBorderThickness,
+                      ImDrawFlags_RoundCornersAll);
 
     ImVec2 imgPos = nodeRectangleMin + ImVec2(14, 25);
     ImVec2 imgSize = nodeRectangleMax + ImVec2(-5, -5) - imgPos;
@@ -877,7 +877,7 @@ void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool
         // Focus rectangle
         if (ImGui::IsWindowFocused())
         {
-           drawList->AddRect(regionRect.Min, regionRect.Max, options.mFrameFocus, 1.f, 0, 2.f);
+           drawList->AddRect(regionRect.Min, regionRect.Max, options.mFrameFocus, 1.f, 2.f);
         }
 
         drawList->ChannelsSetCurrent(1); // Background

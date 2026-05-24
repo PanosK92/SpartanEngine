@@ -1326,6 +1326,50 @@ namespace spartan
         Profiler::m_rhi_draw++;
     }
 
+    void RHI_CommandList::DrawIndexedIndirect(RHI_Buffer* args_buffer, const uint32_t args_offset)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        auto& b = cmd_state::get(this);
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        cmd_state::flush(cmd_list, b);
+
+        if (!args_buffer)
+        {
+            return;
+        }
+
+        if (!b.has_root_signature_graphics)
+        {
+            return;
+        }
+
+        // command signature is created once and shared across all single-shot indexed indirect draws,
+        // args layout matches D3D12_DRAW_INDEXED_ARGUMENTS which mirrors VkDrawIndexedIndirectCommand
+        static ID3D12CommandSignature* command_signature = nullptr;
+        if (!command_signature)
+        {
+            D3D12_INDIRECT_ARGUMENT_DESC arg_desc = {};
+            arg_desc.Type                         = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+            D3D12_COMMAND_SIGNATURE_DESC desc = {};
+            desc.ByteStride        = sizeof(D3D12_DRAW_INDEXED_ARGUMENTS);
+            desc.NumArgumentDescs  = 1;
+            desc.pArgumentDescs    = &arg_desc;
+            RHI_Context::device->CreateCommandSignature(&desc, nullptr, IID_PPV_ARGS(&command_signature));
+        }
+
+        ID3D12Resource* args_resource = static_cast<ID3D12Resource*>(args_buffer->GetRhiResource());
+        cmd_state::push_transition(b, args_resource, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+
+        flush_pending_bindings(cmd_list, this, false);
+        cmd_list->ExecuteIndirect(
+            command_signature, 1u,
+            args_resource, static_cast<UINT64>(args_offset),
+            nullptr,       0u
+        );
+        Profiler::m_rhi_draw++;
+    }
+
     void RHI_CommandList::DrawIndexedIndirectCount(RHI_Buffer* args_buffer, const uint32_t args_offset, RHI_Buffer* count_buffer, const uint32_t count_offset, const uint32_t max_draw_count)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

@@ -66,9 +66,9 @@ namespace spartan::car_hud
             // glass body
             dl->AddRectFilled(tl, br, panel_bg, rounding);
             // outer border
-            dl->AddRect(tl, br, panel_border, rounding, 0, 1.0f);
+            dl->AddRect(tl, br, panel_border, rounding, 1.0f);
             // inner hairline highlight, 1px in
-            dl->AddRect(ImVec2(tl.x + 1, tl.y + 1), ImVec2(br.x - 1, br.y - 1), panel_inner, rounding, 0, 1.0f);
+            dl->AddRect(ImVec2(tl.x + 1, tl.y + 1), ImVec2(br.x - 1, br.y - 1), panel_inner, rounding, 1.0f);
         }
 
         // helper: arrow with a triangular head, used everywhere we visualise a force/direction
@@ -365,7 +365,7 @@ namespace spartan::car_hud
             ImU32  tc  = (state == pill_state::active) ? IM_COL32(220, 255, 230, a)
                                                        : IM_COL32(200, 210, 220, a);
             dl->AddRectFilled(tl, br, bg, 4.0f);
-            dl->AddRect(tl, br, bd, 4.0f, 0, 1.0f);
+            dl->AddRect(tl, br, bd, 4.0f, 1.0f);
             dl->AddText(ImVec2(tl.x + pad_x, tl.y + pad_y), tc, text);
         }
 
@@ -401,7 +401,7 @@ namespace spartan::car_hud
             }
 
             ImU32 border = grounded ? IM_COL32(160, 170, 180, 255) : IM_COL32(120, 70, 70, 255);
-            dl->AddRect(tl, br, border, 7.0f, 0, 1.7f);
+            dl->AddRect(tl, br, border, 7.0f, 1.7f);
 
             char pct[8];
             snprintf(pct, sizeof(pct), "%.0f%%", wear * 100.0f);
@@ -481,7 +481,7 @@ namespace spartan::car_hud
             ImDrawList* dl = ImGui::GetWindowDrawList();
             dl->AddRectFilled(pos, ImVec2(pos.x + w, pos.y + h), track_dim, 3.0f);
             dl->AddRectFilled(pos, ImVec2(pos.x + w * fill, pos.y + h), color, 3.0f);
-            dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 3.0f, 0, 1.0f);
+            dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 3.0f, 1.0f);
             ImGui::Dummy(ImVec2(w, h));
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.85f, 0.87f, 0.9f, 1.0f), "%.4f", level);
@@ -662,7 +662,7 @@ namespace spartan::car_hud
                     ImVec2 box_tl(cell_tl.x + (gear_col_w - box_w) * 0.5f, cell_tl.y + 6.0f);
                     ImVec2 box_br(box_tl.x + box_w, box_tl.y + box_h);
                     dl->AddRectFilled(box_tl, box_br, IM_COL32(8, 10, 14, 230), 8.0f);
-                    dl->AddRect(box_tl, box_br, IM_COL32(80, 95, 110, 140), 8.0f, 0, 1.0f);
+                    dl->AddRect(box_tl, box_br, IM_COL32(80, 95, 110, 140), 8.0f, 1.0f);
 
                     ImFont* font = ImGui::GetFont();
                     ImVec2 ts    = font->CalcTextSizeA(fsize, FLT_MAX, 0.0f, gear_str);
@@ -754,7 +754,7 @@ namespace spartan::car_hud
                     {
                         dl->AddRectFilled(bar_tl, ImVec2(bar_tl.x + bar_w * std::clamp(value, 0.0f, 1.0f), bar_br.y), color, 3.0f);
                     }
-                    dl->AddRect(bar_tl, bar_br, IM_COL32(70, 80, 92, 255), 3.0f, 0, 1.0f);
+                    dl->AddRect(bar_tl, bar_br, IM_COL32(70, 80, 92, 255), 3.0f, 1.0f);
 
                     char buf[8];
                     if (signed_pct)
@@ -846,7 +846,7 @@ namespace spartan::car_hud
             ImVec2 box_tl(cell_tl.x + (cell_w - box_w) * 0.5f, cell_tl.y + 8.0f);
             ImVec2 box_br(box_tl.x + box_w, box_tl.y + box_h);
             dl->AddRectFilled(box_tl, box_br, IM_COL32(8, 10, 14, 240), 10.0f);
-            dl->AddRect(box_tl, box_br, IM_COL32(80, 95, 110, 160), 10.0f, 0, 1.0f);
+            dl->AddRect(box_tl, box_br, IM_COL32(80, 95, 110, 160), 10.0f, 1.0f);
 
             static float gear_pulse = 0.0f;
             static bool  prev_shift = false;
@@ -883,7 +883,7 @@ namespace spartan::car_hud
             dl->AddRectFilled(bar_tl, bar_br, track_dim, 3.0f);
             float fill = bar_h * std::clamp(value, 0.0f, 1.0f);
             dl->AddRectFilled(ImVec2(bar_tl.x, bar_br.y - fill), bar_br, color, 3.0f);
-            dl->AddRect(bar_tl, bar_br, IM_COL32(70, 80, 92, 255), 3.0f, 0, 1.0f);
+            dl->AddRect(bar_tl, bar_br, IM_COL32(70, 80, 92, 255), 3.0f, 1.0f);
             ImGui::Dummy(ImVec2(cell_w, bar_h + 4.0f));
             ImGui::TextColored(imvec4_from_u32(text_dim), "%.0f%%", value * 100.0f);
         }
@@ -903,7 +903,7 @@ namespace spartan::car_hud
             dl->AddLine(ImVec2(cx, bar_tl.y), ImVec2(cx, bar_br.y), IM_COL32(110, 120, 134, 200), 1.0f);
             float ix = cx + std::clamp(value, -1.0f, 1.0f) * bar_w * 0.5f;
             dl->AddRectFilled(ImVec2(ix - 4.0f, bar_tl.y + 2.0f), ImVec2(ix + 4.0f, bar_br.y - 2.0f), accent_warn, 2.0f);
-            dl->AddRect(bar_tl, bar_br, IM_COL32(70, 80, 92, 255), 3.0f, 0, 1.0f);
+            dl->AddRect(bar_tl, bar_br, IM_COL32(70, 80, 92, 255), 3.0f, 1.0f);
             ImGui::Dummy(ImVec2(cell_w, bar_h + 8.0f));
             ImGui::TextColored(imvec4_from_u32(text_dim), "%+.0f%%", value * 100.0f);
         }
@@ -1288,7 +1288,7 @@ namespace spartan::car_hud
                             ImVec2 tl(base.x, base.y + 8.0f);
                             ImVec2 br(tl.x + w_avail - 4.0f, tl.y + spark_h);
                             dl->AddRectFilled(tl, br, IM_COL32(18, 22, 28, 230), 4.0f);
-                            dl->AddRect(tl, br, IM_COL32(70, 80, 92, 160), 4.0f, 0, 1.0f);
+                            dl->AddRect(tl, br, IM_COL32(70, 80, 92, 160), 4.0f, 1.0f);
                             float ww = br.x - tl.x;
                             float hh = br.y - tl.y;
                             ImVec2 prev_pt(0, 0);
@@ -1377,7 +1377,7 @@ namespace spartan::car_hud
                     pts.push_back(ImVec2(off_x + nx * scale_x, off_y - ny * scale_y));
                 }
                 dl->AddConvexPolyFilled(pts.data(), (int)pts.size(), IM_COL32(40, 48, 60, 230));
-                dl->AddPolyline(pts.data(), (int)pts.size(), IM_COL32(80, 130, 180, 230), ImDrawFlags_Closed, 2.0f);
+                dl->AddPolyline(pts.data(), (int)pts.size(), IM_COL32(80, 130, 180, 230), 2.0f, ImDrawFlags_Closed);
             };
 
             // pre-compute forces so we can render the arrows over the silhouettes
@@ -1548,7 +1548,7 @@ namespace spartan::car_hud
                 float bh = 10.0f;
                 dl->AddRectFilled(bar_tl, ImVec2(bar_tl.x + bw, bar_tl.y + bh), track_dim, 3.0f);
                 dl->AddRectFilled(bar_tl, ImVec2(bar_tl.x + bw * balance * 0.01f, bar_tl.y + bh), accent_info, 3.0f);
-                dl->AddRect(bar_tl, ImVec2(bar_tl.x + bw, bar_tl.y + bh), IM_COL32(70, 80, 92, 255), 3.0f, 0, 1.0f);
+                dl->AddRect(bar_tl, ImVec2(bar_tl.x + bw, bar_tl.y + bh), IM_COL32(70, 80, 92, 255), 3.0f, 1.0f);
                 ImGui::Dummy(ImVec2(bw, bh + 4.0f));
 
                 if (aero.valid && aero.ground_effect_factor > 1.01f)
@@ -1629,7 +1629,7 @@ namespace spartan::car_hud
                 trace(dbg.waveform_vin, IM_COL32(255, 180, 100, 200));
                 trace(dbg.waveform_exh, IM_COL32(100, 220, 255, 200));
                 trace(dbg.waveform,     IM_COL32(100, 255, 100, 255));
-                dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 4.0f, 0, 1.0f);
+                dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 4.0f, 1.0f);
                 ImGui::Dummy(ImVec2(w, h));
             }
 
@@ -1667,7 +1667,7 @@ namespace spartan::car_hud
                 {
                     dl->AddLine(ImVec2(fx, pos.y), ImVec2(fx, pos.y + h), IM_COL32(255, 200, 80, 220), 1.0f);
                 }
-                dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 4.0f, 0, 1.0f);
+                dl->AddRect(pos, ImVec2(pos.x + w, pos.y + h), IM_COL32(70, 80, 92, 255), 4.0f, 1.0f);
                 ImGui::Dummy(ImVec2(w, h));
             }
 
@@ -1812,7 +1812,7 @@ namespace spartan::car_hud
 
         if (ImGui::Begin("Telemetry", p_open, ImGuiWindowFlags_NoCollapse))
         {
-            if (ImGui::BeginTabBar("##telemetry_tabs", ImGuiTabBarFlags_FittingPolicyResizeDown))
+            if (ImGui::BeginTabBar("##telemetry_tabs", ImGuiTabBarFlags_FittingPolicyShrink))
             {
                 if (ImGui::BeginTabItem("Overview"))
                 {

@@ -147,13 +147,13 @@ namespace ImGuiSp
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         }
 
-        ImGui::Image(
+        ImGui::ImageWithBg(
             reinterpret_cast<ImTextureID>(texture),
             size,
             ImVec2(0, 0),
             ImVec2(1, 1),
-            default_tint,       // tint
-            ImColor(0, 0, 0, 0) // border
+            ImColor(0, 0, 0, 0), // bg
+            default_tint         // tint
         );
 
         if (!border)
@@ -162,39 +162,39 @@ namespace ImGuiSp
         }
     }
 
-    static void image(spartan::RHI_Texture* texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
+    static void image(spartan::RHI_Texture* texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& bg = ImColor(0, 0, 0, 0))
     {
-        ImGui::Image(
+        ImGui::ImageWithBg(
             reinterpret_cast<ImTextureID>(texture),
             size,
             ImVec2(0, 0),
             ImVec2(1, 1),
-            tint,
-            border
+            bg,
+            tint
         );
     }
 
     static void image(const spartan::IconType icon, const float size)
     {
-        ImGui::Image(
+        ImGui::ImageWithBg(
             reinterpret_cast<ImTextureID>(spartan::ResourceCache::GetIcon(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            default_tint,       // tint
-            ImColor(0, 0, 0, 0) // border
+            ImColor(0, 0, 0, 0), // bg
+            default_tint         // tint
         );
     }
 
     static void image(const spartan::IconType icon, const float size,const ImVec4 tint)
     {
-        ImGui::Image(
+        ImGui::ImageWithBg(
             reinterpret_cast<ImTextureID>(spartan::ResourceCache::GetIcon(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
-            tint,       // tint
-            ImColor(0, 0, 0, 0) // border
+            ImColor(0, 0, 0, 0), // bg
+            tint                 // tint
         );
     }
 

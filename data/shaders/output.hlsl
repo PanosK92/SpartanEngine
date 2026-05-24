@@ -159,34 +159,55 @@ void gt7_ictcp_to_rgb(float3 ictcp, out float3 rgb)
 // ----------------------------------------------------------------------------------------------
 // the s-curve
 // ----------------------------------------------------------------------------------------------
-float gt7_evaluate_curve(float x, float peak_intensity, float mid_point, float toe_strength)
+
+// precomputed gt7 curve constants, built once per dispatch and reused per channel
+struct gt7_curve
 {
-    const float alpha = 0.25f;
+    float peak_intensity;
+    float mid_point;
+    float toe_strength;
+    float ka;
+    float kb;
+    float kc;
+    float shoulder_threshold;
+};
+
+gt7_curve gt7_make_curve(float peak_intensity, float mid_point, float toe_strength)
+{
+    const float alpha          = 0.25f;
     const float linear_section = 0.444f;
 
-    // pre-compute constants for exponential shoulder
-    float k  = (linear_section - 1.0f) / (alpha - 1.0f);
-    float ka = peak_intensity * linear_section + peak_intensity * k;
-    float kb = -peak_intensity * k * exp(linear_section / k);
-    float kc = -1.0f / (k * peak_intensity);
+    float k = (linear_section - 1.0f) / (alpha - 1.0f);
 
+    gt7_curve c;
+    c.peak_intensity     = peak_intensity;
+    c.mid_point          = mid_point;
+    c.toe_strength       = toe_strength;
+    c.ka                 = peak_intensity * linear_section + peak_intensity * k;
+    c.kb                 = -peak_intensity * k * exp(linear_section / k);
+    c.kc                 = -1.0f / (k * peak_intensity);
+    c.shoulder_threshold = linear_section * peak_intensity;
+    return c;
+}
+
+float gt7_evaluate_curve(float x, gt7_curve c)
+{
     if (x < 0.0f)
-        return 0.0f;
-
-    float weight_linear = gt7_smooth_step(x, 0.0f, mid_point);
-    float weight_toe    = 1.0f - weight_linear;
-
-    // shoulder (highlights)
-    float shoulder = ka + kb * exp(x * kc);
-
-    // toe (shadows/mids)
-    if (x < linear_section * peak_intensity)
     {
-        float toe_mapped = mid_point * pow(max(x / mid_point, 0.0f), toe_strength);
-        return weight_toe * toe_mapped + weight_linear * x;
+        return 0.0f;
     }
 
-    return shoulder;
+    // shoulder for highlights
+    if (x >= c.shoulder_threshold)
+    {
+        return c.ka + c.kb * exp(x * c.kc);
+    }
+
+    // toe and linear blend for shadows and mids
+    float weight_linear = gt7_smooth_step(x, 0.0f, c.mid_point);
+    float weight_toe    = 1.0f - weight_linear;
+    float toe_mapped    = c.mid_point * pow(max(x / c.mid_point, 0.0f), c.toe_strength);
+    return weight_toe * toe_mapped + weight_linear * x;
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -196,55 +217,45 @@ float3 gran_turismo_7(float3 rgb, float max_display_nits, bool is_hdr)
 {
     float3 rgb_rec2020 = gt7_to_rec2020(rgb);
 
-    // step a: determine target nits (hdr display or sdr standard)
-    float target_nits = is_hdr ? max_display_nits : gt7_sdr_paper_white;
+    // determine target peak luminance, the curve tunings assume sdr paper white = 250 nits
+    // so peak below 250 is undefined per the polyphony digital reference
+    float target_nits = is_hdr ? clamp(max_display_nits, 250.0f, 10000.0f) : gt7_sdr_paper_white;
     float fb_target   = gt7_nits_to_fb(target_nits);
 
-    // official gt7 curve tunings from polyphony digital
-    float mid_point    = 0.538f;
-    float toe_strength = 1.280f;
-
-    // official gt7 blend parameters
-    float blend_ratio = 0.6f;
-    float fade_start  = 0.98f;
-    float fade_end    = 1.16f;
+    // official gt7 curve and blend tunings from polyphony digital
+    gt7_curve curve         = gt7_make_curve(fb_target, 0.538f, 1.280f);
+    const float blend_ratio = 0.6f;
+    const float fade_start  = 0.98f;
+    const float fade_end    = 1.16f;
 
     // pre-compute target luminance in ucs space
-    float3 target_rgb = float3(fb_target, fb_target, fb_target);
     float3 target_ucs;
-    gt7_rgb_to_ictcp(target_rgb, target_ucs);
+    gt7_rgb_to_ictcp(float3(fb_target, fb_target, fb_target), target_ucs);
     float ucs_target_lum = target_ucs.x;
 
-    // step b: analyze brightness using ictcp
+    // analyze brightness using ictcp
     float3 ucs;
     gt7_rgb_to_ictcp(rgb_rec2020, ucs);
 
-    // step c: path 1 - per-channel mapping (skewed)
-    // preserves saturation but shifts hue
-    float3 skewed_rgb;
-    skewed_rgb.x = gt7_evaluate_curve(rgb_rec2020.x, fb_target, mid_point, toe_strength);
-    skewed_rgb.y = gt7_evaluate_curve(rgb_rec2020.y, fb_target, mid_point, toe_strength);
-    skewed_rgb.z = gt7_evaluate_curve(rgb_rec2020.z, fb_target, mid_point, toe_strength);
+    // path 1, per-channel mapping, preserves saturation but can shift hue
+    float3 skewed_rgb = float3(
+        gt7_evaluate_curve(rgb_rec2020.x, curve),
+        gt7_evaluate_curve(rgb_rec2020.y, curve),
+        gt7_evaluate_curve(rgb_rec2020.z, curve));
 
     float3 skewed_ucs;
     gt7_rgb_to_ictcp(skewed_rgb, skewed_ucs);
 
-    // step d: path 2 - luminance mapping (scaled)
-    // preserves hue but desaturates highlights
+    // path 2, luminance mapping, preserves hue but desaturates highlights
     float chroma_scale = 1.0f - gt7_smooth_step(ucs.x / ucs_target_lum, fade_start, fade_end);
-
-    // reconstruct color using skewed luminance and scaled original chroma
-    float3 scaled_ucs = float3(skewed_ucs.x, ucs.y * chroma_scale, ucs.z * chroma_scale);
+    float3 scaled_ucs  = float3(skewed_ucs.x, ucs.y * chroma_scale, ucs.z * chroma_scale);
     float3 scaled_rgb;
     gt7_ictcp_to_rgb(scaled_ucs, scaled_rgb);
 
-    // step e: blend skewed and scaled paths
-    // (1 - blend_ratio) * skewed + blend_ratio * scaled
-    float3 out_rgb = (1.0f - blend_ratio) * skewed_rgb + blend_ratio * scaled_rgb;
-
-    // clamp to display max and apply sdr correction
+    // blend paths, clamp to display peak, then apply sdr correction
+    float3 out_rgb       = (1.0f - blend_ratio) * skewed_rgb + blend_ratio * scaled_rgb;
     float sdr_correction = is_hdr ? 1.0f : (1.0f / gt7_nits_to_fb(gt7_sdr_paper_white));
-    out_rgb = sdr_correction * min(out_rgb, fb_target);
+    out_rgb              = sdr_correction * min(out_rgb, fb_target);
 
     if (is_hdr)
     {

@@ -85,9 +85,9 @@ Editor::Editor(const vector<string>& args)
     config.GlyphOffset.y = -2.0f;
 
     const string dir_fonts = spartan::ResourceCache::GetResourceDirectory(spartan::ResourceDirectory::Fonts) + "/";
-    font_normal            = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), font_size * spartan::Window::GetDpiScale());
-    font_bold              = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), font_size * spartan::Window::GetDpiScale(), &config);
-    io.FontGlobalScale     = font_scale;
+    font_normal                       = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Medium.ttf").c_str(), font_size * spartan::Window::GetDpiScale());
+    font_bold                         = io.Fonts->AddFontFromFileTTF((dir_fonts + "OpenSans/OpenSans-Bold.ttf").c_str(), font_size * spartan::Window::GetDpiScale(), &config);
+    ImGui::GetStyle().FontScaleMain   = font_scale;
 
     // initialize imgui backends, the rhi-aware sdl platform glue lives behind ImGui::RHI so the editor stays api-agnostic
     SP_ASSERT_MSG(ImGui::RHI::InitializePlatformBackend(spartan::Window::GetHandleSDL()), "Failed to initialize ImGui's SDL backend");
@@ -215,7 +215,7 @@ void Editor::BeginWindow()
         ImVec2 min = viewport->Pos;
         ImVec2 max = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
         ImU32 border_color = IM_COL32(40, 40, 42, 255);
-        draw_list->AddRect(min, max, border_color, 0.0f, 0, 1.0f);
+        draw_list->AddRect(min, max, border_color, 0.0f, 1.0f);
     }
 
     // set window style

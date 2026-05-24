@@ -216,6 +216,30 @@ namespace spartan
         at(buffers, Renderer_Buffer::ParticleBufferA) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Particle)),       particle_max, nullptr,                true, "particle_buffer_a");
         at(buffers, Renderer_Buffer::ParticleCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),          2,            particle_counter_init,  true, "particle_counter");
         at(buffers, Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  1,            nullptr,                true, "particle_emitter");
+
+        // gpu procedural grass, sized once and reused for the lifetime of the renderer
+        // GrassInstances is the transient per-frame ring buffer that the populate shader fills
+        // GrassCount is the per-lod atomic counter, cleared each frame by the populate setup
+        // GrassIndirectArgs is the per-lod DrawIndexedIndirect args buffer, populated each frame by the args build shader
+        // sizes are constants so the descriptors stay stable across worlds, EnableProceduralGrass just bakes per-lod offsets
+        // grass_instances doubles as the per-instance vertex binding the engine pipeline auto-declares
+        // for vertex shaders with NORMAL/TANGENT semantics. RHI_Buffer_Type::Instance gives the buffer
+        // both VK_BUFFER_USAGE_VERTEX_BUFFER_BIT and VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, so the populate
+        // compute can write to it as a uav while the raster path binds it as the per-instance vertex stream.
+        // PackedInstance and Instance share the same 12-byte layout so the attribute decode matches.
+        // device local since the cpu never touches it, the compute populate writes the entire content each frame
+        at(buffers, Renderer_Buffer::GrassInstances) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Instance, static_cast<uint32_t>(sizeof(Instance)),
+            renderer_max_grass_instances, nullptr, false, "grass_instances"
+        );
+        at(buffers, Renderer_Buffer::GrassCount) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),
+            renderer_max_grass_lod_count, nullptr, true, "grass_count"
+        );
+        at(buffers, Renderer_Buffer::GrassIndirectArgs) = make_shared<RHI_Buffer>(
+            RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs)),
+            renderer_max_grass_lod_count, nullptr, true, "grass_indirect_args"
+        );
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -731,6 +755,12 @@ namespace spartan
             { Renderer_Shader::particle_emit_c,                       RHI_Shader_Type::Compute, "particles.hlsl",                             RHI_Vertex_Type::Max, "EMIT"                           },
             { Renderer_Shader::particle_simulate_c,                   RHI_Shader_Type::Compute, "particles.hlsl",                             RHI_Vertex_Type::Max, "SIMULATE"                       },
             { Renderer_Shader::particle_render_c,                     RHI_Shader_Type::Compute, "particles.hlsl",                             RHI_Vertex_Type::Max, "RENDER"                         },
+
+            // gpu procedural grass
+            { Renderer_Shader::grass_populate_c,                      RHI_Shader_Type::Compute, "grass_populate.hlsl"                                                                              },
+            { Renderer_Shader::grass_indirect_args_c,                 RHI_Shader_Type::Compute, "grass_indirect_args.hlsl"                                                                         },
+            { Renderer_Shader::grass_gbuffer_v,                       RHI_Shader_Type::Vertex,  "g_buffer.hlsl",                              RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED"        },
+            { Renderer_Shader::grass_depth_prepass_v,                 RHI_Shader_Type::Vertex,  "depth_prepass.hlsl",                         RHI_Vertex_Type::PosUvNorTan, "GRASS_INSTANCED"        },
 
             // gpu texture compression, synchronous so encode-on-load can wait
             { Renderer_Shader::texture_compress_bc1_c,                RHI_Shader_Type::Compute, "texture_compress_bc1.hlsl",                  RHI_Vertex_Type::Max, nullptr,                         false },

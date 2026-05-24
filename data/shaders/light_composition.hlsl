@@ -102,6 +102,33 @@ float3 sample_gi_bilateral(float2 uv_dst, float depth_dst_lin, float3 normal_dst
     return tex6.SampleLevel(samplers[sampler_point_clamp], uv_dst, 0).rgb;
 }
 
+// small 3x3 gaussian blur on the volumetric fog buffer, kills the per pixel raymarch
+// jitter dithering, the fog signal is naturally low frequency so a one pixel blur
+// removes the noise without any visible loss of detail, weights are the standard
+// 1 2 1 / 2 4 2 / 1 2 1 kernel normalized to 16
+float3 sample_volumetric_smooth(float2 uv)
+{
+    float2 vol_size;
+    tex5.GetDimensions(vol_size.x, vol_size.y);
+    float2 texel = 1.0f / vol_size;
+
+    const float w_center = 4.0f / 16.0f;
+    const float w_edge   = 2.0f / 16.0f;
+    const float w_corner = 1.0f / 16.0f;
+
+    float3 result = 0.0f;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv,                                       0).rgb * w_center;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( texel.x,        0.0f),       0).rgb * w_edge;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2(-texel.x,        0.0f),       0).rgb * w_edge;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( 0.0f,           texel.y),    0).rgb * w_edge;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( 0.0f,          -texel.y),    0).rgb * w_edge;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( texel.x,        texel.y),    0).rgb * w_corner;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2(-texel.x,        texel.y),    0).rgb * w_corner;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2( texel.x,       -texel.y),    0).rgb * w_corner;
+    result += tex5.SampleLevel(samplers[sampler_point_clamp], uv + float2(-texel.x,       -texel.y),    0).rgb * w_corner;
+    return result;
+}
+
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -213,7 +240,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 sky_color   = lerp(sky_color_view, sky_color_light, light_weight * phase);
     
         float fog_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y);
-        float3 fog_volumetric = tex5.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
+        float3 fog_volumetric = sample_volumetric_smooth(surface.uv);
         
         if (surface.is_sky())
         {

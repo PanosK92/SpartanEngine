@@ -84,7 +84,7 @@ namespace ImGui::Style
         style.TabBorderSize        = 0.0f;
         style.ScrollbarSize        = 12.0f;
         style.GrabMinSize          = 8.0f;
-        style.TabMinWidthForCloseButton = 0.0f;
+        style.TabCloseButtonMinWidthUnselected = 0.0f;
         style.TabBarBorderSize          = 1.0f;  // line under tab bar that connects tabs as a group
         style.TabBarOverlineSize        = 2.0f;  // overline on selected tab
     }
@@ -151,7 +151,7 @@ namespace ImGui::Style
         style.ColorButtonPosition       = ImGuiDir_Right;
         style.ButtonTextAlign           = ImVec2(0.5f, 0.5f);
         style.SelectableTextAlign       = ImVec2(0.0f, 0.0f);
-        style.TabMinWidthForCloseButton = 0.0f;
+        style.TabCloseButtonMinWidthUnselected = 0.0f;
     }
 
     inline void SetupImGuiColors()

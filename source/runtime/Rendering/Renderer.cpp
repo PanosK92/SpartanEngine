@@ -1071,6 +1071,101 @@ namespace spartan
         World::SetWind(wind);
     }
 
+    void Renderer::EnableProceduralGrass(Mesh* grass_mesh, Material* grass_material, RHI_Texture* terrain_heightmap, const ProceduralGrassParams& params)
+    {
+        // temporary kill switch while we isolate the rocks/flowers/trees instancing regression,
+        // when this is true the procedural grass system stays off so the only thing rendering is the cpu instance path
+        // todo, remove once the regression is identified and fixed
+        constexpr bool procedural_grass_disabled_for_debug = true;
+        if (procedural_grass_disabled_for_debug)
+        {
+            m_pass_state.grass_enabled = false;
+            return;
+        }
+
+        // every required input must be present, otherwise the populate compute will read garbage
+        // from a freed heightmap, the indirect args would point past the global geometry buffer, etc
+        if (!grass_mesh || !grass_material || !terrain_heightmap)
+        {
+            m_pass_state.grass_enabled = false;
+            return;
+        }
+
+        m_pass_state.grass_mesh      = grass_mesh;
+        m_pass_state.grass_material  = grass_material;
+        m_pass_state.grass_heightmap = terrain_heightmap;
+        m_pass_state.grass_params    = params;
+        m_pass_state.grass_enabled   = true;
+
+        // derive WorldWidth and WorldHeight from the lod0 vertex bounds, the grass blade vs uses
+        // these to compute width_percent and height_percent for the camera-bias and wind logic.
+        // normal renderables get this done by Render::SetMaterial, but procedural grass has no Render component,
+        // without it the vs divides by zero on width and gets a saturated zero on height, the blade collapses to a point
+        {
+            const std::vector<RHI_Vertex_PosTexNorTan>& mesh_vertices = grass_mesh->GetVertices();
+            if (!mesh_vertices.empty())
+            {
+                const SubMesh& sm = grass_mesh->GetSubMesh(0);
+                if (!sm.lods.empty())
+                {
+                    const MeshLod& lod0 = sm.lods[0];
+                    float min_x =  FLT_MAX;
+                    float max_x = -FLT_MAX;
+                    float min_y =  FLT_MAX;
+                    float max_y = -FLT_MAX;
+                    const uint32_t vb_end = lod0.vertex_offset + lod0.vertex_count;
+                    for (uint32_t v = lod0.vertex_offset; v < vb_end && v < mesh_vertices.size(); v++)
+                    {
+                        const RHI_Vertex_PosTexNorTan& vert = mesh_vertices[v];
+                        min_x = std::min(min_x, vert.pos[0]);
+                        max_x = std::max(max_x, vert.pos[0]);
+                        min_y = std::min(min_y, vert.pos[1]);
+                        max_y = std::max(max_y, vert.pos[1]);
+                    }
+                    grass_material->SetProperty(MaterialProperty::WorldWidth,  max_x - min_x);
+                    grass_material->SetProperty(MaterialProperty::WorldHeight, max_y - min_y);
+                }
+            }
+        }
+
+        // bake static portions of the per-lod indirect args from the mesh's lod layout in the global geometry buffer
+        // instance_count is dynamic and written each frame by grass_indirect_args.hlsl, the rest stays frozen here
+        const SubMesh& sub      = grass_mesh->GetSubMesh(0);
+        const uint32_t lod_cap  = renderer_max_grass_lod_count;
+        const uint32_t lod_have = static_cast<uint32_t>(sub.lods.size());
+        const uint32_t lod_use  = std::min(lod_cap, lod_have);
+
+        for (uint32_t i = 0; i < lod_cap; i++)
+        {
+            // grass mesh may have fewer than 3 lods on load races, fall back to lod 0 so we never index out of bounds
+            const uint32_t lod_index = i < lod_use ? i : 0u;
+            const MeshLod& lod       = sub.lods[lod_index];
+
+            Sb_IndirectDrawArgs& args = m_pass_state.grass_indirect_args_static[i];
+            args.index_count          = lod.index_count;
+            args.instance_count       = 0; // filled by grass_indirect_args_c each frame
+            args.first_index          = grass_mesh->GetGlobalIndexOffset() + lod.index_offset;
+            args.vertex_offset        = static_cast<int32_t>(grass_mesh->GetGlobalVertexOffset() + lod.vertex_offset);
+            args.first_instance       = 0; // lod_base is fed via push constant instead, sv_instanceid is per-draw zero-based
+        }
+
+        m_pass_state.grass_args_baked = false; // commit on the first frame after enable
+    }
+
+    void Renderer::DisableProceduralGrass()
+    {
+        m_pass_state.grass_enabled    = false;
+        m_pass_state.grass_mesh       = nullptr;
+        m_pass_state.grass_material   = nullptr;
+        m_pass_state.grass_heightmap  = nullptr;
+        m_pass_state.grass_args_baked = false;
+    }
+
+    bool Renderer::IsProceduralGrassEnabled()
+    {
+        return m_pass_state.grass_enabled;
+    }
+
     void Renderer::OnFullScreenToggled()
     {
         static float    width_previous_viewport  = 0;
@@ -1327,6 +1422,13 @@ namespace spartan
         m_bindless_textures.fill(nullptr);
         unique_material_ids.clear();
         update_entities();
+
+        // procedural grass material is not attached to any entity, register it here so it lands in the
+        // bindless table and material_index can be pushed into the grass raster passes via the push constant
+        if (m_pass_state.grass_enabled && m_pass_state.grass_material)
+        {
+            update_material(m_pass_state.grass_material);
+        }
 
         RHI_Buffer* buffer = Renderer::GetBuffer(Renderer_Buffer::MaterialParameters);
         buffer->ResetOffset();
@@ -2374,6 +2476,9 @@ namespace spartan
     {
         Pass_HiZ(cmd_list);
         Pass_IndirectCull(cmd_list);
+        // populate the gpu procedural grass ring before the geometry rasters that consume it
+        // safe to run unconditionally, the pass early-outs when grass is disabled
+        Pass_Grass_Populate(cmd_list);
         Pass_Depth_Prepass(cmd_list);
         Pass_GBuffer(cmd_list, false);
         Pass_MeshletVisualize(cmd_list);

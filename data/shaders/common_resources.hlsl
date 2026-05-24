@@ -201,6 +201,15 @@ RWStructuredBuffer<uint> volumetric_light_indices : register(u48);
 // declared rw to match the engine pattern for per-pass structured buffers but treated read-only
 RWStructuredBuffer<EmissiveTriangle> emissive_triangles : register(u49);
 
+// gpu procedural grass, written each frame by grass_populate.hlsl and consumed by the grass raster vs
+// grass_instances is the transient ring buffer, partitioned into one section per lod via lod_base in the push constant
+// grass_count holds one atomic counter per lod, bumped by interlockedadd during the populate dispatch
+// grass_indirect_args holds one DrawIndexedIndirect args entry per lod, the args compute reads grass_count
+// and bakes index_count / first_index / vertex_offset / first_instance from the per-lod constants
+RWStructuredBuffer<PackedInstance>   grass_instances     : register(u50);
+RWStructuredBuffer<uint>             grass_count         : register(u51);
+RWStructuredBuffer<IndirectDrawArgs> grass_indirect_args : register(u52);
+
 // buffers
 #ifdef API_D3D12
 // d3d12 path: root 32-bit constants at b1 (vk::push_constant is ignored by dxil)

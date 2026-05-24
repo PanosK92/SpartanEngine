@@ -130,8 +130,33 @@ namespace ImGui::RHI
         }
     }
 
+    // releases backend-owned imgui texture holders, must run while the imgui context is still alive
+    void destroy_imgui_textures()
+    {
+        if (GImGui == nullptr)
+        {
+            return;
+        }
+
+        for (ImTextureData* tex : GetPlatformIO().Textures)
+        {
+            if (shared_ptr<RHI_Texture>* tex_holder = static_cast<shared_ptr<RHI_Texture>*>(tex->BackendUserData))
+            {
+                delete tex_holder;
+                tex->BackendUserData = nullptr;
+                tex->SetTexID(ImTextureID_Invalid);
+                tex->SetStatus(ImTextureStatus_Destroyed);
+            }
+        }
+
+        g_font_atlas = nullptr;
+    }
+
     void destroy_rhi_resources()
     {
+        // imgui textures are released earlier in shutdown(), guard in case event fires standalone
+        destroy_imgui_textures();
+
         g_font_atlas          = nullptr;
         g_depth_stencil_state = nullptr;
         g_rasterizer_state    = nullptr;
@@ -147,6 +172,83 @@ namespace ImGui::RHI
         for (auto& ptr : g_viewport_data.vertex_buffers)
         {
             ptr = nullptr;
+        }
+    }
+
+    // honor an imgui-managed texture (font atlas etc) according to the new imtexturedata protocol
+    static void update_texture(ImTextureData* tex)
+    {
+        if (tex->Status == ImTextureStatus_WantCreate)
+        {
+            IM_ASSERT(tex->Format == ImTextureFormat_RGBA32);
+
+            // copy pixel data into a texture slice
+            vector<RHI_Texture_Slice> texture_data;
+            vector<std::byte>& mip = texture_data.emplace_back().mips.emplace_back().bytes;
+            const uint32_t size    = static_cast<uint32_t>(tex->Width * tex->Height * tex->BytesPerPixel);
+            mip.resize(size);
+            memcpy(&mip[0], tex->Pixels, size);
+
+            // create a heap allocated shared_ptr so the texture stays alive while imgui references it
+            shared_ptr<RHI_Texture>* tex_holder = new shared_ptr<RHI_Texture>(
+                make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D, tex->Width, tex->Height, 1, 1,
+                    RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "imgui_atlas", texture_data
+                )
+            );
+
+            tex->BackendUserData = tex_holder;
+            tex->SetTexID(reinterpret_cast<ImTextureID>(tex_holder->get()));
+            tex->SetStatus(ImTextureStatus_OK);
+
+            // first imgui-managed texture is the font atlas, track it as the default bind
+            if (g_font_atlas == nullptr)
+            {
+                g_font_atlas = *tex_holder;
+            }
+        }
+        else if (tex->Status == ImTextureStatus_WantUpdates)
+        {
+            // imgui added glyphs to the atlas, re-upload the latest pixel data
+            shared_ptr<RHI_Texture>* tex_holder = static_cast<shared_ptr<RHI_Texture>*>(tex->BackendUserData);
+            if (tex_holder)
+            {
+                bool is_font_atlas = (g_font_atlas == *tex_holder);
+
+                vector<RHI_Texture_Slice> texture_data;
+                vector<std::byte>& mip = texture_data.emplace_back().mips.emplace_back().bytes;
+                const uint32_t size    = static_cast<uint32_t>(tex->Width * tex->Height * tex->BytesPerPixel);
+                mip.resize(size);
+                memcpy(&mip[0], tex->Pixels, size);
+
+                *tex_holder = make_shared<RHI_Texture>(
+                    RHI_Texture_Type::Type2D, tex->Width, tex->Height, 1, 1,
+                    RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "imgui_atlas", texture_data
+                );
+
+                tex->SetTexID(reinterpret_cast<ImTextureID>(tex_holder->get()));
+
+                if (is_font_atlas)
+                {
+                    g_font_atlas = *tex_holder;
+                }
+            }
+            tex->SetStatus(ImTextureStatus_OK);
+        }
+        else if (tex->Status == ImTextureStatus_WantDestroy && tex->UnusedFrames > 0)
+        {
+            shared_ptr<RHI_Texture>* tex_holder = static_cast<shared_ptr<RHI_Texture>*>(tex->BackendUserData);
+            if (tex_holder)
+            {
+                if (g_font_atlas.get() == tex_holder->get())
+                {
+                    g_font_atlas = nullptr;
+                }
+                delete tex_holder;
+            }
+            tex->BackendUserData = nullptr;
+            tex->SetTexID(ImTextureID_Invalid);
+            tex->SetStatus(ImTextureStatus_Destroyed);
         }
     }
 
@@ -183,32 +285,11 @@ namespace ImGui::RHI
             }
         }
 
-        // font atlas
-        {
-            unsigned char* pixels = nullptr;
-            int atlas_width       = 0;
-            int atlas_height      = 0;
-            int bpp               = 0;
-            ImGuiIO& io           = GetIO();
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &atlas_width, &atlas_height, &bpp);
-
-            // copy pixel data
-            vector<RHI_Texture_Slice> texture_data;
-            vector<std::byte>& mip = texture_data.emplace_back().mips.emplace_back().bytes;
-            const uint32_t size = atlas_width * atlas_height * bpp;
-            mip.resize(size);
-            mip.reserve(size);
-            memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
-
-            // upload texture to graphics system
-            g_font_atlas = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, atlas_width, atlas_height, 1, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, "imgui_font_atlas", texture_data);
-            io.Fonts->TexID = reinterpret_cast<ImTextureID>(g_font_atlas.get());
-        }
-
-        // setup back-end capabilities flags
+        // setup back-end capabilities flags, font atlas is created lazily via the imtexturedata protocol
         ImGuiIO& io             = GetIO();
         io.BackendFlags        |= ImGuiBackendFlags_RendererHasViewports;
         io.BackendFlags        |= ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendFlags        |= ImGuiBackendFlags_RendererHasTextures;
         io.BackendRendererName  = "RHI";
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
@@ -221,6 +302,9 @@ namespace ImGui::RHI
 
     void shutdown()
     {
+        // release imgui-owned textures while the context is still alive,
+        // the renderer shutdown event fires later and the imtexturedata list is gone by then
+        destroy_imgui_textures();
         DestroyPlatformWindows();
     }
 
@@ -259,6 +343,18 @@ namespace ImGui::RHI
         if (!cmd_list || cmd_list->GetState() != RHI_CommandListState::Recording)
         {
             return;
+        }
+
+        // honor texture create/update/destroy requests from imgui, must run before draw command processing
+        if (draw_data->Textures != nullptr)
+        {
+            for (ImTextureData* tex : *draw_data->Textures)
+            {
+                if (tex->Status != ImTextureStatus_OK)
+                {
+                    update_texture(tex);
+                }
+            }
         }
 
         // update vertex and index buffers
@@ -364,7 +460,7 @@ namespace ImGui::RHI
                             bool is_frame_texture      = false;
                             bool texture_bound         = false;
 
-                            if (spartan::RHI_Texture* texture = reinterpret_cast<spartan::RHI_Texture*>(pcmd->TextureId))
+                            if (spartan::RHI_Texture* texture = reinterpret_cast<spartan::RHI_Texture*>(pcmd->GetTexID()))
                             {
                                 is_frame_texture = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output)->GetObjectId() == texture->GetObjectId();
 
@@ -385,7 +481,7 @@ namespace ImGui::RHI
                             }
 
                             // always bind a texture to avoid uninitialized descriptor errors
-                            if (!texture_bound)
+                            if (!texture_bound && g_font_atlas)
                             {
                                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, g_font_atlas.get());
                             }

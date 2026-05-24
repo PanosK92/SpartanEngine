@@ -111,6 +111,21 @@ namespace spartan
     class Renderer
     {
     public:
+        // configures the gpu procedural grass system, passed verbatim to Renderer::EnableProceduralGrass
+        // ring_radii_m and cell_size_m carry one entry per lod ring, the renderer assumes three rings ordered near to far
+        // the populate compute shader walks a square grid of (2 * ring_radius / cell_size)^2 cells per ring,
+        // samples the terrain heightmap, hashes the cell for placement jitter, yaw and scale,
+        // and atomically appends accepted samples to the per-lod section of grass_instances
+        struct ProceduralGrassParams
+        {
+            float ring_radii_m[3]    = { 30.0f, 120.0f, 500.0f };
+            float cell_size_m[3]     = { 0.25f, 0.6f, 1.2f };
+            float height_min         = 0.0f;
+            float height_max         = 400.0f;
+            float max_slope_deg      = 45.0f;
+            math::Vector2 terrain_extent_m = math::Vector2(6144.0f, 6144.0f); // terrain xz world-space extent, centered at origin
+        };
+
         // core
         static void Initialize();
         static void Shutdown();
@@ -150,6 +165,15 @@ namespace spartan
         // wind
         static const math::Vector3& GetWind();
         static void SetWind(const math::Vector3& wind);
+
+        // gpu procedural grass
+        // EnableProceduralGrass sets up the per-lod indirect args (based on the grass mesh's lod offsets in the
+        // global geometry buffer) and arms the per-frame populate/draw passes. the mesh, material and heightmap
+        // pointers are stored as raw and must outlive the renderer's use, the engine owns the actual resources.
+        // DisableProceduralGrass tears it back down and lets the game ship its own grass system if it wants.
+        static void EnableProceduralGrass(Mesh* grass_mesh, Material* grass_material, RHI_Texture* terrain_heightmap, const ProceduralGrassParams& params);
+        static void DisableProceduralGrass();
+        static bool IsProceduralGrassEnabled();
 
         // viewport
         static const RHI_Viewport& GetViewport();
@@ -260,6 +284,11 @@ namespace spartan
         static void Pass_CloudNoise(RHI_CommandList* cmd_list);
         // passes - particles
         static void Pass_Particles(RHI_CommandList* cmd_list);
+        // passes - gpu procedural grass
+        // runs the placement compute + indirect args build, the actual draw calls are folded into
+        // Pass_Depth_Prepass and Pass_GBuffer_Indirect via Pass_Grass_Draw to share their pso state
+        static void Pass_Grass_Populate(RHI_CommandList* cmd_list);
+        static void Pass_Grass_Draw(RHI_CommandList* cmd_list, bool is_depth_prepass);
         // passes - wind field
         static void Pass_WindField(RHI_CommandList* cmd_list);
         // passes - debug/editor
@@ -390,6 +419,20 @@ namespace spartan
 
             // vrs
             RHI_Texture* vrs_last_cleared_texture = nullptr;
+
+            // gpu procedural grass
+            // enabled is toggled by EnableProceduralGrass / DisableProceduralGrass, the per-frame passes
+            // early out when it is false. mesh/material/heightmap and the params are captured at enable time
+            // and used to build the static parts of the per-lod indirect args plus the populate dispatches.
+            bool                  grass_enabled = false;
+            Mesh*                 grass_mesh       = nullptr;
+            Material*             grass_material   = nullptr;
+            RHI_Texture*          grass_heightmap  = nullptr;
+            ProceduralGrassParams grass_params;
+            // baked once on enable, mirrors what the cpu would write into grass_indirect_args before the
+            // args build shader bakes in the dynamic instance_count from grass_count, three entries per lod
+            std::array<Sb_IndirectDrawArgs, renderer_max_grass_lod_count> grass_indirect_args_static{};
+            bool                  grass_args_baked = false;
 
             void Reset()
             {

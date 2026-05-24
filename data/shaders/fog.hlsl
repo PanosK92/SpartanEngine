@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world)
 {
     float camera_height = get_camera_position().y;
-    float density       = pass_get_f3_value().y * 0.0001f;
+    float density       = pass_get_f3_value().y * 0.00015f;
     float scale_height  = 50.0f; // Lower = denser near ground, higher = more uniform
     float b             = 1.0f / scale_height;
     float delta_height  = pixel_height_world - camera_height;
@@ -188,7 +188,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 {
     // sigma_s is the medium scattering coefficient in 1/m, sigma_t is extinction
     // the engine packs the user facing fog density into pass_get_f3_value().y so r.fog scales it linearly
-    const float sigma_s        = pass_get_f3_value().y * 0.0008f;
+    const float sigma_s        = pass_get_f3_value().y * 0.0012f;
     const float sigma_t        = sigma_s; // pure scattering, no absorption
     const float total_distance = surface.camera_to_pixel_length;
 
@@ -230,10 +230,12 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     if (march_length < 0.1f)
         return 0.0f;
 
-    // step count proportional to march length, ~1m per sample for fine beam capture, hard capped on both ends
-    const uint  min_steps        = 16;
-    const uint  max_steps        = 64;
-    const float target_step      = 1.0f;
+    // step count proportional to march length, sub meter sampling for finer beam capture and
+    // less per pixel jitter noise, hard capped on both ends, denser steps shrink the inscatter
+    // each sample contributes which directly lowers the spatial variance from the temporal jitter
+    const uint  min_steps        = 24;
+    const uint  max_steps        = 96;
+    const float target_step      = 0.65f;
     const float step_count_float = clamp(march_length / target_step, (float)min_steps, (float)max_steps);
     const uint  step_count       = (uint)step_count_float;
     const float step_length      = march_length / step_count_float;

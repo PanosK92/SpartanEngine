@@ -809,11 +809,11 @@ void FileDialog::RenderGridView()
         // card border (on hover or selection)
         if (is_selected)
         {
-            draw_list->AddRect(card_min, card_max, col_card_border_hover, card_rounding, 0, 2.0f);
+            draw_list->AddRect(card_min, card_max, col_card_border_hover, card_rounding, 2.0f);
         }
         else if (is_hovered)
         {
-            draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 0, 1.0f);
+            draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 1.0f);
         }
 
         // icon - draw directly to draw list
@@ -858,7 +858,6 @@ void FileDialog::RenderGridView()
                 draw_list,
                 ImVec2(label_x, label_y),
                 ImVec2(card_max.x - grid_item_padding, card_max.y),
-                card_max.x - grid_item_padding,
                 card_max.x - grid_item_padding,
                 label.c_str(),
                 nullptr,

@@ -558,7 +558,7 @@ void Sequencer::DrawEmptyState()
 
     ImGui::Dummy(ImVec2(0, avail.y * 0.2f));
 
-    ImGui::PushFont(Editor::font_bold);
+    ImGui::PushFont(Editor::font_bold, 0.0f);
     ImVec2 title_size = ImGui::CalcTextSize("cinematic sequencer");
     ImGui::SetCursorPosX(center_x - title_size.x * 0.5f);
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(tc.sequence_accent.x, tc.sequence_accent.y, tc.sequence_accent.z, 1.0f));
@@ -694,7 +694,7 @@ void Sequencer::DrawToolbar()
         snprintf(timecode, sizeof(timecode), "%02d:%02d.%02d / %02d:%02d.%02d",
             cur_min, cur_sec, cur_fra, dur_min, dur_sec, dur_fra);
 
-        ImGui::PushFont(Editor::font_bold);
+        ImGui::PushFont(Editor::font_bold, 0.0f);
         ImGui::TextUnformatted(timecode);
         ImGui::PopFont();
     }
@@ -912,7 +912,7 @@ void Sequencer::DrawTrackList()
         }
 
         float name_x = header_min.x + 22.0f;
-        ImGui::PushFont(Editor::font_bold);
+        ImGui::PushFont(Editor::font_bold, 0.0f);
         dl->PushClipRect(ImVec2(name_x, header_min.y), ImVec2(header_max.x - 50.0f, header_max.y));
         dl->AddText(ImVec2(name_x, header_min.y + 5.0f), to_imu32(tc.sequence_accent), seq.GetName().c_str());
         dl->PopClipRect();
@@ -1520,7 +1520,7 @@ void Sequencer::DrawTimelineContent()
 
                         if (sel)
                         {
-                            draw_list->AddRect(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(255, 255, 255, 120), 4.0f, 0, 1.5f);
+                            draw_list->AddRect(ImVec2(x0, y0), ImVec2(x1, y1), IM_COL32(255, 255, 255, 120), 4.0f, 1.5f);
                         }
 
                         Entity* cam_ent = World::GetEntityById(clip.camera_entity_id);
@@ -1653,7 +1653,7 @@ void Sequencer::DrawTimelineContent()
 
                         if (sel || multi_sel)
                         {
-                            draw_list->AddPolyline(diamond, 4, IM_COL32(255, 255, 255, 180), ImDrawFlags_Closed, 1.5f);
+                            draw_list->AddPolyline(diamond, 4, IM_COL32(255, 255, 255, 180), 1.5f, ImDrawFlags_Closed);
                         }
 
                         // tooltip
@@ -2449,7 +2449,7 @@ void Sequencer::DrawSelectionProperties()
         const ImVec4& accent = track_type_color(track.type, &track);
         float label_col = 80.0f;
 
-        ImGui::PushFont(Editor::font_bold);
+        ImGui::PushFont(Editor::font_bold, 0.0f);
         ImGui::PushStyleColor(ImGuiCol_Text, accent);
         ImGui::TextUnformatted(track_type_label(track.type));
         ImGui::PopStyleColor();

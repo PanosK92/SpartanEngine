@@ -38,6 +38,16 @@ namespace spartan
     const uint32_t renderer_max_meshlet_instances  = 1048576; // meshlet cull survivor list, hw instancing fans out so can exceed renderer_max_cull_tasks
     const uint32_t renderer_max_visible_triangles  = 8388608; // triangle cull survivor list, worst case practical cap
 
+    // gpu procedural grass
+    // total capacity of the transient grass instance ring buffer, shared across all three lod rings
+    // sized to ~3 mb at 12 bytes per packed instance, the populate shader saturates the atomic
+    // counter at this cap so memory usage is bounded regardless of ring radius or cell density
+    const uint32_t renderer_max_grass_instances    = 262144;
+    // hard cap per lod ring, the populate shader rejects writes once the per-lod counter reaches this
+    // sum across the three lods equals renderer_max_grass_instances, keeps each ring inside its slot
+    const uint32_t renderer_max_grass_lod_count    = 3;
+    const uint32_t renderer_max_grass_per_lod      = renderer_max_grass_instances / renderer_max_grass_lod_count;
+
     // render target dimensions, fixed allocations sized for current quality budgets
     const uint32_t renderer_resolution_shadow_atlas = 8192; // total shadow atlas, packed by row of square slices
     const uint32_t renderer_resolution_blur_scratch = 4096; // ping pong target reused by every blur pass
@@ -169,6 +179,13 @@ namespace spartan
         // for per-pass structured buffers (cull_tasks, meshlet_bounds, etc.) even though the
         // shader treats it read-only
         emissive_triangles     = 49,
+        // gpu procedural grass, transient ring buffer + per-lod atomic counter + indirect draw args
+        // populate compute writes grass_instances and bumps grass_count, the args compute reads
+        // grass_count and writes grass_indirect_args (one entry per lod), the raster passes
+        // read grass_instances using sv_instanceid plus the per-draw lod_base in the push constant
+        grass_instances        = 50,
+        grass_count            = 51,
+        grass_indirect_args    = 52,
     };
 
     enum class Renderer_Shader : uint8_t
@@ -258,6 +275,11 @@ namespace spartan
         particle_emit_c,
         particle_simulate_c,
         particle_render_c,
+        // gpu procedural grass
+        grass_populate_c,
+        grass_indirect_args_c,
+        grass_gbuffer_v,
+        grass_depth_prepass_v,
         // gpu texture compression
         texture_compress_bc1_c,
         texture_compress_bc3_c,
@@ -383,6 +405,13 @@ namespace spartan
         ParticleBufferA,
         ParticleCounter,
         ParticleEmitter,
+        // gpu procedural grass, allocated lazily by Renderer::EnableProceduralGrass
+        // GrassInstances is the transient ring buffer of PackedInstance entries
+        // GrassCount holds one uint per lod, bumped atomically by the populate shader
+        // GrassIndirectArgs holds one DrawIndexedIndirect entry per lod, written by the args build shader
+        GrassInstances,
+        GrassCount,
+        GrassIndirectArgs,
         Max
     };
 

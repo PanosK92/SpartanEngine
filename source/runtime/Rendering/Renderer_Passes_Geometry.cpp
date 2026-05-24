@@ -24,11 +24,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "../World/Entity.h"
 #include "../World/Components/Light.h"
+#include "../World/Components/Camera.h"
+#include "../World/World.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_AccelerationStructure.h"
 #include "../RHI/RHI_RasterizerState.h"
+#include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_Texture.h"
 #include "../Rendering/Material.h"
 #include "../Rendering/GeometryBuffer.h"
 #include "../XR/Xr.h"
@@ -413,6 +417,11 @@ namespace spartan
                 }
             }
 
+            // procedural grass depth prepass, ensures grass occludes the world and feeds the depth buffer
+            // used by gbuffer ReadGreaterEqual depth state, runs before the depth blit so the opaque
+            // depth output picks up grass occlusion data
+            Pass_Grass_Draw(cmd_list, true);
+
             float resolution_scale = Renderer::GetResolutionScale();
             cmd_list->Blit(tex_depth, tex_depth_output, false, resolution_scale);
 
@@ -573,6 +582,9 @@ namespace spartan
             if (!is_transparent_pass)
             {
                 Pass_GBuffer_Indirect(cmd_list);
+                // procedural grass runs after the indirect path so it shares the depth state set by the
+                // gbuffer pso, the draw call binds its own pipeline that reads grass_instances directly
+                Pass_Grass_Draw(cmd_list, false);
             }
 
             Pass_GBuffer_TessellatedAndTransparent(cmd_list, is_transparent_pass);
@@ -585,6 +597,221 @@ namespace spartan
             GetRenderTarget(Renderer_RenderTarget::gbuffer_depth)   ->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
         }
         cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Grass_Populate(RHI_CommandList* cmd_list)
+    {
+        // gpu procedural grass placement (ghost of tsushima style)
+        // runs every frame just before the geometry rasters, fills the per-lod sections of
+        // grass_instances with newly placed blades around the camera, and then bakes the
+        // dynamic instance_count into grass_indirect_args so the raster passes can draw indirectly.
+
+        if (!m_pass_state.grass_enabled || !m_pass_state.grass_mesh || !m_pass_state.grass_heightmap)
+            return;
+
+        cmd_list->BeginTimeblock("grass_populate");
+        {
+            RHI_Buffer* buf_instances = GetBuffer(Renderer_Buffer::GrassInstances);
+            RHI_Buffer* buf_count     = GetBuffer(Renderer_Buffer::GrassCount);
+            RHI_Buffer* buf_args      = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
+
+            // bake static portions of the per-lod indirect args buffer once (or whenever the mesh layout changes)
+            // these never change frame to frame so a single Update covers the lifetime of EnableProceduralGrass
+            if (!m_pass_state.grass_args_baked)
+            {
+                buf_args->ResetOffset();
+                buf_args->Update(
+                    cmd_list,
+                    &m_pass_state.grass_indirect_args_static[0],
+                    static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs) * renderer_max_grass_lod_count)
+                );
+                m_pass_state.grass_args_baked = true;
+            }
+
+            // clear the per-lod atomic counters, one uint per lod, populate compute will bump them
+            uint32_t zero_counts[renderer_max_grass_lod_count] = { 0u, 0u, 0u };
+            buf_count->ResetOffset();
+            buf_count->Update(cmd_list, &zero_counts[0], static_cast<uint32_t>(sizeof(zero_counts)));
+            cmd_list->InsertBarrier(buf_count);
+
+            // camera position used as the anchor for the ring grid, the populate shader snaps it to the cell grid
+            Camera* camera = World::GetCamera();
+            if (!camera || !camera->GetEntity())
+            {
+                cmd_list->EndTimeblock();
+                return;
+            }
+            const Vector3 camera_pos = camera->GetEntity()->GetPosition();
+
+            // populate dispatches, one per lod ring, each fills its slot in grass_instances and grass_count
+            {
+                RHI_PipelineState pso;
+                pso.name             = "grass_populate";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::grass_populate_c);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
+                cmd_list->SetBuffer(Renderer_BindingsUav::grass_count,     buf_count);
+                // the populate shader samples the terrain heightmap (R32_Float) through the tex slot
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, m_pass_state.grass_heightmap);
+
+                const float max_slope_cos = cosf(m_pass_state.grass_params.max_slope_deg * (math::pi / 180.0f));
+
+                for (uint32_t lod = 0; lod < renderer_max_grass_lod_count; lod++)
+                {
+                    const float cell_size  = m_pass_state.grass_params.cell_size_m[lod];
+                    const float ring_radius = m_pass_state.grass_params.ring_radii_m[lod];
+                    if (cell_size <= 0.0f || ring_radius <= 0.0f)
+                        continue;
+
+                    // grass_instances is partitioned by lod, lod_base advances by the per-lod cap
+                    const uint32_t lod_base = lod * renderer_max_grass_per_lod;
+
+                    // pack push constant payload, layout mirrors grass_populate.hlsl values[0..2]
+                    // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
+                    // values[1] = (height_min, height_max, max_slope_cos, lod_index)
+                    // values[2] = (camera_xz.x, camera_xz.z, terrain_extent.x, terrain_extent.z)
+                    m_pcb_pass_cpu.material_index = 0;
+                    m_pcb_pass_cpu.is_transparent = 0;
+                    m_pcb_pass_cpu.draw_index     = 0;
+                    m_pcb_pass_cpu.v[0]  = cell_size;
+                    m_pcb_pass_cpu.v[1]  = ring_radius;
+                    m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);
+                    m_pcb_pass_cpu.v[3]  = static_cast<float>(renderer_max_grass_per_lod);
+                    m_pcb_pass_cpu.v[4]  = m_pass_state.grass_params.height_min;
+                    m_pcb_pass_cpu.v[5]  = m_pass_state.grass_params.height_max;
+                    m_pcb_pass_cpu.v[6]  = max_slope_cos;
+                    m_pcb_pass_cpu.v[7]  = static_cast<float>(lod);
+                    m_pcb_pass_cpu.v[8]  = camera_pos.x;
+                    m_pcb_pass_cpu.v[9]  = camera_pos.z;
+                    m_pcb_pass_cpu.v[10] = m_pass_state.grass_params.terrain_extent_m.x;
+                    m_pcb_pass_cpu.v[11] = m_pass_state.grass_params.terrain_extent_m.y;
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                    // square grid of cells, 8x8 thread groups, one cell per thread, the shader culls out-of-ring cells
+                    const uint32_t cells_per_axis = static_cast<uint32_t>(ceilf(2.0f * ring_radius / cell_size));
+                    const uint32_t groups         = (cells_per_axis + 7u) / 8u;
+                    cmd_list->Dispatch(groups, groups, 1);
+                }
+
+                // populate writes feed both the args build pass and the raster reads downstream
+                cmd_list->InsertBarrier(buf_count);
+                cmd_list->InsertBarrier(buf_instances);
+            }
+
+            // args build, reads grass_count and writes grass_indirect_args[lod].instance_count
+            {
+                RHI_PipelineState pso;
+                pso.name             = "grass_indirect_args";
+                pso.shaders[Compute] = GetShader(Renderer_Shader::grass_indirect_args_c);
+                cmd_list->SetPipelineState(pso);
+
+                cmd_list->SetBuffer(Renderer_BindingsUav::grass_count,         buf_count);
+                cmd_list->SetBuffer(Renderer_BindingsUav::grass_indirect_args, buf_args);
+
+                // values[0] = (max_instances_per_lod, lod_count, 0, 0)
+                m_pcb_pass_cpu.material_index = 0;
+                m_pcb_pass_cpu.v[0] = static_cast<float>(renderer_max_grass_per_lod);
+                m_pcb_pass_cpu.v[1] = static_cast<float>(renderer_max_grass_lod_count);
+                m_pcb_pass_cpu.v[2] = 0.0f;
+                m_pcb_pass_cpu.v[3] = 0.0f;
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+                cmd_list->Dispatch(1, 1, 1);
+
+                cmd_list->InsertBarrier(buf_args);
+            }
+        }
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Grass_Draw(RHI_CommandList* cmd_list, bool is_depth_prepass)
+    {
+        // procedural grass raster, one DrawIndexedIndirect per lod ring
+        // shares depth state with the surrounding pso, sets its own vertex shader that reads grass_instances
+        // pso state assumed to be configured by the caller (depth prepass or gbuffer indirect)
+
+        if (!m_pass_state.grass_enabled || !m_pass_state.grass_mesh || !m_pass_state.grass_material)
+            return;
+
+        if (!m_pass_state.grass_args_baked)
+            return;
+
+        Mesh*     mesh     = m_pass_state.grass_mesh;
+        Material* material = m_pass_state.grass_material;
+
+        // pso, matches the rest of the geometry stage so the draw lands in the same render pass
+        const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
+
+        RHI_PipelineState pso;
+        pso.blend_state       = GetBlendState(Renderer_BlendState::Off);
+        pso.rasterizer_state  = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
+        pso.is_multiview      = xr_multiview;
+        pso.resolution_scale  = true;
+
+        if (is_depth_prepass)
+        {
+            pso.name                             = "grass_depth_prepass";
+            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::grass_depth_prepass_v);
+            pso.shaders[RHI_Shader_Type::Pixel]  = nullptr;
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadWrite);
+            pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+            pso.clear_depth                      = rhi_depth_load;
+        }
+        else
+        {
+            pso.name                             = "grass_gbuffer";
+            pso.shaders[RHI_Shader_Type::Vertex] = GetShader(Renderer_Shader::grass_gbuffer_v);
+            pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+            pso.render_target_color_textures[0]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
+            pso.render_target_color_textures[1]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal);
+            pso.render_target_color_textures[2]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_material);
+            pso.render_target_color_textures[3]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_velocity);
+            pso.render_target_depth_texture      = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth);
+            pso.clear_color[0]                   = rhi_color_load;
+            pso.clear_color[1]                   = rhi_color_load;
+            pso.clear_color[2]                   = rhi_color_load;
+            pso.clear_color[3]                   = rhi_color_load;
+            pso.clear_depth                      = rhi_depth_load;
+        }
+
+        cmd_list->SetPipelineState(pso);
+
+        // grass blades are double sided, the material flags carry this but the raster needs an explicit setting
+        cmd_list->SetCullMode(RHI_CullMode::None);
+
+        // grass_instances is uav-bound here, the vertex shader reads PackedInstance via the same descriptor
+        RHI_Buffer* buf_instances = GetBuffer(Renderer_Buffer::GrassInstances);
+        RHI_Buffer* buf_args      = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
+        cmd_list->SetBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
+
+        // bind the global geometry vertex/index buffer for the hardware input assembler
+        // the engine's vertex pipeline state always declares a per-instance binding (binding 1) for
+        // shaders with NORMAL or TANGENT semantics, even when the shader does not read those attributes,
+        // grass_instances satisfies both roles, the byte layout of PackedInstance matches the engine's
+        // Instance struct (3 halves, 1 ushort, 2 ubytes, 1 ushort pad) so binding it as the per-instance
+        // vertex buffer is benign even though the vs ultimately pulls per-blade data via the SRV path
+        cmd_list->SetBufferVertex(mesh->GetVertexBuffer(), buf_instances);
+        cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+
+        const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));
+
+        for (uint32_t lod = 0; lod < renderer_max_grass_lod_count; lod++)
+        {
+            const uint32_t lod_base = lod * renderer_max_grass_per_lod;
+
+            // values[0] = (0, 0, lod_base, lod_index), the grass vs reads lod_base from values[0].z
+            m_pcb_pass_cpu.draw_index     = 0;
+            m_pcb_pass_cpu.is_transparent = 0;
+            m_pcb_pass_cpu.material_index = material->GetIndex();
+            m_pcb_pass_cpu.v[0] = 0.0f;
+            m_pcb_pass_cpu.v[1] = 0.0f;
+            m_pcb_pass_cpu.v[2] = static_cast<float>(lod_base);
+            m_pcb_pass_cpu.v[3] = static_cast<float>(lod);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
+            cmd_list->DrawIndexedIndirect(buf_args, lod * arg_stride);
+        }
     }
 
     void Renderer::Pass_MeshletVisualize(RHI_CommandList* cmd_list)

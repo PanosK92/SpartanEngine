@@ -122,7 +122,7 @@ void TextureViewer::OnTickVisible()
         
         // draw black border around the preview
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        draw_list->AddRect(child_pos, ImVec2(child_pos.x + child_size.x, child_pos.y + child_size.y), IM_COL32(0, 0, 0, 255), 0.0f, 0, 2.0f);
+        draw_list->AddRect(child_pos, ImVec2(child_pos.x + child_size.x, child_pos.y + child_size.y), IM_COL32(0, 0, 0, 255), 0.0f, 2.0f);
         
         if (spartan::RHI_Texture* texture = render_targets[m_texture_index])
         {

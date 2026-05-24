@@ -78,6 +78,10 @@ namespace spartan
         Entity* default_metal_cube        = nullptr;
         Entity* default_water             = nullptr;
         std::vector<std::shared_ptr<Mesh>> meshes;
+        // materials owned by the game and kept alive beyond any single entity,
+        // used for systems like procedural grass where the material is referenced by the
+        // renderer state rather than a Render component
+        std::vector<std::shared_ptr<Material>> materials;
         //==========================================
 
         //= WORLD DISPATCH TABLES =====================================================================================================
@@ -494,18 +498,19 @@ namespace spartan
                 const float render_distance_trees            = 2'000.0f;
                 const float render_distance_foliage          = 500.0f;
                 const float shadow_distance                  = 150.0f;
-                const float per_triangle_density_grass_blade = 15.0f;
+                const float per_triangle_density_grass_blade = 7.5f;
                 const float per_triangle_density_flower      = 0.2f;
                 const float per_triangle_density_tree        = 0.004f;
                 const float per_triangle_density_rock        = 0.001f;
 
                 // pre-size the global geometry buffer high enough for the whole forest so worker threads streaming
                 // mesh data in cannot trip a mid-load rebuild from the renderer's per-frame BuildIfDirty
+                // grass no longer contributes here, the gpu procedural grass system owns its own fixed instance pool
                 GeometryBuffer::Reserve(
-                    12u * 1024u * 1024u, // ~12M vertices  (terrain lods + trees + rocks + water + foliage)
+                    12u * 1024u * 1024u, // ~12M vertices  (terrain lods + trees + rocks + water + flowers)
                     32u * 1024u * 1024u, // ~32M indices
                     128u * 1024u,        // ~128K meshlet bounds
-                    256u * 1024u         // ~256K instances (grass dominates this)
+                    256u * 1024u         // ~256K instances (trees + rocks + flowers, dense triangle density adds up fast)
                 );
 
                 // kick off heavy mesh work in parallel so it overlaps terrain generation, audio, camera, lighting
@@ -810,6 +815,33 @@ namespace spartan
                         material_flower->SetResourceName("flower" + string(EXTENSION_MATERIAL));
                     }
 
+                    // hand the grass material to the game's long-lived material store so it outlives any single entity
+                    // the procedural grass system references it from Renderer state, no Render component owns it
+                    materials.push_back(material_grass_blade);
+
+                    // procedural grass setup, runs once after the terrain heightmap is final and the grass mesh/material exist
+                    // the populate compute walks a ring grid around the camera and atomically appends instances into a fixed buffer
+                    if (Terrain* terrain_component = default_terrain ? default_terrain->GetComponent<Terrain>() : nullptr)
+                    {
+                        if (RHI_Texture* heightmap = terrain_component->GetHeightMapFinal())
+                        {
+                            Renderer::ProceduralGrassParams grass_params;
+                            grass_params.ring_radii_m[0] = 30.0f;
+                            grass_params.ring_radii_m[1] = 120.0f;
+                            grass_params.ring_radii_m[2] = render_distance_foliage;
+                            grass_params.cell_size_m[0]  = 0.25f;
+                            grass_params.cell_size_m[1]  = 0.6f;
+                            grass_params.cell_size_m[2]  = 1.2f;
+                            grass_params.height_min      = terrain_component->GetSeaLevel() + 1.0f;
+                            grass_params.height_max      = terrain_component->GetSnowLevel();
+                            grass_params.max_slope_deg   = 45.0f;
+                            const float extent_x         = static_cast<float>(terrain_component->GetWidth()  - 1) * static_cast<float>(terrain_component->GetScale());
+                            const float extent_z         = static_cast<float>(terrain_component->GetHeight() - 1) * static_cast<float>(terrain_component->GetScale());
+                            grass_params.terrain_extent_m = Vector2(extent_x, extent_z);
+                            Renderer::EnableProceduralGrass(mesh_grass_blade.get(), material_grass_blade.get(), heightmap, grass_params);
+                        }
+                    }
+
                     // place props on terrain tiles
                     vector<Entity*> children = terrain->GetEntity()->GetChildren();
 
@@ -820,7 +852,6 @@ namespace spartan
 
                     auto place_props_on_tiles = [
                         &children,
-                        &mesh_grass_blade,
                         &mesh_flower,
                         &mesh_tree,
                         &mesh_rock,
@@ -828,11 +859,9 @@ namespace spartan
                         &rock_transforms_per_tile,
                         &terrain,
                         render_distance_foliage,
-                        per_triangle_density_grass_blade,
                         per_triangle_density_flower,
                         per_triangle_density_tree,
                         per_triangle_density_rock,
-                        material_grass_blade,
                         material_flower
                     ](uint32_t start_index, uint32_t end_index)
                     {
@@ -855,69 +884,9 @@ namespace spartan
                             for (math::Matrix& t : rock_transforms_per_tile[tile_index])
                                 t *= tile_world_matrix;
 
-                            // grass - density layers for lod
-                            {
-                                vector<Matrix> all_transforms;
-                                terrain->FindTransforms(tile_index, TerrainProp::Grass, nullptr, per_triangle_density_grass_blade, 0.7f, all_transforms);
-
-                                if (!all_transforms.empty())
-                                {
-                                    size_t total_count = all_transforms.size();
-                                    size_t split_1     = static_cast<size_t>(total_count * 0.15f);
-                                    size_t split_2     = static_cast<size_t>(total_count * 0.45f);
-
-                                    // far layer (15%)
-                                    {
-                                        Entity* entity = World::CreateEntity();
-                                        entity->SetObjectName("grass_layer_density_low");
-                                        entity->SetParent(terrain_tile);
-
-                                        vector<Matrix> far_transforms(all_transforms.begin(), all_transforms.begin() + split_1);
-
-                                        Render* renderable = entity->AddComponent<Render>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
-                                        renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                                        renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
-                                        renderable->SetInstances(far_transforms);
-                                        renderable->SetMaterial(material_grass_blade);
-                                        renderable->SetMaxRenderDistance(render_distance_foliage);
-                                    }
-
-                                    // mid layer (30%)
-                                    {
-                                        Entity* entity = World::CreateEntity();
-                                        entity->SetObjectName("grass_layer_density_mid");
-                                        entity->SetParent(terrain_tile);
-
-                                        vector<Matrix> mid_transforms(all_transforms.begin() + split_1, all_transforms.begin() + split_2);
-
-                                        Render* renderable = entity->AddComponent<Render>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
-                                        renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                                        renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
-                                        renderable->SetInstances(mid_transforms);
-                                        renderable->SetMaterial(material_grass_blade);
-                                        renderable->SetMaxRenderDistance(render_distance_foliage * 0.6f);
-                                    }
-
-                                    // near layer (55%)
-                                    {
-                                        Entity* entity = World::CreateEntity();
-                                        entity->SetObjectName("grass_layer_density_high");
-                                        entity->SetParent(terrain_tile);
-
-                                        vector<Matrix> near_transforms(all_transforms.begin() + split_2, all_transforms.end());
-
-                                        Render* renderable = entity->AddComponent<Render>();
-                                        renderable->SetMesh(mesh_grass_blade.get());
-                                        renderable->SetFlag(RenderableFlags::CastsShadows, false);
-                                        renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
-                                        renderable->SetInstances(near_transforms);
-                                        renderable->SetMaterial(material_grass_blade);
-                                        renderable->SetMaxRenderDistance(render_distance_foliage * 0.3f);
-                                    }
-                                }
-                            }
+                            // grass placement has moved to gpu procedural generation, see Renderer::EnableProceduralGrass below
+                            // the per-tile FindTransforms call is gone, the populate compute shader walks a ring grid
+                            // around the camera each frame and samples the terrain heightmap directly
 
                             // flowers
                             {
@@ -1147,7 +1116,11 @@ namespace spartan
 
         // reset world-specific state
         Car::ShutdownAll();
+        // procedural grass references a mesh and a material owned by these vectors,
+        // disable it first so the renderer drops its references before they go away
+        Renderer::DisableProceduralGrass();
         meshes.clear();
+        materials.clear();
     }
 
     void Game::Tick()
