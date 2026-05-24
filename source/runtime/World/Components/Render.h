@@ -38,7 +38,10 @@ namespace spartan
 
     enum RenderableFlags : uint32_t
     {
-        CastsShadows = 1U << 0
+        CastsShadows         = 1U << 0,
+        // exclude the renderable from blas builds and tlas registration, lets foliage with millions of instances skip the ray tracing path entirely
+        // grass/flowers don't visibly matter for ray traced reflections/shadows/gi and a per-blade blas would burn gpu memory for no benefit
+        ExcludeFromRayTracing = 1U << 1
     };
 
     // per-renderable material overrides, currently uv only
@@ -86,6 +89,7 @@ namespace spartan
         uint32_t GetMeshletOffset(const uint32_t lod = 0) const;
         uint32_t GetMeshletCount(const uint32_t lod = 0) const;
         uint32_t GetGlobalMeshletOffset() const;
+        const math::BoundingBox& GetLodAabb(const uint32_t lod = 0) const;
         Mesh* GetMesh() const { return m_mesh; }
         uint32_t GetSubMeshIndex() const { return m_sub_mesh_index; }
         RHI_Buffer* GetIndexBuffer() const;

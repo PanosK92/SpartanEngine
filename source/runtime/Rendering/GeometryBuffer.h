@@ -112,6 +112,9 @@ namespace spartan
         // once set, AppendInstances drops new instances and BuildIfDirty stops attempting to grow past it
         static uint32_t m_instance_capacity_failed_at;
 
+        // logs the geometry buffer oom error exactly once per session so async grass tile arrivals don't spam the same message
+        static bool m_oom_logged;
+
         // growth factor applied when allocating gpu buffers
         static constexpr float growth_factor = 1.25f;
     };

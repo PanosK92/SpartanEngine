@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GeometryProcessing.h"
 #include "../Core/ThreadPool.h"
 #include <unordered_map>
+#include <cmath>
 SP_WARNINGS_OFF
 #include "meshoptimizer/meshoptimizer.h"
 SP_WARNINGS_ON
@@ -289,10 +290,12 @@ namespace spartan::geometry_processing
     void build_meshlets(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices,
-        std::vector<Sb_MeshletBounds>& meshlets_out
+        std::vector<Sb_MeshletBounds>& meshlets_out,
+        math::BoundingBox& lod_aabb_out
     )
     {
         meshlets_out.clear();
+        lod_aabb_out = math::BoundingBox::Zero;
 
         const size_t index_count  = indices.size();
         const size_t vertex_count = vertices.size();
@@ -300,6 +303,26 @@ namespace spartan::geometry_processing
         {
             return;
         }
+
+        // compute the lod-local aabb up-front, the compressed meshlet bounds quantize center/radius against it and the cull shader receives the same aabb via DrawData.lod_aabb_*
+        lod_aabb_out                       = math::BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+        const math::Vector3 aabb_min       = lod_aabb_out.GetMin();
+        const math::Vector3 aabb_extent    = lod_aabb_out.GetMax() - aabb_min;
+        // guard against zero-extent axes (single-plane or degenerate meshes) so the dequant doesn't divide by zero on the cpu or shader
+        const math::Vector3 aabb_extent_safe(
+            aabb_extent.x > 1e-8f ? aabb_extent.x : 1e-8f,
+            aabb_extent.y > 1e-8f ? aabb_extent.y : 1e-8f,
+            aabb_extent.z > 1e-8f ? aabb_extent.z : 1e-8f
+        );
+        const float aabb_diag              = aabb_extent_safe.Length();
+        const float aabb_diag_safe         = aabb_diag > 1e-8f ? aabb_diag : 1e-8f;
+        // worst-case center quantization error magnitude, half a step per axis combined in 3d
+        const math::Vector3 center_step(
+            aabb_extent_safe.x / 65535.0f,
+            aabb_extent_safe.y / 65535.0f,
+            aabb_extent_safe.z / 65535.0f
+        );
+        const float center_quant_err_3d    = center_step.Length() * 0.5f;
 
         // worst case meshlet count, used for buffer allocation
         const size_t max_meshlets = meshopt_buildMeshletsBound(index_count, meshlet_max_vertices, meshlet_max_triangles);
@@ -343,12 +366,12 @@ namespace spartan::geometry_processing
         {
             const meshopt_Meshlet& ml = meshlets[m];
 
-            Sb_MeshletBounds bounds = {};
-            bounds.first_index      = static_cast<uint32_t>(repacked.size());
-            bounds.index_count      = ml.triangle_count * 3;
+            Sb_MeshletBounds bounds      = {};
+            const uint32_t first_index   = static_cast<uint32_t>(repacked.size());
+            const uint32_t triangle_count = ml.triangle_count;
 
             // emit triangles for this meshlet
-            for (uint32_t t = 0; t < ml.triangle_count; ++t)
+            for (uint32_t t = 0; t < triangle_count; ++t)
             {
                 const uint8_t i0 = meshlet_triangles[ml.triangle_offset + t * 3 + 0];
                 const uint8_t i1 = meshlet_triangles[ml.triangle_offset + t * 3 + 1];
@@ -363,23 +386,41 @@ namespace spartan::geometry_processing
             meshopt_Bounds mb = meshopt_computeMeshletBounds(
                 &meshlet_vertices[ml.vertex_offset],
                 &meshlet_triangles[ml.triangle_offset],
-                ml.triangle_count,
+                triangle_count,
                 &vertices[0].pos[0],
                 vertex_count,
                 sizeof(RHI_Vertex_PosTexNorTan)
             );
 
-            bounds.center.x = mb.center[0];
-            bounds.center.y = mb.center[1];
-            bounds.center.z = mb.center[2];
-            bounds.radius   = mb.radius;
+            // quantize center against the lod aabb, clamp first so any tiny float drift past the aabb edges doesn't underflow the unorm round
+            const float tx    = std::clamp((mb.center[0] - aabb_min.x) / aabb_extent_safe.x, 0.0f, 1.0f);
+            const float ty    = std::clamp((mb.center[1] - aabb_min.y) / aabb_extent_safe.y, 0.0f, 1.0f);
+            const float tz    = std::clamp((mb.center[2] - aabb_min.z) / aabb_extent_safe.z, 0.0f, 1.0f);
+            const uint32_t cx = static_cast<uint32_t>(tx * 65535.0f + 0.5f);
+            const uint32_t cy = static_cast<uint32_t>(ty * 65535.0f + 0.5f);
+            const uint32_t cz = static_cast<uint32_t>(tz * 65535.0f + 0.5f);
+
+            // expand radius by the center quantization error and the unorm step that radius itself will round to, then round up so the encoded sphere always covers the true sphere
+            const float radius_step    = aabb_diag_safe / 65535.0f;
+            const float radius_padded  = mb.radius + center_quant_err_3d + radius_step;
+            const float radius_norm    = std::clamp(radius_padded / aabb_diag_safe, 0.0f, 1.0f);
+            const uint32_t r_quant     = static_cast<uint32_t>(std::ceil(radius_norm * 65535.0f));
+            const uint32_t r           = r_quant > 0xFFFFu ? 0xFFFFu : r_quant;
+
+            bounds.center_xy        = cx | (cy << 16);
+            bounds.center_z_radius  = cz | (r << 16);
 
             // pack the snorm cone axis xyz and cone cutoff into one uint, byte 0..2 axis, byte 3 cutoff
-            uint32_t ax = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[0]));
-            uint32_t ay = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[1]));
-            uint32_t az = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[2]));
-            uint32_t cc = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_cutoff_s8));
+            const uint32_t ax = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[0]));
+            const uint32_t ay = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[1]));
+            const uint32_t az = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_axis_s8[2]));
+            const uint32_t cc = static_cast<uint32_t>(static_cast<uint8_t>(mb.cone_cutoff_s8));
             bounds.cone_axis_cutoff = ax | (ay << 8) | (az << 16) | (cc << 24);
+
+            // pack first_index (25 bits, max ~33m) and triangle_count (7 bits, engine cap 124) into one uint
+            SP_ASSERT_MSG(first_index <= MESHLET_FIRST_INDEX_MAX,    "Meshlet first_index exceeds the 25-bit pack budget");
+            SP_ASSERT_MSG(triangle_count <= MESHLET_TRI_COUNT_MASK,  "Meshlet triangle_count exceeds the 7-bit pack budget");
+            bounds.first_index_tri_count = (first_index & MESHLET_FIRST_INDEX_MASK) | ((triangle_count & MESHLET_TRI_COUNT_MASK) << MESHLET_TRI_COUNT_SHIFT);
 
             meshlets_out.push_back(bounds);
         }

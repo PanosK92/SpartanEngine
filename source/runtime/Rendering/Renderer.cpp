@@ -1489,56 +1489,41 @@ namespace spartan
     {
         m_bindless_aabbs.fill(Sb_Aabb());
 
-        // prepass aabbs (must match the indexing in indirect_cull.hlsl)
+        // prepass aabbs come first in the buffer, slot index is the prepass draw index
         for (uint32_t i = 0; i < m_draw_calls_prepass_count; i++)
         {
             const Renderer_DrawCall& draw_call = m_draw_calls_prepass[i];
-            Render* renderable             = draw_call.renderable;
+            Render* renderable                 = draw_call.renderable;
             const BoundingBox& aabb            = renderable->GetBoundingBox();
             m_bindless_aabbs[i].min            = aabb.GetMin();
             m_bindless_aabbs[i].max            = aabb.GetMax();
             m_bindless_aabbs[i].is_occluder    = draw_call.is_occluder;
         }
 
-        // indirect draw aabbs (stored right after prepass aabbs, one per renderable not per meshlet)
+        // indirect draw aabbs, the slot is taken straight from m_indirect_draw_data[].aabb_index so the writes
+        // here always land on the slot the cull shader will read for that draw, no filter divergence can drift it
+        const uint32_t aabb_frame_offset = m_frame_resource_index * rhi_max_array_size;
+        for (uint32_t i = 0; i < m_indirect_draw_count; i++)
         {
-            uint32_t indirect_idx = 0;
-            for (uint32_t i = 0; i < m_draw_call_count && indirect_idx < m_indirect_renderable_count; i++)
+            Render* renderable               = m_indirect_renderables[i];
+            const Sb_DrawData& data          = m_indirect_draw_data[i];
+            const uint32_t aabb_slot_global  = data.aabb_index;
+            if (aabb_slot_global < aabb_frame_offset)
             {
-                const Renderer_DrawCall& dc = m_draw_calls[i];
-                Render* renderable          = dc.renderable;
-                Material* material          = renderable->GetMaterial();
-
-                if (!material || material->IsTransparent())
-                {
-                    continue;
-                }
-                if (material->GetProperty(MaterialProperty::Tessellation) > 0.0f)
-                {
-                    continue;
-                }
-                if (renderable->GetIndexCount(dc.lod_index) == 0)
-                {
-                    continue;
-                }
-                if (!dc.camera_visible)
-                {
-                    continue;
-                }
-
-                uint32_t aabb_slot = m_draw_calls_prepass_count + indirect_idx;
-                if (aabb_slot < rhi_max_array_size)
-                {
-                    const BoundingBox& aabb         = renderable->GetBoundingBox();
-                    m_bindless_aabbs[aabb_slot].min = aabb.GetMin();
-                    m_bindless_aabbs[aabb_slot].max = aabb.GetMax();
-                }
-                indirect_idx++;
+                continue;
             }
+            const uint32_t aabb_slot = aabb_slot_global - aabb_frame_offset;
+            if (aabb_slot >= rhi_max_array_size)
+            {
+                continue;
+            }
+            const BoundingBox& aabb         = renderable->GetBoundingBox();
+            m_bindless_aabbs[aabb_slot].min = aabb.GetMin();
+            m_bindless_aabbs[aabb_slot].max = aabb.GetMax();
         }
 
-        // gpu upload to the current frame's region within the shared aabb buffer
-        uint32_t total_aabb_count = m_draw_calls_prepass_count + m_indirect_renderable_count;
+        // upload covers both the prepass region and the trailing indirect region, the indirect aabb slots start at m_draw_calls_prepass_count
+        const uint32_t total_aabb_count = m_draw_calls_prepass_count + m_indirect_renderable_count;
         if (total_aabb_count > 0)
         {
             RHI_Buffer* buffer         = GetBuffer(Renderer_Buffer::AABBs);
@@ -1732,19 +1717,31 @@ namespace spartan
                 base_flags |= 8u;
             }
 
-            const uint32_t draw_idx = m_indirect_draw_count++;
-            Sb_DrawData& data       = m_indirect_draw_data[draw_idx];
-            data.transform          = entity->GetMatrix();
-            data.transform_previous = entity->GetMatrixPrevious();
-            data.material_index     = material->GetIndex();
-            data.is_transparent     = 0;
-            data.aabb_index         = renderable_aabb_slot;
-            data.lod_first_index    = base_first_index;
-            data.flags              = base_flags;
-            data.instance_offset    = renderable->GetGlobalInstanceOffset();
-            data.instance_index     = 0;
-            data.lod_vertex_offset  = vertex_offset;
+            const uint32_t draw_idx        = m_indirect_draw_count++;
+            Sb_DrawData& data              = m_indirect_draw_data[draw_idx];
+            data.transform                 = entity->GetMatrix();
+            data.transform_previous        = entity->GetMatrixPrevious();
+            data.material_index            = material->GetIndex();
+            data.is_transparent            = 0;
+            data.aabb_index                = renderable_aabb_slot;
+            data.lod_first_index           = base_first_index;
+            data.flags                     = base_flags;
+            data.instance_offset           = renderable->GetGlobalInstanceOffset();
+            data.instance_index            = 0;
+            data.lod_vertex_offset         = vertex_offset;
             fill_uv_draw_fields_from_renderable(data, renderable);
+
+            // lod-local aabb, must match the one build_meshlets quantized the compressed meshlet bounds against
+            // diag is precomputed length(extent), the cull shader uses it to dequantize radius without a sqrt
+            const BoundingBox& lod_aabb_local = renderable->GetLodAabb(dc.lod_index);
+            const Vector3 lod_extent          = lod_aabb_local.GetMax() - lod_aabb_local.GetMin();
+            data.lod_aabb_min                 = lod_aabb_local.GetMin();
+            data.lod_aabb_extent              = lod_extent;
+            data.lod_aabb_diag                = lod_extent.Length();
+            data.lod_aabb_padding             = 0.0f;
+
+            // parallel renderable handle, UpdateBoundingBoxes uses this to write each aabb at exactly the slot the cull shader will read
+            m_indirect_renderables[draw_idx] = renderable;
 
             // one cull task per meshlet, fan out per-instance tasks unless hw-instancing fell back
             const uint32_t instances_per_task = use_hw_instancing ? inst_n : 1u;
@@ -1863,6 +1860,13 @@ namespace spartan
                     continue;
                 }
 
+                // skip the ray tracing path for renderables that opt out (foliage, anything with millions of instances)
+                // these never become a blas and never enter the tlas, so the big instance buffers don't drag blas memory along with them
+                if (renderable->HasFlag(RenderableFlags::ExcludeFromRayTracing))
+                {
+                    continue;
+                }
+
                 blas_total++;
 
                 if (!renderable->HasAccelerationStructure())
@@ -1931,6 +1935,12 @@ namespace spartan
             {
                 Render* renderable = entity->GetComponent<Render>();
                 if (!renderable)
+                {
+                    continue;
+                }
+
+                // same opt-out as the blas loop above, keep the tlas instance list in sync with the blas set so we don't try to register a renderable that has no blas
+                if (renderable->HasFlag(RenderableFlags::ExcludeFromRayTracing))
                 {
                     continue;
                 }
@@ -2234,6 +2244,7 @@ namespace spartan
     array<Renderer_DrawCall, renderer_max_draw_calls> Renderer::m_draw_calls_prepass;
     uint32_t Renderer::m_draw_calls_prepass_count;
     array<Sb_DrawData, renderer_max_indirect_draws> Renderer::m_indirect_draw_data;
+    array<Render*,     renderer_max_indirect_draws> Renderer::m_indirect_renderables;
     uint32_t Renderer::m_indirect_draw_count       = 0;
     uint32_t Renderer::m_indirect_renderable_count = 0;
     array<Sb_CullTask, renderer_max_cull_tasks> Renderer::m_cull_tasks;

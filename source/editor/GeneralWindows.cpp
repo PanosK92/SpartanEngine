@@ -30,6 +30,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileSystem/FileSystem.h"
 #include "Widgets/Viewport.h"
 #include "Input/Input.h"
+// third party version queries
+SP_WARNINGS_OFF
+#include <assimp/version.h>
+#include <FreeImage/FreeImage.h>
+#include <freetype/freetype.h>
+#include <SDL3/SDL_version.h>
+#include <lua/lua.h>
+#include <meshoptimizer/meshoptimizer.h>
+#include <openxr/openxr.h>
+#include <physx/foundation/PxPhysicsVersion.h>
+#include <sol/sol.hpp>
+#include "IO/pugixml.hpp"
+#if defined(_WIN32)
+#include <xess/xess.h>
+#endif
+#if defined(API_GRAPHICS_VULKAN)
+#include <vulkan/vulkan_core.h>
+#include <spirv_cross/spirv_cross_c.h>
+#endif
+SP_WARNINGS_ON
 //================================
 
 //= NAMESPACES =====
@@ -236,34 +256,149 @@ namespace
 
         struct third_party_lib
         {
-            const char* name;
-            const char* version;
-            const char* url;
+            std::string name;
+            std::string version;
+            std::string url;
         };
 
-        // third-party libraries used by the engine (alphabetically sorted)
-        static const third_party_lib libs[] =
+        // stringification helpers for numeric version macros
+        #define SP_VERSION_STR(x) #x
+        #define SP_VERSION_XSTR(x) SP_VERSION_STR(x)
+
+        static const std::vector<third_party_lib>& get_libs()
         {
-            { "AMD FidelityFX CAS/SPD",      "1.1.4",      "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK"       },
-            { "AMD Vulkan Memory Allocator", "3.3.0",      "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator"},
-            { "Assimp",                      "6.0.2",      "https://github.com/assimp/assimp"                                 },
-            { "DirectX",                     "12.0",       "https://en.wikipedia.org/wiki/DirectX"                            },
-            { "DirectXShaderCompiler",       "May 2025",   "https://github.com/microsoft/DirectXShaderCompiler"               },
-            { "FreeImage",                   "3.18.0",     "https://freeimage.sourceforge.io/"                                },
-            { "FreeType",                    "2.13.2",     "https://freetype.org/"                                            },
-            { "ImGui",                       "1.91.9 WIP", "https://github.com/ocornut/imgui"                                 },
-            { "Intel XeSS",                  "2.1.0",      "https://github.com/intel/xess"                                    },
-            { "Lua",                         "5.5.0",      "https://www.lua.org/"                                             },
-            { "meshoptimizer",               "0.25",       "https://github.com/zeux/meshoptimizer"                            },
-            { "OpenXR",                      "1.1.54",     "https://www.khronos.org/openxr/"                                  },
-            { "PhysX",                       "5.6.0",      "https://github.com/NVIDIA-Omniverse/PhysX"                        },
-            { "pugixml",                     "1.13",       "https://github.com/zeux/pugixml"                                  },
-            { "RenderDoc",                   "1.40",       "https://renderdoc.org/"                                           },
-            { "SDL",                         "3.2.24",     "https://www.libsdl.org/"                                          },
-            { "Sol2",                        "3.3.0",      "https://github.com/ThePhD/sol2"                                   },
-            { "SPIRV-Cross",                 "2023.09",    "https://github.com/KhronosGroup/SPIRV-Cross"                      },
-            { "Vulkan",                      "1.4.321",    "https://vulkan.lunarg.com/"                                       },
-        };
+            static const std::vector<third_party_lib> libs = []
+            {
+                std::vector<third_party_lib> v;
+
+                // single header drop, version is not exposed as a macro
+                v.push_back({ "AMD FidelityFX CAS/SPD", "1.1.4", "https://github.com/GPUOpen-LibrariesAndSDKs/FidelityFX-SDK" });
+
+                // single header drop, version is not exposed as a macro
+                v.push_back({ "AMD Vulkan Memory Allocator", "3.3.0", "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator" });
+
+                // runtime query, tracks the linked binary
+                {
+                    std::string ver = std::to_string(aiGetVersionMajor()) + "." +
+                                      std::to_string(aiGetVersionMinor()) + "." +
+                                      std::to_string(aiGetVersionPatch());
+                    v.push_back({ "Assimp", ver, "https://github.com/assimp/assimp" });
+                }
+
+                // not header versioned, label only
+                v.push_back({ "DirectX", "12.0", "https://en.wikipedia.org/wiki/DirectX" });
+
+                // no compile time macro, runtime query requires loading the dll
+                v.push_back({ "DirectXShaderCompiler", "May 2025", "https://github.com/microsoft/DirectXShaderCompiler" });
+
+                // runtime query
+                v.push_back({ "FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/" });
+
+                {
+                    std::string ver = SP_VERSION_XSTR(FREETYPE_MAJOR) "." SP_VERSION_XSTR(FREETYPE_MINOR) "." SP_VERSION_XSTR(FREETYPE_PATCH);
+                    v.push_back({ "FreeType", ver, "https://freetype.org/" });
+                }
+
+                v.push_back({ "ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui" });
+
+#if defined(_WIN32)
+                // runtime query
+                {
+                    xess_version_t xv = {};
+                    std::string ver  = "n/a";
+                    if (xessGetVersion(&xv) == XESS_RESULT_SUCCESS)
+                    {
+                        ver = std::to_string(xv.major) + "." +
+                              std::to_string(xv.minor) + "." +
+                              std::to_string(xv.patch);
+                    }
+                    v.push_back({ "Intel XeSS", ver, "https://github.com/intel/xess" });
+                }
+#endif
+
+                {
+                    std::string ver = LUA_VERSION_MAJOR "." LUA_VERSION_MINOR "." LUA_VERSION_RELEASE;
+                    v.push_back({ "Lua", ver, "https://www.lua.org/" });
+                }
+
+                // packed as major times 1000 plus minor times 10 plus patch
+                {
+                    constexpr int raw   = MESHOPTIMIZER_VERSION;
+                    constexpr int major = raw / 1000;
+                    constexpr int minor = (raw % 1000) / 10;
+                    constexpr int patch = raw % 10;
+                    std::string ver = std::to_string(major) + "." + std::to_string(minor);
+                    if (patch > 0)
+                    {
+                        ver += "." + std::to_string(patch);
+                    }
+                    v.push_back({ "meshoptimizer", ver, "https://github.com/zeux/meshoptimizer" });
+                }
+
+                {
+                    std::string ver = std::to_string(XR_VERSION_MAJOR(XR_CURRENT_API_VERSION)) + "." +
+                                      std::to_string(XR_VERSION_MINOR(XR_CURRENT_API_VERSION)) + "." +
+                                      std::to_string(XR_VERSION_PATCH(XR_CURRENT_API_VERSION));
+                    v.push_back({ "OpenXR", ver, "https://www.khronos.org/openxr/" });
+                }
+
+                {
+                    std::string ver = SP_VERSION_XSTR(PX_PHYSICS_VERSION_MAJOR) "."
+                                      SP_VERSION_XSTR(PX_PHYSICS_VERSION_MINOR) "."
+                                      SP_VERSION_XSTR(PX_PHYSICS_VERSION_BUGFIX);
+                    v.push_back({ "PhysX", ver, "https://github.com/NVIDIA-Omniverse/PhysX" });
+                }
+
+                // packed as major times 1000 plus minor times 10 plus patch since 1.10
+                {
+                    constexpr int raw   = PUGIXML_VERSION;
+                    constexpr int major = raw / 1000;
+                    constexpr int minor = (raw / 10) % 100;
+                    constexpr int patch = raw % 10;
+                    std::string ver = std::to_string(major) + "." + std::to_string(minor);
+                    if (patch > 0)
+                    {
+                        ver += "." + std::to_string(patch);
+                    }
+                    v.push_back({ "pugixml", ver, "https://github.com/zeux/pugixml" });
+                }
+
+                // only the in process api version is queryable
+                v.push_back({ "RenderDoc", "1.40", "https://renderdoc.org/" });
+
+                {
+                    std::string ver = SP_VERSION_XSTR(SDL_MAJOR_VERSION) "."
+                                      SP_VERSION_XSTR(SDL_MINOR_VERSION) "."
+                                      SP_VERSION_XSTR(SDL_MICRO_VERSION);
+                    v.push_back({ "SDL", ver, "https://www.libsdl.org/" });
+                }
+
+                v.push_back({ "Sol2", SOL_VERSION_STRING, "https://github.com/ThePhD/sol2" });
+
+#if defined(API_GRAPHICS_VULKAN)
+                // c api version, the release tag is not exposed
+                {
+                    std::string ver = std::to_string(SPVC_C_API_VERSION_MAJOR) + "." +
+                                      std::to_string(SPVC_C_API_VERSION_MINOR) + "." +
+                                      std::to_string(SPVC_C_API_VERSION_PATCH);
+                    v.push_back({ "SPIRV-Cross", ver, "https://github.com/KhronosGroup/SPIRV-Cross" });
+                }
+#endif
+
+#if defined(API_GRAPHICS_VULKAN)
+                {
+                    std::string ver = std::to_string(VK_API_VERSION_MAJOR(VK_HEADER_VERSION_COMPLETE)) + "." +
+                                      std::to_string(VK_API_VERSION_MINOR(VK_HEADER_VERSION_COMPLETE)) + "." +
+                                      std::to_string(VK_HEADER_VERSION);
+                    v.push_back({ "Vulkan", ver, "https://vulkan.lunarg.com/" });
+                }
+#endif
+
+                return v;
+            }();
+
+            return libs;
+        }
 
         void tab_libraries()
         {
@@ -277,20 +412,20 @@ namespace
                 ImGui::TableSetupColumn("Link", ImGuiTableColumnFlags_WidthFixed, 60.0f);
                 ImGui::TableHeadersRow();
 
-                for (const third_party_lib& lib : libs)
+                for (const third_party_lib& lib : get_libs())
                 {
                     ImGui::TableNextRow();
 
                     ImGui::TableSetColumnIndex(0);
                     ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(lib.name);
+                    ImGui::TextUnformatted(lib.name.c_str());
 
                     ImGui::TableSetColumnIndex(1);
                     ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(lib.version);
+                    ImGui::TextUnformatted(lib.version.c_str());
 
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::PushID(lib.url);
+                    ImGui::PushID(lib.url.c_str());
                     if (ImGuiSp::button("URL"))
                     {
                         spartan::FileSystem::OpenUrl(lib.url);

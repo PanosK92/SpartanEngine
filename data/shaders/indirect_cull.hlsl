@@ -186,6 +186,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
         bool skinned         = (draw.flags & 1u) != 0u;
         bool is_per_instance = (draw.flags & 2u) != 0u;
         bool is_hw_instanced = (draw.flags & 4u) != 0u;
+        bool is_two_sided    = (draw.flags & 8u) != 0u;
 
         // skinned and hw-instanced fall back to the per-renderable aabb path
         // skinned because deformation can push verts outside the static meshlet sphere
@@ -204,17 +205,20 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                 ? mul(pull_instance_transform(draw.instance_offset, task.instance_index), draw.transform)
                 : draw.transform;
 
-            MeshletBounds mb    = meshlet_bounds[task.meshlet_index];
-            float3 center_world = mul(float4(mb.center, 1.0f), world_xform).xyz;
-            float  scale_max    = max_world_scale(world_xform);
-            float  radius_world = mb.radius * scale_max;
+            MeshletBounds mb     = meshlet_bounds[task.meshlet_index];
+            // dequantize the compressed bounds against the lod aabb that the cpu packer used in build_meshlets
+            float3 center_local  = meshlet_decode_center(mb, draw.lod_aabb_min, draw.lod_aabb_extent);
+            float  radius_local  = meshlet_decode_radius(mb, draw.lod_aabb_diag);
+            float3 center_world  = mul(float4(center_local, 1.0f), world_xform).xyz;
+            float  scale_max     = max_world_scale(world_xform);
+            float  radius_world  = radius_local * scale_max;
 
             // per-meshlet side-frustum sphere reject
             is_visible = sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t);
 
-            // per-meshlet backface cone, skipped only when the cone is degenerate
+            // per-meshlet backface cone, skipped for two-sided materials (the triangle cull would have to keep both sides anyway) and degenerate cones
             // skinned never reaches here, per_instance reaches here with the correct per-instance rotation baked into world_xform
-            if (is_visible)
+            if (is_visible && !is_two_sided)
             {
                 int4 cone = unpack_cone_axis_cutoff(mb.cone_axis_cutoff);
                 if (cone.w < 127)

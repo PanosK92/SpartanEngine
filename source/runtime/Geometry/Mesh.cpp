@@ -89,7 +89,7 @@ namespace spartan
             return;
         }
 
-        uint32_t version = 4; // vertex shrunk to 24 bytes (uv/normal/tangent now packed)
+        uint32_t version = 5; // meshlet bounds compressed to 16 bytes (center/radius quantized into the lod aabb, first_index/triangle_count packed)
         outfile.write(reinterpret_cast<const char*>(&version), sizeof(uint32_t));
 
         uint32_t type = static_cast<uint32_t>(m_type);
@@ -168,9 +168,9 @@ namespace spartan
 
             uint32_t version;
             infile.read(reinterpret_cast<char*>(&version), sizeof(uint32_t));
-            if (version != 4)
+            if (version != 5)
             {
-                SP_LOG_ERROR("Version mismatch for file: %s (expected 4, got %u, please re-import the source asset)", file_path.c_str(), version);
+                SP_LOG_ERROR("Version mismatch for file: %s (expected 5, got %u, please re-import the source asset)", file_path.c_str(), version);
                 return;
             }
 
@@ -307,15 +307,16 @@ namespace spartan
 
     void Mesh::AddLod(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const uint32_t sub_mesh_index)
     {
-        // build per-lod meshlets, this also repacks indices into meshlet-contiguous order
+        // build per-lod meshlets, this also repacks indices into meshlet-contiguous order and returns the lod aabb the meshlet bounds were quantized against
         // heavy work, kept outside the mesh mutex so concurrent AddLod calls run in parallel
         vector<Sb_MeshletBounds> lod_meshlets;
-        geometry_processing::build_meshlets(vertices, indices, lod_meshlets);
+        BoundingBox              lod_aabb;
+        geometry_processing::build_meshlets(vertices, indices, lod_meshlets, lod_aabb);
 
         MeshLod lod;
         lod.vertex_count  = static_cast<uint32_t>(vertices.size());
         lod.index_count   = static_cast<uint32_t>(indices.size());
-        lod.aabb          = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+        lod.aabb          = lod_aabb;
         lod.meshlet_count = static_cast<uint32_t>(lod_meshlets.size());
 
         // append geometry, offsets are computed inside the lock so concurrent appends produce correct values

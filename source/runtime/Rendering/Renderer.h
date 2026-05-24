@@ -331,8 +331,10 @@ namespace spartan
 
         // gpu-driven indirect drawing
         // m_indirect_draw_data holds per-renderable lod entries, sized for the per-renderable budget
+        // m_indirect_renderables is a parallel array so UpdateBoundingBoxes can write each renderable's aabb at the same slot the cull shader reads, no filter divergence allowed
         // m_cull_tasks expands to one entry per (renderable, meshlet) and is what the cull pass dispatches over
         static std::array<Sb_DrawData, renderer_max_indirect_draws> m_indirect_draw_data;
+        static std::array<Render*, renderer_max_indirect_draws>     m_indirect_renderables;
         static uint32_t m_indirect_draw_count;
         // count of distinct renderables in the indirect path, used to lay out one aabb slot per renderable
         static uint32_t m_indirect_renderable_count;

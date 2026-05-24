@@ -506,6 +506,11 @@ namespace spartan
         return m_mesh->GetGlobalMeshletOffset();
     }
 
+    const BoundingBox& Render::GetLodAabb(const uint32_t lod) const
+    {
+        return m_mesh->GetSubMesh(m_sub_mesh_index).lods[lod].aabb;
+    }
+
     RHI_Buffer* Render::GetIndexBuffer() const
 	{
         if (!m_mesh)

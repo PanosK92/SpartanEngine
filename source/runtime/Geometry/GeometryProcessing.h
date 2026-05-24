@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "../RHI/RHI_Vertex.h"
 #include "../Rendering/Renderer_Buffers.h"
+#include "../Math/BoundingBox.h"
 //======================================
 
 namespace spartan::geometry_processing
@@ -43,12 +44,13 @@ namespace spartan::geometry_processing
     );
 
     // build per-lod meshlets and repack the index buffer in meshlet order
-    // each meshlet ends up with a contiguous range in the returned index buffer (first_index/index_count are local to that range)
-    // returns the meshlet bounding spheres in the same order as the repacked indices
+    // each meshlet ends up with a contiguous range in the returned index buffer (first_index packed inside Sb_MeshletBounds is local to that range)
+    // returns the meshlet bounds (center/radius compressed against lod_aabb_out) in the same order as the repacked indices, and the computed lod aabb the caller is expected to publish via DrawData.lod_aabb_min/extent
     void build_meshlets(
         const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
         std::vector<uint32_t>& indices,
-        std::vector<Sb_MeshletBounds>& meshlets_out
+        std::vector<Sb_MeshletBounds>& meshlets_out,
+        math::BoundingBox& lod_aabb_out
     );
 
     void split_surface_into_tiles(

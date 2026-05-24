@@ -52,6 +52,7 @@ namespace spartan
     uint32_t GeometryBuffer::m_instance_capacity_failed_at    = 0;
     bool GeometryBuffer::m_dirty                              = false;
     bool GeometryBuffer::m_was_rebuilt                        = false;
+    bool GeometryBuffer::m_oom_logged                         = false;
     mutex GeometryBuffer::m_mutex;
 
     uint32_t GeometryBuffer::AppendVertices(const RHI_Vertex_PosTexNorTan* data, uint32_t count)
@@ -103,9 +104,9 @@ namespace spartan
 
         uint32_t base_offset = static_cast<uint32_t>(m_instances.size());
 
-        // a previous BuildIfDirty hit oom at this size, drop the new instances so we don't grow the
-        // cpu-side vector unboundedly and don't retry ever-larger allocations every frame
-        if (m_instance_capacity_failed_at != 0 && base_offset + count >= m_instance_capacity_failed_at)
+        // once an instance oom has been seen, refuse all further appends so the cpu vector never grows past the last gpu-resident size
+        // also avoids the per-frame rebuild + log spam pattern (every async grass tile arrival would otherwise retry an alloc that already failed)
+        if (m_instance_capacity_failed_at != 0)
         {
             return base_offset;
         }
@@ -230,16 +231,21 @@ namespace spartan
                                      !new_instance_buffer->GetRhiResource();
             if (allocation_failed)
             {
-                SP_LOG_ERROR("Failed to allocate global geometry buffer (vertex_capacity=%u, index_capacity=%u, meshlet_capacity=%u, instance_capacity=%u), the world is too large for the available device memory, dropping further appends",
-                    new_vertex_capacity, new_index_capacity, new_meshlet_bounds_capacity, new_instance_capacity);
+                // log once per session, the same world will hit this every time AppendInstances marks the buffer dirty during async loading and we don't need a wall of identical errors
+                // Shutdown() resets the flag so the next world-load gets its own fresh log
+                if (!m_oom_logged)
+                {
+                    SP_LOG_ERROR("Failed to allocate global geometry buffer (vertex_capacity=%u, index_capacity=%u, meshlet_capacity=%u, instance_capacity=%u), the world is too large for the available device memory, dropping further appends",
+                        new_vertex_capacity, new_index_capacity, new_meshlet_bounds_capacity, new_instance_capacity);
+                    m_oom_logged = true;
+                }
 
-                // record the failed instance count, future AppendInstances calls bail out before growing m_instances
-                // and BuildIfDirty stops re-attempting larger allocations every frame
+                // record the failed instance count, future AppendInstances calls bail out so m_instances never grows past this point again
                 m_instance_capacity_failed_at = instance_count;
 
-                // truncate cpu-side instance vector back to what the previous gpu buffer can hold so
-                // m_dirty stays clean and BuildIfDirty stops triggering, identity slot 0 is preserved
-                if (m_instance_buffer && m_instance_count_committed > 0 && m_instances.size() > m_instance_count_committed)
+                // truncate cpu-side instance vector back to whatever the last successful gpu commit can hold (zero on a first-build failure, identity slot 0 is reseeded on the next append)
+                // without this, m_instances would stay at the failed size and the next rebuild would re-attempt the same too-big alloc
+                if (m_instances.size() > m_instance_count_committed)
                 {
                     m_instances.resize(m_instance_count_committed);
                 }
@@ -381,6 +387,7 @@ namespace spartan
         m_instance_capacity_failed_at    = 0;
         m_dirty                          = false;
         m_was_rebuilt                    = false;
+        m_oom_logged                     = false;
     }
 
     RHI_Buffer* GeometryBuffer::GetVertexBuffer()

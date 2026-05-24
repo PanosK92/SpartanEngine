@@ -148,7 +148,35 @@ RWStructuredBuffer<uint4> tex_compress_out     : register(u41); // bc3, bc5 (16 
 RWStructuredBuffer<uint2> tex_compress_out_bc1 : register(u42); // bc1 (8 bytes per block)
 
 // per-meshlet bounds (read-only, declared as rw to keep slot management uniform with other indirect buffers)
+// the struct is compressed to 16 bytes, see shared_buffers.h MeshletBounds and the meshlet_decode_* helpers below for the dequant
 RWStructuredBuffer<MeshletBounds> meshlet_bounds : register(u43);
+
+// dequant helpers, kept in one place so the meshlet cull, triangle cull and the visible-triangle vertex pull stay in lockstep
+// the lod aabb (min, extent, diag) lives on DrawData per renderable, build_meshlets quantized the bounds against the same aabb on the cpu so this round trip is loss-free for the conservative sphere
+float3 meshlet_decode_center(MeshletBounds mb, float3 lod_aabb_min, float3 lod_aabb_extent)
+{
+    uint cx = mb.center_xy & 0xFFFFu;
+    uint cy = (mb.center_xy >> 16) & 0xFFFFu;
+    uint cz = mb.center_z_radius & 0xFFFFu;
+    float3 t = float3(cx, cy, cz) * (1.0f / 65535.0f);
+    return lod_aabb_min + t * lod_aabb_extent;
+}
+
+float meshlet_decode_radius(MeshletBounds mb, float lod_aabb_diag)
+{
+    uint r = (mb.center_z_radius >> 16) & 0xFFFFu;
+    return float(r) * (1.0f / 65535.0f) * lod_aabb_diag;
+}
+
+uint meshlet_decode_first_index(MeshletBounds mb)
+{
+    return mb.first_index_tri_count & MESHLET_FIRST_INDEX_MASK;
+}
+
+uint meshlet_decode_triangle_count(MeshletBounds mb)
+{
+    return (mb.first_index_tri_count >> MESHLET_TRI_COUNT_SHIFT) & MESHLET_TRI_COUNT_MASK;
+}
 
 // per-instance cull tasks (read-only, declared as rw to keep slot management uniform with other indirect buffers)
 RWStructuredBuffer<CullTask> cull_tasks : register(u44);

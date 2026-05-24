@@ -54,8 +54,9 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
             gs_mb             = meshlet_bounds[gs_mi.meshlet_index];
             gs_world_xform    = mul(pull_instance_transform(gs_draw.instance_offset, gs_mi.instance_index), gs_draw.transform);
             gs_skip_backface  = ((gs_draw.flags & 1u) | (gs_draw.flags & 8u)) != 0u;
-            gs_triangle_count = gs_mb.index_count / 3u;
-            gs_base_index_pos = gs_draw.lod_first_index + gs_mb.first_index;
+            // first_index and triangle_count come out of the compressed bounds, the helpers stay in lockstep with the cpu packer in build_meshlets
+            gs_triangle_count = meshlet_decode_triangle_count(gs_mb);
+            gs_base_index_pos = gs_draw.lod_first_index + meshlet_decode_first_index(gs_mb);
         }
         else
         {
@@ -88,7 +89,8 @@ void main_cs(uint3 gid : SV_GroupID, uint3 lid : SV_GroupThreadID)
 
         if (!gs_skip_backface)
         {
-            // ccw front, the cross of two edges points along the front-face normal
+            // engine convention is left-handed coords with cw front-face winding
+            // for a cw-from-camera triangle in lh coords, cross(p1-p0, p2-p0) points back at the camera so a front-facing triangle has dot(face_normal, view_dir) <= 0
             float3 face_normal = cross(p1_world - p0_world, p2_world - p0_world);
             float3 view_dir    = p0_world - buffer_frame.camera_position;
             keep               = dot(face_normal, view_dir) <= 0.0f;

@@ -877,6 +877,7 @@ namespace spartan
                                         Render* renderable = entity->AddComponent<Render>();
                                         renderable->SetMesh(mesh_grass_blade.get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                        renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
                                         renderable->SetInstances(far_transforms);
                                         renderable->SetMaterial(material_grass_blade);
                                         renderable->SetMaxRenderDistance(render_distance_foliage);
@@ -893,6 +894,7 @@ namespace spartan
                                         Render* renderable = entity->AddComponent<Render>();
                                         renderable->SetMesh(mesh_grass_blade.get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                        renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
                                         renderable->SetInstances(mid_transforms);
                                         renderable->SetMaterial(material_grass_blade);
                                         renderable->SetMaxRenderDistance(render_distance_foliage * 0.6f);
@@ -909,6 +911,7 @@ namespace spartan
                                         Render* renderable = entity->AddComponent<Render>();
                                         renderable->SetMesh(mesh_grass_blade.get());
                                         renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                        renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
                                         renderable->SetInstances(near_transforms);
                                         renderable->SetMaterial(material_grass_blade);
                                         renderable->SetMaxRenderDistance(render_distance_foliage * 0.3f);
@@ -928,6 +931,7 @@ namespace spartan
                                 Render* renderable = entity->AddComponent<Render>();
                                 renderable->SetMesh(mesh_flower.get());
                                 renderable->SetFlag(RenderableFlags::CastsShadows, false);
+                                renderable->SetFlag(RenderableFlags::ExcludeFromRayTracing, true);
                                 renderable->SetInstances(transforms);
                                 renderable->SetMaterial(material_flower);
                                 renderable->SetMaxRenderDistance(render_distance_foliage);
