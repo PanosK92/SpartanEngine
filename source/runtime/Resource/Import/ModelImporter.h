@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ====
+#include <cstdint>
 #include <string>
 //===============
 
@@ -47,7 +48,7 @@ namespace spartan
         static void ParseNode(ImportContext& ctx, const aiNode* node, Entity* parent_entity = nullptr);
         static void ParseNodeMeshes(ImportContext& ctx, const aiNode* node, Entity* new_entity);
         static void ParseNodeLight(ImportContext& ctx, const aiNode* node, Entity* new_entity);
-        static void ParseMesh(ImportContext& ctx, aiMesh* mesh, Entity* entity_parent);
+        static void ParseMesh(ImportContext& ctx, aiMesh* mesh, Entity* entity_parent, const uint32_t sub_mesh_index);
         static void ParseSkeleton(ImportContext& ctx);
         static void ParseAnimations(ImportContext& ctx);
     };

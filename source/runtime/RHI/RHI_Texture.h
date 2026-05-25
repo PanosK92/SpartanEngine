@@ -52,7 +52,10 @@ namespace spartan
         RHI_Texture_Srgb              = 1U << 8,
         RHI_Texture_Mappable          = 1U << 9,
         RHI_Texture_ConcurrentSharing = 1U << 10,
-        RHI_Texture_Compress          = 1U << 11
+        RHI_Texture_Compress          = 1U << 11,
+        // skip the auto PrepareForGpu at the end of LoadFromFile so callers can mutate CPU bytes before the upload,
+        // used by Material::SetTexture for source textures that go through pack_textures (alpha mask merge etc.)
+        RHI_Texture_DeferUpload       = 1U << 12
     };
 
     struct RHI_Texture_Mip

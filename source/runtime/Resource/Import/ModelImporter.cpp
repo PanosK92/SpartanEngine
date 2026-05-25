@@ -56,8 +56,10 @@ namespace spartan
 {
     struct MeshJob
     {
-        aiMesh* assimp_mesh = nullptr;
-        Entity* entity      = nullptr;
+        aiMesh*  assimp_mesh    = nullptr;
+        Entity*  entity         = nullptr;
+        // deterministic sub-mesh slot, assigned sequentially during ParseNode so the parallel ParseMesh stage cannot race on it
+        uint32_t sub_mesh_index = 0;
     };
 
     struct ImportContext
@@ -418,11 +420,22 @@ namespace spartan
             material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
             // two-sided
-            int no_culling = opacity.r != 1.0f;
-            aiGetMaterialInteger(material_assimp, AI_MATKEY_TWOSIDED, &no_culling);
-            if (no_culling != 0)
+            // glTF exporters routinely flag opaque pbr materials as doubleSided as a precaution even though the mesh
+            // has consistent winding and would render correctly with hardware backface culling, honoring that hint
+            // here silently disables the indirect path's per-triangle backface cull for entire scenes (newsponza ships
+            // every wall, column and ceiling with doubleSided=true so the viewer ends up seeing the inside of buildings),
+            // only honor the import-side two-sided flag when the material actually needs both sides, transparent surfaces
+            // (alpha < 1) and alpha-tested foliage (opacity mask texture) are the two cases that legitimately want it,
+            // anything else stays on the engine default RHI_CullMode::Back regardless of what the dcc tool exported
+            const bool has_alpha_mask = material->HasTextureOfType(MaterialTextureType::AlphaMask);
+            if (is_transparent || has_alpha_mask)
             {
-                material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                int no_culling = 1;
+                aiGetMaterialInteger(material_assimp, AI_MATKEY_TWOSIDED, &no_culling);
+                if (no_culling != 0)
+                {
+                    material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
+                }
             }
 
             // deduce metalness/roughness from material name if textures missing
@@ -1034,16 +1047,20 @@ namespace spartan
 
             // process all collected mesh jobs in parallel, this runs the heavy per-submesh work
             // (vertex/index extraction, optimize, lod simplify, meshlet build, material+texture load)
-            // concurrently across all submeshes of this model
+            // concurrently across all submeshes of this model,
+            // sub-mesh slots are reserved up front so each ParseMesh writes to the deterministic index
+            // set during ParseNode, the old auto-allocating AddGeometry path raced on m_sub_meshes.size()
+            // and silently swapped which sub-mesh ended up on which entity (broke tree bark/leaves materials)
             if (!ctx.mesh_jobs.empty())
             {
                 const uint32_t mesh_job_count = static_cast<uint32_t>(ctx.mesh_jobs.size());
+                ctx.mesh->ReserveSubMeshes(mesh_job_count);
                 ThreadPool::ParallelLoop([&ctx](uint32_t start, uint32_t end)
                 {
                     for (uint32_t i = start; i < end; i++)
                     {
                         const MeshJob& job = ctx.mesh_jobs[i];
-                        ParseMesh(ctx, job.assimp_mesh, job.entity);
+                        ParseMesh(ctx, job.assimp_mesh, job.entity, job.sub_mesh_index);
                     }
                 }, mesh_job_count);
             }
@@ -1134,8 +1151,10 @@ namespace spartan
 
             entity->SetObjectName(node_name);
 
-            // collect the job, ParseMesh runs later in parallel after the tree walk completes
-            ctx.mesh_jobs.push_back({ node_mesh, entity });
+            // collect the job, ParseMesh runs later in parallel after the tree walk completes,
+            // the sub-mesh index is assigned here from the current jobs count so it's deterministic and matches assimp's traversal order
+            const uint32_t deterministic_sub_mesh_index = static_cast<uint32_t>(ctx.mesh_jobs.size());
+            ctx.mesh_jobs.push_back({ node_mesh, entity, deterministic_sub_mesh_index });
         }
     }
 
@@ -1180,7 +1199,7 @@ namespace spartan
         }
     }
 
-    void ModelImporter::ParseMesh(ImportContext& ctx, aiMesh* assimp_mesh, Entity* entity_parent)
+    void ModelImporter::ParseMesh(ImportContext& ctx, aiMesh* assimp_mesh, Entity* entity_parent, const uint32_t sub_mesh_index)
     {
         SP_ASSERT(assimp_mesh != nullptr);
         SP_ASSERT(entity_parent != nullptr);
@@ -1194,9 +1213,8 @@ namespace spartan
 
         const uint32_t vertex_offset = ctx.mesh->GetVertexCount();
 
-        // add vertex and index data to the mesh
-        uint32_t sub_mesh_index = 0;
-        ctx.mesh->AddGeometry(vertices, indices, true, &sub_mesh_index);
+        // add vertex and index data into the pre-reserved sub-mesh slot
+        ctx.mesh->AddGeometry(vertices, indices, true, sub_mesh_index);
 
         // set the geometry
         entity_parent->AddComponent<Render>()->SetMesh(ctx.mesh, sub_mesh_index);

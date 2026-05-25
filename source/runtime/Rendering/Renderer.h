@@ -198,6 +198,7 @@ namespace spartan
         static std::array<std::shared_ptr<RHI_Shader>, static_cast<uint32_t>(Renderer_Shader::max)>& GetShaders();
         static std::array<std::shared_ptr<RHI_Buffer>, static_cast<uint32_t>(Renderer_Buffer::Max)>& GetStructuredBuffers();
         static std::array<std::shared_ptr<RHI_Sampler>, static_cast<uint32_t>(Renderer_Sampler::Max)>& GetSamplers();
+        static std::array<RHI_Texture*, rhi_max_array_size>& GetBindlessMaterialTextures();
 
         // get individual
         static RHI_RasterizerState* GetRasterizerState(const Renderer_RasterizerState type);

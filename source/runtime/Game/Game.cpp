@@ -914,9 +914,9 @@ namespace spartan
                             entity->SetScale(math::Vector3::One);
 
                             // assimp's tree.fbx can land trunk and leaves on direct children or on grandchildren depending on import flags,
-                            // walk every descendant with a Render component and pick the material via the sub-mesh slot so the consolidated
-                            // entity works for any hierarchy depth without relying on hardcoded child indices,
-                            // include the root entity itself in case ImportCombineMeshes parked the renderable on the cloned root
+                            // walk every descendant with a Render component and pick the material via the imported material name so the consolidated
+                            // entity works regardless of assimp's mesh traversal order, the previous sub_mesh==0 heuristic relied on the auto-allocating
+                            // AddGeometry which raced on m_sub_meshes.size() under the parallel ParseMesh dispatch and silently swapped trunk and leaves
                             vector<Entity*> tree_candidates;
                             tree_candidates.push_back(entity);
                             entity->GetDescendants(&tree_candidates);
@@ -933,12 +933,14 @@ namespace spartan
                                 renderable->SetMaxRenderDistance(render_distance_trees);
                                 renderable->SetMaxShadowDistance(shadow_distance);
 
-                                // sub-mesh 0 is the bark/trunk, sub-mesh 1 is the alpha tested leaves,
-                                // anything beyond falls back to the leaf material since the import collapses extra sub-meshes into the foliage atlas
-                                const uint32_t sub_mesh = renderable->GetSubMeshIndex();
-                                renderable->SetMaterial(sub_mesh == 0 ? material_body : material_leaf);
+                                // detect bark vs leaves from the imported material name set by ModelImporter (Bark / Default for tree.fbx),
+                                // both materials are still mapped in case assimp ever renames them, the leaf material is the safer default for unknown sub-meshes
+                                Material* imported_material = renderable->GetMaterial();
+                                const string imported_name  = imported_material ? imported_material->GetObjectName() : string();
+                                const bool   is_bark        = imported_name.find("Bark") != string::npos || imported_name.find("bark") != string::npos;
+                                renderable->SetMaterial(is_bark ? material_body : material_leaf);
 
-                                if (sub_mesh == 0)
+                                if (is_bark)
                                 {
                                     Physics* physics = candidate->AddComponent<Physics>();
                                     physics->SetBodyType(BodyType::Mesh);

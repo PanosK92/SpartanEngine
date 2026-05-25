@@ -335,6 +335,15 @@ namespace spartan
         }
     }
 
+    void Mesh::ReserveSubMeshes(const uint32_t count)
+    {
+        lock_guard lock(m_mutex);
+        if (m_sub_meshes.size() < count)
+        {
+            m_sub_meshes.resize(count);
+        }
+    }
+
     void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, uint32_t* sub_mesh_index)
     {
         // create a sub-mesh slot, locked because concurrent AddGeometry calls share m_sub_meshes
@@ -344,6 +353,22 @@ namespace spartan
             current_sub_mesh_index = static_cast<uint32_t>(m_sub_meshes.size());
             m_sub_meshes.emplace_back();
         }
+
+        // delegate the heavy work to the explicit-index overload so both code paths stay identical
+        AddGeometry(vertices, indices, generate_lods, current_sub_mesh_index);
+
+        if (sub_mesh_index)
+        {
+            *sub_mesh_index = current_sub_mesh_index;
+        }
+    }
+
+    void Mesh::AddGeometry(vector<RHI_Vertex_PosTexNorTan>& vertices, vector<uint32_t>& indices, const bool generate_lods, const uint32_t sub_mesh_index_in)
+    {
+        // caller must have reserved this slot via ReserveSubMeshes or the auto-allocating overload above
+        SP_ASSERT(sub_mesh_index_in < m_sub_meshes.size());
+
+        const uint32_t current_sub_mesh_index = sub_mesh_index_in;
 
         // lod 0: original geometry
         {
@@ -422,12 +447,6 @@ namespace spartan
                 prev_vertices = move(lod_vertices);
                 prev_indices  = move(lod_indices);
             }
-        }
-
-        // return the sub-mesh index if requested
-        if (sub_mesh_index)
-        {
-            *sub_mesh_index = current_sub_mesh_index;
         }
     }
 

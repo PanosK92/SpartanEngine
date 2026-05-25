@@ -449,7 +449,13 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_indirect_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+        // equal-z gates the gbuffer on the depth value the prepass actually wrote,
+        // alpha-tested geometry (tree leaves, ivy, foliage cards) discards in the prepass which leaves the depth at whatever opaque
+        // surface sits behind the transparent leaf pixel (terrain, sky clear value of zero), greater-equal would happily pass those
+        // pixels because the leaf quad is in front of that stored depth and the gbuffer pixel shader has no alpha discard of its own,
+        // the net effect was leaf alpha cutouts rendering as solid quads in close range where get_alpha_threshold is non-zero,
+        // switching to equal keeps the pixel shader discard-free (early-z preserved) and lets only the prepass-survivors draw
+        pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
         pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
         pso.resolution_scale                 = true;
         pso.render_target_color_textures[0]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);
@@ -496,7 +502,9 @@ namespace spartan
         pso.shaders[RHI_Shader_Type::Pixel]  = GetShader(Renderer_Shader::gbuffer_p);
         pso.blend_state                      = GetBlendState(Renderer_BlendState::Off);
         pso.rasterizer_state                 = cvar_wireframe.GetValueAs<bool>() ? GetRasterizerState(Renderer_RasterizerState::Wireframe) : GetRasterizerState(Renderer_RasterizerState::Solid);
-        pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadGreaterEqual);
+        // transparent draws own their depth so they keep ReadWrite, opaque/tessellated leans on the depth prepass written through the
+        // tessellation_h/d pair so equal-z matches whatever the prepass produced, same alpha-test correctness argument as the indirect path
+        pso.depth_stencil_state              = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::ReadWrite) : GetDepthStencilState(Renderer_DepthStencilState::ReadEqual);
         pso.vrs_input_texture                = cvar_variable_rate_shading.GetValueAs<bool>() ? GetRenderTarget(Renderer_RenderTarget::shading_rate) : nullptr;
         pso.resolution_scale                 = true;
         pso.render_target_color_textures[0]  = GetRenderTarget(Renderer_RenderTarget::gbuffer_color);

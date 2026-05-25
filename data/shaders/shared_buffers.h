@@ -327,10 +327,14 @@ struct DrawData
 
     // lod-local aabb, the cull shader uses this to dequantize the compressed MeshletBounds center/radius
     // diag is the precomputed length(extent), it's the reference distance for the u16-normalized radius and saves a sqrt per cull task
-    SHARED_FLOAT3 lod_aabb_min       SHARED_DEFAULT(spartan::math::Vector3::Zero);
-    SHARED_FLOAT  lod_aabb_diag      SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT3 lod_aabb_extent    SHARED_DEFAULT(spartan::math::Vector3::Zero);
-    SHARED_FLOAT  lod_aabb_padding   SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT3 lod_aabb_min                  SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    SHARED_FLOAT  lod_aabb_diag                 SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT3 lod_aabb_extent               SHARED_DEFAULT(spartan::math::Vector3::Zero);
+    // per-instance gpu distance cull, squared so the cull shader avoids a sqrt, the cpu side fills it from renderable->GetMaxRenderDistance(),
+    // a sentinel of zero disables the check and is used for renderables that should never be distance-culled (terrain tiles for example),
+    // this is critical for consolidated world-spanning entities (forest trees, rocks) where the per-entity cpu check always passes and the
+    // gpu would otherwise burn cull task and survivor budget on instances far beyond the artist-set max render distance
+    SHARED_FLOAT  max_render_distance_squared   SHARED_DEFAULT(0.0f);
 };
 
 // one cull task per (renderable lod, meshlet) tuple, the cull pass dispatches over these

@@ -50,8 +50,58 @@ namespace
     float zoom_level                      = 1.0f;
     ImVec2 pan_offset                     = ImVec2(0.0f, 0.0f);
     uint32_t m_visualisation_flags        = 0;
-    vector<string> render_target_names;
-    vector<spartan::RHI_Texture*> render_targets;}
+    vector<string> texture_names;
+    vector<spartan::RHI_Texture*> textures;
+
+    // source of the texture list shown in the combo, render targets are the engine's framebuffers, bindless are the material textures the gpu sees
+    enum class TextureSource
+    {
+        RenderTargets,
+        BindlessMaterials
+    };
+    TextureSource m_source = TextureSource::RenderTargets;
+
+    void refresh_texture_list()
+    {
+        texture_names.clear();
+        textures.clear();
+
+        if (m_source == TextureSource::RenderTargets)
+        {
+            vector<pair<string, spartan::RHI_Texture*>> sorted;
+            for (const shared_ptr<spartan::RHI_Texture>& target : spartan::Renderer::GetRenderTargets())
+            {
+                if (target)
+                {
+                    sorted.emplace_back(target->GetObjectName(), target.get());
+                }
+            }
+            sort(sorted.begin(), sorted.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+            for (const auto& target : sorted)
+            {
+                texture_names.emplace_back(target.first);
+                textures.emplace_back(target.second);
+            }
+        }
+        else
+        {
+            // bindless texture array, the gpu indexes into this by material_index + (texture_type * slots_per_texture) + slot,
+            // names get a [idx] prefix so the order matches what the shader actually sees, useful for verifying alpha mask packing
+            const auto& bindless = spartan::Renderer::GetBindlessMaterialTextures();
+            for (size_t i = 0; i < bindless.size(); ++i)
+            {
+                spartan::RHI_Texture* tex = bindless[i];
+                if (!tex)
+                {
+                    continue;
+                }
+                string label = "[" + to_string(i) + "] " + tex->GetObjectName();
+                texture_names.emplace_back(label);
+                textures.emplace_back(tex);
+            }
+        }
+    }
+}
 
 TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 {
@@ -67,42 +117,18 @@ void TextureViewer::OnTick()
 
 void TextureViewer::OnVisible()
 {
-    render_target_names.clear();
-    render_targets.clear();
-
-    // get render targets
-    vector<pair<string, spartan::RHI_Texture*>> sorted_targets;
-    for (const shared_ptr<spartan::RHI_Texture>& render_target : Renderer::GetRenderTargets())
-    {
-        if (render_target)
-        {
-            sorted_targets.emplace_back(render_target->GetObjectName(), render_target.get());
-        }
-    }
-
-    // sort alphabetically by name
-    sort(sorted_targets.begin(), sorted_targets.end(), [](const auto& a, const auto& b)
-    {
-        return a.first < b.first;
-    });
-
-    // populate the lists
-    for (const auto& target : sorted_targets)
-    {
-        render_target_names.emplace_back(target.first);
-        render_targets.emplace_back(target.second);
-    }
+    refresh_texture_list();
 }
 
 void TextureViewer::OnTickVisible()
 {
-    if (render_targets.empty())
+    if (textures.empty())
     {
         return;
     }
 
     // clamp texture index to valid range (textures may have been deallocated)
-    if (m_texture_index >= render_targets.size())
+    if (m_texture_index >= textures.size())
     {
         m_texture_index = 0;
     }
@@ -124,7 +150,7 @@ void TextureViewer::OnTickVisible()
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRect(child_pos, ImVec2(child_pos.x + child_size.x, child_pos.y + child_size.y), IM_COL32(0, 0, 0, 255), 0.0f, 2.0f);
         
-        if (spartan::RHI_Texture* texture = render_targets[m_texture_index])
+        if (spartan::RHI_Texture* texture = textures[m_texture_index])
         {
             texture_current = texture;
         
@@ -198,10 +224,29 @@ void TextureViewer::OnTickVisible()
     {
         ImGui::BeginChild("texture_properties", ImVec2(0, 0), true);
 
+        // source selector, switches between renderer-owned render targets and the bindless material texture array fed to the gpu
+        ImGui::Text("Source");
+        ImGui::SameLine();
+        int source_index = (m_source == TextureSource::RenderTargets) ? 0 : 1;
+        const char* source_items[] = { "Render Targets", "Bindless Material Textures" };
+        if (ImGui::Combo("##source", &source_index, source_items, IM_ARRAYSIZE(source_items)))
+        {
+            m_source        = (source_index == 0) ? TextureSource::RenderTargets : TextureSource::BindlessMaterials;
+            m_texture_index = 0;
+            refresh_texture_list();
+        }
+
+        // a manual refresh, the bindless table fills in over a couple of frames as materials prepare and textures stream in,
+        // so a list captured at OnVisible() can miss anything that registers after the widget opens
+        if (ImGui::Button("Refresh"))
+        {
+            refresh_texture_list();
+        }
+
         // target selector
         ImGui::Text("Texture");
         ImGui::SameLine();
-        ImGuiSp::combo_box("##texture", render_target_names, &m_texture_index);
+        ImGuiSp::combo_box("##texture", texture_names, &m_texture_index);
 
         if (texture_current)
         {

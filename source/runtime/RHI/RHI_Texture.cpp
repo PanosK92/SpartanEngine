@@ -778,8 +778,13 @@ namespace spartan
 
         Breadcrumbs::EndMarker(); // texture_load
 
-        // automatically prepare the texture for gpu use
-        PrepareForGpu();
+        // automatically prepare the texture for gpu use,
+        // skipped when RHI_Texture_DeferUpload is set, which is used by source material textures that still need to be modified by Material::pack_textures
+        // (alpha mask merging into color.a is the canonical case, an early upload would freeze the pre-merge bytes on the gpu)
+        if (!(m_flags & RHI_Texture_DeferUpload))
+        {
+            PrepareForGpu();
+        }
 
         ProgressTracker::SetGlobalLoadingState(false);
     }

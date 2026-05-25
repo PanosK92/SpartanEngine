@@ -474,6 +474,10 @@ namespace spartan
                             {
                                 texture_processing::merge_alpha_mask_into_color_alpha(texture_color->GetMip(0, 0)->bytes, texture_alpha_mask->GetMip(0, 0)->bytes);
                             }
+
+                            // the merged alpha now carries the mask, so flag the color texture as transparent
+                            // this drives BC3 compression below, otherwise BC1 would silently drop the alpha
+                            texture_color->SetFlag(RHI_Texture_Transparent, true);
                         }
                     }
                 }
@@ -807,7 +811,9 @@ namespace spartan
     {
         // don't compress source textures - keep raw bytes available for packing/repacking
         // only packed textures get compressed
-        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv), slot);
+        // defer the gpu upload so pack_textures can still mutate the cpu bytes (alpha mask merge, etc.) before they reach the gpu,
+        // PrepareForGpu() runs later from Material::PrepareForGpu's async pass once packing is done
+        SetTexture(texture_type, ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv | RHI_Texture_DeferUpload), slot);
     }
  
     bool Material::HasTextureOfType(const string& path) const

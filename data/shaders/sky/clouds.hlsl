@@ -56,11 +56,12 @@ static const float cumulus_shape_warp_scale   = 1.0 / 22000.0;
 static const float cumulus_shape_warp         = 1700.0;
 
 // per-cloud altitude offset, breaks up the visual sense of a uniform invisible dome that
-// all clouds hug. each cloud gets its own base altitude within +/- this amplitude, sampled
-// from a slow horizontal noise so neighbouring clouds drift together rather than randomly
-static const float cumulus_base_variation     = 700.0;
-static const float cumulus_base_var_scale     = 1.0 / 22000.0;
-static const float cumulus_shell_padding      = 900.0;
+// all clouds hug. faster noise scale than the weather domain so neighbouring clouds within
+// a single weather region still get different base altitudes, otherwise each cluster reads
+// as a flat plate even when the cluster-to-cluster variation is large
+static const float cumulus_base_variation     = 1000.0;
+static const float cumulus_base_var_scale     = 1.0 / 14000.0;
+static const float cumulus_shell_padding      = 1200.0;
 
 // cirrus layer
 static const float cirrus_bottom_alt      = 6500.0;
@@ -254,12 +255,12 @@ float cloud_base_offset(Texture3D noise, SamplerState samp, float3 pos)
 // =====================================================================
 
 // cumulus vertical profile, flat-ish bottom and rounded top, mirrors the schneider cumulus curve
-// the bottom ramp starts slightly below zero so wispy tendrils can hang under the nominal base
-// instead of getting chopped off by a hard horizontal floor, the top fades smoothly over the
-// upper half of the layer so the silhouette has continuously curving tops
+// the bottom ramp extends well below zero so wispy tendrils have room to hang under the
+// nominal base, this is what visually breaks the perceived flat floor of each cloud, the top
+// fades smoothly over the upper half so the silhouette has continuously curving tops
 float cloud_height_profile_cumulus(float h_norm)
 {
-    float bottom = smoothstep(-0.05, 0.22, h_norm);
+    float bottom = smoothstep(-0.12, 0.22, h_norm);
     float top    = smoothstep(1.00, 0.55, h_norm);
     return saturate(bottom * top);
 }

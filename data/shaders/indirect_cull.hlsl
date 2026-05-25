@@ -205,6 +205,21 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                 ? mul(pull_instance_transform(draw.instance_offset, task.instance_index), draw.transform)
                 : draw.transform;
 
+            // per-instance distance cull, the cpu Render::UpdateFrustumAndDistanceCulling can only test the whole renderable bbox
+            // which always passes for consolidated world-spanning entities (forest trees, rocks), so the per-instance translation has
+            // to be re-tested here, max_render_distance_squared == 0 disables the check (used for terrain tiles and anything else with
+            // a non-finite max distance), skipping the survivor write here is the difference between a few hundred thousand and several
+            // million triangles hitting the visible_triangles buffer for a dense forest, which directly controls whether distant
+            // terrain keeps its slots in the wave atomic race
+            bool passes_distance = true;
+            if (draw.max_render_distance_squared > 0.0f)
+            {
+                float3 instance_pos     = float3(world_xform._m30, world_xform._m31, world_xform._m32);
+                float3 to_camera        = instance_pos - buffer_frame.camera_position;
+                float  distance_squared = dot(to_camera, to_camera);
+                passes_distance         = distance_squared <= draw.max_render_distance_squared;
+            }
+
             MeshletBounds mb     = meshlet_bounds[task.meshlet_index];
             // dequantize the compressed bounds against the lod aabb that the cpu packer used in build_meshlets
             float3 center_local  = meshlet_decode_center(mb, draw.lod_aabb_min, draw.lod_aabb_extent);
@@ -213,8 +228,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             float  scale_max     = max_world_scale(world_xform);
             float  radius_world  = radius_local * scale_max;
 
-            // per-meshlet side-frustum sphere reject
-            is_visible = sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t);
+            // per-meshlet side-frustum sphere reject, gated on the distance cull above so out-of-range instances cannot resurrect
+            is_visible = passes_distance && sphere_in_side_planes(center_world, radius_world, plane_l, plane_r, plane_b, plane_t);
 
             // per-meshlet backface cone, skipped for two-sided materials (the triangle cull would have to keep both sides anyway) and degenerate cones
             // skinned never reaches here, per_instance reaches here with the correct per-instance rotation baked into world_xform

@@ -1850,7 +1850,15 @@ namespace spartan
             data.lod_aabb_min                 = lod_aabb_local.GetMin();
             data.lod_aabb_extent              = lod_extent;
             data.lod_aabb_diag                = lod_extent.Length();
-            data.lod_aabb_padding             = 0.0f;
+
+            // per-instance distance cull on the gpu, zero disables the check (used when max_distance is FLT_MAX or non-finite)
+            // squaring once on the cpu avoids a sqrt per cull task on the gpu, the cull shader compares against length squared
+            // this is the gpu-side counterpart to the cpu Render::UpdateFrustumAndDistanceCulling, the cpu check uses the renderable
+            // bounding box which is the world for consolidated entities, so the per-instance gpu test below is the only thing that
+            // stops a 6 km world of forest props from dumping every instance into the cull pipeline regardless of artist intent
+            const float max_distance          = renderable->GetMaxRenderDistance();
+            const bool  finite_distance       = max_distance > 0.0f && max_distance < numeric_limits<float>::max() * 0.5f;
+            data.max_render_distance_squared  = finite_distance ? (max_distance * max_distance) : 0.0f;
 
             // parallel renderable handle, UpdateBoundingBoxes uses this to write each aabb at exactly the slot the cull shader will read
             m_indirect_renderables[draw_idx] = renderable;

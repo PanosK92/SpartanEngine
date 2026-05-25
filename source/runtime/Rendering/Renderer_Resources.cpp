@@ -918,6 +918,11 @@ namespace spartan
         return samplers;
     }
 
+    array<RHI_Texture*, rhi_max_array_size>& Renderer::GetBindlessMaterialTextures()
+    {
+        return m_bindless_textures;
+    }
+
     RHI_RasterizerState* Renderer::GetRasterizerState(const Renderer_RasterizerState type)
     {
         return rasterizer_states[static_cast<uint8_t>(type)].get();

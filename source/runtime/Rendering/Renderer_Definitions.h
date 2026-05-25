@@ -43,8 +43,13 @@ namespace spartan
     // meshlet cull survivor list, hw instancing fans out so can exceed renderer_max_cull_tasks
     // sized to absorb the worst-case hw-instancing fanout for per-tile foliage entities so that
     // distant terrain, leaves and rocks do not lose their survivor slots to the wave atomic race
-    const uint32_t renderer_max_meshlet_instances  = 8 * 1024 * 1024;
-    const uint32_t renderer_max_visible_triangles  = 8388608; // triangle cull survivor list, worst case practical cap
+    // 4M is enough headroom once per-instance distance cull (DrawData.max_render_distance_squared)
+    // rejects out-of-range instances of consolidated world-spanning entities at the cull stage
+    const uint32_t renderer_max_meshlet_instances  = 4 * 1024 * 1024;
+    // triangle cull survivor list, the cull pass packs (meshlet_instance_idx, triangle_idx) into a uint per visible triangle
+    // sized to absorb the burst of dense foliage + terrain meshlets without throttling, when this overflows the wave-atomic
+    // race silently drops late triangles which manifests as distant terrain rendering only a few meshlets at a time
+    const uint32_t renderer_max_visible_triangles  = 32 * 1024 * 1024;
 
     // gpu procedural grass
     // total capacity of the transient grass instance ring buffer, shared across all three lod rings
