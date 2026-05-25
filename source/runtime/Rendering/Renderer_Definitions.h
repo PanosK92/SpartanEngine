@@ -34,15 +34,24 @@ namespace spartan
     const uint32_t restir_emissive_tri_max         = 16384;
     const uint32_t renderer_draw_data_buffer_count = 4;       // matches command list pool size, avoids cpu-gpu memcpy races
     const uint32_t renderer_max_indirect_draws     = 131072;  // per-renderable lod draw data, cull shader clamps writes
-    const uint32_t renderer_max_cull_tasks         = 524288;  // per (renderable, meshlet) cull tasks, drives meshlet cull dispatch size
-    const uint32_t renderer_max_meshlet_instances  = 1048576; // meshlet cull survivor list, hw instancing fans out so can exceed renderer_max_cull_tasks
+    // per (renderable, meshlet) cull tasks, drives meshlet cull dispatch size
+    // sized to fit per-instance cull tasks for typical instanced scenes (trees/rocks),
+    // when this budget overflows the cpu falls back to hw-instancing which fans every
+    // visible meshlet into N survivors and easily bursts renderer_max_meshlet_instances,
+    // dense world-spanning instanced entities then starve every later renderable of survivor slots
+    const uint32_t renderer_max_cull_tasks         = 8 * 1024 * 1024;
+    // meshlet cull survivor list, hw instancing fans out so can exceed renderer_max_cull_tasks
+    // sized to absorb the worst-case hw-instancing fanout for per-tile foliage entities so that
+    // distant terrain, leaves and rocks do not lose their survivor slots to the wave atomic race
+    const uint32_t renderer_max_meshlet_instances  = 8 * 1024 * 1024;
     const uint32_t renderer_max_visible_triangles  = 8388608; // triangle cull survivor list, worst case practical cap
 
     // gpu procedural grass
     // total capacity of the transient grass instance ring buffer, shared across all three lod rings
-    // sized to ~3 mb at 12 bytes per packed instance, the populate shader saturates the atomic
-    // counter at this cap so memory usage is bounded regardless of ring radius or cell density
-    const uint32_t renderer_max_grass_instances    = 262144;
+    // sized at 12 bytes per packed instance, the populate shader saturates the atomic counter
+    // at this cap so memory usage is bounded regardless of ring radius or cell density
+    // 96k * 12 bytes is roughly 1.1 mb, plenty for a 500 m far ring at sub meter cell spacing
+    const uint32_t renderer_max_grass_instances    = 96 * 1024;
     // hard cap per lod ring, the populate shader rejects writes once the per-lod counter reaches this
     // sum across the three lods equals renderer_max_grass_instances, keeps each ring inside its slot
     const uint32_t renderer_max_grass_lod_count    = 3;

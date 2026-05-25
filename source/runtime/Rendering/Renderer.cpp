@@ -1073,16 +1073,6 @@ namespace spartan
 
     void Renderer::EnableProceduralGrass(Mesh* grass_mesh, Material* grass_material, RHI_Texture* terrain_heightmap, const ProceduralGrassParams& params)
     {
-        // temporary kill switch while we isolate the rocks/flowers/trees instancing regression,
-        // when this is true the procedural grass system stays off so the only thing rendering is the cpu instance path
-        // todo, remove once the regression is identified and fixed
-        constexpr bool procedural_grass_disabled_for_debug = true;
-        if (procedural_grass_disabled_for_debug)
-        {
-            m_pass_state.grass_enabled = false;
-            return;
-        }
-
         // every required input must be present, otherwise the populate compute will read garbage
         // from a freed heightmap, the indirect args would point past the global geometry buffer, etc
         if (!grass_mesh || !grass_material || !terrain_heightmap)
@@ -1740,6 +1730,13 @@ namespace spartan
         m_cull_task_count           = 0;
         const uint32_t aabb_frame_offset = m_frame_resource_index * rhi_max_array_size;
 
+        // diagnostics, the cull pipeline silently drops survivors once a budget is hit which manifests as
+        // distant terrain, leaves or rocks failing to draw, the worst case survivor count is tracked here
+        // so the one-shot log below can name the renderable that pushed the engine over the cliff
+        uint64_t expected_survivors_worst_case = 0;
+        uint32_t cull_task_overflow_renderables = 0;
+        uint32_t hw_instancing_renderables      = 0;
+
         for (uint32_t i = 0; i < m_draw_call_count; i++)
         {
             const Renderer_DrawCall& dc = m_draw_calls[i];
@@ -1786,7 +1783,20 @@ namespace spartan
             }
             if (m_cull_task_count + actual_tasks_add > renderer_max_cull_tasks)
             {
+                cull_task_overflow_renderables++;
                 continue;
+            }
+
+            // worst case survivor accounting, hw mode emits inst_n per visible meshlet while per-instance emits at most 1 per task
+            // a single dense world spanning entity here is enough to starve every later renderable of survivor slots
+            if (use_hw_instancing)
+            {
+                hw_instancing_renderables++;
+                expected_survivors_worst_case += static_cast<uint64_t>(lod_meshlet_count) * static_cast<uint64_t>(inst_n);
+            }
+            else
+            {
+                expected_survivors_worst_case += static_cast<uint64_t>(per_instance_tasks_add);
             }
 
             const uint32_t renderable_aabb_slot = aabb_frame_offset + m_draw_calls_prepass_count + m_indirect_renderable_count;
@@ -1863,6 +1873,31 @@ namespace spartan
             }
 
             m_indirect_renderable_count++;
+        }
+
+        // one-shot diagnostics, fires when the worst case survivor count exceeds the buffer or when the cull task budget rejected renderables
+        // the previous failure mode was silent, the wave atomic add would clamp group_count_x and every task above the cap skipped its writes,
+        // leaving the user with only whichever renderables won the atomic race drawn, both conditions are reported once per session here
+        static bool s_logged_survivor_overflow   = false;
+        static bool s_logged_cull_task_overflow  = false;
+        if (!s_logged_survivor_overflow && expected_survivors_worst_case > renderer_max_meshlet_instances)
+        {
+            SP_LOG_WARNING(
+                "meshlet cull survivor buffer is too small, worst case %llu > capacity %u, hw-instancing renderables=%u, distant or later-submitted geometry may be silently dropped",
+                static_cast<unsigned long long>(expected_survivors_worst_case),
+                renderer_max_meshlet_instances,
+                hw_instancing_renderables
+            );
+            s_logged_survivor_overflow = true;
+        }
+        if (!s_logged_cull_task_overflow && cull_task_overflow_renderables > 0)
+        {
+            SP_LOG_WARNING(
+                "cull task budget exhausted, %u renderable lods rejected, raise renderer_max_cull_tasks (current=%u) to keep them in per-instance cull",
+                cull_task_overflow_renderables,
+                renderer_max_cull_tasks
+            );
+            s_logged_cull_task_overflow = true;
         }
     }
 

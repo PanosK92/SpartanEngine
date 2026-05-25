@@ -739,6 +739,14 @@ namespace spartan
         Mesh*     mesh     = m_pass_state.grass_mesh;
         Material* material = m_pass_state.grass_material;
 
+        // wait for the global geometry buffer to be built, the indirect args reference it for vertex and index data
+        // also wait for the material to be registered in the bindless table, until then the index is zero and the
+        // pixel shader would read another renderable's textures producing garbage colour for the grass blade
+        if (!mesh->GetVertexBuffer() || !mesh->GetIndexBuffer() || !GeometryBuffer::GetInstanceBuffer())
+        {
+            return;
+        }
+
         // pso, matches the rest of the geometry stage so the draw lands in the same render pass
         const bool xr_multiview = Xr::IsSessionRunning() && Xr::GetStereoMode();
 
@@ -781,17 +789,14 @@ namespace spartan
         cmd_list->SetCullMode(RHI_CullMode::None);
 
         // grass_instances is uav-bound here, the vertex shader reads PackedInstance via the same descriptor
-        RHI_Buffer* buf_instances = GetBuffer(Renderer_Buffer::GrassInstances);
-        RHI_Buffer* buf_args      = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
+        // the per-instance vertex stream is bound to the global geometry instance buffer just like every other
+        // geometry pass, the grass vs never reads those attributes so any in-range buffer is fine, sharing the
+        // same binding keeps the engine wide vertex layout consistent and avoids any cross talk with subsequent passes
+        RHI_Buffer* buf_instances     = GetBuffer(Renderer_Buffer::GrassInstances);
+        RHI_Buffer* buf_args          = GetBuffer(Renderer_Buffer::GrassIndirectArgs);
+        RHI_Buffer* binding1_instance = GeometryBuffer::GetInstanceBuffer() ? GeometryBuffer::GetInstanceBuffer() : GetBuffer(Renderer_Buffer::DummyInstance);
         cmd_list->SetBuffer(Renderer_BindingsUav::grass_instances, buf_instances);
-
-        // bind the global geometry vertex/index buffer for the hardware input assembler
-        // the engine's vertex pipeline state always declares a per-instance binding (binding 1) for
-        // shaders with NORMAL or TANGENT semantics, even when the shader does not read those attributes,
-        // grass_instances satisfies both roles, the byte layout of PackedInstance matches the engine's
-        // Instance struct (3 halves, 1 ushort, 2 ubytes, 1 ushort pad) so binding it as the per-instance
-        // vertex buffer is benign even though the vs ultimately pulls per-blade data via the SRV path
-        cmd_list->SetBufferVertex(mesh->GetVertexBuffer(), buf_instances);
+        cmd_list->SetBufferVertex(mesh->GetVertexBuffer(), binding1_instance);
         cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
 
         const uint32_t arg_stride = static_cast<uint32_t>(sizeof(Sb_IndirectDrawArgs));

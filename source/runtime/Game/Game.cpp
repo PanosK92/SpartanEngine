@@ -819,29 +819,6 @@ namespace spartan
                     // the procedural grass system references it from Renderer state, no Render component owns it
                     materials.push_back(material_grass_blade);
 
-                    // procedural grass setup, runs once after the terrain heightmap is final and the grass mesh/material exist
-                    // the populate compute walks a ring grid around the camera and atomically appends instances into a fixed buffer
-                    if (Terrain* terrain_component = default_terrain ? default_terrain->GetComponent<Terrain>() : nullptr)
-                    {
-                        if (RHI_Texture* heightmap = terrain_component->GetHeightMapFinal())
-                        {
-                            Renderer::ProceduralGrassParams grass_params;
-                            grass_params.ring_radii_m[0] = 30.0f;
-                            grass_params.ring_radii_m[1] = 120.0f;
-                            grass_params.ring_radii_m[2] = render_distance_foliage;
-                            grass_params.cell_size_m[0]  = 0.25f;
-                            grass_params.cell_size_m[1]  = 0.6f;
-                            grass_params.cell_size_m[2]  = 1.2f;
-                            grass_params.height_min      = terrain_component->GetSeaLevel() + 1.0f;
-                            grass_params.height_max      = terrain_component->GetSnowLevel();
-                            grass_params.max_slope_deg   = 45.0f;
-                            const float extent_x         = static_cast<float>(terrain_component->GetWidth()  - 1) * static_cast<float>(terrain_component->GetScale());
-                            const float extent_z         = static_cast<float>(terrain_component->GetHeight() - 1) * static_cast<float>(terrain_component->GetScale());
-                            grass_params.terrain_extent_m = Vector2(extent_x, extent_z);
-                            Renderer::EnableProceduralGrass(mesh_grass_blade.get(), material_grass_blade.get(), heightmap, grass_params);
-                        }
-                    }
-
                     // place props on terrain tiles
                     vector<Entity*> children = terrain->GetEntity()->GetChildren();
 
@@ -874,13 +851,17 @@ namespace spartan
                             // multiply by the tile's world matrix to lift each per-tile instance into the consolidated entity's space
                             const math::Matrix tile_world_matrix = terrain_tile->GetMatrix();
 
-                            // tree transforms (deferred to a single entity below)
-                            terrain->FindTransforms(tile_index, TerrainProp::Tree, mesh_tree->GetRootEntity(), per_triangle_density_tree, 0.026f, tree_transforms_per_tile[tile_index]);
+                            // tree transforms, deferred to a single consolidated entity below
+                            // pass nullptr so FindTransforms doesn't bake an inverse normalize-scale into each matrix,
+                            // the consolidated tree entity has its scale set to one below so there is nothing to compensate for,
+                            // the old per-tile path relied on the entity's normalize-scale canceling the inverse-scale via the
+                            // S(0.1) * tile_world parent chain, that chain no longer exists once the entity is parented to default_terrain
+                            terrain->FindTransforms(tile_index, TerrainProp::Tree, nullptr, per_triangle_density_tree, 0.026f, tree_transforms_per_tile[tile_index]);
                             for (math::Matrix& t : tree_transforms_per_tile[tile_index])
                                 t *= tile_world_matrix;
 
-                            // rock transforms (deferred to a single entity below)
-                            terrain->FindTransforms(tile_index, TerrainProp::Rock, mesh_rock->GetRootEntity(), per_triangle_density_rock, 0.64f, rock_transforms_per_tile[tile_index]);
+                            // rock transforms, same nullptr trick as the trees above, the consolidated rock entity has scale one below
+                            terrain->FindTransforms(tile_index, TerrainProp::Rock, nullptr, per_triangle_density_rock, 0.64f, rock_transforms_per_tile[tile_index]);
                             for (math::Matrix& t : rock_transforms_per_tile[tile_index])
                                 t *= tile_world_matrix;
 
@@ -924,27 +905,52 @@ namespace spartan
                             Entity* entity = mesh_tree->GetRootEntity()->Clone();
                             entity->SetObjectName("tree");
                             entity->SetParent(default_terrain);
+                            // the cloned root inherits the source mesh's normalize-scale, in the old per-tile path that scale
+                            // sat between the inverse-scale baked into each instance and the tile translation in the parent chain,
+                            // so it cancelled out cleanly, with a single consolidated entity parented to default_terrain the normalize
+                            // scale ends up multiplied AFTER the tile translation in the shader's mul(instance, draw.transform),
+                            // which scales the tile translation down and collapses every tree toward the world origin
+                            // forcing scale one keeps the shader chain a no-op tail and lets the per-instance world transforms render correctly
+                            entity->SetScale(math::Vector3::One);
 
-                            if (Entity* trunk = entity->GetChildByIndex(0))
+                            // assimp's tree.fbx can land trunk and leaves on direct children or on grandchildren depending on import flags,
+                            // walk every descendant with a Render component and pick the material via the sub-mesh slot so the consolidated
+                            // entity works for any hierarchy depth without relying on hardcoded child indices,
+                            // include the root entity itself in case ImportCombineMeshes parked the renderable on the cloned root
+                            vector<Entity*> tree_candidates;
+                            tree_candidates.push_back(entity);
+                            entity->GetDescendants(&tree_candidates);
+                            uint32_t tree_renderable_count = 0;
+                            for (Entity* candidate : tree_candidates)
                             {
-                                Render* renderable = trunk->GetComponent<Render>();
+                                Render* renderable = candidate->GetComponent<Render>();
+                                if (!renderable || !renderable->GetMesh())
+                                {
+                                    continue;
+                                }
+
                                 renderable->SetInstances(all_tree_transforms);
                                 renderable->SetMaxRenderDistance(render_distance_trees);
                                 renderable->SetMaxShadowDistance(shadow_distance);
-                                renderable->SetMaterial(material_body);
 
-                                Physics* physics = trunk->AddComponent<Physics>();
-                                physics->SetBodyType(BodyType::Mesh);
-                            }
+                                // sub-mesh 0 is the bark/trunk, sub-mesh 1 is the alpha tested leaves,
+                                // anything beyond falls back to the leaf material since the import collapses extra sub-meshes into the foliage atlas
+                                const uint32_t sub_mesh = renderable->GetSubMeshIndex();
+                                renderable->SetMaterial(sub_mesh == 0 ? material_body : material_leaf);
 
-                            if (Entity* leafs = entity->GetChildByIndex(1))
-                            {
-                                Render* renderable = leafs->GetComponent<Render>();
-                                renderable->SetInstances(all_tree_transforms);
-                                renderable->SetMaxRenderDistance(render_distance_trees);
-                                renderable->SetMaxShadowDistance(shadow_distance);
-                                renderable->SetMaterial(material_leaf);
+                                if (sub_mesh == 0)
+                                {
+                                    Physics* physics = candidate->AddComponent<Physics>();
+                                    physics->SetBodyType(BodyType::Mesh);
+                                }
+
+                                tree_renderable_count++;
                             }
+                            SP_LOG_INFO("forest tree consolidation, candidates=%u with-render=%u instances=%u",
+                                static_cast<uint32_t>(tree_candidates.size()),
+                                tree_renderable_count,
+                                static_cast<uint32_t>(all_tree_transforms.size())
+                            );
                         }
                     }
 
@@ -962,18 +968,68 @@ namespace spartan
                             Entity* entity = mesh_rock->GetRootEntity()->Clone();
                             entity->SetObjectName("rock");
                             entity->SetParent(default_terrain);
+                            // same normalize-scale fix as the tree consolidation above,
+                            // a non-one entity scale at the end of mul(instance, draw.transform) scales the tile translation too
+                            entity->SetScale(math::Vector3::One);
 
-                            if (Entity* rock_entity = entity->GetDescendantByName("untitled"))
+                            // model.obj names vary, the previous lookup keyed on the string "untitled" and silently dropped the renderable
+                            // whenever the import produced anything else (different obj exporter, multiple submeshes, additional cleanup nodes),
+                            // walk every candidate (root plus descendants) and instance any node that carries a Render so the rock is robust to any import layout
+                            vector<Entity*> rock_candidates;
+                            rock_candidates.push_back(entity);
+                            entity->GetDescendants(&rock_candidates);
+                            uint32_t rock_renderable_count = 0;
+                            for (Entity* candidate : rock_candidates)
                             {
-                                Render* renderable = rock_entity->GetComponent<Render>();
+                                Render* renderable = candidate->GetComponent<Render>();
+                                if (!renderable || !renderable->GetMesh())
+                                {
+                                    continue;
+                                }
+
                                 renderable->SetInstances(all_rock_transforms);
                                 renderable->SetMaxRenderDistance(render_distance_trees);
                                 renderable->SetMaxShadowDistance(shadow_distance);
                                 renderable->SetMaterial(material_rock);
 
-                                Physics* physics = rock_entity->AddComponent<Physics>();
-                                physics->SetBodyType(BodyType::Mesh);
+                                // cook the physics shape only on the first renderable so we don't add a duplicate mesh body for additional sub-meshes
+                                if (rock_renderable_count == 0)
+                                {
+                                    Physics* physics = candidate->AddComponent<Physics>();
+                                    physics->SetBodyType(BodyType::Mesh);
+                                }
+
+                                rock_renderable_count++;
                             }
+                            SP_LOG_INFO("forest rock consolidation, candidates=%u with-render=%u instances=%u",
+                                static_cast<uint32_t>(rock_candidates.size()),
+                                rock_renderable_count,
+                                static_cast<uint32_t>(all_rock_transforms.size())
+                            );
+                        }
+                    }
+
+                    // procedural grass, runs once after every cpu side instance append has finished,
+                    // doing this after the trees, rocks and flowers are committed means no append happens
+                    // while the renderer is already referencing the grass mesh and material on the next frame
+                    if (Terrain* terrain_component = default_terrain ? default_terrain->GetComponent<Terrain>() : nullptr)
+                    {
+                        if (RHI_Texture* heightmap = terrain_component->GetHeightMapFinal())
+                        {
+                            Renderer::ProceduralGrassParams grass_params;
+                            grass_params.ring_radii_m[0]  = 30.0f;
+                            grass_params.ring_radii_m[1]  = 120.0f;
+                            grass_params.ring_radii_m[2]  = render_distance_foliage;
+                            grass_params.cell_size_m[0]   = 0.25f;
+                            grass_params.cell_size_m[1]   = 0.6f;
+                            grass_params.cell_size_m[2]   = 1.2f;
+                            grass_params.height_min       = terrain_component->GetSeaLevel() + 1.0f;
+                            grass_params.height_max       = terrain_component->GetSnowLevel();
+                            grass_params.max_slope_deg    = 45.0f;
+                            const float extent_x          = static_cast<float>(terrain_component->GetWidth()  - 1) * static_cast<float>(terrain_component->GetScale());
+                            const float extent_z          = static_cast<float>(terrain_component->GetHeight() - 1) * static_cast<float>(terrain_component->GetScale());
+                            grass_params.terrain_extent_m = Vector2(extent_x, extent_z);
+                            Renderer::EnableProceduralGrass(mesh_grass_blade.get(), material_grass_blade.get(), heightmap, grass_params);
                         }
                     }
                 }
