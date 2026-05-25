@@ -897,7 +897,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             cmd_list->SetTexture(Renderer_BindingsUav::tex,           tex_debug);
 
-            // the visualize shader reads the grid populated by light_cluster_assign in compute batch b
+            // the visualize shader reads the grid populated by light_cluster_assign in compute batch a
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
 
@@ -937,7 +937,7 @@ namespace spartan
             cmd_list->SetTexture(Renderer_BindingsUav::tex2,    light_specular);
             cmd_list->SetTexture(Renderer_BindingsUav::tex3,    light_volumetric);
 
-            // clustered lighting grid, written by light_cluster_assign in compute batch b
+            // clustered lighting grid, written by light_cluster_assign in compute batch a
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,       GetBuffer(Renderer_Buffer::ClusterLightGrid));
             cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices,    GetBuffer(Renderer_Buffer::ClusterLightIndices));
             cmd_list->SetBuffer(Renderer_BindingsUav::volumetric_light_indices, GetBuffer(Renderer_Buffer::VolumetricLightIndices));

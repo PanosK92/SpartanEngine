@@ -492,7 +492,10 @@ namespace spartan
         // grouped builders, each owns one cohesive slice of allocations
         auto create_gbuffer = [&]()
         {
-            at(render_targets, Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render");
+            // frame_render is written by the opaque light + light composition compute batch and
+            // read by the graphics queue from the blit onward, concurrent sharing avoids the need
+            // for explicit queue family ownership transfers between the two queues
+            at(render_targets, Renderer_RenderTarget::frame_render)        = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "frame_render");
             at(render_targets, Renderer_RenderTarget::frame_render_opaque) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Srv | RHI_Texture_Rtv | RHI_Texture_ClearBlit, "frame_render_opaque");
 
             // debug output sits at render resolution so debug raster passes can share gbuffer_depth for read-equal tests
@@ -521,7 +524,9 @@ namespace spartan
 
         auto create_lighting_buffers = [&]()
         {
-            uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit;
+            // light_* textures are produced by the compute lighting batch, concurrent sharing keeps
+            // them safe if any future graphics pass samples them without ownership transfer
+            uint32_t flags = RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing;
             at(render_targets, Renderer_RenderTarget::light_diffuse)    = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_diffuse");
             at(render_targets, Renderer_RenderTarget::light_specular)   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_specular");
             at(render_targets, Renderer_RenderTarget::light_volumetric) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::R11G11B10_Float, flags, "light_volumetric");
@@ -543,7 +548,10 @@ namespace spartan
                 uint32_t vrs_height   = (height_render + texel_size_y - 1) / texel_size_y;
                 at(render_targets, Renderer_RenderTarget::shading_rate) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, vrs_width, vrs_height, 1, 1, RHI_Format::R8_Uint, RHI_Texture_Srv | RHI_Texture_Uav | RHI_Texture_Rtv | RHI_Texture_Vrs | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shading_rate");
             }
-            at(render_targets, Renderer_RenderTarget::shadow_atlas) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_shadow_atlas, renderer_resolution_shadow_atlas, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit, "shadow_atlas");
+            // concurrent sharing because the opaque light compute batch reads the atlas after the
+            // shadow_maps graphics pass writes it, without this flag the cross-queue read would
+            // require an explicit ownership transfer
+            at(render_targets, Renderer_RenderTarget::shadow_atlas) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, renderer_resolution_shadow_atlas, renderer_resolution_shadow_atlas, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv | RHI_Texture_ClearBlit | RHI_Texture_ConcurrentSharing, "shadow_atlas");
         };
 
         auto create_output_targets = [&]()

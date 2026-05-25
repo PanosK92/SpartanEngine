@@ -2488,6 +2488,12 @@ namespace spartan
         // accel structures first so batch b's rt passes inherit the tlas via compute queue order
         UpdateAccelerationStructures(cmd_list);
 
+        // light cluster assign lives here, it only needs the camera frustum and the light list,
+        // not the gbuffer, so it runs in parallel with graphics phase 1 instead of waiting for it
+        // like the rest of batch b does, this widens batch a so it overlaps the entire gbuffer pass
+        // and shortens batch b so ray-traced shadows can start sooner
+        Pass_LightClusterAssign(cmd_list);
+
         if (!m_pass_state.brdf_lut_produced)
         {
             Pass_Lut_BrdfSpecular(cmd_list);
@@ -2516,7 +2522,6 @@ namespace spartan
     {
         cmd_list->BeginMarker("compute_batch_b");
         Pass_ScreenSpaceAmbientOcclusion(cmd_list);
-        Pass_LightClusterAssign(cmd_list);
         Pass_ScreenSpaceShadows(cmd_list);
         Pass_RayTracedShadows(cmd_list);
         Pass_ReSTIR_PathTracing(cmd_list);
@@ -2551,9 +2556,14 @@ namespace spartan
 
     void Renderer::ProduceFrame_PerEye(RHI_CommandList* cmd_list, uint32_t eye, uint32_t eye_layer)
     {
-        // opaque lighting
+        // opaque per-eye lighting runs on the graphics queue here, on purpose, because the
+        // graphics queue would otherwise be idle for the duration of pass_light (the heaviest
+        // compute shader in the frame) while waiting for the compute queue to finish, doing it
+        // on graphics keeps both queues busy: compute runs batches a + b in parallel, graphics
+        // runs phase 1 + phase 2 + this lighting + post-process, which is a much better balance
         Pass_Light(cmd_list, false, eye_layer);
         Pass_Light_Composition(cmd_list, false, eye_layer);
+
         cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::frame_render), GetRenderTarget(Renderer_RenderTarget::frame_render_opaque), false);
 
         if (eye == 0)
@@ -2575,7 +2585,6 @@ namespace spartan
         }
 
         Pass_Light_Ibl(cmd_list, eye_layer);
-        // rt reflections gbuffer is produced in graphics phase 2 alongside compute batch b, this only composites
         Pass_Composite_RayTracedReflections(cmd_list, eye_layer);
 
         Pass_TransparencyReflectionRefraction(cmd_list, eye_layer);
@@ -2615,13 +2624,16 @@ namespace spartan
         // compute batch a, view independent prep, runs alongside graphics phase 1
         Pass_ComputeBatchA(cmd_list_compute, update_skysphere, directional_light);
 
-        // wind field stays on graphics queue, must precede gbuffer for vertex animation sampling
-        Pass_WindField(cmd_list_graphics_present);
-
         // submit batch a, waits on the prior frame's present so writes here do not race with phase 3 reads
+        // we submit before recording any graphics phase 1 work so the compute queue starts skysphere,
+        // tlas update and light cluster assign as early as possible, maximising overlap with the gbuffer pass
         cmd_list_compute->Submit(nullptr, false, nullptr, m_cross_queue_sync.previous_present_timeline, m_cross_queue_sync.previous_present_timeline_value);
         RHI_SyncPrimitive* batch_a_timeline = cmd_list_compute->GetTimelineSemaphore();
         const uint64_t batch_a_value        = cmd_list_compute->GetLastTimelineSignalValue();
+
+        // wind field stays on graphics queue, must precede gbuffer for vertex animation sampling
+        // recorded after the compute submit so the gpu compute queue is already kicked off by the time we record it
+        Pass_WindField(cmd_list_graphics_present);
 
         if (Camera* camera = World::GetCamera())
         {
@@ -2634,6 +2646,8 @@ namespace spartan
             RHI_SyncPrimitive* gfx_timeline          = cmd_list_graphics_present->GetTimelineSemaphore();
 
             // compute batch b, gbuffer consumers, waits on phase 1, overlaps with graphics phase 2
+            // batch b's outputs are read by phase 3 on the graphics queue, the present submit in
+            // SubmitAndPresent will wait on batch b's timeline to make those writes visible
             RHI_Queue* queue_compute            = RHI_Device::GetQueue(RHI_Queue_Type::Compute);
             RHI_CommandList* cmd_list_compute_b = queue_compute->NextCommandList();
             cmd_list_compute_b->Begin();
@@ -2650,7 +2664,10 @@ namespace spartan
             Pass_GraphicsPhase2_ShadowsAndRT(cmd_list_graphics_present);
             cmd_list_graphics_present->Submit(nullptr, false, nullptr, batch_a_timeline, batch_a_value);
 
-            // graphics phase 3, lighting and post, present cmd list waits on batch b in SubmitAndPresent
+            // graphics phase 3, opaque lighting + post-process, present cmd list waits on batch b in SubmitAndPresent
+            // pass_light lives here on the graphics queue (not on compute) on purpose, because the
+            // graphics queue is otherwise mostly idle for the duration of the lighting dispatch,
+            // running it here keeps both queues busy and produces a better overall frame time
             cmd_list_graphics_present = queue_graphics->NextCommandList();
             cmd_list_graphics_present->Begin();
             m_cmd_list_present                                = cmd_list_graphics_present;
