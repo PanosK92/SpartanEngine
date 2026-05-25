@@ -303,6 +303,7 @@ void evaluate_light(
     float3 L_diffuse_term  = 0.0f;
     float3 L_subsurface    = 0.0f;
     float3 L_volumetric    = 0.0f;
+    float  micro_shadow    = 1.0f;
 
     // light can contribute via the standard brdf only when n_dot_l clears (light.radiance > 0)
     // light can contribute via subsurface scattering whenever the raw energy is non zero (sss
@@ -371,6 +372,14 @@ void evaluate_light(
         AngularInfo angular_info;
         angular_info.Build(light, surface);
 
+        // chan 2018 microshadowing, the canonical "ao on direct" replacement, derives a contact
+        // darkening term from the ao aperture that scales with n_dot_l so it only fires near the
+        // terminator and leaves the lit pole at full intensity, this preserves the soft contact
+        // shadow read that the old "diffuse *= ao" was faking while letting shadow maps own the
+        // primary direct visibility, occlusion=1 yields micro_shadow=1 (no effect) so surfaces
+        // with no ao input pass through unchanged
+        micro_shadow = microw_shadowing_cod(angular_info.n_dot_l, surface.occlusion);
+
         // area lights widen specular roughness so the highlight matches the light's angular extent
         float original_roughness       = surface.roughness;
         float original_roughness_alpha = surface.roughness_alpha;
@@ -431,8 +440,12 @@ void evaluate_light(
         L_volumetric += compute_volumetric_fog(surface, light, pixel_xy);
     }
 
-    out_diffuse    += L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy + L_subsurface;
-    out_specular   += L_specular_sum * light.radiance * specular_precomputed;
+    // micro_shadow (chan 2018) is only computed inside the eval_surface block above where angular
+    // info exists, it defaults to 1.0 (no effect) for sky/volumetric-only/transparent paths
+    // sss is intentionally not folded in because back lit translucent surfaces have meaningless
+    // n_dot_l and would get crushed by a micro shadow they should not see
+    out_diffuse    += (L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy) * micro_shadow + L_subsurface;
+    out_specular   += (L_specular_sum * light.radiance * specular_precomputed) * micro_shadow;
     out_volumetric += L_volumetric;
 }
 
@@ -455,10 +468,21 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 out_volumetric = 0.0f;
 
     // transparents skip alpha on specular (fresnel handles it) and zero diffuse (no lambertian on glass)
+    //
+    // surface.occlusion is intentionally NOT folded into the direct light path, gtao/ssao is ambient
+    // occlusion by definition (the fraction of the upper hemisphere that sees the sky), every modern
+    // pbr reference says it must only modulate the indirect/ibl term, direct light visibility is
+    // owned by shadow maps, ray traced shadows and screen space contact shadows already, applying
+    // ao on top double counts contact darkening and is what made shadowed regions look muddy while
+    // the open areas read as relatively too bright (the perceived "unnaturally shiny" look)
+    //
+    // the soft contact darkening that the old "diffuse *= ao" was trying to fake is now produced
+    // physically inside evaluate_light by chan 2018 micro shadowing (microw_shadowing_cod) which
+    // derives an ao backed terminator term that only bites at glancing n_dot_l, leaving the lit
+    // pole at full intensity exactly as the cod wwii paper prescribes
     bool   is_transparent       = surface.is_transparent();
-    float  alpha_occ            = surface.alpha * surface.occlusion;
-    float3 specular_precomputed = is_transparent ? float3(surface.occlusion, surface.occlusion, surface.occlusion) : float3(alpha_occ, alpha_occ, alpha_occ);
-    float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f)                                        : float3(alpha_occ, alpha_occ, alpha_occ);
+    float3 specular_precomputed = is_transparent ? float3(1.0f, 1.0f, 1.0f) : float3(surface.alpha, surface.alpha, surface.alpha);
+    float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f) : float3(surface.alpha, surface.alpha, surface.alpha);
 
     uint total_lights = buffer_frame.cluster_light_count;
 

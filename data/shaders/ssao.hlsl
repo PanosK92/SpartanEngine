@@ -88,10 +88,21 @@ float compute_slice_visibility(float horizon_cos0, float horizon_cos1, float cos
 
 float3 compute_slice_bent_normal(float h0, float h1, float n)
 {
-    // cosine-weighted bent normal approximation
+    // jimenez 2016 cosine-weighted bent normal, analytic integral of cos(theta)*cos(theta - n)
+    // over the visible arc [h0, h1] within the slice plane, t0 is the slice-direction (in-plane)
+    // component and t1 is the view-direction component, both expressed in the slice local frame
+    // where +z = view direction (from surface to camera, matching view_vec in the caller)
+    //
+    // the historical negation on the returned z was a sign convention bug, with view_vec defined
+    // as normalize(-origin_position) (toward camera) the per slice contribution view_vec * t1
+    // points into the unoccluded hemisphere as intended, the negation flipped it so the bent
+    // normal pointed into the surface instead, which sampled the skysphere below horizon and
+    // collected the 0.3x dimmed mirror values for every interior diffuse ibl lookup, that was
+    // the dominant cause of "dark walls in bright daylight" because indirect light fell to 30%
+    // of its correct value across every opaque surface
     float t0 = (6.0f * sin(h0 - n) - sin(3.0f * h0 - n) + 6.0f * sin(h1 - n) - sin(3.0f * h1 - n) + 16.0f * sin(n) - 3.0f * (sin(h0 + n) + sin(h1 + n))) / 12.0f;
     float t1 = (-cos(3.0f * h0 - n) - cos(3.0f * h1 - n) + 8.0f * cos(n) - 3.0f * (cos(h0 + n) + cos(h1 + n))) / 12.0f;
-    return float3(t0, 0.0f, -t1);
+    return float3(t0, 0.0f, t1);
 }
 
 uint update_sectors(float minHorizon, float maxHorizon, uint globalOccludedbitmask)

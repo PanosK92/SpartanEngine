@@ -80,12 +80,30 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_count_environment        = pass_get_f3_value().x;
     float mip_level                    = surface.roughness * surface.roughness * (mip_count_environment - 1.0f);
     
-    // specular occlusion - lagarde & de rousiers 2014 physically-based approximation
-    float bent_reflection_factor = saturate(dot(surface.bent_normal, dominant_specular_direction));
-    float specular_occlusion     = saturate(pow(n_dot_v + surface.occlusion, exp2(-16.0f * surface.roughness - 1.0f)) - 1.0f + surface.occlusion);
+    // specular occlusion stack, three terms applied in sequence, each one is an industry
+    // reference but the previous code stacked them as hard multiplicative gates which crushed
+    // rough reflections wherever any single term clipped, the corrected stack weights the
+    // bent normal term by smoothness so wide rough lobes are not punished by a glancing bent
+    // normal that the mirror limit assumption (saturate(dot(...))) would otherwise treat as
+    // a full hemisphere miss
+    //
+    // 1) lagarde & de rousiers 2014 cone aperture vs ao formula, primary gate, derives the
+    //    cone aperture from roughness so mirrors (narrow lobe) get aggressive occlusion and
+    //    rough surfaces (wide lobe) get a soft falloff
+    float specular_occlusion = saturate(pow(n_dot_v + surface.occlusion, exp2(-16.0f * surface.roughness - 1.0f)) - 1.0f + surface.occlusion);
+
+    // 2) bent normal cone overlap, refines the lagarde gate by checking the dominant reflection
+    //    direction against the average unoccluded direction, jimenez 2016 / frostbite weight
+    //    this by smoothness^2 so the term only bites for near mirror surfaces and lerps back
+    //    toward 1 for rough surfaces whose wide integration kernel is largely insensitive to
+    //    where the bent normal points
+    float bent_dot               = saturate(dot(surface.bent_normal, dominant_specular_direction));
+    float smoothness             = 1.0f - surface.roughness;
+    float bent_reflection_factor = lerp(1.0f, bent_dot, smoothness * smoothness);
     specular_occlusion          *= bent_reflection_factor;
-    
-    // horizon occlusion - prevents reflections from below the surface plane
+
+    // 3) horizon fade, lagarde & de rousiers 2014, prevents the dominant direction from
+    //    sampling the panorama from below the geometric surface plane
     float horizon       = saturate(1.0f + dot(dominant_specular_direction, surface.normal));
     specular_occlusion *= horizon * horizon;
 
@@ -95,7 +113,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     
     // apply energy and occlusion
     // multi-bounce ao for diffuse, physically-based occlusion + horizon fade for specular
-    float3 diffuse_occlusion = gtao_multi_bounce(surface.occlusion, surface.albedo.rgb);
+    //
+    // gtao_multi_bounce models inter-reflection of the surface with itself and collapses to 0
+    // at visibility=0, that is mathematically right for a single isolated surface but real
+    // scenes always carry inter-reflection energy from neighboring geometry, when a proper gi
+    // pass owns the indirect term (restir_pt) this is resolved exactly and the early out below
+    // skips the ibl, when no gi is active the ibl is the only fallback so we lift the visibility
+    // off zero by a small floor representing the baseline indirect bounce energy a typical
+    // interior picks up from surrounding surfaces, ue4 (skylight indirect intensity floor),
+    // frostbite (indirect minimum) and cryengine (e_giamount) all expose the same knob for the
+    // same reason, the value is conservative enough to keep contact ao readable but high enough
+    // that deep crevices no longer crush to pitch black
+    //
+    // specular ibl is intentionally not floored, mirror reflections do correctly go to 0 when
+    // the surface cannot see the sky, the inter-reflection lift is a diffuse phenomenon
+    const float ibl_visibility_floor = 0.1f;
+    float  ibl_visibility    = max(surface.occlusion, ibl_visibility_floor);
+    float3 diffuse_occlusion = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
     float3 diffuse_ibl       = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl      = specular_skysphere * specular_energy * specular_occlusion;
 
