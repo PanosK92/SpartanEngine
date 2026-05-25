@@ -206,7 +206,7 @@ RWStructuredBuffer<EmissiveTriangle> emissive_triangles : register(u49);
 // grass_count holds one atomic counter per lod, bumped by interlockedadd during the populate dispatch
 // grass_indirect_args holds one DrawIndexedIndirect args entry per lod, the args compute reads grass_count
 // and bakes index_count / first_index / vertex_offset / first_instance from the per-lod constants
-RWStructuredBuffer<PackedInstance>   grass_instances     : register(u50);
+RWStructuredBuffer<GrassInstance>    grass_instances     : register(u50);
 RWStructuredBuffer<uint>             grass_count         : register(u51);
 RWStructuredBuffer<IndirectDrawArgs> grass_indirect_args : register(u52);
 

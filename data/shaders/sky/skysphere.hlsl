@@ -730,9 +730,36 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
 {
     float2 res;
     tex_uav.GetDimensions(res.x, res.y);
-    if (any(tid.xy >= uint2(res))) return;
-    
-    float2 uv = (float2(tid.xy) + 0.5) / res;
+
+    // bake mode, set by Pass_Skysphere via the first push constant float
+    //   warmup = 1.0, the first n frames after a sun direction change or app start, the cpu
+    //            issues a full sized dispatch and every output pixel runs the full bake. the
+    //            legacy 0.1 temporal blend below fades the panorama in over ~25-30 frames
+    //   warmup = 0.0, steady state, the cpu issues a quarter resolution dispatch (1/16 of
+    //            the waves) and each thread writes exactly one full resolution pixel chosen
+    //            from a 4x4 tile by a phase that cycles with buffer_frame.frame. at 60 fps
+    //            this means each pixel refreshes every 16 frames or ~267 ms, with the wind
+    //            drift tuned at ~24 m/s the per-pixel jump between refreshes is about 1.5
+    //            panorama pixels on a typical cloud, soft enough on the inherently fuzzy
+    //            cloud edges to read as gentle drift rather than ticking. the coarse
+    //            dispatch is the real saver, the previous early-return scheme did not skip
+    //            wave time because every wave still had one active lane running the full
+    //            cloud march and gpu lockstep execution then paid for all of them
+    const bool warmup = buffer_pass.values[0].x > 0.5;
+    uint2 pixel;
+    if (warmup)
+    {
+        pixel = tid.xy;
+    }
+    else
+    {
+        const uint  phase = buffer_frame.frame & 15u;
+        const uint2 ofs   = uint2(phase & 3u, (phase >> 2u) & 3u);
+        pixel             = tid.xy * 4u + ofs;
+    }
+    if (any(pixel >= uint2(res))) return;
+
+    float2 uv = (float2(pixel) + 0.5) / res;
     
     // equirectangular to direction
     float phi = uv.x * PI2 + PI;
@@ -776,7 +803,7 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float  cloud_trans      = 1.0;
     if (!below_horizon)
     {
-        float cloud_jitter = noise_interleaved_gradient(float2(tid.xy));
+        float cloud_jitter = noise_interleaved_gradient(float2(pixel));
         clouds_evaluate(cam_pos, orig_view, sun_dir,
             tex3d, tex,
             GET_SAMPLER(sampler_bilinear_wrap), GET_SAMPLER(sampler_bilinear_clamp),
@@ -849,17 +876,21 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 final_color = (luminance + cloud_in_scatter + (night_ambient + sun_col + night_celestials) * cloud_trans) * intensity;
     final_color        = min(final_color, 100.0);
 
-    // temporal accumulation, smooths step banding from low sample counts. low blend factor
-    // integrates ~10 frames of jittered samples per converged pixel so the underlying ign
-    // pattern that drives the cloud march origin gets fully averaged out, instead of leaving
-    // a visible high-frequency texture on the cloud surface. converges over ~25-30 frames
-    // after a sun direction change which is still under half a second at 60 fps
-    float4 prev = tex_uav[tid.xy];
-    if (prev.a > 0.5)
+    // temporal accumulation, behaviour depends on bake mode
+    //   warmup, low blend factor integrates ~10 frames of jittered samples per converged pixel
+    //   so the underlying ign pattern that drives the cloud march origin gets fully averaged out,
+    //   instead of leaving a visible high-frequency texture on the cloud surface. converges over
+    //   ~25-30 frames after a sun direction change which is still under half a second at 60 fps
+    //   steady, the partial dispatch already gives 3-frame staleness on neighbouring pixels, an
+    //   additional low pass would drag visible cloud motion behind the actual cloud field by ten
+    //   frames or more. write the fresh sample directly, the per pixel ign jitter pattern was
+    //   the only thing the accumulator was averaging and it does not move between frames anyway
+    if (warmup)
     {
+        float4 prev = tex_uav[pixel];
         final_color = lerp(prev.rgb, final_color, 0.1);
     }
 
-    tex_uav[tid.xy] = float4(final_color, 1.0);
+    tex_uav[pixel] = float4(final_color, 1.0);
 }
 #endif

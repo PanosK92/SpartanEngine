@@ -131,14 +131,14 @@ gbuffer_vertex main_vs(Vertex_PosUvNorTan_Cpu cpu_input, uint instance_id : SV_I
     Vertex_PosUvNorTan input = to_full_vertex(cpu_input);
     // pull the per-instance transform from the dedicated procedural grass buffer
     // lod_base in values[0].z lets the same vs handle all three lod rings
-    uint slot         = instance_id + (uint)buffer_pass.values[0].z;
-    PackedInstance pi = grass_instances[slot];
-    input.instance_position_x = (min16float)f16tof32(pi.pos_xy & 0xFFFFu);
-    input.instance_position_y = (min16float)f16tof32((pi.pos_xy >> 16) & 0xFFFFu);
-    input.instance_position_z = (min16float)f16tof32(pi.pos_z_norm & 0xFFFFu);
-    input.instance_normal_oct = (pi.pos_z_norm >> 16) & 0xFFFFu;
-    input.instance_yaw        = pi.yaw_scale & 0xFFu;
-    input.instance_scale      = (pi.yaw_scale >> 8) & 0xFFu;
+    uint slot        = instance_id + (uint)buffer_pass.values[0].z;
+    GrassInstance gi = grass_instances[slot];
+    input.instance_position_x = gi.pos_x;
+    input.instance_position_y = gi.pos_y;
+    input.instance_position_z = gi.pos_z;
+    input.instance_normal_oct = (gi.normal_yaw_scale >> 16) & 0xFFFFu;
+    input.instance_yaw        = (gi.normal_yaw_scale >> 8)  & 0xFFu;
+    input.instance_scale      =  gi.normal_yaw_scale        & 0xFFu;
     // synthesize an identity per-renderable draw data, the instance carries the world transform
     _draw                    = (DrawData)0;
     _draw.transform          = float4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);

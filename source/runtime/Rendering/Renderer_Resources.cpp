@@ -222,14 +222,14 @@ namespace spartan
         // GrassCount is the per-lod atomic counter, cleared each frame by the populate setup
         // GrassIndirectArgs is the per-lod DrawIndexedIndirect args buffer, populated each frame by the args build shader
         // sizes are constants so the descriptors stay stable across worlds, EnableProceduralGrass just bakes per-lod offsets
-        // grass_instances doubles as the per-instance vertex binding the engine pipeline auto-declares
-        // for vertex shaders with NORMAL/TANGENT semantics. RHI_Buffer_Type::Instance gives the buffer
-        // both VK_BUFFER_USAGE_VERTEX_BUFFER_BIT and VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, so the populate
-        // compute can write to it as a uav while the raster path binds it as the per-instance vertex stream.
-        // PackedInstance and Instance share the same 12-byte layout so the attribute decode matches.
+        // grass uses a dedicated GrassInstance layout, 16 bytes with full float xyz, the shared PackedInstance
+        // format keeps positions as half-floats and quantizes world positions to a ~1m lattice past a few hundred
+        // meters from the origin, snapping every blade onto a visible grid regardless of how random the populate
+        // compute scatters them. the raster vs reads this buffer via the same uav descriptor the populate compute
+        // wrote, so the per-instance vertex stream slot is bound to the global geometry instance buffer instead.
         // device local since the cpu never touches it, the compute populate writes the entire content each frame
         at(buffers, Renderer_Buffer::GrassInstances) = make_shared<RHI_Buffer>(
-            RHI_Buffer_Type::Instance, static_cast<uint32_t>(sizeof(Instance)),
+            RHI_Buffer_Type::Instance, static_cast<uint32_t>(sizeof(Sb_GrassInstance)),
             renderer_max_grass_instances, nullptr, false, "grass_instances"
         );
         at(buffers, Renderer_Buffer::GrassCount) = make_shared<RHI_Buffer>(

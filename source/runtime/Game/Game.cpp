@@ -522,7 +522,6 @@ namespace spartan
                 Stopwatch sw_parallel_meshes;
 
                 const uint32_t tree_flags      = Mesh::GetDefaultFlags() | static_cast<uint32_t>(MeshFlags::ImportCombineMeshes);
-                const string grass_cache_path  = string(ResourceCache::GetProjectDirectory()) + "standard_grass" + EXTENSION_MESH;
                 const string flower_cache_path = string(ResourceCache::GetProjectDirectory()) + "standard_flower" + EXTENSION_MESH;
 
                 future<void> f_tree = ThreadPool::AddTask([&mesh_tree, tree_flags]()
@@ -535,39 +534,36 @@ namespace spartan
                     mesh_rock = ResourceCache::Load<Mesh>("project/models/rock_2/model.obj");
                 });
 
-                future<void> f_grass = ThreadPool::AddTask([mesh_grass_blade, grass_cache_path]()
+                future<void> f_grass = ThreadPool::AddTask([mesh_grass_blade]()
                 {
-                    // try the engine-mesh cache first to skip simplify and build_meshlets entirely
-                    if (FileSystem::Exists(grass_cache_path))
-                    {
-                        mesh_grass_blade->LoadFromFile(grass_cache_path);
-                        if (mesh_grass_blade->GetVertexCount() > 0)
-                        {
-                            return;
-                        }
-                    }
-
+                    // the grass blade is procedurally generated and trivially cheap, regenerate on every load
+                    // so any tweak to generate_foliage_grass_blade or the segment counts below takes effect
+                    // immediately without having to manually invalidate a binaries/project/standard_grass.mesh cache
                     mesh_grass_blade->SetObjectName("grass_blade");
                     mesh_grass_blade->SetFlag(static_cast<uint32_t>(MeshFlags::PostProcessOptimize), false);
                     uint32_t sub_mesh_index = 0;
 
-                    // lod 0: 3 segments
+                    // segment counts are tuned to give the depth prepass a manageable triangle budget,
+                    // a strip of n segments produces 2n-1 triangles, the close lod keeps enough segments
+                    // for a smooth bend curve, the mid lod just needs enough to still read as a blade,
+                    // the far lod is a single tri because at >120 m the blade covers a few pixels at most
+                    //   lod 0 (close): 6 segments → 11 triangles, 13 verts
+                    //   lod 1 (mid):   3 segments →  5 triangles,  7 verts
+                    //   lod 2 (far):   1 segment  →  1 triangle,   3 verts
+                    {
+                        vector<RHI_Vertex_PosTexNorTan> vertices;
+                        vector<uint32_t> indices;
+                        geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 6);
+                        mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index);
+                    }
+
                     {
                         vector<RHI_Vertex_PosTexNorTan> vertices;
                         vector<uint32_t> indices;
                         geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 3);
-                        mesh_grass_blade->AddGeometry(vertices, indices, false, &sub_mesh_index);
-                    }
-
-                    // lod 1: 2 segments
-                    {
-                        vector<RHI_Vertex_PosTexNorTan> vertices;
-                        vector<uint32_t> indices;
-                        geometry_generation::generate_foliage_grass_blade(&vertices, &indices, 2);
                         mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);
                     }
 
-                    // lod 2: 1 segment
                     {
                         vector<RHI_Vertex_PosTexNorTan> vertices;
                         vector<uint32_t> indices;
@@ -575,8 +571,6 @@ namespace spartan
                         mesh_grass_blade->AddLod(vertices, indices, sub_mesh_index);
                     }
 
-                    mesh_grass_blade->SetResourceFilePath(grass_cache_path);
-                    mesh_grass_blade->SaveToFile(grass_cache_path);
                     mesh_grass_blade->CreateGpuBuffers();
                 });
 
@@ -1022,9 +1016,14 @@ namespace spartan
                             grass_params.ring_radii_m[0]  = 30.0f;
                             grass_params.ring_radii_m[1]  = 120.0f;
                             grass_params.ring_radii_m[2]  = render_distance_foliage;
-                            grass_params.cell_size_m[0]   = 0.25f;
-                            grass_params.cell_size_m[1]   = 0.6f;
-                            grass_params.cell_size_m[2]   = 1.2f;
+                            // stratified scatter: each cell is a stratum that holds many blades placed at independent
+                            // random positions inside it, so the cell boundary becomes invisible while the global
+                            // density stays uniform, cell sizes here are chosen so blades_per_cell (derived in the
+                            // populate compute from cap / cells_in_ring) lands at ~20 / ~12 / ~5 per cell, which is
+                            // dense enough per stratum to hide the underlying grid even at the most oblique view angle
+                            grass_params.cell_size_m[0]   = 1.0f;
+                            grass_params.cell_size_m[1]   = 3.0f;
+                            grass_params.cell_size_m[2]   = 8.0f;
                             grass_params.height_min       = terrain_component->GetSeaLevel() + 1.0f;
                             grass_params.height_max       = terrain_component->GetSnowLevel();
                             grass_params.max_slope_deg    = 45.0f;

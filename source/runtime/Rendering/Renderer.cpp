@@ -2411,15 +2411,24 @@ namespace spartan
             m_pass_state.sky_frames_remaining = temporal_convergence_frames;
         }
 
-        const bool update_skysphere = m_pass_state.sky_frames_remaining > 0;
+        // capture this frame's warmup status before we decrement, so Pass_Skysphere can pick
+        // between the full-burst and the partial-dispatch mode on the same frame
+        m_pass_state.sky_warmup_this_frame = m_pass_state.sky_frames_remaining > 0;
+
         if (m_pass_state.sky_frames_remaining > 0)
         {
             m_pass_state.sky_frames_remaining--;
         }
 
+        // animated clouds drift with the world wind and slowly evolve in place, both of which
+        // only surface on the panorama when the skysphere bake runs that frame. always re-bake
+        // when there is a directional light, the shader spreads the cost over 4 frames by only
+        // computing 1/4 of the pixels per dispatch (phase pattern keyed off buffer_frame.frame).
+        // the warmup burst above is still honoured so sun direction changes do a full bake to
+        // converge the panorama before switching to the partial-dispatch animation mode
         m_pass_state.sky_first_frame           = false;
         m_pass_state.sky_had_directional_light = has_directional_light;
-        return update_skysphere;
+        return has_directional_light;
     }
 
     void Renderer::SetStandardResources(RHI_CommandList* cmd_list)

@@ -418,6 +418,18 @@ struct PackedInstance
     SHARED_UINT yaw_scale;  // yaw_packed (uint8) | scale_packed (uint8) | padding (uint16)
 };
 
+// 16-byte grass instance, dedicated grass-only format because grass needs sub-cm position
+// precision in world space, half-float positions in PackedInstance quantize to ~1m at
+// world distances of a few hundred meters and snap every blade onto a visible lattice
+// even when the populate compute emits perfectly random sub-meter offsets
+struct GrassInstance
+{
+    SHARED_FLOAT pos_x;
+    SHARED_FLOAT pos_y;
+    SHARED_FLOAT pos_z;
+    SHARED_UINT  normal_yaw_scale; // normal_oct (high 16) | yaw_packed (8) | scale_packed (8)
+};
+
 // gpu particle (64 bytes)
 struct Particle
 {
@@ -470,6 +482,7 @@ namespace spartan
     using Sb_MeshletInstance  = MeshletInstance;
     using Sb_Particle         = Particle;
     using Sb_EmitterParams    = EmitterParams;
+    using Sb_GrassInstance    = GrassInstance;
 }
 #else
 // hlsl backward compatibility alias

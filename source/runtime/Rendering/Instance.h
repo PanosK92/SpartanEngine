@@ -39,6 +39,9 @@ namespace spartan
         uint8_t scale_packed; // 1 byte
         uint16_t padding;     // 2 bytes, keeps stride at 12 to match shader PackedInstance (3xu32)
                               // total: 12 bytes
+                              // note: procedural grass uses a separate Sb_GrassInstance layout (16 bytes,
+                              // full float xyz) because grass needs sub-cm world precision that half-floats
+                              // cannot give past a few hundred meters from the origin
 
         math::Matrix GetMatrix() const
         {

@@ -414,9 +414,15 @@ namespace spartan
             bool restir_reservoirs_initialized = false;
 
             // skysphere convergence tracking
+            // sky_warmup_this_frame is the warmup flag for this frame's Pass_Skysphere dispatch,
+            // captured by UpdateSkysphereConvergenceState before it decrements sky_frames_remaining.
+            // during warmup the shader does a full bake with the legacy 0.1 temporal blend, after
+            // warmup it switches to a phase-distributed partial dispatch (1/4 of pixels per frame)
+            // with a direct write, so animated clouds stay live without re-baking the whole panorama
             bool     sky_first_frame           = true;
             bool     sky_had_directional_light = false;
             uint32_t sky_frames_remaining      = 0;
+            bool     sky_warmup_this_frame     = false;
 
             // vrs
             RHI_Texture* vrs_last_cleared_texture = nullptr;

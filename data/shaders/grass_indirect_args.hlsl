@@ -34,20 +34,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // the raster draw calls offset into it by lod_index * sizeof(IndirectDrawArgs) to fetch theirs.
 //
 // push constant layout (PassBufferData.values):
-//   values[0].x = max_instances_per_lod (clamp ceiling, matches the populate shader's cap)
-//   values[0].y = lod_count
+//   values[0].xyz = per-lod max_instances cap, one float per lod (must match the populate shader's
+//                   per-lod cap that the cpu pushed into values[0].w of grass_populate.hlsl)
+//   values[0].w   = lod_count
 
 [numthreads(8, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
-    uint max_instances_per_lod = (uint)buffer_pass.values[0].x;
-    uint lod_count             = (uint)buffer_pass.values[0].y;
+    uint lod_count = (uint)buffer_pass.values[0].w;
 
     uint lod = dispatch_thread_id.x;
     if (lod >= lod_count)
         return;
 
-    // clamp the atomic counter, the populate shader may have raced past the cap
+    // pull the matching per-lod cap, the populate dispatch may have raced past it
+    float caps[3]              = { buffer_pass.values[0].x, buffer_pass.values[0].y, buffer_pass.values[0].z };
+    uint  max_instances_per_lod = (uint)caps[lod];
+
+    // clamp the atomic counter so the raster never tries to draw more blades than the slot can hold
     uint instance_count = min(grass_count[lod], max_instances_per_lod);
 
     // only the instance_count is dynamic, the rest of the args stay frozen at the values the cpu wrote

@@ -36,9 +36,11 @@ struct Vertex_PosUvNorTan
     uint   uv_packed;
     uint   normal_packed;
     uint   tangent_packed;
-    min16float instance_position_x;
-    min16float instance_position_y;
-    min16float instance_position_z;
+    // full float, half-precision here quantizes world positions to a ~1m lattice past a few
+    // hundred meters from the origin and that snaps grass blades onto a visible doll-hair grid
+    float instance_position_x;
+    float instance_position_y;
+    float instance_position_z;
     uint instance_normal_oct;
     uint instance_yaw;
     uint instance_scale;
@@ -62,9 +64,9 @@ Vertex_PosUvNorTan to_full_vertex(Vertex_PosUvNorTan_Cpu cpu_input)
     v.uv_packed           = cpu_input.uv_packed;
     v.normal_packed       = cpu_input.normal_packed;
     v.tangent_packed      = cpu_input.tangent_packed;
-    v.instance_position_x = (min16float)0;
-    v.instance_position_y = (min16float)0;
-    v.instance_position_z = (min16float)0;
+    v.instance_position_x = 0.0f;
+    v.instance_position_y = 0.0f;
+    v.instance_position_z = 0.0f;
     v.instance_normal_oct = 0u;
     v.instance_yaw        = 0u;
     v.instance_scale      = 0u;
@@ -89,9 +91,9 @@ Vertex_PosUvNorTan pull_vertex(uint vertex_id, uint instance_id, uint instance_o
     v.uv_packed           = pulled.uv;
     v.normal_packed       = pulled.normal;
     v.tangent_packed      = pulled.tangent;
-    v.instance_position_x = (min16float)f16tof32(pos_x_h);
-    v.instance_position_y = (min16float)f16tof32(pos_y_h);
-    v.instance_position_z = (min16float)f16tof32(pos_z_h);
+    v.instance_position_x = f16tof32(pos_x_h);
+    v.instance_position_y = f16tof32(pos_y_h);
+    v.instance_position_z = f16tof32(pos_z_h);
     v.instance_normal_oct = nrm_oct;
     v.instance_yaw        = yaw_p;
     v.instance_scale      = scale_p;
@@ -138,7 +140,7 @@ struct gbuffer_vertex
     nointerpolation float4 uv_xform_ir  : TEXCOORD6; // xy = invert, z = rotation, w = unused
 };
 
-float4x4 compose_instance_transform(min16float instance_position_x, min16float instance_position_y, min16float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
+float4x4 compose_instance_transform(float instance_position_x, float instance_position_y, float instance_position_z, uint instance_normal_oct, uint instance_yaw, uint instance_scale)
 {
     // compose position
     float3 instance_position = float3(instance_position_x, instance_position_y, instance_position_z);

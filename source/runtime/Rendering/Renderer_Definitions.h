@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====
+#include <array>
 #include <cstdint>
 //================
 
@@ -52,15 +53,30 @@ namespace spartan
     const uint32_t renderer_max_visible_triangles  = 32 * 1024 * 1024;
 
     // gpu procedural grass
-    // total capacity of the transient grass instance ring buffer, shared across all three lod rings
-    // sized at 12 bytes per packed instance, the populate shader saturates the atomic counter
-    // at this cap so memory usage is bounded regardless of ring radius or cell density
-    // 96k * 12 bytes is roughly 1.1 mb, plenty for a 500 m far ring at sub meter cell spacing
-    const uint32_t renderer_max_grass_instances    = 96 * 1024;
-    // hard cap per lod ring, the populate shader rejects writes once the per-lod counter reaches this
-    // sum across the three lods equals renderer_max_grass_instances, keeps each ring inside its slot
-    const uint32_t renderer_max_grass_lod_count    = 3;
-    const uint32_t renderer_max_grass_per_lod      = renderer_max_grass_instances / renderer_max_grass_lod_count;
+    // per-lod hard cap on the number of blades the populate shader is allowed to emit, the visible
+    // density inside a ring is cap_per_lod / ring_area so the caps are tuned per lod independently:
+    //  - lod 0 is the close ring, blades are big and individually readable, dense but not insane
+    //  - lod 1 and lod 2 are the mid/far rings, the eye sees them at a shallow angle so they need
+    //    higher cell-density to hide the lod transition, but the depth prepass pays vs+setup cost
+    //    per blade and the close ring dominates the on-screen pixel count anyway, so the boost vs
+    //    lod 0 stays modest, the segment counts in Game.cpp pair with these (6/3/1 segments)
+    // the buffer is one contiguous block of GrassInstance entries (16 bytes each), each lod gets a
+    // dedicated slot at a cumulative offset, see renderer_grass_lod_base() for the offset calc
+    const uint32_t renderer_max_grass_lod_count                                              = 3;
+    constexpr std::array<uint32_t, renderer_max_grass_lod_count> renderer_max_grass_per_lod  = { 384u * 1024u, 512u * 1024u, 512u * 1024u };
+    const uint32_t renderer_max_grass_instances                                              = renderer_max_grass_per_lod[0] + renderer_max_grass_per_lod[1] + renderer_max_grass_per_lod[2];
+    // ~1.4m instances * 16 bytes = ~22 mb, well within budget for a 500 m far ring
+    // cumulative prefix sum of the per-lod caps, the populate shader writes into [base, base + cap)
+    // and the raster reads with the same base via sv_instanceid + base in the push constant
+    constexpr uint32_t renderer_grass_lod_base(uint32_t lod)
+    {
+        uint32_t base = 0u;
+        for (uint32_t i = 0u; i < lod; i++)
+        {
+            base += renderer_max_grass_per_lod[i];
+        }
+        return base;
+    }
 
     // render target dimensions, fixed allocations sized for current quality budgets
     const uint32_t renderer_resolution_shadow_atlas = 8192; // total shadow atlas, packed by row of square slices
@@ -420,7 +436,7 @@ namespace spartan
         ParticleCounter,
         ParticleEmitter,
         // gpu procedural grass, allocated lazily by Renderer::EnableProceduralGrass
-        // GrassInstances is the transient ring buffer of PackedInstance entries
+        // GrassInstances is the transient ring buffer of GrassInstance entries (full float xyz)
         // GrassCount holds one uint per lod, bumped atomically by the populate shader
         // GrassIndirectArgs holds one DrawIndexedIndirect entry per lod, written by the args build shader
         GrassInstances,

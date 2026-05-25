@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef SPARTAN_CLOUDS
 #define SPARTAN_CLOUDS
 
-//= includes =========
+//= includes ============
 #include "../common.hlsl"
-//====================
+//=======================
 
 // =====================================================================
 // nubis-style volumetric clouds, baked into the equirectangular sky panorama
@@ -77,6 +77,29 @@ static const float3 cirrus_streak_axis    = float3(1.0, 0.0, 0.0); // direction 
 static const float3 cumulus_wind_offset   = float3(1234.0, 0.0,  567.0);
 static const float3 cirrus_wind_offset    = float3(4321.0, 0.0, 8765.0);
 
+// runtime wind drift multipliers, the cloud field is translated by -wind*time*mul over the
+// horizontal noise lookups, so when the world wind vector is non zero clouds appear to flow
+// along it. cumulus moves at the surface wind speed scaled by the cumulus multiplier, cirrus
+// drifts faster than cumulus to match the high-altitude jet stream typically being several
+// times stronger than ground level wind. only the noise sampling is translated, the sample
+// altitude relative to the planet is unchanged so the cloud layer stays parked at its base.
+// multipliers are tuned for the calm ~3 m/s ground wind the scenes ship with, so the effective
+// drift lands at ~24 m/s for cumulus and ~75 m/s for cirrus which is fast enough to register
+// as obvious motion within a few seconds of looking at the sky on a kilometer-scale cloud
+static const float cumulus_wind_speed_mul = 8.0;
+static const float cirrus_wind_speed_mul  = 25.0;
+
+// per-layer feature evolution rate in meters per second, applied as a slow drift along the
+// vertical axis of the cloud noise volume. the volume is tileable so the slide wraps cleanly
+// and shapes morph in place over time, decoupled from the horizontal wind translation. the
+// y axis is safe because cloud_weather and cloud_base_offset force uvw.y to 0.5, so this only
+// affects the 3d shape, detail and warp lookups, not the coverage map or per-cloud altitude.
+// rate is divided by the per-layer noise tile size when sampled, so the cumulus shape (4.5 km
+// tile) cycles in ~2-3 min and detail (2.2 km tile) cycles in ~1 min at the value below,
+// cirrus is intentionally much slower because real cirrus shapes persist for tens of minutes
+static const float cumulus_evolve_rate    = 30.0;
+static const float cirrus_evolve_rate     = 10.0;
+
 // lighting
 static const float3 cloud_ambient_bottom  = float3(0.18, 0.22, 0.30); // cool dark base
 static const float3 cloud_ambient_top     = float3(0.95, 0.95, 0.99); // bright lit top
@@ -96,9 +119,13 @@ static const float3 cloud_night_floor     = float3(0.0018, 0.0028, 0.0050);
 // stacking up along grazing rays as a thick ring at the horizon
 static const float  cloud_aerial_falloff  = 1.0e-4;
 
-// raymarch sample budget, paid only on sky re-bake
-// cumulus uses an adaptive coarse/fine march, so the budget here is the max iteration cap
-static const int    cumulus_view_steps    = 256;
+// raymarch sample budget. the skysphere bake runs every frame on the async compute queue
+// to animate the clouds and the total skysphere pass must stay under ~5 ms, so the view
+// march is sized aggressively, 80 steps at 125 m each covers the same 10 km range with
+// 5/8 of the previous per-ray cost. the coarser per-ray density is masked by the 1/4
+// partial dispatch in skysphere.hlsl, four interleaved phases each marching at slightly
+// different angles average out into a stable image after a handful of frames
+static const int    cumulus_view_steps    = 80;
 static const int    cirrus_view_steps     = 24;
 static const int    cumulus_sun_steps     = 8;
 
@@ -221,6 +248,26 @@ float cloud_remap(float v, float old_min, float old_max, float new_min, float ne
 // noise sampling at run time
 // =====================================================================
 
+// horizontal drift applied to the cloud noise sampling positions. negative wind*time so a
+// positive wind vector translates the cloud field in the +wind direction over time. the
+// returned offset is meant to be added to the position before any noise lookup, never to a
+// position used for height or shell intersection
+float3 cloud_wind_drift(float speed_mul)
+{
+    float3 wind = buffer_frame.wind * speed_mul;
+    float  t    = (float)buffer_frame.time;
+    return -wind * t;
+}
+
+// pure vertical drift through the cloud noise volume, used to morph cloud shapes in place
+// independently of horizontal wind translation. the y axis is chosen so the offset never
+// leaks into the 2d coverage lookups, which collapse their y to 0.5 internally, this keeps
+// cloud regions stable on the sky while individual puffs billow and reshape inside them
+float3 cloud_evolve_offset(float rate)
+{
+    return float3(0.0, rate * (float)buffer_frame.time, 0.0);
+}
+
 // the 3d cloud noise volume is bound at the tex3d slot during the skysphere pass
 // channels: r = low-freq perlin-worley, g = worley fbm mid, b = worley fbm high, a = high-freq perlin
 float4 cloud_sample_noise(Texture3D noise, SamplerState samp, float3 uvw)
@@ -279,8 +326,11 @@ float cloud_height_profile_cirrus(float h_norm)
 // blended in so clouds cluster into organic regions instead of an even sprinkle
 float cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
 {
-    float3 warp  = cloud_domain_warp(noise, samp, pos, cumulus_warp_scale, cumulus_warp_amplitude);
-    float3 wpos  = pos + warp;
+    // drift the coverage map along the world wind direction so cloud regions translate over
+    // time instead of being parked over the same horizontal patches forever
+    float3 pos_d = pos + cloud_wind_drift(cumulus_wind_speed_mul);
+    float3 warp  = cloud_domain_warp(noise, samp, pos_d, cumulus_warp_scale, cumulus_warp_amplitude);
+    float3 wpos  = pos_d + warp;
     
     float3 uvw_a = wpos * cumulus_coverage_scale;
     uvw_a.y      = 0.5;
@@ -302,8 +352,13 @@ float cloud_weather(Texture3D noise, SamplerState samp, float3 pos)
 
 float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, float weather)
 {
+    // height and shell relative math always uses the real position, only the noise lookups
+    // are translated by the wind drift and the in-place evolution slide. the slide goes
+    // through the noise volume's y axis so it never leaks into the 2d coverage or base-altitude
+    // lookups, both of which collapse y to 0.5 internally
     float h           = length(pos - cloud_earth_center) - cloud_earth_radius;
-    float base_offset = cloud_base_offset(noise, samp, pos);
+    float3 pos_n      = pos + cloud_wind_drift(cumulus_wind_speed_mul) + cloud_evolve_offset(cumulus_evolve_rate);
+    float base_offset = cloud_base_offset(noise, samp, pos_n);
     float h_norm      = (h - (cumulus_bottom_alt + base_offset)) / cumulus_thickness;
     float profile     = cloud_height_profile_cumulus(h_norm);
     if (profile <= 0.0 || weather <= 0.0) return 0.0;
@@ -311,8 +366,8 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     // single-octave domain warp at a scale ~3.5x slower than the shape tile, so whole puffs
     // get curved as units instead of being internally sheared into smoke trails. enough to
     // bend worley cell boundaries off the axis grid without dissolving the cumulus character
-    float3 shape_warp = cloud_domain_warp(noise, samp, pos, cumulus_shape_warp_scale, cumulus_shape_warp);
-    float3 uvw        = (pos + cumulus_wind_offset + shape_warp) * cumulus_shape_scale;
+    float3 shape_warp = cloud_domain_warp(noise, samp, pos_n, cumulus_shape_warp_scale, cumulus_shape_warp);
+    float3 uvw        = (pos_n + cumulus_wind_offset + shape_warp) * cumulus_shape_scale;
     float4 shape_n    = cloud_sample_noise(noise, samp, uvw);
     
     // base shape from low-freq perlin-worley (r), eroded by mid-frequency worley fbm (g, b)
@@ -327,7 +382,7 @@ float cloud_density_cumulus(float3 pos, Texture3D noise, SamplerState samp, floa
     // only the medium worley fbm channel is used, the high-frequency .b channel has features
     // below the march nyquist rate and shows up as grain rather than as detail no matter how
     // many samples we average temporally
-    float3 uvw_d    = (pos + cumulus_wind_offset * 1.7) * cumulus_detail_scale;
+    float3 uvw_d    = (pos_n + cumulus_wind_offset * 1.7) * cumulus_detail_scale;
     float4 detail_n = cloud_sample_noise(noise, samp, uvw_d);
     float detail    = detail_n.g;
     
@@ -347,10 +402,16 @@ float cloud_density_cirrus(float3 pos, Texture3D noise, SamplerState samp)
     float profile   = cloud_height_profile_cirrus(h_norm);
     if (profile <= 0.0) return 0.0;
     
+    // cirrus drifts on its own faster wind multiplier, the streak axis is still fixed in
+    // world space so the wisps slide along the wind without rotating their long direction.
+    // evolution adds a much slower in-place morph so wisps gently reshape over many minutes
+    // without losing their characteristic streak orientation
+    float3 pos_n    = pos + cloud_wind_drift(cirrus_wind_speed_mul) + cloud_evolve_offset(cirrus_evolve_rate);
+    
     // moderate stretch along a horizontal axis so cirrus reads as wispy streaks, then a large
     // domain warp on top so the streaks curve and break instead of forming hard parallel bands
-    float3 warp     = cloud_domain_warp(noise, samp, pos, 1.0 / 40000.0, 5000.0);
-    float3 streched = pos + cirrus_wind_offset + warp;
+    float3 warp     = cloud_domain_warp(noise, samp, pos_n, 1.0 / 40000.0, 5000.0);
+    float3 streched = pos_n + cirrus_wind_offset + warp;
     float along     = dot(streched, cirrus_streak_axis);
     float3 perp     = streched - cirrus_streak_axis * along;
     float3 uvw      = (perp + cirrus_streak_axis * along * 0.45) * cirrus_noise_scale;
@@ -583,7 +644,7 @@ void cloud_march_cumulus(
     
     float cos_th = dot(view_dir, sun_dir);
     
-    const float step_size      = 40.0;     // fixed in-volume step
+    const float step_size      = 125.0;    // fixed in-volume step, paired with cumulus_view_steps for ~10 km range
     const float empty_skip     = 1600.0;   // stride when the weather map says no clouds here
     const float density_thresh = 1e-4;     // lower than before, avoids binary state flicker at edges
     

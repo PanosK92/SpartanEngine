@@ -247,68 +247,68 @@ namespace spartan
             return;
         }
 
-        cmd_list->BeginTimeblock("indirect_cull");
+        RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+
+        // pass 1, per-meshlet cone + per-renderable hi-z, survivors land in meshlet_instances and bump triangle_dispatch_args.group_count_x
+        cmd_list->BeginTimeblock("indirect_cull_meshlet");
         {
-            RHI_Texture* tex_occluders_hiz = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_occluders_hiz);
+            RHI_PipelineState pso;
+            pso.name             = "indirect_cull_meshlet";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::indirect_cull_c);
+            cmd_list->SetPipelineState(pso);
 
-            // pass 1, per-meshlet cone + per-renderable hi-z, survivors land in meshlet_instances and bump triangle_dispatch_args.group_count_x
-            {
-                RHI_PipelineState pso;
-                pso.name             = "indirect_cull_meshlet";
-                pso.shaders[Compute] = GetShader(Renderer_Shader::indirect_cull_c);
-                cmd_list->SetPipelineState(pso);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
 
-                cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_occluders_hiz);
+            cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_args,     GetBuffer(Renderer_Buffer::IndirectDrawArgs));
+            cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data,     GetBuffer(Renderer_Buffer::IndirectDrawData));
+            cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,         GeometryBuffer::GetMeshletBoundsBuffer());
+            cmd_list->SetBuffer(Renderer_BindingsUav::cull_tasks,             GetBuffer(Renderer_Buffer::CullTasks));
+            cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,      GetBuffer(Renderer_Buffer::MeshletInstances));
+            cmd_list->SetBuffer(Renderer_BindingsUav::triangle_dispatch_args, GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
 
-                cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_args,     GetBuffer(Renderer_Buffer::IndirectDrawArgs));
-                cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data,     GetBuffer(Renderer_Buffer::IndirectDrawData));
-                cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,         GeometryBuffer::GetMeshletBoundsBuffer());
-                cmd_list->SetBuffer(Renderer_BindingsUav::cull_tasks,             GetBuffer(Renderer_Buffer::CullTasks));
-                cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,      GetBuffer(Renderer_Buffer::MeshletInstances));
-                cmd_list->SetBuffer(Renderer_BindingsUav::triangle_dispatch_args, GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
+            // f4_value: x = task count, y = max hiz mip, z = meshlet instances cap (drop survivors past this)
+            m_pcb_pass_cpu.set_f4_value(
+                static_cast<float>(m_cull_task_count),
+                static_cast<float>(tex_occluders_hiz->GetMipCount() - 1),
+                static_cast<float>(renderer_max_meshlet_instances),
+                0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                // f4_value: x = task count, y = max hiz mip, z = meshlet instances cap (drop survivors past this)
-                m_pcb_pass_cpu.set_f4_value(
-                    static_cast<float>(m_cull_task_count),
-                    static_cast<float>(tex_occluders_hiz->GetMipCount() - 1),
-                    static_cast<float>(renderer_max_meshlet_instances),
-                    0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
+            uint32_t thread_group_count = (m_cull_task_count + 255) / 256;
+            cmd_list->Dispatch(thread_group_count, 1, 1);
 
-                uint32_t thread_group_count = (m_cull_task_count + 255) / 256;
-                cmd_list->Dispatch(thread_group_count, 1, 1);
+            // meshlet_instances and triangle_dispatch_args feed the triangle cull pass
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::MeshletInstances));
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
+        }
+        cmd_list->EndTimeblock();
 
-                // meshlet_instances and triangle_dispatch_args feed the triangle cull pass
-                cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::MeshletInstances));
-                cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::TriangleDispatchArgs));
-            }
+        // pass 2, per-triangle frustum + backface + sub-pixel cull, dispatched indirect with one workgroup per surviving meshlet
+        cmd_list->BeginTimeblock("indirect_cull_triangle");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "indirect_cull_triangle";
+            pso.shaders[Compute] = GetShader(Renderer_Shader::indirect_cull_triangle_c);
+            cmd_list->SetPipelineState(pso);
 
-            // pass 2, per-triangle frustum + backface + sub-pixel cull, dispatched indirect with one workgroup per surviving meshlet
-            {
-                RHI_PipelineState pso;
-                pso.name             = "indirect_cull_triangle";
-                pso.shaders[Compute] = GetShader(Renderer_Shader::indirect_cull_triangle_c);
-                cmd_list->SetPipelineState(pso);
+            cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_args,     GetBuffer(Renderer_Buffer::IndirectDrawArgs));
+            cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data,     GetBuffer(Renderer_Buffer::IndirectDrawData));
+            cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,         GeometryBuffer::GetMeshletBoundsBuffer());
+            cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,      GetBuffer(Renderer_Buffer::MeshletInstances));
+            cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,      GetBuffer(Renderer_Buffer::VisibleTriangles));
 
-                cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_args,     GetBuffer(Renderer_Buffer::IndirectDrawArgs));
-                cmd_list->SetBuffer(Renderer_BindingsUav::indirect_draw_data,     GetBuffer(Renderer_Buffer::IndirectDrawData));
-                cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_bounds,         GeometryBuffer::GetMeshletBoundsBuffer());
-                cmd_list->SetBuffer(Renderer_BindingsUav::meshlet_instances,      GetBuffer(Renderer_Buffer::MeshletInstances));
-                cmd_list->SetBuffer(Renderer_BindingsUav::visible_triangles,      GetBuffer(Renderer_Buffer::VisibleTriangles));
+            // f4_value: x = meshlet instances cap, y = visible triangles cap (drop survivors past either cap)
+            m_pcb_pass_cpu.set_f4_value(
+                static_cast<float>(renderer_max_meshlet_instances),
+                static_cast<float>(renderer_max_visible_triangles),
+                0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
 
-                // f4_value: x = meshlet instances cap, y = visible triangles cap (drop survivors past either cap)
-                m_pcb_pass_cpu.set_f4_value(
-                    static_cast<float>(renderer_max_meshlet_instances),
-                    static_cast<float>(renderer_max_visible_triangles),
-                    0.0f, 0.0f);
-                cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->DispatchIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), 0);
 
-                cmd_list->DispatchIndirect(GetBuffer(Renderer_Buffer::TriangleDispatchArgs), 0);
-
-                // indirect_draw_args + visible_triangles feed the final indirect draw, plus indirect args needed for the indirect-draw stage
-                cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawArgs));
-                cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::VisibleTriangles));
-            }
+            // indirect_draw_args + visible_triangles feed the final indirect draw, plus indirect args needed for the indirect-draw stage
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::IndirectDrawArgs));
+            cmd_list->InsertBarrier(GetBuffer(Renderer_Buffer::VisibleTriangles));
         }
         cmd_list->EndTimeblock();
     }
@@ -672,8 +672,10 @@ namespace spartan
                     if (cell_size <= 0.0f || ring_radius <= 0.0f)
                         continue;
 
-                    // grass_instances is partitioned by lod, lod_base advances by the per-lod cap
-                    const uint32_t lod_base = lod * renderer_max_grass_per_lod;
+                    // grass_instances is partitioned by lod, lod_base is the cumulative prefix sum
+                    // of the per-lod caps so each ring writes into its own contiguous slot
+                    const uint32_t lod_base   = renderer_grass_lod_base(lod);
+                    const uint32_t lod_cap    = renderer_max_grass_per_lod[lod];
 
                     // pack push constant payload, layout mirrors grass_populate.hlsl values[0..2]
                     // values[0] = (cell_size, ring_radius, lod_base, max_instances_per_lod)
@@ -685,7 +687,7 @@ namespace spartan
                     m_pcb_pass_cpu.v[0]  = cell_size;
                     m_pcb_pass_cpu.v[1]  = ring_radius;
                     m_pcb_pass_cpu.v[2]  = static_cast<float>(lod_base);
-                    m_pcb_pass_cpu.v[3]  = static_cast<float>(renderer_max_grass_per_lod);
+                    m_pcb_pass_cpu.v[3]  = static_cast<float>(lod_cap);
                     m_pcb_pass_cpu.v[4]  = m_pass_state.grass_params.height_min;
                     m_pcb_pass_cpu.v[5]  = m_pass_state.grass_params.height_max;
                     m_pcb_pass_cpu.v[6]  = max_slope_cos;
@@ -697,9 +699,15 @@ namespace spartan
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     // square grid of cells, 8x8 thread groups, one cell per thread, the shader culls out-of-ring cells
-                    const uint32_t cells_per_axis = static_cast<uint32_t>(ceilf(2.0f * ring_radius / cell_size));
-                    const uint32_t groups         = (cells_per_axis + 7u) / 8u;
-                    cmd_list->Dispatch(groups, groups, 1);
+                    // dispatch z dimension carries the per-cell blade index, blades_per_cell is derived from the ring area
+                    // and the per-lod cap so the total writes stay below the cap, the shader recomputes the exact same value
+                    // for its in-bounds check on dispatch_thread_id.z, both formulas must stay in lockstep
+                    const uint32_t cells_per_axis  = static_cast<uint32_t>(ceilf(2.0f * ring_radius / cell_size));
+                    const uint32_t groups          = (cells_per_axis + 7u) / 8u;
+                    const float    ring_area       = math::pi * ring_radius * ring_radius;
+                    const float    cells_in_ring   = ring_area / (cell_size * cell_size);
+                    const uint32_t blades_per_cell = std::max(1u, static_cast<uint32_t>(std::floor(static_cast<float>(lod_cap) / std::max(cells_in_ring, 1.0f))));
+                    cmd_list->Dispatch(groups, groups, blades_per_cell);
                 }
 
                 // populate writes feed both the args build pass and the raster reads downstream
@@ -717,12 +725,15 @@ namespace spartan
                 cmd_list->SetBuffer(Renderer_BindingsUav::grass_count,         buf_count);
                 cmd_list->SetBuffer(Renderer_BindingsUav::grass_indirect_args, buf_args);
 
-                // values[0] = (max_instances_per_lod, lod_count, 0, 0)
+                // values[0] = (cap_lod0, cap_lod1, cap_lod2, lod_count), one float per lod cap
+                // grass_indirect_args_c reads the matching slot for its own lod_index and clamps the
+                // atomic counter against it before baking the instance_count into the indirect args
+                static_assert(renderer_max_grass_lod_count == 3, "grass_indirect_args push constant layout assumes 3 lods");
                 m_pcb_pass_cpu.material_index = 0;
-                m_pcb_pass_cpu.v[0] = static_cast<float>(renderer_max_grass_per_lod);
-                m_pcb_pass_cpu.v[1] = static_cast<float>(renderer_max_grass_lod_count);
-                m_pcb_pass_cpu.v[2] = 0.0f;
-                m_pcb_pass_cpu.v[3] = 0.0f;
+                m_pcb_pass_cpu.v[0] = static_cast<float>(renderer_max_grass_per_lod[0]);
+                m_pcb_pass_cpu.v[1] = static_cast<float>(renderer_max_grass_per_lod[1]);
+                m_pcb_pass_cpu.v[2] = static_cast<float>(renderer_max_grass_per_lod[2]);
+                m_pcb_pass_cpu.v[3] = static_cast<float>(renderer_max_grass_lod_count);
                 cmd_list->PushConstants(m_pcb_pass_cpu);
                 cmd_list->Dispatch(1, 1, 1);
 
@@ -796,7 +807,7 @@ namespace spartan
         // grass blades are double sided, the material flags carry this but the raster needs an explicit setting
         cmd_list->SetCullMode(RHI_CullMode::None);
 
-        // grass_instances is uav-bound here, the vertex shader reads PackedInstance via the same descriptor
+        // grass_instances is uav-bound here, the vertex shader reads GrassInstance via the same descriptor
         // the per-instance vertex stream is bound to the global geometry instance buffer just like every other
         // geometry pass, the grass vs never reads those attributes so any in-range buffer is fine, sharing the
         // same binding keeps the engine wide vertex layout consistent and avoids any cross talk with subsequent passes
@@ -811,7 +822,7 @@ namespace spartan
 
         for (uint32_t lod = 0; lod < renderer_max_grass_lod_count; lod++)
         {
-            const uint32_t lod_base = lod * renderer_max_grass_per_lod;
+            const uint32_t lod_base = renderer_grass_lod_base(lod);
 
             // values[0] = (0, 0, lod_base, lod_index), the grass vs reads lod_base from values[0].z
             m_pcb_pass_cpu.draw_index     = 0;

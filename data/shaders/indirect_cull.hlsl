@@ -22,11 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // gpu-driven meshlet cull, two paths share the same kernel
-// fast path: per-meshlet sphere frustum, per-meshlet cone backface, per-meshlet hi-z occlusion against the projected sphere
-// fallback path: per-renderable aabb frustum + hi-z, used for skinned (deformation invalidates per-meshlet bounds) and the hw-instancing fallback (single task fans out to N instances)
+// fast path: per-meshlet sphere frustum, per-meshlet cone backface (sqrt-free), per-meshlet hi-z via analytical sphere projection
+// fallback path: per-renderable aabb frustum + 8-corner hi-z, used for skinned (deformation invalidates per-meshlet bounds) and the hw-instancing fallback (single task fans out to N instances)
 // per-instance draws still take the fast path, the per-instance world transform is rebuilt from the packed instance buffer so each instance's cone and bounds are tested independently
 // survivors are wave-aggregated into meshlet_instances and triangle_dispatch_args.group_count_x is bumped by the same amount in lockstep
 // flags bit 0 skinned, bit 1 per_instance, bit 2 hw_instanced, bit 3 two_sided (read by the triangle pass)
+//
+// hot-path budget per cull task in the fast path: one mat-vec mul to project the meshlet sphere, four hi-z taps, one sqrt for max_world_scale, no sqrts in the cone test
+// the old path expanded the sphere to its cube and projected eight corners which dominated the dense foliage profile
 
 // extracts the four side planes of the camera frustum from view_projection in world space
 // only the side planes are used, near is unreliable on jittered projections and far is at infinity for reverse-z
@@ -56,8 +59,102 @@ bool sphere_in_side_planes(float3 center, float radius, float4 plane_l, float4 p
     return min_dist >= -radius;
 }
 
-// hi-z test for a world-space aabb, picks the smallest mip whose two texel covers the box and rejects against the closest sample
-// shared by the per-meshlet sphere path (sphere expanded to its world aabb) and the per-renderable fallback
+// shared mip pick + 4-corner depth gather, the box uvs are in full-texture [0,1] space, the scale by buffer_frame.resolution_scale
+// happens here so callers stay in canonical uv coordinates
+// dropping the center sample is safe because the chosen mip ensures the box fits in roughly one texel and the four corner
+// reads cover every texel the box can touch after the one-texel border expansion below
+float hiz_min_depth_over_box(float2 min_uv, float2 max_uv, float max_mip_level)
+{
+    float2 render_size;
+    tex.GetDimensions(render_size.x, render_size.y);
+
+    float2 uv_extent = max_uv - min_uv;
+    float2 size_px   = uv_extent * render_size;
+    float  mip       = ceil(log2(max(max(size_px.x, size_px.y), 1.0f)));
+    mip              = clamp(mip, 0, max_mip_level);
+
+    float2 mip_texel = exp2(mip) / render_size;
+    min_uv = saturate(min_uv - mip_texel);
+    max_uv = saturate(max_uv + mip_texel);
+
+    float4 scaled_uvs = float4(min_uv, max_uv) * buffer_frame.resolution_scale;
+    float d0 = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xy, mip).r;
+    float d1 = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zy, mip).r;
+    float d2 = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xw, mip).r;
+    float d3 = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zw, mip).r;
+    return min(min(d0, d1), min(d2, d3));
+}
+
+// fast analytical hi-z for a world-space sphere
+// projects the center once and derives a conservative ndc rectangle from the row-axis sensitivities of view_projection
+// this replaces the per-thread 8-corner cube projection in the meshlet path, the bound is also tighter than the cube
+// projection that surrounds the sphere, so it culls more aggressively and chooses a smaller hi-z footprint
+bool sphere_hiz_visible(float3 center_world, float radius_world, float max_mip_level)
+{
+    matrix vp = buffer_frame.view_projection;
+
+    // partials of clip-space output w.r.t. world-space input, wave uniform so dxc keeps these in scalar registers
+    float3 ax_x = float3(vp._m00, vp._m10, vp._m20);
+    float3 ax_y = float3(vp._m01, vp._m11, vp._m21);
+    float3 ax_z = float3(vp._m02, vp._m12, vp._m22);
+    float3 ax_w = float3(vp._m03, vp._m13, vp._m23);
+
+    float ax_x_len = length(ax_x);
+    float ax_y_len = length(ax_y);
+    float ax_z_len = length(ax_z);
+    float ax_w_len = length(ax_w);
+
+    float cx = dot(center_world, ax_x) + vp._m30;
+    float cy = dot(center_world, ax_y) + vp._m31;
+    float cz = dot(center_world, ax_z) + vp._m32;
+    float cw = dot(center_world, ax_w) + vp._m33;
+
+    float rx = radius_world * ax_x_len;
+    float ry = radius_world * ax_y_len;
+    float rz = radius_world * ax_z_len;
+    float rw = radius_world * ax_w_len;
+
+    // sphere entirely behind the camera, side-frustum has already rejected this so this is a paranoia branch
+    if (cw + rw <= 0.0f)
+        return false;
+
+    // sphere straddles the near plane, the perspective divide is unstable so skip occlusion conservatively
+    if (cw - rw <= 0.0f)
+        return true;
+
+    // each ndc extreme is one of four (numerator extreme) * (1 / denominator extreme), enumerate and reduce
+    float inv_w_close = 1.0f / (cw - rw);
+    float inv_w_far   = 1.0f / (cw + rw);
+
+    float xlc = (cx - rx) * inv_w_close;
+    float xlf = (cx - rx) * inv_w_far;
+    float xhc = (cx + rx) * inv_w_close;
+    float xhf = (cx + rx) * inv_w_far;
+    float ylc = (cy - ry) * inv_w_close;
+    float ylf = (cy - ry) * inv_w_far;
+    float yhc = (cy + ry) * inv_w_close;
+    float yhf = (cy + ry) * inv_w_far;
+
+    float2 min_ndc = float2(min(min(xlc, xlf), min(xhc, xhf)), min(min(ylc, ylf), min(yhc, yhf)));
+    float2 max_ndc = float2(max(max(xlc, xlf), max(xhc, xhf)), max(max(ylc, ylf), max(yhc, yhf)));
+
+    // closest sphere depth in reverse-z is max numerator over min positive denominator
+    float closest_box_z = (cz + rz) * inv_w_close;
+
+    if (max_ndc.x < -1.0f || min_ndc.x > 1.0f || max_ndc.y < -1.0f || min_ndc.y > 1.0f)
+        return false;
+
+    float2 uv_a   = saturate(ndc_to_uv(min_ndc));
+    float2 uv_b   = saturate(ndc_to_uv(max_ndc));
+    float2 min_uv = min(uv_a, uv_b);
+    float2 max_uv = max(uv_a, uv_b);
+
+    float furthest_z = hiz_min_depth_over_box(min_uv, max_uv, max_mip_level);
+    return closest_box_z > furthest_z - 0.01f;
+}
+
+// hi-z test for a world-space aabb, kept for the skinned and hw-instanced fallback paths
+// the hot per-meshlet case goes through sphere_hiz_visible above which is several times cheaper
 bool aabb_hiz_visible(float3 box_min, float3 box_max, float max_mip_level)
 {
     float3 corners_world[8] =
@@ -110,48 +207,21 @@ bool aabb_hiz_visible(float3 box_min, float3 box_max, float max_mip_level)
     float2 min_uv = min(uv_a, uv_b);
     float2 max_uv = max(uv_a, uv_b);
 
-    float2 render_size;
-    tex.GetDimensions(render_size.x, render_size.y);
-    float4 box_uvs = float4(min_uv, max_uv);
-
-    float2 uv_extent = max_uv - min_uv;
-    int2   size      = uv_extent * render_size;
-    float  mip       = ceil(log2(max(max(size.x, size.y), 1)));
-    mip              = clamp(mip, 0, max_mip_level);
-
-    float  level_lower = max(mip - 1, 0);
-    float2 scale_mip   = exp2(-level_lower);
-    float2 a           = floor(box_uvs.xy * scale_mip * render_size);
-    float2 b           = ceil(box_uvs.zw * scale_mip * render_size);
-    float2 dims        = b - a;
-    if (dims.x <= 2 && dims.y <= 2)
-        mip = level_lower;
-
-    float2 mip_texel = exp2(mip) / render_size;
-    box_uvs.xy = saturate(box_uvs.xy - mip_texel);
-    box_uvs.zw = saturate(box_uvs.zw + mip_texel);
-
-    float4 scaled_uvs = box_uvs * buffer_frame.resolution_scale;
-    float2 center_uv  = (scaled_uvs.xy + scaled_uvs.zw) * 0.5f;
-    float4 depth = float4(
-        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xy, mip).r,
-        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zy, mip).r,
-        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.xw, mip).r,
-        tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), scaled_uvs.zw, mip).r
-    );
-    float depth_center = tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), center_uv, mip).r;
-
-    float furthest_z = min(min(min(min(depth.x, depth.y), depth.z), depth.w), depth_center);
+    float furthest_z = hiz_min_depth_over_box(min_uv, max_uv, max_mip_level);
     return closest_box_z > furthest_z - 0.01f;
 }
 
 // largest world-axis scale of the upper 3x3, used to lift the local-space meshlet radius into world units
+// computes squared lengths first and only sqrt the winner, shaves two of the three sqrts in the hot per-task loop
 float max_world_scale(float4x4 m)
 {
-    float sx = length(float3(m._m00, m._m01, m._m02));
-    float sy = length(float3(m._m10, m._m11, m._m12));
-    float sz = length(float3(m._m20, m._m21, m._m22));
-    return max(sx, max(sy, sz));
+    float3 r0 = float3(m._m00, m._m01, m._m02);
+    float3 r1 = float3(m._m10, m._m11, m._m12);
+    float3 r2 = float3(m._m20, m._m21, m._m22);
+    float sx_sq = dot(r0, r0);
+    float sy_sq = dot(r1, r1);
+    float sz_sq = dot(r2, r2);
+    return sqrt(max(sx_sq, max(sy_sq, sz_sq)));
 }
 
 // signed-byte cone unpack, dxc lowers this to a single byte_address load and four shifts
@@ -233,6 +303,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
             // per-meshlet backface cone, skipped for two-sided materials (the triangle cull would have to keep both sides anyway) and degenerate cones
             // skinned never reaches here, per_instance reaches here with the correct per-instance rotation baked into world_xform
+            // sqrt-free form: visible if lhs <= radius_world (rhs already exceeds lhs), otherwise square both sides since both are nonneg
             if (is_visible && !is_two_sided)
             {
                 int4 cone = unpack_cone_axis_cutoff(mb.cone_axis_cutoff);
@@ -242,20 +313,18 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                     float  cone_cutoff     = float(cone.w) / 127.0f;
                     float3 cone_axis_world = normalize(mul(cone_axis_local, (float3x3)world_xform));
                     float3 to_meshlet      = center_world - buffer_frame.camera_position;
-                    float  to_meshlet_len  = length(to_meshlet);
+                    float  to_meshlet_sq   = dot(to_meshlet, to_meshlet);
                     float  lhs             = dot(to_meshlet, cone_axis_world);
-                    float  rhs             = cone_cutoff * to_meshlet_len + radius_world;
-                    if (to_meshlet_len > 0.0f && lhs >= rhs)
+                    float  lhs_off         = lhs - radius_world;
+                    if (lhs_off > 0.0f && lhs_off * lhs_off >= cone_cutoff * cone_cutoff * to_meshlet_sq)
                         is_visible = false;
                 }
             }
 
-            // per-meshlet hi-z, the sphere expands to its world aabb and reuses the shared occlusion path
+            // per-meshlet hi-z, analytical sphere projection, the bound is tighter than the cube that surrounds the sphere
             if (is_visible)
             {
-                float3 box_min = center_world - radius_world;
-                float3 box_max = center_world + radius_world;
-                is_visible     = aabb_hiz_visible(box_min, box_max, max_mip_level);
+                is_visible = sphere_hiz_visible(center_world, radius_world, max_mip_level);
             }
         }
 
