@@ -44,7 +44,11 @@ static const float ozone_center_height = 25000.0;
 static const float ozone_width         = 15000.0;
 
 // constants - sun and ground
-static const float3 sun_illuminance    = float3(1.0, 0.98, 0.95) * 20.0;
+// sun chromaticity and intensity are no longer hardcoded here, every sun energy term
+// reads from get_sun_radiance() in common.hlsl which derives from the directional light's
+// authored color (temperature -> rgb) and intensity (lux / 683 -> radiometric), this keeps
+// the sky scatter, sun disc, cloud lighting, ibl and direct surface lighting all locked
+// to the same calibration so a single editor change propagates coherently through the scene
 static const float sun_angular_radius  = 0.00935;
 static const float3 ground_albedo      = float3(0.3, 0.3, 0.3);
 
@@ -323,7 +327,10 @@ float3 compute_sky_luminance(
         if (all(trans < 1e-6)) break;
     }
     
-    return luminance * sun_illuminance;
+    // multiply integrated scattering by the calibrated sun radiance, this replaces the
+    // previously hardcoded sun_illuminance constant so the sky energy automatically tracks
+    // the directional light's authored intensity and chromaticity
+    return luminance * get_sun_radiance();
 }
 
 // sun disc with limb darkening
@@ -339,7 +346,11 @@ float3 compute_sun_disc(float3 view_dir, float3 sun_dir, float3 transmittance)
     float mu = safe_sqrt(1.0 - r * r);
     float limb = 0.3 + 0.93 * mu - 0.23 * mu * mu;
     
-    return sun_illuminance * transmittance * sun_edge * limb * 1000.0;
+    // sun disc tinted by the calibrated sun chromaticity so the disc warmth matches the
+    // direct lighting and the sky scatter, the 1000x scale brings the disc into the visible
+    // hdr range before the global panorama clamp, the disc's solar radiance is many orders
+    // of magnitude higher than the surrounding sky and this is the conventional engine scale
+    return get_sun_radiance() * transmittance * sun_edge * limb * 1000.0;
 }
 
 // =====================================================================
@@ -835,8 +846,12 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
         sun_col          = compute_sun_disc(orig_view, sun_dir, sun_trans) * smoothstep(-0.02, 0.02, sun_elev);
     }
     
-    // intensity scaling
-    float intensity = lerp(0.5, 1.5, saturate(light.intensity / 100000.0));
+    // intensity scaling is no longer applied here, the previous lerp divided the
+    // radiometric light.intensity (~146 for the day preset 100000 lux / 683) by the
+    // photometric value 100000, evaluating to ~0.0014 and locking the sky at the
+    // minimum 0.5x output regardless of the authored lux, get_sun_radiance() now
+    // carries the full intensity through compute_sky_luminance and compute_sun_disc
+    // so the sky already scales with the directional light energy by construction
     luminance *= day_factor;
     
     // night sky, atmosphere is sky-dome, celestials ride behind the atmosphere
@@ -873,8 +888,10 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     // luminance carries the day sky already attenuated by cloud_trans and scaled by day_factor
     // cloud_in_scatter is added separately so its night component (moon + airglow) survives
     // the day_factor multiplication and clouds stay faintly visible after sunset
-    float3 final_color = (luminance + cloud_in_scatter + (night_ambient + sun_col + night_celestials) * cloud_trans) * intensity;
-    final_color        = min(final_color, 100.0);
+    float3 final_color = luminance + cloud_in_scatter + (night_ambient + sun_col + night_celestials) * cloud_trans;
+    // chroma preserving clamp so the sun disc and any other hdr spike carry the directional
+    // light's temperature into the panorama instead of clipping every channel to the cap
+    final_color        = hdr_clamp_chroma(final_color, 100.0);
 
     // temporal accumulation, behaviour depends on bake mode
     //   warmup, low blend factor integrates ~10 frames of jittered samples per converged pixel

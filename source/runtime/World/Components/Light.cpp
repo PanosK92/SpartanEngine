@@ -493,42 +493,68 @@ namespace spartan
         float intensity   = 0.0f;
         float yaw_degrees = 0.0f; // horizontal rotation around Y axis
 
+        // preset calibration philosophy, every value below is grounded in measured real world
+        // photometry (color temperature kelvin, illuminance lux at the receiving surface) and
+        // tuned slightly toward the cinematic end of the realistic range so the directional
+        // light's chromaticity reads clearly through hdr tonemapping instead of compressing
+        // toward neutral white, the temperatures are blackbody equivalents of the perceived
+        // sun color at ground level after atmospheric extinction, not the sun's photospheric
+        // 5778 K which appears neutral white once the blue has been scattered out
+        //
+        // illuminance references for direct sun on a horizontal surface
+        //   civil dawn / dusk, sun just above horizon  ~  500 to  2000 lx
+        //   golden hour, sun low                       ~ 5000 to 25000 lx
+        //   overcast midday                            ~10000 to 25000 lx
+        //   clear sunny noon                           ~50000 to 130000 lx
+        //   full moon                                  ~  0.1 to    0.3 lx
         switch (preset)
         {
         case LightPreset::dawn:
-            // sunrise - early morning with warm orange glow
+            // sun just above the horizon, atmospheric extinction warms it heavily
+            // 2200 K reads as deep orange red, ~800 lx is civil dawn intensity
             time_of_day = 0.25f; // 6:00 AM
-            temperature = 2500.0f; // warm sunrise orange
-            intensity = 500.0f; // lux - dawn light
+            temperature = 2200.0f;
+            intensity   = 800.0f;
             break;
 
         case LightPreset::day:
-            // bright midday sun - direct sunlight at peak intensity
+            // peak direct midday sun, ~80000 lx is a clear summer noon at temperate latitudes
+            // (100000 lx is the peak summer equator value and tends to crush the tonemap into
+            // featureless white on most displays), 5000 K is the d50 illuminant aka graphic
+            // arts daylight, this is the perceived sun color at ground level once the blue
+            // and uv have been scattered out into the sky and reads as warm white rather than
+            // the neutral white of 5500 to 5800 K which loses its chromaticity through the
+            // hdr clamp and the tonemap highlight compression
             time_of_day = 0.5f; // 12:00 PM
-            temperature = 5778.0f; // sun color temperature
-            intensity = 100000.0f; // lux - direct sunlight
+            temperature = 5000.0f;
+            intensity   = 80000.0f;
             break;
 
         case LightPreset::dusk:
-            // sunset - evening with warm golden tones
+            // golden hour, sun low in the sky with strong warm tones
+            // 3000 K is the warm end of golden hour, ~15000 lx matches a clear sky 30 min before sunset
             time_of_day = 0.69f; // 4:30 PM
-            temperature = 3200.0f; // warm golden
-            intensity = 10000.0f; // lux - golden hour light
+            temperature = 3000.0f;
+            intensity   = 15000.0f;
             break;
 
         case LightPreset::night:
-            // nighttime with soft moonlight
+            // moonlight is sunlight reflected off the lunar surface so its spectrum is close
+            // to the sun, the perceived color shifts cooler/bluer due to the purkinje effect
+            // (rod vision peaks at shorter wavelengths in low light), 4200 K captures that
+            // shift, ~0.3 lx is full moon at the zenith on a clear night
             time_of_day = 0.875f; // 9:00 PM
-            temperature = 4100.0f; // moonlight color
-            intensity = 0.25f; // lux - full moon
+            temperature = 4200.0f;
+            intensity   = 0.3f;
             break;
 
         case LightPreset::david_lynch:
-            // dreamy sunset - that david lynch/twin peaks vibe
-            // warm orange/pink colors, sun near horizon, dreamlike beauty
-            time_of_day = 0.74f; // sun near horizon for actual sunset colors
-            temperature = 2200.0f; // deep warm orange/pink
-            intensity   = 5000.0f; // lux - soft sunset light
+            // stylized dreamy sunset, deep orange pink tones, intentionally low key but bright
+            // enough that scene ambient (sky ibl) is visible (the previous 5000 lx produced an
+            // almost black scene because the indirect lighting scales linearly with sun intensity)
+            time_of_day = 0.74f; // sun near horizon for sunset colors
+            temperature = 2400.0f;
+            intensity   = 12000.0f;
             yaw_degrees = 125.0f; // rotate to avoid mountain
             break;
 

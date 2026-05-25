@@ -470,17 +470,19 @@ float2 cloud_transmittance_uv(float height, float cos_zenith)
 
 float3 cloud_sun_illuminance(float3 sample_pos, float3 sun_dir, Texture2D transmittance_lut, SamplerState samp)
 {
-    static const float3 sun_illuminance = float3(1.0, 0.98, 0.95) * 20.0;
-    
+    // sun radiance comes from the centralized helper so cloud direct lighting tracks the
+    // directional light's authored color and intensity, the previous hardcoded constant
+    // float3(1, 0.98, 0.95) * 20.0 was the third independent sun energy path in the
+    // engine and left clouds detached from the sky scatter and the direct lighting
     float3 up   = normalize(sample_pos - cloud_earth_center);
     float h     = length(sample_pos - cloud_earth_center);
     float cos_z = dot(up, sun_dir);
-    
+
     float2 uv     = cloud_transmittance_uv(h, cos_z);
     float3 trans  = transmittance_lut.SampleLevel(samp, uv, 0).rgb;
     float horizon = smoothstep(-0.05, 0.10, cos_z);
-    
-    return sun_illuminance * trans * horizon;
+
+    return get_sun_radiance() * trans * horizon;
 }
 
 // integrate density along the sun direction with a geometrically growing step, gives soft self-shadowing

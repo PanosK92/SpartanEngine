@@ -751,9 +751,13 @@ namespace spartan
     {
         RHI_Texture* tex_sss = GetRenderTarget(Renderer_RenderTarget::sss);
 
-        // light.hlsl does not sample tex_uav_sss when rt-shadows or restir owns the directional term
-        const bool tlas_available = RHI_Device::IsSupportedRayTracing() && GetTopLevelAccelerationStructure() != nullptr;
-        if ((cvar_ray_traced_shadows.GetValueAs<bool>() && tlas_available) || cvar_restir_pt.GetValueAs<bool>())
+        // screen space contact shadows complement the primary shadow term, light.hlsl now combines
+        // them with a min() on top of whichever primary occlusion source is active (rasterized
+        // shadow map OR ray traced shadow), so this pass runs whenever any directional light has
+        // ShadowsScreenSpace enabled, regardless of the rt shadow / restir state, restir path
+        // tracing still owns the full direct term at the primary so we skip there to avoid wasted
+        // work since light.hlsl's surface lighting block is bypassed under restir
+        if (cvar_restir_pt.GetValueAs<bool>())
         {
             return;
         }

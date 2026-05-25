@@ -188,7 +188,13 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 {
     // sigma_s is the medium scattering coefficient in 1/m, sigma_t is extinction
     // the engine packs the user facing fog density into pass_get_f3_value().y so r.fog scales it linearly
-    const float sigma_s        = pass_get_f3_value().y * 0.0012f;
+    // the directional sun gets a much smaller scattering coefficient than punctual lights, the sun's
+    // intensity is several orders of magnitude larger than any spot or point light in the scene so
+    // sharing one sigma_s would dump unphysical amounts of inscatter into every pixel whose ray
+    // passes near the sun direction and wash the close geometry, the lower coefficient keeps the
+    // god rays readable on the sky while letting close surfaces stay tied to their surface lighting
+    const float sigma_s_base   = pass_get_f3_value().y * 0.0012f;
+    const float sigma_s        = light.is_directional() ? (sigma_s_base * 0.25f) : sigma_s_base;
     const float sigma_t        = sigma_s; // pure scattering, no absorption
     const float total_distance = surface.camera_to_pixel_length;
 
@@ -245,8 +251,11 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     const float temporal_noise = noise_interleaved_gradient(pixel_pos, true);
     float3 ray_pos = ray_origin + ray_direction * (march_start + temporal_noise * step_length);
 
-    // moderate forward scattering, dust beams readable for punctual lights without producing a bright sun halo
-    const float phase_g           = 0.6f;
+    // moderate forward scattering for punctual lights, the directional sun uses a much
+    // weaker forward bias because its inscatter integrates over the entire camera ray and
+    // a strong g produces an unphysical bright halo around the sun direction on every
+    // opaque surface whose ray passes near the sun even when the sun itself is occluded
+    const float phase_g           = light.is_directional() ? 0.25f : 0.6f;
     const float min_transmittance = 0.005f;
 
     // hoisted invariants, step transmittance is constant for the whole march
@@ -310,10 +319,13 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     // the inscatter is largest near the camera and becomes a constant additive haze on every pixel
     // whose ray passes through the light volume, without this fade it lights up the entire ground
     // plane out to the horizon as a uniform glow that does not match the falling off surface lighting
+    // the directional sun gets a much stronger fade than punctual lights because its inscatter
+    // integrates over the entire camera ray with full sun radiance and overwhelms close geometry,
     // sky pixels keep the full inscatter so the beams stay visible against the horizon
     if (!surface.is_sky())
     {
-        result *= exp(-total_distance * 0.005f);
+        const float fade_rate = light.is_directional() ? 0.04f : 0.02f;
+        result *= exp(-total_distance * fade_rate);
     }
 
     return result;

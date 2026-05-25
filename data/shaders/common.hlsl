@@ -68,6 +68,47 @@ float3 photometric_to_radiometric(float3 value)
 }
 
 /*------------------------------------------------------------------------------
+    SUN RADIANCE
+------------------------------------------------------------------------------*/
+// single source of truth for every sun energy term in the engine, the directional
+// sun is always at slot 0 in the light parameters buffer, light.color holds the
+// temperature derived chromaticity (~1.0, 0.95, 0.90 at 5778 K) and light.intensity
+// holds the authored lux already converted to radiometric on the cpu via /683
+//
+// every consumer (direct surface lighting, sky scattering, sun disc, cloud direct
+// lighting, fog haze, ibl through the baked panorama) goes through these helpers
+// so the entire scene is locked to one calibration, changing the directional light
+// color or intensity in the editor propagates to every visual term coherently
+float3 get_sun_color()
+{
+    return light_parameters[0].color.rgb;
+}
+
+float get_sun_intensity()
+{
+    return light_parameters[0].intensity;
+}
+
+float3 get_sun_radiance()
+{
+    return get_sun_color() * get_sun_intensity();
+}
+
+// chromaticity preserving hdr clamp, the engine sky panorama is clamped to keep huge sun
+// radiance values inside the 16 bit storage range, a channel wise min(color, cap) would
+// saturate every channel to the cap whenever any single channel exceeded it which is the
+// case for the sun disc at every preset (a warm tinted (146, 136, 127) at the day preset
+// for example clips to a flat (100, 100, 100) and looks like a laboratory grade flat white
+// even though the source color carries the directional light's temperature), this helper
+// scales the whole color by a single factor when its peak channel exceeds the cap so the
+// warm or cool tint from the directional light survives the hdr to ldr range reduction
+float3 hdr_clamp_chroma(float3 color, float max_value)
+{
+    float peak = max(color.r, max(color.g, color.b));
+    return (peak > max_value) ? color * (max_value / peak) : color;
+}
+
+/*------------------------------------------------------------------------------
     SATURATE
 ------------------------------------------------------------------------------*/
 float  saturate_16(float x)  { return clamp(x, 0.0f, FLT_MAX_16U); }

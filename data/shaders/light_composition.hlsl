@@ -205,50 +205,72 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     }
     
     // fog
+    //
+    // root cause of every prior regression in this block, any per pixel lookup of the sky
+    // panorama in the view direction projects whatever the panorama contains (clouds, horizon
+    // transition, sun disc and its mip pyramid halo) onto every non sky surface, the sky
+    // texture is 4096 x 2048 so even mip 4 is 1.4 degrees per texel which is finer than a
+    // typical cloud and adjacent screen pixels still sample different texels, no clamp or mip
+    // choice removes this because the problem is per pixel view direction sampling itself,
+    // disabling fog made the artefact go away because the fog mix was the channel that fed
+    // the panorama onto the geometry
+    //
+    // proper fix, the haze color is built from two reference samples taken in fixed world
+    // directions (sun direction and zenith) at a very coarse mip, both samples are scalars
+    // identical for every pixel in the frame, the per pixel variation is then a smooth cosine
+    // lobe of (view, sun) that lerps between zenith haze and sun side haze, this produces the
+    // expected warm to cool gradient across the frame without ever feeding the sky panorama
+    // through the screen direction so nothing from the sky can imprint onto geometry
     {
-        uint sky_mip = 4; // it just looks good
-    
         // compute view direction
         float3 camera_position = get_camera_position();
         float3 view_dir        = normalize(surface.position - camera_position);
-    
-        // sample sky in view direction, clamped to the upper hemisphere with a soft fade across
-        // the horizon, the skysphere mirrors the lower hemisphere at 0.3x luminance for ibl which
-        // produces a hard black band at the horizon when distant ground pixels (view_dir.y just
-        // below zero) sample the dimmed half while sky pixels just above sample the bright half
-        // atmospheric haze in real life is lit by the sky above regardless of which way the ray
-        // points, so we lift y toward the upper hemisphere for the fog tint
-        float3 view_dir_sky = float3(view_dir.x, max(view_dir.y, 0.0f), view_dir.z);
-        view_dir_sky        = normalize(view_dir_sky);
-        float2 view_uv        = direction_sphere_uv(view_dir_sky);
-        float3 sky_color_view = tex2.SampleLevel(samplers[sampler_trilinear_clamp], view_uv, sky_mip).rgb;
-    
-        // sample sky in the light direction
+
         Light light;
-        light.Build(0, surface); // light 0 is always directional
-        float3 light_dir       = normalize(-light.forward);
-        float2 light_uv        = direction_sphere_uv(light_dir);
-        float3 sky_color_light = tex2.SampleLevel(samplers[sampler_trilinear_clamp], light_uv, sky_mip).rgb;
-    
-        // henyey-greenstein phase function for forward scattering
-        float g = 0.8f; // forward scattering strength
-        float cos_theta = dot(view_dir, light_dir);
-        float phase     = (1.0f - g * g) / (4.0f * PI * pow(1.0f + g * g - 2.0f * g * cos_theta, 1.5f));
-    
-        // blend view and light contributions
-        float light_weight = 0.4f; // light direction contribution weight
-        float3 sky_color   = lerp(sky_color_view, sky_color_light, light_weight * phase);
-    
+        light.Build(0, surface);
+        float3 light_dir = normalize(-light.forward);
+
+        // mip 7 of the 4096 x 2048 panorama is 32 x 16 texels, each spanning ~11 degrees of
+        // solid angle which is wider than any cloud silhouette or the sun disc halo, both
+        // reference samples below are guaranteed free of panorama detail
+        const uint sky_mip = 7;
+
+        // sky color in the sun direction, when the sun sits below the horizon the sample is
+        // lifted onto the horizon so the haze keeps the warm sunset tone instead of falling
+        // into the dimmed lower hemisphere the skysphere mirrors for ibl
+        float3 sun_sample_dir   = normalize(float3(light_dir.x, max(light_dir.y, 0.0f), light_dir.z));
+        float2 sun_uv           = direction_sphere_uv(sun_sample_dir);
+        float3 sky_color_sun    = tex2.SampleLevel(samplers[sampler_trilinear_clamp], sun_uv, sky_mip).rgb;
+
+        // sky color at zenith for the cool side of the haze gradient, the uv is constant so
+        // the sample resolves to the same value for every pixel in the frame
+        float2 zenith_uv        = direction_sphere_uv(float3(0.0f, 1.0f, 0.0f));
+        float3 sky_color_zenith = tex2.SampleLevel(samplers[sampler_trilinear_clamp], zenith_uv, sky_mip).rgb;
+
+        // clamp both references, mip 7 still picks up a small contribution from the baked
+        // sun disc, with the centralized sun radiance the disc sits near the panorama clamp
+        // (100 luminance) while diffuse sky scales with get_sun_radiance() and lands in the
+        // tens of luminance for daytime, the clamp here sits at half the panorama clamp so
+        // legitimate diffuse sky brightness survives intact and only the disc's residual
+        // bleed (which would punch the haze brighter than the surrounding sky) is rejected
+        const float sky_color_max = 50.0f;
+        sky_color_sun    = min(sky_color_sun,    sky_color_max);
+        sky_color_zenith = min(sky_color_zenith, sky_color_max);
+
+        // smooth per pixel blend between the two references, the lerp factor is a cosine lobe
+        // of view to sun so it varies gradually across the screen, no panorama features can
+        // appear in the haze because both endpoints are screen wide constants
+        float  cos_theta = saturate(dot(view_dir, light_dir));
+        float  sun_lobe  = pow(cos_theta, 4.0f);
+        float3 sky_color = lerp(sky_color_zenith, sky_color_sun, sun_lobe);
+
         float fog_atmospheric = get_fog_atmospheric(distance_from_camera, surface.position.y);
         float3 fog_volumetric = sample_volumetric_smooth(surface.uv);
-        
+
         if (surface.is_sky())
         {
-            // sky already integrates atmospheric scattering inside skysphere.hlsl, the
-            // previous code added fog_atmospheric * sky_color on top which roughly
-            // doubled the sky brightness and amplified the discontinuity against any
-            // unlit ground edge below, only volumetric beams (god rays) should be
-            // additive on the sky
+            // sky already integrates atmospheric scattering inside skysphere.hlsl, only
+            // volumetric beams (god rays) should be additive on the sky
             light_atmospheric = fog_volumetric;
         }
         else

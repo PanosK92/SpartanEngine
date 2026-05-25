@@ -216,57 +216,52 @@ float trace_inline_shadow_ray(Light light, Surface surface, float2 pixel_xy)
 // Subsurface scattering with wrapped diffuse and thickness estimation
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
-    // material-dependent scattering parameters
-    const float wrap_factor        = 0.5f;  // wrapped lighting factor (0 = no wrap, 1 = full wrap)
-    const float sss_exponent       = 3.0f;  // translucency falloff sharpness
-    const float thickness_exponent = 1.5f;  // edge thickness falloff
-    const float sss_scale          = 0.8f;  // overall scattering strength multiplier
-    const float min_scatter        = 0.05f; // minimum ambient scattering
-    
+    const float wrap_factor        = 0.5f;
+    const float sss_scale          = 1.5f; // overall scattering strength
+    const float min_scatter        = 0.05f;
+
     // light.to_pixel and surface.camera_to_pixel are pre-normalized by their builders
     float3 L = -light.to_pixel;
     float3 V = -surface.camera_to_pixel;
     float3 N = surface.normal;
-    
-    // wrapped diffuse, allows light to wrap around the surface
+
+    // wrapped diffuse for the front lit half, lets sun energy bleed past the n_dot_l terminator
     float n_dot_l_wrapped = saturate((dot(N, L) + wrap_factor) / (1.0f + wrap_factor));
     float wrapped_diffuse = n_dot_l_wrapped * n_dot_l_wrapped;
-    
-    // back scattering translucency, light passing through from behind using a distorted normal
+
+    // back scatter translucency for the back lit half, this is the gdc 2011 penner formulation
+    // where the LIGHT direction is distorted by the surface normal (not the other way around),
+    // the previous version had the operands swapped so it produced a vector parallel to the normal
+    // and dot(V, -that) was always negative on the back hemisphere, leaving back lit translucent
+    // surfaces like grass blades and leaves at the 5 percent min_scatter floor and looking black
+    //
+    //   H = normalize(L + N * distortion)        // light vector pulled toward the normal
+    //   back_scatter = saturate(dot(V, -H))      // peaks when the camera looks toward the light
+    //
+    // for the canonical case (camera looks at the sun through a leaf), L is roughly -V, the
+    // distortion bends H toward the back face normal but L still dominates, -H points roughly
+    // toward the camera, and dot(V, -H) approaches 1 which is what we want
     const float distortion = 0.4f;
-    float3 N_distorted     = normalize(N + L * distortion);
-    float back_scatter     = saturate(dot(V, -N_distorted));
-    // pow(x, 3) replaced with mults, sss_exponent is the constant 3
-    back_scatter           = back_scatter * back_scatter * back_scatter;
-    
-    // combine forward and backward scattering
+    float3 L_distorted     = normalize(L + N * distortion);
+    float back_scatter     = saturate(dot(V, -L_distorted));
+    back_scatter           = back_scatter * back_scatter * back_scatter; // sharpens the back lit lobe
+
+    // combine forward and backward scattering, t crosses 0.5 at the terminator
     float sss_term = lerp(back_scatter, wrapped_diffuse, saturate(dot(N, L) * 0.5f + 0.5f));
-    sss_term = max(sss_term, min_scatter);
-    
-    // thickness modulation, stronger scattering at thin edges
-    float n_dot_v = saturate(dot(N, V));
-    // pow(x, 1.5) replaced with x * sqrt(x), thickness_exponent is the constant 1.5
-    float one_minus_nv   = 1.0f - n_dot_v;
-    float view_thickness = one_minus_nv * sqrt(one_minus_nv);
-    
-    // light dependent, backlit areas show more scattering
-    float n_dot_l         = saturate(dot(N, L));
-    float light_thickness = 1.0f - n_dot_l;
-    
-    // combine thickness terms
+    sss_term       = max(sss_term, min_scatter);
+
+    // thickness modulation, thin grazing edges scatter more, back lit surfaces scatter more
+    float n_dot_v             = saturate(dot(N, V));
+    float one_minus_nv        = 1.0f - n_dot_v;
+    float view_thickness      = one_minus_nv * sqrt(one_minus_nv);
+    float n_dot_l_clamped     = saturate(dot(N, L));
+    float light_thickness     = 1.0f - n_dot_l_clamped;
     float thickness_modulation = saturate(view_thickness + light_thickness * 0.5f);
-    
-    // compute light contribution with proper radiance
-    float3 light_radiance = light.radiance;
-    
-    // apply material strength and scale
-    float sss_strength = surface.subsurface_scattering * sss_scale;
-    
-    // Color tinting: preserve material color for subsurface scattering
-    float3 sss_color = surface.albedo;
-    
-    // combine all terms
-    return light_radiance * sss_term * thickness_modulation * sss_strength * sss_color;
+
+    float  sss_strength = surface.subsurface_scattering * sss_scale;
+    float3 sss_color    = surface.albedo;
+
+    return light.radiance * sss_term * thickness_modulation * sss_strength * sss_color;
 }
 
 // evaluates a single light against the surface, accumulates into out parameters
@@ -288,6 +283,14 @@ void evaluate_light(
     Light light;
     light.Build(light_index, surface);
 
+    // raw light energy uncoupled from n_dot_l, used by subsurface scattering which models
+    // light transmitting through translucent surfaces from the back hemisphere, the canonical
+    // case (grass blade, leaf, ear) is where the lit side is opposite the viewed side and
+    // n_dot_l is zero or negative, light.radiance bakes n_dot_l into it so it cannot drive
+    // sss on its own, the raw form preserves the energy that sss internally redirects through
+    // its wrap_factor and back_scatter terms
+    float3 light_radiance_raw = light.color * light.intensity * light.attenuation;
+
     // when restir pt is enabled the initial ris pool now samples every light type
     // (directional, point, spot, area) so all direct lighting at the primary is owned by
     // restir, skip the analytical surface eval entirely to avoid double counting, volumetric
@@ -301,39 +304,69 @@ void evaluate_light(
     float3 L_subsurface    = 0.0f;
     float3 L_volumetric    = 0.0f;
 
-    // light.radiance already bakes attenuation and n_dot_l, zero radiance means no surface contribution
-    bool light_contributes_to_surface = any(light.radiance > 0.0f);
+    // light can contribute via the standard brdf only when n_dot_l clears (light.radiance > 0)
+    // light can contribute via subsurface scattering whenever the raw energy is non zero (sss
+    // fires regardless of n_dot_l, that is its whole purpose), so the gate admits either path
+    bool light_can_contribute = any(light_radiance_raw > 0.0f);
+    bool has_brdf             = any(light.radiance > 0.0f);
+    bool has_sss              = surface.subsurface_scattering > 0.0f;
 
-    if (eval_surface && !surface.is_sky() && !skip_surface_lighting && light_contributes_to_surface)
+    if (eval_surface && !surface.is_sky() && !skip_surface_lighting && light_can_contribute && (has_brdf || has_sss))
     {
-        // shadow term, ray traced shadows are mutually exclusive with rasterized/screen space shadows
+        // shadow term is split into a primary and a contact shadow
+        //
+        //   primary -> ray traced shadow when the cvar and the light enable it, otherwise the
+        //              rasterized cascade / cubemap shadow map, this tells us whether the surface
+        //              is occluded by some OTHER object in the scene (a wall, the terrain, etc)
+        //
+        //   contact -> screen space contact shadows refine the primary, they capture the small
+        //              features (cascade aliasing, contact under foliage, etc) that neither the
+        //              shadow map nor the ray traced primary resolves well, they used to be
+        //              mutually exclusive with ray traced shadows which lost all contact detail
+        //              whenever ray traced shadows were enabled
+        //
+        // primary applies to both brdf and sss, sss is "light reaches this surface at all"
+        //
+        // contact applies ONLY to brdf, never to sss, contact shadows march a screen space ray
+        // from the pixel toward the light and treat every surface (including the leaf itself)
+        // as opaque, on a translucent material like grass or leaves the ray immediately hits the
+        // very blade we are shading and reports occluded, that crushed sss to zero on every back
+        // face and produced the pitch black grass look, the primary shadow already correctly
+        // handles the "is the blade itself in real shadow" case
         bool can_use_rt_shadows = light.has_shadows() && is_ray_traced_shadows_enabled();
+
+        float L_shadow_primary = 1.0f;
+        float L_shadow_contact = 1.0f;
 
         if (can_use_rt_shadows && light.is_directional())
         {
             // dedicated screen space pass produces high quality multi sample sun shadows
-            L_shadow        = sample_ray_traced_shadow(surface.uv);
-            light.radiance *= L_shadow;
+            L_shadow_primary = sample_ray_traced_shadow(surface.uv);
         }
     #ifdef RAY_TRACING_ENABLED
         else if (can_use_rt_shadows)
         {
             // inline ray traced shadow for point spot and area lights
-            L_shadow        = trace_inline_shadow_ray(light, surface, float2(pixel_xy));
-            light.radiance *= L_shadow;
+            L_shadow_primary = trace_inline_shadow_ray(light, surface, float2(pixel_xy));
         }
     #endif
         else if (light.has_shadows())
         {
-            L_shadow = compute_shadow(surface, light);
-
-            if (light.has_shadows_screen_space() && surface.is_opaque())
-            {
-                L_shadow = min(L_shadow, tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x);
-            }
-
-            light.radiance *= L_shadow;
+            L_shadow_primary = compute_shadow(surface, light);
         }
+
+        if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque())
+        {
+            L_shadow_contact = tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x;
+        }
+
+        // exposed for output composition (the engine still tracks a single L_shadow for now)
+        L_shadow = min(L_shadow_primary, L_shadow_contact);
+
+        // brdf gets the combined shadow (primary plus contact)
+        // sss gets only the primary, contact shadows must not block translucent transmission
+        light.radiance     *= L_shadow;
+        light_radiance_raw *= L_shadow_primary;
 
         AngularInfo angular_info;
         angular_info.Build(light, surface);
@@ -348,6 +381,7 @@ void evaluate_light(
         }
 
         float3 L_specular_lobes = 0.0f;
+        if (has_brdf)
         {
             if (surface.anisotropic > 0.0f)
             {
@@ -367,11 +401,17 @@ void evaluate_light(
             {
                 L_specular_lobes += BRDF_Specular_Sheen(surface, angular_info);
             }
+        }
 
-            if (surface.subsurface_scattering > 0.0f)
-            {
-                L_subsurface += subsurface_scattering(surface, light, angular_info);
-            }
+        if (has_sss)
+        {
+            // sss uses the raw radiance so it can fire on back faced surfaces, the previous
+            // code passed light.radiance (n_dot_l baked in) which was zero for the entire
+            // back hemisphere and left translucent geometry pitch black on its shadowed side
+            // even when the sun was clearly visible through the material from the camera
+            Light light_sss    = light;
+            light_sss.radiance = light_radiance_raw;
+            L_subsurface += subsurface_scattering(surface, light_sss, angular_info);
         }
 
         L_specular_sum += L_specular_lobes;
@@ -380,7 +420,7 @@ void evaluate_light(
         surface.roughness_alpha = original_roughness_alpha;
 
         // diffuse_precomputed is zero for transparents, skip the eval entirely
-        if (!is_transparent)
+        if (has_brdf && !is_transparent)
         {
             L_diffuse_term += BRDF_Diffuse(surface, angular_info);
         }
