@@ -544,11 +544,17 @@ float microw_shadowing_nt(float n_dot_l, float ao)
     return saturate(abs(n_dot_l) + aperture - 1.0f);
 }
 
-// Chan 2018, "Material Advances in Call of Duty: WWII"
+// chan 2018, material advances in call of duty wwii
+// canonical paper form, the prior rsqrt(1 - visibility) aperture exploded for visibility close
+// to one and the n_dot_l multiplication then crushed grazing angles to near zero with even a
+// tiny amount of ssao occlusion, which is what made flat ground at sunset go almost black the
+// moment gtao bent normals were enabled, the canonical form below stays at one for visibility
+// equal to one, only bites near the terminator, and collapses to zero only when visibility and
+// n_dot_l vanish together, matching the curves in the cod wwii slides
 float microw_shadowing_cod(float n_dot_l, float visibility)
 {
-    float aperture    = rsqrt(1.0 - visibility);
-    float microShadow = saturate(n_dot_l * aperture);
+    float aperture    = 2.0f * visibility;
+    float microShadow = saturate(n_dot_l + aperture - 1.0f);
     return microShadow * microShadow;
 }
 
