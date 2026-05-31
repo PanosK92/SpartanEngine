@@ -205,15 +205,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    // scale temporal M by a confidence-gated decay: on a stable surface the temporal sample is
-    // fully trusted and we converge toward the M cap quickly, but as reprojection confidence
-    // drops we increase the decay so unstable history fades fast. the validity gate already
-    // rejects hard mismatches outright so we never decay past the trusted band here
+    // gris confidence weight: M is the running candidate count and is the c_i used by the
+    // generalized balance heuristic below, the only paper-sanctioned modification is the cap
+    // (clamp_reservoir_M) which bounds temporal feedback so lighting changes are tracked, the
+    // previous confidence-gated M decay (lerp 0.85..1.0) perturbed c_i and is removed because it
+    // breaks the partition-of-unity assumptions the balance heuristic relies on, the validity
+    // gate already hard-rejects disocclusions before we get here
     if (have_temporal)
     {
-        float stability  = saturate(temporal_confidence);
-        float M_scale    = lerp(0.85f, RESTIR_TEMPORAL_DECAY, stability);
-        temporal.M       = max(temporal.M * M_scale, 0.0f);
         clamp_reservoir_M(temporal, get_restir_m_cap());
     }
 
@@ -237,18 +236,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float m_cur  = 0.5f * (1.0f + canon_share);
         float m_temp = 0.5f * temp_share;
 
+        // gris streaming weights, w = m_i * p_hat * jacobian * W, the jacobian appears exactly
+        // once here (in the contribution, not in the mis denominator), the previous 4x soft cap
+        // on the temporal weight biased the reuse against legitimately strong history and is
+        // removed, the single contribution-level guard is the w clamp applied at finalize below
         weight_cur = (target_cur > 0.0f) ? (m_cur  * target_cur  * current.W)                : 0.0f;
         weight_tmp = (target_temp > 0.0f) ? (m_temp * target_temp * jacobian_temp * temporal.W) : 0.0f;
-
-        // soft cap on the temporal weight so a frame whose temporal sample happens to land
-        // on a bright outlier cannot dominate the current pixel at 100x and then carry that
-        // value through the next frame's temporal stream, see the matching streaming firefly
-        // cap in restir_pt_spatial.hlsl, 4x weight_cur softly bounded so legitimate strong
-        // history still wins routinely but the long tail is suppressed, tightened from 8x
-        // to 4x to chase the last surviving splotches that came through moderately elevated
-        // temporal weights rather than extreme outliers
-        float temporal_cap = max(weight_cur, 1.0f) * 4.0f;
-        weight_tmp         = soft_clamp_w(max(weight_tmp, 0.0f), temporal_cap);
+        weight_tmp = max(weight_tmp, 0.0f);
     }
     else if (target_cur > 0.0f)
     {
@@ -333,9 +327,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
-
-    // final firefly catcher, see clamp_gi_radiance in restir_reservoir.hlsl
-    gi = clamp_gi_radiance(gi);
 
     tex_uav[pixel] = float4(gi, saturate(combined.confidence));
 }

@@ -59,24 +59,12 @@ void ray_gen()
         return;
     }
     
-    // smooth lobe split with restir pt across the [0.3, 0.4] roughness band, see
-    // restir_primary_specular_blend in restir_reservoir.hlsl
-    //   roughness <= 0.3 -> rt owns the full specular (blend = 0)
-    //   roughness >= 0.4 -> restir owns the full specular (blend = 1), rt skips the trace
-    //   in between        -> both contribute, light_reflections.hlsl scales this output by
-    //                        (1 - blend) and restir scales its specular by blend, the two
-    //                        contributions sum to the full specular term with no step
-    // the thresholds must match restir's so the partition is gap-free at any roughness
-    float4 material_sample           = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0);
-    float roughness                  = material_sample.r;
-    const float specular_handoff_hi  = 0.4f;
-    if (roughness >= specular_handoff_hi)
-    {
-        tex_uav[launch_id]  = float4(0, 0, 0, -1);
-        tex_uav2[launch_id] = float4(0, 0, 0, 0);
-        tex_uav3[launch_id] = float4(0, 0, 0, 0);
-        return;
-    }
+    // rt reflections own the full primary specular lobe at every roughness, restir contributes
+    // diffuse-only primary gi (restir_primary_specular_blend returns 0) because reusing a peaked
+    // specular target across pixels makes the reservoir weight explode into fireflies on glossy
+    // surfaces, tracing the actual reflection here is both stable and shows the real reflection
+    // (e.g. the car on the floor), the matching (1 - blend) scale in light_reflections.hlsl is a
+    // no-op now that blend is 0 so this output is used at full strength
     
     // reflection ray setup
     float3 pos_ws    = get_position(uv);

@@ -226,6 +226,7 @@ bool is_ray_traced_reflections_enabled() { return buffer_frame.options & uint(1U
 bool is_ssao_enabled()                   { return buffer_frame.options & uint(1U << 1); }
 bool is_ray_traced_shadows_enabled()     { return buffer_frame.options & uint(1U << 2); }
 bool is_restir_pt_enabled()              { return buffer_frame.options & uint(1U << 3); }
+bool is_restir_pt_debug()                { return buffer_frame.options & uint(1U << 4); }
 
 // per-draw data is stored in a static so both vertex and pixel shaders can access it
 // vertex shaders populate this from the appropriate buffer (draw_data for cpu-driven, indirect_draw_data via MeshletInstance for gpu-driven)

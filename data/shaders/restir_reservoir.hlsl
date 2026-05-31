@@ -100,13 +100,20 @@ static const float RESTIR_SKY_DISTANCE              = 1e10f;
 // other path tracer knobs, the distance and cos floors below are absolute safety guards
 static const float RESTIR_RC_MIN_DISTANCE    = 0.1f;
 static const float RESTIR_RC_COS_FRONT       = 0.05f;
-// large jacobians signal a near-degenerate shift, the shift result is rejected as failed
-// instead of being clamped so the bias from squashing the energy into a clamp does not
-// accumulate over neighbors; this acts as a safety guard rather than a soft firefly cap
-// tightened from 64 -> 16 -> 8, typical adjacent pixel jacobians sit near 1 and grow
-// modestly with distance and grazing so 8 still admits the vast majority of legitimate
-// reconnections, the firefly survivors after the 16 cut were riding on jacobians in the
-// 8 to 16 band paired with moderately elevated targets, capping at 8 closes that gap
+// large jacobians signal a near-degenerate shift (grazing or near-coincident reconnection),
+// the shift is rejected as failed rather than clamped so a degenerate connection contributes
+// nothing instead of a squashed value
+//
+// this threshold is the dominant structural firefly source: the jacobian appears once in the
+// contribution (w_j = m_j * target * W_j * jacobian) but is intentionally omitted from the mis
+// denominator, that omission is only harmless when the jacobian is near 1, a shift with jacobian
+// ~50 is both a direct 50x amplifier of a reused sample AND under-normalized in the mis weight,
+// so it does NOT average out with more samples or higher resolution (the amplification is purely
+// geometric, a function of the reconnection geometry not the pixel count) and it then propagates
+// through spatial reuse as a travelling blotch, valid reconnections between neighboring pixels or
+// across frames have a jacobian very close to 1, so this is set back to 8 to reject the unstable
+// tail (lin 2022 keeps all valid shifts, practical implementations reject the numerically
+// unstable ones), lower it further toward ~4 if any resolution-independent blotches remain
 static const float RESTIR_JACOBIAN_REJECT    = 8.0f;
 
 // brdf / numerics
@@ -770,24 +777,6 @@ float3 clamp_sky_radiance(float3 radiance)
     return soft_saturate_radiance(radiance, threshold);
 }
 
-// final firefly catcher applied to the shaded gi output of every restir pass before the
-// denoiser sees it, gi already passes through the per stream w cap and the per neighbor
-// pairwise mis cap so the typical signal is bounded, but the demodulator divides by an
-// albedo luminance floor of 0.04 which still amplifies any survivor by 25x and produces
-// the bright clumped splotches the user observes, soft saturation at this stage caps the
-// per pixel luminance at ~2x the threshold while preserving chromaticity and the relative
-// values below the threshold are untouched so legitimate bright bounces pass through, the
-// threshold scales with the user facing w clamp cvar so one knob still controls the
-// overall hdr range, tightened from 0.05 -> 0.025 to chase the last remaining splotches,
-// at the default w_clamp of 3000 this caps per pixel gi at ~75 with asymptote at ~150
-// which is still well above any plausible indirect bounce contribution
-static const float RESTIR_GI_CAP_FACTOR = 0.025f;
-float3 clamp_gi_radiance(float3 gi)
-{
-    float threshold = get_restir_w_clamp() * RESTIR_GI_CAP_FACTOR;
-    return soft_saturate_radiance(gi, threshold);
-}
-
 // ray offset for self intersection avoidance, scaled with the dominant world-space coordinate
 // since float precision degrades with absolute magnitude (Wachter & Binder "A Fast and Robust
 // Method for Avoiding Self-Intersection" simplified form), the small camera-distance term
@@ -1077,9 +1066,20 @@ float3 eval_surface_brdf_cos(float3 albedo, float roughness, float metallic, flo
 // the thresholds must match the gate in ray_traced_reflections.hlsl
 static const float RESTIR_SPECULAR_HANDOFF_LO = 0.3f;
 static const float RESTIR_SPECULAR_HANDOFF_HI = 0.4f;
+// restir owns DIFFUSE-only primary gi, every primary specular lobe is routed to the ray traced
+// reflections / ssr pipeline (the user-chosen handoff taken to its logical end), reasons:
+//   - a peaked specular target reused across pixels (temporal + 3x spatial) makes the unbiased
+//     contribution weight w explode, this is the exploding-blotch firefly on glossy floors, and
+//     no amount of clamping removes it cleanly because it is a variance problem in the reuse
+//   - rt reflections trace the actual scene so they show the real reflection (the car on the
+//     floor) with no reuse variance, which is exactly the result wanted on those surfaces
+//   - diffuse-only gi is exactly albedo-proportional so the half-res demodulation / upsample is
+//     exact and preserves surface detail instead of fighting a non-albedo specular term
+// the indirect / suffix bounces past the primary still use the full bsdf (specular_blend = 1),
+// only the primary vertex lobe is forced diffuse here
 float restir_primary_specular_blend(float roughness)
 {
-    return saturate((roughness - RESTIR_SPECULAR_HANDOFF_LO) / (RESTIR_SPECULAR_HANDOFF_HI - RESTIR_SPECULAR_HANDOFF_LO));
+    return 0.0f;
 }
 
 // lin 2022 reconnection conditions for reusing src's rc at a destination surface
@@ -1215,14 +1215,12 @@ ShiftResult try_reconnection_shift(
 // the paper formulation rebuilds the primary bounce at dst using the same xi that produced
 // the src path and then re-traces the full suffix from dst's actual replayed hit, using the
 // freshly traced suffix radiance as f_dst, the jacobian is the volume preserving ratio of
-// primary brdf pdfs (xi-space change of variables), the previous implementation took a soft
-// shortcut and rejected replays whose primary bounce did not land near src.rc, that bias was
-// invisible for diffuse / glossy primaries because the reconnection shift carries those, but
-// for near-mirror primaries (roughness < rc_min_roughness) the replay shift is the only
-// reuse path and the rejection bias darkened mirror-on-mirror chains, the strict paper
-// version below removes the proximity test and re-traces, cost is bounded because this leg
-// only fires for near-mirror primaries (a small fraction of pixels) and the suffix retrace
-// is capped at RESTIR_REPLAY_MAX_BOUNCES with russian roulette termination
+// primary brdf pdfs (xi-space change of variables), this leg is the paper's general shift for
+// any path the reconnection leg cannot carry: near-mirror primaries (where reconnection gates
+// off at the primary) and glossy interreflection paths whose first bounce is specular (no rc
+// vertex), the retrace continues through the specular prefix with the full bsdf and effectively
+// reconnects at the first rough vertex, the suffix retrace is capped at RESTIR_REPLAY_MAX_BOUNCES
+// with russian roulette so cost stays bounded to the specular fraction of pixels
 static const uint RESTIR_REPLAY_MAX_BOUNCES = 3u;
 
 // forward declarations so the replay shift's inline retrace and visibility helpers can call
@@ -1613,15 +1611,25 @@ ShiftResult try_random_replay_shift(
     if (is_sky_sample(src))
         return result;
 
-    // gate the strict full suffix retrace to near mirror primaries (roughness below the
-    // rc roughness floor), this is where the reconnection shift gates off and the replay
-    // shift is the only reuse path, on diffuse / glossy primaries the reconnection shift
-    // carries the sample so paying for a full suffix retrace would not improve quality and
-    // would multiply spatial / temporal cost by RESTIR_REPLAY_MAX_BOUNCES inline rays per
-    // shift evaluation, the gate keeps total cost bounded by the fraction of near mirror
-    // pixels in the scene
+    // the hybrid shift always tries reconnection first, so reaching the replay leg means
+    // reconnection could not carry this sample, the two cases that genuinely need the full
+    // prefix + suffix retrace are:
+    //   - specular prefix: the sample has no reconnection vertex because its first bounce hit a
+    //     surface below the rc roughness floor (a glossy interreflection path), lin 2022
+    //     random-replays the specular prefix and reconnects at the first rough vertex, the
+    //     retrace below reconstructs that naturally by continuing the bounce loop with the full
+    //     bsdf, these paths were previously dropped from all reuse which is the weak / noisy
+    //     indirect specular the user observed
+    //   - near mirror primary: src or dst is below the rc roughness floor so reconnection gates
+    //     off at the primary itself and replay is the only reuse path
+    // a rough -> rough sample that still has a valid rc but failed reconnection (a transient
+    // jacobian or visibility reject) is left to fail rather than pay for a full retrace, the
+    // reconnection leg owns those, so total replay cost stays bounded by the specular fraction
+    // of pixels rather than every pixel
     float rc_min_roughness = get_restir_rc_min_roughness();
-    if (src_roughness >= rc_min_roughness || dst_roughness >= rc_min_roughness)
+    bool specular_prefix   = !has_reconnection(src);
+    bool near_mirror       = (src_roughness < rc_min_roughness) || (dst_roughness < rc_min_roughness);
+    if (!specular_prefix && !near_mirror)
         return result;
 
     // replay xi at the stored seed; the seed is captured before the original xi was consumed
@@ -1851,24 +1859,11 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist)
     return query.CommittedStatus() == COMMITTED_NOTHING;
 }
 
-// scalar luminance demodulator, paper-aligned choice that avoids the chromatic blow-up of
-// the previous per channel max(albedo, 0.04) form, for saturated diffuse surfaces (e.g. a
-// fully red wall (1,0,0)) the per channel demod divided the green and blue channels by 0.04
-// inflating any specular or rim contribution 25x, then the bilateral upsample averaged that
-// against neighboring pixels with different albedos and the off channel inflation never
-// fully cancelled at re-modulation, producing chromatic noise / colorful splotches on
-// stationary frames, the scalar form keeps the demod commensurate across pixels so the
-// upsample averages chromatically consistent values
-// must stay in sync with restir_albedo_demodulator in light_composition.hlsl
-float restir_albedo_demodulator(float3 albedo)
-{
-    return max(luminance(albedo), 0.04f);
-}
-
 // shades the reservoir's sample at the current pixel (self-shift, jacobian == 1)
-// traces the visibility ray (sky samples verify sky reachability) and returns f(y) * W
-// divided by the primary's albedo demodulator so the gi texture stores lighting only,
-// light_composition then multiplies the bilaterally upsampled signal by full res albedo
+// traces the visibility ray (sky samples verify sky reachability) and returns the diffuse-only
+// gi f(y) * W demodulated by the primary albedo so the half-res gi texture stores albedo-free
+// lighting, light_composition bilaterally upsamples it and re-modulates with the full-res albedo,
+// the debug view emits the raw f(y) * W instead so the post chain can be isolated
 float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, float3 dst_view_dir, float3 dst_albedo, float dst_roughness, float dst_metallic)
 {
     if (r.M <= 0.0f || r.W <= 0.0f)
@@ -1881,8 +1876,28 @@ float3 shade_reservoir_path(Reservoir r, float3 dst_pos, float3 dst_normal, floa
     if (!trace_shift_visibility(r.sample, dst_pos, dst_normal))
         return float3(0, 0, 0);
 
-    float demod = restir_albedo_demodulator(dst_albedo);
-    return (shift.f_dst * r.W) / max(demod, 1e-4f);
+    // debug view: emit the raw estimator f(y) * W so the post chain (demod, denoiser, upsample)
+    // can be isolated from the resampling estimator itself
+    if (is_restir_pt_debug())
+        return shift.f_dst * r.W;
+
+    // diffuse-albedo demodulation, restir now owns diffuse-only primary gi (all primary specular
+    // is routed to ray traced reflections, see restir_primary_specular_blend) so the stored
+    // signal is exactly albedo-proportional and dividing by the per-channel albedo yields clean
+    // irradiance-like lighting, the half-res bilateral upsample then interpolates a smooth
+    // albedo-free signal that light_composition re-modulates with the full-res albedo to restore
+    // surface / texture detail, the 0.1 floor bounds the divide on near-black surfaces and stays
+    // exact through re-modulation (a black tile has ~zero diffuse gi so it cannot blow up here)
+    float3 demod = max(dst_albedo, 0.1f);
+    float3 gi    = (shift.f_dst * r.W) / demod;
+
+    // single firefly safety net at the contribution level, a soft ceiling that bounds the
+    // brightness of a stuck reservoir (a dim diffuse path that found a bright emitter at low pdf
+    // and then persists because the emitter stays visible through §6.4 validation), it preserves
+    // chromaticity and asymptotes rather than hard-clipping so legitimate bright bounces still
+    // contribute, this is the one radiance guard (the per-pass W clamp is the other), the 0.05
+    // factor keeps persistent fireflies below visibility while leaving normal diffuse gi untouched
+    return soft_saturate_radiance(gi, get_restir_w_clamp() * 0.05f);
 }
 
 #endif // SPARTAN_RESTIR_RESERVOIR

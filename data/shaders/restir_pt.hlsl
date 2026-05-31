@@ -35,12 +35,14 @@ static const float RUSSIAN_ROULETTE_PROB           = 0.95f;
 // path budget 5 this leaves only the last bounce subject to rr which is enough to terminate
 // long dim paths cleanly without inflating throughput on near-camera bounces
 static const uint  RUSSIAN_ROULETTE_START          = 4;
-// dim-throughput firefly guard, low continuation prob means rare survivors get throughput
-// inflated by 1/p, which is the dominant source of "boiling splotches" on shadowed indirect
-// paths, lin 2022 and standard production path tracers clamp p well above zero, raising the
-// floor from 0.1 (10x boost) to 0.25 (4x boost max) makes firefly survivors much less
-// energetic and removes the chromatic dancing on dim crevices
-static const float RUSSIAN_ROULETTE_MIN_PROB       = 0.25f;
+// russian roulette continuation floor, rr is unbiased for any floor (the surviving throughput
+// is divided by the actual continuation probability) so this is a variance / cost knob rather
+// than a correctness one, the 0.25 value used while chasing fireflies terminated dim paths
+// early and slightly under-sampled multi-bounce gi, 0.1 lets more legitimate dim bounces
+// survive (closer to a standard path tracer) while still bounding the 1/p throughput boost so
+// it does not become a firefly source, the demodulation fix removes the 25x amplification that
+// made any survivor a visible splotch
+static const float RUSSIAN_ROULETTE_MIN_PROB       = 0.1f;
 static const float SKY_MIP_LEVEL               = 2.0f;
 // sun cone half angle, ~0.27 degrees matches the real sun's angular radius (vs the previous
 // 0.015 rad / ~0.86 degrees which was about 3x larger and produced shadows that were too soft

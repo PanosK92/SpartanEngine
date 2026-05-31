@@ -101,14 +101,21 @@ void compute_spatial_luma_variance_7x7(uint2 pixel, uint2 resolution, out float 
     spatial_var = max(m2 - m1 * m1, 0.0f);
 }
 
-float3 clamp_history_variance(float3 history, float3 current, float current_luma, float variance)
+float3 clamp_history_variance(float3 history, float3 current, float current_luma, float variance, float n_eff)
 {
     // variance gated history clamp (schied 2017 §4.4) replaces the previous fixed sigma scaler
     // a high variance estimate widens the clamp window so noisy bright pixels are not bias
     // pinned to a tight neighborhood mean, low variance tightens the window so contact shadows
     // and small geometric features are preserved
+    // maturity gate: a fresh pixel (low n_eff, just disoccluded) keeps a tight clamp so ghosting
+    // and smear are suppressed, a mature static pixel (high n_eff) loosens the clamp so its long
+    // temporal average is allowed to actually converge instead of being pinned back toward the
+    // noisy current frame every frame, which is what left a residual noise floor on still views
+    float maturity      = saturate(n_eff / 32.0f);
+    float sigma_mult    = lerp(4.0f, 12.0f, maturity);
+    float radius_floor  = lerp(0.05f, 0.004f, maturity);
     float sigma         = sqrt(max(variance, 1e-8f));
-    float clamp_radius  = max(sigma * 4.0f, 0.05f);
+    float clamp_radius  = max(sigma * sigma_mult, radius_floor);
     float current_low   = max(current_luma - clamp_radius, 0.0f);
     float current_high  = current_luma + clamp_radius;
 
@@ -266,11 +273,14 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
         // the schied 2017 alpha equivalent, history weight is built from validity factors and
         // dynamically adjusted by sample count so the first ~4 frames after disocclusion blend
-        // weakly toward the new measurement, beyond that we converge to a paper-typical alpha
-        // = 0.05 (history weight 0.95) for stationary frames
+        // weakly toward the new measurement, beyond that the 1/(n+1) schedule keeps lowering
+        // alpha as samples accumulate, the floor is dropped to 0.02 (history 0.98, ~50 effective
+        // frames) so a held still view keeps averaging down the residual noise instead of
+        // stalling at a ~20 frame window, the disocclusion / validity gate and temporal_confidence
+        // still reset this on motion so the deeper history does not introduce ghosting
         float n_eff      = history_moments.z;
         float min_alpha  = saturate(1.0f / max(n_eff + 1.0f, 1.0f));
-        float ema_alpha  = max(min_alpha, 0.05f);
+        float ema_alpha  = max(min_alpha, 0.02f);
         history_weight   = (1.0f - ema_alpha) * temporal_confidence;
         history_weight   = saturate(min(history_weight, 0.992f));
     }
@@ -284,17 +294,17 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float spatial_var_3x3    = spatial_sigma_luma * spatial_sigma_luma;
 
     // pre-ema firefly soft clamp, lin 2022 §6.4 / production svgf trick
-    // if the current sample's luma is way above the history band, soft-rescale it down before
-    // it poisons the moment update, otherwise a single hot pixel can pin the variance estimate
-    // for many frames and force the spatial filter to over-blur the neighborhood, the gate
-    // fires as soon as we have a temporal partner so disocclusion fireflies do not boil for
-    // 4 frames before the clamp kicks in, the band widens via spatial sigma when history is
-    // young so the clamp does not over-bias on freshly accumulating pixels
+    // this catches an incoming bright pixel relative to the converged temporal mean before it
+    // gets folded into the moment ema, which is what stops a residual diffuse firefly from slowly
+    // accumulating and spreading across frames (the estimator-level soft ceiling bounds already
+    // stuck reservoirs, this bounds the ones still trying to lock in), the band is tightened back
+    // to 6-14 sigma so it actually engages on these residuals while still letting a genuinely
+    // bright bounce through once the local neighborhood agrees it is real
     if (history_ok)
     {
         float history_sigma = sqrt(max(history_moments.y - history_moments.x * history_moments.x, 0.0f));
         float band_sigma    = max(history_sigma, spatial_sigma_luma);
-        float band_widen    = lerp(16.0f, 6.0f, saturate(history_moments.z / 4.0f));
+        float band_widen    = lerp(14.0f, 6.0f, saturate(history_moments.z / 4.0f));
         float clamp_high    = history_moments.x + band_widen * max(band_sigma, 0.05f);
         if (current_luma > clamp_high && current_luma > 1e-3f)
         {
@@ -333,7 +343,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     // actual per pixel variance estimate
     if (history_ok)
     {
-        history_color = clamp_history_variance(history_color, current_color, current_luma, variance_estimate);
+        history_color = clamp_history_variance(history_color, current_color, current_luma, variance_estimate, new_n_eff);
     }
 
     float3 output_color = lerp(current_color, history_color, history_weight);

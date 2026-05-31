@@ -24,16 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
-// must match restir_albedo_demodulator in restir_reservoir.hlsl, scalar luminance form so
-// the demod is commensurate across pixels with different albedos (per channel max with a
-// 0.04 floor inflated off channels 25x on saturated diffuse surfaces and produced chromatic
-// noise on the bilateral upsample), the chromatic content of the lighting stays inside the
-// stored gi via f_dst, the per pixel re-modulation only restores the intensity scale
-float restir_albedo_demodulator(float3 albedo)
-{
-    return max(luminance(albedo), 0.04f);
-}
-
 // edge-aware bilateral upsample of the half-res restir gi texture (tex6)
 // destination depth and normal come from the full-res g-buffer via Surface
 // source depth and normal are read at gi texel centers from the same g-buffer
@@ -185,23 +175,23 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         alpha                = surface.alpha;
         distance_from_camera = surface.camera_to_pixel_length;
 
-        // restir_pt outputs gi already demodulated by the half res primary albedo so the
-        // bilateral upsample averages a smoother lighting only signal and we re-apply the
-        // full res albedo here, this preserves fine material detail that would otherwise be
-        // lost when the half res restir shading + upsample blurs the albedo into the gi
-        // gi is at restir_pt_scale of render resolution, so use a join-bilateral
-        // upsample (depth + normal aware) to avoid bleeding across edges
+        // restir_pt outputs diffuse-only gi demodulated by the half-res primary albedo, so the
+        // bilateral upsample interpolates a smooth albedo-free lighting signal and we re-apply
+        // the full-res per-channel albedo here to restore surface / texture detail, this is exact
+        // because diffuse gi is albedo-proportional (primary specular is owned by rt reflections)
+        // the 0.1 floor matches shade_reservoir_path so the albedo cancels and dark surfaces
+        // cannot be amplified, gi is at restir_pt_scale so the upsample is depth + normal aware
         // ssao occlusion is intentionally not multiplied in here, the path tracer already
         // accounts for indirect visibility through bounce ray tracing so applying ssao on top
         // double-counts occlusion in contact regions and produces the muddy contact shadow look
         if (is_restir_pt_enabled())
         {
             float depth_dst_lin = linearize_depth(surface.depth);
-            light_gi  = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
-            light_gi *= restir_albedo_demodulator(surface.albedo);
+            light_gi            = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
+            // debug view stores raw radiance, skip re-modulation to keep the round trip exact
+            if (!is_restir_pt_debug())
+                light_gi *= max(surface.albedo, 0.1f);
         }
-        // scalar demod returns a single scalar so the multiply above broadcasts uniformly
-        // across r, g, b, preserving the chromatic content the bilateral upsample averaged
     }
     
     // fog

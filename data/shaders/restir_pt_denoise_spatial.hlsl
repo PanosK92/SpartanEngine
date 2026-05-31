@@ -95,20 +95,16 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     int    step_width = max((int)pass_get_f3_value().x, 1);
 
-    // svgf phi parameters, schied 2017 fig 4 plus lin 2022 follow-up tuning, the previous
-    // tier 2 tightening to (128 / 0.5) was preserving micro detail at the cost of leaving
-    // visible firefly clumps in the output because the denoiser refused to smooth across
-    // any feature boundary the gates barely registered, the reverted (64 / 1.0) pair gives
-    // back the broader smoothing kernel that production svgf relies on, the upstream
-    // spatial reuse and reservoir firefly cap already keep the contact shadow signal
-    // (a-trous variance estimation pulls the per pixel sigma down on stable surfaces so
-    // the kernel still respects edges, it just trusts continuous geometry more)
-    //   phi_luma  = 4.0 (multiplied by sqrt(blurred variance) per pixel)
-    //   phi_depth = 1.0 (relative depth tolerance, scales with step_width and depth gradient)
-    //   phi_normal = 64 (cosine power, ~14 deg discrimination)
+    // svgf phi parameters set to the schied 2017 fig 4 reference values now that the estimator
+    // feeds the denoiser an unbiased, non-amplified signal (the firefly band-aids that used to
+    // require a broader / looser kernel to hide clumps are gone), so the denoiser can trust the
+    // paper-default edge gates instead of being detuned to mask upstream variance
+    //   phi_luma   = 4.0   (multiplied by sqrt(blurred variance) per pixel, schied sigma_l)
+    //   phi_depth  = 1.0   (relative depth tolerance scaled by step_width and depth gradient, sigma_z)
+    //   phi_normal = 128.0 (cosine power, schied sigma_n, ~10 deg discrimination, preserves edges)
     const float phi_luma   = 4.0f;
     const float phi_depth  = 1.0f;
-    const float phi_normal = 64.0f;
+    const float phi_normal = 128.0f;
 
     float blurred_variance = gaussian_filtered_variance(int2(pixel), resolution);
     float luma_sigma       = sqrt(max(blurred_variance, 1e-6f)) * phi_luma;

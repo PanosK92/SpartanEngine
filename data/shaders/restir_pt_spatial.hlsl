@@ -159,7 +159,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float edge_factor     = compute_edge_factor(uv, linear_depth, buffer_frame.resolution_render);
     float adaptive_radius = compute_adaptive_radius(linear_depth, roughness, edge_factor, normal_ws, view_dir);
-    adaptive_radius      *= lerp(0.35f, 1.0f, center_confidence);
+    // confidence-based radius shrinking removed: it is a non-paper heuristic that biases which
+    // neighbors are even considered, the gris estimator stays unbiased for any neighbor set so
+    // we keep the full geometry-driven radius and let the gbuffer gates reject bad neighbors
 
     // a-trous expanding spatial reuse, lin 2022 §6.2 / svgf style
     // pass 0 (tight): full adaptive radius, full sample count, captures the sharp signal at
@@ -242,9 +244,11 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (!is_reservoir_valid(neighbor) || neighbor.M <= 0.0f || neighbor.W <= 0.0f)
             continue;
 
+        // confidence is tracked for diagnostics and the m-weighted merge below, but it no longer
+        // gates whether a neighbor participates: dropping low-confidence neighbors biased the
+        // estimate against freshly disoccluded regions, the gbuffer compatibility gate already
+        // rejects geometrically incompatible neighbors which is the only paper-sanctioned reject
         float neighbor_confidence = saturate(neighbor.confidence);
-        if (neighbor_confidence <= 0.05f)
-            continue;
 
         float2 neighbor_uv     = (neighbor_pixel + 0.5f) / resolution;
         float3 neighbor_pos_ws = get_position(neighbor_uv);
@@ -340,23 +344,16 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float weight_c = k_inv * (1.0f + canonical_pair_acc) * target_cur * center.W;
     combined.weight_sum = max(weight_c, 0.0f);
 
-    // per neighbor weight cap, the canonical's full pairwise mis weight is weight_c, every
-    // neighbor's streaming weight is softly capped at 4x that value so a single outlier with
-    // a target_at_c that happens to be huge cannot win the reservoir selection by 1000x and
-    // spread itself across neighbors via the next spatial pass and temporal carry, the
-    // soft_clamp_w saturator passes through below the threshold and asymptotes at 2x so
-    // legitimate strong neighbors still contribute meaningfully (up to 8x weight_c) while
-    // the extreme tail is bounded, tightened from 8x to 4x after the first pass cut 80%
-    // of the splotches but the survivors still came in through pairs of neighbors with
-    // moderately elevated weights, 4x catches those without rejecting useful sample sharing
-    float neighbor_cap = max(weight_c, 1.0f) * 4.0f;
+    // gris streaming weights, w_j = m_j * p_hat(shift_j) * W_j * jacobian_j, the jacobian
+    // appears exactly once here (in the contribution, not in the mis denominator stream_denom),
+    // the previous 4x soft cap on each neighbor's weight biased spatial reuse against
+    // legitimately strong neighbors and is removed, the single contribution-level guard is the
+    // w clamp applied to the finalized W below
     for (uint j = 0; j < valid_neighbors; j++)
     {
         float target_at_c = stream_target[j];
         float m_j         = k_inv * (stream_M[j] * target_at_c) / stream_denom[j];
-        float weight_j    = m_j * target_at_c * stream_W[j] * stream_jacobian[j];
-
-        weight_j = soft_clamp_w(max(weight_j, 0.0f), neighbor_cap);
+        float weight_j    = max(m_j * target_at_c * stream_W[j] * stream_jacobian[j], 0.0f);
 
         combined.weight_sum += weight_j;
 
@@ -432,9 +429,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float3 gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
-
-    // final firefly catcher, see clamp_gi_radiance in restir_reservoir.hlsl
-    gi = clamp_gi_radiance(gi);
 
     // analytical direct lighting is no longer added here, the initial ris pass already streams
     // light nee samples into the reservoir alongside brdf samples, so all primary direct +

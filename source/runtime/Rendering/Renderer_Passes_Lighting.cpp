@@ -635,6 +635,15 @@ namespace spartan
             return;
         }
 
+        // debug view, bypass the svgf denoiser entirely and blit the raw gi estimator straight
+        // through so the composited image shows the un-denoised, un-demodulated estimator, this
+        // isolates resampling artifacts (fireflies in the estimator) from post chain artifacts
+        if (cvar_restir_pt_debug.GetValueAs<bool>())
+        {
+            Pass_BlitRestirFallback(cmd_list, tex_gi_raw, tex_gi_denoised, tex_gi_history, false);
+            return;
+        }
+
         RHI_Shader* shader_temporal = GetShader(Renderer_Shader::restir_pt_denoise_temporal_c);
         RHI_Shader* shader_spatial  = GetShader(Renderer_Shader::restir_pt_denoise_spatial_c);
         if (!shader_temporal || !shader_spatial || !shader_temporal->IsCompiled() || !shader_spatial->IsCompiled())
