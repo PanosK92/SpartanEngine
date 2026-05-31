@@ -73,7 +73,7 @@ void Console::OnTickVisible()
         ImGui::PushID(static_cast<int>(index));
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(IconType::Console), 15.0f * dpi, false, m_log_type_color[index]))
+        if (ImGuiSp::image_button(IconType::Console, 15.0f * dpi, false, m_log_type_color[index]))
         {
             visibility = !visibility;
         }

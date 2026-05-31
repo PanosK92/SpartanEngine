@@ -66,21 +66,27 @@ enum FileDialog_ViewMode
 class FileDialogItem
 {
 public:
-    FileDialogItem(const std::string& path, spartan::RHI_Texture* icon)
+    // atlas type icon, carries the shared atlas texture plus the icon's uv sub rect
+    FileDialogItem(const std::string& path, const spartan::Icon& icon)
     {
-        m_path          = path;
-        m_path_relative = spartan::FileSystem::GetRelativePath(path);
-        m_icon          = icon;
-        static uint32_t id = 0;
-        m_id = id++;
-        m_isDirectory = spartan::FileSystem::IsDirectory(path);
-        m_label = spartan::FileSystem::GetFileNameFromFilePath(path);
+        m_icon = icon;
+        Init(path);
     }
+
+    // standalone image thumbnail, samples the whole texture
+    FileDialogItem(const std::string& path, spartan::RHI_Texture* thumbnail)
+    {
+        m_icon.texture = thumbnail;
+        m_icon.uv_min  = spartan::math::Vector2(0.0f, 0.0f);
+        m_icon.uv_max  = spartan::math::Vector2(1.0f, 1.0f);
+        Init(path);
+    }
+
     const auto& GetPath() const { return m_path; }
     const auto& GetPathRelative() const { return m_path_relative; }
     const auto& GetLabel() const { return m_label; }
     uint32_t GetId() const { return m_id; }
-    spartan::RHI_Texture* GetIcon() const { return m_icon; }
+    const spartan::Icon& GetIcon() const { return m_icon; }
     auto IsDirectory() const { return m_isDirectory; }
     auto GetTimeSinceLastClickMs() const { return static_cast<float>(m_time_since_last_click.count()); }
     void Clicked()
@@ -91,7 +97,17 @@ public:
     }
 
 private:
-    spartan::RHI_Texture* m_icon;
+    void Init(const std::string& path)
+    {
+        m_path          = path;
+        m_path_relative = spartan::FileSystem::GetRelativePath(path);
+        static uint32_t id = 0;
+        m_id          = id++;
+        m_isDirectory = spartan::FileSystem::IsDirectory(path);
+        m_label       = spartan::FileSystem::GetFileNameFromFilePath(path);
+    }
+
+    spartan::Icon m_icon;
     uint32_t m_id;
     std::string m_path;
     std::string m_path_relative;

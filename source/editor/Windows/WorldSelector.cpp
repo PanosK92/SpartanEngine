@@ -412,7 +412,10 @@ namespace
             float icon_area_h = card_h * 0.45f;
             float icon_size   = icon_area_h * 0.6f;
             spartan::RHI_Texture* preview_tex = WorldPreviews::GetTexture(static_cast<spartan::DefaultWorld>(i));
-            spartan::RHI_Texture* icon_tex    = preview_tex ? preview_tex : spartan::ResourceCache::GetIcon(spartan::IconType::World);
+            const spartan::Icon& world_icon   = spartan::ResourceCache::GetIcon(spartan::IconType::World);
+            spartan::RHI_Texture* icon_tex    = preview_tex ? preview_tex : world_icon.texture;
+            ImVec2 icon_uv0 = preview_tex ? ImVec2(0, 0) : ImVec2(world_icon.uv_min.x, world_icon.uv_min.y);
+            ImVec2 icon_uv1 = preview_tex ? ImVec2(1, 1) : ImVec2(world_icon.uv_max.x, world_icon.uv_max.y);
             if (icon_tex)
             {
                 if (preview_tex)
@@ -444,7 +447,7 @@ namespace
                         reinterpret_cast<ImTextureID>(icon_tex),
                         ImVec2(icon_x, icon_y),
                         ImVec2(icon_x + icon_size, icon_y + icon_size),
-                        ImVec2(0, 0), ImVec2(1, 1), icon_tint
+                        icon_uv0, icon_uv1, icon_tint
                     );
                 }
             }
@@ -578,7 +581,10 @@ namespace
             float icon_area_h = card_h * 0.5f;
             float icon_size   = icon_area_h * 0.55f;
             spartan::RHI_Texture* preview_tex = WorldPreviews::GetTexture(world_files[i].file_path);
-            spartan::RHI_Texture* icon_tex    = preview_tex ? preview_tex : spartan::ResourceCache::GetIcon(spartan::IconType::World);
+            const spartan::Icon& world_icon   = spartan::ResourceCache::GetIcon(spartan::IconType::World);
+            spartan::RHI_Texture* icon_tex    = preview_tex ? preview_tex : world_icon.texture;
+            ImVec2 icon_uv0 = preview_tex ? ImVec2(0, 0) : ImVec2(world_icon.uv_min.x, world_icon.uv_min.y);
+            ImVec2 icon_uv1 = preview_tex ? ImVec2(1, 1) : ImVec2(world_icon.uv_max.x, world_icon.uv_max.y);
             if (icon_tex)
             {
                 if (preview_tex)
@@ -603,7 +609,7 @@ namespace
                         reinterpret_cast<ImTextureID>(icon_tex),
                         ImVec2(icon_x, icon_y),
                         ImVec2(icon_x + icon_size, icon_y + icon_size),
-                        ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, 200)
+                        icon_uv0, icon_uv1, IM_COL32(255, 255, 255, 200)
                     );
                 }
             }

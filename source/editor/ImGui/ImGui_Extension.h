@@ -140,6 +140,39 @@ namespace ImGuiSp
         return result;
     }
 
+    // atlas icon variant, binds the shared atlas texture and samples the icon's uv sub rect
+    static bool image_button(const spartan::IconType icon, const spartan::math::Vector2& size, bool border, ImVec4 tint = {1,1,1,1})
+    {
+        const spartan::Icon& entry = spartan::ResourceCache::GetIcon(icon);
+
+        if (!border)
+        {
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        }
+
+        // use the icon type as a stable id, every icon now shares one atlas texture pointer
+        // so an id derived from the texture would collide across different icon buttons
+        ImGui::PushID(static_cast<int>(icon));
+        bool result = ImGui::ImageButton
+        (
+            "",
+            reinterpret_cast<ImTextureID>(entry.texture),
+            size,
+            ImVec2(entry.uv_min.x, entry.uv_min.y),
+            ImVec2(entry.uv_max.x, entry.uv_max.y),
+            ImColor(0, 0, 0, 0),
+            tint
+        );
+        ImGui::PopID();
+
+        if (!border)
+        {
+            ImGui::PopStyleVar();
+        }
+
+        return result;
+    }
+
     static void image(spartan::RHI_Texture* texture, const spartan::math::Vector2& size, bool border = false)
     {
         if (!border)
@@ -174,25 +207,27 @@ namespace ImGuiSp
         );
     }
 
-    static void image(const spartan::IconType icon, const float size)
+    // standalone texture variant with explicit uvs, used for atlas icons drawn through ImGuiSp::image
+    static void image(spartan::RHI_Texture* texture, const ImVec2& size, const spartan::math::Vector2& uv0, const spartan::math::Vector2& uv1, const ImVec4& tint = default_tint)
     {
         ImGui::ImageWithBg(
-            reinterpret_cast<ImTextureID>(spartan::ResourceCache::GetIcon(icon)),
-            ImVec2(size, size),
-            ImVec2(0, 0),
-            ImVec2(1, 1),
+            reinterpret_cast<ImTextureID>(texture),
+            size,
+            ImVec2(uv0.x, uv0.y),
+            ImVec2(uv1.x, uv1.y),
             ImColor(0, 0, 0, 0), // bg
-            default_tint         // tint
+            tint
         );
     }
 
-    static void image(const spartan::IconType icon, const float size,const ImVec4 tint)
+    static void image(const spartan::IconType icon, const float size, const ImVec4 tint = default_tint)
     {
+        const spartan::Icon& entry = spartan::ResourceCache::GetIcon(icon);
         ImGui::ImageWithBg(
-            reinterpret_cast<ImTextureID>(spartan::ResourceCache::GetIcon(icon)),
+            reinterpret_cast<ImTextureID>(entry.texture),
             ImVec2(size, size),
-            ImVec2(0, 0),
-            ImVec2(1, 1),
+            ImVec2(entry.uv_min.x, entry.uv_min.y),
+            ImVec2(entry.uv_max.x, entry.uv_max.y),
             ImColor(0, 0, 0, 0), // bg
             tint                 // tint
         );
@@ -309,7 +344,7 @@ namespace ImGuiSp
                 }
                 
                 // draw x icon
-                image(spartan::ResourceCache::GetIcon(spartan::IconType::X), ImVec2(button_size, button_size));
+                image(spartan::IconType::X, button_size);
             }
         }
         ImGui::EndGroup();

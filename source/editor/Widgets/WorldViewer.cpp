@@ -224,38 +224,38 @@ namespace
         }
     }
 
-    RHI_Texture* component_to_image(Entity* entity)
+    Icon component_to_image(Entity* entity)
     {
-        RHI_Texture* icon = nullptr;
+        IconType type   = IconType::Undefined;
         int match_count = 0;
     
         if (entity->GetComponent<Light>())
         {
-            icon = ResourceCache::GetIcon(IconType::Light);
+            type = IconType::Light;
             ++match_count;
         }
     
         if (entity->GetComponent<Camera>())
         {
-            icon = ResourceCache::GetIcon(IconType::Camera);
+            type = IconType::Camera;
             ++match_count;
         }
     
         if (entity->GetComponent<AudioSource>())
         {
-            icon = ResourceCache::GetIcon(IconType::Audio);
+            type = IconType::Audio;
             ++match_count;
         }
 
         if (entity->GetComponent<Terrain>())
         {
-            icon = ResourceCache::GetIcon(IconType::Terrain);
+            type = IconType::Terrain;
             ++match_count;
         }
 
         if (entity->GetComponent<Render>())
         {
-            icon = ResourceCache::GetIcon(IconType::Model);
+            type = IconType::Model;
             ++match_count;
         }
 
@@ -264,7 +264,7 @@ namespace
             return ResourceCache::GetIcon(IconType::Hybrid);
         }
     
-        return icon ? icon : ResourceCache::GetIcon(IconType::Entity);
+        return ResourceCache::GetIcon(match_count == 1 ? type : IconType::Entity);
     }
 }
 
@@ -678,17 +678,18 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     ImGui::PopID();
 
     // draw icon (still on foreground channel)
-    ImVec2 icon_pos  = row_pos;
-    ImTextureID icon = reinterpret_cast<ImTextureID>(component_to_image(entity));
-    float next_x     = icon_pos.x;
-    if (icon)
+    ImVec2 icon_pos        = row_pos;
+    const Icon entry       = component_to_image(entity);
+    float next_x           = icon_pos.x;
+    if (entry.texture)
     {
         const float padding   = ImGui::GetStyle().FramePadding.y * 2.0f;
         const float icon_size = ImGui::GetTextLineHeightWithSpacing() - padding;
         const float y_offset  = (ImGui::GetTextLineHeightWithSpacing() - icon_size) * 0.25f;
         ImVec2 icon_min       = ImVec2(icon_pos.x, icon_pos.y + y_offset);
         ImVec2 icon_max       = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
-        dl->AddImage(icon, icon_min, icon_max);
+        dl->AddImage(reinterpret_cast<ImTextureID>(entry.texture), icon_min, icon_max,
+            ImVec2(entry.uv_min.x, entry.uv_min.y), ImVec2(entry.uv_max.x, entry.uv_max.y));
         next_x                = icon_max.x + ImGui::GetStyle().ItemSpacing.x;
     }
 

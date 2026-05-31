@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include "../Rendering/Material.h"
 #include "../RHI/RHI_Texture.h"
+#include "../Math/Vector2.h"
 //================================
 
 namespace pugi
@@ -80,8 +81,20 @@ namespace spartan
         Camera,
         Physics,
         Compressed,
+        ArrowLeft,
+        ArrowRight,
+        ArrowUp,
+        Refresh,
         Logo,
         Max
+    };
+
+    // an icon resolved inside the gui icon atlas, texture plus the uv sub rect it occupies
+    struct Icon
+    {
+        RHI_Texture* texture = nullptr;
+        math::Vector2 uv_min = math::Vector2(0.0f, 0.0f);
+        math::Vector2 uv_max = math::Vector2(1.0f, 1.0f);
     };
 
     class ResourceCache
@@ -211,6 +224,6 @@ namespace spartan
         static std::mutex& GetInFlightMutex(const std::string& path);
         static bool GetUseRootShaderDirectory();
         static void SetUseRootShaderDirectory(const bool use_root_shader_directory);
-        static RHI_Texture* GetIcon(IconType type);
+        static const Icon& GetIcon(IconType type);
     };
 }

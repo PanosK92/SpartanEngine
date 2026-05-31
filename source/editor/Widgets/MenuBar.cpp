@@ -310,9 +310,10 @@ namespace
     namespace buttons_toolbar
     {
         float button_size = 19.0f;
-        unordered_map<spartan::RHI_Texture*, Widget*> widgets;
+        // keyed by icon type, every icon shares one atlas texture pointer now so a pointer key would collide
+        vector<pair<spartan::IconType, Widget*>> widgets;
 
-        void toolbar_button(spartan::RHI_Texture* icon_type, const char* tooltip_text, bool (*get_visibility)(Widget*), void (*on_press)(Widget*), Widget* widget = nullptr, float cursor_pos_x = -1.0f)
+        void toolbar_button(spartan::IconType icon_type, const char* tooltip_text, bool (*get_visibility)(Widget*), void (*on_press)(Widget*), Widget* widget = nullptr, float cursor_pos_x = -1.0f)
         {
             ImGui::SameLine();
 
@@ -495,7 +496,7 @@ namespace
                     ImGui::SetCursorPosX(cursor_pos_x);
                     ImGui::SetCursorPosY(offset_y);
 
-                    if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(spartan::IconType::Play), button_size * dpi, false))
+                    if (ImGuiSp::image_button(spartan::IconType::Play, button_size * dpi, false))
                     {
                         toggle_playing();
                     }
@@ -530,7 +531,7 @@ namespace
                 {
                     static auto screenshot_visible = [](Widget*) { return false; };
                     static auto screenshot_press   = [](Widget*) { spartan::Renderer::Screenshot(); };
-                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Screenshot), "Screenshot",
+                    toolbar_button(spartan::IconType::Screenshot, "Screenshot",
                         screenshot_visible, screenshot_press, nullptr, cursor_pos_x);
 
                     static auto renderdoc_visible = [](Widget*) { return false; };
@@ -545,7 +546,7 @@ namespace
                             SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
                         }
                     };
-                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::RenderDoc), "RenderDoc capture",
+                    toolbar_button(spartan::IconType::RenderDoc, "RenderDoc capture",
                         renderdoc_visible, renderdoc_press, nullptr);
                 }
 
@@ -556,16 +557,16 @@ namespace
                 {
                     static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
                     static auto world_press   = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
-                    toolbar_button(spartan::ResourceCache::GetIcon(spartan::IconType::Terrain), "Worlds",
+                    toolbar_button(spartan::IconType::Terrain, "Worlds",
                         world_visible, world_press, nullptr);
 
                     for (auto& widget_it : widgets)
                     {
                         Widget* widget_ptr             = widget_it.second;
-                        spartan::RHI_Texture* icon_tex = widget_it.first;
+                        spartan::IconType icon         = widget_it.first;
                         static auto is_widget_visible  = [](Widget* w) { return w->GetVisible(); };
                         static auto set_widget_visible = [](Widget* w) { w->SetVisible(true); };
-                        toolbar_button(icon_tex, widget_ptr->GetTitle(), is_widget_visible, set_widget_visible, widget_ptr);
+                        toolbar_button(icon, widget_ptr->GetTitle(), is_widget_visible, set_widget_visible, widget_ptr);
                     }
                 }
 
@@ -617,7 +618,7 @@ namespace
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.2f));
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(button_padding_x * dpi, button_padding_y * dpi));
 
-            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(spartan::IconType::Minimize), icon_size, false))
+            if (ImGuiSp::image_button(spartan::IconType::Minimize, icon_size, false))
             {
                 spartan::Window::Minimize();
             }
@@ -626,7 +627,7 @@ namespace
             ImGui::SetCursorPosY(offset_y);
 
             // maximize/restore button
-            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(spartan::IconType::Maximize), icon_size, false))
+            if (ImGuiSp::image_button(spartan::IconType::Maximize, icon_size, false))
             {
                 spartan::Window::Maximize();
             }
@@ -641,7 +642,7 @@ namespace
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.2f, 0.2f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
 
-            if (ImGuiSp::image_button(spartan::ResourceCache::GetIcon(spartan::IconType::X), icon_size, false))
+            if (ImGuiSp::image_button(spartan::IconType::X, icon_size, false))
             {
                 spartan::Window::Close();
             }
@@ -657,11 +658,11 @@ void MenuBar::Initialize(Editor* _editor)
     editor      = _editor;
     file_dialog = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
 
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Profiler)]      = editor->GetWidget<Profiler>();
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::ResourceCache)] = editor->GetWidget<ResourceViewer>();
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Shader)]        = editor->GetWidget<ShaderEditor>();
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Gear)]          = editor->GetWidget<RenderOptions>();
-    buttons_toolbar::widgets[spartan::ResourceCache::GetIcon(spartan::IconType::Texture)]       = editor->GetWidget<TextureViewer>();
+    buttons_toolbar::widgets.push_back({ spartan::IconType::Profiler,      editor->GetWidget<Profiler>()       });
+    buttons_toolbar::widgets.push_back({ spartan::IconType::ResourceCache, editor->GetWidget<ResourceViewer>() });
+    buttons_toolbar::widgets.push_back({ spartan::IconType::Shader,        editor->GetWidget<ShaderEditor>()   });
+    buttons_toolbar::widgets.push_back({ spartan::IconType::Gear,          editor->GetWidget<RenderOptions>()  });
+    buttons_toolbar::widgets.push_back({ spartan::IconType::Texture,       editor->GetWidget<TextureViewer>()  });
 
     spartan::Engine::SetFlag(spartan::EngineMode::Playing, false);
 }
@@ -725,10 +726,10 @@ void MenuBar::Tick()
             // logo
             ImGui::SetCursorPosX(padding_x);
             ImGui::SetCursorPosY(icon_y);
-            spartan::RHI_Texture* logo = spartan::ResourceCache::GetIcon(spartan::IconType::Logo);
-            if (logo)
+            const spartan::Icon& logo = spartan::ResourceCache::GetIcon(spartan::IconType::Logo);
+            if (logo.texture)
             {
-                ImGui::Image(reinterpret_cast<ImTextureID>(logo), ImVec2(icon_size, icon_size));
+                ImGuiSp::image(logo.texture, ImVec2(icon_size, icon_size), logo.uv_min, logo.uv_max);
             }
             ImGui::SameLine(0, padding_x * 0.5f);
 

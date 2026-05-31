@@ -386,10 +386,13 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.12f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.18f));
 
+    // square icon size matched to the toolbar text height so the row stays consistent
+    const spartan::math::Vector2 nav_icon_size(ImGui::GetFontSize(), ImGui::GetFontSize());
+
     // navigation: back button
     bool can_go_back = m_history_index > 0;
     ImGui::BeginDisabled(!can_go_back);
-    if (ImGui::Button("Back"))
+    if (ImGuiSp::image_button(spartan::IconType::ArrowLeft, nav_icon_size, false))
     {
         m_history_index--;
         m_current_path = m_history[m_history_index];
@@ -405,7 +408,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     // navigation: forward button
     bool can_go_forward = m_history_index < m_history.size() - 1;
     ImGui::BeginDisabled(!can_go_forward);
-    if (ImGui::Button("Forward"))
+    if (ImGuiSp::image_button(spartan::IconType::ArrowRight, nav_icon_size, false))
     {
         m_history_index++;
         m_current_path = m_history[m_history_index];
@@ -419,7 +422,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     ImGui::SameLine();
 
     // navigation: up button
-    if (ImGui::Button("Up"))
+    if (ImGuiSp::image_button(spartan::IconType::ArrowUp, nav_icon_size, false))
     {
         string parent = FileSystem::GetParentDirectory(m_current_path);
         if (!parent.empty() && parent != m_current_path)
@@ -437,7 +440,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     ImGui::SameLine();
 
     // navigation: refresh button
-    if (ImGui::Button("Refresh"))
+    if (ImGuiSp::image_button(spartan::IconType::Refresh, nav_icon_size, false))
     {
         m_is_dirty = true;
     }
@@ -817,12 +820,17 @@ void FileDialog::RenderGridView()
         }
 
         // icon - draw directly to draw list
-        float icon_area = icon_size - grid_item_padding;
-        if (RHI_Texture* texture = item.GetIcon())
+        float icon_area    = icon_size - grid_item_padding;
+        const spartan::Icon& icon = item.GetIcon();
+        if (icon.texture)
         {
-            if (texture->GetResourceState() == ResourceState::PreparedForGpu)
+            if (icon.texture->GetResourceState() == ResourceState::PreparedForGpu)
             {
-                ImVec2 img_size(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
+                // source size derived from the uv sub rect, works for both atlas icons and full thumbnails
+                ImVec2 img_size(
+                    (icon.uv_max.x - icon.uv_min.x) * static_cast<float>(icon.texture->GetWidth()),
+                    (icon.uv_max.y - icon.uv_min.y) * static_cast<float>(icon.texture->GetHeight())
+                );
                 float scale = min(icon_area / img_size.x, icon_area / img_size.y);
                 img_size.x *= scale;
                 img_size.y *= scale;
@@ -832,9 +840,11 @@ void FileDialog::RenderGridView()
                 float img_y = card_min.y + grid_item_padding + (icon_area - img_size.y) * 0.5f;
 
                 draw_list->AddImage(
-                    reinterpret_cast<ImTextureID>(texture),
+                    reinterpret_cast<ImTextureID>(icon.texture),
                     ImVec2(img_x, img_y),
-                    ImVec2(img_x + img_size.x, img_y + img_size.y)
+                    ImVec2(img_x + img_size.x, img_y + img_size.y),
+                    ImVec2(icon.uv_min.x, icon.uv_min.y),
+                    ImVec2(icon.uv_max.x, icon.uv_max.y)
                 );
             }
         }
@@ -1046,12 +1056,13 @@ void FileDialog::RenderListView()
 
             // icon
             ImGui::SameLine(0, 0);
-            if (RHI_Texture* texture = item.GetIcon())
+            const spartan::Icon& icon = item.GetIcon();
+            if (icon.texture)
             {
-                if (texture->GetResourceState() == ResourceState::PreparedForGpu)
+                if (icon.texture->GetResourceState() == ResourceState::PreparedForGpu)
                 {
                     ImVec2 icon_size(20.0f, 20.0f);
-                    ImGuiSp::image(texture, icon_size);
+                    ImGuiSp::image(icon.texture, icon_size, icon.uv_min, icon.uv_max);
                     ImGui::SameLine(0, 8);
                 }
             }
@@ -1196,7 +1207,8 @@ void FileDialog::ItemDrag(FileDialogItem* item)
 
         // drag preview
         ImGui::BeginTooltip();
-        ImGuiSp::image(item->GetIcon(), ImVec2(48, 48));
+        const spartan::Icon& drag_icon = item->GetIcon();
+        ImGuiSp::image(drag_icon.texture, ImVec2(48, 48), drag_icon.uv_min, drag_icon.uv_max);
         ImGui::SameLine();
         ImGui::Text("%s", item->GetLabel().c_str());
         ImGui::EndTooltip();
