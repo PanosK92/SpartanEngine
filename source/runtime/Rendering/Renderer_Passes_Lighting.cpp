@@ -100,12 +100,10 @@ namespace spartan
         {
             return;
         }
-        // smooth lobe split: rt reflections and restir pt share the primary specular lobe
-        // through a continuous [0, 1] blend across the [0.3, 0.4] roughness band, see
-        // restir_primary_specular_blend in restir_reservoir.hlsl, ray_traced_reflections.hlsl
-        // skips the trace at roughness >= 0.4 where the blend hits 1.0, light_reflections.hlsl
-        // scales its output by (1 - blend) and restir scales its primary specular by blend,
-        // the two contributions sum to the full specular term with no step at the boundary
+        // rt reflections owns the entire primary specular lobe at every roughness now that it
+        // jitters its ray across the ggx lobe and denoises it, restir pt is diffuse only at the
+        // primary (restir_primary_specular_blend returns 0 in restir_reservoir.hlsl), so there is
+        // no blend band and no roughness cutoff, the tracer fires for every reflective pixel
         const bool rt_reflections_active = cvar_ray_traced_reflections.GetValueAs<bool>();
         if (!rt_reflections_active || !tex_reflections_position)
         {
@@ -172,10 +170,9 @@ namespace spartan
     
     void Renderer::Pass_Composite_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
     {
-        // lobe split: rt reflections shades the narrow specular lobe at every roughness the
-        // tracer fired for, restir pt owns diffuse + glossy. when restir is also on the gate
-        // partition is enforced in the shaders (see ray_traced_reflections.hlsl roughness
-        // cutoff and restir_primary_diffuse_only in restir_reservoir.hlsl)
+        // rt reflections shades the full primary specular lobe at every roughness, restir pt is
+        // diffuse only at the primary (restir_primary_specular_blend returns 0 in
+        // restir_reservoir.hlsl) so the two never double count specular
         if (!cvar_ray_traced_reflections.GetValueAs<bool>())
         {
             return;
@@ -232,6 +229,124 @@ namespace spartan
             cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
         }
         cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Denoise_RayTracedReflections(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
+    {
+        // the reflection ray is jittered across the ggx lobe per frame (see ray_traced_reflections.hlsl)
+        // so the raw reflections texture is noisy on rough surfaces, this spatiotemporal denoiser
+        // reconstructs it into a clean, roughness proportional blur, smooth surfaces pass through
+        // untouched because the spatial kernel strength ramps from zero with roughness
+        if (Window::IsMinimized())
+        {
+            return;
+        }
+
+        if (!cvar_ray_traced_reflections.GetValueAs<bool>())
+        {
+            return;
+        }
+
+        // debug bypass, leaves the raw stochastic reflection visible for a/b inspection
+        if (!cvar_ray_traced_reflections_denoise.GetValueAs<bool>())
+        {
+            return;
+        }
+
+        RHI_Texture* tex_reflections     = GetRenderTarget(Renderer_RenderTarget::reflections);
+        RHI_Texture* tex_history         = GetRenderTarget(Renderer_RenderTarget::reflections_history);
+        RHI_Texture* tex_moments         = GetRenderTarget(Renderer_RenderTarget::reflections_moments);
+        RHI_Texture* tex_moments_history = GetRenderTarget(Renderer_RenderTarget::reflections_moments_history);
+        RHI_Texture* tex_ping            = GetRenderTarget(Renderer_RenderTarget::reflections_ping);
+        RHI_Texture* tex_depth_previous  = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous);
+
+        if (!tex_reflections || !tex_history || !tex_moments || !tex_moments_history || !tex_ping)
+        {
+            return;
+        }
+
+        const uint32_t min_rt_dimension = 64;
+        if (tex_reflections->GetWidth() < min_rt_dimension || tex_reflections->GetHeight() < min_rt_dimension)
+        {
+            return;
+        }
+
+        RHI_Shader* shader_temporal = GetShader(Renderer_Shader::reflections_denoise_temporal_c);
+        RHI_Shader* shader_spatial  = GetShader(Renderer_Shader::reflections_denoise_spatial_c);
+        if (!shader_temporal || !shader_spatial || !shader_temporal->IsCompiled() || !shader_spatial->IsCompiled())
+        {
+            return;
+        }
+
+        // temporal accumulation, raw reflections in -> ping holds (accumulated color, variance),
+        // moments out for the next frame's ema, history and previous depth gate the reprojection
+        cmd_list->BeginTimeblock("reflections_denoise_temporal");
+        {
+            RHI_PipelineState pso;
+            pso.name             = "reflections_denoise_temporal";
+            pso.shaders[Compute] = shader_temporal;
+            cmd_list->SetPipelineState(pso);
+
+            cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureReadThenWrite);
+            cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureReadThenWrite);
+            SetCommonTextures(cmd_list, eye_layer);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex,  tex_reflections);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_history);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_moments_history);
+            if (tex_depth_previous)
+            {
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex4, tex_depth_previous);
+            }
+            cmd_list->SetTexture(Renderer_BindingsUav::tex,  tex_ping);
+            cmd_list->SetTexture(Renderer_BindingsUav::tex2, tex_moments);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+            cmd_list->Dispatch(tex_reflections);
+            cmd_list->InsertBarrier(tex_ping,    RHI_BarrierType::EnsureWriteThenRead);
+            cmd_list->InsertBarrier(tex_moments, RHI_BarrierType::EnsureWriteThenRead);
+        }
+        cmd_list->EndTimeblock();
+
+        // a-trous ping pong, step width doubles each level, the routing alternates ping and the
+        // reflections texture so the final write lands in reflections which is consumed downstream
+        struct denoise_stage { const char* name; float radius; RHI_Texture* src; RHI_Texture* dst; };
+        const denoise_stage stages[3] =
+        {
+            { "reflections_denoise_spatial",   1.0f, tex_ping,        tex_reflections },
+            { "reflections_denoise_spatial_2", 2.0f, tex_reflections, tex_ping        },
+            { "reflections_denoise_spatial_3", 4.0f, tex_ping,        tex_reflections },
+        };
+
+        for (const denoise_stage& s : stages)
+        {
+            cmd_list->BeginTimeblock(s.name);
+            {
+                RHI_PipelineState pso;
+                pso.name             = s.name;
+                pso.shaders[Compute] = shader_spatial;
+                cmd_list->SetPipelineState(pso);
+
+                m_pcb_pass_cpu.set_f3_value(s.radius);
+                cmd_list->PushConstants(m_pcb_pass_cpu);
+
+                cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureReadThenWrite);
+                SetCommonTextures(cmd_list, eye_layer);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, s.src);
+                cmd_list->SetTexture(Renderer_BindingsUav::tex, s.dst);
+                cmd_list->Dispatch(tex_reflections);
+                cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureWriteThenRead);
+            }
+            cmd_list->EndTimeblock();
+        }
+
+        // feed the denoised reflection back as next frame's history and copy the moments forward
+        cmd_list->InsertBarrier(tex_history, RHI_BarrierType::EnsureReadThenWrite);
+        Pass_Blit(cmd_list, tex_reflections, tex_history);
+        cmd_list->InsertBarrier(tex_history,     RHI_BarrierType::EnsureWriteThenRead);
+        cmd_list->InsertBarrier(tex_reflections, RHI_BarrierType::EnsureWriteThenRead);
+
+        cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureReadThenWrite);
+        Pass_Blit(cmd_list, tex_moments, tex_moments_history);
+        cmd_list->InsertBarrier(tex_moments_history, RHI_BarrierType::EnsureWriteThenRead);
     }
 
     void Renderer::Pass_RayTracedShadows(RHI_CommandList* cmd_list)

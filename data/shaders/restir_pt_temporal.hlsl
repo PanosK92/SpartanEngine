@@ -33,10 +33,7 @@ float2 reproject_to_previous_frame(float2 current_uv)
     return current_uv - velocity_uv;
 }
 
-// validates temporal reprojection via surface similarity + reprojection distance + depth gate
-// delegated to the shared evaluate_disocclusion helper in restir_reservoir.hlsl so the
-// reservoir temporal pass and the denoiser temporal accumulator apply identical semantics,
-// previous depth is bound on tex slot by Pass_ReSTIR_Temporal
+// validates temporal reprojection, delegated to the shared evaluate_disocclusion helper
 bool is_temporal_sample_valid(
     float2 current_uv,
     float2 prev_uv,
@@ -100,10 +97,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 1);
 
-    // target_pdf of the current stream at the shading pixel (self-shift, invalid-rc allowed)
     float target_cur = target_pdf_self(current.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
 
-    // combined reservoir seeded with the current stream
     Reservoir combined   = create_empty_reservoir();
     combined.weight_sum  = 0.0f;
     combined.M           = 0.0f;
@@ -139,11 +134,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
             if (is_reservoir_valid(temporal) && temporal.M > 0.0f && temporal.W > 0.0f)
             {
-                // use the stored source primary g-buffer that was captured at the time the
-                // reservoir was generated, this is the actual previous-frame primary surface
-                // and is correct even for moving objects, sampling the current g-buffer at
-                // prev_uv was wrong on motion and caused ghosting / inflated reconnection
-                // jacobians on dynamic scenes
+                // use the stored source primary g-buffer, correct even for moving objects
                 float3 src_primary_pos = temporal.sample.src_pos;
                 float3 src_normal_ws   = temporal.sample.src_normal;
                 float3 src_albedo      = temporal.sample.src_albedo;
@@ -175,10 +166,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                         target_temp   = target_scalar(shift_t_to_c.f_dst);
                         jacobian_temp = shift_t_to_c.jacobian;
 
-                        // backward shift (canonical sample evaluated at temporal pixel) for
-                        // defensive pairwise mis. canonical's primary g-buffer is the current
-                        // frame's g-buffer at uv, and temporal pixel's g-buffer is the current
-                        // frame's at prev_uv (approximated, see comment above)
+                        // backward shift, canonical sample evaluated at the temporal pixel, for pairwise mis
                         ShiftResult shift_c_to_t = try_hybrid_shift(
                             current.sample,
                             pos_ws,
@@ -205,25 +193,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    // gris confidence weight: M is the running candidate count and is the c_i used by the
-    // generalized balance heuristic below, the only paper-sanctioned modification is the cap
-    // (clamp_reservoir_M) which bounds temporal feedback so lighting changes are tracked, the
-    // previous confidence-gated M decay (lerp 0.85..1.0) perturbed c_i and is removed because it
-    // breaks the partition-of-unity assumptions the balance heuristic relies on, the validity
-    // gate already hard-rejects disocclusions before we get here
+    // cap temporal M so lighting changes are tracked, M is the c_i for the balance heuristic
     if (have_temporal)
     {
         clamp_reservoir_M(temporal, get_restir_m_cap());
     }
 
-    // defensive pairwise mis with k=1 neighbor (the temporal stream):
-    //   pair_denom = M_c * t_c_at_t + M_t * t_t_at_c
-    //   canonical share of pair = M_c * t_c_at_t / pair_denom
-    //   temporal share of pair = M_t * t_t_at_c / pair_denom
-    //   m_c = (1/(k+1)) * (1 + canonical share) = (1/2) * (1 + canonical share)
-    //   m_t = (1/(k+1)) * (temporal share) = (1/2) * (temporal share)
-    //   this collapses to the generalized balance when canonical_share + temporal_share == 1,
-    //   but the defensive base makes the estimator stable when t_c_at_t is unreliable
+    // defensive pairwise mis with the temporal stream as the single neighbor
     float weight_cur = 0.0f;
     float weight_tmp = 0.0f;
 
@@ -236,10 +212,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float m_cur  = 0.5f * (1.0f + canon_share);
         float m_temp = 0.5f * temp_share;
 
-        // gris streaming weights, w = m_i * p_hat * jacobian * W, the jacobian appears exactly
-        // once here (in the contribution, not in the mis denominator), the previous 4x soft cap
-        // on the temporal weight biased the reuse against legitimately strong history and is
-        // removed, the single contribution-level guard is the w clamp applied at finalize below
+        // gris streaming weights, w = m_i * p_hat * jacobian * W, jacobian appears once here
         weight_cur = (target_cur > 0.0f) ? (m_cur  * target_cur  * current.W)                : 0.0f;
         weight_tmp = (target_temp > 0.0f) ? (m_temp * target_temp * jacobian_temp * temporal.W) : 0.0f;
         weight_tmp = max(weight_tmp, 0.0f);
@@ -267,12 +240,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     clamp_reservoir_M(combined, get_restir_m_cap());
 
-    // lin 2022 §6.4 sample validation: every N frames a fixed subset of pixels re-traces the
-    // chosen sample's primary->rc visibility ray, if rc is no longer reachable from the current
-    // primary (light moved, geometry changed, occluder appeared) the reservoir is reset so we
-    // do not drag a stale path across many frames, the period comes from get_restir_validation_period
-    // (hardcoded to 8 frames) and the pixel hash cycles deterministically with frame index so
-    // the cost is amortized to ~1/N pixels per frame
+    // lin 2022 6.4 sample validation, every n frames a subset of pixels re-traces rc visibility
+    // and resets the reservoir if rc is no longer reachable, cost amortized to ~1/n pixels per frame
     uint validation_period = get_restir_validation_period();
     if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
     {
@@ -294,7 +263,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    // finalize: W = weight_sum / p_hat_dst(Y) (no /M, m_i factors already normalized)
+    // finalize, W = weight_sum / target, no /M since the m_i factors are already normalized
     float final_target = target_pdf_self(combined.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     combined.target_pdf = final_target;
     combined.W          = (final_target > 0.0f) ? (combined.weight_sum / final_target) : 0.0f;
@@ -306,9 +275,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.age        = have_temporal ? (temporal.age + 1.0f) : 0.0f;
     combined.confidence = saturate(max(current.confidence, have_temporal ? temporal.confidence * temporal_confidence : 0.0f));
 
-    // re-stamp source primary g-buffer onto the chosen sample, the temporal combine may have
-    // copied a reservoir whose chosen sample came from this pixel (canonical) or from the
-    // previous frame, either way the source primary for downstream shifts is the current pixel
+    // re-stamp the source primary g-buffer, downstream shifts originate from the current pixel
     combined.sample.src_pos       = pos_ws;
     combined.sample.src_normal    = normal_ws;
     combined.sample.src_albedo    = albedo;

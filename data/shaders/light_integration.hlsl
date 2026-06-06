@@ -24,8 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //====================
 
-// compute radical inverse using van der corput sequence for low-discrepancy sampling
-// reference: http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+// van der corput radical inverse, dammertz notes on hammersley on hemisphere
 float radical_inverse_vdc(uint bits)
 {
      bits = (bits << 16u) | (bits >> 16u);
@@ -36,14 +35,12 @@ float radical_inverse_vdc(uint bits)
      return float(bits) * 2.3283064365386963e-10f; // / 0x100000000
 }
 
-// generate hammersley sequence point for low-discrepancy sampling
 float2 hammersley(uint i, uint n)
 {
     return float2(float(i) / float(n), radical_inverse_vdc(i));
 }
 
-// importance sample ggx distribution for specular brdf integration
-// generates a halfway vector h biased toward the microfacet normal distribution
+// importance sample the ggx distribution, returns a halfway vector in world space
 float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
 {
     const float alpha    = D_GGX_Alpha(roughness);
@@ -52,29 +49,24 @@ float3 importance_sample_ggx(float2 Xi, float3 N, float roughness)
     const float cosTheta = sqrt((1.0f - Xi.y) / (1.0f + (alpha * alpha - 1.0f) * Xi.y));
     const float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
    
-    // convert from spherical coordinates to cartesian (halfway vector in tangent space)
     float3 H;
     H.x = cos(phi) * sinTheta;
     H.y = sin(phi) * sinTheta;
     H.z = cosTheta;
    
-    // build orthonormal basis from normal vector
     float3 up        = abs(N.z) < 0.999f ? float3(0.0f, 0.0f, 1.0f) : float3(1.0f, 0.0f, 0.0f);
     float3 tangent   = normalize(cross(up, N));
     float3 bitangent = cross(N, tangent);
    
-    // transform halfway vector from tangent space to world space
     float3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
     return normalize(sampleVec);
 }
 
-// integrate specular brdf for a given f0 value using monte carlo importance sampling
-// returns scalar brdf value for environment map lookup table generation
+// monte carlo specular brdf integral for a single f0, used to build the env lut
 float integrate_brdf_scalar(float n_dot_v, float roughness, float f0_val)
 {
     const uint sample_count = 1024;
     
-    // setup view vector in tangent space (viewing along z-axis)
     float3 v;
     v.x = sqrt(1.0f - n_dot_v * n_dot_v);
     v.y = 0.0f;
@@ -84,7 +76,6 @@ float integrate_brdf_scalar(float n_dot_v, float roughness, float f0_val)
     float integral = 0.0f;
     for(uint i = 0; i < sample_count; ++i)
     {
-        // generate low-discrepancy sample using hammersley sequence
         float2 Xi     = hammersley(i, sample_count);
         float3 h      = importance_sample_ggx(Xi, n, roughness);
         float3 l      = normalize(2.0f * dot(v, h) * h - v);
@@ -94,74 +85,62 @@ float integrate_brdf_scalar(float n_dot_v, float roughness, float f0_val)
         
         if(n_dot_l > 0.0f)
         {
-            // setup minimal surface structure for brdf evaluation
             Surface surface;
             surface.roughness      = roughness;
             surface.F0             = float3(f0_val, f0_val, f0_val);
             surface.metallic       = 0.0f;
             surface.diffuse_energy = float3(1.0f, 1.0f, 1.0f);
             
-            // setup angular information for brdf
             AngularInfo angular_info;
             angular_info.n_dot_l = n_dot_l;
             angular_info.n_dot_v = n_dot_v;
             angular_info.n_dot_h = n_dot_h;
             angular_info.v_dot_h = v_dot_h;
             
-            // evaluate specular brdf
             float3 fs  = BRDF_Specular_Isotropic(surface, angular_info);
-            float brdf = fs.r; // use red channel (monochromatic assumption)
+            float brdf = fs.r;
             
-            // compute probability density function for importance sampling
             float alpha  = D_GGX_Alpha(roughness);
             float alpha2 = alpha * alpha;
             float d      = D_GGX(n_dot_h, alpha2);
             float pdf    = (d * n_dot_h / (4.0f * v_dot_h)) + 1e-5f;
             
-            // accumulate weighted contribution (importance sampling)
-            float contrib = brdf * n_dot_l / pdf;
-            integral     += contrib;
+            integral     += brdf * n_dot_l / pdf;
         }
     }
     return integral / float(sample_count);
 }
 
-// integrate brdf for environment map lookup table (split-sum approximation)
-// returns (A, B) where: F = F0 * A + B, allowing f0 to be factored out
+// split-sum env lut, returns (A, B) where F = F0 * A + B
 float2 integrate_brdf(float n_dot_v, float roughness)
 {
-    // integrate for f0 = 0 and f0 = 1 to factor out fresnel term
     float int0 = integrate_brdf_scalar(n_dot_v, roughness, 0.0f);
     float int1 = integrate_brdf_scalar(n_dot_v, roughness, 1.0f);
-    float A    = int1 - int0;  // fresnel-dependent term
-    float B    = int0;          // fresnel-independent term
+    float A    = int1 - int0;
+    float B    = int0;
     
     return float2(A, B);
 }
 
-// prefilter environment map using importance sampling for specular ibl
-// generates mip levels with appropriate blur based on roughness
+// prefilter the environment map for specular ibl, blur scales with roughness
 float3 prefilter_environment(float2 uv)
 {
-    float resolution        = 4096.0f;  // match skysphere width
-    float base_resolution   = 2048.0f;  // match skysphere height
+    float resolution        = 4096.0f;
+    float base_resolution   = 2048.0f;
     uint mip_level          = pass_get_f3_value().x;
     uint mip_count          = pass_get_f3_value().y;
     const uint sample_count = 512 / max(mip_level, 1);
     float roughness         = (float)mip_level / (float)(mip_count - 1);
     
-    // convert spherical uv coordinates to view direction
     float phi              = uv.x * 2.0f * PI;
     float theta            = (1.0f - uv.y) * PI;
     float3 V               = normalize(float3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)));
-    float3 N               = V;  // normal equals view direction for environment filtering
+    float3 N               = V;
 
-    // accumulate filtered color using importance sampling
     float3 color           = 0.0f;
     float total_weight     = 0.0f;
     for (uint i = 0; i < sample_count; i++)
     {
-        // generate importance-sampled direction
         float2 Xi      = hammersley(i, sample_count);
         float3 H       = importance_sample_ggx(Xi, N, roughness);
         float3 L       = normalize(2.0f * dot(V, H) * H - V);
@@ -171,67 +150,57 @@ float3 prefilter_environment(float2 uv)
         
         if (n_dot_l > 0.0f)
         {
-            // convert light direction to spherical uv coordinates
             phi            = atan2(L.z, L.x) + PI;
             theta          = acos(L.y);
             float u        = (phi / (2.0f * PI)) + 0.5f;
             u              = fmod(u, 1.0f);
             float v        = 1.0f - (theta / PI);
             
-            // compute pdf-based mip level for proper filtering
+            // pdf based mip level for proper filtering
             float alpha_ggx  = D_GGX_Alpha(roughness);
             float alpha2     = alpha_ggx * alpha_ggx;
             float D          = D_GGX(n_dot_h, alpha2);
             float pdf        = (D * n_dot_h / (4.0f * h_dot_v)) + 0.0001f;
             
-            // compute solid angle and select appropriate mip level
             float sa_texel   = 4.0f * PI / (base_resolution * base_resolution);
             float sa_sample  = 1.0f / (float(sample_count) * pdf + 0.0001f);
             float mip_sample = roughness == 0.0f ? 0.0f : 0.5f * log2(sa_sample / sa_texel);
             
-            // adjust for resolution difference between width and height
             float resolution_factor = log2(resolution / base_resolution);
             mip_sample              = max(0.0f, mip_sample - resolution_factor);
             
-            // clamp to mips strictly below the one being written, the mip_level mip is in unordered_access during this dispatch
-            // and reading it via the srv would be a read-write conflict with d3d12 layout validation
+            // clamp below the mip being written, it is in unordered_access during this dispatch
             float max_readable_mip = max(0.0f, float(mip_level) - 1.0f);
             mip_sample             = clamp(mip_sample, 0.0f, max_readable_mip);
             
-            // sample environment map at computed mip level
             float3 sample_color = tex.SampleLevel(samplers[sampler_bilinear_clamp], float2(u, v), mip_sample).rgb;
             
             color        += sample_color * n_dot_l;
             total_weight += n_dot_l;
         }
     }
-    // return weighted average, or magenta if no valid samples (error indicator)
+    // magenta marks no valid samples
     return total_weight > 0.0f ? color / total_weight : float3(1.0f, 0.0f, 1.0f);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // get output resolution and check bounds
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     if (any(int2(thread_id.xy) >= resolution_out))
         return;
 
-    // compute uv coordinates for lookup table or environment filtering
     const float2 uv = (thread_id.xy + 0.5f) / resolution_out;
     float4 color    = 1.0f;
     
-    // generate brdf lookup table for split-sum approximation
     #if BRDF_SPECULAR_LUT
     color.rg = integrate_brdf(uv.x, uv.y);
     #endif
     
-    // prefilter environment map for specular ibl
     #if ENVIRONMENT_FILTER
     color.rgb = prefilter_environment(uv);
     #endif
     
-    // write result to output buffer
     tex_uav[thread_id.xy] = color;
 }

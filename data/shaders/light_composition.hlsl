@@ -24,10 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
-// edge-aware bilateral upsample of the half-res restir gi texture (tex6)
-// destination depth and normal come from the full-res g-buffer via Surface
-// source depth and normal are read at gi texel centers from the same g-buffer
-// weights combine bilinear, depth similarity, normal similarity to avoid edge bleed
+// edge aware bilateral upsample of the half res restir gi texture, weights combine
+// bilinear, depth and normal similarity to avoid edge bleed
 float3 sample_gi_bilateral(float2 uv_dst, float depth_dst_lin, float3 normal_dst)
 {
     float2 gi_size; tex6.GetDimensions(gi_size.x, gi_size.y);
@@ -65,13 +63,7 @@ float3 sample_gi_bilateral(float2 uv_dst, float depth_dst_lin, float3 normal_dst
         float d_lin = linearize_depth(d_raw);
         float3 n_src = get_normal(src_uv);
 
-        // bilateral upsample weights, reverted to the original 64 / 16 pair, the tier 2
-        // tightening to 128 / 32 was rejecting too many bilinear corners and falling through
-        // to nearest neighbor wherever the gates flipped, leaving per pixel splotches on
-        // subtly varying surfaces; the denoiser handles the contact contrast at the a-trous
-        // stage so the upsample's job is just to interpolate the half-res gi as smoothly as
-        // possible without crossing thin geometry, 64 / 16 (~4 deg depth, ~14 deg normal)
-        // is the standard schied 2017 starting point and matches our denoiser phi values
+        // bilateral upsample weights, 64 / 16 is the schied 2017 starting point, ~4 deg and ~14 deg
         float depth_diff = abs(d_lin - depth_dst_lin) / max(depth_dst_lin, 1e-3f);
         float w_depth    = exp(-depth_diff * 64.0f);
 
@@ -92,10 +84,7 @@ float3 sample_gi_bilateral(float2 uv_dst, float depth_dst_lin, float3 normal_dst
     return tex6.SampleLevel(samplers[sampler_point_clamp], uv_dst, 0).rgb;
 }
 
-// small 3x3 gaussian blur on the volumetric fog buffer, kills the per pixel raymarch
-// jitter dithering, the fog signal is naturally low frequency so a one pixel blur
-// removes the noise without any visible loss of detail, weights are the standard
-// 1 2 1 / 2 4 2 / 1 2 1 kernel normalized to 16
+// 3x3 gaussian blur on the volumetric fog buffer to kill the per pixel raymarch jitter
 float3 sample_volumetric_smooth(float2 uv)
 {
     float2 vol_size;
@@ -122,21 +111,15 @@ float3 sample_volumetric_smooth(float2 uv)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // create surface
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     Surface surface;
     surface.Build(thread_id.xy, resolution_out, true, false);
 
-    // skip non transparent pixels during the transparent composition pass, the opaque pass
-    // already wrote final lighting + fog for opaque surfaces and the full sky texture for sky pixels
-    // re running this for either would just stack a second fog term and the sky branch only fires
-    // in the opaque pass which means sky pixels here would write light_atmospheric on its own and
-    // overwrite the stars, moon and atmosphere that the opaque pass already composed
+    // skip non transparent pixels during the transparent pass, the opaque pass already wrote them
     if (pass_is_transparent() && !surface.is_transparent())
         return;
 
-    // initialize
     float3 light_diffuse       = 0.0f;
     float3 light_specular      = 0.0f;
     float3 light_emissive      = 0.0f;
@@ -145,15 +128,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float alpha                = 0.0f;
     float distance_from_camera = 0.0f;
 
-    // during the compute pass, fill in the sky pixels
+    // fill in the sky pixels
     if (surface.is_sky() && pass_is_opaque())
     {
-        // skysphere.hlsl mirrors below horizon directions to the upper hemisphere and dims
-        // them to 0.3x for ibl correctness, sampling the texture at view_dir.y just below
-        // zero therefore returns the dimmed sky and produces a hard dark band right where
-        // the camera ray crosses the horizon (which is exactly where rays past the edge
-        // of the floor land), clamping y to the upper hemisphere here keeps the visible
-        // sky uniform across the horizon line so it can no longer show a dark strip
+        // clamp y to the upper hemisphere so the dimmed below horizon sky does not show a dark band
         float3 view_dir_sky  = surface.camera_to_pixel;
         view_dir_sky.y       = max(view_dir_sky.y, 0.0f);
         view_dir_sky         = normalize(view_dir_sky);
@@ -161,58 +139,35 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         alpha                = 0.0f;
         distance_from_camera = FLT_MAX_16;
     }
-    // fill opaque/transparent pixels based on pass type
+    // fill opaque and transparent pixels based on pass type
     else if ((pass_is_opaque() && surface.is_opaque()) || (pass_is_transparent() && surface.is_transparent()))
     {
         light_diffuse        = tex3.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
         light_specular       = tex4.SampleLevel(samplers[sampler_point_clamp], surface.uv, 0).rgb;
-        // hdr boost so emission crosses the bloom threshold, gbuffer stores emission in [0,1]
-        // emissive from albedo gets a much stronger boost so plain colored materials with no
-        // emissive texture still glow visibly at default bloom intensity
+        // hdr boost so emission crosses the bloom threshold, albedo emission needs a stronger boost
         bool        is_emissive_from_albedo = (surface.flags & uint(1U << 15)) != 0;
         const float emission_strength       = is_emissive_from_albedo ? 250.0f : 25.0f;
         light_emissive       = surface.emissive * surface.albedo * emission_strength;
         alpha                = surface.alpha;
         distance_from_camera = surface.camera_to_pixel_length;
 
-        // restir_pt outputs diffuse-only gi demodulated by the half-res primary albedo, so the
-        // bilateral upsample interpolates a smooth albedo-free lighting signal and we re-apply
-        // the full-res per-channel albedo here to restore surface / texture detail, this is exact
-        // because diffuse gi is albedo-proportional (primary specular is owned by rt reflections)
-        // the 0.1 floor matches shade_reservoir_path so the albedo cancels and dark surfaces
-        // cannot be amplified, gi is at restir_pt_scale so the upsample is depth + normal aware
-        // ssao occlusion is intentionally not multiplied in here, the path tracer already
-        // accounts for indirect visibility through bounce ray tracing so applying ssao on top
-        // double-counts occlusion in contact regions and produces the muddy contact shadow look
+        // restir_pt outputs diffuse only albedo demodulated gi, re-apply the full res albedo here
+        // ssao is not applied, the path tracer already accounts for indirect visibility
         if (is_restir_pt_enabled())
         {
             float depth_dst_lin = linearize_depth(surface.depth);
             light_gi            = sample_gi_bilateral(surface.uv, depth_dst_lin, surface.normal);
-            // debug view stores raw radiance, skip re-modulation to keep the round trip exact
+            // debug view stores raw radiance, skip re-modulation
             if (!is_restir_pt_debug())
                 light_gi *= max(surface.albedo, 0.1f);
         }
     }
     
     // fog
-    //
-    // root cause of every prior regression in this block, any per pixel lookup of the sky
-    // panorama in the view direction projects whatever the panorama contains (clouds, horizon
-    // transition, sun disc and its mip pyramid halo) onto every non sky surface, the sky
-    // texture is 4096 x 2048 so even mip 4 is 1.4 degrees per texel which is finer than a
-    // typical cloud and adjacent screen pixels still sample different texels, no clamp or mip
-    // choice removes this because the problem is per pixel view direction sampling itself,
-    // disabling fog made the artefact go away because the fog mix was the channel that fed
-    // the panorama onto the geometry
-    //
-    // proper fix, the haze color is built from two reference samples taken in fixed world
-    // directions (sun direction and zenith) at a very coarse mip, both samples are scalars
-    // identical for every pixel in the frame, the per pixel variation is then a smooth cosine
-    // lobe of (view, sun) that lerps between zenith haze and sun side haze, this produces the
-    // expected warm to cool gradient across the frame without ever feeding the sky panorama
-    // through the screen direction so nothing from the sky can imprint onto geometry
+    // the haze color is built from two fixed world direction sky samples (sun and zenith) at a
+    // coarse mip so no per pixel panorama detail imprints onto geometry, the per pixel variation
+    // is a smooth cosine lobe of view to sun
     {
-        // compute view direction
         float3 camera_position = get_camera_position();
         float3 view_dir        = normalize(surface.position - camera_position);
 
@@ -220,36 +175,24 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         light.Build(0, surface);
         float3 light_dir = normalize(-light.forward);
 
-        // mip 7 of the 4096 x 2048 panorama is 32 x 16 texels, each spanning ~11 degrees of
-        // solid angle which is wider than any cloud silhouette or the sun disc halo, both
-        // reference samples below are guaranteed free of panorama detail
+        // coarse mip, 32 x 16 texels, wider than any cloud or sun disc halo
         const uint sky_mip = 7;
 
-        // sky color in the sun direction, when the sun sits below the horizon the sample is
-        // lifted onto the horizon so the haze keeps the warm sunset tone instead of falling
-        // into the dimmed lower hemisphere the skysphere mirrors for ibl
+        // sky color in the sun direction, lifted onto the horizon when the sun is below it
         float3 sun_sample_dir   = normalize(float3(light_dir.x, max(light_dir.y, 0.0f), light_dir.z));
         float2 sun_uv           = direction_sphere_uv(sun_sample_dir);
         float3 sky_color_sun    = tex2.SampleLevel(samplers[sampler_trilinear_clamp], sun_uv, sky_mip).rgb;
 
-        // sky color at zenith for the cool side of the haze gradient, the uv is constant so
-        // the sample resolves to the same value for every pixel in the frame
+        // sky color at zenith for the cool side of the gradient
         float2 zenith_uv        = direction_sphere_uv(float3(0.0f, 1.0f, 0.0f));
         float3 sky_color_zenith = tex2.SampleLevel(samplers[sampler_trilinear_clamp], zenith_uv, sky_mip).rgb;
 
-        // clamp both references, mip 7 still picks up a small contribution from the baked
-        // sun disc, with the centralized sun radiance the disc sits near the panorama clamp
-        // (100 luminance) while diffuse sky scales with get_sun_radiance() and lands in the
-        // tens of luminance for daytime, the clamp here sits at half the panorama clamp so
-        // legitimate diffuse sky brightness survives intact and only the disc's residual
-        // bleed (which would punch the haze brighter than the surrounding sky) is rejected
+        // clamp both references so residual sun disc bleed does not punch the haze too bright
         const float sky_color_max = 50.0f;
         sky_color_sun    = min(sky_color_sun,    sky_color_max);
         sky_color_zenith = min(sky_color_zenith, sky_color_max);
 
-        // smooth per pixel blend between the two references, the lerp factor is a cosine lobe
-        // of view to sun so it varies gradually across the screen, no panorama features can
-        // appear in the haze because both endpoints are screen wide constants
+        // smooth per pixel blend, the endpoints are screen wide constants
         float  cos_theta = saturate(dot(view_dir, light_dir));
         float  sun_lobe  = pow(cos_theta, 4.0f);
         float3 sky_color = lerp(sky_color_zenith, sky_color_sun, sun_lobe);
@@ -259,15 +202,12 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
 
         if (surface.is_sky())
         {
-            // sky already integrates atmospheric scattering inside skysphere.hlsl, only
-            // volumetric beams (god rays) should be additive on the sky
+            // sky already integrates atmospheric scattering, only god rays are additive
             light_atmospheric = fog_volumetric;
         }
         else
         {
-            // extinction based fog blending, surface lighting fades along the optical
-            // path while sky inscatter fills in the missing energy, distance based so
-            // close geometry stays crisp and only far pixels haze toward the sky
+            // extinction based fog, surface lighting fades and sky inscatter fills the missing energy
             float fog_factor    = fog_atmospheric;
             float transmittance = 1.0f - fog_factor;
             light_diffuse  *= transmittance;
@@ -278,9 +218,6 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
     }
 
-    // transparent surfaces sample the background via the refraction pass, no need to
-    // blend with the existing opaque content here, opaque pixels in this pass were
-    // already short circuited at the top, so each pixel reaches this point exactly
-    // once per frame and a straight write is safe
+    // each pixel reaches this point once per frame so a straight write is safe
     tex_uav[thread_id.xy] = validate_output(float4(light_diffuse * surface.albedo + light_specular + light_emissive + light_atmospheric + light_gi, alpha));
 }

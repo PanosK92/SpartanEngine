@@ -27,14 +27,51 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_DirectXShaderCompiler.h"
 #include "../Rendering/Renderer.h"
+#include "D3D12_Internal.h"
 SP_WARNINGS_OFF
 #include <dxc/d3d12shader.h>
 SP_WARNINGS_ON
+#include <mutex>
+#include <unordered_map>
 //=======================================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
+
+namespace spartan::d3d12_shader
+{
+    // keeps each compiled shader's IDxcBlob alive for as long as the bytecode pointer is referenced
+    static std::mutex g_bytecode_mutex;
+    static std::unordered_map<void*, IDxcBlob*> g_bytecode_blobs;
+
+    static void register_bytecode_blob(void* bytecode_ptr, IDxcBlob* blob)
+    {
+        if (!bytecode_ptr || !blob)
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(g_bytecode_mutex);
+        g_bytecode_blobs[bytecode_ptr] = blob;
+    }
+
+    void release_bytecode_blob(void* bytecode_ptr)
+    {
+        if (!bytecode_ptr)
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(g_bytecode_mutex);
+        auto it = g_bytecode_blobs.find(bytecode_ptr);
+        if (it != g_bytecode_blobs.end())
+        {
+            it->second->Release();
+            g_bytecode_blobs.erase(it);
+        }
+    }
+}
 
 namespace spartan
 {
@@ -66,27 +103,40 @@ namespace spartan
         // compile
         if (IDxcResult* dxc_result = DirectXShaderCompiler::Compile(m_preprocessed_source, arguments))
         {
-            // Get compiled shader buffer
+            // get compiled shader buffer, GetResult hands us an owning reference to the blob
             IDxcBlob* shader_buffer = nullptr;
             dxc_result->GetResult(&shader_buffer);
+
+            // the dxc result is no longer needed once we hold the blob
+            dxc_result->Release();
+
+            if (!shader_buffer)
+            {
+                return nullptr;
+            }
+
+            void* bytecode_ptr = shader_buffer->GetBufferPointer();
 
             // reflect shader resources (so that descriptor sets can be created later)
             Reflect
             (
                 m_shader_type,
-                reinterpret_cast<uint32_t*>(shader_buffer->GetBufferPointer()),
+                reinterpret_cast<uint32_t*>(bytecode_ptr),
                 static_cast<uint32_t>(shader_buffer->GetBufferSize() / 4)
             );
 
             // create input layout
-            if (m_shader_type == RHI_Shader_Type::Vertex)
+            if (m_shader_type == RHI_Shader_Type::Vertex && m_input_layout)
             {
                 m_input_layout->Create(m_vertex_type);
             }
 
             m_object_size = shader_buffer->GetBufferSize();
 
-            return static_cast<void*>(shader_buffer->GetBufferPointer());
+            // keep the blob alive, the deletion queue releases it via release_bytecode_blob on destroy
+            d3d12_shader::register_bytecode_blob(bytecode_ptr, shader_buffer);
+
+            return bytecode_ptr;
         }
 
         return nullptr;

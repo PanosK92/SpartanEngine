@@ -2587,6 +2587,7 @@ namespace spartan
 
         Pass_Light_Ibl(cmd_list, eye_layer);
         Pass_Composite_RayTracedReflections(cmd_list, eye_layer);
+        Pass_Denoise_RayTracedReflections(cmd_list, eye_layer);
 
         Pass_TransparencyReflectionRefraction(cmd_list, eye_layer);
         Pass_AA_Upscale(cmd_list, eye_layer);

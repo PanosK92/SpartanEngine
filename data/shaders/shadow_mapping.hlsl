@@ -97,8 +97,7 @@ float2 vogel_disk_sample(uint sample_index, uint sample_count, float angle)
     return rotate_2d(sample, angle);
 }
 
-// estimate penumbra size using pcss
-// texel_size_cascade_local is passed in so the atlas math is computed once in vogel_depth instead of twice
+// estimate penumbra size using pcss, texel_size_cascade_local is precomputed in vogel_depth
 float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, float receiver_depth, float light_distance, float2 texel_size_cascade_local)
 {
     float penumbra          = g_minimum_penumbra_size;
@@ -142,9 +141,7 @@ float compute_penumbra(Light light, float rotation_angle, float3 sample_coords, 
 // compute shadow factor using vogel disk sampling
 float vogel_depth(Light light, Surface surface, float3 sample_coords, float receiver_depth, float filter_size_multiplier = 1.0f)
 {
-    // cheap early out, sample the receiver center once with the comparison sampler
-    // if the result is fully lit or fully shadowed we skip both the pcss blocker search and
-    // the four tap pcf entirely, which is the common case for interior pixels
+    // early out, a fully lit or fully shadowed center skips the pcss search and the pcf taps
     float center = light.compare_depth(sample_coords, receiver_depth);
     if (center <= 0.001f) return 0.0f;
     if (center >= 0.999f) return 1.0f;

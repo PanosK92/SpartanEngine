@@ -54,6 +54,9 @@ namespace spartan
         RHI_Texture* vrs_input_texture             = nullptr;
         uint32_t render_target_array_index         = 0;
         bool is_multiview                          = false;
+        // d3d12 has no dynamic cull state, so cull mode is baked into the pso and varied via pipeline variants,
+        // vulkan keeps it dynamic and ignores this field, the renderer drives it through RHI_CommandList::SetCullMode
+        RHI_CullMode cull_mode                     = RHI_CullMode::Back;
         std::array<RHI_Shader*, static_cast<uint32_t>(RHI_Shader_Type::Max)> shaders = {};
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
         //=================================================================================

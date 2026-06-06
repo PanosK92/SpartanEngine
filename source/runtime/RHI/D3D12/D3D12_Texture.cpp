@@ -278,11 +278,20 @@ namespace spartan
                                 temp_cmd_list->CopyTextureRegion(&dest_location, 0, 0, 0, &src_location, nullptr);
                             }
 
+                            // pick the post-upload state based on usage, uav textures need unordered access, the rest shader read
+                            D3D12_RESOURCE_STATES post_state = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                            RHI_Image_Layout post_layout     = RHI_Image_Layout::Shader_Read;
+                            if (m_flags & RHI_Texture_Uav)
+                            {
+                                post_state  = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+                                post_layout = RHI_Image_Layout::General;
+                            }
+
                             D3D12_RESOURCE_BARRIER barrier = {};
                             barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
                             barrier.Transition.pResource   = texture;
                             barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-                            barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+                            barrier.Transition.StateAfter  = post_state;
                             barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
                             temp_cmd_list->ResourceBarrier(1, &barrier);
 
@@ -296,8 +305,8 @@ namespace spartan
                             RHI_Device::QueueWaitAll();
 
                             // upload finished, reflect the post-copy state in both the rhi layout map and the d3d12 state tracker
-                            SetLayoutDirect(0, m_mip_count, RHI_Image_Layout::Shader_Read);
-                            d3d12_state::SetState(texture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                            SetLayoutDirect(0, m_mip_count, post_layout);
+                            d3d12_state::SetState(texture, post_state);
 
                             temp_cmd_list->Release();
                         }
@@ -350,63 +359,152 @@ namespace spartan
 
             // store the cpu handle ptr - command list and bindless updaters know how to use it
             m_rhi_srv = reinterpret_cast<void*>(cpu_handle.ptr);
+
+            // per-layer 2d srvs for array textures, lets compute passes sample individual layers
+            if (m_type == RHI_Texture_Type::Type2DArray && array_length > 1)
+            {
+                const uint32_t layer_count = min<uint32_t>(array_length, rhi_max_render_target_count);
+                for (uint32_t layer = 0; layer < layer_count; layer++)
+                {
+                    uint32_t layer_srv_index               = d3d12_descriptors::AllocateCbvSrvUavCpu();
+                    D3D12_CPU_DESCRIPTOR_HANDLE layer_handle = d3d12_descriptors::GetCbvSrvUavCpuHandle(layer_srv_index);
+
+                    D3D12_SHADER_RESOURCE_VIEW_DESC layer_desc = {};
+                    layer_desc.Format                          = is_depth_format ? srv_format : dxgi_format;
+                    layer_desc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                    layer_desc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+                    layer_desc.Texture2DArray.MostDetailedMip  = 0;
+                    layer_desc.Texture2DArray.MipLevels        = m_mip_count;
+                    layer_desc.Texture2DArray.FirstArraySlice  = layer;
+                    layer_desc.Texture2DArray.ArraySize        = 1;
+
+                    RHI_Context::device->CreateShaderResourceView(texture, &layer_desc, layer_handle);
+                    m_rhi_srv_layers[layer] = reinterpret_cast<void*>(layer_handle.ptr);
+                }
+            }
         }
 
-        // create rtv (single view at slot 0 for now)
+        // create rtvs, one per array slice plus a multiview view covering all slices, mirrors the vulkan view layout
         if ((m_flags & RHI_Texture_Rtv) && !is_depth_format)
         {
-            uint32_t rtv_index = d3d12_descriptors::AllocateRtv();
-            D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = d3d12_descriptors::GetRtvHandle(rtv_index);
-
-            D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
-            rtv_desc.Format = rtv_format;
             if (m_type == RHI_Texture_Type::Type2D)
             {
-                rtv_desc.ViewDimension      = D3D12_RTV_DIMENSION_TEXTURE2D;
-                rtv_desc.Texture2D.MipSlice = 0;
+                uint32_t rtv_index                     = d3d12_descriptors::AllocateRtv();
+                D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle  = d3d12_descriptors::GetRtvHandle(rtv_index);
+
+                D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+                rtv_desc.Format                        = rtv_format;
+                rtv_desc.ViewDimension                 = D3D12_RTV_DIMENSION_TEXTURE2D;
+                rtv_desc.Texture2D.MipSlice            = 0;
+
+                RHI_Context::device->CreateRenderTargetView(texture, &rtv_desc, rtv_handle);
+                m_rhi_rtv[0] = reinterpret_cast<void*>(rtv_handle.ptr);
             }
             else if (m_type == RHI_Texture_Type::Type2DArray || m_type == RHI_Texture_Type::TypeCube)
             {
-                rtv_desc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-                rtv_desc.Texture2DArray.MipSlice        = 0;
-                rtv_desc.Texture2DArray.FirstArraySlice = 0;
-                rtv_desc.Texture2DArray.ArraySize       = array_length;
+                const uint32_t slice_count = min<uint32_t>(array_length, rhi_max_render_target_count);
+                for (uint32_t slice = 0; slice < slice_count; slice++)
+                {
+                    uint32_t rtv_index                     = d3d12_descriptors::AllocateRtv();
+                    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle  = d3d12_descriptors::GetRtvHandle(rtv_index);
+
+                    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc  = {};
+                    rtv_desc.Format                         = rtv_format;
+                    rtv_desc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                    rtv_desc.Texture2DArray.MipSlice        = 0;
+                    rtv_desc.Texture2DArray.FirstArraySlice = slice;
+                    rtv_desc.Texture2DArray.ArraySize       = 1;
+
+                    RHI_Context::device->CreateRenderTargetView(texture, &rtv_desc, rtv_handle);
+                    m_rhi_rtv[slice] = reinterpret_cast<void*>(rtv_handle.ptr);
+                }
+
+                // multiview rtv covering all slices, used when render_target_array_index is unset
+                if (array_length > 1)
+                {
+                    uint32_t rtv_index                     = d3d12_descriptors::AllocateRtv();
+                    D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle  = d3d12_descriptors::GetRtvHandle(rtv_index);
+
+                    D3D12_RENDER_TARGET_VIEW_DESC rtv_desc  = {};
+                    rtv_desc.Format                         = rtv_format;
+                    rtv_desc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                    rtv_desc.Texture2DArray.MipSlice        = 0;
+                    rtv_desc.Texture2DArray.FirstArraySlice = 0;
+                    rtv_desc.Texture2DArray.ArraySize       = array_length;
+
+                    RHI_Context::device->CreateRenderTargetView(texture, &rtv_desc, rtv_handle);
+                    m_rhi_rtv_multiview = reinterpret_cast<void*>(rtv_handle.ptr);
+                }
             }
             else if (m_type == RHI_Texture_Type::Type3D)
             {
-                rtv_desc.ViewDimension         = D3D12_RTV_DIMENSION_TEXTURE3D;
-                rtv_desc.Texture3D.MipSlice    = 0;
-                rtv_desc.Texture3D.FirstWSlice = 0;
-                rtv_desc.Texture3D.WSize       = m_depth;
-            }
+                uint32_t rtv_index                     = d3d12_descriptors::AllocateRtv();
+                D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle  = d3d12_descriptors::GetRtvHandle(rtv_index);
 
-            RHI_Context::device->CreateRenderTargetView(texture, &rtv_desc, rtv_handle);
-            m_rhi_rtv[0] = reinterpret_cast<void*>(rtv_handle.ptr);
+                D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+                rtv_desc.Format                        = rtv_format;
+                rtv_desc.ViewDimension                 = D3D12_RTV_DIMENSION_TEXTURE3D;
+                rtv_desc.Texture3D.MipSlice            = 0;
+                rtv_desc.Texture3D.FirstWSlice         = 0;
+                rtv_desc.Texture3D.WSize               = m_depth;
+
+                RHI_Context::device->CreateRenderTargetView(texture, &rtv_desc, rtv_handle);
+                m_rhi_rtv[0] = reinterpret_cast<void*>(rtv_handle.ptr);
+            }
         }
 
-        // create dsv (single view at slot 0 for now)
+        // create dsvs, one per array slice plus a multiview view covering all slices, cube faces count as slices
         if ((m_flags & RHI_Texture_Rtv) && is_depth_format)
         {
-            uint32_t dsv_index = d3d12_descriptors::AllocateDsv();
-            D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle = d3d12_descriptors::GetDsvHandle(dsv_index);
-
-            D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
-            dsv_desc.Format = dsv_format;
             if (m_type == RHI_Texture_Type::Type2D)
             {
-                dsv_desc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
-                dsv_desc.Texture2D.MipSlice = 0;
-            }
-            else if (m_type == RHI_Texture_Type::Type2DArray)
-            {
-                dsv_desc.ViewDimension                  = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
-                dsv_desc.Texture2DArray.MipSlice        = 0;
-                dsv_desc.Texture2DArray.FirstArraySlice = 0;
-                dsv_desc.Texture2DArray.ArraySize       = array_length;
-            }
+                uint32_t dsv_index                     = d3d12_descriptors::AllocateDsv();
+                D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle  = d3d12_descriptors::GetDsvHandle(dsv_index);
 
-            RHI_Context::device->CreateDepthStencilView(texture, &dsv_desc, dsv_handle);
-            m_rhi_dsv[0] = reinterpret_cast<void*>(dsv_handle.ptr);
+                D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
+                dsv_desc.Format                        = dsv_format;
+                dsv_desc.ViewDimension                 = D3D12_DSV_DIMENSION_TEXTURE2D;
+                dsv_desc.Texture2D.MipSlice            = 0;
+
+                RHI_Context::device->CreateDepthStencilView(texture, &dsv_desc, dsv_handle);
+                m_rhi_dsv[0] = reinterpret_cast<void*>(dsv_handle.ptr);
+            }
+            else if (m_type == RHI_Texture_Type::Type2DArray || m_type == RHI_Texture_Type::TypeCube)
+            {
+                const uint32_t slice_count = min<uint32_t>(array_length, rhi_max_render_target_count);
+                for (uint32_t slice = 0; slice < slice_count; slice++)
+                {
+                    uint32_t dsv_index                     = d3d12_descriptors::AllocateDsv();
+                    D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle  = d3d12_descriptors::GetDsvHandle(dsv_index);
+
+                    D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc  = {};
+                    dsv_desc.Format                         = dsv_format;
+                    dsv_desc.ViewDimension                  = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+                    dsv_desc.Texture2DArray.MipSlice        = 0;
+                    dsv_desc.Texture2DArray.FirstArraySlice = slice;
+                    dsv_desc.Texture2DArray.ArraySize       = 1;
+
+                    RHI_Context::device->CreateDepthStencilView(texture, &dsv_desc, dsv_handle);
+                    m_rhi_dsv[slice] = reinterpret_cast<void*>(dsv_handle.ptr);
+                }
+
+                // multiview dsv covering all slices, used when render_target_array_index is unset
+                if (array_length > 1)
+                {
+                    uint32_t dsv_index                     = d3d12_descriptors::AllocateDsv();
+                    D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle  = d3d12_descriptors::GetDsvHandle(dsv_index);
+
+                    D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc  = {};
+                    dsv_desc.Format                         = dsv_format;
+                    dsv_desc.ViewDimension                  = D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+                    dsv_desc.Texture2DArray.MipSlice        = 0;
+                    dsv_desc.Texture2DArray.FirstArraySlice = 0;
+                    dsv_desc.Texture2DArray.ArraySize       = array_length;
+
+                    RHI_Context::device->CreateDepthStencilView(texture, &dsv_desc, dsv_handle);
+                    m_rhi_dsv_multiview = reinterpret_cast<void*>(dsv_handle.ptr);
+                }
+            }
         }
 
         // create uav at slot 0 for uav textures

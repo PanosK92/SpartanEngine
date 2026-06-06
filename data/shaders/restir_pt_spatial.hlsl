@@ -74,10 +74,7 @@ bool is_neighbor_gbuffer_compatible(
     if (normal_similarity < adaptive_normal_threshold)
         return false;
 
-    // unconditional world distance gate, the previous "depth > 50" guard let near surfaces
-    // share reservoirs across cracks at near plane scales where a 5cm step still represents
-    // distinct geometry, the new threshold scales with depth (0.02 * depth) with a 5cm floor,
-    // so a crevice across two facing walls always rejects regardless of camera distance
+    // world distance gate scaled with depth, a 5cm floor, rejects crevices regardless of camera distance
     float3 neighbor_pos  = get_position(neighbor_uv);
     float  world_dist    = length(neighbor_pos - center_pos);
     float  max_world_dist = max(center_linear_depth * 0.02f, 0.05f);
@@ -159,19 +156,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float edge_factor     = compute_edge_factor(uv, linear_depth, buffer_frame.resolution_render);
     float adaptive_radius = compute_adaptive_radius(linear_depth, roughness, edge_factor, normal_ws, view_dir);
-    // confidence-based radius shrinking removed: it is a non-paper heuristic that biases which
-    // neighbors are even considered, the gris estimator stays unbiased for any neighbor set so
-    // we keep the full geometry-driven radius and let the gbuffer gates reject bad neighbors
 
-    // a-trous expanding spatial reuse, lin 2022 §6.2 / svgf style
-    // pass 0 (tight): full adaptive radius, full sample count, captures the sharp signal at
-    // the canonical without averaging against far neighbors that may straddle disocclusion
-    // pass 1+ (wide): expand the kernel by ~1.6x per pass so neighbors at progressively
-    // larger distances feed the canonical reservoir, the increasing radius is what makes
-    // this an a-trous filter rather than a single-radius bilateral blur, the sample count
-    // can drop a little because each pass is on top of an already-converged input
-    // radius grows by 1.6^pass_index so 3 passes cover 1.0x, 1.6x and 2.56x the adaptive
-    // baseline, matching lin 2022's a-trous progression for spatial reservoir reuse
+    // a-trous expanding spatial reuse, lin 2022 6.2, the radius grows by 1.6^pass so later
+    // passes feed neighbors at larger distances into the canonical reservoir
     uint spatial_sample_count = RESTIR_SPATIAL_SAMPLES;
     if (spatial_pass_index > 0)
     {
@@ -181,25 +168,18 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float target_cur = target_pdf_self(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
 
-    // defensive pairwise MIS (bitterli 2020, used in lin 2022 algorithm 3):
-    //   for each (canonical, neighbor_j) pair, compute a balance weight using both directions
-    //   of the shift (neighbor->canonical AND canonical->neighbor); each pair contributes
-    //   1/(k+1) of the total MIS mass, plus a defensive 1/(k+1) bias toward canonical that
-    //   keeps the estimator stable when all neighbors are bad. this has strictly lower variance
-    //   than the generalized balance heuristic when canonical and neighbors disagree on lighting
+    // defensive pairwise mis, bitterli 2020, lin 2022 algorithm 3
+    // each pair uses both shift directions, a defensive canonical share keeps it stable when neighbors are bad
     Reservoir combined  = create_empty_reservoir();
     combined.sample     = center.sample;
     combined.target_pdf = target_cur;
 
     float center_M = max(center.M, 0.0f);
 
-    // canonical weight starts with the defensive base (one share out of k+1)
-    // and accumulates the canonical side of each pairwise balance below
     float canonical_pair_acc = 0.0f;
     uint  valid_neighbors    = 0;
 
-    // collected per-neighbor in the loop so the canonical's defensive share is known before the
-    // streaming insert; with up to RESTIR_SPATIAL_SAMPLES neighbors this fits in registers
+    // collected per neighbor so the canonical defensive share is known before the streaming insert
     PathSample stream_samples [RESTIR_SPATIAL_SAMPLES];
     float      stream_target  [RESTIR_SPATIAL_SAMPLES];
     float      stream_jacobian[RESTIR_SPATIAL_SAMPLES];
@@ -244,17 +224,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (!is_reservoir_valid(neighbor) || neighbor.M <= 0.0f || neighbor.W <= 0.0f)
             continue;
 
-        // confidence is tracked for diagnostics and the m-weighted merge below, but it no longer
-        // gates whether a neighbor participates: dropping low-confidence neighbors biased the
-        // estimate against freshly disoccluded regions, the gbuffer compatibility gate already
-        // rejects geometrically incompatible neighbors which is the only paper-sanctioned reject
+        // confidence feeds the m-weighted merge but does not gate participation
         float neighbor_confidence = saturate(neighbor.confidence);
 
         float2 neighbor_uv     = (neighbor_pixel + 0.5f) / resolution;
         float3 neighbor_pos_ws = get_position(neighbor_uv);
 
-        // we fetch neighbor material up front since both the forward (hybrid) shift and the
-        // backward (pairwise mis) shift need the destination's brdf parameters
+        // both the forward and backward shift need the neighbor brdf parameters
         float4 neighbor_material  = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0);
         float3 neighbor_albedo    = saturate(tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), neighbor_uv, 0).rgb);
         float  neighbor_roughness = max(neighbor_material.r, 0.04f);
@@ -262,8 +238,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float3 neighbor_normal_ws = get_normal(neighbor_uv);
         float3 neighbor_view_dir  = normalize(get_camera_position() - neighbor_pos_ws);
 
-        // forward shift (neighbor's path evaluated at this pixel) using hybrid shift so paths
-        // that lack a valid reconnection vertex are still reusable via random replay
+        // forward shift, neighbor path evaluated at this pixel
         ShiftResult shift_j_to_c = try_hybrid_shift(
             neighbor.sample,
             neighbor_pos_ws,
@@ -290,7 +265,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         if (target_j_at_c <= 0.0f)
             continue;
 
-        // backward shift (canonical sample evaluated at neighbor's pixel) for pairwise MIS
+        // backward shift, canonical sample evaluated at the neighbor pixel, for pairwise mis
         ShiftResult shift_c_to_j = try_hybrid_shift(
             center.sample,
             pos_ws,
@@ -307,10 +282,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             neighbor_metallic
         );
 
-        // canonical sample may not be reconnectable at the neighbor's pixel (e.g. invalid rc,
-        // backfacing surface). when this happens we fall back to single-sided balance for this
-        // pair by setting target_c_at_j = 0, which means the canonical does not "claim" any
-        // pairwise share and the neighbor takes its full balance weight against the canonical
+        // if the canonical does not shift to the neighbor, fall back to single sided balance
         float target_c_at_j = shift_c_to_j.ok
             ? target_scalar(shift_c_to_j.f_dst)
             : 0.0f;
@@ -336,19 +308,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             break;
     }
 
-    // defensive pairwise mis weights: canonical gets (1/(k+1)) + (1/(k+1)) * sum over neighbors
-    // of (canonical share of pair), each neighbor j gets (1/(k+1)) * (neighbor share of pair)
-    // when k == 0 the canonical takes the full weight, when k > 0 it splits with neighbors
+    // defensive pairwise mis weights, k == 0 gives the canonical the full weight
     float k_inv = 1.0f / float(valid_neighbors + 1);
 
     float weight_c = k_inv * (1.0f + canonical_pair_acc) * target_cur * center.W;
     combined.weight_sum = max(weight_c, 0.0f);
 
-    // gris streaming weights, w_j = m_j * p_hat(shift_j) * W_j * jacobian_j, the jacobian
-    // appears exactly once here (in the contribution, not in the mis denominator stream_denom),
-    // the previous 4x soft cap on each neighbor's weight biased spatial reuse against
-    // legitimately strong neighbors and is removed, the single contribution-level guard is the
-    // w clamp applied to the finalized W below
+    // gris streaming weights, w_j = m_j * p_hat * W_j * jacobian, jacobian appears once here
     for (uint j = 0; j < valid_neighbors; j++)
     {
         float target_at_c = stream_target[j];
@@ -367,11 +333,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.M = M_total;
     clamp_reservoir_M(combined, get_restir_m_cap());
 
-    // lin 2022 §6.4 sample validation: stale paths can survive purely through spatial reuse
-    // (a temporal sample propagates outward into neighbors that never get re-validated by the
-    // temporal pass), running the same hashed periodic check here kills them before they can
-    // boil across the scene, the period is shared with the temporal pass so the total cost is
-    // still ~1/N pixels per frame for the combined temporal+spatial validation budget
+    // lin 2022 6.4 sample validation, kills stale paths that survive purely through spatial reuse
     uint validation_period = get_restir_validation_period();
     if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
     {
@@ -392,7 +354,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    // finalize: W = weight_sum / p_hat_dst(Y) (no /M, m_i factors already normalized)
+    // finalize, W = weight_sum / target, no /M since the m_i factors are already normalized
     float final_target = target_pdf_self(combined.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     combined.target_pdf = final_target;
     combined.W          = (final_target > 0.0f) ? (combined.weight_sum / final_target) : 0.0f;
@@ -401,16 +363,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float w_clamp = get_w_clamp_for_sample(combined.sample);
     combined.W    = soft_clamp_w(combined.W, w_clamp);
 
-    // confidence is m-weighted across all merged streams, blended with the center so a single
-    // high-confidence neighbor does not overpower the canonical estimate
+    // m-weighted confidence across merged streams, blended with the center
     float merged_confidence = (confidence_w > 0.0f) ? (confidence_acc / confidence_w) : center_confidence;
     combined.confidence = saturate(max(center_confidence, merged_confidence));
     combined.age        = center.age;
 
-    // re-stamp source primary g-buffer onto the chosen sample, the spatial combine may have
-    // copied a neighbor's reservoir into combined.sample so the src_* fields may belong to
-    // that neighbor's pixel, downstream passes always want the current pixel's primary as the
-    // source for shifts originating from this pixel
+    // re-stamp the source primary g-buffer, the combine may have copied a neighbor src_*
     combined.sample.src_pos       = pos_ws;
     combined.sample.src_normal    = normal_ws;
     combined.sample.src_albedo    = albedo;
@@ -430,9 +388,6 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
 
-    // analytical direct lighting is no longer added here, the initial ris pass already streams
-    // light nee samples into the reservoir alongside brdf samples, so all primary direct +
-    // indirect contributions live inside the reservoir's chosen sample and are shaded above by
-    // shade_reservoir_path, doing both would double count the sun and the area lights
+    // direct lighting lives inside the reservoir via the initial ris nee samples, adding it here would double count
     tex_uav[pixel] = float4(gi, saturate(combined.confidence));
 }

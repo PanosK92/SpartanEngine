@@ -434,9 +434,25 @@ namespace spartan
                     device_type = RHI_PhysicalDevice_Type::Integrated;
                 }
 
+                // probe the highest feature level this adapter supports, encoded vulkan-style as major.minor
+                uint32_t api_version = 12 << 22;
+                {
+                    const D3D_FEATURE_LEVEL levels[] = { D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0 };
+                    for (D3D_FEATURE_LEVEL level : levels)
+                    {
+                        if (SUCCEEDED(D3D12CreateDevice(display_adapter, level, _uuidof(ID3D12Device), nullptr)))
+                        {
+                            const uint32_t major = (static_cast<uint32_t>(level) >> 12) & 0xf;
+                            const uint32_t minor = (static_cast<uint32_t>(level) >> 8)  & 0xf;
+                            api_version          = (major << 22) | (minor << 12);
+                            break;
+                        }
+                    }
+                }
+
                 RHI_Device::PhysicalDeviceRegister(RHI_PhysicalDevice
                 (
-                    12 << 22,
+                    api_version,
                     0,
                     nullptr,
                     adapter_desc1.VendorId,
@@ -560,8 +576,16 @@ namespace spartan
                 }
             }
 
-            // xess always reports as supported on d3d12 since the runtime falls back to a pass-through path on unsupported gpus
-            m_xess_supported = true;
+            // xess requires shader model 6.4 or newer, probe the highest supported model and gate on it
+            D3D12_FEATURE_DATA_SHADER_MODEL shader_model = { D3D_SHADER_MODEL_6_6 };
+            if (SUCCEEDED(RHI_Context::device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &shader_model, sizeof(shader_model))))
+            {
+                m_xess_supported = shader_model.HighestShaderModel >= D3D_SHADER_MODEL_6_4;
+            }
+            else
+            {
+                m_xess_supported = false;
+            }
         }
 
         // queue timestamp period: d3d12 uses GetTimestampFrequency on the queue (ticks/second)
@@ -851,7 +875,8 @@ namespace spartan
             }
             case RHI_Resource_Type::Shader:
             {
-                // shader bytecode is owned by IDxcBlob held inside RHI_Shader, so not released here
+                // shader bytecode is backed by an IDxcBlob kept in the d3d12_shader registry, release it here
+                d3d12_shader::release_bytecode_blob(resource);
                 break;
             }
             case RHI_Resource_Type::Sampler:

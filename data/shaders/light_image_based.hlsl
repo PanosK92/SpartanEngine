@@ -80,30 +80,18 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float mip_count_environment        = pass_get_f3_value().x;
     float mip_level                    = surface.roughness * surface.roughness * (mip_count_environment - 1.0f);
     
-    // specular occlusion stack, three terms applied in sequence, each one is an industry
-    // reference but the previous code stacked them as hard multiplicative gates which crushed
-    // rough reflections wherever any single term clipped, the corrected stack weights the
-    // bent normal term by smoothness so wide rough lobes are not punished by a glancing bent
-    // normal that the mirror limit assumption (saturate(dot(...))) would otherwise treat as
-    // a full hemisphere miss
-    //
-    // 1) lagarde & de rousiers 2014 cone aperture vs ao formula, primary gate, derives the
-    //    cone aperture from roughness so mirrors (narrow lobe) get aggressive occlusion and
-    //    rough surfaces (wide lobe) get a soft falloff
+    // specular occlusion stack, three terms in sequence
+
+    // lagarde 2014 cone aperture vs ao, derives the cone aperture from roughness
     float specular_occlusion = saturate(pow(n_dot_v + surface.occlusion, exp2(-16.0f * surface.roughness - 1.0f)) - 1.0f + surface.occlusion);
 
-    // 2) bent normal cone overlap, refines the lagarde gate by checking the dominant reflection
-    //    direction against the average unoccluded direction, jimenez 2016 / frostbite weight
-    //    this by smoothness^2 so the term only bites for near mirror surfaces and lerps back
-    //    toward 1 for rough surfaces whose wide integration kernel is largely insensitive to
-    //    where the bent normal points
+    // bent normal cone overlap, jimenez 2016, weighted by smoothness^2 so it only bites near mirrors
     float bent_dot               = saturate(dot(surface.bent_normal, dominant_specular_direction));
     float smoothness             = 1.0f - surface.roughness;
     float bent_reflection_factor = lerp(1.0f, bent_dot, smoothness * smoothness);
     specular_occlusion          *= bent_reflection_factor;
 
-    // 3) horizon fade, lagarde & de rousiers 2014, prevents the dominant direction from
-    //    sampling the panorama from below the geometric surface plane
+    // horizon fade, lagarde 2014, stops sampling the panorama below the surface plane
     float horizon       = saturate(1.0f + dot(dominant_specular_direction, surface.normal));
     specular_occlusion *= horizon * horizon;
 
@@ -111,31 +99,16 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 specular_skysphere = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(dominant_specular_direction), mip_level).rgb;
     float3 diffuse_skysphere  = tex3.SampleLevel(samplers[sampler_trilinear_clamp], direction_sphere_uv(surface.bent_normal), mip_count_environment).rgb;
     
-    // apply energy and occlusion
-    // multi-bounce ao for diffuse, physically-based occlusion + horizon fade for specular
-    //
-    // gtao_multi_bounce models inter-reflection of the surface with itself and collapses to 0
-    // at visibility=0, that is mathematically right for a single isolated surface but real
-    // scenes always carry inter-reflection energy from neighboring geometry, when a proper gi
-    // pass owns the indirect term (restir_pt) this is resolved exactly and the early out below
-    // skips the ibl, when no gi is active the ibl is the only fallback so we lift the visibility
-    // off zero by a small floor representing the baseline indirect bounce energy a typical
-    // interior picks up from surrounding surfaces, ue4 (skylight indirect intensity floor),
-    // frostbite (indirect minimum) and cryengine (e_giamount) all expose the same knob for the
-    // same reason, the value is conservative enough to keep contact ao readable but high enough
-    // that deep crevices no longer crush to pitch black
-    //
-    // specular ibl is intentionally not floored, mirror reflections do correctly go to 0 when
-    // the surface cannot see the sky, the inter-reflection lift is a diffuse phenomenon
+    // multi-bounce ao for diffuse, occlusion and horizon fade for specular
+    // the visibility floor represents baseline indirect bounce energy so crevices do not crush to black
+    // specular is not floored, mirror reflections correctly go to 0 when the sky is occluded
     const float ibl_visibility_floor = 0.1f;
     float  ibl_visibility    = max(surface.occlusion, ibl_visibility_floor);
     float3 diffuse_occlusion = gtao_multi_bounce(ibl_visibility, surface.albedo.rgb);
     float3 diffuse_ibl       = diffuse_skysphere * diffuse_occlusion * diffuse_energy * surface.albedo.rgb;
     float3 specular_ibl      = specular_skysphere * specular_energy * specular_occlusion;
 
-    // restir path tracing owns the full brdf at the primary, so it produces both diffuse and
-    // specular indirect, when restir is on we drop both ibl terms to avoid double counting
-    // otherwise rt reflections (when enabled) owns specular and the cubemap diffuse handles ao
+    // restir owns indirect so drop both ibl terms, otherwise rt reflections owns specular
     if (is_restir_pt_enabled())
     {
         diffuse_ibl  *= 0.0f;

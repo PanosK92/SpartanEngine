@@ -109,10 +109,8 @@ bool sphere_intersects_aabb(float3 sphere_center, float radius, float3 aabb_min,
     return sq <= radius * radius;
 }
 
-// tests a spot cone against a sphere, conservative no false negatives
-// apex is the cone tip, dir is the unit axis, range is the slant length to the cone base rim,
-// cos_half and sin_half are the cosine and sine of the half angle
-// references akenine-moller real time rendering 4th, chapter 22, cone vs sphere
+// tests a spot cone against a sphere, conservative, real time rendering 4th ch 22 cone vs sphere
+// apex is the tip, dir the unit axis, range the slant length, cos_half and sin_half the half angle
 bool cone_intersects_sphere(
     float3 apex,
     float3 dir,
@@ -144,11 +142,7 @@ bool cone_intersects_sphere(
     return cone_distance <= sphere_radius;
 }
 
-// tests a spot cone against an aabb in two passes, both must agree for an overlap, no false negatives
-// pass one rejects aabbs that do not intersect the spot's spherical falloff (apex, range), a much tighter
-//   bound than the cone alone since a spot is sphere intersected with a cone, not an infinite cone
-// pass two rejects aabbs whose bounding sphere does not intersect the cone's angular region
-// in tandem the two passes drop most clusters that the prior single bounding-sphere test would have admitted
+// tests a spot cone against an aabb in two passes, the spherical falloff then the angular region
 bool cone_intersects_aabb(
     float3 apex,
     float3 dir,

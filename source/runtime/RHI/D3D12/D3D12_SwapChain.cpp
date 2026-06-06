@@ -377,6 +377,7 @@ namespace spartan
         {
             if (result == DXGI_ERROR_DEVICE_REMOVED || result == DXGI_ERROR_DEVICE_RESET)
             {
+                RHI_Device::SetDeviceLost();
                 if (Debugging::IsBreadcrumbsEnabled())
                 {
                     Breadcrumbs::OnDeviceLost();

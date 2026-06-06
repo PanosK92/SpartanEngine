@@ -32,6 +32,15 @@ static const float ior_air                    = 1.0f;   // air IOR
 static const float chromatic_aberration       = 0.02f;  // chromatic aberration strength
 static const float absorption_scale           = 0.1f;   // water absorption scale
 
+// ray traced reflections now jitter the ray across the ggx lobe by surface roughness and a
+// spatiotemporal denoiser reconstructs a roughness proportional blur, so rough surfaces show a
+// correct soft reflection instead of a wrong sharp mirror, the fade band is pushed to the very
+// top of the roughness range as a gentle safety tail, beyond the ray spread alpha cap the lobe
+// stops widening so the last stretch fades out rather than reading as an under blurred mirror,
+// smooth surfaces (glass, polished metal, car paint) keep the full sharp reflection
+static const float reflection_roughness_fade_start = 0.85f; // full reflection at or below this
+static const float reflection_roughness_fade_end   = 1.0f;  // no reflection at or above this
+
 // screen-space raymarching constants
 static const uint  g_refraction_max_steps     = 16;     // max ray steps for refraction
 static const float g_refraction_max_distance  = 2.0f;   // max refraction distance
@@ -248,6 +257,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float  f0_dielectric  = pow((ior_air - ior_material) / (ior_air + ior_material), 2.0f);
     float3 F0_dielectric  = float3(f0_dielectric, f0_dielectric, f0_dielectric);
     float3 F0_brdf        = (surface.is_water() || surface.is_transparent()) ? F0_dielectric : surface.F0;
+
+    // fade out the mirror sharp reflection on rough surfaces, see band comment at top of file
+    float roughness_fade = 1.0f - smoothstep(reflection_roughness_fade_start, reflection_roughness_fade_end, surface.roughness);
+    reflection          *= roughness_fade;
 
     // brdf.x is fresnel dependent and brdf.y is fresnel independent, this matches the split sum used in light_image_based.hlsl
     float3 specular_reflection = reflection * (F0_brdf * brdf.x + brdf.y);

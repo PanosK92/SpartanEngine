@@ -142,6 +142,9 @@ namespace spartan
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.is_multiview));
             }
 
+            // cull mode, only d3d12 bakes this into the pso, vulkan keeps the field at its default and uses dynamic state
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.cull_mode));
+
             return hash;
         }
 

@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DEBUG_RAY_TRACING 0 // 1 = green hit, red miss, blue no geometry
 
+// upper bound on the ggx alpha for the reflection ray spread, caps divergence on rough surfaces
+static const float k_reflection_alpha_max = 0.6f;
+
 struct [raypayload] Payload
 {
     float3 position       : read(caller, closesthit, miss) : write(caller, closesthit, miss);
@@ -59,20 +62,37 @@ void ray_gen()
         return;
     }
     
-    // rt reflections own the full primary specular lobe at every roughness, restir contributes
-    // diffuse-only primary gi (restir_primary_specular_blend returns 0) because reusing a peaked
-    // specular target across pixels makes the reservoir weight explode into fireflies on glossy
-    // surfaces, tracing the actual reflection here is both stable and shows the real reflection
-    // (e.g. the car on the floor), the matching (1 - blend) scale in light_reflections.hlsl is a
-    // no-op now that blend is 0 so this output is used at full strength
-    
-    // reflection ray setup
+    // rt reflections own the full primary specular lobe, restir contributes diffuse only primary gi
     float3 pos_ws    = get_position(uv);
     float3 normal_ws = get_normal(uv);
     float3 V         = normalize(get_camera_position() - pos_ws);
-    float3 R         = reflect(-V, normal_ws);
+
+    // source roughness drives the ray spread, the vndf sampler is mirror sharp at roughness 0
+    float roughness = tex_material.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).r;
+    float alpha     = min(ggx_alpha_from_roughness(roughness), k_reflection_alpha_max);
+
+    // per pixel per frame low discrepancy sample, r2 frame rotation for the denoiser to accumulate
+    float  frame_index = (float)buffer_frame.frame;
+    float2 xi;
+    xi.x = frac(hash(float2(launch_id))         + frame_index * 0.7548776662f);
+    xi.y = frac(hash(float2(launch_id) + 31.7f) + frame_index * 0.5698402909f);
+
+    // sample a microfacet normal and reflect about it to turn the mirror ray into a glossy lobe
+    float3 tangent   = normalize(cross(abs(normal_ws.y) < 0.999f ? float3(0.0f, 1.0f, 0.0f) : float3(1.0f, 0.0f, 0.0f), normal_ws));
+    float3 bitangent = cross(normal_ws, tangent);
+    float3 v_local   = float3(dot(V, tangent), dot(V, bitangent), dot(V, normal_ws));
+    v_local.z        = max(v_local.z, 1e-4f);
+    float3 h_local   = ggx_vndf_sample(v_local, xi, alpha);
+    float3 H         = h_local.x * tangent + h_local.y * bitangent + h_local.z * normal_ws;
+    float3 R         = reflect(-V, H);
+
+    // a grazing sample can push the ray below the surface, fall back to the mirror direction
+    if (dot(R, normal_ws) <= 0.0f)
+    {
+        R = reflect(-V, normal_ws);
+    }
     
-    // ray origin offset, scaled with camera distance and pushed harder along the reflection at grazing angles to escape self intersection on curved metal panels
+    // ray origin offset scaled with camera distance, pushed along the reflection at grazing angles
     float camera_distance = length(get_camera_position() - pos_ws);
     float base_offset     = 0.001f + camera_distance * 0.0001f;
     float n_dot_v         = saturate(dot(normal_ws, V));
@@ -174,8 +194,7 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     float3 normal_world   = normalize(mul(normal_object, obj_to_world));
     float3 tangent_world  = normalize(mul(tangent_object, obj_to_world));
     
-    // world space uv transformation
-    // full uv state is per-renderable, fetched from geometry_infos[InstanceIndex()]
+    // world space uv, full uv state is per renderable from geometry_infos[InstanceIndex()]
     float3 hit_pos = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
     if (geo.uv_world_space > 0.0f)
     {
@@ -194,7 +213,7 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
     if (geo.uv_rotation != 0.0f)
         texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
     
-    // normal mapping, mild mip bias to avoid specular sparkle on detailed normal maps without destroying surface detail
+    // normal mapping, mild mip bias to avoid specular sparkle on detailed normal maps
     if (mat.has_texture_normal())
     {
         uint  normal_texture_index = material_index + material_texture_index_normal;
@@ -209,7 +228,7 @@ void closest_hit(inout Payload payload : SV_RayPayload, in BuiltInTriangleInters
         normal_world           = normalize(mul(normal_sample, tbn));
     }
     
-    // albedo, mip is biased by hit distance and grazing angle so ray traced reflections do not produce texture moire on tiled or stretched footprints
+    // albedo, mip biased by hit distance and grazing angle to avoid texture moire
     float3 albedo = mat.color.rgb;
     if (mat.has_texture_albedo())
     {

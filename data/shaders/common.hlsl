@@ -534,6 +534,41 @@ float noise_interleaved_gradient(float2 screen_pos, bool temporal = true)
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
 }
 
+// remaps perceptual roughness to a ggx alpha, matches D_GGX_Alpha in brdf.hlsl (call of duty
+// wwii remap) so the reflection ray cone tracks the exact same specular lobe the surface shading
+// uses, a plain roughness*roughness mapping is several times wider here and washes glossy
+// reflections into a matte sheen
+float ggx_alpha_from_roughness(float roughness)
+{
+    float gloss = 1.0f - roughness;
+    return sqrt(2.0f / (1.0f + pow(2.0f, 18.0f * gloss)));
+}
+
+// ggx visible normal distribution sampler, heitz 2018, ve is the view direction expressed in
+// the local frame where z is the surface normal, returns a microfacet normal in that same frame,
+// at alpha 0 it collapses to the surface normal so mirror surfaces stay perfectly sharp
+float3 ggx_vndf_sample(float3 ve, float2 xi, float alpha)
+{
+    float a = max(alpha, 1e-3f);
+
+    float3 vh = normalize(float3(a * ve.x, a * ve.y, ve.z));
+
+    float  lensq = vh.x * vh.x + vh.y * vh.y;
+    float3 t1    = (lensq > 0.0f) ? (float3(-vh.y, vh.x, 0.0f) * rsqrt(lensq)) : float3(1.0f, 0.0f, 0.0f);
+    float3 t2    = cross(vh, t1);
+
+    float r        = sqrt(xi.x);
+    float phi      = 2.0f * PI * xi.y;
+    float t1_coeff = r * cos(phi);
+    float t2_coeff = r * sin(phi);
+    float s        = 0.5f * (1.0f + vh.z);
+    t2_coeff       = (1.0f - s) * sqrt(1.0f - t1_coeff * t1_coeff) + s * t2_coeff;
+
+    float3 nh = t1_coeff * t1 + t2_coeff * t2 + sqrt(max(0.0f, 1.0f - t1_coeff * t1_coeff - t2_coeff * t2_coeff)) * vh;
+
+    return normalize(float3(a * nh.x, a * nh.y, max(0.0f, nh.z)));
+}
+
 /*------------------------------------------------------------------------------
     OCCLUSION/SHADOWING
 ------------------------------------------------------------------------------*/

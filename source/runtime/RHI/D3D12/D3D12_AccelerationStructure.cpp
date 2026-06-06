@@ -140,17 +140,16 @@ namespace spartan
             return resource;
         }
 
+        // map any rhi format to its dxgi equivalent through the shared backend table instead of a partial switch,
+        // this keeps blas vertex and index formats correct for every format the engine can feed the as builder
         DXGI_FORMAT format_to_dxgi(RHI_Format f)
         {
-            switch (f)
+            if (f == RHI_Format::Max)
             {
-                case RHI_Format::R32G32B32_Float: return DXGI_FORMAT_R32G32B32_FLOAT;
-                case RHI_Format::R32G32_Float:    return DXGI_FORMAT_R32G32_FLOAT;
-                case RHI_Format::R16G16_Float:    return DXGI_FORMAT_R16G16_FLOAT;
-                case RHI_Format::R16_Uint:        return DXGI_FORMAT_R16_UINT;
-                case RHI_Format::R32_Uint:        return DXGI_FORMAT_R32_UINT;
-                default:                          return DXGI_FORMAT_UNKNOWN;
+                return DXGI_FORMAT_UNKNOWN;
             }
+
+            return d3d12_format[rhi_format_to_index(f)];
         }
 
         // wrap a uav memory barrier so consecutive as builds writing the shared scratch are ordered
@@ -450,19 +449,29 @@ namespace spartan
             }
 
             m_staging_buffer[buf_idx]      = create_upload_buffer(data_size, (m_object_name + "_staging_" + to_string(buf_idx)).c_str());
-            m_staging_buffer_size[buf_idx] = data_size;
+            m_staging_buffer_size[buf_idx] = m_staging_buffer[buf_idx] ? data_size : 0;
         }
 
-        if (m_staging_buffer[buf_idx])
+        // abort if the instance descriptors could not be staged, building with a null InstanceDescs address would
+        // produce a tlas with no instances and trip the runtime, the previous frame's tlas stays valid instead
+        if (!m_staging_buffer[buf_idx])
+        {
+            SP_LOG_WARNING("TLAS instance staging buffer alloc failed (%llu bytes) for %s", static_cast<uint64_t>(data_size), m_object_name.c_str());
+            return;
+        }
+
         {
             ID3D12Resource* staging = static_cast<ID3D12Resource*>(m_staging_buffer[buf_idx]);
             void* mapped            = nullptr;
             D3D12_RANGE read_range  = { 0, 0 };
-            if (SUCCEEDED(staging->Map(0, &read_range, &mapped)) && mapped)
+            if (FAILED(staging->Map(0, &read_range, &mapped)) || !mapped)
             {
-                memcpy(mapped, d3d_instances.data(), data_size);
-                staging->Unmap(0, nullptr);
+                SP_LOG_WARNING("TLAS instance staging buffer map failed for %s", m_object_name.c_str());
+                return;
             }
+
+            memcpy(mapped, d3d_instances.data(), data_size);
+            staging->Unmap(0, nullptr);
         }
 
         // input descs reference the staging buffer directly, dxr supports gpu virtual addresses on upload heaps
@@ -472,7 +481,7 @@ namespace spartan
                               | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
         inputs.DescsLayout    = D3D12_ELEMENTS_LAYOUT_ARRAY;
         inputs.NumDescs       = static_cast<UINT>(d3d_instances.size());
-        inputs.InstanceDescs  = m_staging_buffer[buf_idx] ? static_cast<ID3D12Resource*>(m_staging_buffer[buf_idx])->GetGPUVirtualAddress() : 0;
+        inputs.InstanceDescs  = static_cast<ID3D12Resource*>(m_staging_buffer[buf_idx])->GetGPUVirtualAddress();
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild = {};
         device5->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
@@ -521,6 +530,10 @@ namespace spartan
         build_desc.DestAccelerationStructureData    = static_cast<ID3D12Resource*>(m_rhi_resource_results)->GetGPUVirtualAddress();
         build_desc.SourceAccelerationStructureData  = 0;
         build_desc.ScratchAccelerationStructureData = static_cast<ID3D12Resource*>(m_scratch_buffer)->GetGPUVirtualAddress();
+
+        // dxr requires the scratch and dest addresses to meet the as scratch alignment, committed buffers start
+        // at a 64kb-aligned va so this always holds, the assert guards against a future sub-allocated scratch path
+        SP_ASSERT((build_desc.ScratchAccelerationStructureData % D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT) == 0);
 
         cmd4->BuildRaytracingAccelerationStructure(&build_desc, 0, nullptr);
 

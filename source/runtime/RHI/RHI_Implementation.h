@@ -31,11 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <dxcapi.h>
 #pragma warning(pop)
 
+// must match the RHI_CullMode enum order, Back, Front, None
 static const D3D12_CULL_MODE d3d12_cull_mode[] =
 {
-    D3D12_CULL_MODE_NONE,
+    D3D12_CULL_MODE_BACK,
     D3D12_CULL_MODE_FRONT,
-    D3D12_CULL_MODE_BACK
+    D3D12_CULL_MODE_NONE
 };
 
 static const D3D12_FILL_MODE d3d12_polygon_mode[] =

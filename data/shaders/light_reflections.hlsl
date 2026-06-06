@@ -24,13 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //============================
 
-// shades ray traced reflection hits using analytical lights with inline ray traced
-// visibility, plus a sky visibility tested ibl term, so reflection brightness tracks
-// actual lighting at the hit point, dark areas stay dark, lit areas stay lit
+// shades ray traced reflection hits with analytical lights and a sky visibility tested ibl term
 
-// halton (2,3) low discrepancy sequence, 4 points
-// shadow ray budget is kept small since the reflection ray itself already spreads
-// noise across pixels, the denoiser handles the rest
+// small shadow ray budget, the reflection ray already spreads noise and the denoiser handles the rest
 static const uint k_shadow_spp = 4;
 static const float2 k_halton_2_3[4] =
 {
@@ -43,6 +39,16 @@ static const float2 k_halton_2_3[4] =
 float reflections_spatial_hash_unit(float2 pixel_xy)
 {
     return frac(52.9829189f * frac(pixel_xy.x * 0.06711056f + pixel_xy.y * 0.00583715f));
+}
+
+// karis 2014 analytic split sum environment brdf, avoids binding the brdf lut in this pass
+float2 reflections_env_brdf_approx(float roughness, float n_dot_v)
+{
+    const float4 c0 = float4(-1.0f, -0.0275f, -0.572f, 0.022f);
+    const float4 c1 = float4(1.0f, 0.0425f, 1.04f, -0.04f);
+    float4 r        = roughness * c0 + c1;
+    float  a004     = min(r.x * r.x, exp2(-9.28f * n_dot_v)) * r.x + r.y;
+    return float2(-1.04f, 1.04f) * a004 + r.zw;
 }
 
 float2 reflections_concentric_disk(float2 u)
@@ -65,9 +71,7 @@ float2 reflections_concentric_disk(float2 u)
     return r * float2(cos(theta), sin(theta));
 }
 
-// inline ray traced visibility for any light type at a reflection hit point
-// returns visibility 0..1, mirrors trace_inline_shadow_ray in light.hlsl but
-// driven by raw LightParameters since light_reflections does not build a Surface
+// inline ray traced visibility for any light type at a reflection hit point, returns 0..1
 float reflections_trace_shadow(LightParameters light_p, float3 hit_position, float3 hit_normal, float2 pixel_xy)
 {
     bool is_directional = (light_p.flags & uint(1U << 0)) != 0;
@@ -174,16 +178,17 @@ float reflections_trace_shadow(LightParameters light_p, float3 hit_position, flo
     return valid_samples > 0.0f ? (visibility_sum / valid_samples) : 1.0f;
 }
 
-// single ray sky visibility test, gates the ibl term so hit points inside enclosed
-// or shadowed geometry stop receiving full sky lighting
-float reflections_trace_sky_visibility(float3 hit_position, float3 hit_normal)
+// single ray sky visibility test, gates the ibl terms so hit points inside enclosed
+// or shadowed geometry stop receiving full sky lighting, trace_dir lets the caller test
+// the diffuse hemisphere (normal) or the specular reflection direction independently
+float reflections_trace_sky_visibility(float3 hit_position, float3 hit_normal, float3 trace_dir)
 {
     float  bias   = 0.005f;
     float3 origin = hit_position + hit_normal * bias;
     
     RayDesc ray;
     ray.Origin    = origin;
-    ray.Direction = hit_normal;
+    ray.Direction = trace_dir;
     ray.TMin      = 0.001f;
     ray.TMax      = 100.0f;
     
@@ -197,14 +202,13 @@ float reflections_trace_sky_visibility(float3 hit_position, float3 hit_normal)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void main_cs(uint3 thread_id : SV_DispatchThreadID)
 {
-    // get output resolution
     float2 resolution_out;
     tex_uav.GetDimensions(resolution_out.x, resolution_out.y);
     
     if (thread_id.x >= resolution_out.x || thread_id.y >= resolution_out.y)
         return;
     
-    // read reflection g-buffer data
+    // reflection g-buffer layout
     // tex  = position.xyz + hit_distance
     // tex2 = normal.xyz + material_index
     // tex3 = albedo.rgb + roughness
@@ -235,10 +239,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         float3 ray_dir         = position; // direction stored in position for misses
         float2 sky_uv          = direction_sphere_uv(ray_dir);
         float3 sky_color       = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, sky_mip).rgb;
-        // rt owns the full primary specular lobe at every roughness, restir is diffuse-only now
-        // (restir_primary_specular_blend returns 0) so there is no specular share to hand off and
-        // this sky reflection is used at full strength, see the hit branch for the rationale
-        tex_uav[thread_id.xy] = float4(sky_color, 1.0f);
+        tex_uav[thread_id.xy]  = float4(sky_color, 1.0f);
         return;
     }
     
@@ -247,9 +248,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float  metallic        = mat.metalness;
     float3 F0              = lerp(0.04f, albedo, metallic);
     
-    // proper view direction at the hit, the reflection ray came from the source pixel so the
-    // outgoing direction we want to evaluate is from the hit back to that source, this matches
-    // what the source surface specular brdf will see when the reflected radiance is consumed
+    // view direction at the hit points back toward the source pixel
     float2 uv_source     = (thread_id.xy + 0.5f) / resolution_out;
     float3 source_pos    = get_position(uv_source);
     float3 view_dir      = source_pos - position;
@@ -316,9 +315,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         if (n_dot_l <= 0.0f || attenuation <= 0.0f)
             continue;
         
-        // inline ray traced shadow at the hit, the key fix, all light types now respect occlusion
-        // this makes self reflections of a dark object stay dark and stops the area light from
-        // bleeding through walls or through the back side of geometry it cannot see
+        // inline ray traced shadow at the hit so all light types respect occlusion
         float shadow = 1.0f;
         if (has_shadows)
         {
@@ -348,24 +345,41 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         out_specular += specular_brdf * radiance;
     }
     
-    // ibl diffuse, sky based, gated by a sky visibility ray so the hit point only receives
-    // sky illumination if it can actually see the sky, this kills the constant brightness
-    // floor that previously made dark areas glow in the reflection
-    float  sky_visibility = reflections_trace_sky_visibility(position, normal);
-    float  mip_count      = pass_get_f3_value().y;
+    float mip_count = pass_get_f3_value().y;
+
+    // sky based diffuse ibl, gated by a sky visibility ray so enclosed hits stay dark
+    float  sky_visibility = reflections_trace_sky_visibility(position, normal, normal);
     float2 sky_uv         = direction_sphere_uv(normal);
     float3 ibl_sample     = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), sky_uv, mip_count - 1.0f).rgb;
     float3 ibl_diffuse    = albedo * ibl_sample * (1.0f - metallic) * sky_visibility * 0.3f;
-    
-    // no ibl specular term, the hit point is already a reflection bounce so a second specular
-    // bounce off the sky is both expensive and not what drives primary reflection visibility,
-    // direct lights and the diffuse ibl are what determine how bright the reflection looks
-    float3 final_color = out_diffuse + out_specular + ibl_diffuse;
 
-    // rt owns the full primary specular lobe at every roughness, restir contributes diffuse-only
-    // primary gi now (restir_primary_specular_blend returns 0) because reusing a peaked specular
-    // target across pixels makes the reservoir weight explode into fireflies on glossy surfaces,
-    // so there is no specular share to subtract here and this rt reflection is used at full
-    // strength, the diffuse indirect from restir and the specular from rt sum without overlap
+    // specular environment at the hit, without this reflective hit surfaces (metal car, glossy
+    // black tiles) shade to near black inside the reflection since their diffuse is killed by
+    // metalness or a dark albedo, this is the term that makes a reflected car look like a car
+    // and not a silhouette, single bounce sky approximation gated by a visibility ray along the
+    // hit reflection direction so enclosed geometry does not leak sky
+    float3 reflect_dir    = reflect(-view_dir, normal);
+    float  spec_mip       = roughness * roughness * (mip_count - 1.0f);
+    float3 env_spec       = tex4.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), direction_sphere_uv(reflect_dir), spec_mip).rgb;
+    float2 env_brdf       = reflections_env_brdf_approx(roughness, n_dot_v);
+    float  spec_vis       = reflections_trace_sky_visibility(position, normal, reflect_dir);
+    float3 ibl_specular   = env_spec * (F0 * env_brdf.x + env_brdf.y) * spec_vis;
+
+    // emissive at the hit, the showroom is lit almost entirely by emissive light strips, without
+    // this the emitters never appear in reflections so reflective surfaces have nothing to show,
+    // the hdr boost mirrors light_composition so a reflected strip is as bright as the real one
+    float3 emission = 0.0f;
+    if (mat.emissive_from_albedo())
+    {
+        emission = albedo * 250.0f;
+    }
+    else if (mat.has_texture_emissive())
+    {
+        emission = mat.color.rgb * 25.0f;
+    }
+
+    float3 final_color = out_diffuse + out_specular + ibl_diffuse + ibl_specular + emission;
+
+    // rt owns the full primary specular lobe, restir contributes diffuse only so there is no overlap
     tex_uav[thread_id.xy] = validate_output(float4(final_color, 1.0f));
 }

@@ -321,12 +321,15 @@ namespace spartan
             return;
         }
 
-        // constant buffers are ring-allocated by advancing m_offset by the aligned stride per update
-        if (m_type == RHI_Buffer_Type::Constant)
+        // mappable buffers ring-advance by stride and memcpy into the persistent mapping, mirrors the vulkan path
+        // so consumers that read via GetOffset (e.g. dynamic constant buffers) see the correct slot
+        if (m_data_gpu)
         {
-            SP_ASSERT_MSG(m_data_gpu, "constant buffer must be mapped");
-
-            if (!first_update)
+            if (first_update)
+            {
+                first_update = false;
+            }
+            else
             {
                 m_offset += m_stride;
                 if (m_offset + m_stride > m_object_size)
@@ -334,16 +337,12 @@ namespace spartan
                     m_offset = 0;
                 }
             }
-            first_update = false;
 
-            memcpy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, min(static_cast<uint64_t>(size), static_cast<uint64_t>(m_stride)));
-            return;
-        }
+            const uint64_t upload_size = (size != 0) ? static_cast<uint64_t>(size) : static_cast<uint64_t>(m_stride);
+            SP_ASSERT(static_cast<uint64_t>(m_offset) + upload_size <= m_object_size);
+            memcpy(static_cast<uint8_t*>(m_data_gpu) + m_offset, data_cpu, upload_size);
 
-        // mapped path, direct memcpy into the persistently mapped pointer
-        if (m_data_gpu)
-        {
-            memcpy(m_data_gpu, data_cpu, min(static_cast<uint64_t>(size), m_object_size));
+            // upload-heap writes become visible to the gpu at the next ExecuteCommandLists boundary, no barrier needed
             return;
         }
 

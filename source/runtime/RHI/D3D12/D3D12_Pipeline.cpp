@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "D3D12_Internal.h"
 #include <wrl/client.h>
 #include <cstring>
+#include <cmath>
 //===================================
 
 using namespace std;
@@ -42,6 +43,7 @@ using namespace std;
 namespace spartan
 {
     // forward declarations
+    static ID3D12RootSignature* get_or_create_bindless_root_signature();
     static void create_root_signature_bindless(RHI_Pipeline* pipeline);
     static void create_compute_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state);
     static void create_graphics_pipeline(RHI_Pipeline* pipeline, RHI_PipelineState& state);
@@ -115,9 +117,11 @@ namespace spartan
         if (state.rasterizer_state)
         {
             desc_rasterizer.FillMode              = d3d12_polygon_mode[static_cast<uint32_t>(state.rasterizer_state->GetPolygonMode())];
-            desc_rasterizer.CullMode              = pso_is_imgui(state) ? D3D12_CULL_MODE_NONE : D3D12_CULL_MODE_BACK;
+            desc_rasterizer.CullMode              = pso_is_imgui(state) ? D3D12_CULL_MODE_NONE : d3d12_cull_mode[static_cast<uint32_t>(state.cull_mode)];
             desc_rasterizer.FrontCounterClockwise = false;
-            desc_rasterizer.DepthBias             = static_cast<INT>(state.rasterizer_state->GetDepthBias());
+            // d3d12 expects an integer bias in units of the depth format's smallest representable value,
+            // scale by 2^24 to match the vulkan depthBiasConstantFactor so both backends produce the same offset
+            desc_rasterizer.DepthBias             = static_cast<INT>(floorf(state.rasterizer_state->GetDepthBias() * static_cast<float>(1 << 24)));
             desc_rasterizer.DepthBiasClamp        = state.rasterizer_state->GetDepthBiasClamp();
             desc_rasterizer.SlopeScaledDepthBias  = state.rasterizer_state->GetDepthBiasSlopeScaled();
             desc_rasterizer.DepthClipEnable       = state.rasterizer_state->GetDepthClipEnabled();
@@ -136,21 +140,32 @@ namespace spartan
         const UINT8 write_mask       = pso_is_imgui(state) ? imgui_write_mask : D3D12_COLOR_WRITE_ENABLE_ALL;
 
         D3D12_BLEND_DESC desc_blend_state = {};
-        if (state.blend_state)
         {
-            desc_blend_state.RenderTarget[0].BlendEnable           = state.blend_state->GetBlendEnabled();
-            desc_blend_state.RenderTarget[0].SrcBlend              = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetSourceBlend())];
-            desc_blend_state.RenderTarget[0].DestBlend             = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetDestBlend())];
-            desc_blend_state.RenderTarget[0].BlendOp               = d3d12_blend_operation[static_cast<uint32_t>(state.blend_state->GetBlendOp())];
-            desc_blend_state.RenderTarget[0].SrcBlendAlpha         = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetSourceBlendAlpha())];
-            desc_blend_state.RenderTarget[0].DestBlendAlpha        = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetDestBlendAlpha())];
-            desc_blend_state.RenderTarget[0].BlendOpAlpha          = d3d12_blend_operation[static_cast<uint32_t>(state.blend_state->GetBlendOpAlpha())];
-            desc_blend_state.RenderTarget[0].RenderTargetWriteMask = write_mask;
-        }
-        else
-        {
-            desc_blend_state.RenderTarget[0].BlendEnable           = false;
-            desc_blend_state.RenderTarget[0].RenderTargetWriteMask = write_mask;
+            // build a single attachment blend desc then replicate it across all targets, matches the vulkan path
+            D3D12_RENDER_TARGET_BLEND_DESC rt_blend = {};
+            if (state.blend_state)
+            {
+                rt_blend.BlendEnable           = state.blend_state->GetBlendEnabled();
+                rt_blend.SrcBlend              = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetSourceBlend())];
+                rt_blend.DestBlend             = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetDestBlend())];
+                rt_blend.BlendOp               = d3d12_blend_operation[static_cast<uint32_t>(state.blend_state->GetBlendOp())];
+                rt_blend.SrcBlendAlpha         = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetSourceBlendAlpha())];
+                rt_blend.DestBlendAlpha        = d3d12_blend_factor[static_cast<uint32_t>(state.blend_state->GetDestBlendAlpha())];
+                rt_blend.BlendOpAlpha          = d3d12_blend_operation[static_cast<uint32_t>(state.blend_state->GetBlendOpAlpha())];
+                rt_blend.RenderTargetWriteMask = write_mask;
+            }
+            else
+            {
+                rt_blend.BlendEnable           = false;
+                rt_blend.RenderTargetWriteMask = write_mask;
+            }
+
+            // per-target blend state requires IndependentBlendEnable, the desc is identical for every target so it is harmless
+            desc_blend_state.IndependentBlendEnable = TRUE;
+            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+            {
+                desc_blend_state.RenderTarget[i] = rt_blend;
+            }
         }
 
         // depth-stencil state
@@ -279,8 +294,26 @@ namespace spartan
     //   8: SRV table t19 space5 (draw_data)
     //   9: SRV table t20 space8 (geometry_vertices) + t22 space9 (indices) + t23 space10 (instances)
     //  10: Sampler table s0 space6 unbounded + s1 space7 unbounded
+    // the bindless root signature is identical for every pipeline, so build it once and share it
+    // each pipeline takes a reference (see create_root_signature_bindless) balanced by its deletion-queue release
     static void create_root_signature_bindless(RHI_Pipeline* pipeline)
     {
+        ID3D12RootSignature* root_sig = get_or_create_bindless_root_signature();
+        if (root_sig)
+        {
+            root_sig->AddRef();
+            pipeline->SetRhiResourceLayout(root_sig);
+        }
+    }
+
+    static ID3D12RootSignature* get_or_create_bindless_root_signature()
+    {
+        static ID3D12RootSignature* s_root_signature = nullptr;
+        if (s_root_signature)
+        {
+            return s_root_signature;
+        }
+
         constexpr uint32_t param_count = 11;
         D3D12_ROOT_PARAMETER params[param_count] = {};
 
@@ -444,17 +477,16 @@ namespace spartan
             {
                 signature_blob->Release();
             }
-            return;
+            return nullptr;
         }
 
-        void* layout = nullptr;
+        ID3D12RootSignature* layout = nullptr;
         hr = RHI_Context::device->CreateRootSignature(0, signature_blob->GetBufferPointer(), signature_blob->GetBufferSize(),
-            IID_PPV_ARGS(reinterpret_cast<ID3D12RootSignature**>(&layout)));
+            IID_PPV_ARGS(&layout));
         if (FAILED(hr))
         {
             SP_LOG_ERROR("Failed to create bindless root signature: %s", d3d12_utility::error::dxgi_error_to_string(hr));
         }
-        pipeline->SetRhiResourceLayout(layout);
 
         if (signature_blob)
         {
@@ -464,6 +496,10 @@ namespace spartan
         {
             error_blob->Release();
         }
+
+        // cache it, the static holds the original reference so the signature outlives every pipeline that shares it
+        s_root_signature = layout;
+        return s_root_signature;
     }
 
     // build a dxr ray tracing pipeline state object using the bindless root signature as the global root sig

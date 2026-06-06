@@ -48,8 +48,7 @@ bool light_intersects_cluster(LightParameters light, float3 aabb_min, float3 aab
         float sin_half = sin(angle);
 
         float3 apex_view = world_to_view(light.position, true);
-        // light.direction is already unit length on the cpu side, only normalize after the view transform
-        // in case the view matrix carries non uniform scale, this avoids a redundant normalize per light
+        // normalize after the view transform in case it carries non uniform scale
         float3 dir_view  = normalize(world_to_view(light.direction, false));
 
         return cone_intersects_aabb(apex_view, dir_view, light.range, cos_half, sin_half, aabb_min, aabb_max);
@@ -88,12 +87,11 @@ void main_cs(uint3 cluster_id : SV_GroupID, uint thread_index : SV_GroupIndex)
     {
         LightParameters light = light_parameters[i];
 
-        // a directional light has no spatial bound, the engine always reserves slot 0 for it
-        // but we still guard against any extra directionals just in case
+        // directional lights have no spatial bound, guard against any extra ones
         if ((light.flags & uint(1U << 0)) != 0)
             continue;
 
-        // intensity zero lights produce no radiance, drop them so they do not fill cluster slots
+        // drop zero intensity lights so they do not fill cluster slots
         if (light.intensity <= 0.0f)
             continue;
 
@@ -112,11 +110,10 @@ void main_cs(uint3 cluster_id : SV_GroupID, uint thread_index : SV_GroupIndex)
     uint raw_count   = gs_count;
     uint final_count = min(raw_count, (uint)CLUSTER_MAX_LIGHTS);
 
-    // stable contents: bitonic-sort the surviving indices ascending so the set is deterministic
-    // across frames regardless of warp scheduling, only sorts the actually populated lanes
+    // bitonic sort the survivors ascending so the set is deterministic across frames
     if (final_count > 1u)
     {
-        // pad the upper lanes with a sentinel so the sort leaves them alone, sort across the full lds array
+        // pad the upper lanes with a sentinel so the sort leaves them alone
         for (uint pad = final_count + thread_index; pad < (uint)CLUSTER_MAX_LIGHTS; pad += THREADS_PER_GROUP)
         {
             gs_indices[pad] = 0xFFFFFFFFu;

@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../Core/Debugging.h"
 #include "../../Profiling/Breadcrumbs.h"
+#include "../../XR/Xr.h"
 #include "D3D12_Internal.h"
 #include "D3D12_BlitGraphics.h"
 #include <wrl/client.h>
@@ -787,6 +788,10 @@ namespace spartan
 
         m_state = RHI_CommandListState::Idle;
 
+        // create sync primitives, the timeline mirrors vulkan's per-cmd-list timeline used for cross-queue ordering
+        m_rendering_complete_semaphore          = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::Semaphore, (string(name) + "_rendering_complete").c_str());
+        m_rendering_complete_semaphore_timeline = make_shared<RHI_SyncPrimitive>(RHI_SyncPrimitive_Type::SemaphoreTimeline, (string(name) + "_timeline").c_str());
+
         // create timestamp/occlusion query heaps and matching readback buffers, queries side-table holds them
         queries::initialize(this, queue->GetType());
         m_rhi_query_pool_timestamps = queries::get(this).heap_timestamp;
@@ -948,11 +953,33 @@ namespace spartan
         m_rhi_fence_value++;
         queue->Signal(static_cast<ID3D12Fence*>(m_rhi_fence), m_rhi_fence_value);
 
+        // signal this cmd list's timeline so a downstream cross-queue Submit can wait on the captured value
+        if (m_rendering_complete_semaphore_timeline && m_rendering_complete_semaphore_timeline->GetRhiResource())
+        {
+            uint64_t next_value = m_rendering_complete_semaphore_timeline->GetNextSignalValue();
+            queue->Signal(static_cast<ID3D12Fence*>(m_rendering_complete_semaphore_timeline->GetRhiResource()), next_value);
+        }
+
         // signal the consumer's sync primitive so a downstream Submit can Wait on it
         if (semaphore_signal && semaphore_signal->GetRhiResource())
         {
             uint64_t next_value = semaphore_signal->GetNextSignalValue();
             queue->Signal(static_cast<ID3D12Fence*>(semaphore_signal->GetRhiResource()), next_value);
+        }
+
+        // detect a gpu crash early so the engine reports it instead of hanging on the next wait
+        if (FAILED(RHI_Context::device->GetDeviceRemovedReason()))
+        {
+            RHI_Device::SetDeviceLost();
+            if (Debugging::IsBreadcrumbsEnabled())
+            {
+                Breadcrumbs::OnDeviceLost();
+                SP_ERROR_WINDOW("GPU crashed. Check 'log.txt' for breadcrumbs report.");
+            }
+            else
+            {
+                SP_ERROR_WINDOW("GPU crashed. To capture breadcrumbs, enable them in debugging.h and re-run.");
+            }
         }
 
         m_state = RHI_CommandListState::Submitted;
@@ -1083,8 +1110,9 @@ namespace spartan
             }
         }
 
-        m_pso      = pso;
-        m_pipeline = pipeline;
+        m_pso       = pso;
+        m_pipeline  = pipeline;
+        m_cull_mode = pso.cull_mode;
 
         if (!is_compute && !is_raytracing)
         {
@@ -1143,7 +1171,16 @@ namespace spartan
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
                 RHI_Texture* rt = m_pso.render_target_color_textures[i];
-                if (!rt || !rt->GetRhiRtv(0))
+                if (!rt)
+                {
+                    continue;
+                }
+
+                // multiview binds the all-slice view, otherwise pick the requested array slice (cube faces, array layers)
+                void* rtv = (m_pso.is_multiview && rt->GetRhiRtvMultiview())
+                    ? rt->GetRhiRtvMultiview()
+                    : rt->GetRhiRtv(m_pso.render_target_array_index);
+                if (!rtv)
                 {
                     continue;
                 }
@@ -1152,7 +1189,7 @@ namespace spartan
                 cmd_state::push_transition(b, resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
                 rt->SetLayoutDirect(0, rt->GetMipCount(), RHI_Image_Layout::Attachment);
 
-                rtv_handles[i].ptr = reinterpret_cast<SIZE_T>(rt->GetRhiRtv(0));
+                rtv_handles[i].ptr = reinterpret_cast<SIZE_T>(rtv);
                 rtv_count          = i + 1;
                 width              = rt->GetWidth();
                 height             = rt->GetHeight();
@@ -1162,19 +1199,28 @@ namespace spartan
         // depth target, transition to depth_write before clears or draws
         D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle = {};
         D3D12_CPU_DESCRIPTOR_HANDLE* dsv_ptr   = nullptr;
-        if (m_pso.render_target_depth_texture && m_pso.render_target_depth_texture->GetRhiDsv(0))
+        if (m_pso.render_target_depth_texture)
         {
             RHI_Texture* depth = m_pso.render_target_depth_texture;
-            ID3D12Resource* depth_resource = static_cast<ID3D12Resource*>(depth->GetRhiResource());
-            cmd_state::push_transition(b, depth_resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-            depth->SetLayoutDirect(0, depth->GetMipCount(), RHI_Image_Layout::Attachment);
 
-            dsv_handle.ptr = reinterpret_cast<SIZE_T>(depth->GetRhiDsv(0));
-            dsv_ptr        = &dsv_handle;
-            if (width == 0)
+            // multiview binds the all-slice view, otherwise pick the requested array slice
+            void* dsv = (m_pso.is_multiview && depth->GetRhiDsvMultiview())
+                ? depth->GetRhiDsvMultiview()
+                : depth->GetRhiDsv(m_pso.render_target_array_index);
+
+            if (dsv)
             {
-                width  = depth->GetWidth();
-                height = depth->GetHeight();
+                ID3D12Resource* depth_resource = static_cast<ID3D12Resource*>(depth->GetRhiResource());
+                cmd_state::push_transition(b, depth_resource, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+                depth->SetLayoutDirect(0, depth->GetMipCount(), RHI_Image_Layout::Attachment);
+
+                dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv);
+                dsv_ptr        = &dsv_handle;
+                if (width == 0)
+                {
+                    width  = depth->GetWidth();
+                    height = depth->GetHeight();
+                }
             }
         }
 
@@ -1226,6 +1272,29 @@ namespace spartan
             scissor.right  = static_cast<LONG>(width);
             scissor.bottom = static_cast<LONG>(height);
             cmd_list->RSSetScissorRects(1, &scissor);
+        }
+
+        // variable rate shading, bind the per-image shading rate texture when the pass requests it, otherwise disable
+        if (m_pso.vrs_input_texture && RHI_Device::IsSupportedVrs())
+        {
+            RHI_Texture* vrs = m_pso.vrs_input_texture;
+            ID3D12Resource* vrs_resource = static_cast<ID3D12Resource*>(vrs->GetRhiResource());
+
+            cmd_state::push_transition(b, vrs_resource, D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE);
+            vrs->SetLayoutDirect(0, vrs->GetMipCount(), RHI_Image_Layout::Shading_Rate_Attachment);
+            cmd_state::flush(cmd_list, b);
+
+            RHI_Device::SetVariableRateShading(this, true);
+
+            Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList5> cmd_list5;
+            if (SUCCEEDED(cmd_list->QueryInterface(IID_PPV_ARGS(&cmd_list5))))
+            {
+                cmd_list5->RSSetShadingRateImage(vrs_resource);
+            }
+        }
+        else if (RHI_Device::IsSupportedVrs())
+        {
+            RHI_Device::SetVariableRateShading(this, false);
         }
 
         m_render_pass_active = true;
@@ -1634,10 +1703,15 @@ namespace spartan
 
         auto& b = cmd_state::get(this);
 
+        // save the layouts the textures had before the blit so they can be restored after, matching the vulkan semantics
+        const std::array<RHI_Image_Layout, rhi_max_mip_count> src_layouts_initial = source->GetLayouts();
+        const std::array<RHI_Image_Layout, rhi_max_mip_count> dst_layouts_initial = destination->GetLayouts();
+        auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
+
         // when source and destination dimensions and formats match and no scaling is requested copyresource is the
-        // cheapest path, otherwise fall back to a fullscreen-triangle blit that samples the source srv into the destination
-        const bool dims_match  = source->GetWidth()  == destination->GetWidth()
-                              && source->GetHeight() == destination->GetHeight();
+        // cheapest path and copies every subresource, otherwise fall back to a fullscreen-triangle blit per mip
+        const bool dims_match   = source->GetWidth()  == destination->GetWidth()
+                               && source->GetHeight() == destination->GetHeight();
         const bool format_match = source->GetFormat() == destination->GetFormat();
         const bool no_scaling   = resolution_scale >= 1.0f - 1e-6f && resolution_scale <= 1.0f + 1e-6f;
 
@@ -1648,69 +1722,130 @@ namespace spartan
             cmd_state::flush(cmd_list, b);
 
             cmd_list->CopyResource(dst, src);
-
-            source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
-            destination->SetLayoutDirect(0, destination->GetMipCount(), RHI_Image_Layout::Transfer_Destination);
-            return;
-        }
-
-        // graphics pipeline blit, mirrors the vkCmdBlitImage scaling semantics that rhi callers expect
-        const bool dst_is_depth = destination->IsDepthStencilFormat();
-        const bool src_is_depth = source->IsDepthStencilFormat();
-
-        // depth resources additionally allow depth_read to coexist with shader_resource state
-        const D3D12_RESOURCE_STATES src_read_state = src_is_depth
-            ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
-            : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
-        cmd_state::push_transition(b, src, src_read_state);
-        cmd_state::push_transition(b, dst, dst_is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET);
-        cmd_state::flush(cmd_list, b);
-
-        d3d12_blit::BlitParams params = {};
-        void* src_srv_ptr = source->GetRhiSrv();
-        if (!src_srv_ptr)
-        {
-            return;
-        }
-        params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
-
-        if (dst_is_depth)
-        {
-            void* dsv_ptr = destination->GetRhiDsv(0);
-            if (!dsv_ptr)
-            {
-                return;
-            }
-            params.destination_dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv_ptr);
         }
         else
         {
-            void* rtv_ptr = destination->GetRhiRtv(0);
-            if (!rtv_ptr)
+            // graphics pipeline blit, mirrors the vkCmdBlitImage scaling semantics that rhi callers expect
+            const bool dst_is_depth = destination->IsDepthStencilFormat();
+            const bool src_is_depth = source->IsDepthStencilFormat();
+
+            // depth resources additionally allow depth_read to coexist with shader_resource state
+            const D3D12_RESOURCE_STATES src_read_state = src_is_depth
+                ? (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+                : (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+            cmd_state::push_transition(b, src, src_read_state);
+            cmd_state::push_transition(b, dst, dst_is_depth ? D3D12_RESOURCE_STATE_DEPTH_WRITE : D3D12_RESOURCE_STATE_RENDER_TARGET);
+            cmd_state::flush(cmd_list, b);
+
+            // maps a typeless or float depth format to its dsv-compatible format for transient deeper-mip views
+            auto to_dsv_format = [](DXGI_FORMAT f) -> DXGI_FORMAT
             {
-                return;
+                switch (f)
+                {
+                    case DXGI_FORMAT_R32_TYPELESS:   return DXGI_FORMAT_D32_FLOAT;
+                    case DXGI_FORMAT_R32_FLOAT:      return DXGI_FORMAT_D32_FLOAT;
+                    case DXGI_FORMAT_R16_TYPELESS:   return DXGI_FORMAT_D16_UNORM;
+                    case DXGI_FORMAT_R24G8_TYPELESS: return DXGI_FORMAT_D24_UNORM_S8_UINT;
+                    default:                         return f;
+                }
+            };
+
+            const DXGI_FORMAT dst_dxgi   = d3d12_format[rhi_format_to_index(destination->GetFormat())];
+            const uint32_t    mip_count  = blit_mips ? destination->GetMipCount() : 1;
+
+            for (uint32_t mip = 0; mip < mip_count; mip++)
+            {
+                // source srv, per-mip when blitting the chain so the shader's SampleLevel 0 reads the matching source mip
+                void* src_srv_ptr = blit_mips ? source->GetRhiSrvMip(mip) : source->GetRhiSrv();
+                if (!src_srv_ptr)
+                {
+                    continue;
+                }
+
+                d3d12_blit::BlitParams params    = {};
+                params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
+
+                // mip 0 uses the cached view, deeper mips need a transient view that targets the specific mip slice
+                if (dst_is_depth)
+                {
+                    if (mip == 0)
+                    {
+                        void* dsv_ptr = destination->GetRhiDsv(0);
+                        if (!dsv_ptr)
+                        {
+                            continue;
+                        }
+                        params.destination_dsv_handle.ptr = reinterpret_cast<SIZE_T>(dsv_ptr);
+                    }
+                    else
+                    {
+                        D3D12_DEPTH_STENCIL_VIEW_DESC dsv_desc = {};
+                        dsv_desc.Format             = to_dsv_format(dst_dxgi);
+                        dsv_desc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
+                        dsv_desc.Texture2D.MipSlice = mip;
+                        uint32_t idx                = d3d12_descriptors::AllocateDsv();
+                        params.destination_dsv_handle = d3d12_descriptors::GetDsvHandle(idx);
+                        RHI_Context::device->CreateDepthStencilView(dst, &dsv_desc, params.destination_dsv_handle);
+                    }
+                }
+                else
+                {
+                    if (mip == 0)
+                    {
+                        void* rtv_ptr = destination->GetRhiRtv(0);
+                        if (!rtv_ptr)
+                        {
+                            continue;
+                        }
+                        params.destination_rtv_handle.ptr = reinterpret_cast<SIZE_T>(rtv_ptr);
+                    }
+                    else
+                    {
+                        D3D12_RENDER_TARGET_VIEW_DESC rtv_desc = {};
+                        rtv_desc.Format             = dst_dxgi;
+                        rtv_desc.ViewDimension      = D3D12_RTV_DIMENSION_TEXTURE2D;
+                        rtv_desc.Texture2D.MipSlice = mip;
+                        uint32_t idx                = d3d12_descriptors::AllocateRtv();
+                        params.destination_rtv_handle = d3d12_descriptors::GetRtvHandle(idx);
+                        RHI_Context::device->CreateRenderTargetView(dst, &rtv_desc, params.destination_rtv_handle);
+                    }
+                }
+
+                params.destination_format    = dst_dxgi;
+                params.destination_width     = std::max(1u, destination->GetWidth()  >> mip);
+                params.destination_height    = std::max(1u, destination->GetHeight() >> mip);
+                params.is_depth_destination  = dst_is_depth;
+                // resolution_scale shrinks the source extent that fills the destination, matches the vulkan semantics where
+                // source[0..w*scale, 0..h*scale] is mapped onto destination[0..dst_w, 0..dst_h]
+                params.source_uv_scale_x     = resolution_scale;
+                params.source_uv_scale_y     = resolution_scale;
+
+                d3d12_blit::blit(cmd_list, params);
             }
-            params.destination_rtv_handle.ptr = reinterpret_cast<SIZE_T>(rtv_ptr);
+
+            // the blit changed the bound root signature and pipeline, mark cmd_state so the next graphics call rebinds
+            // the bindless layout cleanly, b.is_compute_bound stays untouched since this path never affects compute state
+            b.has_root_signature_graphics = false;
         }
 
-        params.destination_format    = d3d12_format[rhi_format_to_index(destination->GetFormat())];
-        params.destination_width     = destination->GetWidth();
-        params.destination_height    = destination->GetHeight();
-        params.is_depth_destination  = dst_is_depth;
-        // resolution_scale shrinks the source extent that fills the destination, matches the vulkan semantics where
-        // source[0..w*scale, 0..h*scale] is mapped onto destination[0..dst_w, 0..dst_h]
-        params.source_uv_scale_x     = resolution_scale;
-        params.source_uv_scale_y     = resolution_scale;
-
-        d3d12_blit::blit(cmd_list, params);
-
-        // the blit changed the bound root signature and pipeline, mark cmd_state so the next graphics call rebinds
-        // the bindless layout cleanly, b.is_compute_bound stays untouched since this path never affects compute state
-        b.has_root_signature_graphics = false;
-
-        source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Shader_Read);
-        destination->SetLayoutDirect(0, destination->GetMipCount(), RHI_Image_Layout::Attachment);
+        // restore the pre-blit layouts so subsequent passes observe the textures in their expected state
+        if (blit_mips)
+        {
+            for (uint32_t i = 0; i < source->GetMipCount(); i++)
+            {
+                InsertBarrier(source, safe_layout(src_layouts_initial[i]), i, 1);
+            }
+            for (uint32_t i = 0; i < destination->GetMipCount(); i++)
+            {
+                InsertBarrier(destination, safe_layout(dst_layouts_initial[i]), i, 1);
+            }
+        }
+        else
+        {
+            InsertBarrier(source,      safe_layout(src_layouts_initial[0]), 0, source->GetMipCount());
+            InsertBarrier(destination, safe_layout(dst_layouts_initial[0]), 0, destination->GetMipCount());
+        }
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination)
@@ -1729,18 +1864,59 @@ namespace spartan
             return;
         }
 
-        // transition source to copy_source and backbuffer to copy_dest, then issue the copy
         auto& b = cmd_state::get(this);
-        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+
+        const bool dims_match   = source->GetWidth()  == destination->GetWidth()
+                               && source->GetHeight() == destination->GetHeight();
+        const bool format_match = d3d12_format[rhi_format_to_index(source->GetFormat())] == d3d12_format[rhi_format_to_index(destination->GetFormat())];
+
+        // fast path, identical format and size means a straight copy into the backbuffer is valid
+        if (dims_match && format_match)
+        {
+            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+            cmd_state::flush(cmd_list, b);
+
+            cmd_list->CopyResource(dst, src);
+
+            // leave source layout consistent with d3d12 state, the rhi layout map will be re-synced by the next pass
+            source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
+
+            // backbuffer stays in copy_dest, the present-time barrier in SubmitAndPresent transitions it to present
+            b.swapchain_bb_transitioned = dst;
+            return;
+        }
+
+        // scaling or format-converting path, sample the source into the backbuffer through the fullscreen-triangle blit
+        // copyresource can not scale or convert formats, so this mirrors the vkCmdBlitImage path the renderer expects
+        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_RENDER_TARGET);
         cmd_state::flush(cmd_list, b);
 
-        cmd_list->CopyResource(dst, src);
+        void* src_srv_ptr = source->GetRhiSrv();
+        if (!src_srv_ptr)
+        {
+            return;
+        }
 
-        // leave source layout consistent with d3d12 state, the rhi layout map will be re-synced by the next pass
-        source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Transfer_Source);
+        d3d12_blit::BlitParams params    = {};
+        params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
+        params.destination_rtv_handle    = get_swapchain_rtv_handle(destination);
+        params.destination_format        = d3d12_format[rhi_format_to_index(destination->GetFormat())];
+        params.destination_width         = destination->GetWidth();
+        params.destination_height        = destination->GetHeight();
+        params.is_depth_destination      = false;
+        params.source_uv_scale_x         = 1.0f;
+        params.source_uv_scale_y         = 1.0f;
 
-        // backbuffer stays in copy_dest, the present-time barrier in SubmitAndPresent transitions it to present
+        d3d12_blit::blit(cmd_list, params);
+
+        // the blit swapped in its own root signature and pso, force the next graphics bind to restore the bindless layout
+        b.has_root_signature_graphics = false;
+
+        source->SetLayoutDirect(0, source->GetMipCount(), RHI_Image_Layout::Shader_Read);
+
+        // backbuffer is now in render_target, the present-time barrier in SubmitAndPresent transitions it to present
         b.swapchain_bb_transitioned = dst;
     }
 
@@ -1760,33 +1936,177 @@ namespace spartan
         }
 
         auto& b = cmd_state::get(this);
-        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
-        cmd_state::flush(cmd_list, b);
 
-        // mip 0 of array layer dst_layer in destination, mip 0 of source
-        // subresource index formula, MipSlice + ArraySlice * MipLevels + PlaneSlice * MipLevels * ArraySize
-        const uint32_t dst_mip_count = destination->GetMipCount();
-        const UINT dst_subresource = static_cast<UINT>(0u + dst_layer * dst_mip_count);
+        // save the layouts the textures had before the blit so they can be restored after, matching the vulkan semantics
+        const RHI_Image_Layout src_layout_initial = source->GetLayout(0);
+        const RHI_Image_Layout dst_layout_initial = destination->GetLayout(0);
+        auto safe_layout = [](RHI_Image_Layout l) { return l == RHI_Image_Layout::Max ? RHI_Image_Layout::General : l; };
 
-        D3D12_TEXTURE_COPY_LOCATION src_loc = {};
-        src_loc.pResource        = src;
-        src_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        src_loc.SubresourceIndex = 0;
+        const bool dims_match   = source->GetWidth()  == destination->GetWidth()
+                               && source->GetHeight() == destination->GetHeight();
+        const bool format_match = source->GetFormat() == destination->GetFormat();
 
-        D3D12_TEXTURE_COPY_LOCATION dst_loc = {};
-        dst_loc.pResource        = dst;
-        dst_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        dst_loc.SubresourceIndex = dst_subresource;
+        if (dims_match && format_match)
+        {
+            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_COPY_DEST);
+            cmd_state::flush(cmd_list, b);
 
-        cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, nullptr);
+            // mip 0 of array layer dst_layer in destination, mip 0 of source
+            // subresource index formula, MipSlice + ArraySlice * MipLevels + PlaneSlice * MipLevels * ArraySize
+            const uint32_t dst_mip_count = destination->GetMipCount();
+            const UINT dst_subresource   = static_cast<UINT>(0u + dst_layer * dst_mip_count);
+
+            D3D12_TEXTURE_COPY_LOCATION src_loc = {};
+            src_loc.pResource        = src;
+            src_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            src_loc.SubresourceIndex = 0;
+
+            D3D12_TEXTURE_COPY_LOCATION dst_loc = {};
+            dst_loc.pResource        = dst;
+            dst_loc.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            dst_loc.SubresourceIndex = dst_subresource;
+
+            cmd_list->CopyTextureRegion(&dst_loc, 0, 0, 0, &src_loc, nullptr);
+        }
+        else
+        {
+            // scaling path, sample the source into the requested destination array layer through the fullscreen-triangle blit
+            // copytextureregion can not scale, this mirrors the vkCmdBlitImage stereo-layer compositing path
+            cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            cmd_state::push_transition(b, dst, D3D12_RESOURCE_STATE_RENDER_TARGET);
+            cmd_state::flush(cmd_list, b);
+
+            void* src_srv_ptr = source->GetRhiSrv();
+            if (src_srv_ptr)
+            {
+                const DXGI_FORMAT dst_dxgi = d3d12_format[rhi_format_to_index(destination->GetFormat())];
+
+                // transient rtv that targets only the requested array slice of mip 0
+                D3D12_RENDER_TARGET_VIEW_DESC rtv_desc      = {};
+                rtv_desc.Format                             = dst_dxgi;
+                rtv_desc.ViewDimension                      = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+                rtv_desc.Texture2DArray.MipSlice            = 0;
+                rtv_desc.Texture2DArray.FirstArraySlice     = dst_layer;
+                rtv_desc.Texture2DArray.ArraySize           = 1;
+                uint32_t idx                                = d3d12_descriptors::AllocateRtv();
+                D3D12_CPU_DESCRIPTOR_HANDLE rtv             = d3d12_descriptors::GetRtvHandle(idx);
+                RHI_Context::device->CreateRenderTargetView(dst, &rtv_desc, rtv);
+
+                d3d12_blit::BlitParams params    = {};
+                params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
+                params.destination_rtv_handle    = rtv;
+                params.destination_format        = dst_dxgi;
+                params.destination_width         = destination->GetWidth();
+                params.destination_height        = destination->GetHeight();
+                params.is_depth_destination      = false;
+                params.source_uv_scale_x         = 1.0f;
+                params.source_uv_scale_y         = 1.0f;
+
+                d3d12_blit::blit(cmd_list, params);
+
+                b.has_root_signature_graphics = false;
+            }
+        }
+
+        // restore the pre-blit layouts so subsequent passes observe the textures in their expected state
+        InsertBarrier(source,      safe_layout(src_layout_initial), 0, source->GetMipCount());
+        InsertBarrier(destination, safe_layout(dst_layout_initial), 0, destination->GetMipCount());
     }
 
     void RHI_CommandList::BlitToXrSwapchain(RHI_Texture* source)
     {
-        // d3d12 xr swapchain integration is not wired up yet, so this is a no-op
-        // openxr's d3d12 backend exposes ID3D12Resource* per swapchain image; once Renderer wires up
-        // the xr swapchain handle here we can call CopyTextureRegion / cmd_list->CopyResource just like Blit
+        if (!Xr::IsSessionRunning() || !source)
+        {
+            return;
+        }
+
+        if (!Xr::AcquireSwapchainImage())
+        {
+            return;
+        }
+
+        ID3D12Resource* xr_image = static_cast<ID3D12Resource*>(Xr::GetSwapchainImage());
+        if (!xr_image)
+        {
+            Xr::ReleaseSwapchainImage();
+            return;
+        }
+
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+
+        ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+        ID3D12Resource* src = static_cast<ID3D12Resource*>(source->GetRhiResource());
+        if (!src)
+        {
+            Xr::ReleaseSwapchainImage();
+            return;
+        }
+
+        auto& b = cmd_state::get(this);
+
+        const uint32_t    dst_width  = Xr::GetRecommendedWidth();
+        const uint32_t    dst_height = Xr::GetRecommendedHeight();
+        const DXGI_FORMAT xr_format  = xr_image->GetDesc().Format;
+
+        // openxr guarantees the d3d12 swapchain image is in the render_target state on acquire and requires it
+        // returned in the same state, seed the tracker so the transitions resolve against the correct prior state
+        d3d12_state::SetState(xr_image, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+        // save the source layout so it can be restored after the blit
+        RHI_Image_Layout source_layout_initial = source->GetLayout(0);
+        if (source_layout_initial == RHI_Image_Layout::Max)
+        {
+            source_layout_initial = RHI_Image_Layout::General;
+        }
+
+        cmd_state::push_transition(b, src, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        cmd_state::push_transition(b, xr_image, D3D12_RESOURCE_STATE_RENDER_TARGET);
+        cmd_state::flush(cmd_list, b);
+
+        // when the source is a stereo array each eye copies from its own layer, otherwise the same image feeds both eyes
+        const bool source_is_array = source->GetType() == RHI_Texture_Type::Type2DArray;
+
+        for (uint32_t layer = 0; layer < Xr::eye_count; layer++)
+        {
+            void* src_srv_ptr = source_is_array ? source->GetRhiSrvLayer(layer) : source->GetRhiSrv();
+            if (!src_srv_ptr)
+            {
+                continue;
+            }
+
+            // transient rtv targeting the eye's array slice on the xr image
+            D3D12_RENDER_TARGET_VIEW_DESC rtv_desc  = {};
+            rtv_desc.Format                         = xr_format;
+            rtv_desc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+            rtv_desc.Texture2DArray.MipSlice        = 0;
+            rtv_desc.Texture2DArray.FirstArraySlice = layer;
+            rtv_desc.Texture2DArray.ArraySize       = 1;
+            uint32_t idx                            = d3d12_descriptors::AllocateRtv();
+            D3D12_CPU_DESCRIPTOR_HANDLE rtv         = d3d12_descriptors::GetRtvHandle(idx);
+            RHI_Context::device->CreateRenderTargetView(xr_image, &rtv_desc, rtv);
+
+            d3d12_blit::BlitParams params    = {};
+            params.source_srv_cpu_handle.ptr = reinterpret_cast<SIZE_T>(src_srv_ptr);
+            params.destination_rtv_handle    = rtv;
+            params.destination_format        = xr_format;
+            params.destination_width         = dst_width;
+            params.destination_height        = dst_height;
+            params.is_depth_destination      = false;
+            params.source_uv_scale_x         = 1.0f;
+            params.source_uv_scale_y         = 1.0f;
+
+            d3d12_blit::blit(cmd_list, params);
+        }
+
+        // the blit swapped in its own root signature and pso, force the next graphics bind to restore the bindless layout
+        b.has_root_signature_graphics = false;
+
+        // the xr image stays in render_target which is the state the runtime expects on release, restore the source
+        InsertBarrier(source, source_layout_initial, 0, source->GetMipCount());
+        FlushBarriers();
+
+        Xr::ReleaseSwapchainImage();
     }
 
     void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
@@ -1850,7 +2170,33 @@ namespace spartan
     void RHI_CommandList::SetCullMode(const RHI_CullMode cull_mode)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        // cull mode is baked into pipeline state in d3d12
+
+        // d3d12 has no dynamic cull state, so bake the requested cull mode by binding a pipeline variant
+        if (!m_pso.IsGraphics() || m_cull_mode == cull_mode)
+        {
+            return;
+        }
+
+        m_cull_mode = cull_mode;
+
+        // build a variant of the currently bound pso that only differs by cull mode
+        RHI_PipelineState pso_variant = m_pso;
+        pso_variant.cull_mode         = cull_mode;
+        pso_variant.Prepare();
+
+        RHI_Pipeline* pipeline                       = nullptr;
+        RHI_DescriptorSetLayout* descriptor_set_layout = nullptr;
+        RHI_Device::GetOrCreatePipeline(pso_variant, pipeline, descriptor_set_layout);
+
+        if (pipeline && pipeline->GetRhiResource())
+        {
+            ID3D12GraphicsCommandList* cmd_list = static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource);
+            cmd_list->SetPipelineState(static_cast<ID3D12PipelineState*>(pipeline->GetRhiResource()));
+
+            // keep state in sync so the next SetPipelineState diff detection stays correct
+            m_pso      = pso_variant;
+            m_pipeline = pipeline;
+        }
     }
 
     void RHI_CommandList::SetBufferVertex(const RHI_Buffer* vertex, RHI_Buffer* instance)

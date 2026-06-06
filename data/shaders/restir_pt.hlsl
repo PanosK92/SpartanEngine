@@ -24,36 +24,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //==============================
 
-// upper bounds on the per pixel ris pool sizes, the live counts come from get_restir_*
-// helpers in restir_reservoir.hlsl which return paper-faithful hardcoded values (1 brdf
-// candidate, 8 nee candidates), the caps below only bound the unrolled loop size
+// upper bounds on the per pixel ris pool sizes, live counts come from the get_restir_* helpers
 static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
 static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
 static const float MIN_COS_AT_PRIMARY              = 1e-3f;
 static const float RUSSIAN_ROULETTE_PROB           = 0.95f;
-// start russian roulette later (bounce 4) so the first few bounces are deterministic, with
-// path budget 5 this leaves only the last bounce subject to rr which is enough to terminate
-// long dim paths cleanly without inflating throughput on near-camera bounces
+// start russian roulette at bounce 4 so the first bounces are deterministic
 static const uint  RUSSIAN_ROULETTE_START          = 4;
-// russian roulette continuation floor, rr is unbiased for any floor (the surviving throughput
-// is divided by the actual continuation probability) so this is a variance / cost knob rather
-// than a correctness one, the 0.25 value used while chasing fireflies terminated dim paths
-// early and slightly under-sampled multi-bounce gi, 0.1 lets more legitimate dim bounces
-// survive (closer to a standard path tracer) while still bounding the 1/p throughput boost so
-// it does not become a firefly source, the demodulation fix removes the 25x amplification that
-// made any survivor a visible splotch
+// continuation floor, a variance and cost knob, rr stays unbiased for any floor
 static const float RUSSIAN_ROULETTE_MIN_PROB       = 0.1f;
 static const float SKY_MIP_LEVEL               = 2.0f;
-// sun cone half angle, ~0.27 degrees matches the real sun's angular radius (vs the previous
-// 0.015 rad / ~0.86 degrees which was about 3x larger and produced shadows that were too soft
+// sun cone half angle, matches the real sun angular radius
 static const float SUN_CONE_HALF_ANGLE         = 0.0047f;
-// MIN_AREA_LIGHT_SOLID_ANGLE moved to restir_reservoir.hlsl since it is shared with the spatial pass nee
 
-// computes the sun-vs-cosine-hemisphere mixture weight from actual sun radiance, replaces the
-// previous fixed 0.5 magic constant which wasted samples on a sun-direction cone for dim or
-// missing suns and undersampled the cone for very bright suns, the weight is the balance
-// heuristic on solid-angle-scaled radiance with a tiny floor so a non-zero sun never gets
-// fully ignored
+// sun vs cosine hemisphere mixture weight, balance heuristic on solid angle scaled radiance
 float sun_sample_probability(bool has_sun, float sun_intensity, float3 sun_color, float sun_cos_max)
 {
     if (!has_sun)
@@ -63,8 +47,7 @@ float sun_sample_probability(bool has_sun, float sun_intensity, float3 sun_color
     float sun_omega   = 2.0f * PI * (1.0f - sun_cos_max);
     float sun_radiance = luminance(sun_color) * max(sun_intensity, 0.0f);
     float sun_w       = sun_radiance * sun_omega;
-    // sky reference: hemispherical integral of a unit-luminance ambient probe, gives a stable
-    // denominator that does not require sampling the probe to estimate average radiance
+    // sky reference, hemispherical integral of a unit luminance probe, stable denominator
     float sky_w       = 2.0f * PI;
     float prob        = sun_w / max(sun_w + sky_w, 1e-6f);
     return clamp(prob, 0.05f, 0.95f);
@@ -82,8 +65,6 @@ struct [raypayload] PathPayload
     bool   hit              : read(caller) : write(closesthit, miss);
 };
 
-// trace_shadow_ray moved to restir_reservoir.hlsl so it is callable from spatial / temporal passes too
-
 float3 probe_emission_estimate(MaterialParameters mat)
 {
     if (mat.emissive_from_albedo() || mat.has_texture_emissive())
@@ -91,13 +72,7 @@ float3 probe_emission_estimate(MaterialParameters mat)
     return float3(0.0f, 0.0f, 0.0f);
 }
 
-// power-proportional light pick weight, lin 2022 §6.1 / restir di reference
-// all four light types (directional, point, spot, area) are eligible, point/spot weights are
-// scaled by 1/distance_to_camera^2 approximation via 1/range^2 so a faraway lamp does not
-// dominate the picker for a primary near another light, this is the standard veach 1997
-// "important light" heuristic adapted for the dirac case where exact 1/r^2 at the primary
-// would require per-pixel weight evaluation (too expensive for restir's once-per-frame
-// light budget)
+// power proportional light pick weight, lin 2022 6.1, all four light types are eligible
 float light_pick_weight(LightParameters l)
 {
     if (l.intensity <= 0.0f)
@@ -115,12 +90,7 @@ float light_pick_weight(LightParameters l)
     }
     if (is_point || is_spot)
     {
-        // dirac local light, weight by intensity * luminance * cone fraction, range is a
-        // cutoff distance not a power proxy so the previous range^2 multiplier biased the
-        // picker toward long range dim lamps which then dominated the ris stream with
-        // candidates that contributed little at the primary, spot lights are weighted by
-        // their cone solid angle so a narrow cone gets proportionally less budget than a
-        // uniform sphere of equal intensity
+        // dirac local light, weight by intensity, luminance and cone fraction
         float cone_factor = 1.0f;
         if (is_spot)
         {
@@ -132,9 +102,7 @@ float light_pick_weight(LightParameters l)
     return 0.0f;
 }
 
-// total nee pick weight, called once per evaluation, the loop is O(light_count) so this stays
-// cheap for typical scenes (<50 lights), large open worlds with many lights would benefit from
-// a cpu-built prefix sum buffer
+// total nee pick weight, the loop is o(light_count)
 float compute_total_light_weight()
 {
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
@@ -146,8 +114,7 @@ float compute_total_light_weight()
     return total;
 }
 
-// importance pick pdf for a known light index, returns the same probability that the importance
-// picker assigns to this light, used by the brdf strategy's mis denominator on sky candidates
+// importance pick pdf for a known light index, used by the brdf strategy mis denominator
 float light_pick_pdf_for_index(uint light_idx, float total_weight)
 {
     if (total_weight <= 0.0f)
@@ -155,12 +122,7 @@ float light_pick_pdf_for_index(uint light_idx, float total_weight)
     return light_pick_weight(light_parameters[light_idx]) / total_weight;
 }
 
-// computes the nee strategy density at a brdf-sampled candidate, in solid angle at primary
-// returns the sun cone density for sky candidates that fall inside the cone, zero otherwise
-// area lights are not in the bvh so the brdf strategy can never produce paths whose rc lies
-// on an area light rectangle, point/spot are dirac and likewise cannot be hit by a brdf
-// bounce, so the nee strategy contributes zero to the brdf-candidate mis denominator for
-// those light types and the brdf candidate gets its full single-strategy mis weight
+// nee strategy density at a brdf sampled candidate in solid angle, sun cone for sky, zero otherwise
 float light_nee_pdf_for_candidate(PathSample candidate, float3 primary_pos)
 {
     uint light_count = (uint)buffer_frame.restir_pt_light_count;
@@ -189,17 +151,13 @@ float light_nee_pdf_for_candidate(PathSample candidate, float3 primary_pos)
     return pick_pdf * sun_cone_pdf;
 }
 
-// emissive triangle nee pool active check, the cpu writes the count into the frame cb each
-// frame after walking renderables with non zero emission, when this returns false the ris
-// loop skips the emtri strategy entirely so a scene with only analytical lights and the sun
-// runs the path tracer exactly as it did before this feature
+// emissive triangle nee pool active check, false skips the emtri strategy entirely
 bool is_emtri_pool_active()
 {
     return buffer_frame.restir_pt_emissive_tri_count > 0.5f;
 }
 
-// binary search over the cdf, returns the triangle index whose cumulative weight first
-// exceeds u, all triangles share the same cdf prefix sum so the lookup is o(log n)
+// binary search over the cdf, returns the triangle whose cumulative weight first exceeds u
 uint emtri_pick_index(float u, uint count)
 {
     uint lo = 0u;
@@ -219,13 +177,8 @@ uint emtri_pick_index(float u, uint count)
     return min(lo, count - 1u);
 }
 
-// samples a candidate path whose rc vertex sits on a uniformly area sampled point of an
-// emissive triangle picked with probability weight_i / total_weight, returns the rc position,
-// the emitted radiance and the solid angle pdf at the primary vertex, the resulting candidate
-// is single strategy under mis because the brdf bounce cannot reproduce an identical sample
-// (different stored l_nee), the emtri pool effectively partitions the integrand with the
-// brdf strategy via the rc.emission zeroing logic below, this trades a small amount of bias
-// for a large variance reduction on scenes with bright glowing surfaces
+// samples a candidate whose rc sits on an area sampled point of an emissive triangle
+// returns the rc position, emitted radiance and solid angle pdf at the primary vertex
 PathSample sample_emissive_tri_candidate(
     float3 primary_pos,
     float3 primary_normal,
@@ -273,8 +226,7 @@ PathSample sample_emissive_tri_candidate(
         return s;
     }
 
-    // uniform barycentric on triangle, paper standard 1 - sqrt(xi.x) transformation gives
-    // an unbiased uniform area distribution from two independent unit uniforms
+    // uniform barycentric on the triangle
     float2 xi = random_float2(seed);
     float  su = sqrt(max(xi.x, 0.0f));
     float  b0 = 1.0f - su;
@@ -296,8 +248,7 @@ PathSample sample_emissive_tri_candidate(
         return s;
     }
 
-    // emitter is single sided, geometry behind the normal does not emit, also lets the cos
-    // term in the solid angle conversion stay positive without abs
+    // emitter is single sided, geometry behind the normal does not emit
     float cos_at_e = dot(-dir, tri.normal);
     if (cos_at_e <= 0.0f)
     {
@@ -318,9 +269,6 @@ PathSample sample_emissive_tri_candidate(
     s.rc_L_post = float3(0, 0, 0);
     return s;
 }
-
-// sample_spherical_rectangle moved to restir_reservoir.hlsl since it is shared with the
-// replay shift's inline next event estimation in the spatial / temporal compute contexts
 
 // env nee density at a given direction for mis against brdf bounces that miss into the sky
 float sky_nee_pdf_at(float3 dir, float3 shading_normal)
@@ -351,18 +299,8 @@ float sky_nee_pdf_at(float3 dir, float3 shading_normal)
     return (1.0f - sun_prob) * pdf_cos + sun_prob * pdf_sun;
 }
 
-// evaluates direct lighting (analytical lights + environment probe) at a surface vertex
-// returns the contribution in the direction of view_dir (i.e. back toward the previous vertex)
-// specular_blend is a continuous [0, 1] weight on the specular lobe forwarded to evaluate_brdf
-//   blend = 1 keeps the full brdf, this is correct for suffix vertices past rc which are
-//     baked into rc_L_post and not individually reused across pixels
-//   blend = 0 drops the specular lobe leaving only burley diffuse, this is the correct
-//     choice for the rc vertex itself because the resulting nee radiance must be
-//     view-independent so the reconnection shift can reuse it at any dst primary without
-//     re-evaluating the rc brdf against the dst-correct incoming direction, the rc roughness
-//     gate makes the missing specular lobe a bounded, negligible energy loss at the same vertex
-//   intermediate values produce a smooth ramp matching the primary-vertex lobe handoff used
-//     by ray traced reflections (see restir_primary_specular_blend)
+// direct lighting (analytical lights + environment probe) at a surface vertex toward view_dir
+// specular_blend weights the specular lobe, 1 keeps the full brdf, 0 leaves view independent diffuse for rc
 float3 direct_lighting_at_vertex(
     float3 shading_pos,
     float3 shading_normal,
@@ -411,9 +349,7 @@ float3 direct_lighting_at_vertex(
             float3 light_right, light_up;
             build_orthonormal_basis_fast(light_normal, light_right, light_up);
 
-            // urena 2013 spherical rectangle solid-angle sampling, identical to the primary
-            // nee path so importance sampling is consistent at every vertex, the rectangle
-            // is parametrized as { rect_origin + s*ex + t*ey | s,t in [0,1] }
+            // urena 2013 spherical rectangle solid angle sampling
             float3 ex          = light_right * light.area_width;
             float3 ey          = light_up    * light.area_height;
             float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
@@ -470,17 +406,11 @@ float3 direct_lighting_at_vertex(
         if (!trace_shadow_ray(ray_origin_light, light_dir, light_dist))
             continue;
 
-        // secondary vertex always uses the full brdf, primary specular routing only applies
-        // at the primary vertex itself which is shaded by self_shift_evaluate or the shifts
-        // at the rc vertex itself we use lambert only so the stored nee stays view-independent
+        // rc uses lambert only so the stored nee stays view independent
         float  brdf_pdf;
         float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, specular_blend);
 
-        // analytical lights are not in the bvh, the brdf bounce can never sample to their
-        // direction so there is no second strategy to mis with, applying power_heuristic against
-        // a fictitious brdf strategy darkens the contribution by ~50%, single-strategy weight
-        // of 1.0 is the correct mis here, the env probe block below keeps power_heuristic
-        // because the brdf-into-sky branch in accumulate_subpath_radiance does sample sky
+        // analytical lights are not in the bvh, single strategy mis weight of 1 is correct
         float mis_weight = 1.0f;
 
         float3 Li = light_color * light.intensity * attenuation;
@@ -594,13 +524,9 @@ float3 sample_sky(float3 dir)
     return clamp_sky_radiance(sky);
 }
 
-// traces the suffix past the rc vertex with the rc bsdf factored out, this enables paper-
-// faithful indirect specular re-evaluation at shift time (lin 2022 §5), throughput is
-// initialized to 1/pdf_at_rc so the standard brdf*cos*L/pdf monte carlo estimator at rc
-// becomes f_rc(in, rc_outgoing_dir) * L_post when the caller multiplies by f_rc later
-// max_bounces_remaining is the path budget past rc (rc itself does not consume budget here,
-// the rc nee + emission live in the L_nee component computed by accumulate_subpath_at_rc)
-// out_first_dir is the direction leaving rc into the suffix (rc_outgoing_dir for storage)
+// traces the suffix past rc with the rc bsdf factored out, lin 2022 5
+// throughput starts at 1/pdf_at_rc so the caller can re-multiply by f_rc at shift time
+// out_first_dir is the direction leaving rc into the suffix
 void trace_rc_suffix(
     PathPayload rc,
     float3 rc_view_dir,
@@ -626,10 +552,7 @@ void trace_rc_suffix(
     {
         if (bounce >= RUSSIAN_ROULETTE_START)
         {
-            // anticipate next bounce attenuation by folding the current vertex albedo into
-            // the continuation factor, this veach-style adjusted rr terminates paths whose
-            // future reflectance will be dim, rather than only looking at the throughput
-            // accumulated so far, the same xi is consumed for the rr test regardless
+            // veach style adjusted rr, fold the next vertex albedo into the continuation factor
             float3 next_throughput   = throughput * cur.albedo;
             float  continuation_prob = clamp(luminance(next_throughput), RUSSIAN_ROULETTE_MIN_PROB, RUSSIAN_ROULETTE_PROB);
             if (random_float(seed) > continuation_prob)
@@ -646,10 +569,7 @@ void trace_rc_suffix(
 
         if (first_iter)
         {
-            // factor out f_rc at the rc vertex, throughput becomes 1/pdf so the caller can
-            // re-multiply by f_rc(dst_in, rc_outgoing_dir) at shift time, this is the entire
-            // point of the rc storage refactor and removes the view-dep bias on indirect
-            // specular reuse that the previous rc_radiance baked in
+            // factor out f_rc at rc, throughput becomes 1/pdf for re-multiply at shift time
             out_first_dir = nd;
             throughput    = float3(1, 1, 1) / pdf;
             first_iter    = false;
@@ -682,15 +602,9 @@ void trace_rc_suffix(
             break;
         }
 
-        // emissive triangle hit via brdf bounce, collected single-strategy here, lin 2022
-        // suggests pairing this with an explicit emissive-triangle nee pool (mis between brdf-
-        // hit and area-sampled emissive triangles) for low variance on small bright emitters,
-        // that requires a cpu-built emissive triangle structured buffer which is not part of
-        // this rewrite, the bounce-emission path is unbiased so this is a variance-only win
+        // emissive triangle hit via brdf bounce, collected single strategy
         out_L_post += throughput * next.emission;
-        // suffix vertices past rc, full brdf is correct here because L_post is reused as a
-        // whole only via the rc bsdf factor at shift time, individual suffix vertices are not
-        // re-evaluated against a different primary direction
+        // suffix vertices past rc use the full brdf
         out_L_post += throughput * direct_lighting_at_vertex(
             next.hit_position, next.hit_normal, next.geometric_normal,
             -nd, next.albedo, next.roughness, next.metallic, 1.0f, seed);
@@ -700,11 +614,7 @@ void trace_rc_suffix(
     }
 }
 
-// gathers the rc vertex's nee + emission contribution (with the rc brdf reduced to lambert
-// only so the stored radiance is view-independent and reuses correctly at any dst primary,
-// missing specular-lobe energy at rc is bounded by the get_restir_rc_min_roughness floor)
-// and the suffix radiance past rc (with the rc brdf factored out into rc_outgoing_dir for
-// paper-faithful reconnection shifts)
+// gathers the rc nee + emission (lambert only, view independent) and the suffix radiance past rc
 void accumulate_subpath_at_rc(
     PathPayload rc,
     float3 rc_view_dir,
@@ -714,16 +624,9 @@ void accumulate_subpath_at_rc(
     out float3 out_L_post,
     out float3 out_first_dir)
 {
-    // partition emission contribution between strategies, when the emtri nee pool is active
-    // the emtri strategy carries direct emission from primary to an emissive triangle, so
-    // the brdf strategy zeros rc.emission to avoid double counting paths that land on the
-    // same triangle by chance, the emtri pool drops emission contribution for triangles past
-    // its cap so we keep a small floor to handle the rare miss
+    // emtri strategy carries emission when active, zero here to avoid double counting
     out_L_nee = is_emtri_pool_active() ? float3(0, 0, 0) : rc.emission;
-    // diffuse-only brdf at rc keeps the stored nee radiance view-independent so the
-    // reconnection shift can reuse it at any dst primary without re-evaluating the rc brdf
-    // against the dst-correct incoming direction, the rc roughness gate at 0.3 bounds the
-    // missing specular lobe energy at this same vertex
+    // diffuse only brdf at rc keeps the stored nee view independent for reuse at any dst
     out_L_nee += direct_lighting_at_vertex(
         rc.hit_position, rc.hit_normal, rc.geometric_normal,
         rc_view_dir, rc.albedo, rc.roughness, rc.metallic, 0.0f, seed);
@@ -737,12 +640,8 @@ void accumulate_subpath_at_rc(
     trace_rc_suffix(rc, rc_view_dir, max_bounces - 1, seed, out_L_post, out_first_dir);
 }
 
-// builds a path sample candidate by directly sampling an analytical light or the sun cone
-// the candidate's rc vertex is the sampled light point (or sky direction for the sun) and
-// rc_radiance carries the emitted radiance toward the primary, the source_pdf returned is
-// in solid-angle measure at the primary so it can be combined with brdf-sampled candidates
-// in a single mixture-ris pool. point/spot delta lights are skipped: their solid-angle pdf
-// is effectively infinite and they are already handled by the spatial-pass direct lighting
+// builds a candidate by directly sampling an analytical light or the sun cone
+// rc is the sampled light point, source_pdf is in solid angle at the primary
 PathSample sample_light_candidate(
     float3 primary_pos,
     float3 primary_normal,
@@ -773,12 +672,7 @@ PathSample sample_light_candidate(
     if (light_count == 0)
         return s;
 
-    // power-proportional pick, lin 2022 §6.1
-    // walks the per-light weight array once to compute the total then again to draw the index,
-    // matches light_pick_pdf_for_index used by the mis denominator so the source pdf is
-    // consistent across sample and reweight paths, uniform pick (the previous behavior) gave
-    // dim lights too much budget at the expense of bright ones, increasing variance on the
-    // dominant lighter contributors which the denoiser then has to smooth
+    // power proportional pick, lin 2022 6.1, consistent with light_pick_pdf_for_index
     float total_weight = compute_total_light_weight();
     if (total_weight <= 0.0f)
         return s;
@@ -808,10 +702,7 @@ PathSample sample_light_candidate(
 
     if (is_directional)
     {
-        // continuous sun cone, matches sky_nee_pdf_at and light_nee_pdf_for_candidate which
-        // treat the sun as a continuous emitter over the cone of half angle SUN_CONE_HALF_ANGLE
-        // sampling a direction inside the cone with sun_cone_pdf gives consistent mis with the
-        // brdf-into-sky branch in the bounce loop, the radiance is constant inside the cone
+        // continuous sun cone, consistent mis with the brdf into sky branch
         float3 sun_dir = -light.direction;
         if (dot(sun_dir, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
@@ -829,8 +720,7 @@ PathSample sample_light_candidate(
         if (dot(sampled, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
 
-        // sun cone, no continuation past rc, rc_L_post stays zero so the unified shift
-        // formula collapses to brdf_at_dst * rc_L_nee at evaluation time
+        // no continuation past rc, rc_L_post stays zero
         s.flags      |= PATH_FLAG_SKY | PATH_FLAG_NEE;
         s.rc_pos      = sampled;
         s.rc_normal   = -sampled;
@@ -842,9 +732,7 @@ PathSample sample_light_candidate(
 
     if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
     {
-        // urena 2013 solid-angle sampling, lower variance than area-domain sampling at
-        // oblique angles where most of the rectangle's area projects to a sliver of solid
-        // angle, the source pdf is in solid angle directly (no jacobian conversion needed)
+        // urena 2013 solid angle sampling, source pdf is in solid angle directly
         float3 light_normal = light.direction;
         float3 light_right, light_up;
         build_orthonormal_basis_fast(light_normal, light_right, light_up);
@@ -871,9 +759,7 @@ PathSample sample_light_candidate(
         if (cos_light <= 0.0f || dot(dir, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
 
-        // area light, rc is the light surface treated as a non-reflecting emitter, no
-        // continuation past rc so rc_L_post stays zero and the rc material params are
-        // unused at shift time
+        // area light, rc is the emitter surface, no continuation past rc
         s.rc_pos      = sampled_pos;
         s.rc_normal   = light_normal;
         s.rc_L_nee    = light.color.rgb * light.intensity;
@@ -889,14 +775,7 @@ PathSample sample_light_candidate(
     bool is_spot  = (light.flags & (1u << 2)) != 0;
     if (is_point || is_spot)
     {
-        // dirac local light, rc is the light position treated as a point emitter, distance
-        // attenuation and spot cone are folded into rc_L_nee so the shift-time evaluation
-        // collapses to brdf_dst * rc_L_nee like the area-light branch, the BRDF strategy
-        // cannot produce paths that land on a point/spot light (they have zero volume in
-        // the bvh) so the MIS denominator is single-strategy and we use a unit solid-angle
-        // pdf to keep ris weights in the same scale as area light candidates (the pdf
-        // really is a dirac, but a single-strategy weight target/pdf does not care about
-        // the absolute scale of pdf as long as it is consistent across same-strategy samples)
+        // dirac local light, attenuation and spot cone folded into rc_L_nee, single strategy mis
         float3 to        = light.position - primary_pos;
         float  light_dist = length(to);
         if (light_dist < 1e-3f)
@@ -926,11 +805,7 @@ PathSample sample_light_candidate(
         s.rc_L_post   = float3(0, 0, 0);
         s.flags      |= PATH_FLAG_HAS_RC | PATH_FLAG_NEE;
 
-        // unit solid-angle pdf keeps dirac candidates on the same numerical scale as the
-        // area branch so the ris ordering is stable across mixed light types, the actual
-        // dirac density is infinite which would zero out weights through 1/pdf in mis,
-        // single-strategy w = target/(n_light * 1) yields the correct estimator for the
-        // collapsed dirac case (no brdf strategy contribution to balance against)
+        // unit solid angle pdf keeps dirac candidates on the same scale as the area branch
         source_pdf = pick_pdf;
         return s;
     }
@@ -938,9 +813,7 @@ PathSample sample_light_candidate(
     return s;
 }
 
-// traces a full path from the primary vertex given the first indirect direction; captures
-// x2 as the reconnection vertex candidate and accumulates the suffix radiance from x2
-// the caller samples dir via sample_brdf so the source pdf matches the primary brdf lobe
+// traces a path from the primary, captures the reconnection vertex and the suffix radiance
 PathSample trace_path_from_primary(
     float3 primary_pos,
     float3 primary_normal,
@@ -963,8 +836,7 @@ PathSample trace_path_from_primary(
     s.src_albedo      = float3(0, 0, 0);
     s.src_roughness   = 1.0f;
     s.src_metallic    = 0.0f;
-    // store the seed value that was used to generate xi for sample_brdf, so the random replay
-    // shift can re-derive the same xi at a destination pixel and trace a matching prefix
+    // store the seed used for xi so the random replay shift can re-derive the same prefix
     s.seed_path       = replay_seed;
     s.path_length     = 0;
     s.rc_length       = 0;
@@ -986,9 +858,7 @@ PathSample trace_path_from_primary(
 
     if (!hit.hit)
     {
-        // brdf bounce missed into sky directly from primary, treat as a sky sample with no
-        // continuation past rc, store the sky radiance in rc_L_nee so the unified shift
-        // formula collapses to brdf_at_dst * rc_L_nee like the area-light nee branch
+        // brdf bounce missed into sky, store sky radiance in rc_L_nee
         s.flags      |= PATH_FLAG_SKY;
         s.rc_pos      = dir;
         s.rc_normal   = -dir;
@@ -1014,20 +884,13 @@ PathSample trace_path_from_primary(
     L_nee  = max(L_nee,  0.0f);
     L_post = max(L_post, 0.0f);
 
-    // stored radiance is left unmodified at sample construction so the resampler scores the
-    // true integrand, per-sample firefly safety is provided downstream via the w clamp at
-    // shade time (get_w_clamp_for_sample) and the denoiser's spatial firefly suppression,
-    // squashing radiance pre-ris would bias the integrand the resampler is trying to estimate
+    // stored radiance is left unmodified so the resampler scores the true integrand
     s.rc_L_nee        = L_nee;
     s.rc_L_post       = L_post;
     s.rc_outgoing_dir = first_outgoing_dir;
     s.path_length     = 2;
 
-    // reconnection validity: the rc vertex must be rough enough that the lambert-only nee at
-    // rc captures most of the energy (the dropped ggx specular lobe at rc is the remaining
-    // bias source, bounded by the roughness floor), the suffix view-dep is factored out via
-    // rc_L_post + rc_outgoing_dir + rc material, distance must be large enough to keep the
-    // solid-angle jacobian well-conditioned
+    // reconnection validity, rc must be rough enough and far enough to keep the jacobian bounded
     float rc_min_roughness = get_restir_rc_min_roughness();
     float dist_sq          = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
     bool rc_valid          = (hit.roughness >= rc_min_roughness)
@@ -1081,22 +944,11 @@ void ray_gen()
 
     Reservoir reservoir = create_empty_reservoir();
 
-    // ris streaming with gris-style balance mis over a mixed pool of brdf and nee strategies
-    // each per-sample weight follows lin 2022 algorithm 1: w_i = m_i * target / source where
-    // m_i is the multiple importance sampling balance heuristic over the n_brdf brdf samples
-    // and n_light nee samples that could have produced this path, see derivation note below
-    //
-    // for a sample y from strategy s with N_s samples per strategy:
-    //   m_s(y)   = N_s * p_s(y) / sum_t(N_t * p_t(y))
-    //   w_i     = m_s * target / p_s = target / sum_t(N_t * p_t(y))
-    // so for the typical case where p_other(y) = 0 (brdf rays missing any direct light, or nee
-    // sampling a delta light that brdf would hit with zero density) we get the standard
-    // (target / source_pdf) / N_s weight, but for an area light direction sampled by both nee
-    // and brdf the balance heuristic suppresses the larger-variance strategy automatically
+    // ris streaming with gris balance mis over a mixed pool of brdf and nee strategies
+    // per sample weight is lin 2022 algorithm 1, w_i = target / sum_t(N_t * p_t(y))
     const uint  n_brdf_count  = clamp(get_restir_initial_candidates(), 1u, INITIAL_CANDIDATE_SAMPLES_MAX);
     const uint  n_light_count = clamp(get_restir_light_candidates(),   1u, LIGHT_RIS_CANDIDATE_SAMPLES_MAX);
-    // emtri strategy only adds candidates when the cpu has populated the nee pool, the
-    // is_emtri_pool_active gate keeps non emissive scenes free of the extra loop entirely
+    // emtri strategy only adds candidates when the cpu has populated the nee pool
     const uint  n_emtri_count = is_emtri_pool_active() ? clamp(get_restir_emtri_candidates(), 1u, LIGHT_RIS_CANDIDATE_SAMPLES_MAX) : 0u;
     const float n_brdf        = float(n_brdf_count);
     const float n_light       = float(n_light_count);
@@ -1104,10 +956,8 @@ void ray_gen()
 
     for (uint i = 0; i < n_brdf_count; i++)
     {
-        // capture the seed just before consuming xi so the random replay shift can replay
-        // the same primary-direction sample at a destination pixel
-        // primary specular is owned by the ray traced reflections pipeline when enabled, so
-        // restir samples only the diffuse lobe at the primary to avoid double counting
+        // capture the seed before xi so the replay shift can replay the same primary sample
+        // primary specular is owned by rt reflections, restir samples only the diffuse lobe
         uint   replay_seed = seed;
         float2 xi          = random_float2(seed);
         float  source_pdf;
@@ -1126,11 +976,7 @@ void ray_gen()
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
-                // proper balance heuristic, the brdf strategy density is n_brdf * source_pdf
-                // and the nee strategy density at this same direction is n_light * nee_pdf
-                // when the brdf bounce lands on a sampleable light (area light or sun cone) the
-                // nee branch lights up and the balance heuristic suppresses the brdf branch's
-                // share, fixing the previous "p_light(y) approx 0" upward bias on bright lights
+                // balance heuristic, brdf density n_brdf*source_pdf vs nee density n_light*nee_pdf
                 float nee_pdf = light_nee_pdf_for_candidate(candidate, pos_ws);
                 float mix_pdf = n_brdf * source_pdf + n_light * nee_pdf;
                 if (mix_pdf > 0.0f)
@@ -1143,9 +989,7 @@ void ray_gen()
         update_reservoir(reservoir, candidate, weight, random_float(seed));
     }
 
-    // additional ris stream over direct light samples (sun cone + area lights); each candidate
-    // is a single primary->light path with rc_radiance = emitted radiance and source_pdf in
-    // solid-angle measure at the primary
+    // additional ris stream over direct light samples, sun cone and area lights
     for (uint li = 0; li < n_light_count; li++)
     {
         float light_source_pdf;
@@ -1159,10 +1003,7 @@ void ray_gen()
             {
                 if (is_sky_sample(light_candidate))
                 {
-                    // sun cone, the brdf-into-sky branch in accumulate_subpath_radiance can also
-                    // sample directions inside the cone, so balance with the brdf strategy density
-                    // at this direction, both densities are now in solid angle so the balance
-                    // heuristic is unbiased
+                    // sun cone, balance with the brdf into sky density
                     float  brdf_pdf_at_sun;
                     evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, light_candidate.rc_pos, brdf_pdf_at_sun, restir_primary_specular_blend(roughness));
                     float mix_pdf = n_light * light_source_pdf + n_brdf * brdf_pdf_at_sun;
@@ -1171,9 +1012,7 @@ void ray_gen()
                 }
                 else
                 {
-                    // area light, not in the bvh so brdf cannot produce paths landing on the
-                    // area light rectangle, the brdf strategy density in path space at this
-                    // candidate is zero, single-strategy weight is the unbiased mis weight
+                    // area light, not in the bvh, single strategy weight
                     light_weight = target_pdf / (n_light * light_source_pdf);
                 }
             }
@@ -1182,12 +1021,8 @@ void ray_gen()
         update_reservoir(reservoir, light_candidate, light_weight, random_float(seed));
     }
 
-    // emissive triangle nee strategy, paper aligned area sampling of the global emissive
-    // pool, the candidate's rc lands on a sampled triangle and rc_L_nee carries the emitted
-    // radiance, MIS denominator uses n_emtri * source_pdf + n_brdf * brdf_pdf_at_emtri_dir,
-    // the brdf pdf entry captures the case where a brdf bounce also lands on this triangle
-    // direction so the balance heuristic suppresses the brdf branch's share automatically
-    // and avoids over counting bright emitters that brdf would otherwise hit by chance
+    // emissive triangle nee strategy, area sampling of the global emissive pool
+    // mis denominator balances with the brdf density at the same direction
     for (uint ei = 0; ei < n_emtri_count; ei++)
     {
         float emtri_source_pdf;
@@ -1214,17 +1049,12 @@ void ray_gen()
         update_reservoir(reservoir, emtri_candidate, emtri_weight, random_float(seed));
     }
 
-    // no 1/M divide here, the balance mis weights above already encode the 1/N_s normalization,
-    // so weight_sum is the unbiased integral estimate up to the final divide by target_pdf below
-
+    // no 1/M divide, the balance mis weights already encode the 1/N_s normalization
     float final_target = target_pdf_self(reservoir.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
     reservoir.target_pdf = final_target;
     reservoir.W = (final_target > 0.0f) ? (reservoir.weight_sum / final_target) : 0.0f;
 
-    // post-ris visibility test: kill the chosen sample if it is occluded so an obviously dead
-    // path does not propagate into temporal accumulation, M and the chosen sample are also
-    // cleared so the temporal validity gate sees no sample on this pixel rather than ratcheting
-    // confidence up on the rejected entry
+    // post ris visibility test, kill an occluded chosen sample before temporal accumulation
     bool visibility_rejected = false;
     if (reservoir.W > 0.0f && !trace_shift_visibility(reservoir.sample, pos_ws, normal_ws))
     {
@@ -1233,9 +1063,7 @@ void ray_gen()
         visibility_rejected  = true;
     }
 
-    // soft saturator, see soft_clamp_w in restir_reservoir.hlsl, the previous hard min
-    // produced a step at the clamp boundary which translated to flickery brightness on
-    // pixels whose natural W bounced around the threshold across frames
+    // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
     float w_clamp = get_w_clamp_for_sample(reservoir.sample);
     reservoir.W   = soft_clamp_w(reservoir.W, w_clamp);
 

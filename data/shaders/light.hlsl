@@ -27,27 +27,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "light_cluster.hlsl"
 //============================
 
-// ray traced shadow sampling
-// tex4 is bound as the ray traced shadow texture in Pass_Light
+// samples the ray traced shadow texture bound on tex4
 float sample_ray_traced_shadow(float2 uv)
 {
     if (!is_ray_traced_shadows_enabled())
         return 1.0;
-    
-    // sample ray traced shadow (tex4 is the ray traced shadow texture)
+
     float shadow = tex4.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), uv, 0).r;
-    
+
     return shadow;
 }
 
-// inline ray traced shadow for any light type
-// uses a stationary halton(2,3) sample set rotated by a per pixel hash
-// the pattern never changes per frame so the residual noise does not crawl
-// requires the tlas descriptor to be bound by the caller pass
+// inline ray traced shadow for any light type, stationary halton set rotated per pixel
 #ifdef RAY_TRACING_ENABLED
 static const uint k_inline_shadow_spp = 16;
 
-// halton (2,3) low discrepancy sequence, 16 points
 static const float2 k_halton_2_3[16] =
 {
     float2(0.500000f, 0.333333f),
@@ -68,7 +62,7 @@ static const float2 k_halton_2_3[16] =
     float2(0.031250f, 0.592593f)
 };
 
-// stationary per pixel hash (does not change per frame), used to rotate the halton disk
+// stationary per pixel hash used to rotate the halton disk
 float spatial_hash_unit(float2 pixel_xy)
 {
     return frac(52.9829189f * frac(pixel_xy.x * 0.06711056f + pixel_xy.y * 0.00583715f));
@@ -122,8 +116,7 @@ float trace_inline_shadow_ray(Light light, Surface surface, float2 pixel_xy)
     float3 tangent         = normalize(cross(up_axis, light_dir_unit));
     float3 bitangent       = cross(light_dir_unit, tangent);
 
-    // safety margin for area lights so rays don't hit the emitter's own visible mesh
-    // we approximate the emitter mesh radius from the smaller of the two area dims
+    // safety margin so area light rays do not hit the emitter mesh
     float emitter_safety = 0.0f;
     if (light.is_area())
     {
@@ -213,7 +206,7 @@ float trace_inline_shadow_ray(Light light, Surface surface, float2 pixel_xy)
 }
 #endif
 
-// Subsurface scattering with wrapped diffuse and thickness estimation
+// subsurface scattering with wrapped diffuse and thickness estimation
 float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_info)
 {
     const float wrap_factor        = 0.5f;
@@ -229,22 +222,11 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     float n_dot_l_wrapped = saturate((dot(N, L) + wrap_factor) / (1.0f + wrap_factor));
     float wrapped_diffuse = n_dot_l_wrapped * n_dot_l_wrapped;
 
-    // back scatter translucency for the back lit half, this is the gdc 2011 penner formulation
-    // where the LIGHT direction is distorted by the surface normal (not the other way around),
-    // the previous version had the operands swapped so it produced a vector parallel to the normal
-    // and dot(V, -that) was always negative on the back hemisphere, leaving back lit translucent
-    // surfaces like grass blades and leaves at the 5 percent min_scatter floor and looking black
-    //
-    //   H = normalize(L + N * distortion)        // light vector pulled toward the normal
-    //   back_scatter = saturate(dot(V, -H))      // peaks when the camera looks toward the light
-    //
-    // for the canonical case (camera looks at the sun through a leaf), L is roughly -V, the
-    // distortion bends H toward the back face normal but L still dominates, -H points roughly
-    // toward the camera, and dot(V, -H) approaches 1 which is what we want
+    // back scatter translucency, gdc 2011 penner, light direction distorted toward the normal
     const float distortion = 0.4f;
     float3 L_distorted     = normalize(L + N * distortion);
     float back_scatter     = saturate(dot(V, -L_distorted));
-    back_scatter           = back_scatter * back_scatter * back_scatter; // sharpens the back lit lobe
+    back_scatter           = back_scatter * back_scatter * back_scatter;
 
     // combine forward and backward scattering, t crosses 0.5 at the terminator
     float sss_term = lerp(back_scatter, wrapped_diffuse, saturate(dot(N, L) * 0.5f + 0.5f));
@@ -264,9 +246,8 @@ float3 subsurface_scattering(Surface surface, Light light, AngularInfo angular_i
     return light.radiance * sss_term * thickness_modulation * sss_strength * sss_color;
 }
 
-// evaluates a single light against the surface, accumulates into out parameters
-// eval_surface picks up the brdf and shadow path, eval_volumetric handles the fog raymarch
-// surface is taken by value so per light tweaks like area light roughness widening do not leak
+// evaluates a single light against the surface, accumulates into the out parameters
+// surface is taken by value so per light tweaks do not leak
 void evaluate_light(
     uint    light_index,
     uint2   pixel_xy,
@@ -283,18 +264,11 @@ void evaluate_light(
     Light light;
     light.Build(light_index, surface);
 
-    // raw light energy uncoupled from n_dot_l, used by subsurface scattering which models
-    // light transmitting through translucent surfaces from the back hemisphere, the canonical
-    // case (grass blade, leaf, ear) is where the lit side is opposite the viewed side and
-    // n_dot_l is zero or negative, light.radiance bakes n_dot_l into it so it cannot drive
-    // sss on its own, the raw form preserves the energy that sss internally redirects through
-    // its wrap_factor and back_scatter terms
+    // raw light energy without n_dot_l, sss needs it since light.radiance bakes n_dot_l in
     float3 light_radiance_raw = light.color * light.intensity * light.attenuation;
 
-    // when restir pt is enabled the initial ris pool now samples every light type
-    // (directional, point, spot, area) so all direct lighting at the primary is owned by
-    // restir, skip the analytical surface eval entirely to avoid double counting, volumetric
-    // contributions still flow through the analytical path because restir does not own fog
+    // restir owns all primary direct lighting, skip analytical surface eval to avoid double counting
+    // volumetric still flows through the analytical path since restir does not own fog
     bool restir_owns_light     = is_restir_pt_enabled();
     bool skip_surface_lighting = restir_owns_light;
 
@@ -305,35 +279,15 @@ void evaluate_light(
     float3 L_volumetric    = 0.0f;
     float  micro_shadow    = 1.0f;
 
-    // light can contribute via the standard brdf only when n_dot_l clears (light.radiance > 0)
-    // light can contribute via subsurface scattering whenever the raw energy is non zero (sss
-    // fires regardless of n_dot_l, that is its whole purpose), so the gate admits either path
+    // brdf needs light.radiance, sss needs only raw energy, the gate admits either path
     bool light_can_contribute = any(light_radiance_raw > 0.0f);
     bool has_brdf             = any(light.radiance > 0.0f);
     bool has_sss              = surface.subsurface_scattering > 0.0f;
 
     if (eval_surface && !surface.is_sky() && !skip_surface_lighting && light_can_contribute && (has_brdf || has_sss))
     {
-        // shadow term is split into a primary and a contact shadow
-        //
-        //   primary -> ray traced shadow when the cvar and the light enable it, otherwise the
-        //              rasterized cascade / cubemap shadow map, this tells us whether the surface
-        //              is occluded by some OTHER object in the scene (a wall, the terrain, etc)
-        //
-        //   contact -> screen space contact shadows refine the primary, they capture the small
-        //              features (cascade aliasing, contact under foliage, etc) that neither the
-        //              shadow map nor the ray traced primary resolves well, they used to be
-        //              mutually exclusive with ray traced shadows which lost all contact detail
-        //              whenever ray traced shadows were enabled
-        //
-        // primary applies to both brdf and sss, sss is "light reaches this surface at all"
-        //
-        // contact applies ONLY to brdf, never to sss, contact shadows march a screen space ray
-        // from the pixel toward the light and treat every surface (including the leaf itself)
-        // as opaque, on a translucent material like grass or leaves the ray immediately hits the
-        // very blade we are shading and reports occluded, that crushed sss to zero on every back
-        // face and produced the pitch black grass look, the primary shadow already correctly
-        // handles the "is the blade itself in real shadow" case
+        // shadow splits into primary (ray traced or shadow map) and screen space contact
+        // primary applies to brdf and sss, contact applies only to brdf so it cannot crush sss
         bool can_use_rt_shadows = light.has_shadows() && is_ray_traced_shadows_enabled();
 
         float L_shadow_primary = 1.0f;
@@ -341,13 +295,11 @@ void evaluate_light(
 
         if (can_use_rt_shadows && light.is_directional())
         {
-            // dedicated screen space pass produces high quality multi sample sun shadows
             L_shadow_primary = sample_ray_traced_shadow(surface.uv);
         }
     #ifdef RAY_TRACING_ENABLED
         else if (can_use_rt_shadows)
         {
-            // inline ray traced shadow for point spot and area lights
             L_shadow_primary = trace_inline_shadow_ray(light, surface, float2(pixel_xy));
         }
     #endif
@@ -361,23 +313,16 @@ void evaluate_light(
             L_shadow_contact = tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x;
         }
 
-        // exposed for output composition (the engine still tracks a single L_shadow for now)
         L_shadow = min(L_shadow_primary, L_shadow_contact);
 
-        // brdf gets the combined shadow (primary plus contact)
-        // sss gets only the primary, contact shadows must not block translucent transmission
+        // brdf gets the combined shadow, sss gets only the primary
         light.radiance     *= L_shadow;
         light_radiance_raw *= L_shadow_primary;
 
         AngularInfo angular_info;
         angular_info.Build(light, surface);
 
-        // chan 2018 microshadowing, the canonical "ao on direct" replacement, derives a contact
-        // darkening term from the ao aperture that scales with n_dot_l so it only fires near the
-        // terminator and leaves the lit pole at full intensity, this preserves the soft contact
-        // shadow read that the old "diffuse *= ao" was faking while letting shadow maps own the
-        // primary direct visibility, occlusion=1 yields micro_shadow=1 (no effect) so surfaces
-        // with no ao input pass through unchanged
+        // chan 2018 microshadowing, ao driven terminator darkening, occlusion 1 means no effect
         micro_shadow = microw_shadowing_cod(angular_info.n_dot_l, surface.occlusion);
 
         // area lights widen specular roughness so the highlight matches the light's angular extent
@@ -414,10 +359,7 @@ void evaluate_light(
 
         if (has_sss)
         {
-            // sss uses the raw radiance so it can fire on back faced surfaces, the previous
-            // code passed light.radiance (n_dot_l baked in) which was zero for the entire
-            // back hemisphere and left translucent geometry pitch black on its shadowed side
-            // even when the sun was clearly visible through the material from the camera
+            // sss uses raw radiance so it can fire on back faced surfaces
             Light light_sss    = light;
             light_sss.radiance = light_radiance_raw;
             L_subsurface += subsurface_scattering(surface, light_sss, angular_info);
@@ -440,10 +382,8 @@ void evaluate_light(
         L_volumetric += compute_volumetric_fog(surface, light, pixel_xy);
     }
 
-    // micro_shadow (chan 2018) is only computed inside the eval_surface block above where angular
-    // info exists, it defaults to 1.0 (no effect) for sky/volumetric-only/transparent paths
-    // sss is intentionally not folded in because back lit translucent surfaces have meaningless
-    // n_dot_l and would get crushed by a micro shadow they should not see
+    // micro_shadow defaults to 1 for sky, volumetric and transparent paths
+    // sss is not folded in since back lit surfaces have meaningless n_dot_l
     out_diffuse    += (L_diffuse_term * light.radiance * diffuse_precomputed * surface.diffuse_energy) * micro_shadow + L_subsurface;
     out_specular   += (L_specular_sum * light.radiance * specular_precomputed) * micro_shadow;
     out_volumetric += L_volumetric;
@@ -467,19 +407,8 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
     float3 out_specular   = 0.0f;
     float3 out_volumetric = 0.0f;
 
-    // transparents skip alpha on specular (fresnel handles it) and zero diffuse (no lambertian on glass)
-    //
-    // surface.occlusion is intentionally NOT folded into the direct light path, gtao/ssao is ambient
-    // occlusion by definition (the fraction of the upper hemisphere that sees the sky), every modern
-    // pbr reference says it must only modulate the indirect/ibl term, direct light visibility is
-    // owned by shadow maps, ray traced shadows and screen space contact shadows already, applying
-    // ao on top double counts contact darkening and is what made shadowed regions look muddy while
-    // the open areas read as relatively too bright (the perceived "unnaturally shiny" look)
-    //
-    // the soft contact darkening that the old "diffuse *= ao" was trying to fake is now produced
-    // physically inside evaluate_light by chan 2018 micro shadowing (microw_shadowing_cod) which
-    // derives an ao backed terminator term that only bites at glancing n_dot_l, leaving the lit
-    // pole at full intensity exactly as the cod wwii paper prescribes
+    // transparents skip alpha on specular and zero diffuse
+    // ao is not applied to direct light, it only modulates indirect, contact comes from micro_shadow
     bool   is_transparent       = surface.is_transparent();
     float3 specular_precomputed = is_transparent ? float3(1.0f, 1.0f, 1.0f) : float3(surface.alpha, surface.alpha, surface.alpha);
     float3 diffuse_precomputed  = is_transparent ? float3(0.0f, 0.0f, 0.0f) : float3(surface.alpha, surface.alpha, surface.alpha);
@@ -495,14 +424,10 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
                        out_diffuse, out_specular, out_volumetric);
     }
 
-    // clustered point, spot and area lights, only iterated for non sky pixels where surface shading runs
-    // when restir is on the cluster loop still runs so volumetric contributions are
-    // accumulated, evaluate_light internally short-circuits the surface lighting path so the
-    // direct lighting at the primary remains owned by the restir nee pool
+    // clustered point, spot and area lights, the loop still runs under restir for volumetric only
     if (!surface.is_sky() && total_lights > 1u)
     {
-        // the cluster grid lives in the left eye (or mono camera) view-projection space, both vr eyes share it
-        // so project world position through buffer_frame.view / view_projection regardless of pass_get_eye_index
+        // the cluster grid lives in the left eye view projection space, shared by both vr eyes
         float4 hp_left   = mul(float4(surface.position, 1.0f), buffer_frame.view_projection);
         float3 ndc_left  = hp_left.xyz / hp_left.w;
         float2 uv_lookup = float2(ndc_left.x * 0.5f + 0.5f, 0.5f - ndc_left.y * 0.5f);
@@ -521,8 +446,7 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
         }
     }
 
-    // volumetric fog scans a cpu built compact list, fog rays cross multiple clusters so a per pixel
-    // cluster lookup is not sufficient, but the list itself is typically a handful of lights
+    // volumetric fog scans a cpu built list since fog rays cross multiple clusters
     uint volumetric_count = buffer_frame.volumetric_light_count;
     for (uint k = 0u; k < volumetric_count; k++)
     {

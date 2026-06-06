@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_SyncPrimitive.h"
+#include "../RHI_Device.h"
 //===============================
 
 //= NAMESPACES =====
@@ -95,6 +96,12 @@ namespace spartan
         }
 
         CloseHandle(event_handle);
+
+        // a fence value of uint64 max signals the gpu was removed, report it like the vulkan device-lost path
+        if (fence->GetCompletedValue() == UINT64_MAX)
+        {
+            RHI_Device::SetDeviceLost();
+        }
     }
 
     void RHI_SyncPrimitive::Signal(const uint64_t value)

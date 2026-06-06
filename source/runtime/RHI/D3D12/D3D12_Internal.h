@@ -103,3 +103,10 @@ namespace spartan::d3d12_state
     D3D12_RESOURCE_STATES GetState(ID3D12Resource* resource);
     void RemoveState(ID3D12Resource* resource);
 }
+
+// shader bytecode lifetime, the IDxcBlob backing a compiled shader is kept alive in a registry
+// keyed by its buffer pointer so the deletion queue can release it when the shader is destroyed
+namespace spartan::d3d12_shader
+{
+    void release_bytecode_blob(void* bytecode_ptr);
+}

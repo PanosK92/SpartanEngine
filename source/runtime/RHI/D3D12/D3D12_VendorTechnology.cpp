@@ -118,7 +118,15 @@ namespace spartan
             }
 
             context_destroy();
-            SP_ASSERT(xessD3D12CreateContext(RHI_Context::device, &context) == xess_result_t::XESS_RESULT_SUCCESS);
+
+            // real support probe, context creation fails on drivers or hardware that can not run xess,
+            // bail gracefully instead of asserting so the renderer falls back to another upscaler
+            if (xessD3D12CreateContext(RHI_Context::device, &context) != xess_result_t::XESS_RESULT_SUCCESS)
+            {
+                SP_LOG_WARNING("XeSS context creation failed, disabling XeSS");
+                context = nullptr;
+                return;
+            }
 
             // calculate the scaling factor using the base (unscaled) render resolution
             uint32_t render_area = common::resolution_render_max_width * common::resolution_render_max_height;
@@ -140,10 +148,25 @@ namespace spartan
             intel::params_init.pTempTextureHeap     = nullptr;
             intel::params_init.textureHeapOffset    = 0;
             intel::params_init.pPipelineLibrary     = static_cast<ID3D12PipelineLibrary*>(RHI_Device::GetPipelineCache());
-            SP_ASSERT(xessD3D12Init(intel::context, &intel::params_init) == xess_result_t::XESS_RESULT_SUCCESS);
 
-            SP_ASSERT(xessSetVelocityScale(intel::context, -1.0f, -1.0f) == xess_result_t::XESS_RESULT_SUCCESS);
-            SP_ASSERT(xessSetMaxResponsiveMaskValue(intel::context, intel::responsive_mask_value_max) == xess_result_t::XESS_RESULT_SUCCESS);
+            // xess manages its own shader-visible descriptor heap internally when none is supplied at execute time,
+            // so no engine heap needs to be handed over here, this keeps the bindless heap free of xess descriptors
+            if (xessD3D12Init(intel::context, &intel::params_init) != xess_result_t::XESS_RESULT_SUCCESS)
+            {
+                SP_LOG_WARNING("XeSS initialization failed, disabling XeSS");
+                context_destroy();
+                return;
+            }
+
+            if (xessSetVelocityScale(intel::context, -1.0f, -1.0f) != xess_result_t::XESS_RESULT_SUCCESS)
+            {
+                SP_LOG_WARNING("XeSS velocity scale configuration failed");
+            }
+
+            if (xessSetMaxResponsiveMaskValue(intel::context, intel::responsive_mask_value_max) != xess_result_t::XESS_RESULT_SUCCESS)
+            {
+                SP_LOG_WARNING("XeSS responsive mask configuration failed");
+            }
         }
 
         uint32_t get_sample_count()
@@ -321,7 +344,10 @@ namespace spartan
 
         ID3D12GraphicsCommandList* d3d12_cmd_list = static_cast<ID3D12GraphicsCommandList*>(cmd_list->GetRhiResource());
         xess_result_t result = xessD3D12Execute(intel::context, d3d12_cmd_list, &intel::params_execute);
-        SP_ASSERT(result == XESS_RESULT_SUCCESS);
+        if (result != XESS_RESULT_SUCCESS)
+        {
+            SP_LOG_WARNING("XeSS dispatch failed with result %d", static_cast<int>(result));
+        }
     #endif
     }
 

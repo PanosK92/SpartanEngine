@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// Atmospheric fog using exponential height-based falloff model
+// atmospheric fog using exponential height based falloff
 float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_height_world)
 {
     float camera_height = get_camera_position().y;
     float density       = pass_get_f3_value().y * 0.00015f;
-    float scale_height  = 50.0f; // Lower = denser near ground, higher = more uniform
+    float scale_height  = 50.0f; // lower is denser near ground, higher is more uniform
     float b             = 1.0f / scale_height;
     float delta_height  = pixel_height_world - camera_height;
     float dist          = camera_to_pixel_length;
@@ -41,30 +41,29 @@ float get_fog_atmospheric(const float camera_to_pixel_length, const float pixel_
     
     if (abs(rd_y) < 1e-5f)
     {
-        // Horizontal ray approximation
+        // horizontal ray approximation
         float base_density = density * exp(-camera_height * b);
         tau = base_density * dist;
     }
     else
     {
-        // Analytical integral for optical depth (numerically stable)
+        // analytical optical depth integral, numerically stable
         float base_density = density * exp(-camera_height * b);
         float exponent     = -dist * rd_y * b;
         float exp_term     = 1.0f - exp(exponent);
         tau = base_density * exp_term / (b * rd_y);
     }
 
-    // Beer's law: fog factor = in-scatter (1 - transmittance)
+    // beer law, fog factor is the inscatter 1 - transmittance
     float transmittance = exp(-tau);
     float fog_factor    = 1.0f - transmittance;
-    fog_factor = pow(fog_factor, 0.8f); // Smooth falloff curve
+    fog_factor = pow(fog_factor, 0.8f);
     
     return saturate(fog_factor);
 }
 
-// returns 1.0 if the world space position is lit by the given light, 0.0 if it is occluded
-// uses the hardware comparison sampler so the depth compare happens in the texture unit
-// for directional we pick a single cascade per sample instead of paying for both
+// returns 1 if the world space position is lit by the light, 0 if occluded
+// directional picks a single cascade per sample instead of paying for both
 float visible(float3 position, Light light, uint2 pixel_pos)
 {
     if (light.is_point())
@@ -87,8 +86,7 @@ float visible(float3 position, Light light, uint2 pixel_pos)
 
     if (light.is_directional())
     {
-        // try the near cascade first, fall back to the far cascade only if outside its frustum
-        // single cascade per sample keeps shadow lookups halved across the raymarch
+        // try the near cascade first, fall back to the far cascade if outside its frustum
         const uint near_cascade = 0;
         const uint far_cascade  = 1;
 
@@ -122,21 +120,19 @@ float visible(float3 position, Light light, uint2 pixel_pos)
     return light.compare_depth(float3(projected_uv, 0.0f), projected_pos.z);
 }
 
-// henyey greenstein phase function, g = 0 isotropic, g positive forward scatter, g negative back scatter
-// returned in 1/sr, the scattering coefficient sigma_s controls the overall brightness
+// henyey greenstein phase, g 0 isotropic, positive forward scatter, negative back scatter
 float henyey_greenstein_phase(float cos_theta, float g)
 {
     cos_theta     = clamp(cos_theta, -1.0f, 1.0f);
     float g2      = g * g;
     float denom   = max(1.0f + g2 - 2.0f * g * cos_theta, 1e-4f);
-    // pow(d, 1.5) replaced with d * sqrt(d), one rsq + a mul instead of exp2/log2
+    // d * sqrt(d) instead of pow(d, 1.5)
     float denom32 = denom * sqrt(denom);
     return (1.0f - g2) / (4.0f * PI * denom32);
 }
 
-// computes the local light direction and the volumetric attenuation at a sample inside the medium
-// area lights use the closest point on the rectangle so tube emitters illuminate the volume along their full length
-// instead of only near the centroid, point and spot use the centroid with a soft minimum distance to avoid singularities
+// local light direction and volumetric attenuation at a sample inside the medium
+// area lights use the closest point on the rectangle, point and spot use the centroid
 void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 light_dir, out float local_atten)
 {
     if (light.is_directional())
@@ -146,7 +142,7 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
         return;
     }
 
-    // soft minimum distance, treats analytical lights as small spheres so the inverse square does not blow up at the surface
+    // soft minimum distance so the inverse square does not blow up at the surface
     const float soft_radius = 0.05f;
 
     if (light.is_area())
@@ -158,7 +154,7 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 
         float dist_eff    = max(dist, soft_radius);
         float range_atten = light.compute_attenuation_range(dist);
-        // emitter only radiates into its front hemisphere, dot uses light forward and the direction from emitter to sample
+        // emitter only radiates into its front hemisphere
         float emission_cos = saturate(dot(light.forward, -light_dir));
         local_atten        = (range_atten / (dist_eff * dist_eff)) * emission_cos;
         return;
@@ -175,7 +171,7 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 
     if (light.is_spot())
     {
-        // cos_outer / angle_scale precomputed in Light::Build, hot raymarch path stays trig free
+        // cos_outer and angle_scale are precomputed in Light::Build to keep this path trig free
         float cd          = dot(-light_dir, light.forward);
         float angle_atten = saturate((cd - light.cos_outer) * light.angle_scale);
         local_atten      *= angle_atten * angle_atten;
@@ -186,13 +182,8 @@ void compute_volumetric_light_sample(Light light, float3 sample_pos, out float3 
 // works for any light type, the per type differences are isolated in compute_volumetric_light_sample and visible
 float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
 {
-    // sigma_s is the medium scattering coefficient in 1/m, sigma_t is extinction
-    // the engine packs the user facing fog density into pass_get_f3_value().y so r.fog scales it linearly
-    // the directional sun gets a much smaller scattering coefficient than punctual lights, the sun's
-    // intensity is several orders of magnitude larger than any spot or point light in the scene so
-    // sharing one sigma_s would dump unphysical amounts of inscatter into every pixel whose ray
-    // passes near the sun direction and wash the close geometry, the lower coefficient keeps the
-    // god rays readable on the sky while letting close surfaces stay tied to their surface lighting
+    // sigma_s is the scattering coefficient, the sun uses a smaller one since its intensity
+    // is orders of magnitude larger and would otherwise wash close geometry
     const float sigma_s_base   = pass_get_f3_value().y * 0.0012f;
     const float sigma_s        = light.is_directional() ? (sigma_s_base * 0.25f) : sigma_s_base;
     const float sigma_t        = sigma_s; // pure scattering, no absorption
@@ -204,11 +195,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     const float3 ray_origin    = get_camera_position();
     const float3 ray_direction = normalize(surface.camera_to_pixel);
 
-    // restrict the march to the slab of the ray where the light can actually contribute
-    // for punctual emitters this is the intersection with their range sphere, clamped to a volumetric horizon
-    // because 1/r^2 makes contribution invisible past a few tens of meters anyway
-    // without this clip, sky pixels (depth at the far plane) would spread the same sample budget over kilometers
-    // and step density would collapse to where small beams disappear into noise
+    // restrict the march to where the light can contribute, punctual lights clip to their range sphere
     float march_start = 0.0f;
     float march_end   = total_distance;
 
@@ -236,9 +223,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     if (march_length < 0.1f)
         return 0.0f;
 
-    // step count proportional to march length, sub meter sampling for finer beam capture and
-    // less per pixel jitter noise, hard capped on both ends, denser steps shrink the inscatter
-    // each sample contributes which directly lowers the spatial variance from the temporal jitter
+    // step count proportional to march length, capped on both ends
     const uint  min_steps        = 24;
     const uint  max_steps        = 96;
     const float target_step      = 0.65f;
@@ -251,10 +236,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     const float temporal_noise = noise_interleaved_gradient(pixel_pos, true);
     float3 ray_pos = ray_origin + ray_direction * (march_start + temporal_noise * step_length);
 
-    // moderate forward scattering for punctual lights, the directional sun uses a much
-    // weaker forward bias because its inscatter integrates over the entire camera ray and
-    // a strong g produces an unphysical bright halo around the sun direction on every
-    // opaque surface whose ray passes near the sun even when the sun itself is occluded
+    // forward scattering, the sun uses a weaker bias to avoid a bright halo around its direction
     const float phase_g           = light.is_directional() ? 0.25f : 0.6f;
     const float min_transmittance = 0.005f;
 
@@ -262,8 +244,7 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
     const float step_transmittance = exp(-sigma_t * step_length);
     const float sigma_s_dt         = sigma_s * step_length;
 
-    // for directional lights, light direction, cos_theta and the phase function are all constant
-    // for the whole ray, evaluate them once instead of per step
+    // for directional lights the direction, cos_theta and phase are constant, evaluate once
     const bool is_dir = light.is_directional();
     float3 dir_light_dir = 0.0f;
     float  dir_phase     = 0.0f;
@@ -312,15 +293,10 @@ float3 compute_volumetric_fog(Surface surface, Light light, uint2 pixel_pos)
         ray_pos       += ray_step;
     }
 
-    // light radiance scaling, color and intensity are constants along the ray so they pull out of the integral
+    // color and intensity are constant along the ray so they pull out of the integral
     float3 result = inscatter * light.intensity * light.color;
 
-    // fade the contribution by surface distance for non sky pixels
-    // the inscatter is largest near the camera and becomes a constant additive haze on every pixel
-    // whose ray passes through the light volume, without this fade it lights up the entire ground
-    // plane out to the horizon as a uniform glow that does not match the falling off surface lighting
-    // the directional sun gets a much stronger fade than punctual lights because its inscatter
-    // integrates over the entire camera ray with full sun radiance and overwhelms close geometry,
+    // fade by surface distance for non sky pixels so the haze does not flood close geometry,
     // sky pixels keep the full inscatter so the beams stay visible against the horizon
     if (!surface.is_sky())
     {

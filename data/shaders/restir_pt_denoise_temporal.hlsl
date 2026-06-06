@@ -24,14 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "restir_reservoir.hlsl"
 //===============================
 
-// svgf style temporal accumulation (schied et al. 2017 spatiotemporal variance guided filter)
-// outputs:
-//   tex_uav  rgb = denoised color    a = per pixel luminance variance estimate
-//   tex_uav2 rg  = (luma_M1, luma_M2) ema   b = effective sample count   a = unused
-// the variance in alpha is the input that drives the spatial filter's luma_phi, replacing the
-// previous hand tuned global scale, the moments are accumulated with an exponential moving
-// average so disocclusions reset the variance estimate to the local 7x7 spatial sigma until
-// enough frames have been accumulated for the temporal estimator to take over
+// svgf style temporal accumulation, schied 2017
+//   tex_uav  rgb = denoised color, a = luminance variance estimate
+//   tex_uav2 rg  = luma moment ema, b = effective sample count
+// the variance drives the spatial filter luma_phi, moments use an ema with a 7x7 bootstrap
 
 static const float3 luminance_weights = float3(0.299f, 0.587f, 0.114f);
 
@@ -73,10 +69,7 @@ void compute_local_statistics(uint2 pixel, uint2 resolution, out float3 mean, ou
     sigma = sqrt(variance);
 }
 
-// 7x7 luma variance estimator used during the disocclusion bootstrap, schied 2017 §4.3
-// when the temporal accumulator has too few samples (n_eff < 4) the variance estimate from the
-// ema is unreliable, the spatial sigma over a wider neighborhood gives a more stable bootstrap
-// the kernel is a rough box (we ignore the gaussian weights for the spatial sigma estimate)
+// 7x7 luma variance estimator for the disocclusion bootstrap, schied 2017 4.3
 void compute_spatial_luma_variance_7x7(uint2 pixel, uint2 resolution, out float spatial_var)
 {
     float m1 = 0.0f;
@@ -103,14 +96,8 @@ void compute_spatial_luma_variance_7x7(uint2 pixel, uint2 resolution, out float 
 
 float3 clamp_history_variance(float3 history, float3 current, float current_luma, float variance, float n_eff)
 {
-    // variance gated history clamp (schied 2017 §4.4) replaces the previous fixed sigma scaler
-    // a high variance estimate widens the clamp window so noisy bright pixels are not bias
-    // pinned to a tight neighborhood mean, low variance tightens the window so contact shadows
-    // and small geometric features are preserved
-    // maturity gate: a fresh pixel (low n_eff, just disoccluded) keeps a tight clamp so ghosting
-    // and smear are suppressed, a mature static pixel (high n_eff) loosens the clamp so its long
-    // temporal average is allowed to actually converge instead of being pinned back toward the
-    // noisy current frame every frame, which is what left a residual noise floor on still views
+    // variance gated history clamp, schied 2017 4.4, high variance widens the clamp window
+    // maturity gate keeps a fresh pixel tight against ghosting and loosens a mature one to converge
     float maturity      = saturate(n_eff / 32.0f);
     float sigma_mult    = lerp(4.0f, 12.0f, maturity);
     float radius_floor  = lerp(0.05f, 0.004f, maturity);
@@ -119,8 +106,7 @@ float3 clamp_history_variance(float3 history, float3 current, float current_luma
     float current_low   = max(current_luma - clamp_radius, 0.0f);
     float current_high  = current_luma + clamp_radius;
 
-    // soft remap based on history luma vs current luma window, color is rescaled toward
-    // history but clamped to the variance gated band, keeps chroma stable while limiting luma
+    // rescale color toward history clamped to the variance gated band, keeps chroma stable
     float history_luma = dot(history, luminance_weights);
     float clamped_luma = clamp(history_luma, current_low, current_high);
     float scale        = (history_luma > 1e-4f) ? (clamped_luma / history_luma) : 1.0f;
@@ -200,12 +186,7 @@ float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float cu
     return tex2.Load(int3(fallback_pixel, 0));
 }
 
-// uses the shared evaluate_disocclusion helper in restir_reservoir.hlsl so the denoiser
-// temporal accumulator and the reservoir temporal pass apply identical gating semantics
-// (previous frame depth at prev_uv vs current position reprojected through prev vp), the
-// previous formulation here compared current depth at prev_uv vs the current pixel's depth
-// which mistreats dynamic surfaces as disocclusions and caused asymmetric ghosting between
-// the two passes, the previous depth is bound on tex4 by Pass_ReSTIR_Denoising
+// history validity via the shared evaluate_disocclusion helper, previous depth is bound on tex4
 bool is_history_valid(float2 current_uv, float2 prev_uv, float3 current_position, float3 current_normal, float current_depth, float2 history_resolution, out float confidence)
 {
     bool ok = evaluate_disocclusion(
@@ -263,21 +244,12 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float4 history_sample = sample_history_edge_aware(prev_uv, current_normal, current_linear_z, float2(resolution));
         history_color         = max(history_sample.rgb, 0.0f);
 
-        // history moments come from the moments_history texture (tex3 srv binding), keep the
-        // raw fp16 value so noise statistics propagate exactly across frames, the bilinear tap
-        // around prev_uv would average against neighbors but the existing edge aware history
-        // sampler already validates the neighborhood so we re-use the same nearest tap here
+        // moments from the history texture (tex3), kept raw so noise statistics propagate exactly
         int2 prev_pixel_int = clamp(int2(prev_uv * resolution), int2(0, 0), int2(resolution) - 1);
         float4 prev_moments = tex3.Load(int3(prev_pixel_int, 0));
         history_moments     = prev_moments.xyz;
 
-        // the schied 2017 alpha equivalent, history weight is built from validity factors and
-        // dynamically adjusted by sample count so the first ~4 frames after disocclusion blend
-        // weakly toward the new measurement, beyond that the 1/(n+1) schedule keeps lowering
-        // alpha as samples accumulate, the floor is dropped to 0.02 (history 0.98, ~50 effective
-        // frames) so a held still view keeps averaging down the residual noise instead of
-        // stalling at a ~20 frame window, the disocclusion / validity gate and temporal_confidence
-        // still reset this on motion so the deeper history does not introduce ghosting
+        // schied 2017 alpha, a 1/(n+1) schedule with a 0.02 floor so still views keep converging
         float n_eff      = history_moments.z;
         float min_alpha  = saturate(1.0f / max(n_eff + 1.0f, 1.0f));
         float ema_alpha  = max(min_alpha, 0.02f);
@@ -285,21 +257,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         history_weight   = saturate(min(history_weight, 0.992f));
     }
 
-    // small 3x3 mean+variance pre blur (schied 2017 §4.2) so isolated bright fireflies do not
-    // pin the variance estimate to a single pixel, this stabilizes the spatial filter weights
-    // and gives the firefly clamp below a reliable spatial sigma even when history is young
+    // 3x3 mean and variance pre blur, schied 2017 4.2, gives a stable spatial sigma
     float3 mean_color, sigma_color, min_color, max_color;
     compute_local_statistics(pixel, resolution, mean_color, sigma_color, min_color, max_color);
     float spatial_sigma_luma = dot(sigma_color, luminance_weights);
     float spatial_var_3x3    = spatial_sigma_luma * spatial_sigma_luma;
 
-    // pre-ema firefly soft clamp, lin 2022 §6.4 / production svgf trick
-    // this catches an incoming bright pixel relative to the converged temporal mean before it
-    // gets folded into the moment ema, which is what stops a residual diffuse firefly from slowly
-    // accumulating and spreading across frames (the estimator-level soft ceiling bounds already
-    // stuck reservoirs, this bounds the ones still trying to lock in), the band is tightened back
-    // to 6-14 sigma so it actually engages on these residuals while still letting a genuinely
-    // bright bounce through once the local neighborhood agrees it is real
+    // pre ema firefly soft clamp, catches a bright pixel relative to the converged mean before the ema
     if (history_ok)
     {
         float history_sigma = sqrt(max(history_moments.y - history_moments.x * history_moments.x, 0.0f));
@@ -314,8 +278,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         }
     }
 
-    // moment ema, in the schied 2017 formulation alpha is the new sample weight so the moment
-    // update is m_new = (1 - alpha) * m_prev + alpha * sample, ema_alpha = 1 - history_weight
+    // moment ema, m_new = (1 - alpha) * m_prev + alpha * sample
     float ema_alpha = 1.0f - history_weight;
     float new_M1    = lerp(history_moments.x, current_luma, ema_alpha);
     float new_M2    = lerp(history_moments.y, current_luma * current_luma, ema_alpha);
@@ -323,24 +286,20 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     float temporal_var = max(new_M2 - new_M1 * new_M1, 0.0f);
 
-    // bootstrap fallback when the temporal estimator does not have enough samples yet, schied
-    // 2017 §4.3 uses a 7x7 spatial luma variance for the first 4 frames after disocclusion
+    // 7x7 spatial bootstrap for the first 4 frames after disocclusion, schied 2017 4.3
     float variance_estimate = temporal_var;
     if (new_n_eff < 4.0f)
     {
         float spatial_var;
         compute_spatial_luma_variance_7x7(pixel, resolution, spatial_var);
-        // boost spatial variance by 1/sqrt(N) to compensate for the low sample count, the SVGF
-        // paper applies a similar boost so disocclusion regions get filtered more aggressively
+        // boost to compensate for the low sample count so disocclusions filter more aggressively
         float boost = max(4.0f - new_n_eff, 1.0f);
         variance_estimate = max(temporal_var, spatial_var * boost);
     }
 
     variance_estimate = max(variance_estimate, spatial_var_3x3 * 0.25f);
 
-    // variance gated history clamp keeps chromatic stability even when the temporal accumulator
-    // has converged, the previous neighborhood sigma scaler was hand tuned, this ties it to the
-    // actual per pixel variance estimate
+    // variance gated history clamp for chromatic stability after the accumulator converges
     if (history_ok)
     {
         history_color = clamp_history_variance(history_color, current_color, current_luma, variance_estimate, new_n_eff);
