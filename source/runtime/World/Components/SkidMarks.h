@@ -102,12 +102,12 @@ namespace spartan
 
         // tunables
         float m_slip_threshold       = 0.35f; // combined slip magnitude needed to start marking
-        float m_min_segment_distance = 0.15f; // minimum travel before a new quad is laid
-        uint32_t m_max_segments      = 256;   // ring buffer size per wheel  
+        float m_min_segment_distance = 0.05f; // minimum travel before a new quad is laid
+        uint32_t m_max_segments      = 512;   // ring buffer size per wheel  
         float m_opacity              = 0.75f; // base material alpha
         float m_z_offset             = 0.02f; // lift above ground to avoid z-fighting
         float m_uv_tiling            = 0.5f;  // texture repeats per meter along travel
-        float m_fade_distance        = 0.8f;  // length over which a strip fades in and out
+        float m_fade_distance        = 0.1f;  // short fade in and out at each strip end, in meters
         float m_center_smoothing     = 0.5f;  // contact point low pass, kills lateral jitter
     };
 }

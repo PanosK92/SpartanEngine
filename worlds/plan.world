@@ -1357,7 +1357,7 @@
    </Entity>
   </Entity>
   <Entity name="spline_car" id="5723169428173956022" active="true" position="15 0.7 105.6" rotation="3.72529e-09 0.679444 -6.7025e-09 0.733727" scale="1 1 1">
-   <prefab type="car" type="car" static_physics="false" drivable="false" />
+   <prefab type="car" static_physics="false" drivable="false" />
   </Entity>
   <Entity name="scene" id="14880357368541097784" active="false" position="0 0 0" rotation="0.000489867 0.710916 -0.703277 0.000484602" scale="0.0124652 0.0124652 0.0124652">
    <Entity name="root" id="14880365535599238103" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
@@ -2982,7 +2982,31 @@
    </Entity>
   </Entity>
   <Entity name="player_car" id="2411005043703651744" active="true" position="-12.5 1.2 102.8" rotation="3.72529e-09 0.679444 -6.7025e-09 0.733727" scale="1 1 1">
-   <prefab type="car" type="car" drivable="true" telemetry="true" camera_follows="true" />
+   <prefab type="car" drivable="true" telemetry="true" camera_follows="true" />
+   <prefab_override path="vehicle">
+    <skid_marks slip_threshold="0.35" min_segment_distance="0.05" max_segments="512" opacity="0.75" z_offset="0.02" uv_tiling="0.5" fade_distance="0.1" />
+    <script file_path="../worlds/tire_smoke.lua" />
+   </prefab_override>
+   <prefab_override path="vehicle/wheel_front_left">
+    <Entity name="tire_smoke" id="1000000000000000003" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <particle_system preset="15" max_particles="8000" emission_rate="0" lifetime="3" start_speed="1.5" start_size="0.15" end_size="1.2" start_color_r="0.85" start_color_g="0.85" start_color_b="0.85" start_color_a="0.5" end_color_r="0.7" end_color_g="0.7" end_color_b="0.7" end_color_a="0" gravity_modifier="-0.05" emission_radius="0.15" />
+    </Entity>
+   </prefab_override>
+   <prefab_override path="vehicle/wheel_front_right">
+    <Entity name="tire_smoke" id="1000000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <particle_system preset="15" max_particles="8000" emission_rate="0" lifetime="3" start_speed="1.5" start_size="0.15" end_size="1.2" start_color_r="0.85" start_color_g="0.85" start_color_b="0.85" start_color_a="0.5" end_color_r="0.7" end_color_g="0.7" end_color_b="0.7" end_color_a="0" gravity_modifier="-0.05" emission_radius="0.15" />
+    </Entity>
+   </prefab_override>
+   <prefab_override path="vehicle/wheel_rear_left">
+    <Entity name="tire_smoke" id="1000000000000000001" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <particle_system preset="15" max_particles="8000" emission_rate="0" lifetime="3" start_speed="1.5" start_size="0.15" end_size="1.2" start_color_r="0.85" start_color_g="0.85" start_color_b="0.85" start_color_a="0.5" end_color_r="0.7" end_color_g="0.7" end_color_b="0.7" end_color_a="0" gravity_modifier="-0.05" emission_radius="0.15" />
+    </Entity>
+   </prefab_override>
+   <prefab_override path="vehicle/wheel_rear_right">
+    <Entity name="tire_smoke" id="1000000000000000002" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+     <particle_system preset="15" max_particles="8000" emission_rate="0" lifetime="3" start_speed="1.5" start_size="0.15" end_size="1.2" start_color_r="0.85" start_color_g="0.85" start_color_b="0.85" start_color_a="0.5" end_color_r="0.7" end_color_g="0.7" end_color_b="0.7" end_color_a="0" gravity_modifier="-0.05" emission_radius="0.15" />
+    </Entity>
+   </prefab_override>
   </Entity>
   <Entity name="scene" id="3174038852190496006" active="false" position="0 0 0" rotation="0.000489867 0.710916 -0.703277 0.000484602" scale="0.0124652 0.0124652 0.0124652">
    <Entity name="root" id="3173984543124826849" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">

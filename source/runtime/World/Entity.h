@@ -158,6 +158,7 @@ namespace spartan
         void SetParent(Entity* new_parent);
         Entity* GetChildByIndex(uint32_t index);
         Entity* GetChildByName(const std::string& name);
+        Entity* GetDescendantByPath(const std::string& path);
         void AcquireChildren();
         void RemoveChild(Entity* child, bool update_child_with_null_parent = true);
         void AddChild(Entity* child);
@@ -189,6 +190,11 @@ namespace spartan
         void SetPrefabFilePath(const std::string& path);
         void ClearPrefabData();
 
+        // prefab baseline ownership - marks the current hierarchy as the prefab base,
+        // so anything the user adds afterwards is detected as an override and persisted
+        void MarkPrefabBaseline();
+        bool IsPrefabOwned() const { return m_prefab_owned; }
+
         // transient entities are not serialized (e.g. dynamically created entities like flashlights)
         void SetTransient(bool transient)  { m_transient = transient; }
         bool IsTransient() const           { return m_transient; }
@@ -200,6 +206,9 @@ namespace spartan
 
         void UpdateTransform();
         math::Matrix GetParentTransformMatrix();
+
+        // walks a prefab base subtree and writes user additions as <prefab_override> blocks onto the instance root node
+        void SaveOverrides(pugi::xml_node& root_node, const std::string& path);
 
         // local
         math::Vector3 m_position_local    = math::Vector3::Zero;
@@ -230,5 +239,11 @@ namespace spartan
         std::string m_prefab_type;
         std::string m_prefab_file_path;
         std::unordered_map<std::string, std::string> m_prefab_attributes;
+
+        // prefab override tracking
+        // m_prefab_owned marks an entity created as part of a prefab base
+        // the mask marks which components on this entity came from the prefab base
+        bool m_prefab_owned = false;
+        std::array<bool, static_cast<uint32_t>(ComponentType::Max)> m_prefab_owned_components{};
     };
 }

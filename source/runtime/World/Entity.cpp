@@ -293,20 +293,51 @@ namespace spartan
                 }
             }
 
-            // components (user-added components persist alongside prefab data)
-            for (shared_ptr<Component>& component : m_components)
+            // components
+            // for prefab instances only user-added components are saved, the base rebuilds its own
+            for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
             {
-                if (component)
+                shared_ptr<Component>& component = m_components[i];
+                if (!component)
                 {
-                    string type_name              = Component::TypeToString(component->GetType());
-                    pugi::xml_node component_node = node.append_child(type_name.c_str());
-                    component->Save(component_node);
+                    continue;
                 }
+
+                if (HasPrefabData() && m_prefab_owned_components[i])
+                {
+                    continue;
+                }
+
+                string type_name              = Component::TypeToString(component->GetType());
+                pugi::xml_node component_node = node.append_child(type_name.c_str());
+                component->Save(component_node);
             }
         }
 
-        // children (skip when this entity is a prefab, the prefab recreates its own hierarchy)
-        if (!HasPrefabData())
+        if (HasPrefabData())
+        {
+            // the prefab base is rebuilt on load, so only persist what the user added on top
+            for (Entity* child : m_children)
+            {
+                if (child->IsTransient())
+                {
+                    continue;
+                }
+
+                if (child->m_prefab_owned)
+                {
+                    // base child, scan it for deeper user additions
+                    child->SaveOverrides(node, child->GetObjectName());
+                }
+                else
+                {
+                    // user added child directly under the instance root, save it in full
+                    pugi::xml_node child_node = node.append_child("Entity");
+                    child->Save(child_node);
+                }
+            }
+        }
+        else
         {
             for (Entity* child : m_children)
             {
@@ -317,6 +348,65 @@ namespace spartan
 
                 pugi::xml_node child_node = node.append_child("Entity");
                 child->Save(child_node);
+            }
+        }
+    }
+
+    void Entity::SaveOverrides(pugi::xml_node& root_node, const string& path)
+    {
+        // detect user additions on this base node
+        bool has_user_components = false;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
+        {
+            if (m_components[i] && !m_prefab_owned_components[i])
+            {
+                has_user_components = true;
+                break;
+            }
+        }
+
+        bool has_user_children = false;
+        for (Entity* child : m_children)
+        {
+            if (!child->m_prefab_owned && !child->IsTransient())
+            {
+                has_user_children = true;
+                break;
+            }
+        }
+
+        if (has_user_components || has_user_children)
+        {
+            pugi::xml_node override_node      = root_node.append_child("prefab_override");
+            override_node.append_attribute("path") = path.c_str();
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
+            {
+                shared_ptr<Component>& component = m_components[i];
+                if (component && !m_prefab_owned_components[i])
+                {
+                    string type_name              = Component::TypeToString(component->GetType());
+                    pugi::xml_node component_node = override_node.append_child(type_name.c_str());
+                    component->Save(component_node);
+                }
+            }
+
+            for (Entity* child : m_children)
+            {
+                if (!child->m_prefab_owned && !child->IsTransient())
+                {
+                    pugi::xml_node child_node = override_node.append_child("Entity");
+                    child->Save(child_node);
+                }
+            }
+        }
+
+        // recurse into base children to capture additions deeper in the hierarchy
+        for (Entity* child : m_children)
+        {
+            if (child->m_prefab_owned)
+            {
+                child->SaveOverrides(root_node, path + "/" + child->GetObjectName());
             }
         }
     }
@@ -337,6 +427,22 @@ namespace spartan
         m_prefab_type.clear();
         m_prefab_file_path.clear();
         m_prefab_attributes.clear();
+    }
+
+    void Entity::MarkPrefabBaseline()
+    {
+        // mark the components currently on this entity as part of the prefab base
+        for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
+        {
+            m_prefab_owned_components[i] = m_components[i] != nullptr;
+        }
+
+        // mark descendants as prefab owned and recurse into them
+        for (Entity* child : m_children)
+        {
+            child->m_prefab_owned = true;
+            child->MarkPrefabBaseline();
+        }
     }
 
     void Entity::Load(pugi::xml_node& node)
@@ -385,10 +491,10 @@ namespace spartan
                     for (pugi::xml_attribute attr = component_node.first_attribute(); attr; attr = attr.next_attribute())
                     {
                         string attr_name = attr.name();
-                        if (attr_name == "file")
+                        if (attr_name == "type" || attr_name == "file")
                         {
                             continue;
-                        } // file path is stored separately
+                        } // type and file are stored separately
                         prefab_attributes[attr_name] = attr.value();
                     }
                     SetPrefabData(prefab_type, prefab_attributes);
@@ -407,6 +513,45 @@ namespace spartan
                     else if (!prefab_file.empty())
                     {
                         Prefab::LoadFromFile(prefab_file, this);
+                    }
+
+                    // snapshot the base so later additions are detected as overrides
+                    MarkPrefabBaseline();
+
+                    continue;
+                }
+
+                // apply a user override onto an existing base node, resolved by name path
+                if (type_name == "prefab_override")
+                {
+                    string path     = component_node.attribute("path").as_string();
+                    Entity* target  = GetDescendantByPath(path);
+                    if (!target)
+                    {
+                        SP_LOG_WARNING("Prefab override path no longer exists, skipping: %s", path.c_str());
+                        continue;
+                    }
+
+                    for (pugi::xml_node override_child = component_node.first_child(); override_child; override_child = override_child.next_sibling())
+                    {
+                        string override_name = override_child.name();
+                        if (override_name == "Entity")
+                        {
+                            Entity* child = World::CreateEntity();
+                            child->Load(override_child);
+                            child->SetParent(target);
+                        }
+                        else
+                        {
+                            ComponentType override_type = Component::StringToType(override_name);
+                            if (override_type != ComponentType::Max)
+                            {
+                                if (Component* component = target->AddComponent(override_type))
+                                {
+                                    component->Load(override_child);
+                                }
+                            }
+                        }
                     }
 
                     continue;
@@ -770,6 +915,30 @@ namespace spartan
         }
 
         return nullptr;
+    }
+
+    Entity* Entity::GetDescendantByPath(const string& path)
+    {
+        // path is a slash separated chain of child names relative to this entity
+        // sibling names are assumed unique within a prefab, duplicates resolve to the first match
+        Entity* current = this;
+        stringstream ss(path);
+        string segment;
+        while (getline(ss, segment, '/'))
+        {
+            if (segment.empty())
+            {
+                continue;
+            }
+
+            current = current->GetChildByName(segment);
+            if (!current)
+            {
+                return nullptr;
+            }
+        }
+
+        return current;
     }
 
     void Entity::SetParent(Entity* new_parent)

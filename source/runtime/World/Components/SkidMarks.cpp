@@ -272,8 +272,8 @@ namespace spartan
         GeometryBuffer::UpdateVertices(rq.verts, offset, 4);
         trail.head_quad = (trail.head_quad + 1) % trail.capacity_quads;
 
-        // keep a short tail history so it can be faded out when the skid stops
-        uint32_t tail_quads = static_cast<uint32_t>(m_fade_distance / m_min_segment_distance) + 1;
+        // keep enough trailing quads to cover the fade distance, plus margin for larger segments
+        uint32_t tail_quads = static_cast<uint32_t>(m_fade_distance / m_min_segment_distance) + 3;
         trail.recent.push_back(rq);
         if (trail.recent.size() > tail_quads)
         {
@@ -283,15 +283,22 @@ namespace spartan
 
     void SkidMarks::FadeStripEnd(WheelTrail& trail)
     {
-        size_t n = trail.recent.size();
-        for (size_t i = 0; i < n; i++)
+        if (trail.recent.empty())
         {
-            // oldest tail quad keeps full intensity, the very last quad fades all the way to zero
-            float factor = (n <= 1) ? 0.0f : static_cast<float>(n - 1 - i) / static_cast<float>(n - 1);
-            RecentQuad& rq = trail.recent[i];
+            return;
+        }
+
+        // taper the tail to zero over the fade distance measured back from the strip end, by distance not by
+        // quad count, so the mark always fades out within a few centimeters regardless of how it was segmented
+        float u_end = trail.u_accum;
+        for (RecentQuad& rq : trail.recent)
+        {
             for (int v = 0; v < 4; v++)
             {
-                Vector2 uv = rq.verts[v].get_uv();
+                Vector2 uv   = rq.verts[v].get_uv();
+                float u_dist = (m_uv_tiling > 0.0f) ? (uv.x / m_uv_tiling) : u_end;
+                float factor = (u_end - u_dist) / m_fade_distance;
+                factor       = factor < 0.0f ? 0.0f : (factor > 1.0f ? 1.0f : factor);
                 rq.verts[v].set_uv(uv.x, uv.y * factor);
             }
             uint32_t offset = trail.global_vertex_offset + rq.slot * 4;
@@ -364,15 +371,17 @@ namespace spartan
         node.append_attribute("opacity")              = m_opacity;
         node.append_attribute("z_offset")             = m_z_offset;
         node.append_attribute("uv_tiling")            = m_uv_tiling;
+        node.append_attribute("fade_distance")        = m_fade_distance;
     }
 
     void SkidMarks::Load(pugi::xml_node& node)
     {
         m_slip_threshold       = node.attribute("slip_threshold").as_float(0.35f);
-        m_min_segment_distance = node.attribute("min_segment_distance").as_float(0.15f);
-        m_max_segments         = node.attribute("max_segments").as_uint(256);
+        m_min_segment_distance = node.attribute("min_segment_distance").as_float(0.05f);
+        m_max_segments         = node.attribute("max_segments").as_uint(512);
         m_opacity              = node.attribute("opacity").as_float(0.75f);
         m_z_offset             = node.attribute("z_offset").as_float(0.02f);
         m_uv_tiling            = node.attribute("uv_tiling").as_float(0.5f);
+        m_fade_distance        = node.attribute("fade_distance").as_float(0.1f);
     }
 }

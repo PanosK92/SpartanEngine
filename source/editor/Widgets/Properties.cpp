@@ -769,27 +769,40 @@ void Properties::ShowEntity(Entity* entity) const
 
                 for (const auto& [key, value] : entity->GetPrefabAttributes())
                 {
-                    if (key == "type")
-                    {
-                        continue;
-                    } // already shown above
                     property_text(key.c_str(), value, "prefab attribute (read-only)");
                 }
             }
 
+            // editing note, the base is rebuilt on load and user additions persist as overrides
+            layout::separator();
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
+            if (is_code)
+            {
+                ImGui::TextWrapped("Defined in code. Components and children you add are saved as overrides and re-applied on load.");
+            }
+            else
+            {
+                ImGui::TextWrapped("Components and children you add are saved as overrides. Use Update Prefab to bake the current hierarchy into the .prefab file.");
+            }
+            ImGui::PopStyleColor();
+
             // prefab action buttons
             layout::separator();
 
-            // save prefab (for file prefabs only)
+            // update prefab (for file prefabs only, code prefabs have no file to write)
             if (is_file)
             {
                 float button_width = ImGui::GetContentRegionAvail().x;
                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.50f, 0.35f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.60f, 0.40f, 1.0f));
                 ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.45f, 0.30f, 1.0f));
-                if (ImGuiSp::button("Save Prefab", ImVec2(button_width, 0)))
+                if (ImGuiSp::button("Update Prefab", ImVec2(button_width, 0)))
                 {
-                    Prefab::SaveToFile(entity, entity->GetPrefabFilePath());
+                    if (Prefab::SaveToFile(entity, entity->GetPrefabFilePath()))
+                    {
+                        // the current hierarchy is now the base, fold overrides back into it
+                        entity->MarkPrefabBaseline();
+                    }
                 }
                 ImGui::PopStyleColor(3);
             }
@@ -2936,30 +2949,33 @@ void Properties::ShowAddComponentButton() const
 
     ComponentContextMenu_Add();
 
-    // save as prefab button (only for non-prefab entities, or for file prefabs that want to save-as)
+    // save as prefab button, hidden for code prefabs since baking one to a file loses its code behavior
     if (Entity* entity = get_selected_entity())
     {
-        ImGui::Dummy(ImVec2(0, design::spacing_sm));
-
-        float save_button_width = 160.0f * spartan::Window::GetDpiScale();
-        ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - save_button_width) * 0.5f + ImGui::GetCursorPosX());
-
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(design::spacing_lg, design::spacing_md));
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.50f, 0.35f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.60f, 0.40f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.45f, 0.30f, 1.0f));
-
-        if (ImGuiSp::button("Save as Prefab...", ImVec2(save_button_width, 0)))
+        if (!entity->IsCodePrefab())
         {
-            ImGui::OpenPopup("##SaveAsPrefab");
+            ImGui::Dummy(ImVec2(0, design::spacing_sm));
+
+            float save_button_width = 160.0f * spartan::Window::GetDpiScale();
+            ImGui::SetCursorPosX((ImGui::GetContentRegionAvail().x - save_button_width) * 0.5f + ImGui::GetCursorPosX());
+
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(design::spacing_lg, design::spacing_md));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.50f, 0.35f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.35f, 0.60f, 0.40f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.25f, 0.45f, 0.30f, 1.0f));
+
+            if (ImGuiSp::button("Save as Prefab...", ImVec2(save_button_width, 0)))
+            {
+                ImGui::OpenPopup("##SaveAsPrefab");
+            }
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
+
+            // save-as-prefab popup
+            ShowSaveAsPrefabPopup(entity);
         }
-
-        ImGui::PopStyleColor(3);
-        ImGui::PopStyleVar(2);
-
-        // save-as-prefab popup
-        ShowSaveAsPrefabPopup(entity);
     }
 }
 
@@ -3020,6 +3036,9 @@ void Properties::ShowSaveAsPrefabPopup(spartan::Entity* entity) const
             {
                 // tag the entity as a file prefab so future world saves reference the file
                 entity->SetPrefabFilePath(file_path);
+
+                // the saved hierarchy is now the base, so it is not re-emitted as overrides
+                entity->MarkPrefabBaseline();
             }
             ImGui::CloseCurrentPopup();
         }

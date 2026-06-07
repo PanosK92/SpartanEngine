@@ -23,7 +23,7 @@
     </render>
    </Entity>
    <Entity name="ferrari" id="9100000000000000008" active="true" position="0 0.3 0" rotation="0 0 0 1" scale="1 1 1">
-    <prefab type="car" type="car" static_physics="false" drivable="false" />
+    <prefab type="car" static_physics="false" drivable="false" />
    </Entity>
   </Entity>
   <Entity name="Cube_2" id="7640846457856079411" active="true" position="0.377128 1.13078 -8.5403" rotation="0 0.707108 0 0.707106" scale="1 5.8 20">

@@ -731,6 +731,7 @@ namespace spartan
             "GetWheelSuspensionForce",      &Physics::GetWheelSuspensionForce,
             "GetWheelSlipAngle",            &Physics::GetWheelSlipAngle,
             "GetWheelSlipRatio",            &Physics::GetWheelSlipRatio,
+            "GetWheelSlipMagnitude",        &Physics::GetWheelSlipMagnitude,
             "GetWheelTireLoad",             &Physics::GetWheelTireLoad,
             "GetWheelLateralForce",         &Physics::GetWheelLateralForce,
             "GetWheelLongitudinalForce",    &Physics::GetWheelLongitudinalForce,

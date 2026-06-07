@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Camera.h"
 #include "Components/Light.h"
 #include "Components/AudioSource.h"
+#include "Components/ParticleSystem.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Rendering/Renderer.h"
@@ -298,6 +299,7 @@ namespace spartan
             Render      ::RegisterForScripting(state_view);
             Physics         ::RegisterForScripting(state_view);
             Light           ::RegisterForScripting(state_view);
+            ParticleSystem  ::RegisterForScripting(state_view);
 
             lua_state.new_enum("ComponentType",
                 "AudioSource",              ComponentType::AudioSource,
@@ -307,7 +309,8 @@ namespace spartan
                 "Renderable",               ComponentType::Render,
                 "Terrain",                  ComponentType::Terrain,
                 "Volume",                   ComponentType::Volume,
-                "Script",                   ComponentType::Script
+                "Script",                   ComponentType::Script,
+                "ParticleSystem",           ComponentType::ParticleSystem
             );
 
             lua_state.new_enum("Intersection",

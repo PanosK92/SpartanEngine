@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ParticleSystem.h"
 #include "../Entity.h"
 SP_WARNINGS_OFF
+#include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
 SP_WARNINGS_ON
 //===================================
@@ -316,5 +317,34 @@ namespace spartan
         m_end_color.a     = node.attribute("end_color_a").as_float(0.0f);
         m_gravity_modifier = node.attribute("gravity_modifier").as_float(-1.0f);
         m_emission_radius = node.attribute("emission_radius").as_float(0.5f);
+    }
+
+    void ParticleSystem::RegisterForScripting(sol::state_view state)
+    {
+        state.new_usertype<ParticleSystem>("ParticleSystem",
+            sol::base_classes,        sol::bases<Component>(),
+
+            "GetEmissionRate",        &ParticleSystem::GetEmissionRate,
+            "SetEmissionRate",        &ParticleSystem::SetEmissionRate,
+            "GetMaxParticles",        &ParticleSystem::GetMaxParticles,
+            "SetMaxParticles",        &ParticleSystem::SetMaxParticles,
+            "GetLifetime",            &ParticleSystem::GetLifetime,
+            "SetLifetime",            &ParticleSystem::SetLifetime,
+            "GetStartSpeed",          &ParticleSystem::GetStartSpeed,
+            "SetStartSpeed",          &ParticleSystem::SetStartSpeed,
+            "GetStartSize",           &ParticleSystem::GetStartSize,
+            "SetStartSize",           &ParticleSystem::SetStartSize,
+            "GetEndSize",             &ParticleSystem::GetEndSize,
+            "SetEndSize",             &ParticleSystem::SetEndSize,
+            "GetGravityModifier",     &ParticleSystem::GetGravityModifier,
+            "SetGravityModifier",     &ParticleSystem::SetGravityModifier,
+            "GetEmissionRadius",      &ParticleSystem::GetEmissionRadius,
+            "SetEmissionRadius",      &ParticleSystem::SetEmissionRadius
+            );
+    }
+
+    sol::reference ParticleSystem::AsLua(sol::state_view state)
+    {
+        return sol::make_reference(state, this);
     }
 }

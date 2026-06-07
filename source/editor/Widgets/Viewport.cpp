@@ -283,6 +283,9 @@ void Viewport::OnTickVisible()
             if (Prefab::LoadFromFile(file_path, entity))
             {
                 entity->SetPrefabFilePath(file_path);
+
+                // snapshot the loaded hierarchy as the prefab base so later edits persist as overrides
+                entity->MarkPrefabBaseline();
             }
             else
             {
