@@ -200,6 +200,7 @@ namespace spartan
         math::Vector3 GetWheelContactPoint(WheelIndex wheel) const;  // world-space ground contact
         math::Vector3 GetWheelContactNormal(WheelIndex wheel) const; // world-space ground normal
         float GetWheelSlipMagnitude(WheelIndex wheel) const;         // hypot of slip ratio and slip angle
+        float GetWheelWidth(WheelIndex wheel) const;                 // physical tire width for this axle
         float GetWheelTireLoad(WheelIndex wheel) const;
         float GetWheelLateralForce(WheelIndex wheel) const;
         float GetWheelLongitudinalForce(WheelIndex wheel) const;

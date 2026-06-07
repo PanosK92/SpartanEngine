@@ -71,8 +71,6 @@ namespace spartan
             return;
         }
 
-        float half_width = m_tire_width * 0.5f;
-
         // the car lateral axis gives a stable strip width direction, free of per-segment contact jitter
         Vector3 car_right = GetEntity()->GetRight();
 
@@ -100,18 +98,34 @@ namespace spartan
                 continue;
             }
 
-            Vector3 normal      = m_physics->GetWheelContactNormal(wheel);
-            Vector3 raw_contact = m_physics->GetWheelContactPoint(wheel);
+            Vector3 normal  = m_physics->GetWheelContactNormal(wheel);
+            Vector3 contact = m_physics->GetWheelContactPoint(wheel);
 
-            // low pass the contact point, a locked wheel jumps laterally and that is the occasional zigzag
+            // the visual wheel hub is far smoother than the convex sweep contact, which jitters laterally on a
+            // spinning or locked wheel and is the source of the remaining zigzag, place the mark directly under
+            // the hub projected onto the contact plane so it lines up with the tire exactly
+            Vector3 ground_point = contact;
+            if (Entity* wheel_entity = m_physics->GetWheelEntity(wheel))
+            {
+                Vector3 hub  = wheel_entity->GetPosition();
+                ground_point = hub - normal * Vector3::Dot(hub - contact, normal);
+            }
+
             if (!trail.has_smooth)
             {
-                trail.smooth_center = raw_contact;
+                trail.smooth_center = ground_point;
                 trail.has_smooth    = true;
             }
             else
             {
-                trail.smooth_center = Vector3::Lerp(trail.smooth_center, raw_contact, m_center_smoothing);
+                trail.smooth_center = Vector3::Lerp(trail.smooth_center, ground_point, m_center_smoothing);
+            }
+
+            // strip width comes straight from the physical tire width defined on the car, never hardcoded here
+            float half_width = m_physics->GetWheelWidth(wheel) * 0.5f;
+            if (half_width <= 0.0f)
+            {
+                continue;
             }
 
             // width runs along the tire axle, projected onto the ground plane
@@ -345,7 +359,6 @@ namespace spartan
     void SkidMarks::Save(pugi::xml_node& node)
     {
         node.append_attribute("slip_threshold")       = m_slip_threshold;
-        node.append_attribute("tire_width")           = m_tire_width;
         node.append_attribute("min_segment_distance") = m_min_segment_distance;
         node.append_attribute("max_segments")         = m_max_segments;
         node.append_attribute("opacity")              = m_opacity;
@@ -356,7 +369,6 @@ namespace spartan
     void SkidMarks::Load(pugi::xml_node& node)
     {
         m_slip_threshold       = node.attribute("slip_threshold").as_float(0.35f);
-        m_tire_width           = node.attribute("tire_width").as_float(0.32f);
         m_min_segment_distance = node.attribute("min_segment_distance").as_float(0.15f);
         m_max_segments         = node.attribute("max_segments").as_uint(256);
         m_opacity              = node.attribute("opacity").as_float(0.75f);

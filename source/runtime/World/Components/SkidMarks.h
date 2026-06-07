@@ -52,8 +52,6 @@ namespace spartan
         // tunables
         float GetSlipThreshold() const          { return m_slip_threshold; }
         void  SetSlipThreshold(float value)     { m_slip_threshold = value; }
-        float GetTireWidth() const              { return m_tire_width; }
-        void  SetTireWidth(float value)         { m_tire_width = value; }
         float GetMinSegmentDistance() const     { return m_min_segment_distance; }
         void  SetMinSegmentDistance(float value){ m_min_segment_distance = value; }
         uint32_t GetMaxSegments() const         { return m_max_segments; }
@@ -104,7 +102,6 @@ namespace spartan
 
         // tunables
         float m_slip_threshold       = 0.35f; // combined slip magnitude needed to start marking
-        float m_tire_width           = 0.32f; // width of the deposited strip in meters
         float m_min_segment_distance = 0.15f; // minimum travel before a new quad is laid
         uint32_t m_max_segments      = 256;   // ring buffer size per wheel  
         float m_opacity              = 0.75f; // base material alpha

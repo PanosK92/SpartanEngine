@@ -2064,6 +2064,16 @@ namespace spartan
         return sqrtf(slip_ratio * slip_ratio + slip_angle * slip_angle);
     }
 
+    float Physics::GetWheelWidth(WheelIndex wheel) const
+    {
+        int i = static_cast<int>(wheel);
+        if (m_body_type != BodyType::Vehicle || i < 0 || i >= car::wheel_count)
+        {
+            return 0.0f;
+        }
+        return car::cfg.wheel_width_for(i);
+    }
+
     float Physics::GetWheelLateralForce(WheelIndex wheel) const
     {
         if (m_body_type != BodyType::Vehicle)
