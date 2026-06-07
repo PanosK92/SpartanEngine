@@ -197,6 +197,9 @@ namespace spartan
         float GetWheelSuspensionForce(WheelIndex wheel) const;
         float GetWheelSlipAngle(WheelIndex wheel) const;
         float GetWheelSlipRatio(WheelIndex wheel) const;
+        math::Vector3 GetWheelContactPoint(WheelIndex wheel) const;  // world-space ground contact
+        math::Vector3 GetWheelContactNormal(WheelIndex wheel) const; // world-space ground normal
+        float GetWheelSlipMagnitude(WheelIndex wheel) const;         // hypot of slip ratio and slip angle
         float GetWheelTireLoad(WheelIndex wheel) const;
         float GetWheelLateralForce(WheelIndex wheel) const;
         float GetWheelLongitudinalForce(WheelIndex wheel) const;

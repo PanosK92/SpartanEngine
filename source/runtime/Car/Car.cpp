@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Physics.h"
+#include "../World/Components/SkidMarks.h"
 #include "../IO/pugixml.hpp"
 //==========================================
 
@@ -86,6 +87,9 @@ namespace spartan
 
             car->CreateAudioSources(car->m_vehicle_entity);
             car->CreateWheels(car->m_vehicle_entity, physics);
+
+            // slip-driven tire skid marks
+            car->m_vehicle_entity->AddComponent<SkidMarks>();
 
             // store camera_follows flag - car will auto-enter when play mode starts
             car->m_camera_follows = config.camera_follows;

@@ -2032,6 +2032,38 @@ namespace spartan
         return car::get_wheel_tire_load(static_cast<int>(wheel));
     }
 
+    Vector3 Physics::GetWheelContactPoint(WheelIndex wheel) const
+    {
+        int i = static_cast<int>(wheel);
+        if (m_body_type != BodyType::Vehicle || i < 0 || i >= car::wheel_count)
+        {
+            return Vector3::Zero;
+        }
+        return from_px_vec3(car::wheels[i].contact_point);
+    }
+
+    Vector3 Physics::GetWheelContactNormal(WheelIndex wheel) const
+    {
+        int i = static_cast<int>(wheel);
+        if (m_body_type != BodyType::Vehicle || i < 0 || i >= car::wheel_count)
+        {
+            return Vector3::Up;
+        }
+        return from_px_vec3(car::wheels[i].contact_normal);
+    }
+
+    float Physics::GetWheelSlipMagnitude(WheelIndex wheel) const
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            return 0.0f;
+        }
+        int i           = static_cast<int>(wheel);
+        float slip_ratio = car::get_wheel_slip_ratio(i);
+        float slip_angle = car::get_wheel_slip_angle(i);
+        return sqrtf(slip_ratio * slip_ratio + slip_angle * slip_angle);
+    }
+
     float Physics::GetWheelLateralForce(WheelIndex wheel) const
     {
         if (m_body_type != BodyType::Vehicle)
