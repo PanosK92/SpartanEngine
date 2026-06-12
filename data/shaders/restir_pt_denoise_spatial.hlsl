@@ -84,6 +84,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float  center_luma        = dot(center_color, luminance_weights);
     float  center_depth       = linearize_depth(depth);
     float3 center_normal      = get_normal(uv);
+    float3 center_albedo      = tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), uv, 0).rgb;
 
     int    step_width = max((int)pass_get_f3_value().x, 1);
 
@@ -138,8 +139,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         float luma_delta  = abs(sample_luma - center_luma) / luma_sigma;
         float luma_weight = exp(-luma_delta);
 
+        // the gi signal is albedo modulated, an albedo edge stop keeps texture detail from
+        // being blurred across surfaces that share depth and normal
+        float3 sample_albedo = tex_albedo.SampleLevel(GET_SAMPLER(sampler_point_clamp), sample_uv, 0).rgb;
+        float  albedo_weight = exp(-length(sample_albedo - center_albedo) / 0.2f);
+
         float spatial_w = spatial_kernel[i];
-        float weight    = spatial_w * depth_weight * normal_weight * luma_weight;
+        float weight    = spatial_w * depth_weight * normal_weight * luma_weight * albedo_weight;
         if (weight <= 0.0f)
             continue;
 

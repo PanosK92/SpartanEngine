@@ -290,6 +290,7 @@ namespace spartan
         restir_pt_ray_hit_r,
         restir_pt_temporal_c,
         restir_pt_spatial_c,
+        restir_pt_duplication_c,
         restir_pt_denoise_temporal_c,
         restir_pt_denoise_spatial_c,
         // baked wind field
@@ -366,6 +367,8 @@ namespace spartan
         ray_traced_shadows,
         // restir path tracing output
         restir_output,
+        // sample duplication score map driving the adaptive temporal confidence cap, lin 2026
+        restir_duplication,
         restir_denoised,
         restir_denoised_history,
         restir_denoised_ping,

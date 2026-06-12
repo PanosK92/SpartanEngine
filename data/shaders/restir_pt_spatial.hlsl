@@ -28,17 +28,6 @@ static const float SPATIAL_RADIUS_MIN  = 4.0f;
 static const float SPATIAL_RADIUS_MAX  = 24.0f;
 static const float SPATIAL_DEPTH_SCALE = 0.5f;
 
-static const float2 SPATIAL_OFFSETS[16] = {
-    float2(-0.7071, -0.7071), float2( 0.9239,  0.3827),
-    float2(-0.3827,  0.9239), float2( 0.7071, -0.7071),
-    float2(-0.9239,  0.3827), float2( 0.3827, -0.9239),
-    float2( 0.0000,  1.0000), float2(-0.3827, -0.9239),
-    float2( 0.9239, -0.3827), float2(-0.7071,  0.7071),
-    float2( 0.3827,  0.9239), float2(-0.9239, -0.3827),
-    float2( 0.7071,  0.7071), float2(-1.0000,  0.0000),
-    float2( 0.0000, -1.0000), float2( 1.0000,  0.0000)
-};
-
 // g-buffer similarity gate used before attempting a shift on a neighbor's reservoir
 bool is_neighbor_gbuffer_compatible(
     int2 neighbor_pixel,
@@ -187,28 +176,29 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float      stream_jacobian[RESTIR_SPATIAL_SAMPLES];
     float      stream_W       [RESTIR_SPATIAL_SAMPLES];
     float      stream_share   [RESTIR_SPATIAL_SAMPLES];
+    // rgb integrand per neighbor for vector shading weights, lin 2026 6.3
+    float3     stream_f       [RESTIR_SPATIAL_SAMPLES];
 
     float confidence_acc = center_M * center_confidence;
     float confidence_w   = center_M;
     float M_total        = center_M;
 
-    float base_angle = random_float(seed) * 2.0f * PI;
+    // gaussian distributed neighbor offsets, lin 2026 3, sigma = sqrt(8 / (9 pi)) * radius
+    // matches the mean sample distance of a uniform disk of the same radius while
+    // concentrating samples near the center, which raises the odds of compatible neighbors
+    float sigma = 0.532f * adaptive_radius;
 
     for (uint i = 0; i < spatial_sample_count; i++)
     {
-        float rotation_angle = base_angle + float(i) * 2.39996323f;
-        float cos_rot = cos(rotation_angle);
-        float sin_rot = sin(rotation_angle);
+        float2 g_xi   = random_float2(seed);
+        float  g_r    = sigma * sqrt(max(-2.0f * log(max(g_xi.x, 1e-7f)), 0.0f));
+        float  g_a    = 2.0f * PI * g_xi.y;
+        int2   offset = int2(round(g_r * float2(cos(g_a), sin(g_a))));
 
-        float2 offset = SPATIAL_OFFSETS[i % 16];
-        float2 rotated_offset = float2(
-            offset.x * cos_rot - offset.y * sin_rot,
-            offset.x * sin_rot + offset.y * cos_rot
-        );
+        if (all(offset == int2(0, 0)))
+            continue;
 
-        float radius_jitter = 0.5f + random_float(seed);
-        float sample_radius = adaptive_radius * radius_jitter;
-        int2 neighbor_pixel = int2(pixel) + int2(rotated_offset * sample_radius);
+        int2 neighbor_pixel = int2(pixel) + offset;
 
         if (!is_neighbor_gbuffer_compatible(neighbor_pixel, pos_ws, normal_ws, linear_depth, resolution))
             continue;
@@ -308,6 +298,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         stream_jacobian[valid_neighbors] = jacobian_j_to_c;
         stream_W       [valid_neighbors] = neighbor.W;
         stream_share   [valid_neighbors] = neigh_share;
+        stream_f       [valid_neighbors] = shift_j_to_c.f_dst;
         valid_neighbors++;
 
         M_total        += neighbor.M;
@@ -344,6 +335,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     clamp_reservoir_M(combined, get_restir_m_cap());
 
     // lin 2022 6.4 sample validation, kills stale paths that survive purely through spatial reuse
+    bool validation_reset  = false;
     uint validation_period = get_restir_validation_period();
     if (validation_period > 0u && combined.M > 0.0f && combined.W > 0.0f)
     {
@@ -360,6 +352,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                 combined.weight_sum = 0.0f;
                 combined.M          = 0.0f;
                 combined.W          = 0.0f;
+                validation_reset    = true;
             }
         }
     }
@@ -370,8 +363,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     combined.W = (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f;
 
     // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
-    float w_clamp = get_w_clamp_for_sample(combined.sample);
-    combined.W    = soft_clamp_w(combined.W, w_clamp);
+    float w_clamp   = get_w_clamp_for_sample(combined.sample);
+    float w_unclamped = combined.W;
+    combined.W      = soft_clamp_w(combined.W, w_clamp);
 
     // m-weighted confidence across merged streams, blended with the center
     float merged_confidence = (confidence_w > 0.0f) ? (confidence_acc / confidence_w) : center_confidence;
@@ -394,7 +388,27 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     tex_reservoir4[pixel] = t4;
     tex_reservoir5[pixel] = t5;
 
-    float3 gi = shade_reservoir_path(combined, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+    // vector resampling weights for shading, lin 2026 6.3, gi = sum_i m_i f_i W_i J_i in rgb
+    // scalar weights keep driving resampling while the rgb sum averages out the chroma noise
+    // that a luminance only target cannot importance sample
+    float3 gi = float3(0, 0, 0);
+    if (!validation_reset)
+    {
+        ShiftResult center_self = self_shift_evaluate(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+        gi = k_inv * (1.0f + canonical_pair_acc) * center_self.f_dst * max(center.W, 0.0f);
+
+        for (uint v = 0; v < valid_neighbors; v++)
+        {
+            gi += (k_inv * stream_share[v]) * stream_f[v] * max(stream_W[v], 0.0f) * stream_jacobian[v];
+        }
+
+        // apply the same firefly suppression ratio the scalar W received from the soft clamp
+        if (w_unclamped > 1e-8f)
+        {
+            gi *= combined.W / w_unclamped;
+        }
+    }
+
     if (any(isnan(gi)) || any(isinf(gi)))
         gi = float3(0, 0, 0);
 

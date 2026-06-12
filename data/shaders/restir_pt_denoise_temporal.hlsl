@@ -94,26 +94,7 @@ void compute_spatial_luma_variance_7x7(uint2 pixel, uint2 resolution, out float 
     spatial_var = max(m2 - m1 * m1, 0.0f);
 }
 
-float3 clamp_history_variance(float3 history, float3 current, float current_luma, float variance, float n_eff)
-{
-    // variance gated history clamp, schied 2017 4.4, high variance widens the clamp window
-    // maturity gate keeps a fresh pixel tight against ghosting and loosens a mature one to converge
-    float maturity      = saturate(n_eff / 32.0f);
-    float sigma_mult    = lerp(4.0f, 12.0f, maturity);
-    float radius_floor  = lerp(0.05f, 0.004f, maturity);
-    float sigma         = sqrt(max(variance, 1e-8f));
-    float clamp_radius  = max(sigma * sigma_mult, radius_floor);
-    float current_low   = max(current_luma - clamp_radius, 0.0f);
-    float current_high  = current_luma + clamp_radius;
-
-    // rescale color toward history clamped to the variance gated band, keeps chroma stable
-    float history_luma = dot(history, luminance_weights);
-    float clamped_luma = clamp(history_luma, current_low, current_high);
-    float scale        = (history_luma > 1e-4f) ? (clamped_luma / history_luma) : 1.0f;
-    return history * scale;
-}
-
-float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float current_depth, float2 history_resolution)
+float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float current_depth, float2 history_resolution, out bool valid)
 {
     float2 prev_pixel_f = prev_uv * history_resolution - 0.5f;
     float2 base_f       = floor(prev_pixel_f);
@@ -179,11 +160,14 @@ float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float cu
 
     if (weight_sum > 0.0f)
     {
+        valid = true;
         return accumulated / weight_sum;
     }
 
-    int2 fallback_pixel = clamp(int2(round(prev_pixel_f)), int2(0, 0), int2(history_resolution) - 1);
-    return tex2.Load(int3(fallback_pixel, 0));
+    // no geometrically compatible tap, reject the history outright instead of grabbing the
+    // nearest sample, the old fallback was a guaranteed silhouette ghost on moving edges
+    valid = false;
+    return float4(0, 0, 0, 0);
 }
 
 // history validity via the shared evaluate_disocclusion helper, previous depth is bound on
@@ -243,20 +227,27 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     if (history_ok)
     {
-        float4 history_sample = sample_history_edge_aware(prev_uv, current_normal, current_linear_z, float2(resolution));
+        bool taps_valid       = false;
+        float4 history_sample = sample_history_edge_aware(prev_uv, current_normal, current_linear_z, float2(resolution), taps_valid);
+        history_ok            = taps_valid;
         history_color         = max(history_sample.rgb, 0.0f);
+    }
 
+    if (history_ok)
+    {
         // moments from the history texture (tex3), kept raw so noise statistics propagate exactly
         int2 prev_pixel_int = clamp(int2(prev_uv * resolution), int2(0, 0), int2(resolution) - 1);
         float4 prev_moments = tex3.Load(int3(prev_pixel_int, 0));
         history_moments     = prev_moments.xyz;
 
-        // schied 2017 alpha, a 1/(n+1) schedule with a 0.02 floor so still views keep converging
+        // schied 2017 alpha, a 1/(n+1) schedule with a 0.05 floor, the old 0.02 floor meant up
+        // to ~125 frames of lag which read as ghosting on any lighting change, the restir input
+        // is already spatiotemporally resampled so 20 frames of accumulation is plenty
         float n_eff      = history_moments.z;
         float min_alpha  = saturate(1.0f / max(n_eff + 1.0f, 1.0f));
-        float ema_alpha  = max(min_alpha, 0.02f);
+        float ema_alpha  = max(min_alpha, 0.05f);
         history_weight   = (1.0f - ema_alpha) * temporal_confidence;
-        history_weight   = saturate(min(history_weight, 0.992f));
+        history_weight   = saturate(min(history_weight, 0.95f));
     }
 
     // 3x3 mean and variance pre blur, schied 2017 4.2, gives a stable spatial sigma
@@ -299,12 +290,20 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         variance_estimate = max(temporal_var, spatial_var * boost);
     }
 
-    variance_estimate = max(variance_estimate, spatial_var_3x3 * 0.25f);
+    // raw input variance floor only while the accumulator is immature, the old unconditional
+    // floor kept the a-trous kernel wide forever and over blurred fully converged pixels
+    float maturity    = saturate(new_n_eff / 32.0f);
+    variance_estimate = max(variance_estimate, spatial_var_3x3 * 0.25f * (1.0f - maturity));
 
-    // variance gated history clamp for chromatic stability after the accumulator converges
+    // rgb aabb history clamp against the 3x3 neighborhood of the current input, per channel so
+    // colored ghosts die too, the old luma only rescale preserved hue and let them through,
+    // the band widens with maturity since a converged accumulator has earned more trust
     if (history_ok)
     {
-        history_color = clamp_history_variance(history_color, current_color, current_luma, variance_estimate, new_n_eff);
+        float3 gamma   = lerp(2.0f, 4.0f, maturity);
+        float3 box_min = min(min_color, mean_color - gamma * sigma_color);
+        float3 box_max = max(max_color, mean_color + gamma * sigma_color);
+        history_color  = clamp(history_color, box_min, box_max);
     }
 
     float3 output_color = lerp(current_color, history_color, history_weight);

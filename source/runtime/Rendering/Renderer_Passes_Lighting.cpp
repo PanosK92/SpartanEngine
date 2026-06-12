@@ -523,6 +523,12 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
             }
 
+            // duplication score of the previous frame's reservoirs, drives the adaptive m cap, lin 2026 5
+            if (RHI_Texture* tex_duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))
+            {
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex2, tex_duplication);
+            }
+
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
             // pipeline layout always declares the push constant range, vulkan validation requires
             // a vkCmdPushConstants call before every dispatch even when the shader does not read
@@ -743,6 +749,12 @@ namespace spartan
                 cmd_list->ClearTexture(normal_prev, Color::standard_black);
             }
 
+            // zero duplication keeps the temporal m cap at its default until real history exists
+            if (RHI_Texture* tex_duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))
+            {
+                cmd_list->ClearTexture(tex_duplication, Color::standard_black);
+            }
+
             m_pass_state.restir_reservoirs_initialized = true;
         }
 
@@ -753,6 +765,34 @@ namespace spartan
         if (!ran_spatial)
         {
             cmd_list->InsertBarrier(tex_gi, RHI_BarrierType::EnsureWriteThenRead);
+        }
+
+        // sample duplication map, lin 2026 5, counts shifted copies of the same initial candidate
+        // around each pixel in the final reservoirs, next frame's temporal pass reads it at the
+        // backprojected pixel to adaptively reduce the confidence cap in correlated regions
+        if (RHI_Texture* tex_duplication = GetRenderTarget(Renderer_RenderTarget::restir_duplication))
+        {
+            RHI_Shader* shader_duplication = GetShader(Renderer_Shader::restir_pt_duplication_c);
+            if (shader_duplication && shader_duplication->IsCompiled())
+            {
+                cmd_list->BeginTimeblock("restir_pt_duplication");
+                {
+                    RHI_PipelineState pso;
+                    pso.name             = "restir_pt_duplication";
+                    pso.shaders[Compute] = shader_duplication;
+                    cmd_list->SetPipelineState(pso);
+
+                    // reservoir texture 2 carries the replay seed in its x channel, the spatial
+                    // pass left the final reservoirs in the spatial slot when it ran
+                    RHI_Texture* reservoir_seed = ran_spatial ? reservoirs_spatial[2] : reservoirs[2];
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, reservoir_seed);
+                    cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_duplication, rhi_all_mips, 0, true);
+                    cmd_list->PushConstants(m_pcb_pass_cpu);
+                    cmd_list->Dispatch(dispatch_x, dispatch_y, 1);
+                    cmd_list->InsertBarrier(tex_duplication, RHI_BarrierType::EnsureWriteThenRead);
+                }
+                cmd_list->EndTimeblock();
+            }
         }
 
         Pass_ReSTIR_SwapReservoirs();
@@ -871,6 +911,7 @@ namespace spartan
             { "restir_pt_denoise_spatial_4", 8.0f, tex_gi_ping,     tex_gi_denoised },
         };
 
+        uint32_t stage_index = 0;
         for (const denoise_stage& s : stages)
         {
             cmd_list->BeginTimeblock(s.name);
@@ -894,14 +935,20 @@ namespace spartan
                 cmd_list->InsertBarrier(s.dst, RHI_BarrierType::EnsureWriteThenRead);
             }
             cmd_list->EndTimeblock();
+
+            // svgf feeds the first wavelet iteration back as next frame's color history,
+            // schied 2017 4.2, feeding back the final widest blur compounded blur and lag
+            // into the ema every frame which showed up as ghosting and detail loss
+            if (stage_index == 0)
+            {
+                cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureReadThenWrite);
+                Pass_Blit(cmd_list, s.dst, tex_gi_history);
+                cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureWriteThenRead);
+            }
+            stage_index++;
         }
 
-        // 4 stages with even count means the final write landed in tex_gi_denoised, no extra
-        // blit needed; blit denoised into history for the next frame's svgf temporal pass to
-        // use as its ema accumulator
-        cmd_list->InsertBarrier(tex_gi_history, RHI_BarrierType::EnsureReadThenWrite);
-        Pass_Blit(cmd_list, tex_gi_denoised, tex_gi_history);
-        cmd_list->InsertBarrier(tex_gi_history,  RHI_BarrierType::EnsureWriteThenRead);
+        // 4 stages with even count means the final write landed in tex_gi_denoised
         cmd_list->InsertBarrier(tex_gi_denoised, RHI_BarrierType::EnsureWriteThenRead);
 
         // moments history copy for the next frame's svgf temporal accumulation

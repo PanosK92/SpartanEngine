@@ -371,6 +371,7 @@ namespace spartan
         {
             for_restir_reservoir_slot([&](uint32_t, Renderer_RenderTarget rt) { at(render_targets, rt) = nullptr; });
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = nullptr;
@@ -395,6 +396,7 @@ namespace spartan
                 at(render_targets, rt) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R32G32B32A32_Float, restir_flags, reservoir_names[i]);
             });
             at(render_targets, Renderer_RenderTarget::restir_output)                   = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_output");
+            at(render_targets, Renderer_RenderTarget::restir_duplication)              = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R8_Unorm,           restir_flags, "restir_duplication");
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised");
             at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_history");
             at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, restir_width, restir_height, 1, 1, RHI_Format::R16G16B16A16_Float, restir_flags, "restir_denoised_ping");
@@ -457,6 +459,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::gbuffer_reflections_albedo)  = nullptr;
             at(render_targets, Renderer_RenderTarget::ray_traced_shadows)             = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_output)                   = nullptr;
+            at(render_targets, Renderer_RenderTarget::restir_duplication)              = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised)                 = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised_history)         = nullptr;
             at(render_targets, Renderer_RenderTarget::restir_denoised_ping)            = nullptr;
@@ -771,6 +774,7 @@ namespace spartan
             { Renderer_Shader::restir_pt_ray_hit_r,                   RHI_Shader_Type::RayHit,        "restir_pt.hlsl",                       RHI_Vertex_Type::Max, "MAIN_HIT",                    true,  true },
             { Renderer_Shader::restir_pt_temporal_c,                  RHI_Shader_Type::Compute,       "restir_pt_temporal.hlsl",              RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_spatial_c,                   RHI_Shader_Type::Compute,       "restir_pt_spatial.hlsl",               RHI_Vertex_Type::Max, nullptr,                       true,  true },
+            { Renderer_Shader::restir_pt_duplication_c,               RHI_Shader_Type::Compute,       "restir_pt_duplication.hlsl",           RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_denoise_temporal_c,          RHI_Shader_Type::Compute,       "restir_pt_denoise_temporal.hlsl",      RHI_Vertex_Type::Max, nullptr,                       true,  true },
             { Renderer_Shader::restir_pt_denoise_spatial_c,           RHI_Shader_Type::Compute,       "restir_pt_denoise_spatial.hlsl",       RHI_Vertex_Type::Max, nullptr,                       true,  true },
 

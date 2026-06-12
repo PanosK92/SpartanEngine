@@ -247,10 +247,12 @@ void trace_rc_suffix(
     uint max_bounces_remaining,
     inout uint seed,
     out float3 out_L_post,
-    out float3 out_first_dir)
+    out float3 out_first_dir,
+    out float out_first_pdf)
 {
     out_L_post    = float3(0, 0, 0);
     out_first_dir = float3(0, 0, 0);
+    out_first_pdf = 0.0f;
 
     if (max_bounces_remaining < 1)
         return;
@@ -264,14 +266,13 @@ void trace_rc_suffix(
 
     for (uint bounce = 0; bounce < max_bounces_remaining; bounce++)
     {
-        if (bounce >= RUSSIAN_ROULETTE_START)
+        if (bounce >= RESTIR_RR_START)
         {
-            // veach style adjusted rr, fold the next vertex albedo into the continuation factor
-            float3 next_throughput   = throughput * cur.albedo;
-            float  continuation_prob = clamp(luminance(next_throughput), RUSSIAN_ROULETTE_MIN_PROB, RUSSIAN_ROULETTE_PROB);
-            if (random_float(seed) > continuation_prob)
+            // constant probability so the decision only depends on the shared seed draw,
+            // identical under replay at any destination, lin 2026 6.2.4
+            if (random_float(seed) > RESTIR_RR_CONTINUATION)
                 break;
-            throughput /= continuation_prob;
+            throughput /= RESTIR_RR_CONTINUATION;
         }
 
         float2 xi = random_float2(seed);
@@ -285,6 +286,7 @@ void trace_rc_suffix(
         {
             // factor out f_rc at rc, throughput becomes 1/pdf for re-multiply at shift time
             out_first_dir = nd;
+            out_first_pdf = pdf;
             throughput    = float3(1, 1, 1) / pdf;
             first_iter    = false;
         }
@@ -336,7 +338,8 @@ void accumulate_subpath_at_rc(
     inout uint seed,
     out float3 out_L_nee,
     out float3 out_L_post,
-    out float3 out_first_dir)
+    out float3 out_first_dir,
+    out float out_first_pdf)
 {
     // emtri strategy carries emission when active, zero here to avoid double counting
     out_L_nee = is_emtri_pool_active() ? float3(0, 0, 0) : rc.emission;
@@ -347,11 +350,12 @@ void accumulate_subpath_at_rc(
 
     out_L_post    = float3(0, 0, 0);
     out_first_dir = float3(0, 0, 0);
+    out_first_pdf = 0.0f;
 
     if (max_bounces < 2)
         return;
 
-    trace_rc_suffix(rc, rc_view_dir, max_bounces - 1, seed, out_L_post, out_first_dir);
+    trace_rc_suffix(rc, rc_view_dir, max_bounces - 1, seed, out_L_post, out_first_dir, out_first_pdf);
 }
 
 // builds a candidate by directly sampling an analytical light or the sun cone
@@ -533,6 +537,7 @@ PathSample trace_path_from_primary(
     float3 primary_normal,
     float primary_roughness,
     float3 dir,
+    float dir_pdf,
     uint replay_seed,
     inout uint seed)
 {
@@ -591,7 +596,8 @@ PathSample trace_path_from_primary(
     s.rc_length    = 2;
 
     float3 L_nee, L_post, first_outgoing_dir;
-    accumulate_subpath_at_rc(hit, -dir, max(get_restir_max_path_length(), 2u) - 1u, seed, L_nee, L_post, first_outgoing_dir);
+    float  first_pdf;
+    accumulate_subpath_at_rc(hit, -dir, max(get_restir_max_path_length(), 2u) - 1u, seed, L_nee, L_post, first_outgoing_dir, first_pdf);
 
     if (any(isnan(L_nee))  || any(isinf(L_nee)))  L_nee  = float3(0, 0, 0);
     if (any(isnan(L_post)) || any(isinf(L_post))) L_post = float3(0, 0, 0);
@@ -604,11 +610,29 @@ PathSample trace_path_from_primary(
     s.rc_outgoing_dir = first_outgoing_dir;
     s.path_length     = 2;
 
-    // reconnection validity, rc must be rough enough and far enough to keep the jacobian bounded
-    float rc_min_roughness = get_restir_rc_min_roughness();
-    float dist_sq          = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
-    bool rc_valid          = (hit.roughness >= rc_min_roughness)
-                          && (dist_sq       >= RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE);
+    // scene independent reconnection criteria, lin 2026 4
+    // dual ray footprint thresholds bound the area density change at rc and the angular density
+    // change of the rc outgoing lobe, plus a single vertex roughness gate at the vertex before rc
+    float rc_min_roughness    = get_restir_rc_min_roughness();
+    float dist_sq             = dot(hit.hit_position - primary_pos, hit.hit_position - primary_pos);
+    float footprint_threshold = RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(primary_pos, primary_normal);
+
+    // forward footprint, reciprocal area density of rc when traced from the primary
+    float cos_at_rc    = abs(dot(hit.geometric_normal, dir));
+    float fp_forward   = dist_sq / max(dir_pdf * cos_at_rc, 1e-6f);
+
+    // inverse footprint, reciprocal area density of the primary when traced back from rc,
+    // skipped for terminal paths where reconnection cannot change the outgoing density
+    float fp_inverse = 1e30f;
+    if (first_pdf > RESTIR_MIN_PDF)
+    {
+        float cos_at_primary = abs(dot(primary_normal, dir));
+        fp_inverse           = dist_sq / max(first_pdf * cos_at_primary, 1e-6f);
+    }
+
+    bool rc_valid = (primary_roughness >= rc_min_roughness)
+                 && (min(fp_forward, fp_inverse) >= footprint_threshold)
+                 && (dist_sq >= RESTIR_RC_MIN_DISTANCE * RESTIR_RC_MIN_DISTANCE);
     if (rc_valid)
         s.flags |= PATH_FLAG_HAS_RC;
 
@@ -686,7 +710,7 @@ void ray_gen()
 
         if (dir_valid)
         {
-            candidate = trace_path_from_primary(pos_ws, normal_ws, roughness, dir, replay_seed, seed);
+            candidate = trace_path_from_primary(pos_ws, normal_ws, roughness, dir, source_pdf, replay_seed, seed);
             float target_pdf = target_pdf_self(candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {

@@ -197,9 +197,13 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     // cap temporal M so lighting changes are tracked, M is the c_i for the balance heuristic
+    // the cap shrinks adaptively with the duplication score of the temporal neighbor, lin 2026 5,
+    // correlated regions decay faster which trades a small bias for far fewer correlation blobs
     if (have_temporal)
     {
-        clamp_reservoir_M(temporal, get_restir_m_cap());
+        float duplication = tex2.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).r;
+        float m_cap       = lerp(get_restir_m_cap(), 1.0f, pow(saturate(duplication), 0.1f));
+        clamp_reservoir_M(temporal, m_cap);
     }
 
     // defensive pairwise mis with the temporal stream as the single neighbor, lin 2022 5.2

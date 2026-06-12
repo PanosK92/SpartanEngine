@@ -54,9 +54,12 @@ static const float RESTIR_SKY_RADIANCE_CLAMP_FACTOR = 4.0f;
 static const float RESTIR_SKY_W_CLAMP_FACTOR        = 10.0f;
 static const float RESTIR_SKY_DISTANCE              = 1e10f;
 
-// reconnection criteria, distance and cos floors are absolute safety guards
-static const float RESTIR_RC_MIN_DISTANCE    = 0.1f;
+// reconnection criteria, lin 2026 4, dual ray footprint thresholds replace the old fixed
+// world space distance gate, the remaining distance constant is only a numerical floor
+static const float RESTIR_RC_MIN_DISTANCE    = 0.01f;
 static const float RESTIR_RC_COS_FRONT       = 0.05f;
+// footprint threshold scale, c / 100 with c = 0.02 from the paper, larger is more conservative
+static const float RESTIR_RC_FOOTPRINT_C     = 0.0002f;
 // reject geometrically extreme shifts in both directions, the jacobian participates in the
 // pairwise mis denominators so this is only a numerical safety guard, not a bias knob
 static const float RESTIR_JACOBIAN_REJECT    = 8.0f;
@@ -891,7 +894,17 @@ float restir_primary_specular_blend(float roughness)
     return 0.0f;
 }
 
-// lin 2022 reconnection conditions, the rc roughness gate is enforced at sample construction
+// primary ray footprint squared radius, lin 2026 eq 5 rhs without the constant scale
+// measures the world space area a primary sample represents at this hit
+float restir_primary_footprint_sq(float3 primary_pos, float3 primary_normal)
+{
+    float3 to_cam  = get_camera_position() - primary_pos;
+    float  dist_sq = dot(to_cam, to_cam);
+    float  cos_cam = max(dot(primary_normal, normalize(to_cam)), 1e-3f);
+    return dist_sq / (cos_cam * 4.0f * PI);
+}
+
+// lin 2026 reconnection conditions, the footprint gates are enforced at sample construction
 bool can_reconnect_at_dst(PathSample src, float3 dst_pos, float dst_roughness)
 {
     if (!has_reconnection(src))
@@ -989,6 +1002,13 @@ ShiftResult try_reconnection_shift(
     if (cos_rc_src <= RESTIR_RC_COS_FRONT || cos_rc_dst <= RESTIR_RC_COS_FRONT)
         return result;
 
+    // dst side forward footprint test mirrors the source reconnection criteria, lin 2026 4
+    // the primary lobe is diffuse only here so the directional pdf is cosine over pi
+    float pdf_dst = max(dot(dst_normal, dir_dst), 0.0f) / PI;
+    float fp_dst  = dist_dst_sq / max(pdf_dst * cos_rc_dst, 1e-6f);
+    if (fp_dst < RESTIR_RC_FOOTPRINT_C * restir_primary_footprint_sq(dst_pos, dst_normal))
+        return result;
+
     float3 brdf_cos = eval_surface_brdf_cos(dst_albedo, dst_roughness, dst_metallic, dst_normal, dst_view_dir, dir_dst, restir_primary_specular_blend(dst_roughness));
     if (all(brdf_cos <= 0.0f))
         return result;
@@ -1015,9 +1035,11 @@ bool trace_shadow_ray(float3 origin, float3 direction, float max_dist);
 
 // shared path tracing parameters, single copy used by both the initial trace and the replay
 // shift so the two evaluate the same integrand
-static const float RUSSIAN_ROULETTE_PROB     = 0.95f;
-static const uint  RUSSIAN_ROULETTE_START    = 4;
-static const float RUSSIAN_ROULETTE_MIN_PROB = 0.1f;
+// dst independent roulette, lin 2026 6.2.4, a constant continuation probability and a shared
+// seed draw mean a replayed shift reproduces the exact termination of the source path, so
+// roulette can start early to cut suffix cost without ever failing a shift
+static const uint  RESTIR_RR_START        = 1;
+static const float RESTIR_RR_CONTINUATION = 0.75f;
 static const float SKY_MIP_LEVEL             = 2.0f;
 // sun cone half angle, matches the real sun angular radius
 static const float SUN_CONE_HALF_ANGLE       = 0.0047f;
@@ -1525,14 +1547,13 @@ float3 accumulate_replay_suffix(
 
     for (uint bounce = 0; bounce < max_bounces_remaining; bounce++)
     {
-        if (bounce >= RUSSIAN_ROULETTE_START)
+        if (bounce >= RESTIR_RR_START)
         {
-            // veach style adjusted rr, fold the next vertex albedo into the continuation factor
-            float3 next_throughput   = throughput * cur.albedo;
-            float  continuation_prob = clamp(luminance(next_throughput), RUSSIAN_ROULETTE_MIN_PROB, RUSSIAN_ROULETTE_PROB);
-            if (random_float(seed) > continuation_prob)
+            // constant probability so the decision only depends on the shared seed draw,
+            // identical at source and destination, lin 2026 6.2.4
+            if (random_float(seed) > RESTIR_RR_CONTINUATION)
                 break;
-            throughput /= continuation_prob;
+            throughput /= RESTIR_RR_CONTINUATION;
         }
 
         float2 xi = random_float2(seed);
