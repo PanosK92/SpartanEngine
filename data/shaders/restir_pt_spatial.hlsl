@@ -166,7 +166,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         spatial_sample_count = max(RESTIR_SPATIAL_SAMPLES - 2u, 4u);
     }
 
-    float target_cur = target_pdf_self(center.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+    // own domain target from the previous pass finalize at this same pixel, re-evaluating
+    // would mismatch center.W for replay carried samples since W = weight_sum / stored target
+    float target_cur = max(center.target_pdf, 0.0f);
 
     // defensive pairwise mis, bitterli 2020, lin 2022 algorithm 3
     // each pair uses both shift directions, a defensive canonical share keeps it stable when neighbors are bad
@@ -183,9 +185,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     PathSample stream_samples [RESTIR_SPATIAL_SAMPLES];
     float      stream_target  [RESTIR_SPATIAL_SAMPLES];
     float      stream_jacobian[RESTIR_SPATIAL_SAMPLES];
-    float      stream_M       [RESTIR_SPATIAL_SAMPLES];
     float      stream_W       [RESTIR_SPATIAL_SAMPLES];
-    float      stream_denom   [RESTIR_SPATIAL_SAMPLES];
+    float      stream_share   [RESTIR_SPATIAL_SAMPLES];
 
     float confidence_acc = center_M * center_confidence;
     float confidence_w   = center_M;
@@ -282,23 +283,32 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
             neighbor_metallic
         );
 
-        // if the canonical does not shift to the neighbor, fall back to single sided balance
-        float target_c_at_j = shift_c_to_j.ok
-            ? target_scalar(shift_c_to_j.f_dst)
-            : 0.0f;
+        // if the canonical does not shift to the neighbor, the neighbor technique cannot
+        // produce the canonical sample and that pair share collapses to full canonical weight
+        float target_c_at_j   = shift_c_to_j.ok ? target_scalar(shift_c_to_j.f_dst) : 0.0f;
+        float jacobian_c_to_j = shift_c_to_j.ok ? shift_c_to_j.jacobian             : 0.0f;
+        float jacobian_j_to_c = shift_j_to_c.jacobian;
 
-        float jacobian = shift_j_to_c.jacobian;
-        float pair_denom = max(center_M * target_c_at_j + neighbor.M * target_j_at_c, 1e-12f);
+        // pairwise mis shares, lin 2022 5.2, each share evaluates one sample under both
+        // techniques, own domain target in the numerator, shifted target times the shift
+        // jacobian in the other denominator term
+
+        // canonical sample x_c under canonical and neighbor densities
+        float canon_denom = center_M * target_cur + neighbor.M * target_c_at_j * jacobian_c_to_j;
+        canonical_pair_acc += (canon_denom > 0.0f) ? (center_M * target_cur) / canon_denom : 1.0f;
+
+        // neighbor sample x_j under neighbor and canonical densities, own domain target is
+        // stored in the neighbor reservoir from its own finalize
+        float target_j_own = max(neighbor.target_pdf, 0.0f);
+        float neigh_denom  = neighbor.M * target_j_own + center_M * target_j_at_c * jacobian_j_to_c;
+        float neigh_share  = (neigh_denom > 0.0f) ? (neighbor.M * target_j_own) / neigh_denom : 0.0f;
 
         stream_samples [valid_neighbors] = neighbor.sample;
         stream_target  [valid_neighbors] = target_j_at_c;
-        stream_jacobian[valid_neighbors] = jacobian;
-        stream_M       [valid_neighbors] = neighbor.M;
+        stream_jacobian[valid_neighbors] = jacobian_j_to_c;
         stream_W       [valid_neighbors] = neighbor.W;
-        stream_denom   [valid_neighbors] = pair_denom;
+        stream_share   [valid_neighbors] = neigh_share;
         valid_neighbors++;
-
-        canonical_pair_acc += (center_M * target_c_at_j) / pair_denom;
 
         M_total        += neighbor.M;
         confidence_acc += neighbor.M * neighbor_confidence;
@@ -318,7 +328,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     for (uint j = 0; j < valid_neighbors; j++)
     {
         float target_at_c = stream_target[j];
-        float m_j         = k_inv * (stream_M[j] * target_at_c) / stream_denom[j];
+        float m_j         = k_inv * stream_share[j];
         float weight_j    = max(m_j * target_at_c * stream_W[j] * stream_jacobian[j], 0.0f);
 
         combined.weight_sum += weight_j;
@@ -355,9 +365,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     // finalize, W = weight_sum / target, no /M since the m_i factors are already normalized
-    float final_target = target_pdf_self(combined.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-    combined.target_pdf = final_target;
-    combined.W          = (final_target > 0.0f) ? (combined.weight_sum / final_target) : 0.0f;
+    // the selection time target is reused instead of a re-evaluation, for replay shifted
+    // samples the two evaluation paths differ slightly and a mismatched divide skews W
+    combined.W = (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f;
 
     // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
     float w_clamp = get_w_clamp_for_sample(combined.sample);

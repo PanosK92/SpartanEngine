@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // core parameters, m_cap ramps from a moving baseline to the static target as the camera holds still
 static const uint  RESTIR_MAX_PATH_LENGTH    = 5;
 static const uint  RESTIR_M_CAP_MIN          = 32;
-static const uint  RESTIR_M_CAP_MAX          = 256;
+static const uint  RESTIR_M_CAP_MAX          = 128;
 static const uint  RESTIR_SPATIAL_SAMPLES    = 8;
 
 float get_restir_m_cap()
@@ -57,8 +57,8 @@ static const float RESTIR_SKY_DISTANCE              = 1e10f;
 // reconnection criteria, distance and cos floors are absolute safety guards
 static const float RESTIR_RC_MIN_DISTANCE    = 0.1f;
 static const float RESTIR_RC_COS_FRONT       = 0.05f;
-// reject near degenerate shifts, the jacobian is omitted from the mis denominator so a large
-// value is an unnormalized firefly amplifier that does not average out, lower toward 4 if blotches remain
+// reject geometrically extreme shifts in both directions, the jacobian participates in the
+// pairwise mis denominators so this is only a numerical safety guard, not a bias knob
 static const float RESTIR_JACOBIAN_REJECT    = 8.0f;
 
 // brdf / numerics
@@ -357,6 +357,8 @@ bool is_reservoir_valid(Reservoir r)
     if (any(isnan(r.sample.rc_normal)) || any(isinf(r.sample.rc_normal))) return false;
     if (isnan(r.W) || isinf(r.W) || r.W < 0)                              return false;
     if (isnan(r.M) || r.M < 0)                                            return false;
+    // target_pdf is the own domain density in the pairwise mis shares, reject corrupt values
+    if (isnan(r.target_pdf) || isinf(r.target_pdf) || r.target_pdf < 0)   return false;
     if (r.sample.rc_length > RESTIR_MAX_PATH_LENGTH)                      return false;
     return true;
 }
@@ -428,9 +430,11 @@ void clamp_reservoir_M(inout Reservoir reservoir, float max_M)
 // unified disocclusion gate for the reservoir temporal pass and the denoiser accumulator
 // reprojects the current position through the previous view projection and compares expected
 // vs actual previous depth so a moving surface is not mistaken for a disocclusion
-// prev_depth_tex must be bound to gbuffer_depth_previous, confidence returns a [0,1] reuse factor
+// prev_depth_tex must be bound to gbuffer_depth_previous and prev_normal_tex to
+// gbuffer_normal_previous, confidence returns a [0,1] reuse factor
 bool evaluate_disocclusion(
     Texture2D prev_depth_tex,
+    Texture2D prev_normal_tex,
     float2 current_uv,
     float2 prev_uv,
     float3 current_position,
@@ -464,8 +468,13 @@ bool evaluate_disocclusion(
     if (reproj_dist > reproj_tol)
         return false;
 
-    float3 prev_normal       = get_normal(prev_uv);
-    float  normal_similarity = dot(current_normal, prev_normal);
+    // previous frame normal at prev_uv, the current normal buffer holds a different surface
+    // there whenever anything moved, fail closed on uninitialized (cleared) history
+    float3 prev_normal = prev_normal_tex.SampleLevel(GET_SAMPLER(sampler_point_clamp), prev_uv, 0).xyz;
+    if (dot(prev_normal, prev_normal) < 1e-4f)
+        return false;
+    prev_normal = normalize(prev_normal);
+    float normal_similarity = dot(current_normal, prev_normal);
     float  normal_threshold  = lerp(normal_min, normal_max, motion_factor);
     if (normal_similarity < normal_threshold)
         return false;
@@ -986,7 +995,7 @@ ShiftResult try_reconnection_shift(
 
     // solid angle jacobian at rc, (cos_dst * dist_src^2) / (cos_src * dist_dst^2)
     float jacobian = (cos_rc_dst * dist_src_sq) / max(cos_rc_src * dist_dst_sq, 1e-6f);
-    if (jacobian <= 0.0f || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
+    if (jacobian < 1.0f / RESTIR_JACOBIAN_REJECT || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
         return result;
 
     // re-evaluate f_rc at the dst incoming direction so indirect specular stays view dependent
@@ -999,11 +1008,304 @@ ShiftResult try_reconnection_shift(
 // random replay shift, lin 2022 hybrid shift random replay leg
 // rebuilds the primary bounce at dst with the source xi and retraces the suffix, jacobian is the
 // ratio of primary brdf pdfs, handles paths reconnection cannot carry, near mirror and specular prefix
-static const uint RESTIR_REPLAY_MAX_BOUNCES = 3u;
 
 // forward declarations, the helpers are defined later in this header
 bool trace_shift_visibility(PathSample src, float3 dst_pos, float3 dst_normal);
 bool trace_shadow_ray(float3 origin, float3 direction, float max_dist);
+
+// shared path tracing parameters, single copy used by both the initial trace and the replay
+// shift so the two evaluate the same integrand
+static const float RUSSIAN_ROULETTE_PROB     = 0.95f;
+static const uint  RUSSIAN_ROULETTE_START    = 4;
+static const float RUSSIAN_ROULETTE_MIN_PROB = 0.1f;
+static const float SKY_MIP_LEVEL             = 2.0f;
+// sun cone half angle, matches the real sun angular radius
+static const float SUN_CONE_HALF_ANGLE       = 0.0047f;
+
+// sun vs cosine hemisphere mixture weight, balance heuristic on solid angle scaled radiance
+float sun_sample_probability(bool has_sun, float sun_intensity, float3 sun_color, float sun_cos_max)
+{
+    if (!has_sun)
+    {
+        return 0.0f;
+    }
+    float sun_omega    = 2.0f * PI * (1.0f - sun_cos_max);
+    float sun_radiance = luminance(sun_color) * max(sun_intensity, 0.0f);
+    float sun_w        = sun_radiance * sun_omega;
+    // sky reference, hemispherical integral of a unit luminance probe, stable denominator
+    float sky_w        = 2.0f * PI;
+    float prob         = sun_w / max(sun_w + sky_w, 1e-6f);
+    return clamp(prob, 0.05f, 0.95f);
+}
+
+// samples a sky color along a direction (used when a bounce misses geometry)
+float3 sample_sky(float3 dir)
+{
+    float2 uv  = direction_sphere_uv(dir);
+    float3 sky = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uv, SKY_MIP_LEVEL).rgb;
+    return clamp_sky_radiance(sky);
+}
+
+// env nee density at a given direction for mis against brdf bounces that miss into the sky
+float sky_nee_pdf_at(float3 dir, float3 shading_normal)
+{
+    float3 sun_dir       = float3(0, 1, 0);
+    float  sun_intensity = 0.0f;
+    float3 sun_color     = float3(1, 1, 1);
+    bool   has_sun       = false;
+    uint light_count = (uint)buffer_frame.restir_pt_light_count;
+    if (light_count > 0)
+    {
+        LightParameters p = light_parameters[0];
+        if ((p.flags & (1u << 0)) != 0 && p.intensity > 0.0f)
+        {
+            sun_dir       = -p.direction;
+            sun_intensity = p.intensity;
+            sun_color     = p.color.rgb;
+            has_sun       = true;
+        }
+    }
+
+    float sun_cos_max  = cos(SUN_CONE_HALF_ANGLE);
+    float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
+    float sun_prob     = sun_sample_probability(has_sun, sun_intensity, sun_color, sun_cos_max);
+
+    float pdf_cos = max(dot(dir, shading_normal), 0.0f) / PI;
+    float pdf_sun = (has_sun && dot(dir, sun_dir) >= sun_cos_max) ? sun_cone_pdf : 0.0f;
+    return (1.0f - sun_prob) * pdf_cos + sun_prob * pdf_sun;
+}
+
+float3 probe_emission_estimate(MaterialParameters mat)
+{
+    if (mat.emissive_from_albedo() || mat.has_texture_emissive())
+        return mat.color.rgb;
+    return float3(0.0f, 0.0f, 0.0f);
+}
+
+// emissive triangle nee pool active check, false skips the emtri strategy entirely
+bool is_emtri_pool_active()
+{
+    return buffer_frame.restir_pt_emissive_tri_count > 0.5f;
+}
+
+// direct lighting (analytical lights + environment probe) at a surface vertex toward view_dir
+// specular_blend weights the specular lobe, 1 keeps the full brdf, 0 leaves view independent diffuse for rc
+// single copy shared by the initial trace and the replay shift, the rng draw order is part of
+// the replay contract, any change here changes the replayed paths too which keeps both in sync
+float3 direct_lighting_at_vertex(
+    float3 shading_pos,
+    float3 shading_normal,
+    float3 geometric_normal,
+    float3 view_dir,
+    float3 albedo,
+    float roughness,
+    float metallic,
+    float  specular_blend,
+    inout uint seed)
+{
+    float3 total = float3(0, 0, 0);
+    uint light_count = (uint)buffer_frame.restir_pt_light_count;
+    float shading_offset = compute_ray_offset(shading_pos);
+    float3 ray_origin_light = shading_pos + geometric_normal * shading_offset;
+
+    // analytical lights
+    for (uint light_idx = 0; light_idx < light_count; light_idx++)
+    {
+        LightParameters light = light_parameters[light_idx];
+
+        if (light.intensity <= 0.0f)
+            continue;
+
+        uint light_flags    = light.flags;
+        bool is_directional = (light_flags & (1u << 0)) != 0;
+        bool is_point       = (light_flags & (1u << 1)) != 0;
+        bool is_spot        = (light_flags & (1u << 2)) != 0;
+        bool is_area        = (light_flags & (1u << 6)) != 0;
+
+        float3 light_color = light.color.rgb;
+        float3 light_dir;
+        float  light_dist;
+        float  light_pdf    = 1.0f;
+        float  attenuation  = 1.0f;
+
+        if (is_directional)
+        {
+            light_dir  = -light.direction;
+            light_dist = 1000.0f;
+            light_pdf  = 1.0f;
+        }
+        else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
+        {
+            float3 light_normal = light.direction;
+            float3 light_right, light_up;
+            build_orthonormal_basis_fast(light_normal, light_right, light_up);
+
+            // urena 2013 spherical rectangle solid angle sampling
+            float3 ex          = light_right * light.area_width;
+            float3 ey          = light_up    * light.area_height;
+            float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
+
+            float2 xi = random_float2(seed);
+            float3 light_sample_pos;
+            float  solid_angle;
+            sample_spherical_rectangle(shading_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
+
+            if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
+                continue;
+
+            float3 to_light = light_sample_pos - shading_pos;
+            light_dist      = length(to_light);
+            if (light_dist < 1e-3f)
+                continue;
+            light_dir       = to_light / light_dist;
+
+            float cos_light = dot(-light_dir, light_normal);
+            if (cos_light <= 0.0f)
+                continue;
+
+            light_pdf   = 1.0f / solid_angle;
+            // no extra distance falloff, the 1/d^2 term is already baked into the solid-angle pdf
+            attenuation = 1.0f;
+        }
+        else if (is_point || is_spot)
+        {
+            float3 to_light = light.position - shading_pos;
+            light_dist      = length(to_light);
+            light_dir       = to_light / light_dist;
+            light_pdf       = 1.0f;
+
+            float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
+            attenuation = range_factor * range_factor / max(light_dist * light_dist, 0.01f);
+
+            if (is_spot)
+            {
+                float cos_angle = dot(-light_dir, light.direction);
+                float cos_outer = cos(light.angle);
+                float cos_inner = cos(light.angle * 0.8f);
+                attenuation *= saturate((cos_angle - cos_outer) / (cos_inner - cos_outer));
+            }
+        }
+        else
+        {
+            continue;
+        }
+
+        float n_dot_l = dot(shading_normal, light_dir);
+        if (n_dot_l <= 0.0f)
+            continue;
+
+        if (!trace_shadow_ray(ray_origin_light, light_dir, light_dist))
+            continue;
+
+        // rc uses lambert only so the stored nee stays view independent
+        float  brdf_pdf;
+        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, specular_blend);
+
+        // analytical lights are not in the bvh, single strategy mis weight of 1 is correct
+        float mis_weight = 1.0f;
+
+        float3 Li = light_color * light.intensity * attenuation;
+        total += brdf * Li * mis_weight / max(light_pdf, 1e-6f);
+    }
+
+    // environment probe (sun cone + cosine mixture sampling)
+    {
+        float2 env_xi = random_float2(seed);
+
+        float3 sun_dir       = float3(0, 1, 0);
+        float  sun_intensity = 0.0f;
+        float3 sun_color     = float3(1, 1, 1);
+        bool   has_sun       = false;
+        if (light_count > 0)
+        {
+            LightParameters primary_light = light_parameters[0];
+            if ((primary_light.flags & (1u << 0)) != 0 && primary_light.intensity > 0.0f)
+            {
+                sun_dir       = -primary_light.direction;
+                sun_intensity = primary_light.intensity;
+                sun_color     = primary_light.color.rgb;
+                has_sun       = true;
+            }
+        }
+
+        float sun_cos_max   = cos(SUN_CONE_HALF_ANGLE);
+        float sun_cone_pdf  = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
+        float sun_prob      = sun_sample_probability(has_sun, sun_intensity, sun_color, sun_cos_max);
+
+        float3 env_dir;
+        float  env_pdf_cos;
+        float  env_pdf_sun;
+        float  strategy_xi = random_float(seed);
+
+        if (has_sun && strategy_xi < sun_prob)
+        {
+            float phi     = 2.0f * PI * env_xi.x;
+            float cos_th  = lerp(sun_cos_max, 1.0f, env_xi.y);
+            float sin_th  = sqrt(max(0.0f, 1.0f - cos_th * cos_th));
+            float3 local  = float3(cos(phi) * sin_th, sin(phi) * sin_th, cos_th);
+            env_dir       = local_to_world(local, sun_dir);
+
+            float cos_to_sun = dot(env_dir, sun_dir);
+            env_pdf_sun = (cos_to_sun >= sun_cos_max) ? sun_cone_pdf : 0.0f;
+            env_pdf_cos = max(dot(env_dir, shading_normal), 0.0f) / PI;
+        }
+        else
+        {
+            float3 env_local = sample_cosine_hemisphere(env_xi, env_pdf_cos);
+            env_dir = local_to_world(env_local, shading_normal);
+
+            float cos_to_sun = has_sun ? dot(env_dir, sun_dir) : -1.0f;
+            env_pdf_sun = (has_sun && cos_to_sun >= sun_cos_max) ? sun_cone_pdf : 0.0f;
+        }
+
+        float env_pdf = (1.0f - sun_prob) * env_pdf_cos + sun_prob * env_pdf_sun;
+        float env_n_dot_l = dot(shading_normal, env_dir);
+
+        if (env_n_dot_l > 0.0f && env_pdf > RESTIR_MIN_PDF)
+        {
+            float probe_offset = compute_ray_offset(shading_pos);
+            RayDesc probe_ray;
+            probe_ray.Origin    = shading_pos + geometric_normal * probe_offset;
+            probe_ray.Direction = env_dir;
+            probe_ray.TMin      = probe_offset;
+            probe_ray.TMax      = 10000.0f;
+
+            RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
+            probe_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, probe_ray);
+            probe_query.Proceed();
+
+            if (probe_query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
+            {
+                uint probe_instance = probe_query.CommittedInstanceID();
+                MaterialParameters probe_mat = material_parameters[probe_instance];
+                float3 probe_emission = probe_emission_estimate(probe_mat);
+
+                if (luminance(probe_emission) > 0.0f)
+                {
+                    float  brdf_pdf_probe;
+                    float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, specular_blend);
+
+                    float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
+                    total += brdf_probe * probe_emission * mis_weight / env_pdf;
+                }
+            }
+            else
+            {
+                float2 env_uv       = direction_sphere_uv(env_dir);
+                float3 env_radiance = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), env_uv, SKY_MIP_LEVEL).rgb;
+                env_radiance = clamp_sky_radiance(env_radiance);
+
+                float  brdf_pdf_env;
+                float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, specular_blend);
+
+                float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
+                total += brdf_env * env_radiance * mis_weight_env / env_pdf;
+            }
+        }
+    }
+
+    return total;
+}
 
 // inline hit record for the replay suffix retrace, mirrors PathPayload but lives here for compute contexts
 struct InlineHit
@@ -1018,7 +1320,8 @@ struct InlineHit
     float  metallic;
 };
 
-// compact replica of the closest hit shader for an inline RayQuery hit, normal mapping is skipped
+// replica of the closest hit shader for an inline RayQuery hit, must stay in sync with
+// closest_hit in restir_pt.hlsl so a replayed path sees the same surface data as the original
 void inline_pull_hit_data(
     uint  instance_id,
     uint  instance_index,
@@ -1028,6 +1331,7 @@ void inline_pull_hit_data(
     float3 ray_dir,
     float  hit_t,
     float4x3 obj_to_world_4x3,
+    float4x3 world_to_obj_4x3,
     out InlineHit hit_out)
 {
     // instance_id is the material index, instance_index is the tlas array index, they differ
@@ -1048,15 +1352,21 @@ void inline_pull_hit_data(
     float3 n0 = unpack_vertex_oct(pv0.normal);
     float3 n1 = unpack_vertex_oct(pv1.normal);
     float3 n2 = unpack_vertex_oct(pv2.normal);
+    float3 t0 = unpack_vertex_oct(pv0.tangent);
+    float3 t1 = unpack_vertex_oct(pv1.tangent);
+    float3 t2 = unpack_vertex_oct(pv2.tangent);
     float2 uv0 = unpack_vertex_uv(pv0.uv);
     float2 uv1 = unpack_vertex_uv(pv1.uv);
     float2 uv2 = unpack_vertex_uv(pv2.uv);
 
-    float3 normal_object = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
-    float2 texcoord      = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
+    float3 normal_object  = normalize(n0 * bary.x + n1 * bary.y + n2 * bary.z);
+    float3 tangent_object = normalize(t0 * bary.x + t1 * bary.y + t2 * bary.z);
+    float2 texcoord       = uv0 * bary.x + uv1 * bary.y + uv2 * bary.z;
 
     float3x3 obj_to_world_3x3 = (float3x3)obj_to_world_4x3;
-    float3   normal_world     = normalize(mul(normal_object, obj_to_world_3x3));
+    float3x3 world_to_obj_3x3 = (float3x3)world_to_obj_4x3;
+    float3   normal_world     = normalize(mul(normal_object, transpose(world_to_obj_3x3)));
+    float3   tangent_world    = normalize(mul(tangent_object, obj_to_world_3x3));
 
     float3 hit_position = ray_origin + ray_dir * hit_t;
     if (geo.uv_world_space > 0.0f)
@@ -1067,6 +1377,9 @@ void inline_pull_hit_data(
     if (geo.uv_rotation != 0.0f)
         texcoord = rotate_uv_90(texcoord, geo.uv_rotation);
 
+    // distance based mip selection, identical to closest_hit
+    float mip_level = clamp(log2(max(hit_t * 0.5f, 1.0f)), 0.0f, 4.0f);
+
     float3 edge1_world = mul(pv1.position - pv0.position, obj_to_world_3x3);
     float3 edge2_world = mul(pv2.position - pv0.position, obj_to_world_3x3);
     float3 geometric_normal = normalize(cross(edge1_world, edge2_world));
@@ -1075,7 +1388,32 @@ void inline_pull_hit_data(
     if (dot(normal_world, geometric_normal) < 0.0f)
         normal_world = -normal_world;
 
-    float mip_level = 0.0f;
+    float3 tangent_projected = tangent_world - geometric_normal * dot(tangent_world, geometric_normal);
+    if (dot(tangent_projected, tangent_projected) > 1e-6f)
+    {
+        tangent_world = normalize(tangent_projected);
+    }
+    else
+    {
+        float3 fallback_bitangent;
+        build_orthonormal_basis_fast(geometric_normal, tangent_world, fallback_bitangent);
+    }
+
+    if (mat.has_texture_normal())
+    {
+        uint normal_idx = instance_id + material_texture_index_normal;
+        float3 normal_sample = material_textures[normal_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
+
+        normal_sample = normal_sample * 2.0f - 1.0f;
+        normal_sample.xy *= mat.normal;
+
+        float3 bitangent = normalize(cross(geometric_normal, tangent_world));
+        float3x3 tbn     = float3x3(tangent_world, bitangent, geometric_normal);
+
+        normal_world = normalize(mul(normal_sample, tbn));
+        if (dot(normal_world, geometric_normal) < 0.0f)
+            normal_world = -normal_world;
+    }
 
     float3 albedo = mat.color.rgb;
     if (mat.has_texture_albedo())
@@ -1151,155 +1489,47 @@ bool inline_trace_hit(float3 origin, float3 dir, float t_max, out InlineHit hit_
     float2   bary_xy   = q.CommittedTriangleBarycentrics();
     float    hit_t     = q.CommittedRayT();
     float4x3 obj_to_w  = q.CommittedObjectToWorld4x3();
+    float4x3 w_to_obj  = q.CommittedWorldToObject4x3();
 
-    inline_pull_hit_data(inst_id, inst_idx, prim_idx, bary_xy, origin, dir, hit_t, obj_to_w, hit_out);
+    inline_pull_hit_data(inst_id, inst_idx, prim_idx, bary_xy, origin, dir, hit_t, obj_to_w, w_to_obj, hit_out);
     return true;
 }
 
-// inline nee against the analytical light pool, self contained for compute contexts
-// env probe and emtri nee are skipped, the suffix loop and hit.emission already cover them
-float3 inline_replay_nee_analytical(
-    float3 hit_pos,
-    float3 hit_normal,
-    float3 geom_normal,
-    float3 view_dir,
-    float3 albedo,
-    float  roughness,
-    float  metallic,
-    float  specular_blend,
-    inout uint seed)
-{
-    float3 total           = float3(0, 0, 0);
-    uint   light_count     = (uint)buffer_frame.restir_pt_light_count;
-    float  shading_offset  = compute_ray_offset(hit_pos);
-    float3 ray_origin_nee  = hit_pos + geom_normal * shading_offset;
-
-    for (uint light_idx = 0u; light_idx < light_count; light_idx++)
-    {
-        LightParameters light = light_parameters[light_idx];
-        if (light.intensity <= 0.0f)
-            continue;
-
-        uint light_flags    = light.flags;
-        bool is_directional = (light_flags & (1u << 0)) != 0;
-        bool is_point       = (light_flags & (1u << 1)) != 0;
-        bool is_spot        = (light_flags & (1u << 2)) != 0;
-        bool is_area        = (light_flags & (1u << 6)) != 0;
-
-        float3 light_color = light.color.rgb;
-        float3 light_dir;
-        float  light_dist;
-        float  light_pdf   = 1.0f;
-        float  attenuation = 1.0f;
-
-        if (is_directional)
-        {
-            light_dir  = -light.direction;
-            light_dist = 1000.0f;
-        }
-        else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
-        {
-            float3 light_normal = light.direction;
-            float3 light_right, light_up;
-            build_orthonormal_basis_fast(light_normal, light_right, light_up);
-
-            float3 ex          = light_right * light.area_width;
-            float3 ey          = light_up    * light.area_height;
-            float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
-
-            float2 xi = random_float2(seed);
-            float3 light_sample_pos;
-            float  solid_angle;
-            sample_spherical_rectangle(hit_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
-
-            if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
-                continue;
-
-            float3 to_light = light_sample_pos - hit_pos;
-            light_dist      = length(to_light);
-            if (light_dist < 1e-3f)
-                continue;
-            light_dir = to_light / light_dist;
-
-            float cos_light = dot(-light_dir, light_normal);
-            if (cos_light <= 0.0f)
-                continue;
-
-            light_pdf = 1.0f / solid_angle;
-        }
-        else if (is_point || is_spot)
-        {
-            float3 to_light = light.position - hit_pos;
-            light_dist      = length(to_light);
-            light_dir       = to_light / light_dist;
-
-            float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
-            attenuation = range_factor * range_factor / max(light_dist * light_dist, 0.01f);
-
-            if (is_spot)
-            {
-                float cos_angle = dot(-light_dir, light.direction);
-                float cos_outer = cos(light.angle);
-                float cos_inner = cos(light.angle * 0.8f);
-                attenuation *= saturate((cos_angle - cos_outer) / (cos_inner - cos_outer));
-            }
-        }
-        else
-        {
-            continue;
-        }
-
-        float n_dot_l = dot(hit_normal, light_dir);
-        if (n_dot_l <= 0.0f)
-            continue;
-
-        if (!trace_shadow_ray(ray_origin_nee, light_dir, light_dist))
-            continue;
-
-        float  brdf_pdf;
-        float3 brdf = evaluate_brdf(albedo, roughness, metallic, hit_normal, view_dir, light_dir, brdf_pdf, specular_blend);
-
-        float3 Li = light_color * light.intensity * attenuation;
-        total += brdf * Li / max(light_pdf, 1e-6f);
-    }
-
-    return total;
-}
-
-// inline suffix retrace from the replayed primary hit, returns radiance toward start_view_dir
+// inline subpath retrace from the replayed first hit, returns radiance toward start_view_dir
+// mirrors accumulate_subpath_at_rc and trace_rc_suffix in restir_pt.hlsl draw for draw so the
+// same seed reproduces the original path exactly, the only structural difference is that the
+// first bounce brdf stays in the throughput instead of being factored out for reconnection
 float3 accumulate_replay_suffix(
     InlineHit start_hit,
     float3    start_view_dir,
     uint      max_bounces,
     inout uint seed)
 {
-    // emission and nee at the replayed primary hit
-    float3 result    = start_hit.emission;
-    float3 nee_at_v0 = inline_replay_nee_analytical(
-        start_hit.hit_position,
-        start_hit.hit_normal,
-        start_hit.geometric_normal,
-        start_view_dir,
-        start_hit.albedo,
-        start_hit.roughness,
-        start_hit.metallic,
-        1.0f,
-        seed);
-    result += nee_at_v0;
+    // emtri strategy carries emission when active, zero here to avoid double counting
+    float3 result = is_emtri_pool_active() ? float3(0, 0, 0) : start_hit.emission;
+    // lambert only nee at the first vertex, matches the rc construction in the initial trace
+    result += direct_lighting_at_vertex(
+        start_hit.hit_position, start_hit.hit_normal, start_hit.geometric_normal,
+        start_view_dir, start_hit.albedo, start_hit.roughness, start_hit.metallic, 0.0f, seed);
 
     if (max_bounces < 2u)
         return result;
 
-    InlineHit cur        = start_hit;
-    float3    view_dir   = start_view_dir;
-    float3    throughput = float3(1, 1, 1);
+    uint max_bounces_remaining = max_bounces - 1u;
 
-    for (uint b = 1u; b < max_bounces; b++)
+    InlineHit cur           = start_hit;
+    float3    view_dir      = start_view_dir;
+    float3    throughput    = float3(1, 1, 1);
+    float     prev_brdf_pdf = 0.0f;
+    float3    prev_normal   = start_hit.hit_normal;
+
+    for (uint bounce = 0; bounce < max_bounces_remaining; bounce++)
     {
-        // russian roulette from bounce 2, veach style adjusted continuation
-        if (b >= 2u)
+        if (bounce >= RUSSIAN_ROULETTE_START)
         {
-            float continuation_prob = clamp(luminance(throughput * cur.albedo), 0.25f, 0.95f);
+            // veach style adjusted rr, fold the next vertex albedo into the continuation factor
+            float3 next_throughput   = throughput * cur.albedo;
+            float  continuation_prob = clamp(luminance(next_throughput), RUSSIAN_ROULETTE_MIN_PROB, RUSSIAN_ROULETTE_PROB);
             if (random_float(seed) > continuation_prob)
                 break;
             throughput /= continuation_prob;
@@ -1308,6 +1538,7 @@ float3 accumulate_replay_suffix(
         float2 xi = random_float2(seed);
         float  pdf;
         float3 nd = sample_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, xi, pdf, 1.0f);
+
         if (pdf < RESTIR_MIN_PDF || dot(nd, cur.hit_normal) <= 0.0f || any(isnan(nd)))
             break;
 
@@ -1315,13 +1546,23 @@ float3 accumulate_replay_suffix(
         float3 brdf = evaluate_brdf(cur.albedo, cur.roughness, cur.metallic, cur.hit_normal, view_dir, nd, unused_pdf, 1.0f);
         throughput *= brdf / pdf;
 
+        prev_brdf_pdf = pdf;
+        prev_normal   = cur.hit_normal;
+
         float ofs = compute_ray_offset(cur.hit_position);
         InlineHit next;
         if (!inline_trace_hit(cur.hit_position + cur.geometric_normal * ofs, nd, 1000.0f, next))
+        {
+            // sky escape with the same mis weight as the original suffix trace
+            float w = power_heuristic(prev_brdf_pdf, sky_nee_pdf_at(nd, prev_normal));
+            result += throughput * sample_sky(nd) * w;
             break;
+        }
 
+        // emissive triangle hit via brdf bounce, collected single strategy
         result += throughput * next.emission;
-        result += throughput * inline_replay_nee_analytical(
+        // suffix vertices past the first use the full brdf
+        result += throughput * direct_lighting_at_vertex(
             next.hit_position, next.hit_normal, next.geometric_normal,
             -nd, next.albedo, next.roughness, next.metallic, 1.0f, seed);
 
@@ -1398,12 +1639,13 @@ ShiftResult try_random_replay_shift(
 
     // jacobian is pdf_src / pdf_dst, the xi to direction map is volume preserving
     float jacobian = pdf_src / max(pdf_dst, RESTIR_MIN_PDF);
-    if (jacobian <= 0.0f || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
+    if (jacobian < 1.0f / RESTIR_JACOBIAN_REJECT || jacobian > RESTIR_JACOBIAN_REJECT || isnan(jacobian) || isinf(jacobian))
         return result;
 
     // retrace the suffix from the replayed primary hit, suffix_seed continues the xi sequence
+    // same bounce budget as the initial trace so the replayed integrand matches the original
     uint   suffix_seed     = replay_seed;
-    float3 suffix_radiance = accumulate_replay_suffix(first_hit, -dir_dst, RESTIR_REPLAY_MAX_BOUNCES, suffix_seed);
+    float3 suffix_radiance = accumulate_replay_suffix(first_hit, -dir_dst, max(get_restir_max_path_length(), 2u) - 1u, suffix_seed);
 
     result.f_dst    = brdf_cos * suffix_radiance;
     result.jacobian = jacobian;

@@ -25,33 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==============================
 
 // upper bounds on the per pixel ris pool sizes, live counts come from the get_restir_* helpers
+// rr and sun/sky sampling constants and helpers live in restir_reservoir.hlsl, shared with the
+// replay shift so the initial trace and the replay evaluate the same integrand
 static const uint  INITIAL_CANDIDATE_SAMPLES_MAX   = 8;
 static const uint  LIGHT_RIS_CANDIDATE_SAMPLES_MAX = 64;
 static const float MIN_COS_AT_PRIMARY              = 1e-3f;
-static const float RUSSIAN_ROULETTE_PROB           = 0.95f;
-// start russian roulette at bounce 4 so the first bounces are deterministic
-static const uint  RUSSIAN_ROULETTE_START          = 4;
-// continuation floor, a variance and cost knob, rr stays unbiased for any floor
-static const float RUSSIAN_ROULETTE_MIN_PROB       = 0.1f;
-static const float SKY_MIP_LEVEL               = 2.0f;
-// sun cone half angle, matches the real sun angular radius
-static const float SUN_CONE_HALF_ANGLE         = 0.0047f;
-
-// sun vs cosine hemisphere mixture weight, balance heuristic on solid angle scaled radiance
-float sun_sample_probability(bool has_sun, float sun_intensity, float3 sun_color, float sun_cos_max)
-{
-    if (!has_sun)
-    {
-        return 0.0f;
-    }
-    float sun_omega   = 2.0f * PI * (1.0f - sun_cos_max);
-    float sun_radiance = luminance(sun_color) * max(sun_intensity, 0.0f);
-    float sun_w       = sun_radiance * sun_omega;
-    // sky reference, hemispherical integral of a unit luminance probe, stable denominator
-    float sky_w       = 2.0f * PI;
-    float prob        = sun_w / max(sun_w + sky_w, 1e-6f);
-    return clamp(prob, 0.05f, 0.95f);
-}
 
 struct [raypayload] PathPayload
 {
@@ -64,13 +42,6 @@ struct [raypayload] PathPayload
     float  metallic         : read(caller) : write(closesthit);
     bool   hit              : read(caller) : write(closesthit, miss);
 };
-
-float3 probe_emission_estimate(MaterialParameters mat)
-{
-    if (mat.emissive_from_albedo() || mat.has_texture_emissive())
-        return mat.color.rgb;
-    return float3(0.0f, 0.0f, 0.0f);
-}
 
 // power proportional light pick weight, lin 2022 6.1, all four light types are eligible
 float light_pick_weight(LightParameters l)
@@ -149,12 +120,6 @@ float light_nee_pdf_for_candidate(PathSample candidate, float3 primary_pos)
     float pick_pdf     = light_pick_pdf_for_index(0u, total);
     float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
     return pick_pdf * sun_cone_pdf;
-}
-
-// emissive triangle nee pool active check, false skips the emtri strategy entirely
-bool is_emtri_pool_active()
-{
-    return buffer_frame.restir_pt_emissive_tri_count > 0.5f;
 }
 
 // binary search over the cdf, returns the triangle whose cumulative weight first exceeds u
@@ -270,259 +235,8 @@ PathSample sample_emissive_tri_candidate(
     return s;
 }
 
-// env nee density at a given direction for mis against brdf bounces that miss into the sky
-float sky_nee_pdf_at(float3 dir, float3 shading_normal)
-{
-    float3 sun_dir       = float3(0, 1, 0);
-    float  sun_intensity = 0.0f;
-    float3 sun_color     = float3(1, 1, 1);
-    bool   has_sun       = false;
-    uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    if (light_count > 0)
-    {
-        LightParameters p = light_parameters[0];
-        if ((p.flags & (1u << 0)) != 0 && p.intensity > 0.0f)
-        {
-            sun_dir       = -p.direction;
-            sun_intensity = p.intensity;
-            sun_color     = p.color.rgb;
-            has_sun       = true;
-        }
-    }
-
-    float sun_cos_max  = cos(SUN_CONE_HALF_ANGLE);
-    float sun_cone_pdf = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-    float sun_prob     = sun_sample_probability(has_sun, sun_intensity, sun_color, sun_cos_max);
-
-    float pdf_cos = max(dot(dir, shading_normal), 0.0f) / PI;
-    float pdf_sun = (has_sun && dot(dir, sun_dir) >= sun_cos_max) ? sun_cone_pdf : 0.0f;
-    return (1.0f - sun_prob) * pdf_cos + sun_prob * pdf_sun;
-}
-
-// direct lighting (analytical lights + environment probe) at a surface vertex toward view_dir
-// specular_blend weights the specular lobe, 1 keeps the full brdf, 0 leaves view independent diffuse for rc
-float3 direct_lighting_at_vertex(
-    float3 shading_pos,
-    float3 shading_normal,
-    float3 geometric_normal,
-    float3 view_dir,
-    float3 albedo,
-    float roughness,
-    float metallic,
-    float  specular_blend,
-    inout uint seed)
-{
-    float3 total = float3(0, 0, 0);
-    uint light_count = (uint)buffer_frame.restir_pt_light_count;
-    float shading_offset = compute_ray_offset(shading_pos);
-    float3 ray_origin_light = shading_pos + geometric_normal * shading_offset;
-
-    // analytical lights
-    for (uint light_idx = 0; light_idx < light_count; light_idx++)
-    {
-        LightParameters light = light_parameters[light_idx];
-
-        if (light.intensity <= 0.0f)
-            continue;
-
-        uint light_flags    = light.flags;
-        bool is_directional = (light_flags & (1u << 0)) != 0;
-        bool is_point       = (light_flags & (1u << 1)) != 0;
-        bool is_spot        = (light_flags & (1u << 2)) != 0;
-        bool is_area        = (light_flags & (1u << 6)) != 0;
-
-        float3 light_color = light.color.rgb;
-        float3 light_dir;
-        float  light_dist;
-        float  light_pdf    = 1.0f;
-        float  attenuation  = 1.0f;
-
-        if (is_directional)
-        {
-            light_dir  = -light.direction;
-            light_dist = 1000.0f;
-            light_pdf  = 1.0f;
-        }
-        else if (is_area && light.area_width > 0.0f && light.area_height > 0.0f)
-        {
-            float3 light_normal = light.direction;
-            float3 light_right, light_up;
-            build_orthonormal_basis_fast(light_normal, light_right, light_up);
-
-            // urena 2013 spherical rectangle solid angle sampling
-            float3 ex          = light_right * light.area_width;
-            float3 ey          = light_up    * light.area_height;
-            float3 rect_origin = light.position - 0.5f * ex - 0.5f * ey;
-
-            float2 xi = random_float2(seed);
-            float3 light_sample_pos;
-            float  solid_angle;
-            sample_spherical_rectangle(shading_pos, rect_origin, ex, ey, xi, light_sample_pos, solid_angle);
-
-            if (solid_angle < MIN_AREA_LIGHT_SOLID_ANGLE)
-                continue;
-
-            float3 to_light = light_sample_pos - shading_pos;
-            light_dist      = length(to_light);
-            if (light_dist < 1e-3f)
-                continue;
-            light_dir       = to_light / light_dist;
-
-            float cos_light = dot(-light_dir, light_normal);
-            if (cos_light <= 0.0f)
-                continue;
-
-            light_pdf   = 1.0f / solid_angle;
-            // no extra distance falloff, the 1/d^2 term is already baked into the solid-angle pdf
-            attenuation = 1.0f;
-        }
-        else if (is_point || is_spot)
-        {
-            float3 to_light = light.position - shading_pos;
-            light_dist      = length(to_light);
-            light_dir       = to_light / light_dist;
-            light_pdf       = 1.0f;
-
-            float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
-            attenuation = range_factor * range_factor / max(light_dist * light_dist, 0.01f);
-
-            if (is_spot)
-            {
-                float cos_angle = dot(-light_dir, light.direction);
-                float cos_outer = cos(light.angle);
-                float cos_inner = cos(light.angle * 0.8f);
-                attenuation *= saturate((cos_angle - cos_outer) / (cos_inner - cos_outer));
-            }
-        }
-        else
-        {
-            continue;
-        }
-
-        float n_dot_l = dot(shading_normal, light_dir);
-        if (n_dot_l <= 0.0f)
-            continue;
-
-        if (!trace_shadow_ray(ray_origin_light, light_dir, light_dist))
-            continue;
-
-        // rc uses lambert only so the stored nee stays view independent
-        float  brdf_pdf;
-        float3 brdf = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, light_dir, brdf_pdf, specular_blend);
-
-        // analytical lights are not in the bvh, single strategy mis weight of 1 is correct
-        float mis_weight = 1.0f;
-
-        float3 Li = light_color * light.intensity * attenuation;
-        total += brdf * Li * mis_weight / max(light_pdf, 1e-6f);
-    }
-
-    // environment probe (sun cone + cosine mixture sampling)
-    {
-        float2 env_xi = random_float2(seed);
-
-        float3 sun_dir       = float3(0, 1, 0);
-        float  sun_intensity = 0.0f;
-        float3 sun_color     = float3(1, 1, 1);
-        bool   has_sun       = false;
-        if (light_count > 0)
-        {
-            LightParameters primary_light = light_parameters[0];
-            if ((primary_light.flags & (1u << 0)) != 0 && primary_light.intensity > 0.0f)
-            {
-                sun_dir       = -primary_light.direction;
-                sun_intensity = primary_light.intensity;
-                sun_color     = primary_light.color.rgb;
-                has_sun       = true;
-            }
-        }
-
-        float sun_cos_max   = cos(SUN_CONE_HALF_ANGLE);
-        float sun_cone_pdf  = 1.0f / (2.0f * PI * (1.0f - sun_cos_max));
-        float sun_prob      = sun_sample_probability(has_sun, sun_intensity, sun_color, sun_cos_max);
-
-        float3 env_dir;
-        float  env_pdf_cos;
-        float  env_pdf_sun;
-        float  strategy_xi = random_float(seed);
-
-        if (has_sun && strategy_xi < sun_prob)
-        {
-            float phi     = 2.0f * PI * env_xi.x;
-            float cos_th  = lerp(sun_cos_max, 1.0f, env_xi.y);
-            float sin_th  = sqrt(max(0.0f, 1.0f - cos_th * cos_th));
-            float3 local  = float3(cos(phi) * sin_th, sin(phi) * sin_th, cos_th);
-            env_dir       = local_to_world(local, sun_dir);
-
-            float cos_to_sun = dot(env_dir, sun_dir);
-            env_pdf_sun = (cos_to_sun >= sun_cos_max) ? sun_cone_pdf : 0.0f;
-            env_pdf_cos = max(dot(env_dir, shading_normal), 0.0f) / PI;
-        }
-        else
-        {
-            float3 env_local = sample_cosine_hemisphere(env_xi, env_pdf_cos);
-            env_dir = local_to_world(env_local, shading_normal);
-
-            float cos_to_sun = has_sun ? dot(env_dir, sun_dir) : -1.0f;
-            env_pdf_sun = (has_sun && cos_to_sun >= sun_cos_max) ? sun_cone_pdf : 0.0f;
-        }
-
-        float env_pdf = (1.0f - sun_prob) * env_pdf_cos + sun_prob * env_pdf_sun;
-        float env_n_dot_l = dot(shading_normal, env_dir);
-
-        if (env_n_dot_l > 0.0f && env_pdf > RESTIR_MIN_PDF)
-        {
-            float probe_offset = compute_ray_offset(shading_pos);
-            RayDesc probe_ray;
-            probe_ray.Origin    = shading_pos + geometric_normal * probe_offset;
-            probe_ray.Direction = env_dir;
-            probe_ray.TMin      = probe_offset;
-            probe_ray.TMax      = 10000.0f;
-
-            RayQuery<RAY_FLAG_SKIP_CLOSEST_HIT_SHADER> probe_query;
-            probe_query.TraceRayInline(tlas, RAY_FLAG_NONE, 0xFF, probe_ray);
-            probe_query.Proceed();
-
-            if (probe_query.CommittedStatus() == COMMITTED_TRIANGLE_HIT)
-            {
-                uint probe_instance = probe_query.CommittedInstanceID();
-                MaterialParameters probe_mat = material_parameters[probe_instance];
-                float3 probe_emission = probe_emission_estimate(probe_mat);
-
-                if (luminance(probe_emission) > 0.0f)
-                {
-                    float  brdf_pdf_probe;
-                    float3 brdf_probe = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_probe, specular_blend);
-
-                    float mis_weight = power_heuristic(env_pdf, brdf_pdf_probe);
-                    total += brdf_probe * probe_emission * mis_weight / env_pdf;
-                }
-            }
-            else
-            {
-                float2 env_uv       = direction_sphere_uv(env_dir);
-                float3 env_radiance = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), env_uv, SKY_MIP_LEVEL).rgb;
-                env_radiance = clamp_sky_radiance(env_radiance);
-
-                float  brdf_pdf_env;
-                float3 brdf_env = evaluate_brdf(albedo, roughness, metallic, shading_normal, view_dir, env_dir, brdf_pdf_env, specular_blend);
-
-                float mis_weight_env = power_heuristic(env_pdf, brdf_pdf_env);
-                total += brdf_env * env_radiance * mis_weight_env / env_pdf;
-            }
-        }
-    }
-
-    return total;
-}
-
-// samples a sky color along a direction (used when a bounce misses geometry)
-float3 sample_sky(float3 dir)
-{
-    float2 uv = direction_sphere_uv(dir);
-    float3 sky = tex3.SampleLevel(GET_SAMPLER(sampler_trilinear_clamp), uv, SKY_MIP_LEVEL).rgb;
-    return clamp_sky_radiance(sky);
-}
+// sky_nee_pdf_at, direct_lighting_at_vertex and sample_sky live in restir_reservoir.hlsl,
+// shared with the replay shift so both evaluate the same integrand with the same rng draws
 
 // traces the suffix past rc with the rc bsdf factored out, lin 2022 5
 // throughput starts at 1/pdf_at_rc so the caller can re-multiply by f_rc at shift time
@@ -1022,7 +736,9 @@ void ray_gen()
     }
 
     // emissive triangle nee strategy, area sampling of the global emissive pool
-    // mis denominator balances with the brdf density at the same direction
+    // single strategy weight, while the pool is active brdf paths zero their rc emission in
+    // accumulate_subpath_at_rc so emtri is the only technique carrying this contribution,
+    // mixing in the brdf density here would shrink the weights and lose emissive energy
     for (uint ei = 0; ei < n_emtri_count; ei++)
     {
         float emtri_source_pdf;
@@ -1034,15 +750,7 @@ void ray_gen()
             float target_pdf = target_pdf_self(emtri_candidate, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
             if (target_pdf > 0.0f)
             {
-                float3 to_emtri    = emtri_candidate.rc_pos - pos_ws;
-                float3 emtri_dir   = normalize(to_emtri);
-                float  brdf_pdf_at = 0.0f;
-                evaluate_brdf(albedo, roughness, metallic, normal_ws, view_dir, emtri_dir, brdf_pdf_at, restir_primary_specular_blend(roughness));
-                float mix_pdf = n_emtri * emtri_source_pdf + n_brdf * brdf_pdf_at;
-                if (mix_pdf > 0.0f)
-                {
-                    emtri_weight = target_pdf / mix_pdf;
-                }
+                emtri_weight = target_pdf / (n_emtri * emtri_source_pdf);
             }
         }
 

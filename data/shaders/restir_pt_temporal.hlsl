@@ -44,6 +44,7 @@ bool is_temporal_sample_valid(
 {
     bool ok = evaluate_disocclusion(
         tex,
+        tex5,
         current_uv,
         prev_uv,
         current_pos,
@@ -97,7 +98,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
 
     uint seed = create_seed_for_pass(pixel, buffer_frame.frame, 1);
 
-    float target_cur = target_pdf_self(current.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
+    // own domain target from the initial pass finalize, same pixel and frame so re-evaluating
+    // would only reintroduce an evaluation path mismatch for replay carried samples
+    float target_cur = max(current.target_pdf, 0.0f);
 
     Reservoir combined   = create_empty_reservoir();
     combined.weight_sum  = 0.0f;
@@ -113,6 +116,7 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     float  target_temp          = 0.0f;
     float  jacobian_temp        = 0.0f;
     float  target_cur_at_temp   = 0.0f;
+    float  jacobian_cur_at_temp = 0.0f;
 
     if (is_temporal_sample_valid(uv, prev_uv, pos_ws, normal_ws, buffer_frame.resolution_render, temporal_confidence))
     {
@@ -182,9 +186,8 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
                             src_roughness,
                             src_metallic
                         );
-                        target_cur_at_temp = shift_c_to_t.ok
-                            ? target_scalar(shift_c_to_t.f_dst)
-                            : 0.0f;
+                        target_cur_at_temp   = shift_c_to_t.ok ? target_scalar(shift_c_to_t.f_dst) : 0.0f;
+                        jacobian_cur_at_temp = shift_c_to_t.ok ? shift_c_to_t.jacobian             : 0.0f;
 
                         have_temporal = (target_temp > 0.0f);
                     }
@@ -199,20 +202,27 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
         clamp_reservoir_M(temporal, get_restir_m_cap());
     }
 
-    // defensive pairwise mis with the temporal stream as the single neighbor
+    // defensive pairwise mis with the temporal stream as the single neighbor, lin 2022 5.2
+    // each share evaluates one sample under both techniques' densities, own domain target in
+    // the numerator, shifted target times the shift jacobian in the other denominator term
     float weight_cur = 0.0f;
     float weight_tmp = 0.0f;
 
     if (have_temporal)
     {
-        float pair_denom = max(current.M * target_cur_at_temp + temporal.M * target_temp, 1e-12f);
-        float canon_share = (current.M * target_cur_at_temp) / pair_denom;
-        float temp_share  = (temporal.M * target_temp)        / pair_denom;
+        // canonical sample x_c, own target vs the temporal technique's density at x_c
+        float canon_denom = current.M * target_cur + temporal.M * target_cur_at_temp * jacobian_cur_at_temp;
+        float canon_share = (canon_denom > 0.0f) ? (current.M * target_cur) / canon_denom : 1.0f;
+
+        // temporal sample x_t, own domain target stored in the reservoir from last frame
+        float target_temp_own = max(temporal.target_pdf, 0.0f);
+        float temp_denom      = temporal.M * target_temp_own + current.M * target_temp * jacobian_temp;
+        float temp_share      = (temp_denom > 0.0f) ? (temporal.M * target_temp_own) / temp_denom : 0.0f;
 
         float m_cur  = 0.5f * (1.0f + canon_share);
         float m_temp = 0.5f * temp_share;
 
-        // gris streaming weights, w = m_i * p_hat * jacobian * W, jacobian appears once here
+        // gris streaming weights, w = m_i * p_hat * jacobian * W
         weight_cur = (target_cur > 0.0f) ? (m_cur  * target_cur  * current.W)                : 0.0f;
         weight_tmp = (target_temp > 0.0f) ? (m_temp * target_temp * jacobian_temp * temporal.W) : 0.0f;
         weight_tmp = max(weight_tmp, 0.0f);
@@ -264,9 +274,9 @@ void main_cs(uint3 dispatch_id : SV_DispatchThreadID)
     }
 
     // finalize, W = weight_sum / target, no /M since the m_i factors are already normalized
-    float final_target = target_pdf_self(combined.sample, pos_ws, normal_ws, view_dir, albedo, roughness, metallic);
-    combined.target_pdf = final_target;
-    combined.W          = (final_target > 0.0f) ? (combined.weight_sum / final_target) : 0.0f;
+    // the selection time target is reused instead of a re-evaluation, for replay shifted
+    // samples the two evaluation paths differ slightly and a mismatched divide skews W
+    combined.W = (combined.target_pdf > 0.0f) ? (combined.weight_sum / combined.target_pdf) : 0.0f;
 
     // soft saturator, see soft_clamp_w in restir_reservoir.hlsl
     float w_clamp = get_w_clamp_for_sample(combined.sample);

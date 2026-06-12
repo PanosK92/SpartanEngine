@@ -439,6 +439,7 @@ namespace spartan
             at(render_targets, Renderer_RenderTarget::frame_render_opaque)         = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_color)               = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_normal)              = nullptr;
+            at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous)     = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_material)            = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_velocity)            = nullptr;
             at(render_targets, Renderer_RenderTarget::gbuffer_depth)               = nullptr;
@@ -525,6 +526,9 @@ namespace spartan
             // depth at prev_uv (the latter mistreats moving objects as disocclusion and is the
             // dominant cause of motion ghosting on the gi term)
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::D32_Float, flags, "gbuffer_depth_previous");
+            // previous frame normals for the same gate, sampling the current normal buffer at
+            // prev_uv reads a different surface whenever anything moved
+            at(render_targets, Renderer_RenderTarget::gbuffer_normal_previous) = make_shared<RHI_Texture>(rt_type, width_render, height_render, rt_layers, 1, RHI_Format::R16G16B16A16_Float, flags, "gbuffer_normal_previous");
 
             // hi-z occluders, amd depth format restrictions force a separate texture for uav and a manual blit
             at(render_targets, Renderer_RenderTarget::gbuffer_depth_occluders) = make_shared<RHI_Texture>(RHI_Texture_Type::Type2D, width_render, height_render, 1, 1, RHI_Format::D32_Float, RHI_Texture_Rtv | RHI_Texture_Srv, "depth_occluders");

@@ -510,6 +510,19 @@ namespace spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, depth_prev);
             }
 
+            // previous frame normals for the same gate
+            if (RHI_Texture* normal_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
+            {
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex5, normal_prev);
+            }
+
+            // skysphere on tex3 so the random replay shift sees the same sky the initial trace did
+            if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
+            {
+                tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+            }
+
             cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsUav::tex), tex_gi, rhi_all_mips, 0, true);
             // pipeline layout always declares the push constant range, vulkan validation requires
             // a vkCmdPushConstants call before every dispatch even when the shader does not read
@@ -567,6 +580,13 @@ namespace spartan
                 cmd_list->SetBuffer(Renderer_BindingsUav::geometry_info,      GetBuffer(Renderer_Buffer::GeometryInfo));
                 cmd_list->SetBuffer(Renderer_BindingsUav::emissive_triangles, GetBuffer(Renderer_Buffer::EmissiveTriangles));
 
+                // skysphere on tex3 so the random replay shift sees the same sky the initial trace did
+                if (RHI_Texture* tex_skysphere = GetRenderTarget(Renderer_RenderTarget::skysphere))
+                {
+                    tex_skysphere->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list);
+                    cmd_list->SetTexture(Renderer_BindingsSrv::tex3, tex_skysphere);
+                }
+
                 for (uint32_t i = 0; i < 6; i++)
                 {
                     cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, s.src[i]);
@@ -609,20 +629,28 @@ namespace spartan
         }
     }
 
-    // cpu only pointer swap between gbuffer_depth and gbuffer_depth_previous, must be called at
-    // frame end after every consumer of the current depth has finished recording, so the slot
-    // that just held this frame's depth becomes next frame's gbuffer_depth_previous and the slot
-    // with stale data becomes next frame's gbuffer_depth which the depth pass will overwrite,
-    // this avoids the queue compatibility issue of cmd blit on the compute queue and removes a
-    // full screen depth copy from the per frame cost
-    void Renderer::Pass_ReSTIR_SwapDepth()
+    // cpu only pointer swap between the current and previous gbuffer depth and normal slots,
+    // must be called at frame end after every consumer of the current targets has finished
+    // recording, so the slot that just held this frame's data becomes next frame's *_previous
+    // and the slot with stale data becomes next frame's current target which the gbuffer pass
+    // overwrites, this avoids the queue compatibility issue of cmd blit on the compute queue
+    // and removes two full screen copies from the per frame cost
+    void Renderer::Pass_ReSTIR_SwapGBufferHistory()
     {
         auto& render_targets = GetRenderTargets();
-        uint32_t idx_cur  = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_depth);
-        uint32_t idx_prev = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_depth_previous);
-        if (render_targets[idx_cur] && render_targets[idx_prev])
+
+        uint32_t idx_depth      = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_depth);
+        uint32_t idx_depth_prev = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_depth_previous);
+        if (render_targets[idx_depth] && render_targets[idx_depth_prev])
         {
-            swap(render_targets[idx_cur], render_targets[idx_prev]);
+            swap(render_targets[idx_depth], render_targets[idx_depth_prev]);
+        }
+
+        uint32_t idx_normal      = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_normal);
+        uint32_t idx_normal_prev = static_cast<uint32_t>(Renderer_RenderTarget::gbuffer_normal_previous);
+        if (render_targets[idx_normal] && render_targets[idx_normal_prev])
+        {
+            swap(render_targets[idx_normal], render_targets[idx_normal_prev]);
         }
     }
 
@@ -707,6 +735,12 @@ namespace spartan
             if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
             {
                 cmd_list->ClearTexture(depth_prev, Color::standard_white, 1.0f);
+            }
+
+            // zero normals make the disocclusion gate fail closed until real history exists
+            if (RHI_Texture* normal_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
+            {
+                cmd_list->ClearTexture(normal_prev, Color::standard_black);
             }
 
             m_pass_state.restir_reservoirs_initialized = true;
@@ -801,6 +835,11 @@ namespace spartan
             if (RHI_Texture* depth_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_depth_previous))
             {
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex4, depth_prev);
+            }
+            // previous frame normals on tex5 for the same disocclusion gate
+            if (RHI_Texture* normal_prev = GetRenderTarget(Renderer_RenderTarget::gbuffer_normal_previous))
+            {
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex5, normal_prev);
             }
             for (uint32_t i = 0; i < 6; i++)
                 cmd_list->SetTexture(static_cast<uint32_t>(Renderer_BindingsSrv::reservoir_prev0) + i, reservoirs[i]);

@@ -2695,11 +2695,11 @@ namespace spartan
 
         Pass_Text(cmd_list_graphics_present, rt_output);
 
-        // swap gbuffer_depth with gbuffer_depth_previous on the cpu, after this point any
-        // GetRenderTarget(gbuffer_depth) call resolves to the slot the next frame will overwrite
-        // and gbuffer_depth_previous resolves to the slot holding this frame's depth, which is
-        // exactly what restir's temporal validity gate needs to read next frame
-        Pass_ReSTIR_SwapDepth();
+        // swap the gbuffer depth and normal history slots on the cpu, after this point any
+        // GetRenderTarget(gbuffer_depth/normal) call resolves to the slot the next frame will
+        // overwrite and the *_previous slots resolve to this frame's data, which is exactly
+        // what restir's temporal validity gate needs to read next frame
+        Pass_ReSTIR_SwapGBufferHistory();
 
         // early transitions for next frame
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read, cmd_list_graphics_present);

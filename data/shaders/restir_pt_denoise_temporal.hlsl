@@ -186,11 +186,13 @@ float4 sample_history_edge_aware(float2 prev_uv, float3 current_normal, float cu
     return tex2.Load(int3(fallback_pixel, 0));
 }
 
-// history validity via the shared evaluate_disocclusion helper, previous depth is bound on tex4
+// history validity via the shared evaluate_disocclusion helper, previous depth is bound on
+// tex4 and previous normal on tex5
 bool is_history_valid(float2 current_uv, float2 prev_uv, float3 current_position, float3 current_normal, float current_depth, float2 history_resolution, out float confidence)
 {
     bool ok = evaluate_disocclusion(
         tex4,
+        tex5,
         current_uv,
         prev_uv,
         current_position,

@@ -323,6 +323,7 @@ namespace spartan
     {
         gbuffer_color,
         gbuffer_normal,
+        gbuffer_normal_previous,
         gbuffer_material,
         gbuffer_velocity,
         gbuffer_depth,
