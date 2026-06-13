@@ -29,6 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace spartan
 {
+    class RHI_Texture;
+
     enum class ParticlePreset : uint32_t
     {
         Custom,     // user-defined values
@@ -106,6 +108,11 @@ namespace spartan
         float GetEmissionRadius() const        { return m_emission_radius; }
         void SetEmissionRadius(float radius)   { m_emission_radius = radius; m_preset = ParticlePreset::Custom; }
 
+        // particle texture, sampled as a billboard mask when set, otherwise a procedural circle is used
+        RHI_Texture* GetTexture() const        { return m_texture; }
+        void SetTexture(RHI_Texture* texture)  { m_texture = texture; }
+        void SetTexture(const std::string& file_path);
+
     private:
         ParticlePreset m_preset    = ParticlePreset::Fire;
         uint32_t m_max_particles   = 10000;
@@ -118,5 +125,6 @@ namespace spartan
         Color m_end_color          = Color(1.0f, 0.2f, 0.0f, 0.0f);
         float m_gravity_modifier   = -1.0f;
         float m_emission_radius    = 0.5f;
+        RHI_Texture* m_texture     = nullptr; // owned by the resource cache
     };
 }

@@ -73,10 +73,10 @@ namespace
     int last_click_index  = -1;
 
     // asset download configuration
-    const char* assets_url          = "https://www.dropbox.com/scl/fi/8y6ye2r2i3cr7bmaoskkh/project.7z?rlkey=gwdfz646puucadxqmuuff76qi&dl=1";
+    const char* assets_url          = "https://www.dropbox.com/scl/fi/ct9qi6ea9sddoq6yqzyqj/project.7z?rlkey=0ceqlj1vuvgrlalrb8w0fvnqj&dl=1";
     const char* assets_destination  = "project/project.7z";
     const char* assets_extract_dir  = "project/";
-    const char* assets_expected_sha = "30b392fbd8274b067fae155acac762e5ee9472a767fc25ec94c9a7fe6c6f95d5";
+    const char* assets_expected_sha = "c8f6944c57f618034dbd475db6d4972be05835d2dc0191cc8dcb0ef6c0f4f0dd";
 
     void scan_directory_recursive(const string& directory)
     {

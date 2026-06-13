@@ -440,7 +440,8 @@ struct Particle
     SHARED_FLOAT4 color;                              // current rgba
     SHARED_FLOAT  size          SHARED_DEFAULT(0.0f); // current
     SHARED_UINT   emitter_index SHARED_DEFAULT(0);    // emitter that spawned this particle
-    SHARED_FLOAT2 padding;
+    SHARED_FLOAT  start_size    SHARED_DEFAULT(0.0f); // birth size, captured so later emitter changes do not resize live particles
+    SHARED_FLOAT  end_size      SHARED_DEFAULT(0.0f); // death size, captured for the same reason
 };
 
 // gpu emitter parameters

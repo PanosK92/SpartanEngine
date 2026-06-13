@@ -302,6 +302,9 @@ namespace spartan
             "SetAngle",                     &Light::SetAngle,
             "GetAngle",                     &Light::GetAngle,
 
+            "SetRange",                     &Light::SetRange,
+            "GetRange",                     &Light::GetRange,
+
             "SetAreaWidth",                 &Light::SetAreaWidth,
             "GetAreaWidth",                 &Light::GetAreaWidth,
             "SetAreaHeight",                &Light::SetAreaHeight,

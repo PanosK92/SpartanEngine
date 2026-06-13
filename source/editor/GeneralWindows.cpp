@@ -541,7 +541,9 @@ namespace
             { "V",               "Triangle / Y",     "Cycle Camera View"         },
             { "-",               "L1",               "Shift Down (Manual)"       },
             { "-",               "R1",               "Shift Up (Manual)"         },
-            { "-",               "Right Stick",      "Camera Orbit (Chase View)" }
+            { "-",               "Right Stick",      "Camera Orbit (Chase View)" },
+            { "L",               "D-Pad Up",         "Headlights (Off / Low / High)" },
+            { "Automatic",       "Automatic",        "Brake Lights (On Brake)"   }
         };
 
         // helper to render "Ctrl" + "S" as distinct visual styling elements

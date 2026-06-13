@@ -277,6 +277,27 @@ namespace ImGuiSp
         return nullptr;
     }
 
+    // drop target bound to an explicit screen rect, applies on mouse release to bypass imgui two frame delivery which can fail for custom targets
+    static DragDropPayload* receive_drag_drop_payload_rect(DragPayloadType type, const ImVec2& rect_min, const ImVec2& rect_max, ImGuiID id)
+    {
+        DragDropPayload* result = nullptr;
+
+        if (ImGui::BeginDragDropTargetCustom(ImRect(rect_min, rect_max), id))
+        {
+            const ImGuiPayload* payload_imgui = ImGui::AcceptDragDropPayload(GDragDropTypes[(int)type].data(),
+                ImGuiDragDropFlags_AcceptBeforeDelivery | ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
+
+            if (payload_imgui && payload_imgui->DataSize >= static_cast<int>(sizeof(DragDropPayload)) && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+            {
+                result = static_cast<DragDropPayload*>(payload_imgui->Data);
+            }
+
+            ImGui::EndDragDropTarget();
+        }
+
+        return result;
+    }
+
     // image slot - returns true if the user clicked on the slot (for browse functionality)
     static bool image_slot(spartan::RHI_Texture* texture_in, const std::function<void(spartan::RHI_Texture*)>& setter)
     {
@@ -318,16 +339,50 @@ namespace ImGuiSp
                 clicked_for_browse = true;
             }
 
-            // draw the image
-            ImVec4 color_tint   = (texture != nullptr) ? ImVec4(1, 1, 1, 1) : ImVec4(0, 0, 0, 0);
-            ImVec4 color_border = is_hovered ? ImVec4(0.4f, 0.6f, 1.0f, 1.0f) : ImVec4(1, 1, 1, 0.5f);
-            ImGui::SetCursorPos(pos_image);
-            image(texture, slot_size, color_tint, color_border);
+            // drop target bound to the explicit slot rect, this does not depend on the last item hovered rect status which can be stale
+            const ImVec2 drop_rect_min = screen_pos;
+            const ImVec2 drop_rect_max = ImVec2(screen_pos.x + slot_size.x, screen_pos.y + slot_size.y);
+            const ImGuiID drop_id      = ImGui::GetID("##slot_drop");
 
-            // drag source
-            if (texture != nullptr && ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+            if (auto payload = receive_drag_drop_payload_rect(DragPayloadType::Texture, drop_rect_min, drop_rect_max, drop_id))
             {
-                ImGui::EndDragDropSource();
+                if (payload->path[0] != '\0')
+                {
+                    if (const auto tex = spartan::ResourceCache::Load<spartan::RHI_Texture>(payload->path).get())
+                    {
+                        // load only produces a cpu texture, prepare it for the gpu so the slot and material can display it
+                        tex->PrepareForGpu();
+                        setter(tex);
+                        SP_LOG_INFO("image_slot: assigned texture '%s'", payload->path);
+                    }
+                    else
+                    {
+                        SP_LOG_WARNING("image_slot: failed to load texture '%s'", payload->path);
+                    }
+                }
+            }
+
+            // draw the slot, an empty slot is a dark grey placeholder, a filled slot shows the texture
+            ImVec2 rect_min     = screen_pos;
+            ImVec2 rect_max     = ImVec2(screen_pos.x + slot_size.x, screen_pos.y + slot_size.y);
+            ImU32 border_col    = is_hovered ? IM_COL32(102, 153, 255, 255) : IM_COL32(255, 255, 255, 128);
+            if (texture != nullptr)
+            {
+                ImVec4 color_border = is_hovered ? ImVec4(0.4f, 0.6f, 1.0f, 1.0f) : ImVec4(1, 1, 1, 0.5f);
+                ImGui::SetCursorPos(pos_image);
+                image(texture, slot_size, ImVec4(1, 1, 1, 1), color_border);
+
+                // drag source
+                if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+                {
+                    ImGui::EndDragDropSource();
+                }
+            }
+            else
+            {
+                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                draw_list->AddRectFilled(rect_min, rect_max, IM_COL32(30, 30, 30, 255));
+                draw_list->AddRect(rect_min, rect_max, border_col);
             }
 
             // draw x button (visual only - click handled above)
@@ -348,18 +403,6 @@ namespace ImGuiSp
             }
         }
         ImGui::EndGroup();
-
-        // drop target
-        if (auto payload = receive_drag_drop_payload(DragPayloadType::Texture))
-        {
-            if (payload->path[0] != '\0')
-            {
-                if (const auto tex = spartan::ResourceCache::Load<spartan::RHI_Texture>(payload->path).get())
-                {
-                    setter(tex);
-                }
-            }
-        }
 
         return clicked_for_browse;
     }

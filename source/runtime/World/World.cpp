@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "Components/Physics.h"
 #include "../Physics/PhysicsWorld.h"
+#include "../Input/Input.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
@@ -325,6 +326,42 @@ namespace spartan
                 "Inside",       Intersection::Inside,
                 "Intersects",   Intersection::Intersects
                 );
+
+            lua_state.new_enum("KeyCode",
+                "F1", KeyCode::F1, "F2", KeyCode::F2, "F3", KeyCode::F3, "F4", KeyCode::F4, "F5", KeyCode::F5,
+                "F6", KeyCode::F6, "F7", KeyCode::F7, "F8", KeyCode::F8, "F9", KeyCode::F9, "F10", KeyCode::F10,
+                "F11", KeyCode::F11, "F12", KeyCode::F12,
+                "Alpha0", KeyCode::Alpha0, "Alpha1", KeyCode::Alpha1, "Alpha2", KeyCode::Alpha2, "Alpha3", KeyCode::Alpha3,
+                "Alpha4", KeyCode::Alpha4, "Alpha5", KeyCode::Alpha5, "Alpha6", KeyCode::Alpha6, "Alpha7", KeyCode::Alpha7,
+                "Alpha8", KeyCode::Alpha8, "Alpha9", KeyCode::Alpha9,
+                "Q", KeyCode::Q, "W", KeyCode::W, "E", KeyCode::E, "R", KeyCode::R, "T", KeyCode::T, "Y", KeyCode::Y,
+                "U", KeyCode::U, "I", KeyCode::I, "O", KeyCode::O, "P", KeyCode::P, "A", KeyCode::A, "S", KeyCode::S,
+                "D", KeyCode::D, "F", KeyCode::F, "G", KeyCode::G, "H", KeyCode::H, "J", KeyCode::J, "K", KeyCode::K,
+                "L", KeyCode::L, "Z", KeyCode::Z, "X", KeyCode::X, "C", KeyCode::C, "V", KeyCode::V, "B", KeyCode::B,
+                "N", KeyCode::N, "M", KeyCode::M,
+                "Esc", KeyCode::Esc, "Tab", KeyCode::Tab,
+                "Shift_Left", KeyCode::Shift_Left, "Shift_Right", KeyCode::Shift_Right,
+                "Ctrl_Left", KeyCode::Ctrl_Left, "Ctrl_Right", KeyCode::Ctrl_Right,
+                "Alt_Left", KeyCode::Alt_Left, "Alt_Right", KeyCode::Alt_Right,
+                "Space", KeyCode::Space, "CapsLock", KeyCode::CapsLock, "Backspace", KeyCode::Backspace,
+                "Enter", KeyCode::Enter, "Delete", KeyCode::Delete,
+                "Arrow_Left", KeyCode::Arrow_Left, "Arrow_Right", KeyCode::Arrow_Right,
+                "Arrow_Up", KeyCode::Arrow_Up, "Arrow_Down", KeyCode::Arrow_Down,
+                "Page_Up", KeyCode::Page_Up, "Page_Down", KeyCode::Page_Down,
+                "Home", KeyCode::Home, "End", KeyCode::End, "Insert", KeyCode::Insert,
+                "Click_Left", KeyCode::Click_Left, "Click_Middle", KeyCode::Click_Middle, "Click_Right", KeyCode::Click_Right,
+                "DPad_Up", KeyCode::DPad_Up, "DPad_Down", KeyCode::DPad_Down, "DPad_Left", KeyCode::DPad_Left, "DPad_Right", KeyCode::DPad_Right,
+                "Button_South", KeyCode::Button_South, "Button_East", KeyCode::Button_East,
+                "Button_West", KeyCode::Button_West, "Button_North", KeyCode::Button_North,
+                "Back", KeyCode::Back, "Guide", KeyCode::Guide, "Start", KeyCode::Start,
+                "Left_Stick", KeyCode::Left_Stick, "Right_Stick", KeyCode::Right_Stick,
+                "Left_Shoulder", KeyCode::Left_Shoulder, "Right_Shoulder", KeyCode::Right_Shoulder
+                );
+
+            sol::table InputTable = lua_state.create_named_table("Input");
+            InputTable["GetKey"]     = &Input::GetKey;
+            InputTable["GetKeyDown"] = &Input::GetKeyDown;
+            InputTable["GetKeyUp"]   = &Input::GetKeyUp;
 
             lua_state.new_usertype<BoundingBox>("BoundingBox",
                 sol::call_constructor,      sol::constructors<BoundingBox(), BoundingBox(Vector3, Vector3)>(),
@@ -916,6 +953,9 @@ namespace spartan
         {
             was_loading = false;
             ProcessPendingAdditions();
+            // force a resolve so the final entity state, deferred script setup like the sun, is rebuilt into the
+            // renderer caches, a static world such as empty would otherwise stay on the last unlit loading frame
+            resolve = true;
             SP_FIRE_EVENT(EventType::WorldLoaded);
         }
 

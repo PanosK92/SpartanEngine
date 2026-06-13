@@ -710,8 +710,13 @@ namespace spartan
         // barrier: simulate -> render
         cmd_list->InsertBarrier(buf_a);
 
-        // render
+        // render, one dispatch per emitter so each can splat with its own texture as a billboard mask
+        RHI_Texture* tex_white = GetStandardTexture(Renderer_StandardTexture::White);
+        for (uint32_t i = 0; i < emitter_count; i++)
         {
+            RHI_Texture* tex_particle = emitters[i]->GetTexture();
+            bool has_texture          = tex_particle != nullptr;
+
             RHI_PipelineState pso;
             pso.name             = "particle_render";
             pso.shaders[Compute] = shader_render;
@@ -722,6 +727,11 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::frame_render));
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, has_texture ? tex_particle : tex_white);
+
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(i), has_texture ? 1.0f : 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
             cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
 

@@ -72,18 +72,26 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // random position within emission sphere
     float3 offset = random_in_sphere(seed) * emitter.radius;
 
-    // random direction for velocity
+    // bias the launch upward and outward so the smoke billows off the tire instead of firing in every direction
     float3 dir = random_direction(seed + 277803737u);
+    dir.y      = abs(dir.y) * 0.7 + 0.3;
+    dir        = normalize(dir);
+
+    // per-particle jitter so no two puffs share size, lifetime or speed, this breaks up the uniform blob look
+    float r_size  = 0.6 + 0.8 * rng(seed + 9001u);
+    float r_life  = 0.7 + 0.6 * rng(seed + 33u);
+    float r_speed = 0.5 + 1.0 * rng(seed + 7u);
 
     Particle p;
     p.position     = emitter.position + offset;
-    p.lifetime     = emitter.lifetime;
-    p.velocity     = dir * emitter.start_speed;
-    p.max_lifetime = emitter.lifetime;
+    p.lifetime     = emitter.lifetime * r_life;
+    p.velocity     = dir * emitter.start_speed * r_speed;
+    p.max_lifetime = p.lifetime;
     p.color         = emitter.start_color;
-    p.size          = emitter.start_size;
+    p.size          = emitter.start_size * r_size;
     p.emitter_index = emitter_index;
-    p.padding       = float2(0.0, 0.0);
+    p.start_size    = emitter.start_size * r_size;
+    p.end_size      = emitter.end_size * r_size;
 
     particle_buffer_a[slot] = p;
 }
@@ -119,6 +127,17 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // integrate gravity
     p.velocity.y += emitter.gravity_modifier * 9.81 * dt;
+
+    // air drag, smoke loses its launch momentum quickly and settles instead of flying in a straight line
+    p.velocity *= saturate(1.0 - 1.2 * dt);
+
+    // curl-like turbulence so the plume swirls and billows organically rather than expanding as a clean ball
+    float  ts   = (float)buffer_frame.time;
+    float3 tp   = p.position * 1.5;
+    float3 turb = float3(sin(tp.y + ts * 1.3) + cos(tp.z * 0.7 - ts),
+                         sin(tp.z + ts * 1.1) + cos(tp.x * 0.8 + ts),
+                         sin(tp.x + ts * 0.9) + cos(tp.y * 0.6 - ts));
+    p.velocity += turb * 0.3 * dt;
 
     // predict next position
     float3 new_pos = p.position + p.velocity * dt;
@@ -186,9 +205,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // normalized age: 0 = just born, 1 = about to die
     float t = 1.0 - saturate(p.lifetime / p.max_lifetime);
 
-    // interpolate color and size over lifetime
-    p.color = lerp(emitter.start_color, emitter.end_color, t);
-    p.size  = lerp(emitter.start_size, emitter.end_size, t);
+    // interpolate color over lifetime, size grows with an ease-out curve so the puff expands fast at birth
+    // then settles, size uses the particle's own birth values so emitter changes never resize live particles
+    float te = 1.0 - (1.0 - t) * (1.0 - t);
+    p.color  = lerp(emitter.start_color, emitter.end_color, t);
+    p.size   = lerp(p.start_size, p.end_size, te);
 
     particle_buffer_a[index] = p;
 }
@@ -198,6 +219,8 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
+    uint  emitter_index = (uint)pass_get_f3_value().x;
+    bool  use_texture   = pass_get_f3_value().y > 0.5;
     EmitterParams emitter = particle_emitter[0];
     if (emitter.emitter_count == 0)
         return;
@@ -210,6 +233,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
     // skip dead or invisible particles
     if (p.lifetime <= 0.0 || p.max_lifetime <= 0.0 || p.color.a <= 0.0)
+        return;
+
+    // this dispatch only renders the particles spawned by the current emitter
+    if (p.emitter_index != emitter_index)
         return;
 
     // project to clip space
@@ -241,7 +268,18 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     if ((center_scene - linear_particle) < -0.1)
         return;
 
-    float base_alpha = p.color.a;
+    // per-particle orientation so overlapping sprites stop reading as the same repeated shape, plus a
+    // slow spin over life so the plume keeps churning instead of looking frozen
+    float age_t    = 1.0 - saturate(p.lifetime / p.max_lifetime);
+    float base_ang = rng(index * 2654435761u) * 6.28318530718;
+    float spin     = (rng(index * 40503u + 13u) * 2.0 - 1.0) * 1.2;
+    float ang      = base_ang + spin * age_t;
+    float sin_a    = sin(ang);
+    float cos_a    = cos(ang);
+
+    // soft fade-in over the first slice of life removes the hard pop when a particle is born
+    float fade_in    = saturate(age_t / 0.2);
+    float base_alpha = p.color.a * fade_in;
     if (base_alpha <= 0.001)
         return;
 
@@ -265,9 +303,24 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
             float depth_diff  = pixel_scene - linear_particle;
             float soft_factor = saturate(depth_diff * 20.0);
 
-            // smooth radial falloff
-            float falloff      = 1.0 - dist * dist;
-            float3 contribution = p.color.rgb * base_alpha * soft_factor * falloff;
+            // soft radial falloff keeps every particle a soft disc so the texture quad never shows as a square
+            float falloff = 1.0 - dist * dist;
+
+            // additive: rgb is the smoke color and alpha is the coverage, so transparent texels add
+            // nothing, the procedural circle is used when no texture is set
+            float3 contribution;
+            if (use_texture)
+            {
+                // rotate the sample coords around the sprite center so each particle shows the texture at its own angle
+                float2 r_xy   = float2(x * cos_a - y * sin_a, x * sin_a + y * cos_a);
+                float2 tex_uv = r_xy / max(1.0, (float)radius_px) * 0.5 + 0.5;
+                float4 sample = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), tex_uv, 0);
+                contribution  = p.color.rgb * sample.rgb * sample.a * base_alpha * soft_factor * falloff;
+            }
+            else
+            {
+                contribution  = p.color.rgb * base_alpha * falloff * soft_factor;
+            }
 
             tex_uav[coord] += float4(contribution, 0.0);
         }

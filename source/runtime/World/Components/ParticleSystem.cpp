@@ -23,6 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "ParticleSystem.h"
 #include "../Entity.h"
+#include "../../RHI/RHI_Texture.h"
+#include "../../Resource/ResourceCache.h"
 SP_WARNINGS_OFF
 #include <sol/sol.hpp>
 #include "../IO/pugixml.hpp"
@@ -277,6 +279,18 @@ namespace spartan
         }
     }
 
+    void ParticleSystem::SetTexture(const string& file_path)
+    {
+        if (file_path.empty())
+        {
+            m_texture = nullptr;
+            return;
+        }
+
+        // the cache owns the texture, we keep a raw pointer
+        m_texture = ResourceCache::Load<RHI_Texture>(file_path, RHI_Texture_Srv).get();
+    }
+
     void ParticleSystem::Save(pugi::xml_node& node)
     {
         node.append_attribute("preset")          = static_cast<uint32_t>(m_preset);
@@ -296,6 +310,7 @@ namespace spartan
         node.append_attribute("end_color_a")     = m_end_color.a;
         node.append_attribute("gravity_modifier") = m_gravity_modifier;
         node.append_attribute("emission_radius") = m_emission_radius;
+        node.append_attribute("texture_path")    = m_texture ? m_texture->GetResourceFilePath().c_str() : "";
     }
 
     void ParticleSystem::Load(pugi::xml_node& node)
@@ -317,6 +332,12 @@ namespace spartan
         m_end_color.a     = node.attribute("end_color_a").as_float(0.0f);
         m_gravity_modifier = node.attribute("gravity_modifier").as_float(-1.0f);
         m_emission_radius = node.attribute("emission_radius").as_float(0.5f);
+
+        string texture_path = node.attribute("texture_path").as_string("");
+        if (!texture_path.empty())
+        {
+            SetTexture(texture_path);
+        }
     }
 
     void ParticleSystem::RegisterForScripting(sol::state_view state)

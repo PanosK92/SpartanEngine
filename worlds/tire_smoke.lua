@@ -7,6 +7,8 @@ local slip_threshold     = 0.3   -- combined slip where slide smoke starts, skid
 local slip_range         = 0.8   -- slip span over which smoke ramps to full
 local intensity_floor    = 0.35  -- minimum visible puff once a wheel triggers
 local max_emission_rate  = 900.0 -- particles per second at full intensity
+local start_size_full    = 0.15  -- birth size in meters at full intensity
+local end_size_full      = 1.2   -- death size in meters at full intensity
 
 local function clamp(value, low, high)
     if value < low then
@@ -85,6 +87,11 @@ function tire_smoke.Tick(self, entity)
             end
 
             wheel.emitter:SetEmissionRate(intensity * max_emission_rate)
+
+            -- scale the puff with intensity so light slip makes small wisps and heavy slip makes big plumes
+            local size_scale = clamp(intensity, 0.0, 1.0)
+            wheel.emitter:SetStartSize(start_size_full * size_scale)
+            wheel.emitter:SetEndSize(end_size_full * size_scale)
         end
     end
 end

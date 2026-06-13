@@ -1655,6 +1655,8 @@ void Properties::ShowMaterial(Material* material, Render* renderable) const
                             {
                                 if (const auto tex = ResourceCache::Load<RHI_Texture>(path).get())
                                 {
+                                    // load only produces a cpu texture, prepare it for the gpu so the slot and material can display it
+                                    tex->PrepareForGpu();
                                     setter(tex);
                                 }
                             }
@@ -2897,6 +2899,30 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         if (property_float("End Size", &end_size, 0.01f, 0.0f, 10.0f, "particle size at death in meters", "%.3f m"))
         {
             particle_system->SetEndSize(end_size);
+        }
+
+        layout::group_spacing();
+
+        // texture, used as the billboard mask, falls back to a procedural circle when unset
+        {
+            auto texture_setter = [particle_system](spartan::RHI_Texture* texture)
+            {
+                particle_system->SetTexture(texture);
+            };
+
+            spartan::RHI_Texture* texture = particle_system->GetTexture();
+            ImGui::TextUnformatted("Texture");
+            ImGui::SameLine();
+            if (ImGuiSp::image_slot(texture, texture_setter))
+            {
+                file_selection::open([particle_system](const std::string& path)
+                {
+                    if (FileSystem::IsSupportedImageFile(path))
+                    {
+                        particle_system->SetTexture(path);
+                    }
+                });
+            }
         }
 
         layout::group_spacing();
