@@ -901,11 +901,23 @@ namespace spartan
             }
         }
 
-        // osd hint, sits just above the driver hud so it stays visible
+        // osd controls cheat sheet, top left as tidy rows, each row reads action then keyboard or mouse then gamepad
         if (m_is_occupied)
         {
-            Renderer::DrawString("R2: Gas | L2: Brake | O: Handbrake | Triangle: View | L1/R1: Shift | X: Reset | R3 or C: Recenter Camera",
-                               math::Vector2(0.005f, 0.82f));
+            Renderer::DrawString(
+                "CONTROLS   key / mouse  >  gamepad\n"
+                "Gas\tUp\tR2\n"
+                "Brake\tDown\tL2\n"
+                "Steer\tL/R\tLStick\n"
+                "Hbrk\tSpace\tCircle\n"
+                "Shift\t-\tL1/R1\n"
+                "Light\tL\tDpadUp\n"
+                "View\tV\tTri\n"
+                "ReCam\tC\tR3\n"
+                "Look\tRClk\tRStick\n"
+                "Reset\tR\tCross\n"
+                "Exit\tE\tSquare",
+                math::Vector2(0.006f, 0.03f));
         }
     }
 
