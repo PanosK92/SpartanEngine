@@ -155,20 +155,47 @@ namespace spartan
                     Callback(Child);
                 }
             },
+            "ForEachDescendant", [](Entity* Self, const sol::function& Callback)
+            {
+                std::vector<Entity*> descendants;
+                Self->GetDescendants(&descendants);
+                for (Entity* descendant : descendants)
+                {
+                    Callback(descendant);
+                }
+            },
+            "GetDescendants", [](Entity* Self) -> sol::table
+            {
+                sol::state_view lua = World::GetLuaState();
+                sol::table result   = lua.create_table();
+                std::vector<Entity*> descendants;
+                Self->GetDescendants(&descendants);
+                for (size_t i = 0; i < descendants.size(); i++)
+                {
+                    result[i + 1] = descendants[i];
+                }
+                return result;
+            },
 
             "GetAllComponents",         &Entity::GetAllComponents,
             "GetComponentCount",        &Entity::GetComponentCount,
             "GetName",                  &Entity::GetObjectName,
+            "SetName",                  &Entity::SetObjectName,
             "GetObjectSize",            &Entity::GetObjectSize,
             "GetObjectID",              &Entity::GetObjectId,
 
+            "Clone",                    &Entity::Clone,
             "IsActive",                 &Entity::IsActive,
+            "GetActive",                &Entity::GetActive,
+            "SetActive",                &Entity::SetActive,
             "GetChildren",              &Entity::GetChildren,
             "HasChildren",              &Entity::HasChildren,
+            "SetParent",                &Entity::SetParent,
             "GetParent",                &Entity::GetParent,
             "GetChildByName",           &Entity::GetChildByName,
             "GetChildByIndex",          &Entity::GetChildByIndex,
             "GetChildrenCount",         &Entity::GetChildrenCount,
+            "GetDescendantByName",      &Entity::GetDescendantByName,
             "IsDescendantOf",           &Entity::IsDescendantOf,
 
             "Translate",                &Entity::Translate,

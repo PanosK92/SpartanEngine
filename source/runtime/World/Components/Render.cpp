@@ -271,10 +271,41 @@ namespace spartan
 
     void Render::RegisterForScripting(sol::state_view State)
     {
+        State.new_enum("MeshType",
+            "Cube",     MeshType::Cube,
+            "Quad",     MeshType::Quad,
+            "Sphere",   MeshType::Sphere,
+            "Cylinder", MeshType::Cylinder,
+            "Cone",     MeshType::Cone,
+            "Max",      MeshType::Max
+        );
+
+        State.new_enum("RenderableFlags",
+            "CastsShadows",          RenderableFlags::CastsShadows,
+            "ExcludeFromRayTracing", RenderableFlags::ExcludeFromRayTracing
+        );
+
         State.new_usertype<Render>("Renderable",
             sol::base_classes,              sol::bases<Component>(),
             "GetMaterialName",              &Render::GetMaterialName,
-            "GetBoundingBox",               &Render::GetBoundingBox
+            "GetBoundingBox",               &Render::GetBoundingBox,
+            "GetMaterial",                  &Render::GetMaterial,
+            "SetMesh", sol::overload(
+                [](Render& self, Mesh* mesh)                          { self.SetMesh(mesh); },
+                [](Render& self, Mesh* mesh, uint32_t sub_mesh_index) { self.SetMesh(mesh, sub_mesh_index); },
+                [](Render& self, MeshType type)                       { self.SetMesh(type); }
+            ),
+            "SetMaterial",                  [](Render& self, std::shared_ptr<Material> material)
+            {
+                if (material)
+                {
+                    self.SetMaterial(material);
+                }
+            },
+            "SetDefaultMaterial",           &Render::SetDefaultMaterial,
+            "SetMaxRenderDistance",         &Render::SetMaxRenderDistance,
+            "SetMaxShadowDistance",         &Render::SetMaxShadowDistance,
+            "SetFlag", [](Render& self, RenderableFlags flag, bool enable) { self.SetFlag(flag, enable); }
         );
     }
 

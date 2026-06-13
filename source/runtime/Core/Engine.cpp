@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/Import/ModelImporter.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Display/Display.h"
-#include "../Game/Game.h"
 #include "../Memory/Allocator.h"
 #include "../Testing/SmokeTest.h"
 #include "../RHI/RHI_Device.h"
@@ -109,8 +108,6 @@ namespace spartan
 
     void Engine::Shutdown()
     {
-        Game::Shutdown();
-
         // the thread pool can hold state from other systems
         // so shut it down first (it waits) to avoid crashes due to race conditions
         ThreadPool::Shutdown();

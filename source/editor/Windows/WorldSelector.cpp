@@ -28,8 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/ImGui_Style.h"
 #include "../Widgets/Viewport.h"
 #include "Core/ProgressTracker.h"
-#include "Game/Game.h"
-#include "RHI/RHI_Device.h"
 //===================================
 
 //= NAMESPACES =====
@@ -40,29 +38,9 @@ namespace
 {
     Editor* editor = nullptr;
 
-    // default worlds (built-in, created programmatically via Game.cpp)
-    struct DefaultWorldEntry
-    {
-        const char* name;
-        const char* description;
-        const char* status;      // wip, prototype, complete
-        const char* performance; // light, moderate, demanding
-        uint32_t vram;           // min vram requirement in megabytes
-    };
-
-    const DefaultWorldEntry default_worlds[] =
-    {
-        { "Open World Forest", "256 million of Ghost of Tsushima grass blades",                      "Prototype", "Very demanding", 5600 },
-        { "Sponza 4K",         "High-resolution textures & meshes",                                  "Complete" , "Demanding",      2600 },
-        { "Light Test",        "Cornell box, material ball, light, camera, floor",                   "Complete" , "Light",          2100 },
-        { "Empty",             "Light, camera, floor",                                               "Complete" , "Light",          2100 }
-    };
-    constexpr int default_world_count = sizeof(default_worlds) / sizeof(default_worlds[0]);
-
     // discovered world files from disk
     vector<spartan::WorldMetadata> world_files;
-    int selected_index             = 0;
-    bool is_default_world_selected = true;
+    int selected_index = 0;
 
     // visibility states
     bool visible_download_prompt  = false;
@@ -91,9 +69,8 @@ namespace
     ImGuiTextFilter search_filter;
 
     // double-click timing
-    float last_click_time       = -1.0f;
-    int last_click_index        = -1;
-    bool last_click_was_default = true;
+    float last_click_time = -1.0f;
+    int last_click_index  = -1;
 
     // asset download configuration
     const char* assets_url          = "https://www.dropbox.com/scl/fi/8y6ye2r2i3cr7bmaoskkh/project.7z?rlkey=gwdfz646puucadxqmuuff76qi&dl=1";
@@ -294,220 +271,12 @@ namespace
 
     void load_selected_world()
     {
-        if (is_default_world_selected)
-        {
-            WorldPreviews::RequestGeneration(static_cast<spartan::DefaultWorld>(selected_index));
-            spartan::Game::Load(static_cast<spartan::DefaultWorld>(selected_index));
-        }
-        else if (selected_index >= 0 && selected_index < static_cast<int>(world_files.size()))
+        if (selected_index >= 0 && selected_index < static_cast<int>(world_files.size()))
         {
             WorldPreviews::RequestGeneration(world_files[selected_index].file_path);
             spartan::World::LoadFromFile(world_files[selected_index].file_path);
         }
         visible_world_list = false;
-    }
-
-    ImU32 get_status_color(const char* status)
-    {
-        if (strcmp(status, "Complete") == 0)
-        {
-            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_ok);
-        }
-        if (strcmp(status, "Prototype") == 0)
-        {
-            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_warning);
-        }
-        return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_info);
-    }
-
-    ImU32 get_performance_color(const char* performance)
-    {
-        if (strcmp(performance, "Light") == 0)
-        {
-            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_ok);
-        }
-        if (strcmp(performance, "Demanding") == 0)
-        {
-            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_warning);
-        }
-        if (strcmp(performance, "Very demanding") == 0)
-        {
-            return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_error);
-        }
-        return ImGui::ColorConvertFloat4ToU32(ImGui::Style::color_info);
-    }
-
-    int render_card_grid_default_worlds(float card_w, float card_h, float content_width, int col)
-    {
-        int columns = max(1, static_cast<int>((content_width + card_spacing) / (card_w + card_spacing)));
-
-        for (int i = 0; i < default_world_count; i++)
-        {
-            if (!search_filter.PassFilter(default_worlds[i].name))
-            {
-                continue;
-            }
-
-            if (col > 0)
-            {
-                ImGui::SameLine(0, card_spacing);
-            }
-
-            ImGui::PushID(i);
-
-            ImVec2 screen_pos = ImGui::GetCursorScreenPos();
-            ImVec2 card_min   = screen_pos;
-            ImVec2 card_max   = ImVec2(screen_pos.x + card_w, screen_pos.y + card_h);
-
-            ImGui::InvisibleButton("##card", ImVec2(card_w, card_h));
-            bool is_hovered  = ImGui::IsItemHovered();
-            bool is_selected = is_default_world_selected && (selected_index == i);
-
-            // selection and double-click
-            if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-            {
-                float now = static_cast<float>(ImGui::GetTime());
-                if (last_click_index == i && last_click_was_default && (now - last_click_time) < 0.4f)
-                {
-                    selected_index            = i;
-                    is_default_world_selected = true;
-                    load_selected_world();
-                    ImGui::PopID();
-                    return col;
-                }
-                last_click_time           = now;
-                last_click_index          = i;
-                last_click_was_default    = true;
-                selected_index            = i;
-                is_default_world_selected = true;
-            }
-
-            ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-            // shadow on hover/selection
-            if (is_hovered || is_selected)
-            {
-                draw_list->AddRectFilled(
-                    ImVec2(card_min.x + 2, card_min.y + 2),
-                    ImVec2(card_max.x + 2, card_max.y + 2),
-                    col_shadow, card_rounding
-                );
-            }
-
-            // card background
-            ImU32 bg = is_selected ? col_card_bg_selected : (is_hovered ? col_card_bg_hover : col_card_bg);
-            draw_list->AddRectFilled(card_min, card_max, bg, card_rounding);
-
-            // card border
-            if (is_selected)
-            {
-                draw_list->AddRect(card_min, card_max, col_card_border_accent, card_rounding, 2.0f);
-            }
-            else if (is_hovered)
-            {
-                draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 1.0f);
-            }
-
-            // world icon centered in the upper portion
-            float icon_area_h = card_h * 0.45f;
-            float icon_size   = icon_area_h * 0.6f;
-            spartan::RHI_Texture* preview_tex = WorldPreviews::GetTexture(static_cast<spartan::DefaultWorld>(i));
-            const spartan::Icon& world_icon   = spartan::ResourceCache::GetIcon(spartan::IconType::World);
-            spartan::RHI_Texture* icon_tex    = preview_tex ? preview_tex : world_icon.texture;
-            ImVec2 icon_uv0 = preview_tex ? ImVec2(0, 0) : ImVec2(world_icon.uv_min.x, world_icon.uv_min.y);
-            ImVec2 icon_uv1 = preview_tex ? ImVec2(1, 1) : ImVec2(world_icon.uv_max.x, world_icon.uv_max.y);
-            if (icon_tex)
-            {
-                if (preview_tex)
-                {
-                    float image_x = card_min.x + card_padding;
-                    float image_y = card_min.y + card_padding;
-                    float image_w = card_w - card_padding * 2.0f;
-                    float image_h = icon_area_h - card_padding * 0.5f;
-
-                    draw_list->AddImage(
-                        reinterpret_cast<ImTextureID>(icon_tex),
-                        ImVec2(image_x, image_y),
-                        ImVec2(image_x + image_w, image_y + image_h),
-                        ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, 255)
-                    );
-                }
-                else
-                {
-                    float icon_x = card_min.x + (card_w - icon_size) * 0.5f;
-                    float icon_y = card_min.y + card_padding + (icon_area_h - icon_size) * 0.5f;
-
-                    // vram warning: tint the icon red if system vram is insufficient
-                    uint64_t system_vram = spartan::RHI_Device::MemoryGetTotalMb();
-                    ImU32 icon_tint = (system_vram < default_worlds[i].vram)
-                        ? IM_COL32(255, 100, 100, 220)
-                        : IM_COL32(255, 255, 255, 200);
-
-                    draw_list->AddImage(
-                        reinterpret_cast<ImTextureID>(icon_tex),
-                        ImVec2(icon_x, icon_y),
-                        ImVec2(icon_x + icon_size, icon_y + icon_size),
-                        icon_uv0, icon_uv1, icon_tint
-                    );
-                }
-            }
-
-            // world name centered below icon area (smaller font)
-            float small_font_size = ImGui::GetFontSize() * 0.85f;
-            float text_y = card_min.y + card_padding + icon_area_h + 4.0f;
-            {
-                const char* name  = default_worlds[i].name;
-                ImVec2 name_size  = ImGui::GetFont()->CalcTextSizeA(small_font_size, FLT_MAX, 0.0f, name);
-                float label_max_w = card_w - card_padding * 2;
-                float label_x     = card_min.x + (card_w - min(name_size.x, label_max_w)) * 0.5f;
-
-                draw_list->AddText(ImGui::GetFont(), small_font_size, ImVec2(label_x, text_y), ImGui::GetColorU32(ImGuiCol_Text), name);
-            }
-
-            // performance indicator below name (smaller font)
-            {
-                const char* perf = default_worlds[i].performance;
-                ImVec2 perf_size = ImGui::GetFont()->CalcTextSizeA(small_font_size, FLT_MAX, 0.0f, perf);
-                float perf_y     = text_y + small_font_size + 3.0f;
-                float perf_x     = card_min.x + (card_w - perf_size.x) * 0.5f;
-                ImU32 perf_col   = get_performance_color(perf);
-
-                draw_list->AddText(ImGui::GetFont(), small_font_size, ImVec2(perf_x, perf_y), perf_col, perf);
-            }
-
-            // status strip at the bottom of the card (full width)
-            {
-                const char* status      = default_worlds[i].status;
-                float strip_font_size   = ImGui::GetFontSize() * 0.8f;
-                ImVec2 status_text_size = ImGui::GetFont()->CalcTextSizeA(strip_font_size, FLT_MAX, 0.0f, status);
-                float strip_h           = status_text_size.y + 6.0f;
-                float strip_y           = card_max.y - strip_h;
-
-                ImU32 strip_col = get_status_color(status);
-                draw_list->AddRectFilled(
-                    ImVec2(card_min.x, strip_y),
-                    card_max,
-                    strip_col,
-                    card_rounding,
-                    ImDrawFlags_RoundCornersBottom
-                );
-
-                float text_x = card_min.x + (card_w - status_text_size.x) * 0.5f;
-                float text_y_strip = strip_y + (strip_h - status_text_size.y) * 0.5f;
-                draw_list->AddText(ImGui::GetFont(), strip_font_size, ImVec2(text_x, text_y_strip), IM_COL32(0, 0, 0, 255), status);
-            }
-
-
-            ImGui::PopID();
-
-            col++;
-            if (col >= columns)
-            {
-                col = 0;
-            }
-        }
-
-        return col;
     }
 
     void render_card_grid_world_files(float card_w, float card_h, float content_width, int col)
@@ -526,7 +295,7 @@ namespace
                 ImGui::SameLine(0, card_spacing);
             }
 
-            ImGui::PushID(default_world_count + i);
+            ImGui::PushID(i);
 
             ImVec2 screen_pos = ImGui::GetCursorScreenPos();
             ImVec2 card_min   = screen_pos;
@@ -534,24 +303,21 @@ namespace
 
             ImGui::InvisibleButton("##card", ImVec2(card_w, card_h));
             bool is_hovered  = ImGui::IsItemHovered();
-            bool is_selected = !is_default_world_selected && (selected_index == i);
+            bool is_selected = selected_index == i;
 
             if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
             {
                 float now = static_cast<float>(ImGui::GetTime());
-                if (last_click_index == i && !last_click_was_default && (now - last_click_time) < 0.4f)
+                if (last_click_index == i && (now - last_click_time) < 0.4f)
                 {
-                    selected_index            = i;
-                    is_default_world_selected = false;
+                    selected_index = i;
                     load_selected_world();
                     ImGui::PopID();
                     return;
                 }
-                last_click_time        = now;
-                last_click_index       = i;
-                last_click_was_default = false;
-                selected_index            = i;
-                is_default_world_selected = false;
+                last_click_time  = now;
+                last_click_index = i;
+                selected_index   = i;
             }
 
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -572,7 +338,7 @@ namespace
             {
                 draw_list->AddRect(card_min, card_max, col_card_border_accent, card_rounding, 2.0f);
             }
-            else if (is_hovered)
+            else
             {
                 draw_list->AddRect(card_min, card_max, col_card_border, card_rounding, 1.0f);
             }
@@ -649,9 +415,16 @@ namespace
                 );
             }
 
-            // status strip at the bottom (full width)
+            // status strip at the bottom (full width), only the forest world is a work in progress
+            bool is_work_in_progress = false;
             {
-                const char* status      = "XML";
+                string lowercase_name = world_files[i].name;
+                transform(lowercase_name.begin(), lowercase_name.end(), lowercase_name.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
+                is_work_in_progress = lowercase_name.find("forest") != string::npos;
+            }
+            if (is_work_in_progress)
+            {
+                const char* status      = "work in progress";
                 float strip_font_size   = ImGui::GetFontSize() * 0.8f;
                 ImVec2 status_text_size = ImGui::GetFont()->CalcTextSizeA(strip_font_size, FLT_MAX, 0.0f, status);
                 float strip_h           = status_text_size.y + 6.0f;
@@ -699,10 +472,10 @@ namespace
         float dpi = spartan::Window::GetDpiScale();
 
         // update card colors from current style
-        col_card_bg            = ImGui::ColorConvertFloat4ToU32(ImVec4(0.12f, 0.12f, 0.13f, 1.0f));
-        col_card_bg_hover      = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.18f, 0.20f, 1.0f));
-        col_card_bg_selected   = ImGui::ColorConvertFloat4ToU32(ImVec4(0.15f, 0.25f, 0.35f, 1.0f));
-        col_card_border        = ImGui::ColorConvertFloat4ToU32(ImVec4(0.25f, 0.25f, 0.28f, 1.0f));
+        col_card_bg            = ImGui::ColorConvertFloat4ToU32(ImVec4(0.22f, 0.22f, 0.24f, 1.0f));
+        col_card_bg_hover      = ImGui::ColorConvertFloat4ToU32(ImVec4(0.28f, 0.28f, 0.31f, 1.0f));
+        col_card_bg_selected   = ImGui::ColorConvertFloat4ToU32(ImVec4(0.18f, 0.30f, 0.42f, 1.0f));
+        col_card_border        = ImGui::ColorConvertFloat4ToU32(ImVec4(0.38f, 0.38f, 0.42f, 1.0f));
         col_card_border_accent = ImGui::ColorConvertFloat4ToU32(ImGui::GetStyle().Colors[ImGuiCol_CheckMark]);
         col_shadow             = IM_COL32(0, 0, 0, 50);
 
@@ -755,16 +528,10 @@ namespace
             ImGui::BeginChild("##card_grid", ImVec2(0, grid_height), false);
             {
                 float grid_w = ImGui::GetContentRegionAvail().x;
-                int col = 0;
-
-                if (default_world_count > 0)
-                {
-                    col = render_card_grid_default_worlds(card_w, card_h, grid_w, 0);
-                }
 
                 if (!world_files.empty())
                 {
-                    render_card_grid_world_files(card_w, card_h, grid_w, col);
+                    render_card_grid_world_files(card_w, card_h, grid_w, 0);
                 }
             }
             ImGui::EndChild();
@@ -774,31 +541,7 @@ namespace
             {
                 ImGui::PushTextWrapPos(0.0f);
 
-                if (is_default_world_selected && selected_index >= 0 && selected_index < default_world_count)
-                {
-                    const DefaultWorldEntry& w = default_worlds[selected_index];
-
-                    ImGui::Text("%s", w.name);
-                    ImGui::SameLine();
-                    ImGui::TextDisabled("|");
-                    ImGui::SameLine();
-                    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(get_status_color(w.status)), "%s", w.status);
-                    ImGui::SameLine();
-                    ImGui::TextDisabled("|");
-                    ImGui::SameLine();
-                    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(get_performance_color(w.performance)), "%s", w.performance);
-                    ImGui::SameLine();
-                    ImGui::TextDisabled("|");
-                    ImGui::SameLine();
-
-                    uint64_t system_vram_mb = spartan::RHI_Device::MemoryGetTotalMb();
-                    bool vram_ok            = system_vram_mb >= w.vram;
-                    ImVec4 vram_color       = vram_ok ? ImGui::Style::color_info : ImGui::Style::color_error;
-                    ImGui::TextColored(vram_color, "%u MB VRAM (System: %llu MB)", w.vram, system_vram_mb);
-
-                    ImGui::TextWrapped("%s", w.description);
-                }
-                else if (!is_default_world_selected && selected_index >= 0 && selected_index < static_cast<int>(world_files.size()))
+                if (selected_index >= 0 && selected_index < static_cast<int>(world_files.size()))
                 {
                     const spartan::WorldMetadata& w = world_files[selected_index];
 
@@ -902,6 +645,5 @@ void WorldSelector::SetVisible(bool visibility)
     {
         scan_for_world_files();
         selected_index = 0;
-        is_default_world_selected = true;
     }
 }

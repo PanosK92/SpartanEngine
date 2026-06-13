@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<World name="forest" description="A vast procedural forest with terrain, water and gpu grass">
+ <ConsoleVariables>
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="physics_body_camera" id="1004000000000000001" active="true" position="-1476 17.9 1490" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.8" restitution="0.1" is_static="false" is_kinematic="false" body_type="6" />
+   <Entity name="component_camera" id="1004000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
+    <camera aperture="11" shutter_speed="0.00800000038" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="17" />
+    <script file_path="../worlds/footsteps.lua" />
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="1004000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="../worlds/sun.lua" preset="david_lynch" volumetric="true" override_rotation="true" rot_pitch="9.07" rot_yaw="-122.84" rot_roll="180" />
+  </Entity>
+  <Entity name="forest_builder" id="1004000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="../worlds/forest.lua" />
+  </Entity>
+ </Entities>
+</World>

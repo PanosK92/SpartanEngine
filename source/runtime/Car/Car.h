@@ -68,6 +68,9 @@ namespace spartan
         // create car from prefab xml node (for world loading)
         static Entity* CreatePrefab(pugi::xml_node& node, Entity* parent);
 
+        // registers the built in prefabs owned by the car module
+        static void RegisterPrefabs();
+
         // global lifecycle (tick happens automatically through entity system)
         static void ShutdownAll();
         static std::vector<Car*>& GetAll();

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================
 #include "../Math/BoundingBox.h"
 #include <string>
+#include <functional>
 #include <sol/forward.hpp>
 //==============================
 
@@ -55,6 +56,13 @@ namespace spartan
         // entities
         static sol::state_view GetLuaState();
         static Entity* CreateEntity();
+
+        // deferred script initialization
+        // during a bulk world load entities load across the thread pool, lua is single threaded so script
+        // initialization is queued here and executed sequentially on the load thread once all entities exist
+        static bool IsDeferringScriptInit();
+        static void AddDeferredScriptInit(std::function<void()>&& init);
+
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(Entity* entity);
         static void RemoveEntityImmediate(Entity* entity);

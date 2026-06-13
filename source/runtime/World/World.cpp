@@ -24,7 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World.h"
 #include "Entity.h"
 #include "Prefab.h"
-#include "../Game/Game.h"
+#include "WorldHelpers.h"
+#include "../Car/Car.h"
 #include "../Profiling/Profiler.h"
 #include "../Core/ProgressTracker.h"
 #include "../Core/ThreadPool.h"
@@ -66,6 +67,11 @@ namespace spartan
         // entities created by workers but not yet drained into the live entities vector, the main thread drains this every tick
         // workers may still be configuring components for these, the renderer tolerates partial state via skip checks
         vector<Entity*> entities_pending;
+        // deferred script initialization, lua is single threaded so script init is collected during the parallel
+        // entity load and executed sequentially on the load thread once every entity exists
+        atomic<bool> defer_script_init = false;
+        mutex script_init_mutex;
+        vector<function<void()>> script_inits_pending;
         set<uint64_t> pending_remove;
         uint32_t audio_source_count = 0;
         atomic<bool> resolve        = false;
@@ -300,6 +306,7 @@ namespace spartan
             Physics         ::RegisterForScripting(state_view);
             Light           ::RegisterForScripting(state_view);
             ParticleSystem  ::RegisterForScripting(state_view);
+            WorldHelpers    ::RegisterForScripting(state_view);
 
             lua_state.new_enum("ComponentType",
                 "AudioSource",              ComponentType::AudioSource,
@@ -354,6 +361,11 @@ namespace spartan
             WorldTable["GetWind"]                   = &World::GetWind;
             WorldTable["SetWind"]                   = &World::SetWind;
             WorldTable["GetDirectionalLight"]       = &World::GetDirectionalLight;
+            WorldTable["GetCameraEntity"]           = []() -> Entity*
+            {
+                Camera* camera = World::GetCamera();
+                return camera ? camera->GetEntity() : nullptr;
+            };
             WorldTable["Raycast"] = [](const Vector3& origin, const Vector3& direction, float max_distance) -> sol::object
             {
                 Vector3 hit_position;
@@ -657,7 +669,10 @@ namespace spartan
                 "x", &Quaternion::x,
                 "y", &Quaternion::y,
                 "z", &Quaternion::z,
-                "w", &Quaternion::w
+                "w", &Quaternion::w,
+
+                "FromEulerAngles", [](float pitch, float yaw, float roll) { return Quaternion::FromEulerAngles(pitch, yaw, roll); },
+                "Identity",        sol::var(Quaternion::Identity)
             );
 
 
@@ -779,6 +794,8 @@ namespace spartan
     void World::Shutdown()
     {
         Engine::SetFlag(EngineMode::Playing, false); // stop simulation
+        Renderer::DisableProceduralGrass();          // drop renderer references to builder owned grass mesh/material
+        WorldHelpers::Clear();                        // release long lived builder meshes and materials
         Renderer::DestroyAccelerationStructures();   // destroy tlas/blas before clearing resources
         ResourceCache::Shutdown();                   // release all resources (textures, materials, meshes, etc)n
 
@@ -819,7 +836,7 @@ namespace spartan
     void World::Tick()
     {
         // loading can happen in the background, but the renderer still wants to see whatever entities the loader has already published
-        // do a load-time tick, drain published entities, run normal component ticks, rebuild caches; skip Game::Tick and simulated world time
+        // do a load-time tick, drain published entities, run normal component ticks, rebuild caches; skip simulated world time
         if (ProgressTracker::IsLoading())
         {
             SP_PROFILE_CPU();
@@ -1092,7 +1109,6 @@ namespace spartan
         if (Engine::IsFlagSet(EngineMode::Playing) && !Engine::IsFlagSet(EngineMode::Paused))
         {
             world_time::tick();
-            Game::Tick();
         }
     }
 
@@ -1202,7 +1218,7 @@ namespace spartan
     bool World::LoadFromFile(const string& file_path_)
     {
         // ensure prefabs are registered before loading
-        Game::RegisterPrefabs();
+        Car::RegisterPrefabs();
 
         // shutdown synchronously before async loading
         Shutdown();
@@ -1384,6 +1400,13 @@ namespace spartan
                 uint32_t entity_count = static_cast<uint32_t>(entity_nodes.size());
                 ProgressTracker::GetProgress(ProgressType::World).Start(entity_count, "Loading entities...");
 
+                // defer script lua execution, lua is single threaded and cannot run across the worker threads below
+                {
+                    lock_guard lock(script_init_mutex);
+                    script_inits_pending.clear();
+                }
+                defer_script_init.store(true, memory_order_release);
+
                 // load root entities in parallel, each created entity is auto-drained into the renderer on the next World::Tick
                 ThreadPool::ParallelLoop([&entity_nodes](uint32_t start, uint32_t end)
                 {
@@ -1394,6 +1417,22 @@ namespace spartan
                         ProgressTracker::GetProgress(ProgressType::World).JobDone();
                     }
                 }, entity_count);
+
+                // every entity now exists, run the queued script initialization sequentially on this thread
+                // builder scripts get the full thread pool for their own parallel work and lua stays single threaded
+                defer_script_init.store(false, memory_order_release);
+                {
+                    vector<function<void()>> inits;
+                    {
+                        lock_guard lock(script_init_mutex);
+                        inits.swap(script_inits_pending);
+                    }
+
+                    for (function<void()>& init : inits)
+                    {
+                        init();
+                    }
+                }
             }
 
             // report time
@@ -1420,6 +1459,17 @@ namespace spartan
         mark_entity_changed(entity->GetObjectId(), EntityChange::Components); // new entity requires resolve
 
         return entity;
+    }
+
+    bool World::IsDeferringScriptInit()
+    {
+        return defer_script_init.load(memory_order_acquire);
+    }
+
+    void World::AddDeferredScriptInit(function<void()>&& init)
+    {
+        lock_guard lock(script_init_mutex);
+        script_inits_pending.emplace_back(std::move(init));
     }
 
     bool World::EntityExists(Entity* entity)

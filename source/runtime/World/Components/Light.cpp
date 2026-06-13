@@ -262,6 +262,23 @@ namespace spartan
             "Lumens",                   LightIntensityUnit::Lumens
         );
 
+        State.new_enum("LightFlags",
+            "Shadows",                  LightFlags::Shadows,
+            "ShadowsScreenSpace",       LightFlags::ShadowsScreenSpace,
+            "Volumetric",               LightFlags::Volumetric,
+            "DayNightCycle",            LightFlags::DayNightCycle,
+            "RealTimeCycle",            LightFlags::RealTimeCycle
+        );
+
+        State.new_enum("LightPreset",
+            "dawn",                     LightPreset::dawn,
+            "day",                      LightPreset::day,
+            "dusk",                     LightPreset::dusk,
+            "night",                    LightPreset::night,
+            "david_lynch",              LightPreset::david_lynch,
+            "custom",                   LightPreset::custom
+        );
+
 
         State.new_usertype<Light>("Light",
             sol::base_classes,              sol::bases<Component>(),
@@ -303,6 +320,11 @@ namespace spartan
 
             "GetLightType",                 &Light::GetLightType,
             "SetLightType",                 &Light::SetLightType,
+
+            "SetFlag",                      [](Light& Self, LightFlags flag, bool enable) { Self.SetFlag(flag, enable); },
+            "GetFlag",                      &Light::GetFlag,
+            "SetPreset",                    &Light::SetPreset,
+            "GetPreset",                    &Light::GetPreset,
 
             "NeedsSkysphereUpdate",         &Light::NeedsSkysphereUpdate,
             "GetSliceCount",                &Light::GetSliceCount,

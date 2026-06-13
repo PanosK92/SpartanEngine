@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/Physics.h"
+#include "../World/Prefab.h"
 #include "../IO/pugixml.hpp"
 //==========================================
 
@@ -44,10 +45,11 @@ namespace spartan
     // static member initialization
     std::vector<Car*> Car::s_cars;
 
-    // external references from game state (defined in Game.cpp)
-    extern Entity* default_camera;
-    extern Entity* default_car;
-    extern Entity* default_car_window;
+    // entities shared with other files (external linkage required)
+    // resolved lazily on world load, see the camera discovery in Tick
+    Entity* default_camera     = nullptr;
+    Entity* default_car        = nullptr;
+    Entity* default_car_window = nullptr;
 
     Car* Car::Create(const Config& config)
     {
@@ -125,6 +127,11 @@ namespace spartan
 
         s_cars.push_back(car);
         return car;
+    }
+
+    void Car::RegisterPrefabs()
+    {
+        Prefab::Register("car", Car::CreatePrefab);
     }
 
     Entity* Car::CreatePrefab(pugi::xml_node& node, Entity* parent)

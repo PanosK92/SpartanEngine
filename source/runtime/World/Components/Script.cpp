@@ -180,6 +180,23 @@ void Script::Save(pugi::xml_node& node)
 
 void Script::Load(pugi::xml_node& node)
 {
+    // during a bulk world load entities load across the thread pool, lua is single threaded so the actual
+    // script execution is queued and run sequentially on the load thread once all entities exist
+    if (World::IsDeferringScriptInit())
+    {
+        pugi::xml_node node_copy = node; // lightweight handle, stays valid until the load task finishes
+        World::AddDeferredScriptInit([this, node_copy]() mutable
+        {
+            LoadInternal(node_copy);
+        });
+        return;
+    }
+
+    LoadInternal(node);
+}
+
+void Script::LoadInternal(pugi::xml_node& node)
+{
     file_path        = node.attribute("file_path").as_string("N/A");
     LoadScriptFile(file_path);
 
@@ -209,6 +226,18 @@ void Script::Load(pugi::xml_node& node)
             else if (value.is<std::string>())
             {
                 script[key_name] = attr.as_string();
+            }
+        }
+
+        // run the load-time builder hook now that the script file and its properties are in place
+        sol::protected_function InitializeFunction = script["Initialize"];
+        if (InitializeFunction.valid())
+        {
+            sol::protected_function_result Result = InitializeFunction(script, GetEntity());
+            if (!Result.valid())
+            {
+                sol::error Error = Result;
+                SP_LOG_ERROR("[LUA SCRIPT ERROR] - %s", Error.what())
             }
         }
 

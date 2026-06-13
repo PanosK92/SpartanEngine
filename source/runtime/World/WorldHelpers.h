@@ -21,31 +21,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+//= INCLUDES ===============
+#include <sol/forward.hpp>
+//==========================
+
 namespace spartan
 {
-    enum class DefaultWorld
-    {
-        Forest,
-        Sponza,
-        Test,
-        Empty,
-        Max
-    };
+    class Entity;
 
-    class Game
+    // engine side helpers exposed to the lua world builder scripts
+    // these wrap the heavy multithreaded construction that used to live in game.cpp
+    class WorldHelpers
     {
     public:
-        // called once on world shutdown
-        static void Shutdown();
+        // registers material, resource cache, renderer grass, geometry buffer and forest helpers with the lua state
+        static void RegisterForScripting(sol::state_view state);
 
-        // called every frame in play mode
-        static void Tick();
+        // builds the procedural forest world, terrain, water, props and gpu grass
+        static void BuildForest(Entity* builder_entity);
 
-        // load a default world
-        static void Load(DefaultWorld default_world);
-        static DefaultWorld GetLoadedWorld();
-
-        // register game prefabs (called automatically before world loading)
-        static void RegisterPrefabs();
+        // releases the long lived meshes and materials owned by the builders, called from world shutdown
+        static void Clear();
     };
 }

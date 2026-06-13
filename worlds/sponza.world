@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<World name="sponza" description="The classic Sponza atrium with curtains and ivy">
+ <ConsoleVariables>
+  <Variable name="r.grid" value="0.000000" />
+ </ConsoleVariables>
+ <Entities>
+  <Entity name="physics_body_camera" id="1003000000000000001" active="true" position="19.2692 2.65 0.1677" rotation="0 0 0 1" scale="1 1 1">
+   <physics mass="1" friction="1" friction_rolling="0.8" restitution="0.1" is_static="false" is_kinematic="false" body_type="6" />
+   <Entity name="component_camera" id="1003000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
+    <camera aperture="11" shutter_speed="0.00800000038" iso="100" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" flags="17" />
+   </Entity>
+  </Entity>
+  <Entity name="light_directional" id="1003000000000000003" active="true" position="0 2 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="../worlds/sun.lua" preset="dusk" volumetric="false" override_rotation="true" rot_pitch="75" rot_yaw="180" rot_roll="180" />
+  </Entity>
+  <Entity name="music" id="1003000000000000004" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <audio_source path="project/music/jake_chudnow_olive.wav" is_3d="false" mute="false" loop="true" play_on_start="true" volume="1" pitch="1" />
+  </Entity>
+  <Entity name="floor" id="1003000000000000005" active="true" position="0 0.1 0" rotation="0 0 0 1" scale="1000 1 1000">
+   <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" body_type="2" />
+   <render mesh_name="standard_quad" sub_mesh_index="0" material_name="" material_default="true" flags="1" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
+    <Instances />
+   </render>
+  </Entity>
+  <Entity name="builder" id="1003000000000000006" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
+   <script file_path="../worlds/sponza.lua" />
+  </Entity>
+ </Entities>
+</World>

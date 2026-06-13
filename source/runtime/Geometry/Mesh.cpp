@@ -54,12 +54,25 @@ namespace spartan
 
     void Mesh::RegisterForScripting(sol::state_view State)
     {
+        State.new_enum("MeshFlags",
+            "ImportRemoveRedundantData",       MeshFlags::ImportRemoveRedundantData,
+            "ImportLights",                    MeshFlags::ImportLights,
+            "ImportCombineMeshes",             MeshFlags::ImportCombineMeshes,
+            "ImportGenerateSmoothNormals",     MeshFlags::ImportGenerateSmoothNormals,
+            "PostProcessNormalizeScale",       MeshFlags::PostProcessNormalizeScale,
+            "PostProcessOptimize",             MeshFlags::PostProcessOptimize,
+            "PostProcessGenerateLods",         MeshFlags::PostProcessGenerateLods,
+            "PostProcessPreserveTerrainEdges", MeshFlags::PostProcessPreserveTerrainEdges
+        );
+
         State.new_usertype<Mesh>("Mesh",
             "SaveToFile",               &Mesh::SaveToFile,
             "LoadFromFile",             &Mesh::LoadFromFile,
             "Clear",                    &Mesh::Clear,
             "GetVertexCount",           &Mesh::GetVertexCount,
-            "GetIndexCount",            &Mesh::GetIndexCount
+            "GetIndexCount",            &Mesh::GetIndexCount,
+            "GetRootEntity",            &Mesh::GetRootEntity,
+            "GetDefaultFlags",          &Mesh::GetDefaultFlags
             );
     }
 

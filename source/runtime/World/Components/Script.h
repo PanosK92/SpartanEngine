@@ -29,5 +29,8 @@ namespace spartan
         std::string file_path;
         sol::table  script;
 
+    private:
+        // loads the script file, applies serialized properties and runs the lua initialize and load hooks
+        void LoadInternal(pugi::xml_node& node);
     };
 }

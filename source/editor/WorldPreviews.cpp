@@ -22,14 +22,12 @@ namespace
     enum class preview_request_type
     {
         none,
-        default_world,
         world_file
     };
 
     struct preview_request_state
     {
         preview_request_type type = preview_request_type::none;
-        spartan::DefaultWorld default_world = spartan::DefaultWorld::Max;
         string world_file_path;
         string preview_path;
         bool waiting_for_load_start = false;
@@ -44,7 +42,6 @@ namespace
     void clear_request()
     {
         preview_request.type                  = preview_request_type::none;
-        preview_request.default_world         = spartan::DefaultWorld::Max;
         preview_request.world_file_path.clear();
         preview_request.preview_path.clear();
         preview_request.waiting_for_load_start  = false;
@@ -130,27 +127,10 @@ namespace
         return spartan::FileSystem::Exists(directory) || spartan::FileSystem::CreateDirectory_(directory);
     }
 
-    const char* get_default_world_name(spartan::DefaultWorld default_world)
-    {
-        switch (default_world)
-        {
-            case spartan::DefaultWorld::Forest:   return "forest";
-            case spartan::DefaultWorld::Sponza:   return "sponza";
-            case spartan::DefaultWorld::Test:     return "test";
-            case spartan::DefaultWorld::Empty:    return "empty";
-            case spartan::DefaultWorld::Max:      return "unknown";
-        }
-
-        return "unknown";
-    }
-
     bool is_current_request_world_loaded()
     {
         switch (preview_request.type)
         {
-            case preview_request_type::default_world:
-                return spartan::Game::GetLoadedWorld() == preview_request.default_world;
-
             case preview_request_type::world_file:
                 return normalize_path(spartan::World::GetFilePath()) == normalize_path(preview_request.world_file_path);
 
@@ -227,7 +207,7 @@ namespace
         return texture.get();
     }
 
-    void begin_request(preview_request_type type, const string& preview_path, const string& world_file_path = "", spartan::DefaultWorld default_world = spartan::DefaultWorld::Max)
+    void begin_request(preview_request_type type, const string& preview_path, const string& world_file_path = "")
     {
         clear_request();
 
@@ -244,7 +224,6 @@ namespace
         preview_request.type                  = type;
         preview_request.preview_path          = preview_path;
         preview_request.world_file_path       = world_file_path;
-        preview_request.default_world         = default_world;
         preview_request.waiting_for_load_start  = !spartan::ProgressTracker::IsLoading();
         preview_request.waiting_for_load_finish = !preview_request.waiting_for_load_start;
         preview_request.capture_delay_remaining_sec = 0.0;
@@ -352,19 +331,9 @@ void WorldPreviews::Shutdown()
     preview_textures.clear();
 }
 
-void WorldPreviews::RequestGeneration(spartan::DefaultWorld default_world)
-{
-    begin_request(preview_request_type::default_world, GetPreviewPath(default_world), "", default_world);
-}
-
 void WorldPreviews::RequestGeneration(const string& world_file_path)
 {
     begin_request(preview_request_type::world_file, GetPreviewPath(world_file_path), normalize_path(world_file_path));
-}
-
-string WorldPreviews::GetPreviewPath(spartan::DefaultWorld default_world)
-{
-    return get_preview_directory() + "/default_" + get_default_world_name(default_world) + ".png";
 }
 
 string WorldPreviews::GetPreviewPath(const string& world_file_path)
@@ -374,11 +343,6 @@ string WorldPreviews::GetPreviewPath(const string& world_file_path)
     const string world_hash      = to_hex_string(compute_hash_fnv1a(normalized_path));
 
     return get_preview_directory() + "/world_" + world_name + "_" + world_hash + ".png";
-}
-
-spartan::RHI_Texture* WorldPreviews::GetTexture(spartan::DefaultWorld default_world)
-{
-    return get_texture(GetPreviewPath(default_world));
 }
 
 spartan::RHI_Texture* WorldPreviews::GetTexture(const string& world_file_path)

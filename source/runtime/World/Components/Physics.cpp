@@ -804,7 +804,9 @@ namespace spartan
             "IsGrounded",                   &Physics::IsGrounded,
             "GetGroundEntity",              &Physics::GetGroundEntity,
             "GetBodyType",                  &Physics::GetBodyType,
-            "IsStatic",                     &Physics::IsStatic
+            "SetBodyType",                  &Physics::SetBodyType,
+            "IsStatic",                     &Physics::IsStatic,
+            "SetStatic",                    &Physics::SetStatic
             );
 
     }
