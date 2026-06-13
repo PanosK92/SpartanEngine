@@ -583,7 +583,8 @@ namespace spartan
 
     void Renderer::Pass_Particles(RHI_CommandList* cmd_list)
     {
-        ParticleSystem* active_emitter = nullptr;
+        // gather every active emitter in the world, all of them share one ring buffer
+        vector<ParticleSystem*> emitters;
         for (Entity* entity : World::GetEntities())
         {
             if (!entity || !entity->GetActive())
@@ -593,12 +594,11 @@ namespace spartan
 
             if (ParticleSystem* ps = entity->GetComponent<ParticleSystem>())
             {
-                active_emitter = ps;
-                break; // for now, support a single emitter
+                emitters.push_back(ps);
             }
         }
 
-        if (!active_emitter)
+        if (emitters.empty())
         {
             return;
         }
@@ -621,37 +621,58 @@ namespace spartan
             return;
         }
 
-        // clamp to buffer capacity to avoid out-of-bounds dispatch
-        uint32_t buffer_capacity = static_cast<uint32_t>(buf_a->GetObjectSize() / sizeof(Sb_Particle));
-        uint32_t max_particles   = std::min(active_emitter->GetMaxParticles(), buffer_capacity);
+        // clamp the emitter count to the emitter buffer capacity
+        uint32_t emitter_capacity = static_cast<uint32_t>(buf_emitter->GetObjectSize() / sizeof(Sb_EmitterParams));
+        uint32_t emitter_count    = std::min(static_cast<uint32_t>(emitters.size()), emitter_capacity);
 
-        Sb_EmitterParams emitter_params = {};
-        emitter_params.position         = active_emitter->GetEntity()->GetPosition();
-        emitter_params.emission_rate    = active_emitter->GetEmissionRate();
-        emitter_params.lifetime         = active_emitter->GetLifetime();
-        emitter_params.start_speed      = active_emitter->GetStartSpeed();
-        emitter_params.start_size       = active_emitter->GetStartSize();
-        emitter_params.end_size         = active_emitter->GetEndSize();
-        emitter_params.start_color      = active_emitter->GetStartColor();
-        emitter_params.end_color        = active_emitter->GetEndColor();
-        emitter_params.gravity_modifier = active_emitter->GetGravityModifier();
-        emitter_params.radius           = active_emitter->GetEmissionRadius();
-        emitter_params.delta_time       = m_cb_frame_cpu.delta_time;
-        emitter_params.max_particles    = max_particles;
-        emitter_params.frame            = m_cb_frame_cpu.frame;
-        emitter_params.emitter_count    = 1;
+        // the ring buffer is shared, each particle records its emitter so simulate applies the right look
+        uint32_t buffer_capacity = static_cast<uint32_t>(buf_a->GetObjectSize() / sizeof(Sb_Particle));
+        uint32_t total_particles = 0;
+        for (uint32_t i = 0; i < emitter_count; i++)
+        {
+            total_particles += emitters[i]->GetMaxParticles();
+        }
+        total_particles = std::min(total_particles, buffer_capacity);
+
+        // one params entry per emitter, the ring size and frame data are shared so every entry carries the same copy
+        vector<Sb_EmitterParams> emitter_params(emitter_count);
+        for (uint32_t i = 0; i < emitter_count; i++)
+        {
+            ParticleSystem* emitter = emitters[i];
+
+            Sb_EmitterParams& params = emitter_params[i];
+            params.position         = emitter->GetEntity()->GetPosition();
+            params.emission_rate    = emitter->GetEmissionRate();
+            params.lifetime         = emitter->GetLifetime();
+            params.start_speed      = emitter->GetStartSpeed();
+            params.start_size       = emitter->GetStartSize();
+            params.end_size         = emitter->GetEndSize();
+            params.start_color      = emitter->GetStartColor();
+            params.end_color        = emitter->GetEndColor();
+            params.gravity_modifier = emitter->GetGravityModifier();
+            params.radius           = emitter->GetEmissionRadius();
+            params.delta_time       = m_cb_frame_cpu.delta_time;
+            params.max_particles    = total_particles;
+            params.frame            = m_cb_frame_cpu.frame;
+            params.emitter_count    = emitter_count;
+        }
 
         buf_emitter->ResetOffset();
-        buf_emitter->Update(cmd_list, &emitter_params, sizeof(Sb_EmitterParams));
+        buf_emitter->Update(cmd_list, emitter_params.data(), sizeof(Sb_EmitterParams) * emitter_count);
 
-        uint32_t emit_count   = static_cast<uint32_t>(active_emitter->GetEmissionRate() * m_cb_frame_cpu.delta_time);
         uint32_t thread_group = 256;
 
         cmd_list->BeginTimeblock("particles");
 
-        // emit
-        if (emit_count > 0)
+        // emit, one dispatch per emitter so each spawns from its own position and rate
+        for (uint32_t i = 0; i < emitter_count; i++)
         {
+            uint32_t emit_count = static_cast<uint32_t>(emitters[i]->GetEmissionRate() * m_cb_frame_cpu.delta_time);
+            if (emit_count == 0)
+            {
+                continue;
+            }
+
             RHI_PipelineState pso;
             pso.name             = "particle_emit";
             pso.shaders[Compute] = shader_emit;
@@ -660,6 +681,10 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_counter,  buf_counter);
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
+
+            m_pcb_pass_cpu.set_f3_value(static_cast<float>(i), 0.0f, 0.0f);
+            cmd_list->PushConstants(m_pcb_pass_cpu);
+
             cmd_list->Dispatch((emit_count + thread_group - 1) / thread_group, 1, 1);
         }
 
@@ -679,7 +704,7 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,  GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTarget::gbuffer_normal));
-            cmd_list->Dispatch((max_particles + thread_group - 1) / thread_group, 1, 1);
+            cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
 
         // barrier: simulate -> render
@@ -697,7 +722,7 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
             cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::frame_render));
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
-            cmd_list->Dispatch((max_particles + thread_group - 1) / thread_group, 1, 1);
+            cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
 
         cmd_list->EndTimeblock();

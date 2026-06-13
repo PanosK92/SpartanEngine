@@ -437,9 +437,10 @@ struct Particle
     SHARED_FLOAT  lifetime     SHARED_DEFAULT(0.0f); // remaining
     SHARED_FLOAT3 velocity;
     SHARED_FLOAT  max_lifetime SHARED_DEFAULT(0.0f); // initial
-    SHARED_FLOAT4 color;                             // current rgba
-    SHARED_FLOAT  size         SHARED_DEFAULT(0.0f); // current
-    SHARED_FLOAT3 padding;
+    SHARED_FLOAT4 color;                              // current rgba
+    SHARED_FLOAT  size          SHARED_DEFAULT(0.0f); // current
+    SHARED_UINT   emitter_index SHARED_DEFAULT(0);    // emitter that spawned this particle
+    SHARED_FLOAT2 padding;
 };
 
 // gpu emitter parameters

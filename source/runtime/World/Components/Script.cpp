@@ -3,6 +3,7 @@
 #include "IO/pugixml.hpp"
 #include "World/Entity.h"
 #include "World/World.h"
+#include "Light.h"
 
 using namespace spartan;
 
@@ -184,8 +185,11 @@ void Script::Load(pugi::xml_node& node)
     // script execution is queued and run sequentially on the load thread once all entities exist
     if (World::IsDeferringScriptInit())
     {
+        // light configuring scripts run first so the scene is lit while heavier builder scripts populate it
+        int order = GetEntity() && GetEntity()->GetComponent<Light>() ? 0 : 1;
+
         pugi::xml_node node_copy = node; // lightweight handle, stays valid until the load task finishes
-        World::AddDeferredScriptInit([this, node_copy]() mutable
+        World::AddDeferredScriptInit(order, [this, node_copy]() mutable
         {
             LoadInternal(node_copy);
         });

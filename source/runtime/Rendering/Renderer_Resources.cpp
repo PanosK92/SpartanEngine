@@ -215,7 +215,8 @@ namespace spartan
         uint32_t particle_counter_init[2] = { 0, 0 };
         at(buffers, Renderer_Buffer::ParticleBufferA) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Particle)),       particle_max, nullptr,                true, "particle_buffer_a");
         at(buffers, Renderer_Buffer::ParticleCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),          2,            particle_counter_init,  true, "particle_counter");
-        at(buffers, Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  1,            nullptr,                true, "particle_emitter");
+        const uint32_t particle_emitter_max = 64; // upper bound on simultaneously rendered emitters
+        at(buffers, Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  particle_emitter_max, nullptr,           true, "particle_emitter");
 
         // gpu procedural grass, sized once and reused for the lifetime of the renderer
         // GrassInstances is the transient per-frame ring buffer that the populate shader fills

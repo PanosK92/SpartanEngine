@@ -60,8 +60,9 @@ namespace spartan
         // deferred script initialization
         // during a bulk world load entities load across the thread pool, lua is single threaded so script
         // initialization is queued here and executed sequentially on the load thread once all entities exist
+        // lower order runs first, light configuring scripts go early so the scene is lit while builders populate it
         static bool IsDeferringScriptInit();
-        static void AddDeferredScriptInit(std::function<void()>&& init);
+        static void AddDeferredScriptInit(int order, std::function<void()>&& init);
 
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(Entity* entity);

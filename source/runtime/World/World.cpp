@@ -71,7 +71,7 @@ namespace spartan
         // entity load and executed sequentially on the load thread once every entity exists
         atomic<bool> defer_script_init = false;
         mutex script_init_mutex;
-        vector<function<void()>> script_inits_pending;
+        vector<pair<int, function<void()>>> script_inits_pending;
         set<uint64_t> pending_remove;
         uint32_t audio_source_count = 0;
         atomic<bool> resolve        = false;
@@ -1422,15 +1422,21 @@ namespace spartan
                 // builder scripts get the full thread pool for their own parallel work and lua stays single threaded
                 defer_script_init.store(false, memory_order_release);
                 {
-                    vector<function<void()>> inits;
+                    vector<pair<int, function<void()>>> inits;
                     {
                         lock_guard lock(script_init_mutex);
                         inits.swap(script_inits_pending);
                     }
 
-                    for (function<void()>& init : inits)
+                    // run lower order first so lights are configured before heavy world builders populate the scene
+                    stable_sort(inits.begin(), inits.end(), [](const pair<int, function<void()>>& a, const pair<int, function<void()>>& b)
                     {
-                        init();
+                        return a.first < b.first;
+                    });
+
+                    for (pair<int, function<void()>>& init : inits)
+                    {
+                        init.second();
                     }
                 }
             }
@@ -1466,10 +1472,10 @@ namespace spartan
         return defer_script_init.load(memory_order_acquire);
     }
 
-    void World::AddDeferredScriptInit(function<void()>&& init)
+    void World::AddDeferredScriptInit(int order, function<void()>&& init)
     {
         lock_guard lock(script_init_mutex);
-        script_inits_pending.emplace_back(std::move(init));
+        script_inits_pending.emplace_back(order, std::move(init));
     }
 
     bool World::EntityExists(Entity* entity)

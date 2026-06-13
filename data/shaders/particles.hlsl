@@ -52,7 +52,8 @@ float3 random_in_sphere(uint seed)
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 {
-    EmitterParams emitter = particle_emitter[0];
+    uint emitter_index    = (uint)pass_get_f3_value().x;
+    EmitterParams emitter = particle_emitter[emitter_index];
     if (emitter.emitter_count == 0)
         return;
 
@@ -79,9 +80,10 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     p.lifetime     = emitter.lifetime;
     p.velocity     = dir * emitter.start_speed;
     p.max_lifetime = emitter.lifetime;
-    p.color        = emitter.start_color;
-    p.size         = emitter.start_size;
-    p.padding      = float3(0.0, 0.0, 0.0);
+    p.color         = emitter.start_color;
+    p.size          = emitter.start_size;
+    p.emitter_index = emitter_index;
+    p.padding       = float2(0.0, 0.0);
 
     particle_buffer_a[slot] = p;
 }
@@ -107,6 +109,11 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // skip dead or uninitialized particles
     if (p.lifetime <= 0.0 || p.max_lifetime <= 0.0)
         return;
+
+    // pull the params of the emitter that spawned this particle, clamp guards against
+    // uninitialized slots whose emitter_index is garbage and would read out of bounds
+    uint ei = min(p.emitter_index, emitter.emitter_count - 1);
+    emitter = particle_emitter[ei];
 
     float dt = emitter.delta_time;
 
