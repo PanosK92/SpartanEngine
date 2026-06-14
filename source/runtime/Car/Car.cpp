@@ -1149,7 +1149,9 @@ namespace spartan
             float load = throttle * (0.5f + rpm_normalized * 0.5f);
             engine_sound::set_parameters(engine_rpm, throttle, load, boost);
 
-            float volume = 0.6f + rpm_normalized * 0.3f + throttle * 0.1f;
+            // engine was overpowering at full level, keep the rpm and throttle response but scale it way down
+            const float engine_volume_scale = 0.18f;
+            float volume = (0.6f + rpm_normalized * 0.3f + throttle * 0.1f) * engine_volume_scale;
             audio_engine->SetVolume(volume);
         }
         else if (!m_is_occupied && audio_engine && audio_engine->IsPlaying())
