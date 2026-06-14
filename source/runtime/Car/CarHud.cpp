@@ -615,8 +615,6 @@ namespace spartan::car_hud
             // of being hidden behind it, the transparent window is only used as a layout scaffold
             ImDrawList* dl = ImGui::GetForegroundDrawList();
             ImVec2 tl     = ImGui::GetCursorScreenPos();
-            ImVec2 br(tl.x + panel_w, tl.y + panel_h);
-            draw_panel_background(dl, tl, br, 12.0f);
 
             // full width cockpit strip, elements are spread across the bar instead of clustered in the
             // middle, the input bars sit on the left, the dials spread across the centre and the assist

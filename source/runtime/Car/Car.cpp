@@ -1,4 +1,4 @@
-﻿/*
+/*
 Copyright(c) 2015-2026 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -217,18 +217,7 @@ namespace spartan
             }
         }
 
-        Entity* camera = default_camera ? default_camera->GetChildByName("component_camera") : nullptr;
-        if (camera)
-        {
-            if (m_current_view == CarView::Chase)
-            {
-                m_chase_camera.initialized = false;
-            }
-            else
-            {
-                camera->SetParent(m_body_entity);
-            }
-        }
+        ConfigureCameraForView();
 
         // play engine start sound
         if (Entity* sound_start = m_vehicle_entity ? m_vehicle_entity->GetChildByName("sound_start") : nullptr)
@@ -442,31 +431,93 @@ namespace spartan
 
     void Car::CycleView()
     {
-        m_current_view = static_cast<CarView>((static_cast<int>(m_current_view) + 1) % 2);
+        m_current_view = static_cast<CarView>((static_cast<int>(m_current_view) + 1) % 3);
+        ConfigureCameraForView();
+    }
 
-        Entity* camera = m_body_entity ? m_body_entity->GetChildByName("component_camera") : nullptr;
+    Entity* Car::FindCameraEntity() const
+    {
+        const char* name = "component_camera";
+
+        Entity* camera = nullptr;
+        if (m_body_entity)
+        {
+            camera = m_body_entity->GetChildByName(name);
+        }
+        if (!camera && m_vehicle_entity)
+        {
+            camera = m_vehicle_entity->GetChildByName(name);
+        }
         if (!camera && default_camera)
         {
-            camera = default_camera->GetChildByName("component_camera");
+            camera = default_camera->GetChildByName(name);
         }
 
-        if (camera)
+        return camera;
+    }
+
+    void Car::ConfigureCameraForView()
+    {
+        Entity* camera = FindCameraEntity();
+        if (!camera)
         {
-            if (m_current_view == CarView::Chase)
+            return;
+        }
+
+        if (m_current_view == CarView::Chase)
+        {
+            if (default_camera)
             {
                 camera->SetParent(default_camera);
-                m_chase_camera.initialized = false;
             }
-            else
+            m_chase_camera.initialized = false;
+        }
+        else if (m_current_view == CarView::Hood)
+        {
+            camera->SetParent(m_body_entity);
+            // hood position
+            math::Quaternion camera_correction = m_body_entity->GetRotationLocal().Inverse();
+            camera->SetPositionLocal(math::Vector3(0.0f, 0.8f, -1.0f));
+            camera->SetRotationLocal(camera_correction);
+        }
+        else
+        {
+            ConfigureWheelCamera(camera);
+        }
+    }
+
+    void Car::ConfigureWheelCamera(Entity* camera)
+    {
+        if (!camera || !m_vehicle_entity)
+        {
+            return;
+        }
+
+        // mount on the chassis so the wheel visibly spins, steers and travels with the suspension
+        camera->SetParent(m_vehicle_entity);
+
+        // base the mount on the front left wheel rest position in vehicle local space
+        math::Vector3 wheel_local = math::Vector3(-0.8f, -0.3f, 1.3f);
+        if (Physics* physics = m_vehicle_entity->GetComponent<Physics>())
+        {
+            if (Entity* wheel = physics->GetWheelEntity(WheelIndex::FrontLeft))
             {
-                camera->SetParent(m_body_entity);
-                // hood position
-                math::Quaternion car_local_rot = m_body_entity->GetRotationLocal();
-                math::Quaternion camera_correction = car_local_rot.Inverse();
-                camera->SetPositionLocal(math::Vector3(0.0f, 0.8f, -1.0f));
-                camera->SetRotationLocal(camera_correction);
+                wheel_local = wheel->GetPositionLocal();
             }
         }
+
+        // mount outboard, above and slightly behind the wheel, left side is toward negative x
+        const float side_offset = 0.55f;
+        const float up_offset   = 0.20f;
+        const float back_offset = 0.80f;
+        math::Vector3 camera_local = wheel_local + math::Vector3(-side_offset, up_offset, -back_offset);
+
+        // look forward and slightly down so the wheel stays in the lower part of the frame
+        math::Vector3 look_target = wheel_local + math::Vector3(0.0f, -0.1f, 2.5f);
+        math::Vector3 look_dir    = (look_target - camera_local).Normalized();
+
+        camera->SetPositionLocal(camera_local);
+        camera->SetRotationLocal(math::Quaternion::FromLookRotation(look_dir, math::Vector3::Up));
     }
 
     void Car::AddCameraOrbitYaw(float delta)

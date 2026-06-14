@@ -44,7 +44,7 @@ namespace spartan
     {
         Chase,
         Hood,
-        Dashboard
+        Wheel
     };
 
     // self-contained drivable car class
@@ -121,6 +121,11 @@ namespace spartan
         Entity* CreateBody(bool remove_wheels, std::vector<Entity*>* out_excluded_entities = nullptr);
         void CreateWheels(Entity* vehicle_ent, Physics* physics);
         void CreateAudioSources(Entity* parent_entity);
+
+        // camera view helpers
+        Entity* FindCameraEntity() const;
+        void ConfigureCameraForView();
+        void ConfigureWheelCamera(Entity* camera);
 
         // tick helpers
         void TickInput();

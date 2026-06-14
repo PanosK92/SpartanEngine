@@ -1167,6 +1167,12 @@ namespace spartan
 
     bool Physics::IsGrounded() const
     {
+        // only controller bodies support ground queries, avoid spamming a warning for other body types
+        if (m_body_type != BodyType::Controller)
+        {
+            return false;
+        }
+
         return GetGroundEntity() != nullptr; // eCOLLISION_DOWN is not very reliable (it can flicker), so we use raycasting as a fallback
     }
 
