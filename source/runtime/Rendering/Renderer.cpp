@@ -2572,17 +2572,18 @@ namespace spartan
             Pass_LightClusterVisualize(cmd_list);
         }
 
-        // first eye only, particles avoid double simulation
-        if (eye == 0)
-        {
-            Pass_Particles(cmd_list);
-        }
-
         if (m_transparents_present)
         {
             Pass_GBuffer(cmd_list, true);
             Pass_Light(cmd_list, true, eye_layer);
             Pass_Light_Composition(cmd_list, true, eye_layer);
+        }
+
+        // particles render after transparents so smoke composites over ground decals like skid marks
+        // instead of being painted over by them, first eye only so the simulation is not stepped twice
+        if (eye == 0)
+        {
+            Pass_Particles(cmd_list);
         }
 
         Pass_Light_Ibl(cmd_list, eye_layer);
