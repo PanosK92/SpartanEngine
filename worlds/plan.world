@@ -3282,16 +3282,6 @@
     </render>
    </Entity>
   </Entity>
-  <Entity name="skidmarks_rl" id="8861879569396752008" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" sub_mesh_index="0" material_name="skidmarks" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="skidmarks_rr" id="8859955850435518457" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" sub_mesh_index="0" material_name="skidmarks" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
   <Entity name="scene" id="6273595608518985934" active="false" position="0 0 0" rotation="0.000489867 0.710916 -0.703277 0.000484602" scale="0.0124652 0.0124652 0.0124652">
    <Entity name="root" id="6273654328090523882" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
     <Entity name="GLTF_SceneRootNode" id="6273642528988147007" active="true" position="0 0 0" rotation="-0.707107 0 0 0.707107" scale="1 1 1">
@@ -4541,16 +4531,6 @@
      </Entity>
     </Entity>
    </Entity>
-  </Entity>
-  <Entity name="skidmarks_fl" id="8823644615656753070" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" sub_mesh_index="0" material_name="skidmarks" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="skidmarks_fr" id="8858177299675532650" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="" sub_mesh_index="0" material_name="skidmarks" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
   </Entity>
   <Entity name="ground" id="7677335530244238779" active="true" position="0 0 0" rotation="0 0 0 1" scale="5000 5000 5000">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="true" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="2" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
@@ -9569,7 +9549,7 @@
    <prefab type="car" drivable="true" telemetry="true" camera_follows="true" />
    <prefab_override path="vehicle">
     <script file_path="../worlds/tire_smoke.lua" />
-    <skid_marks slip_threshold="0.349999994" min_segment_distance="0.0500000007" max_segments="512" opacity="0.75" z_offset="0.0199999996" uv_tiling="0.5" fade_distance="0.100000001" />
+    <skid_marks slip_threshold="0.349999994" min_segment_distance="0.0500000007" max_segments="512" opacity="0.75" z_offset="0.0199999996" uv_tiling="0.5" fade_distance="0.5" />
     <Entity name="headlight_left" id="1000000000000000010" active="true" position="-0.899109 0.15 2.02301" rotation="0 0 0 1" scale="1 1 1">
      <light flags="5" light_type="2" color_r="1" color_g="0.959999979" color_b="0.879999995" temperature="0" intensity="8" intensity_photometric="25000" range="45" angle="0.600000024" index="2" preset="5" area_width="1" area_height="1" draw_distance="512" distance_shadows="64" distance_volumetric="45" />
     </Entity>
@@ -10856,26 +10836,6 @@
      </Entity>
     </Entity>
    </Entity>
-  </Entity>
-  <Entity name="skidmarks_fl" id="13491142253112062029" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="skidmarks_fl" sub_mesh_index="0" material_name="skidmarks" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="skidmarks_fr" id="13450271792187213284" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="skidmarks_fr" sub_mesh_index="0" material_name="skidmarks" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="skidmarks_rl" id="13447772682950687499" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="skidmarks_rl" sub_mesh_index="0" material_name="skidmarks" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
-  </Entity>
-  <Entity name="skidmarks_rr" id="13451678829270557377" active="true" position="0 0 0" rotation="0 0 0 1" scale="1 1 1">
-   <render mesh_name="skidmarks_rr" sub_mesh_index="0" material_name="skidmarks" material_default="false" flags="2" max_render_distance="3.40282347e+38" max_shadow_distance="3.40282347e+38">
-    <Instances />
-   </render>
   </Entity>
  </Entities>
 </World>

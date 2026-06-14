@@ -220,6 +220,7 @@ namespace spartan
         bool GetAbsEnabled() const;
         bool IsAbsActive(WheelIndex wheel) const;               // is abs intervening on this wheel
         bool IsAbsActiveAny() const;                            // is abs intervening on any wheel
+        float GetAbsPhase() const;                              // 0..1 modulation cycle, grab when >= 0.5
 
         void SetTcEnabled(bool enabled);
         bool GetTcEnabled() const;

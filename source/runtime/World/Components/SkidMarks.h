@@ -45,6 +45,7 @@ namespace spartan
 
         // component
         void Tick() override;
+        void Stop() override;
         void Remove() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;
@@ -107,7 +108,7 @@ namespace spartan
         float m_opacity              = 0.75f; // base material alpha
         float m_z_offset             = 0.02f; // lift above ground to avoid z-fighting
         float m_uv_tiling            = 0.5f;  // texture repeats per meter along travel
-        float m_fade_distance        = 0.1f;  // short fade in and out at each strip end, in meters
+        float m_fade_distance        = 0.5f;  // length of the width taper fade in and fade out at each strip end, in meters
         float m_center_smoothing     = 0.5f;  // contact point low pass, kills lateral jitter
     };
 }

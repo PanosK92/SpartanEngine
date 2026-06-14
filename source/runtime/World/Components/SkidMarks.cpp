@@ -49,6 +49,13 @@ namespace spartan
     // half-size of the bounding box anchor, keeps the ribbons from ever being frustum culled
     static const float aabb_extent = 5000.0f;
 
+    // eased 0..1 ramp, removes the visible line where a linear gradient would start
+    static float smooth_fade(float t)
+    {
+        t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
+        return t * t * (3.0f - 2.0f * t);
+    }
+
     SkidMarks::SkidMarks(Entity* entity) : Component(entity)
     {
 
@@ -159,17 +166,20 @@ namespace spartan
 
             Vector3 travel = (center - trail.anchor_center) / d;
 
-            // first edge of a fresh strip is created at the anchor
+            // a fresh strip starts as a single point, the first cross section has zero width
             if (!trail.has_edge)
             {
-                trail.edge_left  = trail.anchor_center - right * half_width;
-                trail.edge_right = trail.anchor_center + right * half_width;
                 trail.u_accum    = 0.0f;
+                trail.edge_left  = trail.anchor_center;
+                trail.edge_right = trail.anchor_center;
                 trail.has_edge   = true;
             }
 
-            Vector3 b_left  = center - right * half_width;
-            Vector3 b_right = center + right * half_width;
+            // taper the width up from the start point over the fade distance, a geometric fade in that does
+            // not rely on the texture alpha so it can never invert, the strip eases out of a point to full width
+            float w_b       = half_width * smooth_fade((trail.u_accum + d) / m_fade_distance);
+            Vector3 b_left  = center - right * w_b;
+            Vector3 b_right = center + right * w_b;
             float u_a       = trail.u_accum * m_uv_tiling;
             float u_b       = (trail.u_accum + d) * m_uv_tiling;
 
@@ -179,10 +189,8 @@ namespace spartan
             float body = 0.2f + 0.8f * t;
 
             // ramp the intensity up over the start of the strip so it fades in instead of popping
-            float fade_a = trail.u_accum / m_fade_distance;
-            float fade_b = (trail.u_accum + d) / m_fade_distance;
-            fade_a       = fade_a > 1.0f ? 1.0f : fade_a;
-            fade_b       = fade_b > 1.0f ? 1.0f : fade_b;
+            float fade_a = smooth_fade(trail.u_accum / m_fade_distance);
+            float fade_b = smooth_fade((trail.u_accum + d) / m_fade_distance);
 
             DepositQuad(trail, b_left, b_right, u_a, u_b, normal, travel, body * fade_a, body * fade_b);
 
@@ -262,12 +270,16 @@ namespace spartan
         uint32_t slot   = trail.head_quad % trail.capacity_quads;
         uint32_t offset = trail.global_vertex_offset + slot * 4;
 
+        // intensity rides the rising half of the tent texture, v=0 is fully faded, v=0.5 is full strength
+        float v_a = intensity_a * 0.5f;
+        float v_b = intensity_b * 0.5f;
+
         RecentQuad rq;
         rq.slot     = slot;
-        rq.verts[0] = RHI_Vertex_PosTexNorTan(trail.edge_left,  Vector2(u_a, intensity_a), normal, tangent);
-        rq.verts[1] = RHI_Vertex_PosTexNorTan(trail.edge_right, Vector2(u_a, intensity_a), normal, tangent);
-        rq.verts[2] = RHI_Vertex_PosTexNorTan(bl,               Vector2(u_b, intensity_b), normal, tangent);
-        rq.verts[3] = RHI_Vertex_PosTexNorTan(br,               Vector2(u_b, intensity_b), normal, tangent);
+        rq.verts[0] = RHI_Vertex_PosTexNorTan(trail.edge_left,  Vector2(u_a, v_a), normal, tangent);
+        rq.verts[1] = RHI_Vertex_PosTexNorTan(trail.edge_right, Vector2(u_a, v_a), normal, tangent);
+        rq.verts[2] = RHI_Vertex_PosTexNorTan(bl,               Vector2(u_b, v_b), normal, tangent);
+        rq.verts[3] = RHI_Vertex_PosTexNorTan(br,               Vector2(u_b, v_b), normal, tangent);
 
         GeometryBuffer::UpdateVertices(rq.verts, offset, 4);
         trail.head_quad = (trail.head_quad + 1) % trail.capacity_quads;
@@ -288,18 +300,31 @@ namespace spartan
             return;
         }
 
-        // taper the tail to zero over the fade distance measured back from the strip end, by distance not by
-        // quad count, so the mark always fades out within a few centimeters regardless of how it was segmented
+        // collapse the tail back to a point over the fade distance measured from the strip end, the strip
+        // narrows to zero width and zero alpha at the very tip so the end eases away instead of stopping on a
+        // full width cross section, the width collapse is geometric so it holds regardless of the texture
         float u_end = trail.u_accum;
+        const int pairs[2][2] = { { 0, 1 }, { 2, 3 } };
         for (RecentQuad& rq : trail.recent)
         {
-            for (int v = 0; v < 4; v++)
+            for (int p = 0; p < 2; p++)
             {
-                Vector2 uv   = rq.verts[v].get_uv();
-                float u_dist = (m_uv_tiling > 0.0f) ? (uv.x / m_uv_tiling) : u_end;
-                float factor = (u_end - u_dist) / m_fade_distance;
-                factor       = factor < 0.0f ? 0.0f : (factor > 1.0f ? 1.0f : factor);
-                rq.verts[v].set_uv(uv.x, uv.y * factor);
+                RHI_Vertex_PosTexNorTan& a = rq.verts[pairs[p][0]];
+                RHI_Vertex_PosTexNorTan& b = rq.verts[pairs[p][1]];
+
+                Vector2 uv_a = a.get_uv();
+                Vector2 uv_b = b.get_uv();
+                float u_dist = (m_uv_tiling > 0.0f) ? (uv_a.x / m_uv_tiling) : u_end;
+                float factor = smooth_fade((u_end - u_dist) / m_fade_distance);
+
+                a.set_uv(uv_a.x, uv_a.y * factor);
+                b.set_uv(uv_b.x, uv_b.y * factor);
+
+                Vector3 pa = a.get_position();
+                Vector3 pb = b.get_position();
+                Vector3 c  = (pa + pb) * 0.5f;
+                a.set_position(c + (pa - c) * factor);
+                b.set_position(c + (pb - c) * factor);
             }
             uint32_t offset = trail.global_vertex_offset + rq.slot * 4;
             GeometryBuffer::UpdateVertices(rq.verts, offset, 4);
@@ -321,7 +346,11 @@ namespace spartan
             {
                 // cheap per-column streak variation so the mark is not a flat band
                 float n      = 0.6f + 0.4f * fabsf(sinf(static_cast<float>(x) * 1.7f) * 0.5f + sinf(static_cast<float>(x) * 0.37f) * 0.5f);
-                float alpha  = v * n;
+                // intensity is encoded in v, but the material sampler wraps, so a plain 0..1 ramp bleeds the
+                // full alpha top row into the v=0 edge and leaves a hard line at the strip ends, a tent that is
+                // zero at both v=0 and v=1 removes that seam so the fade can actually reach full transparency
+                float tent   = 1.0f - fabsf(2.0f * v - 1.0f);
+                float alpha  = tent * n;
                 alpha        = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha);
                 uint8_t a    = static_cast<uint8_t>(alpha * 255.0f);
                 uint32_t idx = (y * w + x) * 4;
@@ -349,6 +378,18 @@ namespace spartan
         m_material->SetProperty(MaterialProperty::Metalness, 0.0f);
         m_material->SetProperty(MaterialProperty::CullMode, static_cast<float>(RHI_CullMode::None));
         m_material->SetTexture(MaterialTextureType::Color, m_texture);
+    }
+
+    void SkidMarks::Stop()
+    {
+        // the trail entities are transient and get deleted when play stops, drop our references and
+        // force a rebuild so the next play session starts from a clean state
+        for (int i = 0; i < 4; i++)
+        {
+            m_trails[i] = WheelTrail();
+        }
+
+        m_initialized = false;
     }
 
     void SkidMarks::Remove()
@@ -382,6 +423,6 @@ namespace spartan
         m_opacity              = node.attribute("opacity").as_float(0.75f);
         m_z_offset             = node.attribute("z_offset").as_float(0.02f);
         m_uv_tiling            = node.attribute("uv_tiling").as_float(0.5f);
-        m_fade_distance        = node.attribute("fade_distance").as_float(0.1f);
+        m_fade_distance        = node.attribute("fade_distance").as_float(0.5f);
     }
 }

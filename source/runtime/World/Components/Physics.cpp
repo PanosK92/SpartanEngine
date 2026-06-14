@@ -2219,6 +2219,15 @@ namespace spartan
         return car::is_abs_active_any();
     }
 
+    float Physics::GetAbsPhase() const
+    {
+        if (m_body_type != BodyType::Vehicle)
+        {
+            return 0.0f;
+        }
+        return car::get_abs_phase();
+    }
+
     void Physics::SetTcEnabled(bool enabled)
     {
         if (m_body_type == BodyType::Vehicle)

@@ -782,6 +782,7 @@ namespace car
     {
         return true;
     } return false; }
+    inline float get_abs_phase()              { return abs_phase; } // 0..1 modulation cycle, grab when >= 0.5
 
     inline void  set_tc_enabled(bool enabled) { tuning::spec.tc_enabled = enabled; }
     inline bool  get_tc_enabled()             { return tuning::spec.tc_enabled; }
