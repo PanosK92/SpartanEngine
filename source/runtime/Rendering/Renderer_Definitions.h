@@ -307,7 +307,8 @@ namespace spartan
         // gpu-driven particles
         particle_emit_c,
         particle_simulate_c,
-        particle_render_c,
+        particle_render_v,
+        particle_render_p,
         // gpu procedural grass
         grass_populate_c,
         grass_indirect_args_c,

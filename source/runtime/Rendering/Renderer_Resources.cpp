@@ -785,7 +785,8 @@ namespace spartan
             // gpu-driven particles
             { Renderer_Shader::particle_emit_c,                       RHI_Shader_Type::Compute, "particles.hlsl",                             RHI_Vertex_Type::Max, "EMIT"                           },
             { Renderer_Shader::particle_simulate_c,                   RHI_Shader_Type::Compute, "particles.hlsl",                             RHI_Vertex_Type::Max, "SIMULATE"                       },
-            { Renderer_Shader::particle_render_c,                     RHI_Shader_Type::Compute, "particles.hlsl",                             RHI_Vertex_Type::Max, "RENDER"                         },
+            { Renderer_Shader::particle_render_v,                     RHI_Shader_Type::Vertex,  "particles.hlsl",                             RHI_Vertex_Type::Max, "RENDER"                         },
+            { Renderer_Shader::particle_render_p,                     RHI_Shader_Type::Pixel,   "particles.hlsl",                             RHI_Vertex_Type::Max, "RENDER"                         },
 
             // gpu procedural grass
             { Renderer_Shader::grass_populate_c,                      RHI_Shader_Type::Compute, "grass_populate.hlsl"                                                                              },

@@ -605,10 +605,12 @@ namespace spartan
 
         RHI_Shader* shader_emit     = GetShader(Renderer_Shader::particle_emit_c);
         RHI_Shader* shader_simulate = GetShader(Renderer_Shader::particle_simulate_c);
-        RHI_Shader* shader_render   = GetShader(Renderer_Shader::particle_render_c);
+        RHI_Shader* shader_render_v = GetShader(Renderer_Shader::particle_render_v);
+        RHI_Shader* shader_render_p = GetShader(Renderer_Shader::particle_render_p);
         if (!shader_emit || !shader_emit->IsCompiled() ||
             !shader_simulate || !shader_simulate->IsCompiled() ||
-            !shader_render || !shader_render->IsCompiled())
+            !shader_render_v || !shader_render_v->IsCompiled() ||
+            !shader_render_p || !shader_render_p->IsCompiled())
         {
             return;
         }
@@ -710,8 +712,10 @@ namespace spartan
         // barrier: simulate -> render
         cmd_list->InsertBarrier(buf_a);
 
-        // render, one dispatch per emitter so each can splat with its own texture as a billboard mask, the
-        // splats blend additively straight into the frame which is order independent for smoke
+        // render, each particle becomes a camera facing quad drawn through the rasterizer with additive
+        // blending, the rop accumulates overlapping splats atomically so they never race on a pixel, one
+        // draw per emitter so each can bind its own smoke texture, six vertices per particle pulled in the
+        // vertex shader and the whole ring is drawn with foreign or dead particles collapsed to a degenerate quad
         RHI_Texture* tex_white  = GetStandardTexture(Renderer_StandardTexture::White);
         RHI_Texture* tex_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         for (uint32_t i = 0; i < emitter_count; i++)
@@ -720,24 +724,28 @@ namespace spartan
             bool has_texture          = tex_particle != nullptr;
 
             RHI_PipelineState pso;
-            pso.name             = "particle_render";
-            pso.shaders[Compute] = shader_render;
-
+            pso.name                             = "particle_render";
+            pso.shaders[RHI_Shader_Type::Vertex] = shader_render_v;
+            pso.shaders[RHI_Shader_Type::Pixel]  = shader_render_p;
+            pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
+            pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
+            pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
+            pso.render_target_color_textures[0]  = tex_render;
+            pso.clear_color[0]                   = rhi_color_load;
+            pso.primitive_topology               = RHI_PrimitiveTopology::TriangleList;
+            pso.resolution_scale                 = true;
             cmd_list->SetPipelineState(pso);
+
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
-            cmd_list->SetBuffer(Renderer_BindingsUav::particle_counter,  buf_counter);
-            cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_render);
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, has_texture ? tex_particle : tex_white);
 
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(i), has_texture ? 1.0f : 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
+            cmd_list->SetCullMode(RHI_CullMode::None);
+            cmd_list->Draw(total_particles * 6);
         }
-
-        cmd_list->InsertBarrier(tex_render, RHI_BarrierType::EnsureWriteThenRead);
 
         cmd_list->EndTimeblock();
     }

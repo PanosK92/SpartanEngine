@@ -216,116 +216,115 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
 
 #elif defined(RENDER)
 
-[numthreads(256, 1, 1)]
-void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
+// hardware rasterized billboards, the rop blends overlapping splats atomically so no two particles can
+// race on the same pixel the way a compute read modify write does, this is what kills the checkerboard
+
+struct ps_input
+{
+    float4 position  : SV_Position;
+    float2 local     : TEXCOORD0; // quad local coords in the minus one to one range
+    float3 color     : TEXCOORD1;
+    float  alpha     : TEXCOORD2;
+    float  lin_depth : TEXCOORD3; // particle center linear depth
+    float2 rot       : TEXCOORD4; // cos, sin of the per particle rotation
+    float  use_tex   : TEXCOORD5;
+};
+
+ps_input main_vs(uint vertex_id : SV_VertexID)
 {
     uint  emitter_index = (uint)pass_get_f3_value().x;
-    bool  use_texture   = pass_get_f3_value().y > 0.5;
-    EmitterParams emitter = particle_emitter[0];
-    if (emitter.emitter_count == 0)
-        return;
+    float use_texture   = pass_get_f3_value().y;
 
-    uint index = dispatch_thread_id.x;
-    if (index >= emitter.max_particles)
-        return;
+    uint index  = vertex_id / 6;
+    uint corner = vertex_id % 6;
+
+    ps_input o;
+    // default to a degenerate off screen vertex so culled particles rasterize nothing
+    o.position  = float4(2.0, 2.0, 2.0, 1.0);
+    o.local     = 0.0;
+    o.color     = 0.0;
+    o.alpha     = 0.0;
+    o.lin_depth = 0.0;
+    o.rot       = float2(1.0, 0.0);
+    o.use_tex   = use_texture;
 
     Particle p = particle_buffer_a[index];
 
-    // skip dead or invisible particles
-    if (p.lifetime <= 0.0 || p.max_lifetime <= 0.0 || p.color.a <= 0.0)
-        return;
+    // skip dead, invisible or foreign emitter particles
+    if (p.lifetime <= 0.0 || p.max_lifetime <= 0.0 || p.color.a <= 0.0 || p.emitter_index != emitter_index)
+    {
+        return o;
+    }
 
-    // this dispatch only renders the particles spawned by the current emitter
-    if (p.emitter_index != emitter_index)
-        return;
+    // two triangles, corners laid out as a quad in the minus one to one range
+    float2 quad[6] =
+    {
+        float2(-1.0, -1.0), float2(1.0, -1.0), float2(-1.0, 1.0),
+        float2(-1.0,  1.0), float2(1.0, -1.0), float2( 1.0, 1.0)
+    };
+    float2 c = quad[corner];
 
-    // project to clip space
-    float4 clip = mul(float4(p.position, 1.0), buffer_frame.view_projection);
-    if (clip.w <= 0.0)
-        return;
+    // screen aligned billboard basis, up derived from the camera forward and right
+    float3 right = buffer_frame.camera_right;
+    float3 up    = normalize(cross(buffer_frame.camera_forward, right));
+    float  half_size = p.size * 0.5;
+    float3 world = p.position + (right * c.x + up * c.y) * half_size;
 
-    float3 ndc = clip.xyz / clip.w;
+    float4 clip   = mul(float4(world, 1.0),      buffer_frame.view_projection);
+    float4 clip_c = mul(float4(p.position, 1.0), buffer_frame.view_projection);
 
-    // frustum cull
-    if (abs(ndc.x) > 1.0 || abs(ndc.y) > 1.0)
-        return;
-
-    // ndc to pixel coordinates
-    float2 uv    = ndc.xy * float2(0.5, -0.5) + 0.5;
-    float2 pixel = uv * buffer_frame.resolution_render;
-    int2 center  = int2(pixel);
-
-    // screen-space radius from world-space size
-    float3 right_ws = buffer_frame.camera_right * (p.size * 0.5);
-    float4 clip_r   = mul(float4(p.position + right_ws, 1.0), buffer_frame.view_projection);
-    float3 ndc_r    = clip_r.xyz / clip_r.w;
-    float2 pixel_r  = (ndc_r.xy * float2(0.5, -0.5) + 0.5) * buffer_frame.resolution_render;
-    int radius_px   = clamp((int)length(pixel_r - pixel), 1, 64);
-
-    // early-out: if the particle center is well behind the scene surface, skip entirely
-    float linear_particle = linearize_depth(ndc.z);
-    float center_scene    = linearize_depth(tex_depth.Load(int3(center, 0)).r);
-    if ((center_scene - linear_particle) < -0.1)
-        return;
-
-    // per-particle orientation so overlapping sprites stop reading as the same repeated shape, plus a
-    // slow spin over life so the plume keeps churning instead of looking frozen
+    // age driven fade in, rotation and spin, matches the old compute look
     float age_t    = 1.0 - saturate(p.lifetime / p.max_lifetime);
+    float fade_in  = saturate(age_t / 0.2);
     float base_ang = rng(index * 2654435761u) * 6.28318530718;
     float spin     = (rng(index * 40503u + 13u) * 2.0 - 1.0) * 1.2;
     float ang      = base_ang + spin * age_t;
-    float sin_a    = sin(ang);
-    float cos_a    = cos(ang);
 
-    // soft fade-in over the first slice of life removes the hard pop when a particle is born
-    float fade_in    = saturate(age_t / 0.2);
-    float base_alpha = p.color.a * fade_in;
-    if (base_alpha <= 0.001)
-        return;
+    o.position  = clip;
+    o.local     = c;
+    o.color     = p.color.rgb;
+    o.alpha     = p.color.a * fade_in;
+    o.lin_depth = linearize_depth(clip_c.z / max(clip_c.w, 1e-6));
+    o.rot       = float2(cos(ang), sin(ang));
+    o.use_tex   = use_texture;
+    return o;
+}
 
-    // splat a circular billboard (additive) with per-pixel depth testing
-    int2 res = int2(buffer_frame.resolution_render);
-    for (int y = -radius_px; y <= radius_px; y++)
+float4 main_ps(ps_input input) : SV_Target0
+{
+    // radial disc, discard outside the unit circle so the quad never reads as a square
+    float dist = length(input.local);
+    if (dist > 1.0)
     {
-        for (int x = -radius_px; x <= radius_px; x++)
-        {
-            int2 coord = center + int2(x, y);
-
-            if (coord.x < 0 || coord.y < 0 || coord.x >= res.x || coord.y >= res.y)
-                continue;
-
-            float dist = length(float2(x, y)) / max(1.0, (float)radius_px);
-            if (dist > 1.0)
-                continue;
-
-            // per-pixel depth test so billboard edges don't bleed through surfaces
-            float pixel_scene = linearize_depth(tex_depth.Load(int3(coord, 0)).r);
-            float depth_diff  = pixel_scene - linear_particle;
-            float soft_factor = saturate(depth_diff * 20.0);
-
-            // soft radial falloff keeps every particle a soft disc so the texture quad never shows as a square
-            float falloff = 1.0 - dist * dist;
-
-            // additive: rgb is the smoke color and alpha is the coverage, so transparent texels add
-            // nothing, the procedural circle is used when no texture is set
-            float3 contribution;
-            if (use_texture)
-            {
-                // rotate the sample coords around the sprite center so each particle shows the texture at its own angle
-                float2 r_xy   = float2(x * cos_a - y * sin_a, x * sin_a + y * cos_a);
-                float2 tex_uv = r_xy / max(1.0, (float)radius_px) * 0.5 + 0.5;
-                float4 sample = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), tex_uv, 0);
-                contribution  = p.color.rgb * sample.rgb * sample.a * base_alpha * soft_factor * falloff;
-            }
-            else
-            {
-                contribution  = p.color.rgb * base_alpha * falloff * soft_factor;
-            }
-
-            // additive blend straight into the frame, smoke is order independent so overlapping splats just add up
-            tex_uav[coord] += float4(contribution, 0.0);
-        }
+        discard;
     }
+    float falloff = 1.0 - dist * dist;
+
+    // soft depth test against the scene so billboards do not bleed through surfaces
+    int2  pixel        = int2(input.position.xy);
+    float linear_scene = linearize_depth(tex_depth.Load(int3(pixel, 0)).r);
+    float soft_factor  = saturate((linear_scene - input.lin_depth) * 20.0);
+    if (soft_factor <= 0.0)
+    {
+        discard;
+    }
+
+    float3 contribution;
+    if (input.use_tex > 0.5)
+    {
+        // rotate the sample coords so each particle shows the texture at its own angle
+        float2 r_xy   = float2(input.local.x * input.rot.x - input.local.y * input.rot.y,
+                               input.local.x * input.rot.y + input.local.y * input.rot.x);
+        float2 tex_uv = r_xy * 0.5 + 0.5;
+        float4 sample = tex.SampleLevel(GET_SAMPLER(sampler_bilinear_clamp), tex_uv, 0);
+        contribution  = input.color * sample.rgb * sample.a * input.alpha * soft_factor * falloff;
+    }
+    else
+    {
+        contribution = input.color * input.alpha * soft_factor * falloff;
+    }
+
+    return float4(contribution, 0.0);
 }
 
 #endif
