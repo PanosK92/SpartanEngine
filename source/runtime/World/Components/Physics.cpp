@@ -228,6 +228,12 @@ namespace spartan
         // serialize physx writes, async scene loading runs this on worker threads in parallel
         lock_guard<recursive_mutex> physx_lock(PhysicsWorld::GetMutex());
 
+        // stop driving the vehicle force model from the fixed physics loop
+        if (m_body_type == BodyType::Vehicle)
+        {
+            PhysicsWorld::SetVehicleStepCallback(nullptr);
+        }
+
         // release controller if it exists
         // skip if controller_manager was already released during shutdown
         if (m_controller && controller_manager)
@@ -305,7 +311,7 @@ namespace spartan
                 break;
 
             case BodyType::Vehicle:
-                TickVehicle(is_playing, delta_time);
+                TickVehicle(is_playing);
                 break;
 
             case BodyType::Cloth:
@@ -394,7 +400,7 @@ namespace spartan
         }
     }
 
-    void Physics::TickVehicle(bool is_playing, float delta_time)
+    void Physics::TickVehicle(bool is_playing)
     {
         if (m_actors.empty() || !m_actors[0])
         {
@@ -405,25 +411,11 @@ namespace spartan
 
         if (is_playing)
         {
-            // sync wheel offsets once at start of play
-            if (!m_wheel_offsets_synced)
-            {
-                SyncWheelOffsetsFromEntities();
-                m_wheel_offsets_synced = true;
-            }
-
-            // sub-step vehicle physics at a fixed rate to keep the spring-damper
-            // integration stable regardless of rendering framerate
-            constexpr float vehicle_fixed_step = 1.0f / 200.0f;
-            constexpr int   max_steps          = 8;
-            m_vehicle_accumulated_time += delta_time;
-            int steps = 0;
-            while (m_vehicle_accumulated_time >= vehicle_fixed_step && steps < max_steps)
-            {
-                car::tick(vehicle_fixed_step);
-                m_vehicle_accumulated_time -= vehicle_fixed_step;
-                steps++;
-            }
+            // the vehicle force model (car::tick) is driven from PhysicsWorld's fixed-step loop via
+            // the registered substep callback so it runs exactly once per scene->simulate step. that
+            // keeps the forces it applies in lockstep with the integration, reading a freshly
+            // integrated pose each step instead of accumulating several substeps worth of force into
+            // a single integration step, which is what made the chassis wobble at low framerates
 
             // get the raw physx pose, this is the same pose used by the wheel debug shapes
             Vector3 physics_pos;
@@ -467,7 +459,6 @@ namespace spartan
             // editor mode: sync entity -> physx, reset velocities
             m_wheel_offsets_synced      = false;
             m_interpolation_initialized = false;
-            m_vehicle_accumulated_time  = 0.0f;
             m_vehicle_render_offset     = Vector3::Zero;
 
             actor->setGlobalPose(to_px_transform(GetEntity()->GetPosition(), GetEntity()->GetRotation()));
@@ -478,6 +469,25 @@ namespace spartan
                 dynamic->setAngularVelocity(PxVec3(0, 0, 0));
             }
         }
+    }
+
+    void Physics::TickVehicleSubstep(float dt)
+    {
+        if (m_actors.empty() || !m_actors[0])
+        {
+            return;
+        }
+
+        // sync wheel offsets once at start of play
+        if (!m_wheel_offsets_synced)
+        {
+            SyncWheelOffsetsFromEntities();
+            m_wheel_offsets_synced = true;
+        }
+
+        // one fixed step of the vehicle force model, the caller (PhysicsWorld fixed loop) runs this
+        // immediately before scene->simulate(dt) so the forces apply over exactly this step
+        car::tick(dt);
     }
 
     void Physics::TickDynamicBodies(bool is_playing)
@@ -2910,6 +2920,9 @@ namespace spartan
                 car::body->setGlobalPose(PxTransform(PxVec3(pos.x, current_pose.p.y, pos.z)));
                 car::body->userData = reinterpret_cast<void*>(GetEntity());
                 tag_actor_shapes(car::body, 2);
+
+                // run the vehicle force model in lockstep with the fixed physics step
+                PhysicsWorld::SetVehicleStepCallback([this](float dt) { TickVehicleSubstep(dt); });
             }
             else
             {

@@ -93,7 +93,7 @@ namespace spartan
         unordered_map<uint64_t, EntitySnapshot> play_mode_snapshot;
         float play_mode_time_of_day = 0.0f;
 
-        // ids of entities created while playing, these are removed when play stops so they never leak into the world
+        // ids of entities created while playing, they are removed when play stops so spawned objects never leak into the world
         set<uint64_t> play_mode_spawned_ids;
 
         // entity state tracking - things that change the nature of the entity for rendering
@@ -786,19 +786,11 @@ namespace spartan
             return;
         }
 
-        // editor selection lives on the camera, drop deleted entities from it to avoid a dangling pointer
-        Camera* selection_camera = GetCamera();
-
         for (auto it = entities.begin(); it != entities.end(); )
         {
             uint64_t id = (*it)->GetObjectId();
             if (pending_remove.count(id) > 0)
             {
-                if (selection_camera)
-                {
-                    selection_camera->RemoveFromSelection(*it);
-                }
-
                 // clean up change tracking
                 entity_states.erase(id);
                 if (Material* mat = (*it)->GetComponent<Render>() ? (*it)->GetComponent<Render>()->GetMaterial() : nullptr)
@@ -1025,16 +1017,29 @@ namespace spartan
             play_mode_snapshot.clear();
             world_time::time_of_day = play_mode_time_of_day;
 
-            // delete anything spawned during play so it never leaks into the world or gets saved by accident
-            // drain pending additions first so freshly spawned entities are visible to the removal pass
-            ProcessPendingAdditions();
+            // remove anything spawned during play so it never leaks into the world or gets saved by accident
+            // the removal is deferred and handled by ProcessPendingRemovals right below
             vector<Entity*> spawned;
             for (Entity* entity : entities)
             {
-                if (play_mode_spawned_ids.count(entity->GetObjectId()) > 0)
+                if (play_mode_spawned_ids.count(entity->GetObjectId()) == 0)
                 {
-                    spawned.push_back(entity);
+                    continue;
                 }
+
+                // transient entities like skid mark trails are owned and managed by their component, removing them here would dangle that pointer
+                if (entity->IsTransient())
+                {
+                    continue;
+                }
+
+                // prefab entities are built at load and must survive a stop
+                if (entity->HasPrefabData() || entity->IsPrefabOwned())
+                {
+                    continue;
+                }
+
+                spawned.push_back(entity);
             }
             for (Entity* entity : spawned)
             {
@@ -1266,6 +1271,13 @@ namespace spartan
             // write entities to node
             for (Entity* root : root_entities)
             {
+                // transient entities are runtime only, such as skid mark trails, they must never be serialized
+                if (root->IsTransient())
+                {
+                    ProgressTracker::GetProgress(ProgressType::World).JobDone();
+                    continue;
+                }
+
                 pugi::xml_node entity_node = entities_node.append_child("Entity");
                 root->Save(entity_node);
                 ProgressTracker::GetProgress(ProgressType::World).JobDone();
@@ -1535,7 +1547,7 @@ namespace spartan
         entities_pending.push_back(entity);
         mark_entity_changed(entity->GetObjectId(), EntityChange::Components); // new entity requires resolve
 
-        // entities created while playing are transient to the session and get removed when play stops
+        // entities spawned during play are tracked so they can be removed when play stops
         if (Engine::IsFlagSet(EngineMode::Playing))
         {
             play_mode_spawned_ids.insert(entity->GetObjectId());
@@ -1607,9 +1619,6 @@ namespace spartan
 
         lock_guard<mutex> lock(entity_access_mutex);
 
-        // editor selection lives on the camera, drop deleted entities from it to avoid a dangling pointer
-        Camera* selection_camera = GetCamera();
-
         // keep track of the local camera pointer so we don't have a dangling pointer
         if (Camera* camera_ = entity_to_remove->GetComponent<Camera>())
         {
@@ -1631,11 +1640,6 @@ namespace spartan
         for (Entity* entity : entities_to_remove)
         {
             uint64_t id = entity->GetObjectId();
-
-            if (selection_camera)
-            {
-                selection_camera->RemoveFromSelection(entity);
-            }
 
             // remove from entities vector
             auto it = find(entities.begin(), entities.end(), entity);

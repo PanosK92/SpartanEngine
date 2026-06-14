@@ -380,18 +380,6 @@ namespace spartan
         m_material->SetTexture(MaterialTextureType::Color, m_texture);
     }
 
-    void SkidMarks::Stop()
-    {
-        // the trail entities are transient and get deleted when play stops, drop our references and
-        // force a rebuild so the next play session starts from a clean state
-        for (int i = 0; i < 4; i++)
-        {
-            m_trails[i] = WheelTrail();
-        }
-
-        m_initialized = false;
-    }
-
     void SkidMarks::Remove()
     {
         for (int i = 0; i < 4; i++)

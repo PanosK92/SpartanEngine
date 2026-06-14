@@ -67,6 +67,11 @@ namespace spartan
         float alpha = 0.0f; // interpolation factor between physics steps (0 = previous, 1 = current)
     }
 
+    namespace
+    {
+        std::function<void(float)> vehicle_step_callback; // see PhysicsWorld::SetVehicleStepCallback
+    }
+
     namespace picking
     {
         static PxRigidDynamic* picked_body = nullptr;
@@ -323,6 +328,14 @@ namespace spartan
                 {
                     // simulate one fixed time step
                     lock_guard<recursive_mutex> lock(physx_mutex);
+
+                    // run the vehicle force model in lockstep with the integration so its forces
+                    // are consumed by exactly this step and it reads the pose from the previous one
+                    if (vehicle_step_callback)
+                    {
+                        vehicle_step_callback(fixed_time_step);
+                    }
+
                     scene->simulate(fixed_time_step);
                     scene->fetchResults(true); // block
                     accumulated_time -= fixed_time_step;
@@ -415,6 +428,12 @@ namespace spartan
     float PhysicsWorld::GetInterpolationAlpha()
     {
         return interpolation::alpha;
+    }
+
+    void PhysicsWorld::SetVehicleStepCallback(const function<void(float)>& callback)
+    {
+        lock_guard<recursive_mutex> lock(physx_mutex);
+        vehicle_step_callback = callback;
     }
 
     bool PhysicsWorld::RaycastStatic(const Vector3& origin, const Vector3& direction, float max_distance, Vector3& hit_position)

@@ -45,7 +45,6 @@ namespace spartan
 
         // component
         void Tick() override;
-        void Stop() override;
         void Remove() override;
         void Save(pugi::xml_node& node) override;
         void Load(pugi::xml_node& node) override;

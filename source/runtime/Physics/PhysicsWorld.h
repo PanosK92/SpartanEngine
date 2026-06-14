@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include <mutex>
 #include <vector>
+#include <functional>
 #include "../Math/Vector3.h"
 //==========================
 
@@ -53,6 +54,13 @@ namespace spartan
         // interpolation alpha for smooth rendering between fixed physics steps
         // 0 = at previous physics state, 1 = at current physics state
         static float GetInterpolationAlpha();
+
+        // vehicle force model hook, invoked once per fixed simulation step right before
+        // scene->simulate so the car applies its forces for exactly one integration step
+        // and reads a freshly integrated body pose, this keeps the spring-damper and tire
+        // forces stable regardless of render framerate instead of lumping several substeps
+        // worth of force into a single integration step
+        static void SetVehicleStepCallback(const std::function<void(float)>& callback);
 
         // cast a ray against static geometry and return the closest hit position
         static bool RaycastStatic(const math::Vector3& origin, const math::Vector3& direction, float max_distance, math::Vector3& hit_position);

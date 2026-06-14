@@ -302,7 +302,8 @@ namespace spartan
     private:
         // tick helpers (broken out for readability)
         void TickController(bool is_playing, float delta_time);
-        void TickVehicle(bool is_playing, float delta_time);
+        void TickVehicle(bool is_playing);
+        void TickVehicleSubstep(float dt); // vehicle force model, runs once per fixed physics step in lockstep with integration
         void TickCloth(bool is_playing, float delta_time);
         void TickDynamicBodies(bool is_playing);
         void TickDistanceActivation();
@@ -336,7 +337,6 @@ namespace spartan
         float m_wheel_radius   = 0.35f; // wheel radius for spin calculation (default)
         float m_wheel_mesh_center_offset_y = 0.0f; // offset from entity origin to mesh center (for non-centered meshes)
         bool m_wheel_offsets_synced = false;  // flag to ensure wheel offsets are synced from entities once
-        float m_vehicle_accumulated_time = 0.0f;
 
         // vehicle chassis entity and suspension state
         Entity* m_chassis_entity          = nullptr;

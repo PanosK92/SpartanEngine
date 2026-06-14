@@ -55,7 +55,9 @@ namespace spartan
             // clone basic properties
             Entity* clone = World::CreateEntity();
             clone->SetObjectName(entity->GetObjectName());
-            clone->SetActive(entity->GetActive());
+            // copy the local active flag, not the parent aware state, the clone derives its effective
+            // visibility from its own hierarchy, a temporarily deactivated shared source must not bake in
+            clone->SetActive(entity->IsActive());
             clone->SetPosition(entity->GetPositionLocal());
             clone->SetRotation(entity->GetRotationLocal());
             clone->SetScale(entity->GetScaleLocal());
