@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 #include "Physics.h"
 #include "Light.h"
+#include "AudioSource.h"
 #include "../Entity.h"
 #include "../../Input/Input.h"
 #include "../../Rendering/Renderer.h"
@@ -284,11 +285,97 @@ namespace spartan
         return best_entity;
     }
 
+    Entity* Camera::FindIconUnderCursor() const
+    {
+        // overlay icons are only drawn in the editor, not while playing
+        if (Engine::IsFlagSet(EngineMode::Playing))
+        {
+            return nullptr;
+        }
+
+        const Vector2 mouse      = Input::GetMousePositionRelativeToEditorViewport();
+        const Vector3 camera_pos = GetEntity()->GetPosition();
+        const Vector3 camera_fwd = GetEntity()->GetForward();
+
+        // icons are roughly 64 px and the editor viewport matches the output resolution, so the
+        // clickable half extent maps one to one with screen pixels, no resolution scaling needed
+        const float icon_half_px = 32.0f;
+
+        Entity* best     = nullptr;
+        float   best_dist = numeric_limits<float>::max();
+
+        for (Entity* entity : World::GetEntities())
+        {
+            if (!entity)
+            {
+                continue;
+            }
+
+            // only entities that draw an icon, gated by the same cvars as the icon pass
+            bool draws_audio = entity->GetComponent<AudioSource>() != nullptr && cvar_audio_sources.GetValueAs<bool>();
+            bool draws_light = entity->GetComponent<Light>()       != nullptr && cvar_lights.GetValueAs<bool>();
+            if (!draws_audio && !draws_light)
+            {
+                continue;
+            }
+
+            const Vector3 to_entity = entity->GetPosition() - camera_pos;
+
+            // skip icons too close to the camera, matches the icon pass
+            if (to_entity.LengthSquared() <= 0.01f)
+            {
+                continue;
+            }
+
+            // skip icons behind or far to the side, matches the icon pass cull (v_dot_l > 0.5)
+            if (Vector3::Dot(camera_fwd, to_entity.Normalized()) <= 0.5f)
+            {
+                continue;
+            }
+
+            Vector2 screen;
+            WorldToScreenCoordinates(entity->GetPosition(), screen);
+
+            // hit test the mouse against the icon's screen rect
+            if (mouse.x < screen.x - icon_half_px || mouse.x > screen.x + icon_half_px ||
+                mouse.y < screen.y - icon_half_px || mouse.y > screen.y + icon_half_px)
+            {
+                continue;
+            }
+
+            // when icons overlap, pick the one closest to the camera
+            const float dist = to_entity.LengthSquared();
+            if (dist < best_dist)
+            {
+                best_dist = dist;
+                best      = entity;
+            }
+        }
+
+        return best;
+    }
+
     void Camera::Pick()
     {
         if (!Input::GetMouseIsInViewport())
         {
             ClearSelection();
+            return;
+        }
+
+        // editor overlay icons (lights, audio sources) are a 2d projection on top of the scene, so
+        // they take priority over geometry picking, clicking one selects its entity in the hierarchy
+        if (Entity* icon_entity = FindIconUnderCursor())
+        {
+            if (Input::GetKey(KeyCode::Ctrl_Left) || Input::GetKey(KeyCode::Ctrl_Right))
+            {
+                ToggleSelection(icon_entity);
+            }
+            else
+            {
+                SetSelectedEntity(icon_entity);
+            }
+
             return;
         }
 

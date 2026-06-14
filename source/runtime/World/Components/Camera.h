@@ -89,6 +89,9 @@ namespace spartan
         // (useful for hover previews like drag-drop material onto a mesh in the viewport)
         Entity* FindEntityUnderCursor();
 
+        // picks the editor overlay icon (light, audio source) under the mouse cursor, null when none
+        Entity* FindIconUnderCursor() const;
+
         // converts a world point to a screen point
         void WorldToScreenCoordinates(const math::Vector3& position_world, math::Vector2& position_screen) const;
 

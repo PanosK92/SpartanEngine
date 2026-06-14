@@ -82,9 +82,7 @@ namespace
     {
         // make sure the directory exists before trying to iterate
         if (!spartan::FileSystem::Exists(directory) || !spartan::FileSystem::IsDirectory(directory))
-        {
             return;
-        }
 
         // scan files in this directory
         vector<string> files = spartan::FileSystem::GetFilesInDirectory(directory);

@@ -322,6 +322,7 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
                 contribution  = p.color.rgb * base_alpha * falloff * soft_factor;
             }
 
+            // additive blend straight into the frame, smoke is order independent so overlapping splats just add up
             tex_uav[coord] += float4(contribution, 0.0);
         }
     }

@@ -300,7 +300,11 @@ void WriteScreenSpaceShadow(struct DispatchParameters inParameters, int3 inGroup
 		#endif
 
 			// Depth thresholds (bilinear/shadow thickness) are based on a fractional ratio of the difference between sampled depth and the far clip depth
-			depth_thickness_scale[i] = abs(inParameters.FarDepthValue - depths.x);
+			float far_depth_delta           = abs(inParameters.FarDepthValue - depths.x);
+			float min_depth_thickness_scale = max(inParameters.InvDepthTextureSize.x, inParameters.InvDepthTextureSize.y) * 0.5;
+
+			// keep far-distance grazing surfaces from turning tiny depth deltas into hard edges
+			depth_thickness_scale[i] = max(far_depth_delta, min_depth_thickness_scale);
 
 			// If depth variance is more than a specific threshold, then just use point filtering
 			bool use_point_filter = abs(depths.x - depths.y) > depth_thickness_scale[i] * inParameters.BilinearThreshold;

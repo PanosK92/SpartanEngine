@@ -310,7 +310,11 @@ void evaluate_light(
 
         if (light.has_shadows() && light.has_shadows_screen_space() && surface.is_opaque())
         {
-            L_shadow_contact = tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x;
+            float contact = tex_uav_sss[int3(pixel_xy, light.screen_space_shadows_slice_index)].x;
+
+            // sss is a near field contact effect, fade it out with distance so far grazing surfaces never show marching stripes
+            float contact_fade = 1.0f - saturate((surface.camera_to_pixel_length - 25.0f) / 50.0f);
+            L_shadow_contact   = lerp(1.0f, contact, contact_fade);
         }
 
         L_shadow = min(L_shadow_primary, L_shadow_contact);

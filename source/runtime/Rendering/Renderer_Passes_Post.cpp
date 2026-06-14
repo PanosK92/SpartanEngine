@@ -710,8 +710,10 @@ namespace spartan
         // barrier: simulate -> render
         cmd_list->InsertBarrier(buf_a);
 
-        // render, one dispatch per emitter so each can splat with its own texture as a billboard mask
-        RHI_Texture* tex_white = GetStandardTexture(Renderer_StandardTexture::White);
+        // render, one dispatch per emitter so each can splat with its own texture as a billboard mask, the
+        // splats blend additively straight into the frame which is order independent for smoke
+        RHI_Texture* tex_white  = GetStandardTexture(Renderer_StandardTexture::White);
+        RHI_Texture* tex_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             RHI_Texture* tex_particle = emitters[i]->GetTexture();
@@ -725,7 +727,7 @@ namespace spartan
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_counter,  buf_counter);
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
-            cmd_list->SetTexture(Renderer_BindingsUav::tex, GetRenderTarget(Renderer_RenderTarget::frame_render));
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_render);
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, has_texture ? tex_particle : tex_white);
 
@@ -734,6 +736,8 @@ namespace spartan
 
             cmd_list->Dispatch((total_particles + thread_group - 1) / thread_group, 1, 1);
         }
+
+        cmd_list->InsertBarrier(tex_render, RHI_BarrierType::EnsureWriteThenRead);
 
         cmd_list->EndTimeblock();
     }
