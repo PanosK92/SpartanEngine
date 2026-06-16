@@ -79,6 +79,7 @@ namespace spartan
         Terrain,
         Light,
         Camera,
+        Particle,
         Physics,
         Compressed,
         ArrowLeft,

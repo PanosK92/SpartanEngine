@@ -30,6 +30,7 @@ namespace spartan
 {
     const uint32_t renderer_max_draw_calls         = 20000;
     const uint32_t renderer_max_instance_count     = 1024;
+    const uint32_t renderer_editor_icon_size_px    = 48;
     // hard cap on the restir nee pool, the cpu walker stops appending once this many emissive
     // triangles have been recorded so worst case upload size is bounded at 80 * 16384 = 1.25 mb
     const uint32_t restir_emissive_tri_max         = 16384;
@@ -465,6 +466,7 @@ namespace spartan
         Gizmo_light_point,
         Gizmo_light_spot,
         Gizmo_audio_source,
+        Gizmo_particle,
         Black,
         White,
         Max

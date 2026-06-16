@@ -1,14 +1,14 @@
 local tire_smoke = {}
 
--- tunables
-local min_speed          = 3.0   -- m/s, below this no smoke
-local brake_threshold    = 0.3   -- brake input where braking smoke starts
-local slip_threshold     = 0.3   -- combined slip where slide smoke starts, skid marks use 0.35
-local slip_range         = 0.8   -- slip span over which smoke ramps to full
-local intensity_floor    = 0.35  -- minimum visible puff once a wheel triggers
-local max_emission_rate  = 900.0 -- particles per second at full intensity
-local start_size_full    = 0.15  -- birth size in meters at full intensity
-local end_size_full      = 1.2   -- death size in meters at full intensity
+local min_speed              = 2.0
+local slip_threshold         = 0.35
+local slip_range             = 0.95
+local slip_angle_threshold   = 0.16
+local slip_ratio_threshold   = 0.18
+local brake_threshold        = 0.68
+local max_emission_rate      = 820.0
+local contact_height_offset  = 0.045
+local contact_smoothing_rate = 18.0
 
 local function clamp(value, low, high)
     if value < low then
@@ -22,30 +22,129 @@ local function clamp(value, low, high)
     return value
 end
 
--- resolves the particle system on the smoke emitter parented under a wheel
-local function find_emitter(vehicle, wheel_name)
+local function ramp(value, start_value, end_value)
+    return clamp((value - start_value) / math.max(end_value - start_value, 0.0001), 0.0, 1.0)
+end
+
+local function length_xz(vector)
+    return math.sqrt(vector.x * vector.x + vector.z * vector.z)
+end
+
+local function dot(a, b)
+    return a.x * b.x + a.y * b.y + a.z * b.z
+end
+
+local function normalize_or(vector, fallback)
+    local len_sq = vector.x * vector.x + vector.y * vector.y + vector.z * vector.z
+    if len_sq <= 0.000001 then
+        return fallback
+    end
+
+    local inv_len = 1.0 / math.sqrt(len_sq)
+    return Vector3(vector.x * inv_len, vector.y * inv_len, vector.z * inv_len)
+end
+
+local function lerp(a, b, t)
+    return a + (b - a) * t
+end
+
+local function find_emitter(vehicle, wheel_name, index, rear)
     local wheel = vehicle:GetChildByName(wheel_name)
     if not wheel then
-        return nil
+        return { index = index, rear = rear }
     end
 
     local smoke = wheel:GetChildByName("tire_smoke")
     if not smoke then
-        return nil
+        return { wheel = wheel, index = index, rear = rear }
     end
 
-    return smoke:GetComponent(ComponentType.ParticleSystem)
+    return {
+        wheel   = wheel,
+        smoke   = smoke,
+        emitter = smoke:GetComponent(ComponentType.ParticleSystem),
+        index   = index,
+        rear    = rear
+    }
+end
+
+local function get_ground_point(physics, wheel)
+    local contact = physics:GetWheelContactPoint(wheel.index)
+    local normal  = normalize_or(physics:GetWheelContactNormal(wheel.index), Vector3(0.0, 1.0, 0.0))
+    local hub     = wheel.wheel:GetPosition()
+    local offset  = dot(Vector3(hub.x - contact.x, hub.y - contact.y, hub.z - contact.z), normal)
+
+    return Vector3(
+        hub.x - normal.x * offset + normal.x * contact_height_offset,
+        hub.y - normal.y * offset + normal.y * contact_height_offset,
+        hub.z - normal.z * offset + normal.z * contact_height_offset
+    )
+end
+
+local function smooth_contact(dt, wheel, target)
+    if not wheel.smoothed_contact then
+        wheel.smoothed_contact = target
+        return target
+    end
+
+    local t = clamp(dt * contact_smoothing_rate, 0.0, 1.0)
+    wheel.smoothed_contact = Vector3(
+        lerp(wheel.smoothed_contact.x, target.x, t),
+        lerp(wheel.smoothed_contact.y, target.y, t),
+        lerp(wheel.smoothed_contact.z, target.z, t)
+    )
+
+    return wheel.smoothed_contact
+end
+
+local function apply_emitter(wheel, intensity, speed, velocity, vehicle)
+    local emitter = wheel.emitter
+    if not emitter then
+        return
+    end
+
+    if intensity <= 0.01 then
+        emitter:SetEmissionRate(0.0)
+        return
+    end
+
+    local tire_width = math.max(wheel.width or 0.28, 0.18)
+    local speed_push = clamp(speed / 32.0, 0.0, 1.0)
+    local density    = intensity * intensity
+
+    emitter:SetEmissionRate(80.0 + density * max_emission_rate)
+    emitter:SetLifetime(1.15 + intensity * 2.25 + speed_push * 0.6)
+    emitter:SetStartSpeed(0.35 + intensity * 0.9 + speed_push * 0.7)
+    emitter:SetStartSize(0.10 + intensity * 0.18)
+    emitter:SetEndSize(0.65 + intensity * 1.45 + speed_push * 0.55)
+    emitter:SetGravityModifier(-0.018 - intensity * 0.035)
+    emitter:SetEmissionRadius(tire_width * (0.35 + intensity * 0.45))
+    emitter:SetEmissionConeAngle(0.95 + (1.0 - intensity) * 0.35)
+    emitter:SetDirectionalBlend(0.25 + intensity * 0.35)
+
+    local alpha  = clamp(0.16 + intensity * 0.38, 0.0, 0.58)
+    local warmth = clamp(speed_push * 0.08, 0.0, 0.08)
+    emitter:SetStartColor(0.78 + warmth, 0.76 + warmth, 0.72 + warmth, alpha)
+    emitter:SetEndColor(0.46, 0.46, 0.44, 0.0)
+
+    local fallback  = vehicle:GetBackward()
+    local direction = fallback
+    if speed > 0.75 then
+        direction = Vector3(-velocity.x, 0.0, -velocity.z)
+    end
+
+    direction = normalize_or(Vector3(direction.x, 0.35 + intensity * 0.2, direction.z), Vector3(fallback.x, 0.35, fallback.z))
+    emitter:SetEmissionDirection(direction.x, direction.y, direction.z)
 end
 
 function tire_smoke.Tick(self, entity)
-    -- cache the physics body and one emitter per wheel, the script lives on the vehicle entity
     if not self.physics then
         self.physics = entity:GetComponent(ComponentType.Physics)
         self.wheels  = {
-            { emitter = find_emitter(entity, "wheel_front_left"),  index = WheelIndex.FrontLeft,  rear = false },
-            { emitter = find_emitter(entity, "wheel_front_right"), index = WheelIndex.FrontRight, rear = false },
-            { emitter = find_emitter(entity, "wheel_rear_left"),   index = WheelIndex.RearLeft,   rear = true  },
-            { emitter = find_emitter(entity, "wheel_rear_right"),  index = WheelIndex.RearRight,  rear = true  },
+            find_emitter(entity, "wheel_front_left",  WheelIndex.FrontLeft,  false),
+            find_emitter(entity, "wheel_front_right", WheelIndex.FrontRight, false),
+            find_emitter(entity, "wheel_rear_left",   WheelIndex.RearLeft,   true),
+            find_emitter(entity, "wheel_rear_right",  WheelIndex.RearRight,  true)
         }
     end
 
@@ -53,45 +152,54 @@ function tire_smoke.Tick(self, entity)
         return
     end
 
-    local velocity = self.physics:GetLinearVelocity()
-    local speed    = math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z)
-
+    local dt        = Timer.GetDeltaTimeSec()
+    local velocity  = self.physics:GetLinearVelocity()
+    local speed     = length_xz(velocity)
+    local throttle  = self.physics:GetVehicleThrottle()
     local brake     = self.physics:GetVehicleBrake()
     local handbrake = self.physics:GetVehicleHandbrake()
 
-    -- braking smoke applies to all wheels while moving, gives smoke even when the tires do not fully lock
     local brake_intensity = 0.0
     if speed > min_speed and brake > brake_threshold then
-        brake_intensity = intensity_floor + (1.0 - intensity_floor) * clamp((brake - brake_threshold) / (1.0 - brake_threshold), 0.0, 1.0)
+        brake_intensity = ramp(brake, brake_threshold, 1.0) * ramp(speed, min_speed, 18.0) * 0.28
     end
 
     for _, wheel in ipairs(self.wheels) do
-        if wheel.emitter then
+        if wheel and wheel.emitter then
             local intensity = 0.0
 
-            -- a wheel only smokes while it is on the ground
             if self.physics:IsWheelGrounded(wheel.index) then
-                intensity = brake_intensity
+                local ground_point = smooth_contact(dt, wheel, get_ground_point(self.physics, wheel))
+                wheel.smoke:SetPosition(ground_point)
+                wheel.width = self.physics:GetWheelWidth(wheel.index)
 
-                -- combined slip (spin, lock up and lateral slide), same signal as the skid marks
-                local slip = self.physics:GetWheelSlipMagnitude(wheel.index)
-                if slip > slip_threshold then
-                    local slip_intensity = intensity_floor + (1.0 - intensity_floor) * clamp((slip - slip_threshold) / slip_range, 0.0, 1.0)
-                    intensity = math.max(intensity, slip_intensity)
+                local slip       = self.physics:GetWheelSlipMagnitude(wheel.index)
+                local slip_angle = math.abs(self.physics:GetWheelSlipAngle(wheel.index))
+                local slip_ratio = math.abs(self.physics:GetWheelSlipRatio(wheel.index))
+                local tire_load  = self.physics:GetWheelTireLoad(wheel.index)
+
+                local lateral_intensity      = ramp(slip_angle, slip_angle_threshold, 0.78) * 0.85
+                local longitudinal_intensity = ramp(slip_ratio, slip_ratio_threshold, 0.95)
+                local combined_intensity     = ramp(slip, slip_threshold, slip_threshold + slip_range)
+                local load_scale             = clamp(tire_load / 4200.0, 0.55, 1.35)
+                local motion_scale           = math.max(ramp(speed, min_speed, 14.0), longitudinal_intensity * 0.75)
+                local axle_scale             = wheel.rear and 1.0 or 0.55
+
+                intensity = math.max(lateral_intensity, longitudinal_intensity, combined_intensity * 0.8)
+                intensity = math.max(intensity, brake_intensity)
+
+                if wheel.rear and handbrake > 0.1 and speed > min_speed then
+                    intensity = math.max(intensity, handbrake * ramp(speed, min_speed, 16.0) * 0.9)
                 end
 
-                -- the handbrake locks the rear wheels
-                if wheel.rear and speed > min_speed and handbrake > 0.1 then
-                    intensity = math.max(intensity, handbrake)
+                if wheel.rear and throttle > 0.35 then
+                    intensity = math.max(intensity, longitudinal_intensity * (0.65 + throttle * 0.35))
                 end
+
+                intensity = clamp(intensity * motion_scale * load_scale * axle_scale, 0.0, 1.0)
             end
 
-            wheel.emitter:SetEmissionRate(intensity * max_emission_rate)
-
-            -- scale the puff with intensity so light slip makes small wisps and heavy slip makes big plumes
-            local size_scale = clamp(intensity, 0.0, 1.0)
-            wheel.emitter:SetStartSize(start_size_full * size_scale)
-            wheel.emitter:SetEndSize(end_size_full * size_scale)
+            apply_emitter(wheel, intensity, speed, velocity, entity)
         end
     end
 end

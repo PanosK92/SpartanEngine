@@ -461,8 +461,12 @@ struct EmitterParams
     SHARED_UINT   max_particles    SHARED_DEFAULT(0);
     SHARED_UINT   frame            SHARED_DEFAULT(0);
     SHARED_UINT   emitter_count    SHARED_DEFAULT(0);
-    SHARED_FLOAT  padding1         SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT  padding2         SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT3 emission_direction;
+    SHARED_FLOAT  emission_cone_angle SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  directional_blend   SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  padding1            SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  padding2            SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  padding3            SHARED_DEFAULT(0.0f);
 };
 
 // c++ backward compatibility aliases

@@ -33,6 +33,7 @@ SP_WARNINGS_ON
 
 //= NAMESPACES =====
 using namespace std;
+using namespace spartan::math;
 //==================
 
 namespace spartan
@@ -49,6 +50,9 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_end_color, Color);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_gravity_modifier, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_radius, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_direction, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_cone_angle, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_directional_blend, float);
 
         ApplyPreset(ParticlePreset::Fire);
     }
@@ -76,6 +80,9 @@ namespace spartan
                 m_end_color       = Color(1.0f, 0.2f, 0.0f, 0.0f);
                 m_gravity_modifier = -0.5f;
                 m_emission_radius = 0.3f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 0.9f;
+                m_directional_blend = 0.2f;
                 break;
 
             case ParticlePreset::Smoke:
@@ -89,6 +96,9 @@ namespace spartan
                 m_end_color       = Color(0.1f, 0.1f, 0.1f, 0.0f);
                 m_gravity_modifier = -0.2f;
                 m_emission_radius = 0.4f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.3f;
+                m_directional_blend = 0.15f;
                 break;
 
             case ParticlePreset::Steam:
@@ -102,6 +112,9 @@ namespace spartan
                 m_end_color       = Color(1.0f, 1.0f, 1.0f, 0.0f);
                 m_gravity_modifier = -0.3f;
                 m_emission_radius = 0.2f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.1f;
+                m_directional_blend = 0.2f;
                 break;
 
             case ParticlePreset::Sparks:
@@ -115,6 +128,9 @@ namespace spartan
                 m_end_color       = Color(1.0f, 0.4f, 0.1f, 0.0f);
                 m_gravity_modifier = -2.0f;
                 m_emission_radius = 0.1f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 0.45f;
+                m_directional_blend = 0.8f;
                 break;
 
             case ParticlePreset::Dust:
@@ -128,6 +144,9 @@ namespace spartan
                 m_end_color       = Color(0.5f, 0.45f, 0.35f, 0.0f);
                 m_gravity_modifier = -0.05f;
                 m_emission_radius = 1.0f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.4f;
+                m_directional_blend = 0.1f;
                 break;
 
             case ParticlePreset::Snow:
@@ -141,6 +160,9 @@ namespace spartan
                 m_end_color       = Color(0.9f, 0.9f, 1.0f, 0.0f);
                 m_gravity_modifier = -0.3f;
                 m_emission_radius = 10.0f;
+                m_emission_direction = Vector3::Down;
+                m_emission_cone_angle = 0.5f;
+                m_directional_blend = 0.9f;
                 break;
 
             case ParticlePreset::Rain:
@@ -154,6 +176,9 @@ namespace spartan
                 m_end_color       = Color(0.6f, 0.65f, 0.8f, 0.0f);
                 m_gravity_modifier = -3.0f;
                 m_emission_radius = 15.0f;
+                m_emission_direction = Vector3::Down;
+                m_emission_cone_angle = 0.2f;
+                m_directional_blend = 1.0f;
                 break;
 
             case ParticlePreset::Confetti:
@@ -167,6 +192,9 @@ namespace spartan
                 m_end_color       = Color(0.3f, 0.5f, 1.0f, 0.0f);
                 m_gravity_modifier = -1.5f;
                 m_emission_radius = 0.5f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.0f;
+                m_directional_blend = 0.4f;
                 break;
 
             case ParticlePreset::Fireflies:
@@ -180,6 +208,9 @@ namespace spartan
                 m_end_color       = Color(0.2f, 0.8f, 0.1f, 0.0f);
                 m_gravity_modifier = 0.1f;
                 m_emission_radius = 5.0f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.57f;
+                m_directional_blend = 0.0f;
                 break;
 
             case ParticlePreset::Blood:
@@ -193,6 +224,9 @@ namespace spartan
                 m_end_color       = Color(0.3f, 0.0f, 0.0f, 0.0f);
                 m_gravity_modifier = -3.0f;
                 m_emission_radius = 0.1f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.2f;
+                m_directional_blend = 0.0f;
                 break;
 
             case ParticlePreset::Magic:
@@ -206,6 +240,9 @@ namespace spartan
                 m_end_color       = Color(0.8f, 0.4f, 1.0f, 0.0f);
                 m_gravity_modifier = 0.2f;
                 m_emission_radius = 0.8f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.57f;
+                m_directional_blend = 0.0f;
                 break;
 
             case ParticlePreset::Explosion:
@@ -219,6 +256,9 @@ namespace spartan
                 m_end_color       = Color(0.4f, 0.1f, 0.0f, 0.0f);
                 m_gravity_modifier = -1.0f;
                 m_emission_radius = 0.2f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.57f;
+                m_directional_blend = 0.0f;
                 break;
 
             case ParticlePreset::Waterfall:
@@ -232,6 +272,9 @@ namespace spartan
                 m_end_color       = Color(0.8f, 0.9f, 1.0f, 0.0f);
                 m_gravity_modifier = -4.0f;
                 m_emission_radius = 1.0f;
+                m_emission_direction = Vector3::Down;
+                m_emission_cone_angle = 0.4f;
+                m_directional_blend = 0.9f;
                 break;
 
             case ParticlePreset::Embers:
@@ -245,6 +288,9 @@ namespace spartan
                 m_end_color       = Color(1.0f, 0.3f, 0.0f, 0.0f);
                 m_gravity_modifier = -0.15f;
                 m_emission_radius = 0.5f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 0.9f;
+                m_directional_blend = 0.3f;
                 break;
 
             case ParticlePreset::TireSmoke:
@@ -258,6 +304,9 @@ namespace spartan
                 m_end_color       = Color(0.7f, 0.7f, 0.7f, 0.0f);
                 m_gravity_modifier = -0.05f;
                 m_emission_radius = 0.15f;
+                m_emission_direction = Vector3::Up;
+                m_emission_cone_angle = 1.2f;
+                m_directional_blend = 0.2f;
                 break;
 
             case ParticlePreset::Exhaust:
@@ -271,12 +320,38 @@ namespace spartan
                 m_end_color       = Color(0.25f, 0.25f, 0.25f, 0.0f);
                 m_gravity_modifier = -0.08f;
                 m_emission_radius = 0.03f;
+                m_emission_direction = Vector3::Backward;
+                m_emission_cone_angle = 0.45f;
+                m_directional_blend = 0.85f;
                 break;
 
             case ParticlePreset::Custom:
             default:
                 break;
         }
+    }
+
+    void ParticleSystem::SetEmissionDirection(const Vector3& direction)
+    {
+        if (!direction.IsFinite() || direction.LengthSquared() <= 0.0001f)
+        {
+            return;
+        }
+
+        m_emission_direction = direction.Normalized();
+        m_preset = ParticlePreset::Custom;
+    }
+
+    void ParticleSystem::SetEmissionConeAngle(float angle)
+    {
+        m_emission_cone_angle = clamp(angle, 0.0f, 3.14159265f);
+        m_preset = ParticlePreset::Custom;
+    }
+
+    void ParticleSystem::SetDirectionalBlend(float blend)
+    {
+        m_directional_blend = clamp(blend, 0.0f, 1.0f);
+        m_preset = ParticlePreset::Custom;
     }
 
     void ParticleSystem::SetTexture(const string& file_path)
@@ -310,6 +385,11 @@ namespace spartan
         node.append_attribute("end_color_a")     = m_end_color.a;
         node.append_attribute("gravity_modifier") = m_gravity_modifier;
         node.append_attribute("emission_radius") = m_emission_radius;
+        node.append_attribute("emission_direction_x") = m_emission_direction.x;
+        node.append_attribute("emission_direction_y") = m_emission_direction.y;
+        node.append_attribute("emission_direction_z") = m_emission_direction.z;
+        node.append_attribute("emission_cone_angle")  = m_emission_cone_angle;
+        node.append_attribute("directional_blend")    = m_directional_blend;
         node.append_attribute("texture_path")    = m_texture ? m_texture->GetResourceFilePath().c_str() : "";
     }
 
@@ -332,6 +412,15 @@ namespace spartan
         m_end_color.a     = node.attribute("end_color_a").as_float(0.0f);
         m_gravity_modifier = node.attribute("gravity_modifier").as_float(-1.0f);
         m_emission_radius = node.attribute("emission_radius").as_float(0.5f);
+        m_emission_direction = Vector3(
+            node.attribute("emission_direction_x").as_float(0.0f),
+            node.attribute("emission_direction_y").as_float(1.0f),
+            node.attribute("emission_direction_z").as_float(0.0f)
+        );
+        SetEmissionDirection(m_emission_direction);
+        m_preset              = static_cast<ParticlePreset>(node.attribute("preset").as_uint(static_cast<uint32_t>(ParticlePreset::Fire)));
+        m_emission_cone_angle = node.attribute("emission_cone_angle").as_float(1.57f);
+        m_directional_blend   = node.attribute("directional_blend").as_float(0.0f);
 
         string texture_path = node.attribute("texture_path").as_string("");
         if (!texture_path.empty())
@@ -360,7 +449,17 @@ namespace spartan
             "GetGravityModifier",     &ParticleSystem::GetGravityModifier,
             "SetGravityModifier",     &ParticleSystem::SetGravityModifier,
             "GetEmissionRadius",      &ParticleSystem::GetEmissionRadius,
-            "SetEmissionRadius",      &ParticleSystem::SetEmissionRadius
+            "SetEmissionRadius",      &ParticleSystem::SetEmissionRadius,
+            "SetEmissionDirection",   [](ParticleSystem& self, float x, float y, float z) { self.SetEmissionDirection(Vector3(x, y, z)); },
+            "GetEmissionConeAngle",   &ParticleSystem::GetEmissionConeAngle,
+            "SetEmissionConeAngle",   &ParticleSystem::SetEmissionConeAngle,
+            "GetDirectionalBlend",    &ParticleSystem::GetDirectionalBlend,
+            "SetDirectionalBlend",    &ParticleSystem::SetDirectionalBlend,
+            "SetStartColor",          [](ParticleSystem& self, float r, float g, float b, float a) { self.SetStartColor(Color(r, g, b, a)); },
+            "SetEndColor",            [](ParticleSystem& self, float r, float g, float b, float a) { self.SetEndColor(Color(r, g, b, a)); },
+            "SetTexture",             sol::overload(
+                [](ParticleSystem& self, const string& file_path) { self.SetTexture(file_path); },
+                [](ParticleSystem& self) { self.SetTexture(""); })
             );
     }
 

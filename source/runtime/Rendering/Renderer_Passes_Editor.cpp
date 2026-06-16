@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
 #include "../World/Components/AudioSource.h"
+#include "../World/Components/ParticleSystem.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Buffer.h"
 #include "../RHI/RHI_Shader.h"
@@ -58,6 +59,10 @@ namespace spartan
                     {
                         m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
                     }
+                }
+                else if (entity->GetComponent<ParticleSystem>())
+                {
+                    m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_particle), entity->GetPosition()));
                 }
                 else if (Light* light = entity->GetComponent<Light>())
                 {
@@ -100,15 +105,15 @@ namespace spartan
                 auto dispatch_icon = [&](RHI_Texture* texture, const math::Vector3& pos_world)
                 {
                     m_pcb_pass_cpu.set_f3_value(pos_world.x, pos_world.y, pos_world.z);
-                    m_pcb_pass_cpu.set_f2_value(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
+                    m_pcb_pass_cpu.set_f2_value(static_cast<float>(renderer_editor_icon_size_px), static_cast<float>(renderer_editor_icon_size_px));
                     cmd_list->PushConstants(m_pcb_pass_cpu);
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
 
-                    uint32_t thread_x = 32;
-                    uint32_t thread_y = 32;
-                    uint32_t groups_x = (texture->GetWidth() + thread_x - 1) / thread_x;
-                    uint32_t groups_y = (texture->GetHeight() + thread_y - 1) / thread_y;
+                    const uint32_t thread_x = 32;
+                    const uint32_t thread_y = 32;
+                    uint32_t groups_x = (renderer_editor_icon_size_px + thread_x - 1) / thread_x;
+                    uint32_t groups_y = (renderer_editor_icon_size_px + thread_y - 1) / thread_y;
                     cmd_list->Dispatch(groups_x, groups_y, 1);
 
                     // per-icon barrier to avoid out-of-order uav writes on overlapping icons

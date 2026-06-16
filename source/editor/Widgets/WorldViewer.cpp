@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Physics.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/Camera.h"
+#include "World/Components/ParticleSystem.h"
 #include "Commands/CommandStack.h"
 #include "Commands/CommandEntityDelete.h"
 #include "Input/Input.h"
@@ -241,6 +242,12 @@ namespace
         if (entity->GetComponent<Camera>())
         {
             type = IconType::Camera;
+            ++match_count;
+        }
+
+        if (entity->GetComponent<ParticleSystem>())
+        {
+            type = IconType::Particle;
             ++match_count;
         }
     

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Component.h"
 #include "../../Rendering/Color.h"
+#include "../../Math/Vector3.h"
 #include <sol/forward.hpp>
 //===================================
 
@@ -108,6 +109,14 @@ namespace spartan
         float GetEmissionRadius() const        { return m_emission_radius; }
         void SetEmissionRadius(float radius)   { m_emission_radius = radius; m_preset = ParticlePreset::Custom; }
 
+        // emission direction
+        const math::Vector3& GetEmissionDirection() const { return m_emission_direction; }
+        void SetEmissionDirection(const math::Vector3& direction);
+        float GetEmissionConeAngle() const                { return m_emission_cone_angle; }
+        void SetEmissionConeAngle(float angle);
+        float GetDirectionalBlend() const                 { return m_directional_blend; }
+        void SetDirectionalBlend(float blend);
+
         // particle texture, sampled as a billboard mask when set, otherwise a procedural circle is used
         RHI_Texture* GetTexture() const        { return m_texture; }
         void SetTexture(RHI_Texture* texture)  { m_texture = texture; }
@@ -125,6 +134,9 @@ namespace spartan
         Color m_end_color          = Color(1.0f, 0.2f, 0.0f, 0.0f);
         float m_gravity_modifier   = -1.0f;
         float m_emission_radius    = 0.5f;
+        math::Vector3 m_emission_direction = math::Vector3::Up;
+        float m_emission_cone_angle        = 1.57f;
+        float m_directional_blend          = 0.0f;
         RHI_Texture* m_texture     = nullptr; // owned by the resource cache
     };
 }

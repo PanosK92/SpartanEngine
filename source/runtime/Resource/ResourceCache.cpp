@@ -354,6 +354,7 @@ namespace spartan
             { IconType::Terrain,       "icons/terrain.png"          },
             { IconType::Light,         "icons/light.png"            },
             { IconType::Camera,        "icons/camera.png"           },
+            { IconType::Particle,      "icons/particle.png"         },
             { IconType::Physics,       "icons/physics.png"          },
             { IconType::Compressed,    "icons/compressed.png"       },
             { IconType::ArrowLeft,     "icons/arrow_left.png"       },

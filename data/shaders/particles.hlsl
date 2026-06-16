@@ -47,6 +47,33 @@ float3 random_in_sphere(uint seed)
     return dir * t;
 }
 
+float3 safe_normalize(float3 value, float3 fallback)
+{
+    float len_sq = dot(value, value);
+    if (len_sq <= 0.000001)
+    {
+        return fallback;
+    }
+
+    return value * rsqrt(len_sq);
+}
+
+float3 random_in_cone(uint seed, float3 axis, float cone_angle)
+{
+    axis = safe_normalize(axis, float3(0.0, 1.0, 0.0));
+
+    float cos_angle = cos(saturate(cone_angle / 3.14159265) * 3.14159265);
+    float cos_theta = lerp(1.0, cos_angle, rng(seed * 69621u + 5u));
+    float sin_theta = sqrt(max(0.0, 1.0 - cos_theta * cos_theta));
+    float phi       = rng(seed * 31337u + 11u) * 6.28318530718;
+
+    float3 up      = abs(axis.y) < 0.999 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0);
+    float3 tangent = safe_normalize(cross(up, axis), float3(1.0, 0.0, 0.0));
+    float3 bitan   = cross(axis, tangent);
+
+    return safe_normalize(axis * cos_theta + (tangent * cos(phi) + bitan * sin(phi)) * sin_theta, axis);
+}
+
 #ifdef EMIT
 
 [numthreads(256, 1, 1)]
@@ -72,10 +99,13 @@ void main_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
     // random position within emission sphere
     float3 offset = random_in_sphere(seed) * emitter.radius;
 
-    // bias the launch upward and outward so the smoke billows off the tire instead of firing in every direction
-    float3 dir = random_direction(seed + 277803737u);
-    dir.y      = abs(dir.y) * 0.7 + 0.3;
-    dir        = normalize(dir);
+    // bias the launch upward and blend toward the emitter direction when requested
+    float3 dir_random = random_direction(seed + 277803737u);
+    dir_random.y      = abs(dir_random.y) * 0.7 + 0.3;
+    dir_random        = safe_normalize(dir_random, float3(0.0, 1.0, 0.0));
+
+    float3 dir_cone = random_in_cone(seed + 97127u, emitter.emission_direction, emitter.emission_cone_angle);
+    float3 dir      = safe_normalize(lerp(dir_random, dir_cone, saturate(emitter.directional_blend)), dir_random);
 
     // per-particle jitter so no two puffs share size, lifetime or speed, this breaks up the uniform blob look
     float r_size  = 0.6 + 0.8 * rng(seed + 9001u);

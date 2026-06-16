@@ -867,6 +867,7 @@ namespace spartan
     void Renderer::CreateStandardTextures()
     {
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "/";
+        const string dir_icon    = ResourceCache::GetResourceDirectory(ResourceDirectory::Icons) + "/";
 
         at(standard_textures, Renderer_StandardTexture::Noise_perlin) = make_shared<RHI_Texture>(dir_texture + "noise_perlin.png");
         at(standard_textures, Renderer_StandardTexture::Noise_blue)   = make_shared<RHI_Texture>(dir_texture + "noise_blue_0.png");
@@ -877,6 +878,7 @@ namespace spartan
             at(standard_textures, Renderer_StandardTexture::Gizmo_light_point)       = make_shared<RHI_Texture>(dir_texture + "light_bulb.png");
             at(standard_textures, Renderer_StandardTexture::Gizmo_light_spot)        = make_shared<RHI_Texture>(dir_texture + "flashlight.png");
             at(standard_textures, Renderer_StandardTexture::Gizmo_audio_source)      = make_shared<RHI_Texture>(dir_texture + "audio.png");
+            at(standard_textures, Renderer_StandardTexture::Gizmo_particle)          = make_shared<RHI_Texture>(dir_icon + "particle.png");
         }
 
         // misc

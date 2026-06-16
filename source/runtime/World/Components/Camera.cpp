@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Physics.h"
 #include "Light.h"
 #include "AudioSource.h"
+#include "ParticleSystem.h"
 #include "../Entity.h"
 #include "../../Input/Input.h"
 #include "../../Rendering/Renderer.h"
@@ -297,9 +298,8 @@ namespace spartan
         const Vector3 camera_pos = GetEntity()->GetPosition();
         const Vector3 camera_fwd = GetEntity()->GetForward();
 
-        // icons are roughly 64 px and the editor viewport matches the output resolution, so the
-        // clickable half extent maps one to one with screen pixels, no resolution scaling needed
-        const float icon_half_px = 32.0f;
+        // match the fixed size used by the icon render pass
+        const float icon_half_px = static_cast<float>(renderer_editor_icon_size_px) * 0.5f;
 
         Entity* best     = nullptr;
         float   best_dist = numeric_limits<float>::max();
@@ -314,7 +314,8 @@ namespace spartan
             // only entities that draw an icon, gated by the same cvars as the icon pass
             bool draws_audio = entity->GetComponent<AudioSource>() != nullptr && cvar_audio_sources.GetValueAs<bool>();
             bool draws_light = entity->GetComponent<Light>()       != nullptr && cvar_lights.GetValueAs<bool>();
-            if (!draws_audio && !draws_light)
+            bool draws_particle = entity->GetComponent<ParticleSystem>() != nullptr;
+            if (!draws_audio && !draws_light && !draws_particle)
             {
                 continue;
             }
@@ -363,7 +364,7 @@ namespace spartan
             return;
         }
 
-        // editor overlay icons (lights, audio sources) are a 2d projection on top of the scene, so
+        // editor overlay icons (lights, audio sources, particles) are a 2d projection on top of the scene, so
         // they take priority over geometry picking, clicking one selects its entity in the hierarchy
         if (Entity* icon_entity = FindIconUnderCursor())
         {

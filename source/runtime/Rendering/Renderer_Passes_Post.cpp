@@ -657,6 +657,9 @@ namespace spartan
             params.max_particles    = total_particles;
             params.frame            = m_cb_frame_cpu.frame;
             params.emitter_count    = emitter_count;
+            params.emission_direction = emitter->GetEmissionDirection();
+            params.emission_cone_angle = emitter->GetEmissionConeAngle();
+            params.directional_blend   = emitter->GetDirectionalBlend();
         }
 
         buf_emitter->ResetOffset();
