@@ -1,14 +1,13 @@
 local exhaust_fx = {}
 
-local smoke_rate_idle      = 8.0
-local smoke_rate_load      = 92.0
-local smoke_rate_overrun   = 125.0
+local smoke_rate_idle      = 18.0
+local smoke_rate_load      = 145.0
+local smoke_rate_overrun   = 170.0
 local smoke_phase_strength = 0.12
-local fire_rate_peak       = 460.0
-local fire_fade_speed      = 10.0
-local fire_right_delay     = 0.025
-local fire_light_lumens    = 26000.0
-local fire_light_range     = 3.25
+local fire_rate_peak       = 1050.0
+local fire_fade_speed      = 13.0
+local fire_light_lumens    = 30000.0
+local fire_light_range     = 2.75
 
 local function clamp(value, low, high)
     if value < low then
@@ -41,6 +40,10 @@ local function normalize_or(vector, fallback)
 end
 
 local function find_component(root, name, component_type)
+    if not root then
+        return nil
+    end
+
     local node = root:GetChildByName(name)
     if not node then
         return nil
@@ -67,49 +70,49 @@ local function apply_smoke(pipe, vehicle, intensity, overrun, speed, time)
     local travel = clamp(speed / 40.0, 0.0, 1.0)
 
     pipe.smoke:SetEmissionRate(rate)
-    pipe.smoke:SetLifetime(0.55 + intensity * 1.15 + overrun * 0.45)
-    pipe.smoke:SetStartSpeed(0.22 + intensity * 0.75 + travel * 0.45)
-    pipe.smoke:SetStartSize(0.022 + intensity * 0.045)
-    pipe.smoke:SetEndSize(0.18 + intensity * 0.42 + overrun * 0.18)
-    pipe.smoke:SetGravityModifier(-0.035 - intensity * 0.045)
-    pipe.smoke:SetEmissionRadius(0.022 + intensity * 0.035)
-    pipe.smoke:SetEmissionConeAngle(0.42 + intensity * 0.2)
-    pipe.smoke:SetDirectionalBlend(0.78)
+    pipe.smoke:SetLifetime(0.45 + intensity * 0.75 + overrun * 0.25)
+    pipe.smoke:SetStartSpeed(0.22 + intensity * 0.45 + travel * 0.3)
+    pipe.smoke:SetStartSize(0.045 + intensity * 0.055)
+    pipe.smoke:SetEndSize(0.26 + intensity * 0.34 + overrun * 0.12)
+    pipe.smoke:SetGravityModifier(-0.02 - intensity * 0.025)
+    pipe.smoke:SetEmissionRadius(0.035 + intensity * 0.035)
+    pipe.smoke:SetEmissionConeAngle(0.42 + intensity * 0.16)
+    pipe.smoke:SetDirectionalBlend(0.58)
 
-    local direction = tail_direction(vehicle, 0.12 + intensity * 0.08)
+    local direction = tail_direction(vehicle, 0.08 + intensity * 0.06)
     pipe.smoke:SetEmissionDirection(direction.x, direction.y, direction.z)
 
-    local alpha = clamp(0.22 + intensity * 0.28 + overrun * 0.18, 0.0, 0.62)
-    local shade = 0.46 - intensity * 0.16 - overrun * 0.08
-    pipe.smoke:SetStartColor(shade + 0.06, shade + 0.055, shade + 0.05, alpha)
-    pipe.smoke:SetEndColor(0.18, 0.18, 0.18, 0.0)
+    local alpha = clamp(0.34 + intensity * 0.24 + overrun * 0.16, 0.0, 0.68)
+    local shade = 0.6 - intensity * 0.08 - overrun * 0.04
+    pipe.smoke:SetStartColor(shade + 0.08, shade + 0.075, shade + 0.07, alpha)
+    pipe.smoke:SetEndColor(0.38, 0.38, 0.36, 0.0)
 end
 
 local function apply_fire(pipe, vehicle, intensity)
     if pipe.fire then
         intensity = clamp(intensity, 0.0, 1.0)
 
-        pipe.fire:SetEmissionRate(intensity * fire_rate_peak * pipe.bias)
-        pipe.fire:SetLifetime(0.055 + intensity * 0.12)
-        pipe.fire:SetStartSpeed(3.2 + intensity * 4.6)
-        pipe.fire:SetStartSize(0.055 + intensity * 0.12)
-        pipe.fire:SetEndSize(0.015 + intensity * 0.055)
+        pipe.fire:SetEmissionRate(intensity * fire_rate_peak)
+        pipe.fire:SetLifetime(0.055 + intensity * 0.07)
+        pipe.fire:SetStartSpeed(2.6 + intensity * 2.4)
+        pipe.fire:SetStartSize(0.09 + intensity * 0.15)
+        pipe.fire:SetEndSize(0.018 + intensity * 0.045)
         pipe.fire:SetGravityModifier(0.0)
         pipe.fire:SetEmissionRadius(0.012 + intensity * 0.018)
-        pipe.fire:SetEmissionConeAngle(0.18 + (1.0 - intensity) * 0.12)
-        pipe.fire:SetDirectionalBlend(0.98)
+        pipe.fire:SetEmissionConeAngle(0.18 + (1.0 - intensity) * 0.08)
+        pipe.fire:SetDirectionalBlend(0.88)
 
-        local direction = tail_direction(vehicle, 0.035)
+        local direction = tail_direction(vehicle, 0.02)
         pipe.fire:SetEmissionDirection(direction.x, direction.y, direction.z)
 
-        local alpha = clamp(intensity * 1.2, 0.0, 1.0)
-        pipe.fire:SetStartColor(1.0 - intensity * 0.45, 0.62 + intensity * 0.22, 0.18 + intensity * 0.78, alpha)
-        pipe.fire:SetEndColor(1.0, 0.17 + intensity * 0.12, 0.015, 0.0)
+        local alpha = clamp(0.3 + intensity * 0.7, 0.0, 1.0)
+        pipe.fire:SetStartColor(1.0 - intensity * 0.35, 0.68 + intensity * 0.22, 0.24 + intensity * 0.76, alpha)
+        pipe.fire:SetEndColor(1.0, 0.24 + intensity * 0.18, 0.035, 0.0)
     end
 
     if pipe.light then
         pipe.light:SetIntensity(intensity * fire_light_lumens)
-        pipe.light:SetRange(0.75 + intensity * fire_light_range)
+        pipe.light:SetRange(0.5 + intensity * fire_light_range)
     end
 end
 
@@ -119,9 +122,7 @@ local function trigger_fire(self, amount)
         return
     end
 
-    self.fire_left_intensity  = math.max(self.fire_left_intensity, amount)
-    self.fire_right_pending   = math.max(self.fire_right_pending, amount * 0.82)
-    self.fire_right_timer     = fire_right_delay
+    self.fire_intensity = math.max(self.fire_intensity, math.max(amount, 0.32))
 end
 
 function exhaust_fx.Tick(self, entity)
@@ -133,18 +134,20 @@ function exhaust_fx.Tick(self, entity)
 
         self.vehicle = vehicle
         self.physics = vehicle:GetComponent(ComponentType.Physics)
+        local left   = entity:GetChildByName("exhaust_fx_left")
+        local right  = entity:GetChildByName("exhaust_fx_right")
         self.pipes   = {
             {
-                smoke = find_component(entity, "exhaust_left_smoke", ComponentType.ParticleSystem),
-                fire  = find_component(entity, "exhaust_left_fire", ComponentType.ParticleSystem),
-                light = find_component(entity, "exhaust_left_light", ComponentType.Light),
+                smoke = find_component(left, "exhaust_smoke", ComponentType.ParticleSystem),
+                fire  = find_component(left, "exhaust_fire", ComponentType.ParticleSystem),
+                light = find_component(left, "exhaust_light", ComponentType.Light),
                 phase = 0.0,
                 bias  = 1.0
             },
             {
-                smoke = find_component(entity, "exhaust_right_smoke", ComponentType.ParticleSystem),
-                fire  = find_component(entity, "exhaust_right_fire", ComponentType.ParticleSystem),
-                light = find_component(entity, "exhaust_right_light", ComponentType.Light),
+                smoke = find_component(right, "exhaust_smoke", ComponentType.ParticleSystem),
+                fire  = find_component(right, "exhaust_fire", ComponentType.ParticleSystem),
+                light = find_component(right, "exhaust_light", ComponentType.Light),
                 phase = 1.7,
                 bias  = 0.93
             }
@@ -163,10 +166,7 @@ function exhaust_fx.Tick(self, entity)
         end
 
         self.time                 = 0.0
-        self.fire_left_intensity  = 0.0
-        self.fire_right_intensity = 0.0
-        self.fire_right_pending   = 0.0
-        self.fire_right_timer     = 0.0
+        self.fire_intensity = 0.0
     end
 
     if not self.physics then
@@ -217,25 +217,14 @@ function exhaust_fx.Tick(self, entity)
         fire_trigger = math.max(fire_trigger, ramp(boost_drop, 0.1, 0.42) * ramp(boost_norm + boost_drop / boost_max, 0.25, 0.9))
     end
 
-    local load_fire = ramp(throttle, 0.82, 1.0) * ramp(rpm_norm, 0.74, 1.0) * 0.24
-    fire_trigger = math.max(fire_trigger, load_fire)
     trigger_fire(self, fire_trigger)
 
-    if self.fire_right_timer > 0.0 then
-        self.fire_right_timer = self.fire_right_timer - dt
-        if self.fire_right_timer <= 0.0 then
-            self.fire_right_intensity = math.max(self.fire_right_intensity, self.fire_right_pending)
-            self.fire_right_pending = 0.0
-        end
-    end
-
-    self.fire_left_intensity  = math.max(self.fire_left_intensity - dt * fire_fade_speed, 0.0)
-    self.fire_right_intensity = math.max(self.fire_right_intensity - dt * fire_fade_speed, 0.0)
+    self.fire_intensity = math.max(self.fire_intensity - dt * fire_fade_speed, 0.0)
 
     apply_smoke(self.pipes[1], self.vehicle, smoke_intensity, overrun_intensity, speed, self.time)
     apply_smoke(self.pipes[2], self.vehicle, smoke_intensity, overrun_intensity, speed, self.time)
-    apply_fire(self.pipes[1], self.vehicle, self.fire_left_intensity)
-    apply_fire(self.pipes[2], self.vehicle, self.fire_right_intensity)
+    apply_fire(self.pipes[1], self.vehicle, self.fire_intensity)
+    apply_fire(self.pipes[2], self.vehicle, self.fire_intensity)
 
     self.prev_gear     = gear
     self.prev_throttle = throttle

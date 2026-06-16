@@ -154,6 +154,7 @@ namespace car
             // slip calculation (always runs, values approach zero smoothly at low speed)
             float abs_vx = fabsf(vx);
             float abs_ws = fabsf(wheel_speed);
+            float rest_speed = PxMax(ground_speed, abs_ws);
             float slip_denom = PxMax(PxMax(abs_vx, abs_ws), 0.01f);
             float raw_slip_ratio = PxClamp((wheel_speed - vx) / slip_denom, -1.0f, 1.0f);
             float raw_slip_angle = atan2f(vy, PxMax(abs_vx, 0.5f));
@@ -166,6 +167,21 @@ namespace car
             float lat_blend  = 1.0f - expf(-lat_distance / effective_relaxation);
             w.slip_ratio = lerp(w.slip_ratio, raw_slip_ratio, long_blend);
             w.slip_angle = lerp(w.slip_angle, raw_slip_angle, lat_blend);
+
+            float rest_slip_speed = tuning::spec.min_slip_speed;
+            if (rest_speed < rest_slip_speed && input.throttle <= tuning::spec.input_deadzone)
+            {
+                float rest_t = 1.0f - rest_speed / PxMax(rest_slip_speed, 0.01f);
+                float rest_decay = exp_decay(24.0f * rest_t, dt);
+                w.slip_ratio = lerp(w.slip_ratio, 0.0f, rest_decay);
+                w.slip_angle = lerp(w.slip_angle, 0.0f, rest_decay);
+
+                if (rest_speed < 0.03f)
+                {
+                    w.slip_ratio = 0.0f;
+                    w.slip_angle = 0.0f;
+                }
+            }
 
             float effective_slip_angle = w.slip_angle;
             if (fabsf(effective_slip_angle) < tuning::spec.slip_angle_deadband)
