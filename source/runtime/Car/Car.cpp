@@ -1314,6 +1314,7 @@ namespace spartan
 
         math::Vector3 car_position = m_vehicle_entity->GetPosition();
         math::Vector3 car_forward  = m_vehicle_entity->GetForward();
+        math::Vector3 car_right    = m_vehicle_entity->GetRight();
         math::Vector3 car_velocity = car_physics ? car_physics->GetLinearVelocity() : math::Vector3::Zero;
         float car_speed = car_velocity.Length();
 
@@ -1354,6 +1355,24 @@ namespace spartan
                                        - offset_direction * dynamic_distance * horizontal_scale
                                        + math::Vector3::Up * (dynamic_height + vertical_offset);
 
+        float slip_intensity = 0.0f;
+        if (car_physics)
+        {
+            for (uint32_t i = 0; i < 4; i++)
+            {
+                WheelIndex wheel = static_cast<WheelIndex>(i);
+                float slip_angle = fabsf(car_physics->GetWheelSlipAngle(wheel));
+                float slip_ratio = fabsf(car_physics->GetWheelSlipRatio(wheel));
+                slip_intensity = std::max(slip_intensity, std::max(slip_angle * 0.9f, slip_ratio * 0.7f));
+            }
+            slip_intensity = std::clamp(slip_intensity, 0.0f, 1.0f);
+        }
+
+        float shake_phase = static_cast<float>(Timer::GetTimeSec()) * (16.0f + m_chase_camera.speed_factor * 16.0f);
+        float shake_strength = slip_intensity * 0.055f + m_chase_camera.speed_factor * 0.01f;
+        target_position += car_right * sinf(shake_phase) * shake_strength;
+        target_position += math::Vector3::Up * cosf(shake_phase * 1.37f) * shake_strength * 0.55f;
+
         float position_smooth = chase_position_smoothing * (1.0f - m_chase_camera.speed_factor * 0.3f);
         m_chase_camera.position = SmoothDamp(m_chase_camera.position, target_position, 
                                              m_chase_camera.velocity, position_smooth, dt);
@@ -1368,6 +1387,12 @@ namespace spartan
         math::Vector3 look_at = car_position + math::Vector3::Up * chase_look_offset_up + look_ahead;
 
         camera->SetPosition(m_chase_camera.position);
+        if (Camera* camera_component = camera->GetComponent<Camera>())
+        {
+            float fov = 90.0f + m_chase_camera.speed_factor * 5.0f + slip_intensity * 1.5f;
+            camera_component->SetFovHorizontalDeg(fov);
+        }
+
         math::Vector3 look_direction = (look_at - m_chase_camera.position).Normalized();
         camera->SetRotation(math::Quaternion::FromLookRotation(look_direction, math::Vector3::Up));
     }

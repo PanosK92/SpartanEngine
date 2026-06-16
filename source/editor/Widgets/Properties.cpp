@@ -2814,6 +2814,20 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         float end_size           = particle_system->GetEndSize();
         float gravity_modifier   = particle_system->GetGravityModifier();
         float emission_radius    = particle_system->GetEmissionRadius();
+        Vector3 emission_direction = particle_system->GetEmissionDirection();
+        float emission_cone_angle  = particle_system->GetEmissionConeAngle();
+        float directional_blend    = particle_system->GetDirectionalBlend();
+        float emissive_strength    = particle_system->GetEmissiveStrength();
+        float soft_depth_scale     = particle_system->GetSoftDepthScale();
+        float drag                 = particle_system->GetDrag();
+        float turbulence_strength  = particle_system->GetTurbulenceStrength();
+        float wind_influence       = particle_system->GetWindInfluence();
+        float velocity_inheritance = particle_system->GetVelocityInheritance();
+        float velocity_stretch     = particle_system->GetVelocityStretch();
+        float spawn_burst          = particle_system->GetSpawnBurst();
+        float flipbook_rows        = static_cast<float>(particle_system->GetFlipbookRows());
+        float flipbook_columns     = static_cast<float>(particle_system->GetFlipbookColumns());
+        float flipbook_fps         = particle_system->GetFlipbookFps();
         m_colorPicker_particle_start->SetColor(particle_system->GetStartColor());
         m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
         //===============================================================
@@ -2839,8 +2853,41 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             end_size         = particle_system->GetEndSize();
             gravity_modifier = particle_system->GetGravityModifier();
             emission_radius  = particle_system->GetEmissionRadius();
+            emission_direction = particle_system->GetEmissionDirection();
+            emission_cone_angle = particle_system->GetEmissionConeAngle();
+            directional_blend = particle_system->GetDirectionalBlend();
+            emissive_strength = particle_system->GetEmissiveStrength();
+            soft_depth_scale = particle_system->GetSoftDepthScale();
+            drag = particle_system->GetDrag();
+            turbulence_strength = particle_system->GetTurbulenceStrength();
+            wind_influence = particle_system->GetWindInfluence();
+            velocity_inheritance = particle_system->GetVelocityInheritance();
+            velocity_stretch = particle_system->GetVelocityStretch();
             m_colorPicker_particle_start->SetColor(particle_system->GetStartColor());
             m_colorPicker_particle_end->SetColor(particle_system->GetEndColor());
+        }
+
+        layout::separator();
+        layout::section_header("Effect Asset");
+
+        string effect_path = particle_system->GetEffectPath().empty() ? "inline custom" : particle_system->GetEffectPath();
+        ImGui::TextWrapped("%s", effect_path.c_str());
+        if (ImGuiSp::button("Load Effect"))
+        {
+            file_selection::open([particle_system](const std::string& path)
+            {
+                if (FileSystem::GetExtensionFromFilePath(path) == ".particle")
+                {
+                    particle_system->LoadEffect(path);
+                }
+            });
+        }
+        ImGui::SameLine();
+        if (ImGuiSp::button("Save Effect"))
+        {
+            const string path = particle_system->GetEffectPath().empty() ? "project/particles/custom.particle" : particle_system->GetEffectPath();
+            particle_system->SaveEffect(path);
+            particle_system->SetEffectPath(path);
         }
 
         layout::separator();
@@ -2865,6 +2912,29 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             particle_system->SetEmissionRadius(emission_radius);
         }
 
+        property_vector3("Direction", emission_direction, "world-space emission direction");
+        if (emission_direction.x != particle_system->GetEmissionDirection().x ||
+            emission_direction.y != particle_system->GetEmissionDirection().y ||
+            emission_direction.z != particle_system->GetEmissionDirection().z)
+        {
+            particle_system->SetEmissionDirection(emission_direction);
+        }
+
+        if (property_float("Cone", &emission_cone_angle, 0.01f, 0.0f, math::pi, "directional cone angle in radians", "%.2f rad"))
+        {
+            particle_system->SetEmissionConeAngle(emission_cone_angle);
+        }
+
+        if (property_float("Direction Blend", &directional_blend, 0.01f, 0.0f, 1.0f, "0 is random upward smoke, 1 follows direction", "%.2f"))
+        {
+            particle_system->SetDirectionalBlend(directional_blend);
+        }
+
+        if (property_float("Spawn Burst", &spawn_burst, 1.0f, 0.0f, 100000.0f, "one-shot particles emitted when the effect is loaded or triggered", "%.0f"))
+        {
+            particle_system->SetSpawnBurst(spawn_burst);
+        }
+
         layout::separator();
         layout::section_header("Lifetime & Motion");
 
@@ -2886,6 +2956,31 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
             particle_system->SetGravityModifier(gravity_modifier);
         }
 
+        if (property_float("Drag", &drag, 0.01f, 0.0f, 10.0f, "air resistance, higher values make smoke settle faster", "%.2f"))
+        {
+            particle_system->SetDrag(drag);
+        }
+
+        if (property_float("Turbulence", &turbulence_strength, 0.01f, 0.0f, 10.0f, "curl-like procedural motion strength", "%.2f"))
+        {
+            particle_system->SetTurbulenceStrength(turbulence_strength);
+        }
+
+        if (property_float("Wind", &wind_influence, 0.01f, 0.0f, 5.0f, "amount of world wind inherited during simulation", "%.2f"))
+        {
+            particle_system->SetWindInfluence(wind_influence);
+        }
+
+        if (property_float("Inherit Velocity", &velocity_inheritance, 0.01f, 0.0f, 2.0f, "amount of emitter velocity inherited at birth", "%.2f"))
+        {
+            particle_system->SetVelocityInheritance(velocity_inheritance);
+        }
+
+        if (property_float("Stretch", &velocity_stretch, 0.01f, 0.0f, 5.0f, "screen-space stretch along particle velocity", "%.2f"))
+        {
+            particle_system->SetVelocityStretch(velocity_stretch);
+        }
+
         layout::separator();
         layout::section_header("Appearance");
 
@@ -2899,6 +2994,30 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
         if (property_float("End Size", &end_size, 0.01f, 0.0f, 10.0f, "particle size at death in meters", "%.3f m"))
         {
             particle_system->SetEndSize(end_size);
+        }
+
+        static vector<string> blend_modes = { "Alpha", "Premultiplied", "Additive" };
+        uint32_t blend_mode = static_cast<uint32_t>(particle_system->GetBlendMode());
+        if (property_combo("Blend", blend_modes, &blend_mode, "how particles composite into the hdr frame"))
+        {
+            particle_system->SetBlendMode(static_cast<spartan::ParticleBlendMode>(blend_mode));
+        }
+
+        static vector<string> lighting_modes = { "Lit", "Unlit", "Emissive" };
+        uint32_t lighting_mode = static_cast<uint32_t>(particle_system->GetLightingMode());
+        if (property_combo("Lighting", lighting_modes, &lighting_mode, "lit smoke, unlit vapor, or hdr emissive fire"))
+        {
+            particle_system->SetLightingMode(static_cast<spartan::ParticleLightingMode>(lighting_mode));
+        }
+
+        if (property_float("Emissive", &emissive_strength, 0.1f, 0.0f, 100.0f, "hdr multiplier for emissive particles", "%.1f"))
+        {
+            particle_system->SetEmissiveStrength(emissive_strength);
+        }
+
+        if (property_float("Soft Depth", &soft_depth_scale, 0.1f, 0.0f, 100.0f, "higher values make depth intersections tighter", "%.1f"))
+        {
+            particle_system->SetSoftDepthScale(soft_depth_scale);
         }
 
         layout::group_spacing();
@@ -2923,6 +3042,21 @@ void Properties::ShowParticleSystem(spartan::ParticleSystem* particle_system) co
                     }
                 });
             }
+        }
+
+        if (property_float("Flipbook Rows", &flipbook_rows, 1.0f, 1.0f, 32.0f, "texture atlas rows", "%.0f"))
+        {
+            particle_system->SetFlipbookRows(static_cast<uint32_t>(flipbook_rows));
+        }
+
+        if (property_float("Flipbook Columns", &flipbook_columns, 1.0f, 1.0f, 32.0f, "texture atlas columns", "%.0f"))
+        {
+            particle_system->SetFlipbookColumns(static_cast<uint32_t>(flipbook_columns));
+        }
+
+        if (property_float("Flipbook FPS", &flipbook_fps, 1.0f, 0.0f, 120.0f, "atlas playback rate, 0 spreads frames over lifetime", "%.0f"))
+        {
+            particle_system->SetFlipbookFps(flipbook_fps);
         }
 
         layout::group_spacing();

@@ -57,7 +57,7 @@ namespace spartan
         // graphics states
         array<shared_ptr<RHI_RasterizerState>, static_cast<uint32_t>(Renderer_RasterizerState::Max)>     rasterizer_states;
         array<shared_ptr<RHI_DepthStencilState>, static_cast<uint32_t>(Renderer_DepthStencilState::Max)> depth_stencil_states;
-        array<shared_ptr<RHI_BlendState>, 3>                                                             blend_states;
+        array<shared_ptr<RHI_BlendState>, static_cast<uint32_t>(Renderer_BlendState::Max)>               blend_states;
 
         // renderer resources
         array<shared_ptr<RHI_Texture>, static_cast<uint32_t>(Renderer_RenderTarget::max)> render_targets;
@@ -212,9 +212,10 @@ namespace spartan
 
         // particle buffers
         const uint32_t particle_max = 100000;
-        uint32_t particle_counter_init[2] = { 0, 0 };
+        const uint32_t particle_counter_max = 64;
+        uint32_t particle_counter_init[particle_counter_max] = {};
         at(buffers, Renderer_Buffer::ParticleBufferA) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_Particle)),       particle_max, nullptr,                true, "particle_buffer_a");
-        at(buffers, Renderer_Buffer::ParticleCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),          2,            particle_counter_init,  true, "particle_counter");
+        at(buffers, Renderer_Buffer::ParticleCounter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(uint32_t)),          particle_counter_max, particle_counter_init, true, "particle_counter");
         const uint32_t particle_emitter_max = 64; // upper bound on simultaneously rendered emitters
         at(buffers, Renderer_Buffer::ParticleEmitter) = make_shared<RHI_Buffer>(RHI_Buffer_Type::Storage, static_cast<uint32_t>(sizeof(Sb_EmitterParams)),  particle_emitter_max, nullptr,           true, "particle_emitter");
 
@@ -267,9 +268,10 @@ namespace spartan
     void Renderer::CreateBlendStates()
     {
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
-        at(blend_states, Renderer_BlendState::Off)      = make_shared<RHI_BlendState>(false);
-        at(blend_states, Renderer_BlendState::Alpha)    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        at(blend_states, Renderer_BlendState::Additive) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
+        at(blend_states, Renderer_BlendState::Off)           = make_shared<RHI_BlendState>(false);
+        at(blend_states, Renderer_BlendState::Alpha)         = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
+        at(blend_states, Renderer_BlendState::Premultiplied) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
+        at(blend_states, Renderer_BlendState::Additive)      = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
     }
 
     void Renderer::CreateSamplers()
@@ -641,7 +643,8 @@ namespace spartan
             Renderer_Shader id, RHI_Shader_Type type, const string& path,
             bool async             = true,
             RHI_Vertex_Type vtype  = RHI_Vertex_Type::Max,
-            const char* define     = nullptr
+            const char* define     = nullptr,
+            const char* define_ext = nullptr
         )
         {
             auto& slot = shaders[static_cast<uint8_t>(id)];
@@ -649,6 +652,10 @@ namespace spartan
             if (define)
             {
                 slot->AddDefine(define);
+            }
+            if (define_ext)
+            {
+                slot->AddDefine(define_ext);
             }
             slot->Compile(type, path, async, vtype);
         }
@@ -806,7 +813,8 @@ namespace spartan
             {
                 continue;
             }
-            compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define);
+            const char* define_ext = (rt && e.id == Renderer_Shader::particle_render_p) ? "RAY_TRACING_ENABLED" : nullptr;
+            compile_shader(e.id, e.stage, sd + e.file, e.async, e.vtype, e.define, define_ext);
         }
     }
 

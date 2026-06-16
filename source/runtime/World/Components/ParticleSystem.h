@@ -54,6 +54,22 @@ namespace spartan
         Count
     };
 
+    enum class ParticleBlendMode : uint32_t
+    {
+        Alpha,
+        Premultiplied,
+        Additive,
+        Count
+    };
+
+    enum class ParticleLightingMode : uint32_t
+    {
+        Lit,
+        Unlit,
+        Emissive,
+        Count
+    };
+
     class ParticleSystem : public Component
     {
     public:
@@ -122,7 +138,55 @@ namespace spartan
         void SetTexture(RHI_Texture* texture)  { m_texture = texture; }
         void SetTexture(const std::string& file_path);
 
+        // rendering
+        ParticleBlendMode GetBlendMode() const;
+        void SetBlendMode(ParticleBlendMode mode);
+        ParticleLightingMode GetLightingMode() const;
+        void SetLightingMode(ParticleLightingMode mode);
+        float GetEmissiveStrength() const;
+        void SetEmissiveStrength(float strength);
+        float GetSoftDepthScale() const;
+        void SetSoftDepthScale(float scale);
+
+        // simulation
+        float GetDrag() const;
+        void SetDrag(float drag);
+        float GetTurbulenceStrength() const;
+        void SetTurbulenceStrength(float strength);
+        float GetWindInfluence() const;
+        void SetWindInfluence(float influence);
+        float GetVelocityInheritance() const;
+        void SetVelocityInheritance(float inheritance);
+        float GetVelocityStretch() const;
+        void SetVelocityStretch(float stretch);
+
+        // bursts and flipbooks
+        float GetSpawnBurst() const;
+        void SetSpawnBurst(float count);
+        void TriggerBurst(float count);
+        uint32_t GetFlipbookRows() const;
+        void SetFlipbookRows(uint32_t rows);
+        uint32_t GetFlipbookColumns() const;
+        void SetFlipbookColumns(uint32_t columns);
+        float GetFlipbookFps() const;
+        void SetFlipbookFps(float fps);
+
+        // reusable effect assets
+        const std::string& GetEffectPath() const;
+        void SetEffectPath(const std::string& file_path);
+        bool LoadEffect(const std::string& file_path);
+        bool SaveEffect(const std::string& file_path);
+
+        // runtime state consumed by the renderer
+        uint32_t ConsumeEmissionCount(float delta_time);
+        void UpdateRuntime(const math::Vector3& position, float delta_time);
+        const math::Vector3& GetEmitterVelocity() const;
+
     private:
+        void SaveProperties(pugi::xml_node& node) const;
+        void LoadProperties(pugi::xml_node& node);
+        void MarkCustom();
+
         ParticlePreset m_preset    = ParticlePreset::Fire;
         uint32_t m_max_particles   = 10000;
         float m_emission_rate      = 500.0f;
@@ -137,6 +201,25 @@ namespace spartan
         math::Vector3 m_emission_direction = math::Vector3::Up;
         float m_emission_cone_angle        = 1.57f;
         float m_directional_blend          = 0.0f;
-        RHI_Texture* m_texture     = nullptr; // owned by the resource cache
+        ParticleBlendMode m_blend_mode     = ParticleBlendMode::Additive;
+        ParticleLightingMode m_lighting_mode = ParticleLightingMode::Lit;
+        float m_emissive_strength          = 0.0f;
+        float m_soft_depth_scale            = 20.0f;
+        float m_drag                        = 1.2f;
+        float m_turbulence_strength         = 0.3f;
+        float m_wind_influence              = 0.0f;
+        float m_velocity_inheritance        = 0.0f;
+        float m_velocity_stretch            = 0.0f;
+        float m_spawn_burst                 = 0.0f;
+        uint32_t m_flipbook_rows            = 1;
+        uint32_t m_flipbook_columns         = 1;
+        float m_flipbook_fps                = 0.0f;
+        std::string m_effect_path;
+        RHI_Texture* m_texture              = nullptr; // owned by the resource cache
+        float m_emission_remainder          = 0.0f;
+        float m_pending_burst               = 0.0f;
+        math::Vector3 m_last_position       = math::Vector3::Zero;
+        math::Vector3 m_emitter_velocity    = math::Vector3::Zero;
+        bool m_has_last_position            = false;
     };
 }

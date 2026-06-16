@@ -6,7 +6,7 @@ local slip_range             = 0.95
 local slip_angle_threshold   = 0.16
 local slip_ratio_threshold   = 0.18
 local brake_threshold        = 0.68
-local max_emission_rate      = 820.0
+local max_emission_rate      = 1050.0
 local contact_height_offset  = 0.045
 local contact_smoothing_rate = 18.0
 
@@ -112,20 +112,29 @@ local function apply_emitter(wheel, intensity, speed, velocity, vehicle)
     local speed_push = clamp(speed / 32.0, 0.0, 1.0)
     local density    = intensity * intensity
 
-    emitter:SetEmissionRate(80.0 + density * max_emission_rate)
-    emitter:SetLifetime(1.15 + intensity * 2.25 + speed_push * 0.6)
-    emitter:SetStartSpeed(0.35 + intensity * 0.9 + speed_push * 0.7)
-    emitter:SetStartSize(0.10 + intensity * 0.18)
-    emitter:SetEndSize(0.65 + intensity * 1.45 + speed_push * 0.55)
-    emitter:SetGravityModifier(-0.018 - intensity * 0.035)
-    emitter:SetEmissionRadius(tire_width * (0.35 + intensity * 0.45))
-    emitter:SetEmissionConeAngle(0.95 + (1.0 - intensity) * 0.35)
-    emitter:SetDirectionalBlend(0.25 + intensity * 0.35)
+    emitter:SetBlendMode(1)
+    emitter:SetLightingMode(0)
+    emitter:SetEmissionRate(110.0 + density * max_emission_rate)
+    emitter:SetLifetime(1.25 + intensity * 2.0 + speed_push * 0.85)
+    emitter:SetStartSpeed(0.28 + intensity * 0.75 + speed_push * 0.9)
+    emitter:SetStartSize(0.12 + intensity * 0.16)
+    emitter:SetEndSize(0.58 + intensity * 1.15 + speed_push * 0.8)
+    emitter:SetGravityModifier(-0.018 - intensity * 0.045)
+    emitter:SetEmissionRadius(tire_width * (0.42 + intensity * 0.55))
+    emitter:SetEmissionConeAngle(0.78 + (1.0 - intensity) * 0.38)
+    emitter:SetDirectionalBlend(0.42 + intensity * 0.38)
+    emitter:SetDrag(1.55 + intensity * 0.35)
+    emitter:SetTurbulenceStrength(0.45 + intensity * 0.45)
+    emitter:SetWindInfluence(0.32 + speed_push * 0.28)
+    emitter:SetVelocityInheritance(0.55 + speed_push * 0.28)
+    emitter:SetVelocityStretch(0.18 + speed_push * 0.35)
+    emitter:SetSoftDepthScale(14.0)
 
-    local alpha  = clamp(0.16 + intensity * 0.38, 0.0, 0.58)
-    local warmth = clamp(speed_push * 0.08, 0.0, 0.08)
-    emitter:SetStartColor(0.78 + warmth, 0.76 + warmth, 0.72 + warmth, alpha)
-    emitter:SetEndColor(0.46, 0.46, 0.44, 0.0)
+    local rear_warmth = wheel.rear and 0.035 or 0.0
+    local alpha       = clamp(0.26 + intensity * 0.42, 0.0, 0.72)
+    local warmth      = clamp(speed_push * 0.06 + rear_warmth, 0.0, 0.10)
+    emitter:SetStartColor(0.74 + warmth, 0.72 + warmth, 0.68 + warmth, alpha)
+    emitter:SetEndColor(0.34 + warmth * 0.4, 0.35 + warmth * 0.4, 0.34 + warmth * 0.3, 0.0)
 
     local fallback  = vehicle:GetBackward()
     local direction = fallback
@@ -146,6 +155,12 @@ function tire_smoke.Tick(self, entity)
             find_emitter(entity, "wheel_rear_left",   WheelIndex.RearLeft,   true),
             find_emitter(entity, "wheel_rear_right",  WheelIndex.RearRight,  true)
         }
+
+        for _, wheel in ipairs(self.wheels) do
+            if wheel and wheel.emitter then
+                wheel.emitter:LoadEffect("project/particles/tire_smoke.particle")
+            end
+        end
     end
 
     if not self.physics then

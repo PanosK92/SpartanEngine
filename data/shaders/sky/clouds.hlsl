@@ -42,7 +42,7 @@ static const float cumulus_thickness      = cumulus_top_alt - cumulus_bottom_alt
 static const float cumulus_shape_scale    = 1.0 / 4500.0;   // one tile of the noise volume covers 4.5 km horizontally
 static const float cumulus_detail_scale   = 1.0 / 2200.0;   // detail features now ~370m at the highest surviving octave, well above the 40m step nyquist
 static const float cumulus_coverage_scale = 1.0 / 26000.0;  // weather map domain, pushes tile repeats out toward the horizon
-static const float cumulus_coverage       = 0.40;           // 0 = no clouds, 1 = overcast, fair weather sits around 0.30 - 0.45
+static const float cumulus_coverage       = 0.34;           // 0 = no clouds, 1 = overcast, fair weather sits around 0.30 - 0.45
 static const float cumulus_density_mul    = 0.80;
 static const float cumulus_sigma_t        = 0.045;          // base extinction coefficient per meter
 
@@ -68,7 +68,7 @@ static const float cirrus_bottom_alt      = 6500.0;
 static const float cirrus_top_alt         = 8000.0;
 static const float cirrus_thickness       = cirrus_top_alt - cirrus_bottom_alt;
 static const float cirrus_noise_scale     = 1.0 / 12000.0;
-static const float cirrus_coverage        = 0.28;
+static const float cirrus_coverage        = 0.22;
 static const float cirrus_density_mul     = 0.05;
 static const float cirrus_sigma_t         = 0.03;
 static const float3 cirrus_streak_axis    = float3(1.0, 0.0, 0.0); // direction of the wispy streaks

@@ -494,7 +494,9 @@ namespace spartan
     {
         Off,
         Alpha,
-        Additive
+        Premultiplied,
+        Additive,
+        Max
     };
 
     enum class Renderer_DownsampleFilter

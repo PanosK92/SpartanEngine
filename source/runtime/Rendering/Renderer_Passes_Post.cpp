@@ -26,7 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Camera.h"
 #include "../World/Components/ParticleSystem.h"
 #include "../RHI/RHI_CommandList.h"
+#include "../RHI/RHI_AccelerationStructure.h"
 #include "../RHI/RHI_Buffer.h"
+#include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_VendorTechnology.h"
 //=============================================
@@ -627,23 +629,53 @@ namespace spartan
         uint32_t emitter_capacity = static_cast<uint32_t>(buf_emitter->GetObjectSize() / sizeof(Sb_EmitterParams));
         uint32_t emitter_count    = std::min(static_cast<uint32_t>(emitters.size()), emitter_capacity);
 
-        // the ring buffer is shared, each particle records its emitter so simulate applies the right look
+        // each emitter gets a stable slice of the shared buffer, avoiding cross emitter stomping
         uint32_t buffer_capacity = static_cast<uint32_t>(buf_a->GetObjectSize() / sizeof(Sb_Particle));
         uint32_t total_particles = 0;
+        vector<uint32_t> range_starts(emitter_count, 0);
+        vector<uint32_t> range_counts(emitter_count, 0);
+        vector<uint32_t> emit_counts(emitter_count, 0);
         for (uint32_t i = 0; i < emitter_count; i++)
         {
-            total_particles += emitters[i]->GetMaxParticles();
+            range_starts[i] = total_particles;
+            range_counts[i] = std::min(emitters[i]->GetMaxParticles(), buffer_capacity - total_particles);
+            total_particles += range_counts[i];
+            if (total_particles >= buffer_capacity)
+            {
+                break;
+            }
         }
-        total_particles = std::min(total_particles, buffer_capacity);
+
+        if (total_particles == 0)
+        {
+            return;
+        }
+
+        auto to_blend_state = [](ParticleBlendMode mode)
+        {
+            switch (mode)
+            {
+                case ParticleBlendMode::Alpha:
+                    return Renderer_BlendState::Alpha;
+                case ParticleBlendMode::Premultiplied:
+                    return Renderer_BlendState::Premultiplied;
+                case ParticleBlendMode::Additive:
+                default:
+                    return Renderer_BlendState::Additive;
+            }
+        };
 
         // one params entry per emitter, the ring size and frame data are shared so every entry carries the same copy
         vector<Sb_EmitterParams> emitter_params(emitter_count);
         for (uint32_t i = 0; i < emitter_count; i++)
         {
             ParticleSystem* emitter = emitters[i];
+            math::Vector3 position = emitter->GetEntity()->GetPosition();
+            emitter->UpdateRuntime(position, m_cb_frame_cpu.delta_time);
+            emit_counts[i] = std::min(emitter->ConsumeEmissionCount(m_cb_frame_cpu.delta_time), range_counts[i]);
 
             Sb_EmitterParams& params = emitter_params[i];
-            params.position         = emitter->GetEntity()->GetPosition();
+            params.position         = position;
             params.emission_rate    = emitter->GetEmissionRate();
             params.lifetime         = emitter->GetLifetime();
             params.start_speed      = emitter->GetStartSpeed();
@@ -655,11 +687,27 @@ namespace spartan
             params.radius           = emitter->GetEmissionRadius();
             params.delta_time       = m_cb_frame_cpu.delta_time;
             params.max_particles    = total_particles;
+            params.range_start      = range_starts[i];
+            params.range_count      = range_counts[i];
+            params.emit_count       = emit_counts[i];
             params.frame            = m_cb_frame_cpu.frame;
             params.emitter_count    = emitter_count;
+            params.blend_mode       = static_cast<uint32_t>(emitter->GetBlendMode());
+            params.lighting_mode    = static_cast<uint32_t>(emitter->GetLightingMode());
             params.emission_direction = emitter->GetEmissionDirection();
             params.emission_cone_angle = emitter->GetEmissionConeAngle();
             params.directional_blend   = emitter->GetDirectionalBlend();
+            params.soft_depth_scale     = emitter->GetSoftDepthScale();
+            params.drag                 = emitter->GetDrag();
+            params.turbulence_strength  = emitter->GetTurbulenceStrength();
+            params.wind_influence       = emitter->GetWindInfluence();
+            params.velocity_inheritance = emitter->GetVelocityInheritance();
+            params.velocity_stretch     = emitter->GetVelocityStretch();
+            params.emissive_strength    = emitter->GetEmissiveStrength();
+            params.flipbook_rows        = emitter->GetFlipbookRows();
+            params.flipbook_columns     = emitter->GetFlipbookColumns();
+            params.flipbook_fps         = emitter->GetFlipbookFps();
+            params.emitter_velocity     = emitter->GetEmitterVelocity();
         }
 
         buf_emitter->ResetOffset();
@@ -672,8 +720,7 @@ namespace spartan
         // emit, one dispatch per emitter so each spawns from its own position and rate
         for (uint32_t i = 0; i < emitter_count; i++)
         {
-            uint32_t emit_count = static_cast<uint32_t>(emitters[i]->GetEmissionRate() * m_cb_frame_cpu.delta_time);
-            if (emit_count == 0)
+            if (emit_counts[i] == 0 || range_counts[i] == 0)
             {
                 continue;
             }
@@ -690,7 +737,7 @@ namespace spartan
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(i), 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
-            cmd_list->Dispatch((emit_count + thread_group - 1) / thread_group, 1, 1);
+            cmd_list->Dispatch((emit_counts[i] + thread_group - 1) / thread_group, 1, 1);
         }
 
         // barrier: emit -> simulate
@@ -715,14 +762,17 @@ namespace spartan
         // barrier: simulate -> render
         cmd_list->InsertBarrier(buf_a);
 
-        // render, each particle becomes a camera facing quad drawn through the rasterizer with additive
-        // blending, the rop accumulates overlapping splats atomically so they never race on a pixel, one
-        // draw per emitter so each can bind its own smoke texture, six vertices per particle pulled in the
-        // vertex shader and the whole ring is drawn with foreign or dead particles collapsed to a degenerate quad
+        // render, each particle becomes a camera facing quad with the emitter selected blend mode
+        // one draw per emitter so each can bind its own smoke texture and only its own range is drawn
         RHI_Texture* tex_white  = GetStandardTexture(Renderer_StandardTexture::White);
         RHI_Texture* tex_render = GetRenderTarget(Renderer_RenderTarget::frame_render);
         for (uint32_t i = 0; i < emitter_count; i++)
         {
+            if (range_counts[i] == 0)
+            {
+                continue;
+            }
+
             RHI_Texture* tex_particle = emitters[i]->GetTexture();
             bool has_texture          = tex_particle != nullptr;
 
@@ -731,7 +781,7 @@ namespace spartan
             pso.shaders[RHI_Shader_Type::Vertex] = shader_render_v;
             pso.shaders[RHI_Shader_Type::Pixel]  = shader_render_p;
             pso.rasterizer_state                 = GetRasterizerState(Renderer_RasterizerState::Solid);
-            pso.blend_state                      = GetBlendState(Renderer_BlendState::Additive);
+            pso.blend_state                      = GetBlendState(to_blend_state(emitters[i]->GetBlendMode()));
             pso.depth_stencil_state              = GetDepthStencilState(Renderer_DepthStencilState::Off);
             pso.render_target_color_textures[0]  = tex_render;
             pso.clear_color[0]                   = rhi_color_load;
@@ -740,14 +790,29 @@ namespace spartan
             cmd_list->SetPipelineState(pso);
 
             cmd_list->SetBuffer(Renderer_BindingsUav::particle_buffer_a, buf_a);
+            cmd_list->SetBuffer(Renderer_BindingsUav::particle_emitter,  buf_emitter);
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_grid,    GetBuffer(Renderer_Buffer::ClusterLightGrid));
+            cmd_list->SetBuffer(Renderer_BindingsUav::cluster_light_indices, GetBuffer(Renderer_Buffer::ClusterLightIndices));
             cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth, GetRenderTarget(Renderer_RenderTarget::gbuffer_depth));
             cmd_list->SetTexture(Renderer_BindingsSrv::tex, has_texture ? tex_particle : tex_white);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex2, GetRenderTarget(Renderer_RenderTarget::shadow_atlas));
+
+            if (RHI_Device::IsSupportedRayTracing())
+            {
+                if (RHI_AccelerationStructure* tlas = GetTopLevelAccelerationStructure())
+                {
+                    if (tlas->GetRhiResource())
+                    {
+                        cmd_list->SetAccelerationStructure(Renderer_BindingsSrv::tlas, tlas);
+                    }
+                }
+            }
 
             m_pcb_pass_cpu.set_f3_value(static_cast<float>(i), has_texture ? 1.0f : 0.0f, 0.0f);
             cmd_list->PushConstants(m_pcb_pass_cpu);
 
             cmd_list->SetCullMode(RHI_CullMode::None);
-            cmd_list->Draw(total_particles * 6);
+            cmd_list->Draw(range_counts[i] * 6);
         }
 
         cmd_list->EndTimeblock();

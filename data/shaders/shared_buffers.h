@@ -458,15 +458,29 @@ struct EmitterParams
     SHARED_FLOAT  gravity_modifier SHARED_DEFAULT(0.0f);
     SHARED_FLOAT  radius           SHARED_DEFAULT(0.0f);
     SHARED_FLOAT  delta_time       SHARED_DEFAULT(0.0f);
-    SHARED_UINT   max_particles    SHARED_DEFAULT(0);
+    SHARED_UINT   max_particles    SHARED_DEFAULT(0); // total active particle buffer span
+    SHARED_UINT   range_start      SHARED_DEFAULT(0);
+    SHARED_UINT   range_count      SHARED_DEFAULT(0);
+    SHARED_UINT   emit_count       SHARED_DEFAULT(0);
     SHARED_UINT   frame            SHARED_DEFAULT(0);
     SHARED_UINT   emitter_count    SHARED_DEFAULT(0);
+    SHARED_UINT   blend_mode       SHARED_DEFAULT(0);
+    SHARED_UINT   lighting_mode    SHARED_DEFAULT(0);
     SHARED_FLOAT3 emission_direction;
     SHARED_FLOAT  emission_cone_angle SHARED_DEFAULT(0.0f);
     SHARED_FLOAT  directional_blend   SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  soft_depth_scale     SHARED_DEFAULT(20.0f);
+    SHARED_FLOAT  drag                 SHARED_DEFAULT(1.2f);
+    SHARED_FLOAT  turbulence_strength  SHARED_DEFAULT(0.3f);
+    SHARED_FLOAT  wind_influence       SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  velocity_inheritance SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  velocity_stretch     SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT  emissive_strength    SHARED_DEFAULT(0.0f);
+    SHARED_UINT   flipbook_rows        SHARED_DEFAULT(1);
+    SHARED_UINT   flipbook_columns     SHARED_DEFAULT(1);
+    SHARED_FLOAT  flipbook_fps         SHARED_DEFAULT(0.0f);
+    SHARED_FLOAT3 emitter_velocity;
     SHARED_FLOAT  padding1            SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT  padding2            SHARED_DEFAULT(0.0f);
-    SHARED_FLOAT  padding3            SHARED_DEFAULT(0.0f);
 };
 
 // c++ backward compatibility aliases
