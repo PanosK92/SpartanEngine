@@ -320,11 +320,13 @@ ps_input main_vs(uint vertex_id : SV_VertexID)
     };
     float2 c = quad[corner];
 
-    // screen aligned billboard basis, optionally stretched by projected particle velocity
+    // screen aligned billboard basis, optionally stretched along the authored plume direction
     float3 right = safe_normalize(buffer_frame.camera_right, float3(1.0, 0.0, 0.0));
     float3 up    = safe_normalize(cross(buffer_frame.camera_forward, right), float3(0.0, 1.0, 0.0));
-    float  velocity_len = length(p.velocity);
-    float3 velocity_axis = p.velocity - buffer_frame.camera_forward * dot(p.velocity, buffer_frame.camera_forward);
+    float3 flow_velocity = p.velocity - emitter.emitter_velocity * emitter.velocity_inheritance;
+    float  velocity_len  = length(flow_velocity);
+    float3 flow_axis     = safe_normalize(lerp(emitter.emission_direction, flow_velocity, 0.35), emitter.emission_direction);
+    float3 velocity_axis = flow_axis - buffer_frame.camera_forward * dot(flow_axis, buffer_frame.camera_forward);
     velocity_axis = safe_normalize(velocity_axis, right);
     float stretch = saturate(velocity_len * 0.08) * emitter.velocity_stretch;
     right = safe_normalize(lerp(right, velocity_axis, saturate(stretch)), right);

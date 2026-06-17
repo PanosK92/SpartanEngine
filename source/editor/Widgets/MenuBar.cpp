@@ -35,6 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileDialog.h"
 #include "Style.h"
 #include "Engine.h"
+#include "Rendering/Renderer.h"
 #include "Profiling/RenderDoc.h"
 #include "Debugging.h"
 #include "ScriptEditor.h"
@@ -232,9 +233,10 @@ namespace
         {
             if (ImGui::BeginMenu("View"))
             {
-                if (ImGui::MenuItem("Controls", "Ctrl+P", GeneralWindows::GetVisiblityWindowControls()))
+                bool* controls_visible = GeneralWindows::GetVisiblityWindowControls();
+                if (ImGui::MenuItem("Controls", "Ctrl+P", *controls_visible))
                 {
-
+                    *controls_visible = !*controls_visible;
                 }
 
                 if (ImGui::BeginMenu("Widgets"))
@@ -272,7 +274,11 @@ namespace
         {
             if (ImGui::BeginMenu("Help"))
             {
-                ImGui::MenuItem("About", nullptr, GeneralWindows::GetVisiblityWindowAbout());
+                bool* about_visible = GeneralWindows::GetVisiblityWindowAbout();
+                if (ImGui::MenuItem("About", nullptr, *about_visible))
+                {
+                    *about_visible = !*about_visible;
+                }
 
                 if (ImGui::MenuItem("Sponsor", nullptr, nullptr))
                 {
@@ -310,67 +316,198 @@ namespace
     namespace buttons_toolbar
     {
         float button_size = 19.0f;
-        // keyed by icon type, every icon shares one atlas texture pointer now so a pointer key would collide
         vector<pair<spartan::IconType, Widget*>> widgets;
+
+        float dpi()
+        {
+            return spartan::Window::GetDpiScale();
+        }
+
+        ImVec4 with_alpha(const ImVec4& color, float alpha)
+        {
+            return ImVec4(color.x, color.y, color.z, alpha);
+        }
+
+        float group_padding_x()
+        {
+            return 6.0f * dpi();
+        }
+
+        float group_gap()
+        {
+            return 8.0f * dpi();
+        }
+
+        float button_gap()
+        {
+            return 3.0f * dpi();
+        }
+
+        float group_rounding()
+        {
+            return 5.0f * dpi();
+        }
+
+        float tool_icon_size()
+        {
+            return button_size * dpi();
+        }
+
+        ImVec2 tool_padding()
+        {
+            return ImVec2(8.0f * dpi(), 4.0f * dpi());
+        }
+
+        float tool_button_width()
+        {
+            return tool_icon_size() + tool_padding().x * 2.0f;
+        }
+
+        float tool_button_height()
+        {
+            return tool_icon_size() + tool_padding().y * 2.0f;
+        }
+
+        ImVec2 transport_padding()
+        {
+            return ImVec2(13.0f * dpi(), 4.0f * dpi());
+        }
+
+        float transport_icon_size()
+        {
+            return 22.0f * dpi();
+        }
+
+        float transport_button_width()
+        {
+            return transport_icon_size() + transport_padding().x * 2.0f;
+        }
+
+        float transport_button_height()
+        {
+            return transport_icon_size() + transport_padding().y * 2.0f;
+        }
+
+        float get_transport_width()
+        {
+            return group_padding_x() * 2.0f + transport_button_width() * 2.0f + button_gap();
+        }
+
+        float icon_group_width(const float button_count)
+        {
+            if (button_count <= 0.0f)
+            {
+                return 0.0f;
+            }
+
+            return group_padding_x() * 2.0f + button_count * tool_button_width() + (button_count - 1.0f) * button_gap();
+        }
+
+        float snap_button_width()
+        {
+            return ImGui::CalcTextSize("Snap").x + 18.0f * dpi();
+        }
+
+        float snap_group_width()
+        {
+            return group_padding_x() * 2.0f + snap_button_width();
+        }
+
+        float get_right_toolbar_width()
+        {
+            const float capture_buttons = 2.0f;
+            const float panel_buttons   = 1.0f + static_cast<float>(widgets.size());
+            return snap_group_width() + icon_group_width(capture_buttons) + icon_group_width(panel_buttons) + group_gap() * 2.0f;
+        }
+
+        float get_right_toolbar_start(float menubar_width)
+        {
+            return max(0.0f, menubar_width - get_right_toolbar_width() - buttons_titlebar::get_total_width());
+        }
+
+        float centered_y(float menubar_height, float height)
+        {
+            return max(0.0f, (menubar_height - height) * 0.5f);
+        }
+
+        void draw_group_background(float start_x, float width, float menubar_height)
+        {
+            if (width <= 0.0f)
+            {
+                return;
+            }
+
+            const float scale      = dpi();
+            const float inset_y    = 2.0f * scale;
+            const float rounding   = group_rounding();
+            ImVec2 window_pos      = ImGui::GetWindowPos();
+            ImVec2 min_pos         = ImVec2(window_pos.x + start_x, window_pos.y + inset_y);
+            ImVec2 max_pos         = ImVec2(window_pos.x + start_x + width, window_pos.y + menubar_height - inset_y);
+            ImVec4 fill           = ImGui::Style::lerp(ImGui::Style::bg_color_1, ImGui::Style::bg_color_2, 0.35f);
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+            draw_list->AddRectFilled(min_pos, max_pos, ImGui::GetColorU32(with_alpha(fill, 0.70f)), rounding);
+            draw_list->AddRect(min_pos, max_pos, IM_COL32(255, 255, 255, 18), rounding);
+        }
+
+        void push_button_colors(bool is_active)
+        {
+            const ImVec4 accent = ImGui::Style::color_accent_1;
+            if (is_active)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button,        with_alpha(accent, 0.24f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, with_alpha(accent, 0.38f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  with_alpha(accent, 0.54f));
+            }
+            else
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.09f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(1, 1, 1, 0.16f));
+            }
+        }
+
+        void draw_active_underline()
+        {
+            const float scale = dpi();
+            ImVec2 min_pos    = ImGui::GetItemRectMin();
+            ImVec2 max_pos    = ImGui::GetItemRectMax();
+            ImGui::GetWindowDrawList()->AddLine(
+                ImVec2(min_pos.x + 5.0f * scale, max_pos.y - 2.0f * scale),
+                ImVec2(max_pos.x - 5.0f * scale, max_pos.y - 2.0f * scale),
+                ImGui::GetColorU32(ImGui::Style::color_accent_1),
+                max(1.0f, 2.0f * scale)
+            );
+        }
 
         void toolbar_button(spartan::IconType icon_type, const char* tooltip_text, bool (*get_visibility)(Widget*), void (*on_press)(Widget*), Widget* widget = nullptr, float cursor_pos_x = -1.0f)
         {
-            ImGui::SameLine();
+            const bool is_active = get_visibility(widget);
 
-            bool is_active = get_visibility(widget);
-
-            ImGui::PushStyleColor(ImGuiCol_Button,        ImGui::GetStyle().Colors[ImGuiCol_Button]);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered,  ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered]);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive,   ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
-
-            if (cursor_pos_x > 0.0f)
+            if (cursor_pos_x >= 0.0f)
             {
                 ImGui::SetCursorPosX(cursor_pos_x);
             }
 
-            const ImGuiStyle& style   = ImGui::GetStyle();
-            const float size_avail_y  = 2.0f * style.FramePadding.y + button_size;
-            const float button_size_y = button_size + 2.0f * MenuBar::GetPaddingY();
-            const float offset_y      = (button_size_y - size_avail_y) * 0.5f;
+            ImGui::SetCursorPosY(centered_y(ImGui::GetWindowHeight(), tool_button_height()));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
+            push_button_colors(is_active);
 
-            ImGui::SetCursorPosY(offset_y);
-
-            ImVec2 screen_pos = ImGui::GetCursorScreenPos();
-            float scaled_size = button_size * spartan::Window::GetDpiScale();
-
-            if (ImGuiSp::image_button(icon_type, scaled_size, false))
+            const ImVec4 tint = is_active ? ImGui::Style::color_accent_1 : ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
+            if (ImGuiSp::image_button(icon_type, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
                 on_press(widget);
             }
 
-            // accent underline for active panels
             if (is_active)
             {
-                float btn_width  = scaled_size + style.FramePadding.x * 2.0f;
-                float btn_height = scaled_size + style.FramePadding.y * 2.0f;
-                ImVec2 line_start = ImVec2(screen_pos.x, screen_pos.y + btn_height - 1.0f);
-                ImVec2 line_end   = ImVec2(screen_pos.x + btn_width, screen_pos.y + btn_height - 1.0f);
-                ImGui::GetWindowDrawList()->AddLine(line_start, line_end, ImGui::GetColorU32(ImGui::Style::color_accent_1), 2.0f);
+                draw_active_underline();
             }
 
             ImGui::PopStyleColor(3);
-
+            ImGui::PopStyleVar(2);
             ImGuiSp::tooltip(tooltip_text);
-        }
-
-        void draw_separator(float menubar_height)
-        {
-            ImGui::SameLine(0, 6.0f);
-            float dpi    = spartan::Window::GetDpiScale();
-            float inset  = 8.0f * dpi;
-            ImVec2 pos   = ImGui::GetCursorScreenPos();
-            float bar_top = ImGui::GetMainViewport()->Pos.y;
-            ImGui::GetWindowDrawList()->AddLine(
-                ImVec2(pos.x, bar_top + inset),
-                ImVec2(pos.x, bar_top + menubar_height - inset),
-                IM_COL32(255, 255, 255, 30), 1.0f
-            );
-            ImGui::SameLine(0, 6.0f);
         }
 
         void toggle_playing()
@@ -401,39 +538,68 @@ namespace
             }
         }
 
-        // draw a pause icon (two vertical bars) as an imgui button
-        bool draw_pause_button(float size, float menubar_height, bool is_active)
+        void draw_snap_button(float menubar_height, float cursor_pos_x)
         {
-            ImGui::SameLine(0, 2.0f);
+            bool snap_enabled = spartan::cvar_transform_snap.GetValueAs<bool>();
 
-            const ImGuiStyle& style = ImGui::GetStyle();
-            const float btn_size_y  = button_size + 2.0f * MenuBar::GetPaddingY();
-            const float avail_y     = 2.0f * style.FramePadding.y + button_size;
-            const float offset_y    = (btn_size_y - avail_y) * 0.5f;
-            ImGui::SetCursorPosY(offset_y);
+            ImGui::SetCursorPosX(cursor_pos_x);
+            ImGui::SetCursorPosY(centered_y(menubar_height, tool_button_height()));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
+            push_button_colors(snap_enabled);
 
-            ImVec2 screen_pos = ImGui::GetCursorScreenPos();
-            float scaled       = size * spartan::Window::GetDpiScale();
-            ImVec2 btn_size    = ImVec2(scaled + style.FramePadding.x * 2.0f, scaled + style.FramePadding.y * 2.0f);
+            if (ImGui::Button("Snap", ImVec2(snap_button_width(), tool_button_height())))
+            {
+                spartan::ConsoleRegistry::Get().SetValueFromString("r.transform_snap", snap_enabled ? "0" : "1");
+            }
+
+            if (snap_enabled)
+            {
+                draw_active_underline();
+            }
+
+            ImGuiSp::tooltip("Snap transforms");
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar();
+        }
+
+        bool draw_pause_button(float menubar_height, bool is_playing, bool is_active)
+        {
+            ImGui::SetCursorPosY(centered_y(menubar_height, transport_button_height()));
+            ImVec2 btn_size = ImVec2(transport_button_width(), transport_button_height());
 
             ImGui::PushID("##pause_btn");
             bool pressed = ImGui::InvisibleButton("##pause", btn_size);
             bool hovered = ImGui::IsItemHovered();
+            bool held    = ImGui::IsItemActive();
             ImGui::PopID();
 
-            // hover highlight
-            if (hovered)
+            ImVec2 min_pos      = ImGui::GetItemRectMin();
+            ImVec2 max_pos      = ImGui::GetItemRectMax();
+            const ImVec4 accent = ImGui::Style::color_accent_1;
+            ImVec4 bg           = ImVec4(0, 0, 0, 0);
+
+            if (is_active)
             {
-                ImGui::GetWindowDrawList()->AddRectFilled(screen_pos, ImVec2(screen_pos.x + btn_size.x, screen_pos.y + btn_size.y), IM_COL32(255, 255, 255, 20), 2.0f);
+                bg = with_alpha(accent, held ? 0.54f : hovered ? 0.38f : 0.24f);
+            }
+            else if (hovered)
+            {
+                bg = ImVec4(1, 1, 1, held ? 0.16f : 0.09f);
             }
 
-            // draw two vertical bars centered in the button
-            float cx = screen_pos.x + btn_size.x * 0.5f;
-            float cy = screen_pos.y + btn_size.y * 0.5f;
-            float bar_h = scaled * 0.5f;
-            float bar_w = scaled * 0.12f;
-            float gap   = scaled * 0.15f;
-            ImU32 col   = is_active ? ImGui::GetColorU32(ImGui::Style::color_accent_1) : IM_COL32(200, 200, 200, 255);
+            if (bg.w > 0.0f)
+            {
+                ImGui::GetWindowDrawList()->AddRectFilled(min_pos, max_pos, ImGui::GetColorU32(bg), group_rounding());
+            }
+
+            float icon_size = transport_icon_size();
+            float cx        = (min_pos.x + max_pos.x) * 0.5f;
+            float cy        = (min_pos.y + max_pos.y) * 0.5f;
+            float bar_h     = icon_size * 0.56f;
+            float bar_w     = max(2.0f * dpi(), icon_size * 0.13f);
+            float gap       = icon_size * 0.18f;
+            ImU32 col       = is_active ? ImGui::GetColorU32(accent) : ImGui::GetColorU32(ImVec4(0.86f, 0.86f, 0.86f, is_playing ? 1.0f : 0.45f));
 
             ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cx - gap - bar_w, cy - bar_h * 0.5f), ImVec2(cx - gap, cy + bar_h * 0.5f), col);
             ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(cx + gap, cy - bar_h * 0.5f), ImVec2(cx + gap + bar_w, cy + bar_h * 0.5f), col);
@@ -442,138 +608,117 @@ namespace
             return pressed;
         }
 
-        void tick(float menubar_height)
+        void draw_transport_group(float menubar_height, float cursor_pos_x)
         {
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            const float size_avail_x      = viewport->Size.x;
-            const float dpi               = spartan::Window::GetDpiScale();
-            const float button_size_final = button_size * dpi + MenuBar::GetPaddingX() * 2.0f;
+            const bool is_playing = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
+            const bool is_paused  = spartan::Engine::IsFlagSet(spartan::EngineMode::Paused);
 
-            // transport controls (play + pause) -- centered
+            draw_group_background(cursor_pos_x, get_transport_width(), menubar_height);
+
+            float button_x = cursor_pos_x + group_padding_x();
+            ImGui::SetCursorPosX(button_x);
+            ImGui::SetCursorPosY(centered_y(menubar_height, transport_button_height()));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, transport_padding());
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
+            push_button_colors(is_playing && !is_paused);
+
+            const ImVec4 play_tint = (is_playing && !is_paused) ? ImGui::Style::color_accent_1 : ImVec4(0.90f, 0.90f, 0.90f, 1.0f);
+            if (ImGuiSp::image_button(spartan::IconType::Play, spartan::math::Vector2(transport_icon_size(), transport_icon_size()), false, play_tint))
             {
-                float transport_buttons = 2.0f;
-                float transport_width   = transport_buttons * button_size_final + (transport_buttons - 1.0f) * 2.0f;
-                float cursor_pos_x      = (size_avail_x - transport_width) * 0.5f;
+                toggle_playing();
+            }
+            ImGuiSp::tooltip("Play (F5)");
 
-                bool is_playing = spartan::Engine::IsFlagSet(spartan::EngineMode::Playing);
-                bool is_paused  = spartan::Engine::IsFlagSet(spartan::EngineMode::Paused);
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
 
-                // subtle rounded background behind the transport cluster
-                ImGui::SameLine();
-                float bg_x = cursor_pos_x - 4.0f * dpi;
-                float bg_y = 3.0f * dpi;
-                float bg_w = transport_width + 8.0f * dpi;
-                float bg_h = menubar_height - 6.0f * dpi;
-                ImVec2 bar_pos = ImGui::GetCursorScreenPos();
-                ImVec2 bg_min  = ImVec2(bar_pos.x + bg_x - ImGui::GetCursorPosX(), bar_pos.y - ImGui::GetCursorPosY() + bg_y);
-                ImVec2 bg_max  = ImVec2(bg_min.x + bg_w, bg_min.y + bg_h);
-                ImGui::GetWindowDrawList()->AddRectFilled(bg_min, bg_max, IM_COL32(0, 0, 0, 40), 4.0f);
+            ImGui::SameLine(0, button_gap());
+            if (draw_pause_button(menubar_height, is_playing, is_paused))
+            {
+                toggle_paused();
+            }
+        }
 
-                // play button with accent color when active
-                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPaddingX() - 1.0f, MenuBar::GetPaddingY() - 5.0f });
+        void draw_right_groups(float menubar_height, float cursor_pos_x)
+        {
+            float group_x = cursor_pos_x;
+
+            {
+                float width = snap_group_width();
+                draw_group_background(group_x, width, menubar_height);
+                draw_snap_button(menubar_height, group_x + group_padding_x());
+                group_x += width + group_gap();
+            }
+
+            {
+                float width = icon_group_width(2.0f);
+                draw_group_background(group_x, width, menubar_height);
+
+                static auto screenshot_visible = [](Widget*) { return false; };
+                static auto screenshot_press   = [](Widget*) { spartan::Renderer::Screenshot(); };
+                toolbar_button(spartan::IconType::Screenshot, "Screenshot", screenshot_visible, screenshot_press, nullptr, group_x + group_padding_x());
+
+                ImGui::SameLine(0, button_gap());
+
+                static auto renderdoc_visible = [](Widget*) { return false; };
+                static auto renderdoc_press   = [](Widget*)
                 {
-                    ImGui::SameLine();
-                    bool play_highlight = is_playing && !is_paused;
-                    if (play_highlight)
+                    if (spartan::Debugging::IsRenderdocEnabled())
                     {
-                        ImVec4 accent = ImGui::Style::color_accent_1;
-                        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(accent.x, accent.y, accent.z, 0.3f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(accent.x, accent.y, accent.z, 0.5f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(accent.x, accent.y, accent.z, 0.7f));
+                        spartan::RenderDoc::FrameCapture();
                     }
                     else
                     {
-                        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0, 0, 0, 0));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.08f));
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(1, 1, 1, 0.15f));
+                        SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
                     }
+                };
+                toolbar_button(spartan::IconType::RenderDoc, "RenderDoc capture", renderdoc_visible, renderdoc_press, nullptr);
 
-                    const ImGuiStyle& style  = ImGui::GetStyle();
-                    const float size_avail_y = 2.0f * style.FramePadding.y + button_size;
-                    const float btn_size_y   = button_size + 2.0f * MenuBar::GetPaddingY();
-                    const float offset_y     = (btn_size_y - size_avail_y) * 0.5f;
-
-                    ImGui::SetCursorPosX(cursor_pos_x);
-                    ImGui::SetCursorPosY(offset_y);
-
-                    if (ImGuiSp::image_button(spartan::IconType::Play, button_size * dpi, false))
-                    {
-                        toggle_playing();
-                    }
-                    ImGuiSp::tooltip("Play (F5)");
-
-                    ImGui::PopStyleColor(3);
-                }
-
-                // pause button
-                if (draw_pause_button(button_size, menubar_height, is_paused))
-                {
-                    toggle_paused();
-                }
-
-                ImGui::PopStyleVar();
+                group_x += width + group_gap();
             }
 
-            // right-aligned tool buttons -- split into capture group and panel group
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { MenuBar::GetPaddingX() - 1.0f, MenuBar::GetPaddingY() - 5.0f });
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,  { 4.0f, 0.0f });
             {
-                // calculate total width: 2 capture + separator + 1 world + 5 widgets + separator before titlebar
-                float num_capture  = 2.0f;
-                float num_panels   = 6.0f;
-                float sep_width    = 12.0f * dpi;
-                float total_buttons = num_capture + num_panels;
-                float size_toolbar  = total_buttons * button_size_final + (total_buttons - 1.0f) * ImGui::GetStyle().ItemSpacing.x + sep_width * 2.0f;
-                float titlebar_buttons_width = buttons_titlebar::get_total_width();
-                float cursor_pos_x = size_avail_x - size_toolbar - titlebar_buttons_width;
+                float width = icon_group_width(1.0f + static_cast<float>(widgets.size()));
+                draw_group_background(group_x, width, menubar_height);
 
-                // capture group: screenshot, renderdoc
+                static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
+                static auto world_press   = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
+                toolbar_button(spartan::IconType::Terrain, "Worlds", world_visible, world_press, nullptr, group_x + group_padding_x());
+
+                for (auto& widget_it : widgets)
                 {
-                    static auto screenshot_visible = [](Widget*) { return false; };
-                    static auto screenshot_press   = [](Widget*) { spartan::Renderer::Screenshot(); };
-                    toolbar_button(spartan::IconType::Screenshot, "Screenshot",
-                        screenshot_visible, screenshot_press, nullptr, cursor_pos_x);
+                    ImGui::SameLine(0, button_gap());
 
-                    static auto renderdoc_visible = [](Widget*) { return false; };
-                    static auto renderdoc_press   = [](Widget*)
-                    {
-                        if (spartan::Debugging::IsRenderdocEnabled())
-                        {
-                            spartan::RenderDoc::FrameCapture();
-                        }
-                        else
-                        {
-                            SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"Debugging.h\", and set \"is_renderdoc_enabled\" to \"true\"");
-                        }
-                    };
-                    toolbar_button(spartan::IconType::RenderDoc, "RenderDoc capture",
-                        renderdoc_visible, renderdoc_press, nullptr);
+                    Widget* widget_ptr             = widget_it.second;
+                    spartan::IconType icon         = widget_it.first;
+                    static auto is_widget_visible  = [](Widget* w) { return w->GetVisible(); };
+                    static auto set_widget_visible = [](Widget* w) { w->SetVisible(!w->GetVisible()); };
+                    toolbar_button(icon, widget_ptr->GetTitle(), is_widget_visible, set_widget_visible, widget_ptr);
                 }
-
-                // separator between capture and panel groups
-                draw_separator(menubar_height);
-
-                // panel group: world selector + widget shortcuts
-                {
-                    static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
-                    static auto world_press   = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
-                    toolbar_button(spartan::IconType::Terrain, "Worlds",
-                        world_visible, world_press, nullptr);
-
-                    for (auto& widget_it : widgets)
-                    {
-                        Widget* widget_ptr             = widget_it.second;
-                        spartan::IconType icon         = widget_it.first;
-                        static auto is_widget_visible  = [](Widget* w) { return w->GetVisible(); };
-                        static auto set_widget_visible = [](Widget* w) { w->SetVisible(true); };
-                        toolbar_button(icon, widget_ptr->GetTitle(), is_widget_visible, set_widget_visible, widget_ptr);
-                    }
-                }
-
-                // separator before window controls
-                draw_separator(menubar_height);
             }
-            ImGui::PopStyleVar(2);
+        }
+
+        void tick(float menubar_height, float left_content_end_x)
+        {
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            const float size_avail_x      = viewport->Size.x;
+            const float right_start_x    = get_right_toolbar_start(size_avail_x);
+            const float transport_width  = get_transport_width();
+            const float transport_min_x  = left_content_end_x + group_gap();
+            const float transport_max_x  = right_start_x - transport_width - group_gap();
+            float transport_pos_x        = (size_avail_x - transport_width) * 0.5f;
+
+            if (transport_min_x <= transport_max_x)
+            {
+                transport_pos_x = max(transport_min_x, min(transport_pos_x, transport_max_x));
+            }
+            else
+            {
+                transport_pos_x = transport_min_x;
+            }
+
+            draw_transport_group(menubar_height, transport_pos_x);
+            draw_right_groups(menubar_height, right_start_x);
         }
     }
 
@@ -757,24 +902,53 @@ void MenuBar::Tick()
             ImGui::SetCursorPosY(menu_y);
             buttons_menu::help();
 
+            float left_content_end_x = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x;
+
             // world name
             {
                 const string& world_name = spartan::World::GetName();
                 if (!world_name.empty())
                 {
-                    ImGui::SameLine(0, padding_x * 2.0f);
-                    ImGui::SetCursorPosY(menu_y);
-                    ImGui::TextDisabled("|");
-                    ImGui::SameLine(0, padding_x);
-                    ImGui::SetCursorPosY(menu_y);
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::Style::color_accent_1);
-                    ImGui::TextUnformatted(world_name.c_str());
-                    ImGui::PopStyleColor();
+                    float chip_start_x      = left_content_end_x + padding_x * 4.0f;
+                    float transport_width   = buttons_toolbar::get_transport_width();
+                    float transport_left_x  = min((ImGui::GetWindowWidth() - transport_width) * 0.5f, buttons_toolbar::get_right_toolbar_start(ImGui::GetWindowWidth()) - transport_width - 12.0f * dpi);
+                    float chip_width_max    = min(240.0f * dpi, transport_left_x - chip_start_x - 12.0f * dpi);
+
+                    if (chip_width_max > 48.0f * dpi)
+                    {
+                        float chip_padding_x = 9.0f * dpi;
+                        float chip_height    = text_height + 7.0f * dpi;
+                        float chip_width     = min(ImGui::CalcTextSize(world_name.c_str()).x + chip_padding_x * 2.0f, chip_width_max);
+                        float chip_y         = (menubar_height - chip_height) * 0.5f;
+
+                        ImGui::SameLine(0, padding_x * 2.0f);
+                        ImGui::SetCursorPosY(menu_y);
+                        ImGui::TextDisabled("|");
+                        ImGui::SameLine(0, padding_x);
+                        ImGui::SetCursorPosY(chip_y);
+                        ImGui::Dummy(ImVec2(chip_width, chip_height));
+
+                        ImVec2 min_pos      = ImGui::GetItemRectMin();
+                        ImVec2 max_pos      = ImGui::GetItemRectMax();
+                        ImDrawList* draw    = ImGui::GetWindowDrawList();
+                        ImVec4 chip_color   = ImGui::Style::lerp(ImGui::Style::bg_color_1, ImGui::Style::color_accent_1, 0.18f);
+                        ImU32 text_color    = ImGui::GetColorU32(ImGui::Style::color_accent_1);
+                        float text_y        = min_pos.y + (chip_height - text_height) * 0.5f;
+
+                        draw->AddRectFilled(min_pos, max_pos, ImGui::GetColorU32(ImVec4(chip_color.x, chip_color.y, chip_color.z, 0.78f)), 5.0f * dpi);
+                        draw->AddRect(min_pos, max_pos, ImGui::GetColorU32(ImVec4(ImGui::Style::color_accent_1.x, ImGui::Style::color_accent_1.y, ImGui::Style::color_accent_1.z, 0.24f)), 5.0f * dpi);
+                        draw->PushClipRect(ImVec2(min_pos.x + chip_padding_x, min_pos.y), ImVec2(max_pos.x - chip_padding_x, max_pos.y), true);
+                        draw->AddText(ImVec2(min_pos.x + chip_padding_x, text_y), text_color, world_name.c_str());
+                        draw->PopClipRect();
+
+                        ImGuiSp::tooltip(world_name.c_str());
+                        left_content_end_x = max_pos.x - ImGui::GetWindowPos().x;
+                    }
                 }
             }
 
             // transport + tool buttons
-            buttons_toolbar::tick(menubar_height);
+            buttons_toolbar::tick(menubar_height, left_content_end_x);
 
             // window control buttons (minimize, maximize, close)
             buttons_titlebar::tick(menubar_height);

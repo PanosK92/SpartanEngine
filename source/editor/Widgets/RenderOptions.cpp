@@ -441,6 +441,7 @@ void RenderOptions::OnTickVisible()
                 if (option_header("Debug Visuals"))
                 {
                     option_check_box("Transform handles", "r.transform_handle");
+                    option_check_box("Transform snapping", "r.transform_snap");
                     option_check_box("Selection outline", "r.selection_outline");
                     option_check_box("Lights", "r.lights");
                     option_check_box("Audio sources", "r.audio_sources");

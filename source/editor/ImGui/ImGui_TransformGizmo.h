@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Commands/CommandTransform.h"
 #include "Commands/CommandTransformMulti.h"
 #include "Engine.h"
+#include "Rendering/Renderer.h"
 #include <vector>
 //=========================================
 
@@ -178,6 +179,7 @@ namespace ImGui::TransformGizmo
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
         const spartan::math::Vector3& snap = (transform_operation == ImGuizmo::ROTATE) ? snap_rotate :
                                               (transform_operation == ImGuizmo::SCALE)  ? snap_scale  : snap_translate;
+        const bool snap_enabled = spartan::cvar_transform_snap.GetValueAs<bool>();
         ImGuizmo::Manipulate(
             &matrix_view.m00,
             &matrix_projection.m00,
@@ -185,7 +187,7 @@ namespace ImGui::TransformGizmo
             use_world_space ? ImGuizmo::WORLD : ImGuizmo::LOCAL,
             &transform_matrix.m00,
             nullptr,
-            &snap.x
+            snap_enabled ? &snap.x : nullptr
         );
 
         // map imguizmo to transform
@@ -216,7 +218,7 @@ namespace ImGui::TransformGizmo
 
             // aabb edge snap: when translating, snap the dragged entity's bounding box
             // faces to nearby entity faces so objects click together flush
-            if (transform_operation == ImGuizmo::TRANSLATE)
+            if (snap_enabled && transform_operation == ImGuizmo::TRANSLATE)
             {
                 spartan::Render* primary_render = primary_entity->GetComponent<spartan::Render>();
                 if (primary_render)

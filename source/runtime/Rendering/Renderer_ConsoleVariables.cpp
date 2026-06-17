@@ -147,6 +147,7 @@ namespace spartan
     TConsoleVar<float> cvar_picking_ray                    ("r.picking_ray",                    0.0f,                                                    "draw picking ray");
     TConsoleVar<float> cvar_grid                           ("r.grid",                           1.0f,                                                    "draw editor grid");
     TConsoleVar<float> cvar_transform_handle               ("r.transform_handle",               1.0f,                                                    "draw transform handles");
+    TConsoleVar<float> cvar_transform_snap                 ("r.transform_snap",                 1.0f,                                                    "snap transform handles");
     TConsoleVar<float> cvar_selection_outline              ("r.selection_outline",              1.0f,                                                    "draw selection outline");
     TConsoleVar<float> cvar_lights                         ("r.lights",                         1.0f,                                                    "draw light icons");
     TConsoleVar<float> cvar_audio_sources                  ("r.audio_sources",                  1.0f,                                                    "draw audio source icons");

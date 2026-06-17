@@ -54,6 +54,7 @@ namespace spartan
     extern TConsoleVar<float> cvar_picking_ray;
     extern TConsoleVar<float> cvar_grid;
     extern TConsoleVar<float> cvar_transform_handle;
+    extern TConsoleVar<float> cvar_transform_snap;
     extern TConsoleVar<float> cvar_selection_outline;
     extern TConsoleVar<float> cvar_lights;
     extern TConsoleVar<float> cvar_audio_sources;
