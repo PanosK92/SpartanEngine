@@ -1910,10 +1910,12 @@ void Properties::ShowCamera(Camera* camera) const
     {
         //= REFLECT ======================================================================
         static vector<string> projection_types = { "Perspective", "Orthographic" };
+        static vector<string> camera_presets   = { "Custom", "Daylight", "Overcast", "Golden Hour", "Interior", "Night", "Cinematic" };
         float aperture                         = camera->GetAperture();
         float shutter_speed                    = camera->GetShutterSpeed();
         float iso                              = camera->GetIso();
         float fov                              = camera->GetFovHorizontalDeg();
+        uint32_t preset_index                  = static_cast<uint32_t>(camera->GetPreset());
         bool first_person_control_enabled      = camera->GetFlag(CameraFlags::CanBeControlled);
         //================================================================================
 
@@ -1949,6 +1951,14 @@ void Properties::ShowCamera(Camera* camera) const
         char exposure_scale_text[32];
         snprintf(exposure_scale_text, sizeof(exposure_scale_text), "%.6f", exposure_scale);
         property_text("Exposure Scale", exposure_scale_text, "scene-linear exposure multiplier derived from the physical camera");
+
+        if (property_combo("Preset", camera_presets, &preset_index, "applies exposure settings"))
+        {
+            camera->SetPreset(static_cast<CameraPreset>(preset_index));
+            aperture      = camera->GetAperture();
+            shutter_speed = camera->GetShutterSpeed();
+            iso           = camera->GetIso();
+        }
 
         layout::separator();
         layout::section_header("Controls");

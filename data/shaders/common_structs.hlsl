@@ -279,8 +279,9 @@ struct Light
         float d             = length(to_surface);
         float3 direction_ws = d > 0.0001f ? to_surface / d : forward;
         float emission_cos  = saturate(dot(forward, direction_ws));
+        float emitter_area  = 0.5f * max(area_width * area_height, 0.0001f);
 
-        return compute_attenuation_inverse_square(d) * compute_attenuation_range(d) * emission_cos;
+        return compute_attenuation_inverse_square(d) * compute_attenuation_range(d) * emission_cos * emitter_area;
     }
 
     float compute_attenuation(const float3 surface_position)
@@ -330,8 +331,9 @@ struct Light
             }
             else if (is_area())
             {
+                float emitter_area = 0.5f * max(area_width * area_height, 0.0001f);
                 float3 to_vol = dist_to_vol > 0.0001f ? (vol_position - position) / dist_to_vol : forward;
-                atten *= saturate(dot(forward, to_vol));
+                atten *= saturate(dot(forward, to_vol)) * emitter_area;
             }
         }
 

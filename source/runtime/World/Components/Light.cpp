@@ -643,9 +643,8 @@ namespace spartan
 
         if (m_light_type == LightType::Area)
         {
-            // area lights currently store one-sided emitted flux in lumens.
-            // until the shader uses a proper area emitter model, approximate distribution over the front hemisphere.
-            return radiant_flux / (2.0f * pi);
+            const float emitter_area = max(m_area_width * m_area_height, 0.0001f);
+            return radiant_flux / (pi * emitter_area);
         }
 
         return radiant_flux / (4.0f * pi);

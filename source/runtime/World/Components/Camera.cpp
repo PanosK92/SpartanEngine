@@ -101,6 +101,7 @@ namespace spartan
         node.append_attribute("near_plane")     = m_near_plane;
         node.append_attribute("far_plane")      = m_far_plane;
         node.append_attribute("projection")     = static_cast<int>(m_projection_type);
+        node.append_attribute("preset")         = static_cast<int>(m_preset);
         node.append_attribute("flags")          = m_flags;
     }
     
@@ -113,6 +114,9 @@ namespace spartan
         m_near_plane         = node.attribute("near_plane").as_float(0.1f);
         m_far_plane          = node.attribute("far_plane").as_float(10'000.0f);
         m_projection_type    = static_cast<ProjectionType>(node.attribute("projection").as_int(static_cast<int>(Projection_Perspective)));
+        int preset           = node.attribute("preset").as_int(static_cast<int>(CameraPreset::custom));
+        m_preset             = (preset >= static_cast<int>(CameraPreset::custom) && preset <= static_cast<int>(CameraPreset::cinematic)) ?
+            static_cast<CameraPreset>(preset) : CameraPreset::custom;
         m_flags              = node.attribute("flags").as_uint(0);
 
         ComputeMatrices();
@@ -121,6 +125,49 @@ namespace spartan
     void Camera::SetProjection(const ProjectionType projection)
     {
         m_projection_type = projection;
+        SetFlag(CameraFlags::IsDirty, true);
+    }
+
+    void Camera::SetPreset(const CameraPreset preset)
+    {
+        m_preset = preset;
+
+        switch (preset)
+        {
+        case CameraPreset::daylight:
+            m_aperture           = 8.0f;
+            m_shutter_speed      = 1.0f / 250.0f;
+            m_iso                = 100.0f;
+            break;
+        case CameraPreset::overcast:
+            m_aperture           = 5.6f;
+            m_shutter_speed      = 1.0f / 125.0f;
+            m_iso                = 200.0f;
+            break;
+        case CameraPreset::golden_hour:
+            m_aperture           = 4.0f;
+            m_shutter_speed      = 1.0f / 125.0f;
+            m_iso                = 400.0f;
+            break;
+        case CameraPreset::interior:
+            m_aperture           = 2.8f;
+            m_shutter_speed      = 1.0f / 60.0f;
+            m_iso                = 800.0f;
+            break;
+        case CameraPreset::night:
+            m_aperture           = 1.8f;
+            m_shutter_speed      = 1.0f / 30.0f;
+            m_iso                = 1600.0f;
+            break;
+        case CameraPreset::cinematic:
+            m_aperture           = 2.8f;
+            m_shutter_speed      = 1.0f / 48.0f;
+            m_iso                = 400.0f;
+            break;
+        case CameraPreset::custom:
+            return;
+        }
+
         SetFlag(CameraFlags::IsDirty, true);
     }
 

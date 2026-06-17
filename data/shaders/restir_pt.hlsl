@@ -55,9 +55,14 @@ float light_pick_weight(LightParameters l)
     bool is_area        = (l.flags & (1u << 6)) != 0;
 
     float lum = max(luminance(l.color.rgb), 1e-3f);
-    if (is_directional || is_area)
+    if (is_directional)
     {
         return l.intensity * lum;
+    }
+    if (is_area)
+    {
+        float emitter_area = max(l.area_width * l.area_height, 0.0001f);
+        return l.intensity * lum * emitter_area;
     }
     if (is_point || is_spot)
     {

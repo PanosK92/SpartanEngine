@@ -304,9 +304,9 @@ void main_cs(uint3 thread_id : SV_DispatchThreadID)
             }
             else if (is_area)
             {
-                // emission cosine, area lights only emit to their forward hemisphere
+                float emitter_area = 0.5f * max(light_p.area_width * light_p.area_height, 0.0001f);
                 float emission_cos = saturate(dot(light_p.direction.xyz, to_pixel));
-                attenuation       *= emission_cos;
+                attenuation       *= emission_cos * emitter_area;
             }
         }
         

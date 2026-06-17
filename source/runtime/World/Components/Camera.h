@@ -47,6 +47,17 @@ namespace spartan
         Projection_Orthographic,
     };
 
+    enum class CameraPreset
+    {
+        custom,
+        daylight,
+        overcast,
+        golden_hour,
+        interior,
+        night,
+        cinematic
+    };
+
     enum CameraFlags : uint32_t
     {
         // fps camera controls
@@ -102,16 +113,44 @@ namespace spartan
         math::Vector3 ScreenToWorldCoordinates(const math::Vector2& position_screen, const float z) const;
 
         // aperture
-        float GetAperture() const                     { return m_aperture; }
-        void SetAperture(const float aperture)        { m_aperture = std::max(aperture, 0.01f); }
+        float GetAperture() const { return m_aperture; }
+        void SetAperture(const float aperture)
+        {
+            const float aperture_new = std::max(aperture, 0.01f);
+            if (m_aperture != aperture_new)
+            {
+                m_preset = CameraPreset::custom;
+            }
+            m_aperture = aperture_new;
+        }
 
         // shutter speed
-        float GetShutterSpeed() const                  { return m_shutter_speed; }
-        void SetShutterSpeed(const float shutter_speed){ m_shutter_speed = std::max(shutter_speed, 0.0001f); }
+        float GetShutterSpeed() const { return m_shutter_speed; }
+        void SetShutterSpeed(const float shutter_speed)
+        {
+            const float shutter_speed_new = std::max(shutter_speed, 0.0001f);
+            if (m_shutter_speed != shutter_speed_new)
+            {
+                m_preset = CameraPreset::custom;
+            }
+            m_shutter_speed = shutter_speed_new;
+        }
 
         // iso
-        float GetIso() const                    { return m_iso; }
-        void SetIso(const float iso)            { m_iso = std::max(iso, 1.0f); }
+        float GetIso() const { return m_iso; }
+        void SetIso(const float iso)
+        {
+            const float iso_new = std::max(iso, 1.0f);
+            if (m_iso != iso_new)
+            {
+                m_preset = CameraPreset::custom;
+            }
+            m_iso = iso_new;
+        }
+
+        // preset
+        void SetPreset(const CameraPreset preset);
+        CameraPreset GetPreset() const { return m_preset; }
 
         float GetExposure() const
         {
@@ -176,6 +215,7 @@ namespace spartan
         void Input_LerpToEntity();
 
         uint32_t m_flags                             = 0;
+        CameraPreset m_preset                        = CameraPreset::custom;
         float m_aperture                             = 5.6f;          // aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration
         float m_shutter_speed                        = 1.0f / 125.0f; // length of time for which the camera shutter is open (sec). Also controls the amount of motion blur
         float m_iso                                  = 200.0f;        // sensitivity to light

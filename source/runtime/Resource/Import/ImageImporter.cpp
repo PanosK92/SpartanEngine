@@ -405,6 +405,26 @@ namespace spartan
             return *reinterpret_cast<float*>(&f); // assumes ieee 754 and little-endian
         }
 
+        uint32_t hash_pixel(uint32_t x, uint32_t y, uint32_t channel)
+        {
+            uint32_t h = x * 0x8da6b343u;
+            h ^= y * 0xd8163841u;
+            h ^= channel * 0xcb1ab31fu;
+            h ^= h >> 16;
+            h *= 0x7feb352du;
+            h ^= h >> 15;
+            h *= 0x846ca68bu;
+            h ^= h >> 16;
+            return h;
+        }
+
+        BYTE float_to_unorm8(float value, uint32_t x, uint32_t y, uint32_t channel)
+        {
+            float noise = (static_cast<float>(hash_pixel(x, y, channel) & 0x00ffffffu) / 16777215.0f) - 0.5f;
+            value       = min(max(value + noise / 255.0f, 0.0f), 1.0f);
+            return static_cast<BYTE>(value * 255.0f + 0.5f);
+        }
+
     }
 
     void ImageImporter::Initialize()
@@ -615,9 +635,9 @@ namespace spartan
 
                 // convert to 8-bit (FreeImage uses BGR order)
                 uint32_t dst_idx = x * 3;
-                scanline[dst_idx + 0] = static_cast<BYTE>(min(max(b, 0.0f), 1.0f) * 255.0f + 0.5f);
-                scanline[dst_idx + 1] = static_cast<BYTE>(min(max(g, 0.0f), 1.0f) * 255.0f + 0.5f);
-                scanline[dst_idx + 2] = static_cast<BYTE>(min(max(r, 0.0f), 1.0f) * 255.0f + 0.5f);
+                scanline[dst_idx + 0] = float_to_unorm8(b, x, y, 2);
+                scanline[dst_idx + 1] = float_to_unorm8(g, x, y, 1);
+                scanline[dst_idx + 2] = float_to_unorm8(r, x, y, 0);
             }
         }
 
