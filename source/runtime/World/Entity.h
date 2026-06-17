@@ -209,6 +209,7 @@ namespace spartan
 
         // walks a prefab base subtree and writes user additions as <prefab_override> blocks onto the instance root node
         void SaveOverrides(pugi::xml_node& root_node, const std::string& path);
+        bool HasPrefabTransformChanged() const;
 
         // local
         math::Vector3 m_position_local    = math::Vector3::Zero;
@@ -245,5 +246,8 @@ namespace spartan
         // the mask marks which components on this entity came from the prefab base
         bool m_prefab_owned = false;
         std::array<bool, static_cast<uint32_t>(ComponentType::Max)> m_prefab_owned_components{};
+        math::Vector3 m_prefab_position_local    = math::Vector3::Zero;
+        math::Quaternion m_prefab_rotation_local = math::Quaternion::Identity;
+        math::Vector3 m_prefab_scale_local       = math::Vector3::One;
     };
 }

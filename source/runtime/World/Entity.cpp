@@ -49,6 +49,54 @@ namespace spartan
 {
     namespace
     {
+        string to_string(const Vector3& value)
+        {
+            stringstream ss;
+            ss << value.x << " " << value.y << " " << value.z;
+            return ss.str();
+        }
+
+        string to_string(const Quaternion& value)
+        {
+            stringstream ss;
+            ss << value.x << " " << value.y << " " << value.z << " " << value.w;
+            return ss.str();
+        }
+
+        void save_transform(pugi::xml_node& node, const Vector3& position, const Quaternion& rotation, const Vector3& scale)
+        {
+            node.append_attribute("position") = to_string(position).c_str();
+            node.append_attribute("rotation") = to_string(rotation).c_str();
+            node.append_attribute("scale")    = to_string(scale).c_str();
+        }
+
+        void load_transform_override(Entity* entity, pugi::xml_node& node)
+        {
+            if (pugi::xml_attribute attr = node.attribute("position"))
+            {
+                Vector3 position = entity->GetPositionLocal();
+                stringstream ss(attr.as_string());
+                ss >> position.x >> position.y >> position.z;
+                entity->SetPositionLocal(position);
+            }
+
+            if (pugi::xml_attribute attr = node.attribute("rotation"))
+            {
+                Quaternion rotation = entity->GetRotationLocal();
+                stringstream ss(attr.as_string());
+                ss >> rotation.x >> rotation.y >> rotation.z >> rotation.w;
+                entity->SetRotationLocal(rotation);
+            }
+
+            if (pugi::xml_attribute attr = node.attribute("scale"))
+            {
+                Vector3 scale = entity->GetScaleLocal();
+                stringstream ss(attr.as_string());
+                ss >> scale.x >> scale.y >> scale.z;
+                entity->SetScaleLocal(scale);
+            }
+        }
+
         // input is an entity, output is a clone of that entity (descendant entities are not cloned)
         Entity* clone_entity(Entity* entity)
         {
@@ -282,24 +330,7 @@ namespace spartan
             node.append_attribute("name")   = m_object_name.c_str();
             node.append_attribute("id")     = m_object_id;
             node.append_attribute("active") = m_is_active;
-
-            {
-                stringstream ss;
-                ss << m_position_local.x << " " << m_position_local.y << " " << m_position_local.z;
-                node.append_attribute("position") = ss.str().c_str();
-            }
-
-            {
-                stringstream ss;
-                ss << m_rotation_local.x << " " << m_rotation_local.y << " " << m_rotation_local.z << " " << m_rotation_local.w;
-                node.append_attribute("rotation") = ss.str().c_str();
-            }
-
-            {
-                stringstream ss;
-                ss << m_scale_local.x << " " << m_scale_local.y << " " << m_scale_local.z;
-                node.append_attribute("scale") = ss.str().c_str();
-            }
+            save_transform(node, m_position_local, m_rotation_local, m_scale_local);
 
             // save the prefab reference first so it is recreated before any user-added components are loaded
             if (HasPrefabData())
@@ -404,10 +435,17 @@ namespace spartan
             }
         }
 
-        if (has_user_components || has_user_children)
+        const bool has_transform = HasPrefabTransformChanged();
+
+        if (has_transform || has_user_components || has_user_children)
         {
             pugi::xml_node override_node      = root_node.append_child("prefab_override");
             override_node.append_attribute("path") = path.c_str();
+
+            if (has_transform)
+            {
+                save_transform(override_node, m_position_local, m_rotation_local, m_scale_local);
+            }
 
             for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
             {
@@ -440,6 +478,13 @@ namespace spartan
         }
     }
 
+    bool Entity::HasPrefabTransformChanged() const
+    {
+        return m_position_local != m_prefab_position_local ||
+               m_rotation_local != m_prefab_rotation_local ||
+               m_scale_local    != m_prefab_scale_local;
+    }
+
     void Entity::SetPrefabData(const string& type, const unordered_map<string, string>& attributes)
     {
         m_prefab_type       = type;
@@ -460,6 +505,10 @@ namespace spartan
 
     void Entity::MarkPrefabBaseline()
     {
+        m_prefab_position_local = m_position_local;
+        m_prefab_rotation_local = m_rotation_local;
+        m_prefab_scale_local    = m_scale_local;
+
         // mark the components currently on this entity as part of the prefab base
         for (uint32_t i = 0; i < static_cast<uint32_t>(ComponentType::Max); i++)
         {
@@ -560,6 +609,8 @@ namespace spartan
                         SP_LOG_WARNING("Prefab override path no longer exists, skipping: %s", path.c_str());
                         continue;
                     }
+
+                    load_transform_override(target, component_node);
 
                     for (pugi::xml_node override_child = component_node.first_child(); override_child; override_child = override_child.next_sibling())
                     {

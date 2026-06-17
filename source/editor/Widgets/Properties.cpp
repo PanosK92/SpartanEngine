@@ -778,11 +778,11 @@ void Properties::ShowEntity(Entity* entity) const
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f));
             if (is_code)
             {
-                ImGui::TextWrapped("Defined in code. Components and children you add are saved as overrides and re-applied on load.");
+                ImGui::TextWrapped("Defined in code. Transform edits plus components and children you add are saved as overrides and re-applied on load.");
             }
             else
             {
-                ImGui::TextWrapped("Components and children you add are saved as overrides. Use Update Prefab to bake the current hierarchy into the .prefab file.");
+                ImGui::TextWrapped("Transform edits plus components and children you add are saved as overrides. Use Update Prefab to bake the current hierarchy into the .prefab file.");
             }
             ImGui::PopStyleColor();
 

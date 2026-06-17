@@ -777,47 +777,18 @@ namespace
         }
     }
 
-    void draw_header(float content_w)
-    {
-        ImVec2 start_pos = ImGui::GetCursorScreenPos();
-        ImVec2 header_size = ImVec2(content_w, scaled(88.0f));
-        ImDrawList* draw = ImGui::GetWindowDrawList();
-
-        draw->AddRectFilled(start_pos, ImVec2(start_pos.x + header_size.x, start_pos.y + header_size.y), colors.surface_bg, scaled(panel_rounding));
-        draw->AddRect(start_pos, ImVec2(start_pos.x + header_size.x, start_pos.y + header_size.y), colors.panel_border, scaled(panel_rounding));
-
-        string count = to_string(world_files.size()) + " worlds";
-        float chip_gap = scaled(10.0f);
-        float chip_w_0 = ImGui::CalcTextSize("world launcher").x + scaled(16.0f);
-        float chip_w_1 = ImGui::CalcTextSize(count.c_str()).x + scaled(16.0f);
-        float chips_w  = chip_w_0 + chip_w_1 + chip_gap;
-        ImGui::SetCursorScreenPos(ImVec2(start_pos.x + (content_w - chips_w) * 0.5f, start_pos.y + scaled(14.0f)));
-        draw_chip("world launcher", colors.chip_bg, colors.text_muted);
-
-        ImGui::SameLine(0.0f, chip_gap);
-        draw_chip(count.c_str(), colors.chip_bg, colors.text_muted);
-
-        const char* title = "Choose your starting world";
-        const char* subtitle = "Curated scenes, test beds, and project worlds ready to load.";
-        ImGui::SetCursorScreenPos(ImVec2(start_pos.x, start_pos.y + scaled(48.0f)));
-        if (Editor::font_bold)
-        {
-            ImGui::PushFont(Editor::font_bold, 0.0f);
-        }
-        text_centered_in_width(title, content_w, colors.text_primary);
-        if (Editor::font_bold)
-        {
-            ImGui::PopFont();
-        }
-        ImGui::SetCursorScreenPos(ImVec2(start_pos.x, ImGui::GetCursorScreenPos().y));
-        text_centered_in_width(subtitle, content_w, colors.text_muted);
-        ImGui::SetCursorScreenPos(ImVec2(start_pos.x, start_pos.y + header_size.y + scaled(section_spacing)));
-    }
-
     void draw_toolbar(float content_w)
     {
+        string count = to_string(world_files.size()) + " worlds";
+        float count_w = ImGui::CalcTextSize(count.c_str()).x + scaled(16.0f);
         float button_w = scaled(92.0f);
-        float search_w = content_w - button_w - scaled(8.0f);
+        float search_w = content_w - count_w - button_w - scaled(28.0f);
+        float start_x = ImGui::GetCursorPosX();
+
+        if (search_w < scaled(220.0f))
+        {
+            search_w = scaled(220.0f);
+        }
 
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, scaled_vec(12.0f, 8.0f));
@@ -836,6 +807,10 @@ namespace
             scan_for_world_files();
             rebuild_visible_indices();
         }
+
+        ImGui::SameLine(0.0f, scaled(8.0f));
+        ImGui::SetCursorPosX(start_x + content_w - count_w);
+        draw_chip(count.c_str(), colors.chip_bg, colors.text_muted);
     }
 
     void draw_detail_panel(float width, float height)
@@ -867,10 +842,13 @@ namespace
             return;
         }
 
+        float content_height = max(scaled(120.0f), height - scaled(132.0f));
+        ImGui::BeginChild("##world_details_content", ImVec2(width - scaled(28.0f), content_height), false);
+
         ImVec2 preview_min = ImGui::GetCursorScreenPos();
-        ImVec2 preview_max = ImVec2(preview_min.x + width - scaled(28.0f), preview_min.y + scaled(190.0f));
+        ImVec2 preview_max = ImVec2(preview_min.x + width - scaled(28.0f), preview_min.y + scaled(170.0f));
         draw_world_preview(*world, preview_min, preview_max, 0.0f);
-        ImGui::Dummy(ImVec2(width - scaled(28.0f), scaled(190.0f)));
+        ImGui::Dummy(ImVec2(width - scaled(28.0f), scaled(170.0f)));
 
         ImGui::Dummy(ImVec2(0.0f, scaled(10.0f)));
         if (Editor::font_bold)
@@ -911,22 +889,25 @@ namespace
         ImGui::Dummy(ImVec2(0.0f, scaled(8.0f)));
         text_centered_in_width(world->file_path.c_str(), width - scaled(28.0f), colors.text_muted);
 
-        float footer_y = height - scaled(106.0f);
-        if (ImGui::GetCursorPosY() < footer_y)
-        {
-            ImGui::SetCursorPosY(footer_y);
-        }
+        ImGui::EndChild();
 
-        text_centered_in_width("developer build, experimental worlds may change", width - scaled(28.0f), colors.warning);
+        float footer_w = width - scaled(28.0f);
+        ImGui::SetCursorPosX(scaled(14.0f));
+        text_centered_in_width("developer build", footer_w, colors.warning);
+        ImGui::SetCursorPosX(scaled(14.0f));
+        text_centered_in_width("experimental worlds may change", footer_w, colors.warning);
         ImGui::Dummy(ImVec2(0.0f, scaled(6.0f)));
 
-        float load_w = width - scaled(28.0f);
+        float load_w = min(scaled(220.0f), footer_w);
+        ImGui::SetCursorPosX((width - load_w) * 0.5f);
         if (launcher_button("Load World", ImVec2(load_w, 0.0f), true))
         {
             load_selected_world();
         }
 
-        float button_w = (load_w - scaled(8.0f)) * 0.5f;
+        float button_w = scaled(118.0f);
+        float button_group_w = button_w * 2.0f + scaled(8.0f);
+        ImGui::SetCursorPosX((width - button_group_w) * 0.5f);
         if (launcher_button("Cancel", ImVec2(button_w, 0.0f)))
         {
             visible_world_list = false;
@@ -1020,13 +1001,12 @@ namespace
             }
 
             float content_w = ImGui::GetContentRegionAvail().x;
-            draw_header(content_w);
-            draw_toolbar(content_w);
             rebuild_visible_indices();
             handle_keyboard();
-            ImGui::Dummy(ImVec2(0.0f, scaled(section_spacing)));
 
             ImVec2 remaining = ImGui::GetContentRegionAvail();
+            float bottom_bar_h = ImGui::GetFrameHeightWithSpacing() + scaled(8.0f);
+            float panels_h = max(scaled(260.0f), remaining.y - bottom_bar_h);
             float details_w  = min(scaled(details_width_base), max(scaled(320.0f), remaining.x * 0.32f));
             float grid_w     = remaining.x - details_w - scaled(section_spacing);
             if (grid_w < scaled(300.0f))
@@ -1035,9 +1015,10 @@ namespace
                 details_w = remaining.x;
             }
 
-            begin_panel("##world_grid_panel", ImVec2(grid_w, remaining.y));
+            ImVec2 panels_pos = ImGui::GetCursorPos();
+            begin_panel("##world_grid_panel", ImVec2(grid_w, panels_h));
             {
-                ImGui::BeginChild("##world_grid_scroll", ImVec2(grid_w - scaled(28.0f), remaining.y - scaled(28.0f)), false);
+                ImGui::BeginChild("##world_grid_scroll", ImVec2(grid_w - scaled(28.0f), panels_h - scaled(28.0f)), false);
                 render_card_grid_world_files(ImGui::GetContentRegionAvail().x);
                 ImGui::EndChild();
             }
@@ -1046,13 +1027,16 @@ namespace
             if (details_w != remaining.x)
             {
                 ImGui::SameLine(0.0f, scaled(section_spacing));
-                draw_detail_panel(details_w, remaining.y);
+                draw_detail_panel(details_w, panels_h);
             }
             else
             {
                 ImGui::Dummy(ImVec2(0.0f, scaled(section_spacing)));
                 draw_detail_panel(details_w, scaled(430.0f));
             }
+
+            ImGui::SetCursorPos(ImVec2(panels_pos.x, panels_pos.y + panels_h + scaled(8.0f)));
+            draw_toolbar(content_w);
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
