@@ -346,6 +346,8 @@ namespace spartan
         frame_render_opaque,
         frame_output,
         frame_output_2,
+        screenshot_sdr,
+        screenshot_sdr_2,
         taau_history,
         ssao,
         reflections,

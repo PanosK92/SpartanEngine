@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "pch.h"
+#include <mutex>
 #include <unordered_set>
 #include "Renderer.h"
 #include "Material.h"
@@ -116,9 +117,127 @@ namespace spartan
         float          far_plane                  = 1.0f;
         bool           dirty_orthographic_projection = true;
 
+        struct screenshot_request
+        {
+            string file_path;
+            string png_path;
+            string exr_path;
+            bool save_exr = false;
+            bool pending  = false;
+            bool ready    = false;
+        };
+
+        mutex screenshot_mutex;
+        screenshot_request screenshot;
+        uint32_t screenshot_index = 0;
+
         float sanitize_resolution_scale(float scale)
         {
             return clamp(scale, 0.5f, 1.0f);
+        }
+
+        shared_ptr<RHI_Buffer> copy_texture_to_staging(RHI_Texture* texture)
+        {
+            if (!texture)
+            {
+                return nullptr;
+            }
+
+            uint32_t width            = texture->GetWidth();
+            uint32_t height           = texture->GetHeight();
+            uint32_t bits_per_channel = texture->GetBitsPerChannel();
+            uint32_t channel_count    = texture->GetChannelCount();
+            size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
+
+            auto staging = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
+            if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
+            {
+                cmd_list->CopyTextureToBuffer(texture, staging.get());
+                RHI_CommandList::ImmediateExecutionEnd(cmd_list);
+            }
+
+            return staging;
+        }
+
+        void ensure_screenshot_directory_exists(const string& file_path)
+        {
+            string directory = FileSystem::GetDirectoryFromFilePath(file_path);
+            if (!directory.empty() && !FileSystem::Exists(directory))
+            {
+                FileSystem::CreateDirectory_(directory);
+            }
+        }
+
+        void save_screenshot_async(
+            const screenshot_request& request,
+            shared_ptr<RHI_Buffer> sdr_staging,
+            shared_ptr<RHI_Buffer> exr_staging,
+            uint32_t width,
+            uint32_t height,
+            uint32_t channel_count,
+            uint32_t bits_per_channel
+        )
+        {
+            SP_ASSERT_MSG(sdr_staging && sdr_staging->GetMappedData(), "Staging buffer not mappable");
+            if (!sdr_staging || !sdr_staging->GetMappedData())
+            {
+                SP_LOG_ERROR("Failed to map SDR screenshot staging buffer");
+                return;
+            }
+
+            ThreadPool::AddTask([request, sdr_staging, exr_staging, width, height, channel_count, bits_per_channel]()
+            {
+                void* sdr_data = sdr_staging->GetMappedData();
+                void* exr_data = exr_staging ? exr_staging->GetMappedData() : nullptr;
+
+                if (!request.file_path.empty())
+                {
+                    ensure_screenshot_directory_exists(request.png_path);
+
+                    string temp_file_path = request.png_path + ".tmp";
+                    if (FileSystem::Exists(temp_file_path))
+                    {
+                        FileSystem::Delete(temp_file_path);
+                    }
+
+                    SP_LOG_INFO("Saving screenshot to '%s'...", request.png_path.c_str());
+                    ImageImporter::SaveSdr(temp_file_path, width, height, channel_count, bits_per_channel, sdr_data);
+                    if (FileSystem::Exists(request.png_path))
+                    {
+                        FileSystem::Delete(request.png_path);
+                    }
+                    FileSystem::Rename(temp_file_path, request.png_path);
+                    SP_LOG_INFO("Screenshot saved as '%s'", request.png_path.c_str());
+                    return;
+                }
+
+                SP_LOG_INFO("Saving screenshots...");
+                if (request.save_exr && exr_data)
+                {
+                    ImageImporter::Save(request.exr_path, width, height, channel_count, bits_per_channel, exr_data);
+                }
+                ImageImporter::SaveSdr(request.png_path, width, height, channel_count, bits_per_channel, sdr_data);
+                SP_LOG_INFO("Screenshots saved as '%s' and '%s'", request.exr_path.c_str(), request.png_path.c_str());
+            });
+        }
+
+        screenshot_request make_screenshot_request(const string& file_path)
+        {
+            screenshot_request request;
+            request.file_path = file_path;
+            request.pending   = true;
+
+            if (!file_path.empty())
+            {
+                request.png_path = file_path;
+                return request;
+            }
+
+            uint32_t index  = screenshot_index++;
+            request.save_exr = true;
+            request.exr_path = "screenshot_" + to_string(index) + ".exr";
+            request.png_path = "screenshot_" + to_string(index) + ".png";
+            return request;
         }
 
         // pack the renderable's resolved uv state into any struct that exposes the standard uv fields
@@ -1259,6 +1378,8 @@ namespace spartan
             m_cross_queue_sync.previous_present_timeline_value = m_cmd_list_present->GetLastTimelineSignalValue();
         }
         Profiler::TimeBlockEnd(TimeBlockType::Cpu);
+
+        FinalizeScreenshotReadback();
     }
 
     RHI_Api_Type Renderer::GetRhiApiType()
@@ -2297,75 +2418,102 @@ namespace spartan
         }
     }
 
-    static void screenshot_internal(string file_path = "")
-    {
-        RHI_Texture* frame_output = Renderer::GetRenderTarget(Renderer_RenderTarget::frame_output);
-        uint32_t width            = frame_output->GetWidth();
-        uint32_t height           = frame_output->GetHeight();
-        uint32_t bits_per_channel = frame_output->GetBitsPerChannel();
-        uint32_t channel_count    = frame_output->GetChannelCount();
-        size_t data_size          = static_cast<size_t>(width) * height * (bits_per_channel / 8) * channel_count;
-
-        bool is_hdr = cvar_hdr.GetValueAs<bool>();
-
-        auto staging = make_shared<RHI_Buffer>(RHI_Buffer_Type::Constant, data_size, 1, nullptr, true, "screenshot_staging");
-
-        if (RHI_CommandList* cmd_list = RHI_CommandList::ImmediateExecutionBegin(RHI_Queue_Type::Graphics))
-        {
-            cmd_list->CopyTextureToBuffer(frame_output, staging.get());
-            RHI_CommandList::ImmediateExecutionEnd(cmd_list);
-        }
-
-        void* mapped_data = staging->GetMappedData();
-        SP_ASSERT_MSG(mapped_data, "Staging buffer not mappable");
-
-        spartan::ThreadPool::AddTask([=]()
-        {
-            if (!file_path.empty())
-            {
-                string directory = FileSystem::GetDirectoryFromFilePath(file_path);
-                if (!directory.empty() && !FileSystem::Exists(directory))
-                {
-                    FileSystem::CreateDirectory_(directory);
-                }
-
-                string temp_file_path = file_path + ".tmp";
-                if (FileSystem::Exists(temp_file_path))
-                {
-                    FileSystem::Delete(temp_file_path);
-                }
-
-                SP_LOG_INFO("Saving screenshot to '%s'...", file_path.c_str());
-                ImageImporter::SaveSdr(temp_file_path, width, height, channel_count, bits_per_channel, mapped_data, is_hdr);
-                if (FileSystem::Exists(file_path))
-                {
-                    FileSystem::Delete(file_path);
-                }
-                FileSystem::Rename(temp_file_path, file_path);
-                SP_LOG_INFO("Screenshot saved as '%s'", file_path.c_str());
-                return;
-            }
-
-            static uint32_t screenshot_index = 0;
-            uint32_t index = screenshot_index++;
-            string exr_path = "screenshot_" + to_string(index) + ".exr";
-            string png_path = "screenshot_" + to_string(index) + ".png";
-
-            SP_LOG_INFO("Saving screenshots...");
-            ImageImporter::Save(exr_path, width, height, channel_count, bits_per_channel, mapped_data);
-            ImageImporter::SaveSdr(png_path, width, height, channel_count, bits_per_channel, mapped_data, is_hdr);
-            SP_LOG_INFO("Screenshots saved as '%s' and '%s'", exr_path.c_str(), png_path.c_str());
-        });
-    }
-
     void Renderer::Screenshot()
     {
-        screenshot_internal();
+        Screenshot("");
     }
 
     void Renderer::Screenshot(const string& file_path)
     {
-        screenshot_internal(file_path);
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (screenshot.pending || screenshot.ready)
+        {
+            SP_LOG_WARNING("Screenshot already pending");
+            return;
+        }
+
+        screenshot = make_screenshot_request(file_path);
+    }
+
+    void Renderer::Pass_Screenshot(RHI_CommandList* cmd_list, RHI_Texture* tex_pre_tonemap)
+    {
+        {
+            lock_guard<mutex> lock(screenshot_mutex);
+            if (!screenshot.pending || screenshot.ready || !tex_pre_tonemap)
+            {
+                return;
+            }
+        }
+
+        RHI_Texture* tex_sdr = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+        RHI_Texture* tex_ping = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr_2);
+        if (!tex_sdr || !tex_ping)
+        {
+            return;
+        }
+
+        cmd_list->BeginMarker("screenshot_sdr");
+        {
+            Pass_Tonemap(cmd_list, tex_pre_tonemap, tex_sdr, true);
+
+            RHI_Texture* tex_in  = tex_sdr;
+            RHI_Texture* tex_out = tex_ping;
+            Pass_PostProcess_DisplayEffects(cmd_list, tex_in, tex_out);
+
+            if (tex_in != tex_sdr)
+            {
+                cmd_list->Copy(tex_in, tex_sdr, false);
+            }
+
+            Pass_PostProcess_EditorOverlays(cmd_list, tex_sdr);
+            Pass_Text(cmd_list, tex_sdr);
+        }
+        cmd_list->EndMarker();
+
+        lock_guard<mutex> lock(screenshot_mutex);
+        if (screenshot.pending)
+        {
+            screenshot.pending = false;
+            screenshot.ready   = true;
+        }
+    }
+
+    void Renderer::FinalizeScreenshotReadback()
+    {
+        screenshot_request request;
+        {
+            lock_guard<mutex> lock(screenshot_mutex);
+            if (!screenshot.ready)
+            {
+                return;
+            }
+
+            request    = screenshot;
+            screenshot = {};
+        }
+
+        RHI_Texture* tex_sdr = GetRenderTarget(Renderer_RenderTarget::screenshot_sdr);
+        if (!tex_sdr)
+        {
+            return;
+        }
+
+        shared_ptr<RHI_Buffer> sdr_staging = copy_texture_to_staging(tex_sdr);
+        shared_ptr<RHI_Buffer> exr_staging;
+        if (request.save_exr)
+        {
+            exr_staging = copy_texture_to_staging(GetRenderTarget(Renderer_RenderTarget::frame_output));
+        }
+
+        save_screenshot_async(
+            request,
+            sdr_staging,
+            exr_staging,
+            tex_sdr->GetWidth(),
+            tex_sdr->GetHeight(),
+            tex_sdr->GetChannelCount(),
+            tex_sdr->GetBitsPerChannel()
+        );
     }
 
     uint32_t Renderer::GetClusterOverflowCount()

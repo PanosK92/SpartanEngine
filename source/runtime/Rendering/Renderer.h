@@ -306,7 +306,8 @@ namespace spartan
         static void Pass_PostProcess(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_PostProcess_Color(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out, uint32_t eye_layer);
         static void Pass_PostProcess_EditorOverlays(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_Tonemap(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        static void Pass_PostProcess_DisplayEffects(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out);
+        static void Pass_Tonemap(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr = false);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_AA_Upscale(RHI_CommandList* cmd_list, uint32_t eye_layer = rhi_all_mips);
         static void Pass_AutoExposure(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
@@ -341,6 +342,8 @@ namespace spartan
         static void TickUploadBindlessDependencies(RHI_CommandList* cmd_list);
         static void TickAdvanceFrameConstantBufferRing();
         static void TickLogClusterOverflowRateLimited();
+        static void Pass_Screenshot(RHI_CommandList* cmd_list, RHI_Texture* tex_pre_tonemap);
+        static void FinalizeScreenshotReadback();
         static void UpdateDrawCalls(RHI_CommandList* cmd_list);
         static void UpdateDrawCalls_ResetCounts();
         static void UpdateDrawCalls_CollectAndSort();

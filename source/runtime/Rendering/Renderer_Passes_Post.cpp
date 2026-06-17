@@ -144,13 +144,33 @@ namespace spartan
             swap(tex_in, tex_out);
         }
 
+        RHI_Texture* tex_pre_tonemap = tex_in;
+
         Pass_Tonemap(cmd_list, tex_in, tex_out);
         swap(tex_in, tex_out);
+
+        Pass_Screenshot(cmd_list, tex_pre_tonemap);
 
         if (auto_exposure_enabled)
         {
             cmd_list->Blit(GetRenderTarget(Renderer_RenderTarget::auto_exposure), GetRenderTarget(Renderer_RenderTarget::auto_exposure_previous), false);
         }
+
+        Pass_PostProcess_DisplayEffects(cmd_list, tex_in, tex_out);
+
+        if (tex_in != rt_frame_output)
+        {
+            cmd_list->Copy(tex_in, rt_frame_output, false);
+        }
+    }
+
+    void Renderer::Pass_PostProcess_DisplayEffects(RHI_CommandList* cmd_list, RHI_Texture*& tex_in, RHI_Texture*& tex_out)
+    {
+        auto run_effect = [&](const char* name, Renderer_Shader shader, auto setup)
+        {
+            Pass_Compute(cmd_list, name, shader, tex_in, tex_out, setup);
+            swap(tex_in, tex_out);
+        };
 
         if (cvar_dithering.GetValueAs<bool>())
         {
@@ -191,11 +211,14 @@ namespace spartan
         {
             run_effect("vhs", Renderer_Shader::vhs_c, nullptr);
         }
+    }
 
-        if (tex_in != rt_frame_output)
-        {
-            cmd_list->Copy(tex_in, rt_frame_output, false);
-        }
+    void Renderer::Pass_PostProcess_EditorOverlays(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    {
+        Pass_Grid   (cmd_list, tex_out);
+        Pass_Lines  (cmd_list, tex_out);
+        Pass_Outline(cmd_list, tex_out);
+        Pass_Icons  (cmd_list, tex_out);
     }
 
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list, uint32_t eye_layer /*= rhi_all_mips*/)
@@ -206,12 +229,7 @@ namespace spartan
 
         cmd_list->BeginMarker("post_process");
         Pass_PostProcess_Color(cmd_list, tex_in, tex_out, eye_layer);
-
-        // editor overlays
-        Pass_Grid   (cmd_list, rt_frame_output);
-        Pass_Lines  (cmd_list, rt_frame_output);
-        Pass_Outline(cmd_list, rt_frame_output);
-        Pass_Icons  (cmd_list, rt_frame_output);
+        Pass_PostProcess_EditorOverlays(cmd_list, rt_frame_output);
         cmd_list->EndMarker();
     }
 
@@ -336,7 +354,7 @@ namespace spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Tonemap(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Tonemap(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, bool force_sdr)
     {
         RHI_Shader* shader_c = GetShader(Renderer_Shader::output_c);
 
@@ -348,7 +366,7 @@ namespace spartan
         cmd_list->SetPipelineState(pso);
 
         const bool auto_exposure_enabled = cvar_auto_exposure_adaptation_speed.GetValue() > 0.0f;
-        m_pcb_pass_cpu.set_f3_value(cvar_tonemapping.GetValue(), auto_exposure_enabled ? 1.0f : 0.0f);
+        m_pcb_pass_cpu.set_f3_value(cvar_tonemapping.GetValue(), auto_exposure_enabled ? 1.0f : 0.0f, force_sdr ? 1.0f : 0.0f);
         cmd_list->PushConstants(m_pcb_pass_cpu);
 
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);

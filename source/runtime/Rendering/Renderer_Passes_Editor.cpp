@@ -42,49 +42,55 @@ namespace spartan
 {
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!Engine::IsFlagSet(EngineMode::Playing))
+        static uint64_t icons_frame = ~0ull;
+        if (icons_frame != m_frame_num)
         {
-            Vector3 pos_camera = World::GetCamera() ? World::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
-            for (Entity* entity : World::GetEntities())
+            icons_frame = m_frame_num;
+
+            if (!Engine::IsFlagSet(EngineMode::Playing))
             {
-                // skip icons too close to camera (erratic screen-space movement)
-                if ((entity->GetPosition() - pos_camera).LengthSquared() <= 0.01f)
+                Vector3 pos_camera = World::GetCamera() ? World::GetCamera()->GetEntity()->GetPosition() : Vector3::Zero;
+                for (Entity* entity : World::GetEntities())
                 {
-                    continue;
-                }
-
-                if (entity->GetComponent<AudioSource>())
-                {
-                    if (cvar_audio_sources.GetValueAs<bool>())
+                    // skip icons too close to camera
+                    if ((entity->GetPosition() - pos_camera).LengthSquared() <= 0.01f)
                     {
-                        m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
+                        continue;
                     }
-                }
-                else if (entity->GetComponent<ParticleSystem>())
-                {
-                    m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_particle), entity->GetPosition()));
-                }
-                else if (Light* light = entity->GetComponent<Light>())
-                {
-                    if (cvar_lights.GetValueAs<bool>())
-                    {
-                        RHI_Texture* texture = nullptr;
-                        if (light->GetLightType() == LightType::Directional)
-                        {
-                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
-                        }
-                        else if (light->GetLightType() == LightType::Point)
-                        {
-                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
-                        }
-                        else if (light->GetLightType() == LightType::Spot)
-                        {
-                            texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
-                        }
 
-                        if (texture)
+                    if (entity->GetComponent<AudioSource>())
+                    {
+                        if (cvar_audio_sources.GetValueAs<bool>())
                         {
-                            m_icons.emplace_back(make_tuple(texture, entity->GetPosition()));
+                            m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source), entity->GetPosition()));
+                        }
+                    }
+                    else if (entity->GetComponent<ParticleSystem>())
+                    {
+                        m_icons.emplace_back(make_tuple(GetStandardTexture(Renderer_StandardTexture::Gizmo_particle), entity->GetPosition()));
+                    }
+                    else if (Light* light = entity->GetComponent<Light>())
+                    {
+                        if (cvar_lights.GetValueAs<bool>())
+                        {
+                            RHI_Texture* texture = nullptr;
+                            if (light->GetLightType() == LightType::Directional)
+                            {
+                                texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional);
+                            }
+                            else if (light->GetLightType() == LightType::Point)
+                            {
+                                texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point);
+                            }
+                            else if (light->GetLightType() == LightType::Spot)
+                            {
+                                texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot);
+                            }
+
+                            if (texture)
+                            {
+                                m_icons.emplace_back(make_tuple(texture, entity->GetPosition()));
+                            }
                         }
                     }
                 }
