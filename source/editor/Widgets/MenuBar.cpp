@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RenderOptions.h"
 #include "TextureViewer.h"
 #include "ResourceViewer.h"
+#include "McpAssistant.h"
 #include "AssetBrowser.h"
 #include "Console.h"
 #include "Properties.h"
@@ -42,6 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Sequence/Sequencer.h"
 #include "Core/Definitions.h"
 #include "Core/ThreadPool.h"
+#include "MCP/McpServer.h"
 #include "../WorldPreviews.h"
 #include "../GeneralWindows.h"
 #include "../ImGui/ImGui_Style.h"
@@ -403,21 +405,20 @@ namespace
             return group_padding_x() * 2.0f + button_count * tool_button_width() + (button_count - 1.0f) * button_gap();
         }
 
-        float snap_button_width()
-        {
-            return ImGui::CalcTextSize("Snap").x + 18.0f * dpi();
-        }
-
         float snap_group_width()
         {
-            return group_padding_x() * 2.0f + snap_button_width();
+            return icon_group_width(1.0f);
+        }
+
+        float panel_group_width()
+        {
+            return icon_group_width(2.0f + static_cast<float>(widgets.size()));
         }
 
         float get_right_toolbar_width()
         {
             const float capture_buttons = 2.0f;
-            const float panel_buttons   = 1.0f + static_cast<float>(widgets.size());
-            return snap_group_width() + icon_group_width(capture_buttons) + icon_group_width(panel_buttons) + group_gap() * 2.0f;
+            return snap_group_width() + icon_group_width(capture_buttons) + panel_group_width() + group_gap() * 2.0f;
         }
 
         float get_right_toolbar_start(float menubar_width)
@@ -544,10 +545,12 @@ namespace
 
             ImGui::SetCursorPosX(cursor_pos_x);
             ImGui::SetCursorPosY(centered_y(menubar_height, tool_button_height()));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
             ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
             push_button_colors(snap_enabled);
 
-            if (ImGui::Button("Snap", ImVec2(snap_button_width(), tool_button_height())))
+            const ImVec4 tint = snap_enabled ? ImGui::Style::color_accent_1 : ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
+            if (ImGuiSp::image_button(spartan::IconType::Snap, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
                 spartan::ConsoleRegistry::Get().SetValueFromString("r.transform_snap", snap_enabled ? "0" : "1");
             }
@@ -560,7 +563,55 @@ namespace
             ImGuiSp::tooltip("Snap transforms");
 
             ImGui::PopStyleColor(3);
-            ImGui::PopStyleVar();
+            ImGui::PopStyleVar(2);
+        }
+
+        void draw_mcp_button(float menubar_height, float cursor_pos_x)
+        {
+            const bool is_running = spartan::McpServer::IsRunning();
+            McpAssistant* assistant = editor->GetWidget<McpAssistant>();
+            const bool is_visible = assistant ? assistant->GetVisible() : false;
+
+            if (cursor_pos_x >= 0.0f)
+            {
+                ImGui::SetCursorPosX(cursor_pos_x);
+            }
+            ImGui::SetCursorPosY(centered_y(menubar_height, tool_button_height()));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, tool_padding());
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, group_rounding());
+            push_button_colors(is_running || is_visible);
+
+            const ImVec4 tint = (is_running || is_visible) ? ImGui::Style::color_accent_1 : ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
+            if (ImGuiSp::image_button(spartan::IconType::Mcp, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
+            {
+                if (!is_running)
+                {
+                    spartan::McpServer::Start();
+                }
+
+                if (assistant)
+                {
+                    assistant->SetVisible(!assistant->GetVisible());
+                }
+            }
+
+            if (is_running || is_visible)
+            {
+                draw_active_underline();
+            }
+
+            if (is_running)
+            {
+                const string tooltip = "MCP on 127.0.0.1:" + to_string(spartan::McpServer::GetPort());
+                ImGuiSp::tooltip(tooltip.c_str());
+            }
+            else
+            {
+                ImGuiSp::tooltip("Start MCP");
+            }
+
+            ImGui::PopStyleColor(3);
+            ImGui::PopStyleVar(2);
         }
 
         bool draw_pause_button(float menubar_height, bool is_playing, bool is_active)
@@ -678,12 +729,15 @@ namespace
             }
 
             {
-                float width = icon_group_width(1.0f + static_cast<float>(widgets.size()));
+                float width = panel_group_width();
                 draw_group_background(group_x, width, menubar_height);
 
                 static auto world_visible = [](Widget*) { return GeneralWindows::GetVisibilityWorlds(); };
                 static auto world_press   = [](Widget*) { GeneralWindows::SetVisibilityWorlds(!GeneralWindows::GetVisibilityWorlds()); };
                 toolbar_button(spartan::IconType::Terrain, "Worlds", world_visible, world_press, nullptr, group_x + group_padding_x());
+
+                ImGui::SameLine(0, button_gap());
+                draw_mcp_button(menubar_height, -1.0f);
 
                 for (auto& widget_it : widgets)
                 {

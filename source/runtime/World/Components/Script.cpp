@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "Script.h"
 #include "IO/pugixml.hpp"
 #include "World/Entity.h"

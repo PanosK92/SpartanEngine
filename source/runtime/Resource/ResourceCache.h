@@ -87,6 +87,8 @@ namespace spartan
         ArrowUp,
         Refresh,
         Logo,
+        Mcp,
+        Snap,
         Max
     };
 

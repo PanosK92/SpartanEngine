@@ -129,6 +129,7 @@ function spartan_project_configuration()
                 "/NODEFAULTLIB:MSVCRT.lib",  -- block dynamic crt (using static runtime)
                 "/NODEFAULTLIB:MSVCPRT.lib"
             }
+            links { "Ws2_32" }
             buildoptions { "/bigobj" }
 
         -- Linux includes

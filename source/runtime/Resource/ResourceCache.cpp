@@ -320,7 +320,14 @@ namespace spartan
     {
         Shutdown();
 
-        const string data_dir = string(ResourceCache::GetDataDirectory()) + "/";
+        const vector<string> data_dirs =
+        {
+            string(ResourceCache::GetDataDirectory()) + "/",
+            "data/",
+            "Data/",
+            "../data/",
+            "../Data/"
+        };
 
         // single source of truth, icon type to source file
         const vector<pair<IconType, string>> table =
@@ -361,7 +368,9 @@ namespace spartan
             { IconType::ArrowRight,    "icons/arrow_right.png"      },
             { IconType::ArrowUp,       "icons/arrow_up.png"         },
             { IconType::Refresh,       "icons/refresh.png"          },
-            { IconType::Logo,          "logo.ico"                   }
+            { IconType::Logo,          "logo.ico"                   },
+            { IconType::Mcp,           "icons/mcp.png"              },
+            { IconType::Snap,          "icons/snap.png"             }
         };
 
         // decode every source icon
@@ -371,7 +380,19 @@ namespace spartan
         {
             source_icon icon;
             icon.type = type;
-            if (load_icon_pixels(data_dir + file, icon))
+
+            string file_path;
+            for (const string& data_dir : data_dirs)
+            {
+                const string candidate = data_dir + file;
+                if (FileSystem::Exists(candidate))
+                {
+                    file_path = candidate;
+                    break;
+                }
+            }
+
+            if (!file_path.empty() && load_icon_pixels(file_path, icon))
             {
                 sources.push_back(move(icon));
             }

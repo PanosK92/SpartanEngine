@@ -44,6 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
 #include "Widgets/ScriptEditor.h"
+#include "Widgets/McpAssistant.h"
 #include "Widgets/Sequence/Sequencer.h"
 //===============================================
 
@@ -101,6 +102,7 @@ Editor::Editor(const vector<string>& args)
     m_widgets.emplace_back(make_shared<ResourceViewer>(this));
     m_widgets.emplace_back(make_shared<ShaderEditor>(this));
     m_widgets.emplace_back(make_shared<ScriptEditor>(this));
+    m_widgets.emplace_back(make_shared<McpAssistant>(this));
     m_widgets.emplace_back(make_shared<RenderOptions>(this));
     m_widgets.emplace_back(make_shared<TextureViewer>(this));
     m_widgets.emplace_back(make_shared<Viewport>(this));

@@ -1,0 +1,16 @@
+{
+  "name": "spartan-engine-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "spartan-engine-mcp": "./server.mjs"
+  },
+  "scripts": {
+    "start": "node ./server.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "latest",
+    "zod": "latest"
+  }
+}
