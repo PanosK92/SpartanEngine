@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================================
 #include "pch.h"
 #include "Editor.h"
+#include "EditorMcpServer.h"
 #include "GeneralWindows.h"
 #include "WorldPreviews.h"
 #include "Widgets/MenuBar.h"
@@ -114,10 +115,18 @@ Editor::Editor(const vector<string>& args)
     SP_SUBSCRIBE_TO_EVENT(spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
 
     GeneralWindows::Initialize(this);
+
+    m_mcp_server = make_unique<EditorMcpServer>();
+    if (!m_mcp_server->Start(args))
+    {
+        m_mcp_server.reset();
+    }
 }
 
 Editor::~Editor()
 {
+    m_mcp_server.reset();
+
     WorldPreviews::Shutdown();
 
     if (ImGui::GetCurrentContext())

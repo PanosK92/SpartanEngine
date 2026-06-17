@@ -21,6 +21,7 @@ CPP_VERSION      = "C++20"
 SOLUTION_NAME    = "spartan"
 EXECUTABLE_NAME  = "spartan"
 SOURCE_DIR       = "../source"
+PHASMA_MCP_DIR   = "../third_party/PhasmaMCP"
 LIBRARY_DIR      = "../third_party/libraries"
 OBJ_DIR          = "../binaries/obj"
 TARGET_DIR       = "../binaries"
@@ -103,7 +104,12 @@ function spartan_project_configuration()
         files {
             SOURCE_DIR .. "/**.h",   SOURCE_DIR .. "/**.cpp",
             SOURCE_DIR .. "/**.hpp", SOURCE_DIR .. "/**.inl",
-            SOURCE_DIR .. "/**.rc"
+            SOURCE_DIR .. "/**.rc",
+            PHASMA_MCP_DIR .. "/include/**.h",
+            PHASMA_MCP_DIR .. "/include/**.hpp",
+            PHASMA_MCP_DIR .. "/src/**.cpp",
+            PHASMA_MCP_DIR .. "/third_party/**.h",
+            PHASMA_MCP_DIR .. "/third_party/**.hpp"
         }
 
         if ARG_API_GRAPHICS == "d3d12" then
@@ -119,11 +125,13 @@ function spartan_project_configuration()
         filter { "system:windows" }
             includedirs {
                 SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
+                PHASMA_MCP_DIR .. "/include", PHASMA_MCP_DIR .. "/third_party",
                 "../third_party/sdl", "../third_party/assimp", "../third_party/physx", "../third_party/free_image",
                 "../third_party/free_type", "../third_party/renderdoc",
                 "../third_party/meshoptimizer", "../third_party/dxc", "../third_party/openxr",
                 "../third_party/lua", "../third_party/lua/lua"
             }
+            links { "ws2_32" }
             linkoptions {
                 "/LIBPATH:" .. path.getabsolute("../third_party/libraries"),
                 "/NODEFAULTLIB:MSVCRT.lib",  -- block dynamic crt (using static runtime)
@@ -135,9 +143,15 @@ function spartan_project_configuration()
         filter { "system:linux" }
             includedirs {
                 SOURCE_DIR, SOURCE_DIR .. "/runtime", SOURCE_DIR .. "/runtime/Core", SOURCE_DIR .. "/editor",
+                PHASMA_MCP_DIR .. "/include", PHASMA_MCP_DIR .. "/third_party",
                 "/usr/include/SDL3", "/usr/include/assimp", "/usr/include/physx",
                 "/usr/include/freetype2", "/usr/include/renderdoc"
             }
+            links { "pthread" }
+
+        filter { "files:" .. PHASMA_MCP_DIR .. "/src/**.cpp" }
+            flags { "NoPCH" }
+            defines { "WIN32_LEAN_AND_MEAN", "NOMINMAX" }
 
         -- Vulkan-specific includes (Windows only)
         filter { "system:windows" }

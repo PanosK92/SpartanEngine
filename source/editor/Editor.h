@@ -56,4 +56,5 @@ private:
     void BeginWindow();
 
     std::vector<std::shared_ptr<Widget>> m_widgets;
+    std::unique_ptr<class EditorMcpServer> m_mcp_server;
 };
