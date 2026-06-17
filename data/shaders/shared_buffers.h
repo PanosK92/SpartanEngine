@@ -212,6 +212,8 @@ struct MaterialParameters
     bool has_texture_emissive()  { return (flags & (1 << 6))  != 0; }
     bool emissive_from_albedo()  { return (flags & (1 << 15)) != 0; }
     bool is_alpha_tested()       { return (flags & (1 << 16)) != 0; }
+    bool is_albedo_srgb()        { return (flags & (1 << 17)) != 0; }
+    bool is_emissive_srgb()      { return (flags & (1 << 18)) != 0; }
 #endif
 };
 

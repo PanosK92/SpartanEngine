@@ -8,7 +8,7 @@
    <audio_source path="project/music/footsteps_carpet.wav" is_3d="false" mute="false" loop="false" play_on_start="false" volume="0.5" pitch="0.951026201" reverb_enabled="false" reverb_room_size="0.5" reverb_decay="0.5" reverb_wet="0.300000012" />
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <Entity name="component_camera" id="96799266697307222" active="true" position="0 0.77 0" rotation="-0.079579 0.240708 -0.0198064 -0.967127" scale="1 1 1">
-    <camera aperture="2.8" shutter_speed="0.0166666675" iso="800" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="4" flags="17" />
+    <camera aperture="11" shutter_speed="0.0166666675" iso="800" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="4" flags="17" />
     <script file_path="../worlds/footsteps.lua" />
    </Entity>
   </Entity>

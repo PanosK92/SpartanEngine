@@ -3206,7 +3206,7 @@
   <Entity name="physics_body_camera" id="9100000000000000002" active="true" position="-6.42897 1.25562 -4.63016" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="0.400000006" friction_rolling="0.400000006" restitution="0.200000003" is_static="false" is_kinematic="false" position_lock_x="0" position_lock_y="0" position_lock_z="0" rotation_lock_x="0" rotation_lock_y="0" rotation_lock_z="0" center_of_mass_x="0" center_of_mass_y="0" center_of_mass_z="0" body_type="6" cloth_stiffness="0.899999976" cloth_damping="0.00999999978" cloth_iterations="8" cloth_wind_enabled="true" />
    <Entity name="component_camera" id="9100000000000000003" active="true" position="0 0.77 0" rotation="-0.060947 -0.468086 0.0291917 -0.881095" scale="1 1 1">
-    <camera aperture="2.79999995" shutter_speed="0.020833334" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="6" flags="49" />
+    <camera aperture="11" shutter_speed="0.020833334" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="6" flags="49" />
    </Entity>
   </Entity>
   <Entity name="scene" id="5892356694446135255" active="false" position="0 0 0" rotation="0.000489867 0.710916 -0.703277 0.000484602" scale="0.0124652 0.0124652 0.0124652">

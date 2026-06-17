@@ -7,7 +7,7 @@
   <Entity name="physics_body_camera" id="1004000000000000001" active="true" position="-1476 17.9 1490" rotation="0 0 0 1" scale="1 1 1">
    <physics mass="1" friction="1" friction_rolling="0.8" restitution="0.1" is_static="false" is_kinematic="false" body_type="6" />
    <Entity name="component_camera" id="1004000000000000002" active="true" position="0 0.77 0" rotation="0 0 0 1" scale="1 1 1">
-    <camera aperture="2.8" shutter_speed="0.02083333395" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="6" flags="17" />
+    <camera aperture="11" shutter_speed="0.02083333395" iso="400" fov_horizontal="1.57079637" near_plane="0.100000001" far_plane="10000" projection="0" preset="6" flags="17" />
     <script file_path="../worlds/footsteps.lua" />
    </Entity>
   </Entity>

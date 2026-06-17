@@ -23,8 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 float get_gamma()
 {
-    float gamma = 2.2f; // around 2.2 for SDR
-    return buffer_frame.hdr_enabled ? 2.4f : gamma;
+    return 2.4f;
 }
 
 float3 srgb_to_linear(float3 color)

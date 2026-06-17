@@ -1196,15 +1196,20 @@ float3 direct_lighting_at_vertex(
             light_dir       = to_light / light_dist;
             light_pdf       = 1.0f;
 
-            float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
-            attenuation = range_factor * range_factor / max(light_dist * light_dist, 0.01f);
+            if (light.range <= 0.0f || light_dist >= light.range)
+            {
+                continue;
+            }
+
+            attenuation = 1.0f / (light_dist * light_dist + 0.0001f);
 
             if (is_spot)
             {
                 float cos_angle = dot(-light_dir, light.direction);
                 float cos_outer = cos(light.angle);
-                float cos_inner = cos(light.angle * 0.8f);
-                attenuation *= saturate((cos_angle - cos_outer) / (cos_inner - cos_outer));
+                float cos_inner = cos(light.angle * 0.9f);
+                float spot      = saturate((cos_angle - cos_outer) / max(cos_inner - cos_outer, 1e-4f));
+                attenuation    *= spot * spot;
             }
         }
         else
@@ -1442,6 +1447,10 @@ void inline_pull_hit_data(
     {
         uint   albedo_idx = instance_id + material_texture_index_albedo;
         float4 s          = material_textures[albedo_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
+        if (mat.is_albedo_srgb())
+        {
+            s.rgb = srgb_to_linear(s.rgb);
+        }
         albedo = s.rgb * mat.color.rgb;
     }
     albedo = saturate(albedo);
@@ -1466,9 +1475,15 @@ void inline_pull_hit_data(
     {
         uint emissive_idx = instance_id + material_texture_index_emission;
         emission = material_textures[emissive_idx].SampleLevel(GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
+        if (mat.is_emissive_srgb())
+        {
+            emission = srgb_to_linear(emission);
+        }
     }
     if (mat.emissive_from_albedo())
+    {
         emission += albedo;
+    }
 
     hit_out.hit              = true;
     hit_out.hit_position     = hit_position;

@@ -77,6 +77,18 @@ namespace spartan
             return 0.0f;
         }
 
+        bool is_sensible_range(const float range, const LightType type, const float photometric_intensity, const float angle_rad)
+        {
+            if (type == LightType::Directional)
+            {
+                return false;
+            }
+
+            const float sensible_range = get_sensible_range(type, photometric_intensity, angle_rad);
+            const float tolerance      = max(0.01f, sensible_range * 0.001f);
+            return abs(range - sensible_range) <= tolerance;
+        }
+
         Color get_sensible_color(const LightType type)
         {
             if (type == LightType::Directional)
@@ -462,6 +474,7 @@ namespace spartan
 
     void Light::SetIntensity(const LightIntensity intensity)
     {
+        const bool update_range = is_sensible_range(m_range, m_light_type, m_intensity_photometric, m_angle_rad);
         m_intensity = intensity;
 
         if (intensity == LightIntensity::bulb_stadium)
@@ -496,12 +509,23 @@ namespace spartan
         {
             m_intensity_photometric = 0.0f;
         }
+
+        if (update_range)
+        {
+            SetRange(get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad));
+        }
     }
 
     void Light::SetIntensity(const float photometric_intensity)
     {
+        const bool update_range = is_sensible_range(m_range, m_light_type, m_intensity_photometric, m_angle_rad);
         m_intensity_photometric = photometric_intensity;
         m_intensity             = LightIntensity::custom;
+
+        if (update_range)
+        {
+            SetRange(get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad));
+        }
     }
 
     LightIntensityUnit Light::GetIntensityUnit() const
@@ -670,7 +694,13 @@ namespace spartan
             return;
         }
 
+        const bool update_range = is_sensible_range(m_range, m_light_type, m_intensity_photometric, m_angle_rad);
         m_angle_rad = angle;
+        if (update_range)
+        {
+            m_range = get_sensible_range(m_light_type, m_intensity_photometric, m_angle_rad);
+        }
+
         UpdateMatrices();
     }
 

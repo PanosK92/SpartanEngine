@@ -508,18 +508,24 @@ PathSample sample_light_candidate(
         if (dot(dir, primary_normal) <= MIN_COS_AT_PRIMARY)
             return s;
 
-        float range_factor = saturate(1.0f - light_dist / max(light.range, 0.01f));
-        float attenuation  = range_factor * range_factor / max(light_dist * light_dist, 0.01f);
+        if (light.range <= 0.0f || light_dist >= light.range)
+        {
+            return s;
+        }
+
+        float attenuation = 1.0f / (light_dist * light_dist + 0.0001f);
 
         if (is_spot)
         {
             float cos_angle = dot(-dir, light.direction);
             float cos_outer = cos(light.angle);
-            float cos_inner = cos(light.angle * 0.8f);
+            float cos_inner = cos(light.angle * 0.9f);
             float spot      = saturate((cos_angle - cos_outer) / max(cos_inner - cos_outer, 1e-4f));
-            attenuation    *= spot;
+            attenuation    *= spot * spot;
             if (attenuation <= 0.0f)
+            {
                 return s;
+            }
         }
 
         s.rc_pos      = light.position;
@@ -900,6 +906,10 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
         uint albedo_texture_index = material_index + material_texture_index_albedo;
         float4 sampled = material_textures[albedo_texture_index].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level);
+        if (mat.is_albedo_srgb())
+        {
+            sampled.rgb = srgb_to_linear(sampled.rgb);
+        }
         albedo = sampled.rgb * mat.color.rgb;
     }
     albedo = saturate(albedo);
@@ -965,9 +975,15 @@ void closest_hit(inout PathPayload payload : SV_RayPayload, in BuiltInTriangleIn
         uint emissive_texture_index = material_index + material_texture_index_emission;
         emission = material_textures[emissive_texture_index].SampleLevel(
             GET_SAMPLER(sampler_bilinear_wrap), texcoord, mip_level).rgb;
+        if (mat.is_emissive_srgb())
+        {
+            emission = srgb_to_linear(emission);
+        }
     }
     if (mat.emissive_from_albedo())
+    {
         emission += albedo;
+    }
 
     float3 hit_position = WorldRayOrigin() + WorldRayDirection() * dist;
 

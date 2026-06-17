@@ -1444,8 +1444,33 @@ namespace spartan
         static array<Sb_Material, rhi_max_array_size> properties;
         static unordered_set<uint64_t> unique_material_ids;
         uint32_t count = 0;
+
+        auto should_decode_as_srgb = [](RHI_Texture* texture)
+        {
+            if (!texture)
+            {
+                return false;
+            }
+
+            if (texture->GetFlags() & RHI_Texture_Srgb)
+            {
+                return true;
+            }
+
+            if (texture->IsGrayscale())
+            {
+                return false;
+            }
+
+            const RHI_Format format = texture->GetFormat();
+            return format == RHI_Format::R8G8B8A8_Unorm ||
+                   format == RHI_Format::B8R8G8A8_Unorm ||
+                   format == RHI_Format::BC1_Unorm ||
+                   format == RHI_Format::BC3_Unorm ||
+                   format == RHI_Format::BC7_Unorm;
+        };
     
-        auto update_material = [&count](Material* material)
+        auto update_material = [&count, &should_decode_as_srgb](Material* material)
         {
             if (unique_material_ids.find(material->GetObjectId()) != unique_material_ids.end())
             {
@@ -1493,6 +1518,8 @@ namespace spartan
                 properties[count].flags |= material->GetProperty(MaterialProperty::Tessellation)               ? (1U << 14) : 0;
                 properties[count].flags |= material->GetProperty(MaterialProperty::EmissiveFromAlbedo)         ? (1U << 15) : 0;
                 properties[count].flags |= material->IsAlphaTested()                                          ? (1U << 16) : 0;
+                properties[count].flags |= should_decode_as_srgb(material->GetTexture(MaterialTextureType::Color))    ? (1U << 17) : 0;
+                properties[count].flags |= should_decode_as_srgb(material->GetTexture(MaterialTextureType::Emission)) ? (1U << 18) : 0;
                 // keep in sync with Surface struct in common_structs.hlsl
             }
     

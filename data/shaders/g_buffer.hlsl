@@ -305,7 +305,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     if (surface.has_texture_albedo())
     {
         albedo_sample     = sample_texture(vertex, material_texture_index_albedo, surface, position_world);
-        albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
+        if (material.is_albedo_srgb())
+        {
+            albedo_sample.rgb = srgb_to_linear(albedo_sample.rgb);
+        }
         albedo           *= albedo_sample;
     }
 
@@ -341,6 +344,10 @@ gbuffer main_ps(gbuffer_vertex vertex, bool is_front_face : SV_IsFrontFace)
     if (surface.has_texture_emissive())
     {
         float3 emissive = GET_TEXTURE(material_texture_index_emission).Sample(GET_SAMPLER(sampler_anisotropic_wrap), vertex.uv_misc.xy).rgb;
+        if (material.is_emissive_srgb())
+        {
+            emissive = srgb_to_linear(emissive);
+        }
         albedo.rgb     += emissive;
         emission        = luminance(emissive);
     }

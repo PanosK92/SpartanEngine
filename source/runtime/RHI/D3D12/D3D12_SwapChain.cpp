@@ -78,6 +78,32 @@ namespace spartan
         }
     }
 
+    static void set_swapchain_color_space(IDXGISwapChain3* swapchain, const RHI_Format format)
+    {
+        if (!swapchain)
+        {
+            return;
+        }
+
+        const DXGI_COLOR_SPACE_TYPE color_space = format == RHI_SwapChain::format_hdr ?
+            DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 :
+            DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+
+        UINT support = 0;
+        HRESULT result = swapchain->CheckColorSpaceSupport(color_space, &support);
+        if (FAILED(result) || !(support & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT))
+        {
+            SP_LOG_WARNING("DXGI color space %d is not supported for presentation", static_cast<int>(color_space));
+            return;
+        }
+
+        result = swapchain->SetColorSpace1(color_space);
+        if (FAILED(result))
+        {
+            SP_LOG_WARNING("Failed to set DXGI color space %d", static_cast<int>(color_space));
+        }
+    }
+
     static DXGI_SWAP_EFFECT get_swap_effect()
     {
         #if !defined(_WIN32_WINNT)
@@ -196,6 +222,8 @@ namespace spartan
             return;
         }
         swap_chain_temp->Release();
+
+        set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format);
 
         // disable alt+enter fullscreen toggle
         factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
@@ -332,6 +360,8 @@ namespace spartan
 
         m_image_index    = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
         m_image_acquired = true;
+
+        set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format);
     }
     
     void RHI_SwapChain::AcquireNextImage()
@@ -448,6 +478,8 @@ namespace spartan
 
         m_image_index    = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
         m_image_acquired = true;
+
+        set_swapchain_color_space(static_cast<IDXGISwapChain3*>(m_rhi_swapchain), m_format);
 
         SP_LOG_INFO("Swapchain HDR %s (%s)", enabled ? "enabled" : "disabled", rhi_format_to_string(m_format));
     }

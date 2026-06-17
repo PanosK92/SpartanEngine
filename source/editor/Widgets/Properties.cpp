@@ -1952,10 +1952,9 @@ void Properties::ShowCamera(Camera* camera) const
         snprintf(exposure_scale_text, sizeof(exposure_scale_text), "%.6f", exposure_scale);
         property_text("Exposure Scale", exposure_scale_text, "scene-linear exposure multiplier derived from the physical camera");
 
-        if (property_combo("Preset", camera_presets, &preset_index, "applies exposure settings"))
+        if (property_combo("Preset", camera_presets, &preset_index, "applies shutter speed and iso"))
         {
             camera->SetPreset(static_cast<CameraPreset>(preset_index));
-            aperture      = camera->GetAperture();
             shutter_speed = camera->GetShutterSpeed();
             iso           = camera->GetIso();
         }
