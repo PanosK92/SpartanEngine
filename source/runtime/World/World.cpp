@@ -1619,12 +1619,6 @@ namespace spartan
 
         lock_guard<mutex> lock(entity_access_mutex);
 
-        // keep track of the local camera pointer so we don't have a dangling pointer
-        if (Camera* camera_ = entity_to_remove->GetComponent<Camera>())
-        {
-            camera = nullptr;
-        }
-
         // get the entity and all of its descendants
         vector<Entity*> entities_to_remove;
         entities_to_remove.push_back(entity_to_remove);
@@ -1641,6 +1635,15 @@ namespace spartan
         {
             uint64_t id = entity->GetObjectId();
 
+            if (entity == camera)
+            {
+                camera = nullptr;
+            }
+            if (entity == light)
+            {
+                light = nullptr;
+            }
+
             // remove from entities vector
             auto it = find(entities.begin(), entities.end(), entity);
             if (it != entities.end())
@@ -1655,6 +1658,9 @@ namespace spartan
                 entities.erase(it);
             }
 
+            entities_renderables.erase(remove(entities_renderables.begin(), entities_renderables.end(), entity), entities_renderables.end());
+            entities_lights.erase(remove(entities_lights.begin(), entities_lights.end(), entity), entities_lights.end());
+
             // also remove from the pending additions list in case it was just created and not yet drained
             auto pending_it = find(entities_pending.begin(), entities_pending.end(), entity);
             if (pending_it != entities_pending.end())
@@ -1662,8 +1668,12 @@ namespace spartan
                 entities_pending.erase(pending_it);
             }
 
+            pending_remove.erase(id);
+
             delete entity;
         }
+
+        resolve = true;
     }
 
     void World::GetRootEntities(vector<Entity*>& entities_out)

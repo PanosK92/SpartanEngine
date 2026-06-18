@@ -1,4 +1,15 @@
 import { car_playground_lua } from "./recipes/playground.mjs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { CodebaseIndex } from "./codebase_index.mjs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const project_root = path.resolve(__dirname, "../../..");
+const codebase = new CodebaseIndex(project_root);
+void codebase.ensure().catch((error) => {
+  console.error(`spartan assistant codebase indexing failed: ${error.message}`);
+});
 
 function entity_label(entity) {
   return entity?.name ? `${entity.name} (${entity.id})` : String(entity?.id ?? "unknown");
@@ -126,6 +137,90 @@ async function run_simple_read(run, prompt) {
   ].join(" ");
 }
 
+function format_log_entry(entry) {
+  return `[${entry.type ?? "info"}] ${entry.text ?? ""}`.trim();
+}
+
+async function run_mcp_status(run) {
+  const engine_status = await run.stage("Check Engine", "reading live engine status", () => run.tool("engine_status", {}, 2500));
+  const index_status = codebase.status();
+  run.receipt("assistant status", {
+    engine_ok: Boolean(engine_status.ok),
+    engine: engine_status,
+    codebase: index_status,
+  });
+
+  const engine_text = engine_status.ok ? "engine connected" : `engine unavailable, ${engine_status.error ?? "unknown error"}`;
+  const index_text = index_status.ready ? `code index ready with ${index_status.chunks} chunks` : `code index ${index_status.indexing ? "indexing" : "not ready"}`;
+  return `MCP assistant status: ${engine_text}; ${index_text}.`;
+}
+
+async function run_console_read(run, intent) {
+  const args = {
+    limit: 40,
+  };
+  if (intent.minimum_type) {
+    args.minimum_type = intent.minimum_type;
+  }
+
+  const result = await run.stage("Read Console", "reading recent engine logs directly", () => run.tool("console_read", args, 5000));
+  if (!result.ok) {
+    throw new Error(result.error ?? "console_read failed");
+  }
+
+  const entries = Array.isArray(result.entries) ? result.entries : [];
+  run.receipt("console entries", {
+    count: entries.length,
+    minimum_type: intent.minimum_type ?? "info",
+  });
+
+  if (entries.length === 0) {
+    return "No matching console entries.";
+  }
+
+  return entries.slice(-12).map(format_log_entry).join("\n");
+}
+
+async function run_engine_mode(run, intent) {
+  if (!intent.mode) {
+    throw new Error("I could not infer which engine mode to set.");
+  }
+
+  const result = await run.stage("Set Engine Mode", `switching engine to ${intent.mode}`, () => run.tool("engine_set_mode", { mode: intent.mode }, 5000));
+  if (!result.ok) {
+    throw new Error(result.error ?? "engine_set_mode failed");
+  }
+
+  run.receipt("engine mode", {
+    mode: intent.mode,
+    result,
+  });
+  return `Engine mode set to ${intent.mode}.`;
+}
+
+async function run_source_code_search(run, prompt) {
+  const results = await run.stage("Search Codebase", "searching the local source index directly", async () => codebase.search(prompt, 8));
+  run.receipt("source matches", {
+    query: prompt,
+    count: results.length,
+    results: results.slice(0, 5).map((result) => ({
+      path: result.path,
+      start_line: result.start_line,
+      end_line: result.end_line,
+      score: result.score,
+    })),
+  });
+
+  if (results.length === 0) {
+    return "I searched the local source index and found no strong matches.";
+  }
+
+  const lines = results.slice(0, 5).map((result) => {
+    return `${result.path}:${result.start_line}-${result.end_line} score ${result.score}`;
+  });
+  return `Top source matches:\n${lines.join("\n")}`;
+}
+
 async function run_car_playground(run, intent) {
   const entity = await run.stage("Resolve Target", "finding the playground parent", async () => {
     const entity = await resolve_target(run, intent, { allow_create: true });
@@ -192,6 +287,22 @@ async function run_car_playground(run, intent) {
 }
 
 export async function run_fast_path(run, intent, prompt) {
+  if (intent.kind === "mcp_status") {
+    return run_mcp_status(run);
+  }
+
+  if (intent.kind === "console_read") {
+    return run_console_read(run, intent);
+  }
+
+  if (intent.kind === "engine_mode") {
+    return run_engine_mode(run, intent);
+  }
+
+  if (intent.kind === "source_code") {
+    return run_source_code_search(run, prompt);
+  }
+
   if (intent.kind === "simple_read") {
     return run_simple_read(run, prompt);
   }

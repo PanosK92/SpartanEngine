@@ -238,10 +238,17 @@ async function execute_prompt(socket, payload) {
       });
     });
 
-    if (["simple_read", "delete_children", "car_playground"].includes(intent.kind)) {
-      phase = "running deterministic fast path";
-      summary = await run_fast_path(run, intent, payload.prompt);
-    } else {
+    phase = "running tool-first path";
+    summary = await run_fast_path(run, intent, payload.prompt);
+
+    if (summary === null) {
+      await run.stage("Escalate", "no direct tool path matched, starting Cursor only now", async () => {
+        run.receipt("cursor fallback", {
+          reason: "no deterministic tool path matched this request",
+          intent: intent.kind,
+        });
+      });
+
       phase = "using cursor fallback";
       const result = await run_cursor_fallback({
         prompt: payload.prompt,

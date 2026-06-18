@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node ./server.mjs",
+    "http": "node ./server.mjs --http --no-stdio --http-port=8765",
     "assistant": "node ./assistant.mjs"
   },
   "dependencies": {

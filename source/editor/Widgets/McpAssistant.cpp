@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
-#include <deque>
 #include <filesystem>
 #include <iomanip>
 #include <mutex>
@@ -67,23 +66,6 @@ namespace
     std::string assistant_models;
     std::string assistant_activity;
     bool assistant_busy = false;
-    std::chrono::steady_clock::time_point assistant_busy_start;
-
-    struct AssistantStage
-    {
-        std::string id;
-        std::string title;
-        std::string status;
-        bool finished = false;
-        bool failed = false;
-        int duration_ms = 0;
-    };
-
-    struct AssistantReceipt
-    {
-        std::string title;
-        std::string data;
-    };
 
     struct AssistantRunState
     {
@@ -96,9 +78,6 @@ namespace
         std::string intent;
         std::string status;
         std::string summary;
-        std::vector<AssistantStage> stages;
-        std::vector<AssistantReceipt> receipts;
-        std::deque<std::string> raw_log;
         int elapsed_ms = 0;
     };
 
@@ -349,11 +328,6 @@ namespace
     void set_busy(bool busy, const std::string& activity = "")
     {
         std::lock_guard<std::mutex> lock(assistant_mutex);
-        if (busy && !assistant_busy)
-        {
-            assistant_busy_start = std::chrono::steady_clock::now();
-        }
-
         assistant_busy = busy;
         const std::string visible_activity = is_generic_activity(activity) ? "working on request" : activity;
         assistant_activity = visible_activity;
@@ -366,19 +340,10 @@ namespace
                 assistant_run.active = true;
                 assistant_run.status = visible_activity;
                 assistant_run.elapsed_ms = 0;
-                AssistantStage stage;
-                stage.id = "legacy_activity";
-                stage.title = "Working";
-                stage.status = visible_activity;
-                assistant_run.stages.emplace_back(stage);
             }
             else
             {
                 assistant_run.status = visible_activity;
-                if (!assistant_run.stages.empty() && !assistant_run.stages.back().finished)
-                {
-                    assistant_run.stages.back().status = visible_activity;
-                }
             }
         }
     }
@@ -394,13 +359,6 @@ namespace
         assistant_run.status = status;
         assistant_busy = true;
         assistant_activity = status;
-        assistant_busy_start = std::chrono::steady_clock::now();
-
-        AssistantStage stage;
-        stage.id = "local_start";
-        stage.title = "Start";
-        stage.status = status;
-        assistant_run.stages.emplace_back(stage);
     }
 
     AssistantRunState get_run_snapshot()
@@ -411,35 +369,6 @@ namespace
 
     std::string json_get_string(const std::string& json, const std::string& key);
     int json_get_int(const std::string& json, const std::string& key, int fallback = 0);
-    std::string json_get_compound(const std::string& json, const std::string& key);
-    std::string json_to_compact_text(std::string text);
-
-    AssistantStage* find_stage(AssistantRunState& run, const std::string& id)
-    {
-        for (AssistantStage& stage : run.stages)
-        {
-            if (stage.id == id)
-            {
-                return &stage;
-            }
-        }
-
-        return nullptr;
-    }
-
-    void append_raw_log(AssistantRunState& run, const std::string& text)
-    {
-        if (text.empty())
-        {
-            return;
-        }
-
-        run.raw_log.emplace_back(text);
-        while (run.raw_log.size() > 64)
-        {
-            run.raw_log.pop_front();
-        }
-    }
 
     void handle_assistant_event(const std::string& json)
     {
@@ -463,27 +392,24 @@ namespace
             assistant_run.status = "starting";
             assistant_busy = true;
             assistant_activity = "starting";
-            assistant_busy_start = std::chrono::steady_clock::now();
         }
         else if (type == "stage_started")
         {
-            AssistantStage stage;
-            stage.id = json_get_string(json, "stage_id");
-            stage.title = json_get_string(json, "title");
-            stage.status = json_get_string(json, "status");
-            assistant_run.stages.emplace_back(stage);
-            assistant_run.status = stage.status.empty() ? stage.title : stage.status;
+            const std::string title = json_get_string(json, "title");
+            const std::string status = json_get_string(json, "status");
+            assistant_run.status = status.empty() ? title : status;
             assistant_activity = assistant_run.status;
         }
         else if (type == "stage_finished")
         {
-            const std::string stage_id = json_get_string(json, "stage_id");
-            if (AssistantStage* stage = find_stage(assistant_run, stage_id))
+            if (json_get_string(json, "status") == "failed")
             {
-                stage->finished = true;
-                stage->failed = json_get_string(json, "status") == "failed";
-                stage->duration_ms = json_get_int(json, "duration_ms");
-                stage->status = stage->failed ? json_get_string(json, "error") : "done";
+                const std::string error = json_get_string(json, "error");
+                if (!error.empty())
+                {
+                    assistant_run.status = error;
+                    assistant_activity = error;
+                }
             }
         }
         else if (type == "tool_started")
@@ -491,19 +417,6 @@ namespace
             const std::string name = json_get_string(json, "name");
             assistant_run.status = "running " + name;
             assistant_activity = assistant_run.status;
-            append_raw_log(assistant_run, "running " + name + " " + json_to_compact_text(json_get_compound(json, "args")));
-        }
-        else if (type == "tool_finished")
-        {
-            const std::string name = json_get_string(json, "name");
-            append_raw_log(assistant_run, "finished " + name + " " + json_to_compact_text(json_get_compound(json, "result")));
-        }
-        else if (type == "receipt")
-        {
-            AssistantReceipt receipt;
-            receipt.title = json_get_string(json, "title");
-            receipt.data = json_to_compact_text(json_get_compound(json, "data"));
-            assistant_run.receipts.emplace_back(receipt);
         }
         else if (type == "heartbeat" || type == "stage_note")
         {
@@ -539,27 +452,6 @@ namespace
         }
 
         assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms", assistant_run.elapsed_ms);
-        append_raw_log(assistant_run, json_to_compact_text(json));
-    }
-
-    std::string receipt_summary()
-    {
-        std::lock_guard<std::mutex> lock(assistant_mutex);
-        if (assistant_run.receipts.empty())
-        {
-            return "";
-        }
-
-        std::string text = "\n\nReceipts";
-        for (const AssistantReceipt& receipt : assistant_run.receipts)
-        {
-            text += "\n- " + receipt.title;
-            if (!receipt.data.empty())
-            {
-                text += ": " + receipt.data;
-            }
-        }
-        return text;
     }
 
     std::string url_encode(const std::string& value)
@@ -730,96 +622,6 @@ namespace
         }
     }
 
-    double json_get_number(const std::string& json, const std::string& key, double fallback = 0.0)
-    {
-        const size_t pos = json_value_start(json, key);
-        if (pos == std::string::npos)
-        {
-            return fallback;
-        }
-
-        try
-        {
-            return std::stod(json.substr(pos));
-        }
-        catch (...)
-        {
-            return fallback;
-        }
-    }
-
-    std::string json_get_compound(const std::string& json, const std::string& key)
-    {
-        size_t pos = json_value_start(json, key);
-        if (pos == std::string::npos || pos >= json.size())
-        {
-            return "";
-        }
-
-        const char open = json[pos];
-        const char close = open == '{' ? '}' : (open == '[' ? ']' : '\0');
-        if (close == '\0')
-        {
-            const size_t end = json.find_first_of(",}", pos);
-            return json.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
-        }
-
-        int depth = 0;
-        bool in_string = false;
-        bool escaped = false;
-        for (size_t i = pos; i < json.size(); i++)
-        {
-            const char c = json[i];
-            if (escaped)
-            {
-                escaped = false;
-                continue;
-            }
-            if (c == '\\')
-            {
-                escaped = true;
-                continue;
-            }
-            if (c == '"')
-            {
-                in_string = !in_string;
-                continue;
-            }
-            if (in_string)
-            {
-                continue;
-            }
-            if (c == open)
-            {
-                depth++;
-            }
-            else if (c == close)
-            {
-                depth--;
-                if (depth == 0)
-                {
-                    return json.substr(pos, i - pos + 1);
-                }
-            }
-        }
-
-        return json.substr(pos);
-    }
-
-    std::string json_to_compact_text(std::string text)
-    {
-        text.erase(std::remove(text.begin(), text.end(), '\r'), text.end());
-        while (text.find("  ") != std::string::npos)
-        {
-            text.erase(text.find("  "), 1);
-        }
-        if (text.size() > 360)
-        {
-            text = text.substr(0, 357) + "...";
-        }
-        return text;
-    }
-
     std::string trim_copy_paste_whitespace(const std::string& value)
     {
         const size_t start = value.find_first_not_of(" \t\r\n");
@@ -911,23 +713,6 @@ namespace
         }
 
         return false;
-    }
-
-    std::string thinking_text()
-    {
-        const int dot_count = static_cast<int>(ImGui::GetTime() * 2.5) % 4;
-        std::string activity;
-        int elapsed_seconds = 0;
-        {
-            std::lock_guard<std::mutex> lock(assistant_mutex);
-            activity = assistant_activity.empty() ? "thinking" : assistant_activity;
-            elapsed_seconds = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - assistant_busy_start).count());
-        }
-
-        std::string text = activity + std::string(static_cast<size_t>(dot_count), '.');
-        text += " (" + std::to_string(elapsed_seconds) + "s)";
-
-        return text;
     }
 
     bool find_assistant_script(std::filesystem::path& script_path)
@@ -1210,7 +995,7 @@ namespace
             return true;
         }
 
-        response = text + receipt_summary();
+        response = text;
         final = true;
         return status == "ok";
     }
@@ -2069,7 +1854,7 @@ void McpAssistant::DrawAssistantRun()
     const AssistantRunState run = get_run_snapshot();
     if (!run.has_run)
     {
-        DrawChatMessage({ false, thinking_text() }, static_cast<int>(m_messages.size()));
+        DrawChatMessage({ false, "working on request" }, static_cast<int>(m_messages.size()));
         return;
     }
 
@@ -2084,10 +1869,10 @@ void McpAssistant::DrawAssistantRun()
     if (begin_card("##assistant_run_card"))
     {
         const bool bold_font = push_bold_font();
-        ImGui::TextColored(state_color, "%s", run.active ? "Spartan AI is working" : (run.failed ? "Spartan AI failed" : (run.cancelled ? "Spartan AI cancelled" : "Spartan AI finished")));
+        ImGui::TextColored(state_color, "Spartan AI");
         pop_bold_font(bold_font);
         ImGui::SameLine();
-        ImGui::TextDisabled("%0.1fs", static_cast<float>(run.elapsed_ms) / 1000.0f);
+        draw_status_pill(run.active ? "working" : (run.failed ? "failed" : (run.cancelled ? "cancelled" : "done")), state_color);
 
         if (run.active)
         {
@@ -2100,60 +1885,20 @@ void McpAssistant::DrawAssistantRun()
             }
         }
 
-        if (!run.intent.empty())
-        {
-            ImGui::TextDisabled("route: %s", run.intent.c_str());
-        }
+        ImGui::Spacing();
+        ImGui::TextDisabled("status");
         if (!run.status.empty())
         {
+            ImGui::SameLine();
             ImGui::TextWrapped("%s", run.status.c_str());
         }
-
-        ImGui::Spacing();
-        draw_section_title("Stages");
-        for (const AssistantStage& stage : run.stages)
+        else
         {
-            const ImVec4 color = stage.failed ? ImGui::Style::color_error : (stage.finished ? ImGui::Style::color_ok : ImGui::Style::color_info);
-            ImGui::Bullet();
             ImGui::SameLine();
-            ImGui::TextColored(color, "%s", stage.title.empty() ? "Stage" : stage.title.c_str());
-            ImGui::SameLine();
-            ImGui::TextDisabled("%s", stage.status.empty() ? (stage.finished ? "done" : "running") : stage.status.c_str());
-            if (stage.duration_ms > 0)
-            {
-                ImGui::SameLine();
-                ImGui::TextDisabled("(%0.1fs)", static_cast<float>(stage.duration_ms) / 1000.0f);
-            }
+            ImGui::TextWrapped("working on request");
         }
+        ImGui::TextDisabled("%0.1fs", static_cast<float>(run.elapsed_ms) / 1000.0f);
 
-        if (!run.receipts.empty())
-        {
-            ImGui::Spacing();
-            draw_section_title("Receipts");
-            for (const AssistantReceipt& receipt : run.receipts)
-            {
-                ImGui::BulletText("%s", receipt.title.c_str());
-                if (!receipt.data.empty())
-                {
-                    ImGui::Indent(16.0f * scale);
-                    ImGui::TextWrapped("%s", receipt.data.c_str());
-                    ImGui::Unindent(16.0f * scale);
-                }
-            }
-        }
-
-        if (!run.raw_log.empty())
-        {
-            ImGui::Spacing();
-            if (ImGui::TreeNodeEx("Raw event log", 0))
-            {
-                for (const std::string& entry : run.raw_log)
-                {
-                    ImGui::TextWrapped("%s", entry.c_str());
-                }
-                ImGui::TreePop();
-            }
-        }
     }
     end_card();
     ImGui::PopID();

@@ -44,14 +44,47 @@ function is_simple_read_request(value) {
   );
 }
 
+function engine_mode_from_prompt(value) {
+  if (/\b(pause|paused)\b/.test(value)) {
+    return "pause";
+  }
+  if (/\b(resume|unpause)\b/.test(value)) {
+    return "resume";
+  }
+  if (/\b(play|run|start simulation|start game)\b/.test(value)) {
+    return "play";
+  }
+  if (/\b(edit mode|stop playing|stop simulation|stop game)\b/.test(value)) {
+    return "edit";
+  }
+  return "";
+}
+
+function is_engine_mode_request(value) {
+  return /\b(play|run|pause|resume|unpause|edit mode|stop playing|stop simulation|start simulation)\b/.test(value) &&
+    !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
+}
+
+function is_console_request(value) {
+  return /\b(console|log|logs|errors|warnings|crash|stack)\b/.test(value) &&
+    /\b(read|show|list|what|latest|recent|last|check|inspect)\b/.test(value);
+}
+
+function is_mcp_status_request(value) {
+  return /\b(mcp|assistant|agent|bridge|index|tools?)\b/.test(value) &&
+    /\b(status|health|ready|working|connected|slow|broken|diagnose|check)\b/.test(value);
+}
+
 function is_car_playground_request(value) {
   const wants_build = /\b(build|create|make|generate|spawn|blockout)\b/.test(value);
   return wants_build && /\b(playground|course|test track|track)\b/.test(value) && /\b(car|vehicle|driving)\b/.test(value);
 }
 
 function is_source_code_request(value) {
-  return /\b(source|code|file|cpp|c\+\+|javascript|script|compile|build|git|diff|commit|bug|crash|stack|log)\b/.test(value) &&
-    !/\b(entity|world|scene|playground|engine|mcp|selection|selected|create|delete|spawn|ramp|cone|car)\b/.test(value);
+  const asks_about_code = /\b(source|code|file|files|cpp|c\+\+|javascript|script|compile|build|git|diff|commit|bug|crash|stack|log|function|class|where|implementation)\b/.test(value);
+  const live_scene_action = /\b(entity|world|scene|playground|selection|selected|create|delete|spawn|ramp|cone|car)\b/.test(value) &&
+    /\b(create|delete|spawn|move|rotate|scale|select|clear|build|make)\b/.test(value);
+  return asks_about_code && !live_scene_action;
 }
 
 export function route_intent(prompt) {
@@ -62,6 +95,19 @@ export function route_intent(prompt) {
 
   if (is_simple_read_request(value)) {
     return { kind: "simple_read", confidence: 0.92 };
+  }
+
+  if (is_mcp_status_request(value)) {
+    return { kind: "mcp_status", confidence: 0.94 };
+  }
+
+  if (is_console_request(value)) {
+    const minimum_type = /\berrors?\b/.test(value) ? "error" : /\bwarnings?\b/.test(value) ? "warning" : undefined;
+    return { kind: "console_read", confidence: 0.93, minimum_type };
+  }
+
+  if (is_engine_mode_request(value)) {
+    return { kind: "engine_mode", confidence: 0.9, mode: engine_mode_from_prompt(value) };
   }
 
   if (is_car_playground_request(value)) {

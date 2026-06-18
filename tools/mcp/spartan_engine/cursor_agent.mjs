@@ -8,6 +8,8 @@ const require_from_helper = createRequire(import.meta.url);
 const { Agent, Cursor, CursorAgentError } = require_from_helper("@cursor/sdk");
 
 const engine_tool_names = new Set([
+  "spartan_status",
+  "search_codebase",
   "ping",
   "engine_status",
   "engine_set_mode",
@@ -395,6 +397,8 @@ function build_prompt(prompt, snapshot) {
   return [
     "You are controlling Spartan Engine through the spartan_engine MCP tools.",
     "For engine-control requests, use Spartan MCP tools first and keep tool calls minimal.",
+    "For source-code questions, use search_codebase first. Do not use generic workspace search unless search_codebase cannot answer.",
+    "Use spartan_status when you need to know whether the MCP bridge, engine, or codebase index is ready.",
     "Use context_snapshot and entity_resolve instead of multiple separate read calls.",
     "For repeated scene work, use one execute_lua script or a native batch tool.",
     "Do not reveal hidden chain of thought. Report only brief progress, blockers, and final results.",
