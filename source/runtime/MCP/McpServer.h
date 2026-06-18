@@ -33,7 +33,7 @@ namespace spartan
     {
     public:
         static void Initialize(const std::vector<std::string>& args);
-        static void Start(uint16_t port = 47777);
+        static bool Start(uint16_t port = 47777);
         static void Shutdown();
         static void Tick();
         static bool IsRunning();

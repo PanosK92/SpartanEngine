@@ -43,9 +43,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #define WIN32_LEAN_AND_MEAN
     #include <winsock2.h>
     #include <ws2tcpip.h>
-    #include <iphlpapi.h>
     #include <Windows.h>
-    #pragma comment(lib, "iphlpapi.lib")
 #else
     #include <arpa/inet.h>
     #include <netinet/in.h>
@@ -78,10 +76,15 @@ namespace
         std::string intent;
         std::string status;
         std::string summary;
+        std::vector<std::string> event_lines;
+        std::chrono::steady_clock::time_point started_at;
         int elapsed_ms = 0;
     };
 
     AssistantRunState assistant_run;
+#ifdef _WIN32
+    uint32_t tracked_assistant_pid = 0;
+#endif
 
     float ui_scale()
     {
@@ -199,65 +202,42 @@ namespace
     #endif
     }
 
-#ifdef _WIN32
-    uint32_t find_pid_on_port(uint16_t port)
+    bool terminate_tracked_assistant_process()
     {
-        ULONG size = 0;
-        if (GetExtendedTcpTable(nullptr, &size, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0) != ERROR_INSUFFICIENT_BUFFER)
+    #ifdef _WIN32
+        if (tracked_assistant_pid == 0)
         {
-            return 0;
+            return false;
         }
 
-        std::vector<char> buffer(size);
-        PMIB_TCPTABLE_OWNER_PID table = reinterpret_cast<PMIB_TCPTABLE_OWNER_PID>(buffer.data());
-        if (GetExtendedTcpTable(table, &size, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0) != NO_ERROR)
+        const uint32_t pid = tracked_assistant_pid;
+        tracked_assistant_pid = 0;
+        HANDLE process = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
+        if (process == nullptr)
         {
-            return 0;
+            return false;
         }
 
-        const u_short target = htons(port);
-        for (DWORD i = 0; i < table->dwNumEntries; i++)
-        {
-            const MIB_TCPROW_OWNER_PID& row = table->table[i];
-            if (row.dwState == MIB_TCP_STATE_LISTEN && static_cast<u_short>(row.dwLocalPort & 0xFFFF) == target)
-            {
-                return static_cast<uint32_t>(row.dwOwningPid);
-            }
-        }
-
-        return 0;
+        TerminateProcess(process, 0);
+        WaitForSingleObject(process, 2000);
+        CloseHandle(process);
+        return true;
+    #else
+        return std::system("pkill -f assistant.mjs >/dev/null 2>&1") == 0;
+    #endif
     }
-#endif
 
     bool kill_assistant_process()
     {
     #ifdef _WIN32
-        bool killed = false;
-        for (int attempt = 0; attempt < 20; attempt++)
+        if (terminate_tracked_assistant_process())
         {
-            const uint32_t pid = find_pid_on_port(assistant_port);
-            if (pid == 0)
-            {
-                break;
-            }
-
-            HANDLE process = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
-            if (process == nullptr)
-            {
-                break;
-            }
-
-            TerminateProcess(process, 0);
-            WaitForSingleObject(process, 2000);
-            CloseHandle(process);
-            killed = true;
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            return true;
         }
 
-        return killed;
+        return false;
     #else
-        return std::system("pkill -f assistant.mjs >/dev/null 2>&1") == 0;
+        return terminate_tracked_assistant_process();
     #endif
     }
 
@@ -303,6 +283,7 @@ namespace
     }
 
     std::string trim_copy_paste_whitespace(const std::string& value);
+    void push_run_event_locked(const std::string& line);
 
     bool is_generic_activity(const std::string& activity)
     {
@@ -340,11 +321,28 @@ namespace
                 assistant_run.active = true;
                 assistant_run.status = visible_activity;
                 assistant_run.elapsed_ms = 0;
+                assistant_run.started_at = std::chrono::steady_clock::now();
             }
             else
             {
                 assistant_run.status = visible_activity;
             }
+        }
+    }
+
+    void finish_run_locally(bool failed, bool cancelled, const std::string& summary)
+    {
+        std::lock_guard<std::mutex> lock(assistant_mutex);
+        assistant_busy = false;
+        assistant_activity.clear();
+        assistant_run.active = false;
+        assistant_run.failed = failed;
+        assistant_run.cancelled = cancelled;
+        assistant_run.summary = summary;
+        assistant_run.status = cancelled ? "cancelled" : (failed ? "failed" : "done");
+        if (!summary.empty())
+        {
+            push_run_event_locked(summary);
         }
     }
 
@@ -357,8 +355,23 @@ namespace
         assistant_run.prompt = prompt;
         assistant_run.intent = "starting";
         assistant_run.status = status;
+        assistant_run.started_at = std::chrono::steady_clock::now();
         assistant_busy = true;
         assistant_activity = status;
+    }
+
+    void push_run_event_locked(const std::string& line)
+    {
+        if (line.empty())
+        {
+            return;
+        }
+
+        assistant_run.event_lines.emplace_back(line);
+        if (assistant_run.event_lines.size() > 8)
+        {
+            assistant_run.event_lines.erase(assistant_run.event_lines.begin());
+        }
     }
 
     AssistantRunState get_run_snapshot()
@@ -389,6 +402,7 @@ namespace
             assistant_run.prompt = json_get_string(json, "prompt");
             assistant_run.intent = json_get_string(json, "intent");
             assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms");
+            assistant_run.started_at = std::chrono::steady_clock::now();
             assistant_run.status = "starting";
             assistant_busy = true;
             assistant_activity = "starting";
@@ -411,12 +425,42 @@ namespace
                     assistant_activity = error;
                 }
             }
+            else
+            {
+                const std::string title = json_get_string(json, "title");
+                if (!title.empty())
+                {
+                    push_run_event_locked("done " + title);
+                }
+            }
         }
         else if (type == "tool_started")
         {
             const std::string name = json_get_string(json, "name");
             assistant_run.status = "running " + name;
             assistant_activity = assistant_run.status;
+        }
+        else if (type == "tool_finished")
+        {
+            const std::string name = json_get_string(json, "name");
+            const int duration_ms = json_get_int(json, "duration_ms");
+            const std::string prefix = json.find("\"ok\":false") == std::string::npos ? "finished " : "failed ";
+            if (!name.empty())
+            {
+                assistant_run.status = prefix + name;
+                assistant_activity = assistant_run.status;
+                push_run_event_locked(assistant_run.status + " in " + std::to_string(duration_ms) + "ms");
+            }
+        }
+        else if (type == "receipt")
+        {
+            const std::string title = json_get_string(json, "title");
+            if (!title.empty())
+            {
+                assistant_run.status = title;
+                assistant_activity = title;
+                push_run_event_locked(title);
+            }
         }
         else if (type == "heartbeat" || type == "stage_note")
         {
@@ -926,9 +970,15 @@ namespace
             return false;
         }
 
+        tracked_assistant_pid = static_cast<uint32_t>(process_info.dwProcessId);
         CloseHandle(process_info.hThread);
         CloseHandle(process_info.hProcess);
-        return wait_for_assistant_ready();
+        if (!wait_for_assistant_ready())
+        {
+            terminate_tracked_assistant_process();
+            return false;
+        }
+        return true;
     #else
         const std::string shell_command = command + " >/dev/null 2>&1 &";
         if (std::system(shell_command.c_str()) != 0)
@@ -1301,8 +1351,15 @@ McpAssistant::McpAssistant(Editor* editor) : Widget(editor)
     assistant_response.clear();
 }
 
+McpAssistant::~McpAssistant()
+{
+    kill_assistant_process();
+}
+
 void McpAssistant::OnTick()
 {
+    DrainAssistantResults();
+
     if (!m_visible && m_blocks_input)
     {
         m_blocks_input = false;
@@ -1314,6 +1371,20 @@ void McpAssistant::OnInvisible()
 {
     m_blocks_input = false;
     spartan::Input::SetBlockedByUi(false);
+}
+
+void McpAssistant::DrainAssistantResults()
+{
+    if (std::string response = take_response(); !response.empty())
+    {
+        m_messages.push_back({ false, response });
+        m_scroll_to_bottom = true;
+    }
+
+    if (std::string model_list = take_models(); !model_list.empty())
+    {
+        ApplyModelList(model_list);
+    }
 }
 
 bool McpAssistant::LoadApiKeyFromFile()
@@ -1368,7 +1439,10 @@ void McpAssistant::OnTickVisible()
     if (has_api_key && !m_mcp_auto_start_attempted && !spartan::McpServer::IsRunning())
     {
         m_mcp_auto_start_attempted = true;
-        spartan::McpServer::Start();
+        if (!spartan::McpServer::Start())
+        {
+            set_response("failed to start engine MCP bridge on 127.0.0.1:" + std::to_string(spartan::McpServer::GetPort()) + ".");
+        }
     }
 
     const bool is_running = spartan::McpServer::IsRunning();
@@ -1383,17 +1457,6 @@ void McpAssistant::OnTickVisible()
         m_refresh_models_after_key_load = false;
         RefreshModels();
         is_assistant_busy = true;
-    }
-
-    if (std::string response = take_response(); !response.empty())
-    {
-        m_messages.push_back({ false, response });
-        m_scroll_to_bottom = true;
-    }
-
-    if (std::string model_list = take_models(); !model_list.empty())
-    {
-        ApplyModelList(model_list);
     }
 
     UpdateInputOwnership();
@@ -1488,7 +1551,10 @@ void McpAssistant::OnTickVisible()
         {
             if (primary_button("Start MCP"))
             {
-                spartan::McpServer::Start();
+                if (!spartan::McpServer::Start())
+                {
+                    set_response("failed to start engine MCP bridge on 127.0.0.1:" + std::to_string(spartan::McpServer::GetPort()) + ".");
+                }
             }
         }
 
@@ -1646,7 +1712,11 @@ void McpAssistant::SubmitPrompt()
 {
     if (!spartan::McpServer::IsRunning())
     {
-        spartan::McpServer::Start();
+        if (!spartan::McpServer::Start())
+        {
+            set_response("failed to start engine MCP bridge on 127.0.0.1:" + std::to_string(spartan::McpServer::GetPort()) + ".");
+            return;
+        }
     }
 
     std::string prompt = m_prompt.data();
@@ -1710,6 +1780,8 @@ void McpAssistant::CancelRun()
         if (!send_cancel_to_assistant(response))
         {
             log_error(response);
+            set_response(response.empty() ? "failed to cancel assistant run." : response);
+            finish_run_locally(false, true, "cancel request failed");
             return;
         }
 
@@ -1897,7 +1969,27 @@ void McpAssistant::DrawAssistantRun()
             ImGui::SameLine();
             ImGui::TextWrapped("working on request");
         }
-        ImGui::TextDisabled("%0.1fs", static_cast<float>(run.elapsed_ms) / 1000.0f);
+        int elapsed_ms = run.elapsed_ms;
+        if (run.active && run.started_at.time_since_epoch().count() != 0)
+        {
+            elapsed_ms = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - run.started_at).count());
+        }
+        ImGui::TextDisabled("%0.1fs", static_cast<float>(elapsed_ms) / 1000.0f);
+
+        if (!run.summary.empty() && !run.active)
+        {
+            ImGui::Spacing();
+            ImGui::TextWrapped("%s", run.summary.c_str());
+        }
+
+        if (!run.event_lines.empty())
+        {
+            ImGui::Spacing();
+            for (const std::string& line : run.event_lines)
+            {
+                ImGui::TextDisabled("%s", line.c_str());
+            }
+        }
 
     }
     end_card();

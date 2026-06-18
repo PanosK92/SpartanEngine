@@ -318,11 +318,11 @@ namespace spartan
         Start(parse_port(args));
     }
 
-    void McpServer::Start(uint16_t port)
+    bool McpServer::Start(uint16_t port)
     {
         if (is_running)
         {
-            return;
+            return true;
         }
 
         mcp_port = port;
@@ -333,7 +333,7 @@ namespace spartan
         if (WSAStartup(MAKEWORD(2, 2), &data) != 0)
         {
             SP_LOG_ERROR("Failed to initialize Winsock for MCP");
-            return;
+            return false;
         }
         winsock_initialized = true;
     #endif
@@ -343,7 +343,7 @@ namespace spartan
         {
             SP_LOG_ERROR("Failed to create MCP socket");
             Shutdown();
-            return;
+            return false;
         }
 
         int reuse_address = 1;
@@ -358,19 +358,20 @@ namespace spartan
         {
             SP_LOG_ERROR("Failed to bind MCP to 127.0.0.1:%u", mcp_port);
             Shutdown();
-            return;
+            return false;
         }
 
         if (listen(listen_socket, 16) != 0)
         {
             SP_LOG_ERROR("Failed to listen for MCP on 127.0.0.1:%u", mcp_port);
             Shutdown();
-            return;
+            return false;
         }
 
         is_running = true;
         server_thread = std::thread(server_loop);
         SP_LOG_INFO("MCP is listening on 127.0.0.1:%u", mcp_port);
+        return true;
     }
 
     void McpServer::Shutdown()

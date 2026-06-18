@@ -22,6 +22,14 @@ export function target_name_from_prompt(prompt) {
     return children_match[1].trim();
   }
 
+  const delete_match = value.match(/\b(?:delete|remove|destroy)\s+(?:the\s+)?["']?([a-z0-9 _-]+?)["']?(?:\s+entity)?(?:\s|,|\.|$)/);
+  if (delete_match?.[1]) {
+    const target = delete_match[1].trim();
+    if (!["this", "selected", "current", "the", "entity", "children", "child", "contents"].includes(target)) {
+      return target;
+    }
+  }
+
   const entity_match = value.match(/\b([a-z0-9 _-]+?)\s+entity\b/);
   if (entity_match?.[1] && !["this", "selected", "current", "the"].includes(entity_match[1].trim())) {
     return entity_match[1].trim();
@@ -34,6 +42,13 @@ function is_delete_children_request(value) {
   const wants_delete = /\b(delete|remove|clear|wipe)\b/.test(value);
   const mentions_children = /\b(children|child|entities|contents)\b/.test(value);
   return wants_delete && mentions_children;
+}
+
+function is_delete_entity_request(value) {
+  const wants_delete = /\b(delete|remove|destroy)\b/.test(value);
+  const mentions_children = /\b(children|child|contents)\b/.test(value);
+  const mentions_target = /\b(selected|current|this|entity|playground)\b/.test(value) || target_name_from_prompt(value) !== "";
+  return wants_delete && mentions_target && !mentions_children;
 }
 
 function is_simple_read_request(value) {
@@ -122,6 +137,15 @@ export function route_intent(prompt) {
   if (is_delete_children_request(value)) {
     return {
       kind: "delete_children",
+      confidence: 0.95,
+      target_name: target_name_from_prompt(prompt),
+      use_selected: should_use_selected_entity(prompt),
+    };
+  }
+
+  if (is_delete_entity_request(value)) {
+    return {
+      kind: "delete_entity",
       confidence: 0.95,
       target_name: target_name_from_prompt(prompt),
       use_selected: should_use_selected_entity(prompt),

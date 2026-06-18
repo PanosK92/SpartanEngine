@@ -1,15 +1,7 @@
 import { car_playground_lua } from "./recipes/playground.mjs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { CodebaseIndex } from "./codebase_index.mjs";
+import { get_shared_codebase } from "./shared_codebase.mjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const project_root = path.resolve(__dirname, "../../..");
-const codebase = new CodebaseIndex(project_root);
-void codebase.ensure().catch((error) => {
-  console.error(`spartan assistant codebase indexing failed: ${error.message}`);
-});
+const codebase = get_shared_codebase();
 
 function entity_label(entity) {
   return entity?.name ? `${entity.name} (${entity.id})` : String(entity?.id ?? "unknown");
@@ -71,6 +63,33 @@ async function run_delete_children(run, intent) {
   });
 
   return `Deleted ${deletion.deleted_count ?? 0} children from ${deletion.name ?? entity.name}.`;
+}
+
+async function run_delete_entity(run, intent) {
+  const entity = await run.stage("Resolve Target", "finding the entity to delete", async () => {
+    const entity = await resolve_target(run, intent);
+    run.receipt("target resolved", {
+      id: entity.id,
+      name: entity.name,
+      source: intent.use_selected ? "selection" : "name",
+    });
+    return entity;
+  });
+
+  const deletion = await run.stage("Apply Changes", `deleting ${entity.name ?? entity.id}`, async () => {
+    const deletion = await run.tool("entity_delete", { id: entity.id }, 10000);
+    if (!deletion.ok) {
+      throw new Error(deletion.error ?? "entity_delete failed");
+    }
+
+    run.receipt("entity deleted", {
+      id: deletion.deleted_id ?? entity.id,
+      name: entity.name,
+    });
+    return deletion;
+  });
+
+  return `Deleted ${entity_label(entity)}.`;
 }
 
 async function run_simple_read(run, prompt) {
@@ -309,6 +328,10 @@ export async function run_fast_path(run, intent, prompt) {
 
   if (intent.kind === "delete_children") {
     return run_delete_children(run, intent);
+  }
+
+  if (intent.kind === "delete_entity") {
+    return run_delete_entity(run, intent);
   }
 
   if (intent.kind === "car_playground") {

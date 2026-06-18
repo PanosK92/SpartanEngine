@@ -45,9 +45,17 @@ export class EngineClient {
     return new Promise((resolve) => {
       const request = {
         resolve,
+        completed: false,
+        timed_out: false,
         timer: setTimeout(() => {
-          this.finish_request(request, { ok: false, error: `engine request timed out after ${timeout_ms}ms` });
-          this.close();
+          request.timed_out = true;
+          this.resolve_request(request, {
+            ok: false,
+            error: `engine request timed out after ${timeout_ms}ms`,
+            code: "engine_timeout",
+            retryable: true,
+            suggested_action: "retry once, then use a smaller operation or a native batch command",
+          });
         }, timeout_ms),
       };
 
@@ -109,15 +117,31 @@ export class EngineClient {
       this.buffer = this.buffer.slice(newline + 1);
       const request = this.pending.shift();
       if (request) {
+        if (request.timed_out) {
+          clearTimeout(request.timer);
+          newline = this.buffer.indexOf("\n");
+          continue;
+        }
+
         try {
-          this.finish_request(request, JSON.parse(line));
+          this.resolve_request(request, JSON.parse(line));
         } catch (error) {
-          this.finish_request(request, { ok: false, error: `invalid engine response, ${error.message}` });
+          this.resolve_request(request, { ok: false, error: `invalid engine response, ${error.message}` });
         }
       }
 
       newline = this.buffer.indexOf("\n");
     }
+  }
+
+  resolve_request(request, result) {
+    if (request.completed) {
+      return;
+    }
+
+    request.completed = true;
+    clearTimeout(request.timer);
+    request.resolve(result);
   }
 
   finish_request(request, result) {
@@ -126,14 +150,13 @@ export class EngineClient {
       this.pending.splice(index, 1);
     }
 
-    clearTimeout(request.timer);
-    request.resolve(result);
+    this.resolve_request(request, result);
   }
 
   fail_all(message) {
     const requests = this.pending.splice(0);
     for (const request of requests) {
-      this.finish_request(request, { ok: false, error: message });
+      this.resolve_request(request, { ok: false, error: message });
     }
   }
 

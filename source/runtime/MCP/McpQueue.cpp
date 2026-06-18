@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "McpCommands.h"
 #include <condition_variable>
 #include <deque>
+#include <exception>
 //===========================
 
 namespace spartan
@@ -95,6 +96,10 @@ namespace spartan
             try
             {
                 response = ExecuteMcpCommand(job->request);
+            }
+            catch (const std::exception& exception)
+            {
+                response = error_response(exception.what());
             }
             catch (...)
             {

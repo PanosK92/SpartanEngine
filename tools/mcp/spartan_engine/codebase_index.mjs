@@ -24,6 +24,7 @@ export class CodebaseIndex {
   constructor(project_root) {
     this.project_root = project_root;
     this.entries = [];
+    this.file_stats = new Map();
     this.indexing = false;
     this.ready = false;
     this.files_processed = 0;
@@ -76,7 +77,9 @@ export class CodebaseIndex {
       for (const root of roots) {
         files.push(...await this.collect_files(root));
       }
+      files.sort((a, b) => a.localeCompare(b));
       this.files_total = files.length;
+      this.file_stats.clear();
 
       for (const file of files) {
         this.current_file = path.relative(this.project_root, file).replaceAll("\\", "/");
@@ -84,7 +87,12 @@ export class CodebaseIndex {
 
         let text = "";
         try {
+          const stat = await fs.stat(file);
           text = await fs.readFile(file, "utf8");
+          this.file_stats.set(this.current_file, {
+            mtime_ms: stat.mtimeMs,
+            size: stat.size,
+          });
         } catch {
           continue;
         }
@@ -126,6 +134,82 @@ export class CodebaseIndex {
     return files;
   }
 
+  is_allowed_source_file(relative_path) {
+    const normalized = String(relative_path ?? "").replaceAll("\\", "/");
+    return (normalized.startsWith("source/") || normalized.startsWith("tools/mcp/spartan_engine/")) &&
+      source_extensions.has(path.extname(normalized).toLowerCase()) &&
+      !normalized.split("/").some((part) => skipped_directories.has(part)) &&
+      !normalized.includes("source/editor/ImGui/Source/");
+  }
+
+  async refresh_changed() {
+    if (!this.ready || this.indexing) {
+      return;
+    }
+
+    this.indexing = true;
+    this.files_processed = 0;
+    this.files_total = 0;
+    this.current_file = "";
+
+    try {
+      const roots = [
+        path.join(this.project_root, "source"),
+        path.join(this.project_root, "tools", "mcp", "spartan_engine"),
+      ];
+      const files = [];
+      for (const root of roots) {
+        files.push(...await this.collect_files(root));
+      }
+      files.sort((a, b) => a.localeCompare(b));
+      this.files_total = files.length;
+
+      const seen = new Set();
+      for (const file of files) {
+        const relative_path = path.relative(this.project_root, file).replaceAll("\\", "/");
+        seen.add(relative_path);
+        this.current_file = relative_path;
+        this.files_processed++;
+
+        let stat;
+        try {
+          stat = await fs.stat(file);
+        } catch {
+          continue;
+        }
+
+        const previous = this.file_stats.get(relative_path);
+        if (previous && previous.mtime_ms === stat.mtimeMs && previous.size === stat.size) {
+          continue;
+        }
+
+        let text = "";
+        try {
+          text = await fs.readFile(file, "utf8");
+        } catch {
+          continue;
+        }
+
+        this.entries = this.entries.filter((entry) => entry.path !== relative_path);
+        this.add_file(file, text);
+        this.file_stats.set(relative_path, {
+          mtime_ms: stat.mtimeMs,
+          size: stat.size,
+        });
+      }
+
+      for (const relative_path of [...this.file_stats.keys()]) {
+        if (!seen.has(relative_path)) {
+          this.file_stats.delete(relative_path);
+          this.entries = this.entries.filter((entry) => entry.path !== relative_path);
+        }
+      }
+    } finally {
+      this.current_file = "";
+      this.indexing = false;
+    }
+  }
+
   add_file(file, text) {
     const relative_path = path.relative(this.project_root, file).replaceAll("\\", "/");
     const lines = text.split(/\r?\n/g);
@@ -161,6 +245,7 @@ export class CodebaseIndex {
 
   async search(query, top_k = 8) {
     await this.ensure();
+    await this.refresh_changed();
 
     const terms = tokenize(query);
     if (terms.length === 0) {
@@ -190,5 +275,31 @@ export class CodebaseIndex {
 
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, Math.max(1, Math.min(25, top_k)));
+  }
+
+  async read_file(relative_path, { start_line = 1, line_count = 160 } = {}) {
+    await this.ensure();
+
+    const normalized = String(relative_path ?? "").replaceAll("\\", "/").replace(/^\/+/, "");
+    const absolute = path.resolve(this.project_root, normalized);
+    const relative = path.relative(this.project_root, absolute).replaceAll("\\", "/");
+    if (relative.startsWith("..") || path.isAbsolute(relative) || !this.is_allowed_source_file(relative)) {
+      throw new Error("source path is outside the indexed Spartan source roots");
+    }
+
+    const text = await fs.readFile(absolute, "utf8");
+    const lines = text.split(/\r?\n/g);
+    const safe_start = Math.max(1, Number.parseInt(String(start_line), 10) || 1);
+    const safe_count = Math.max(1, Math.min(400, Number.parseInt(String(line_count), 10) || 160));
+    const start_index = Math.min(lines.length, safe_start - 1);
+    const end_index = Math.min(lines.length, start_index + safe_count);
+
+    return {
+      path: relative,
+      start_line: start_index + 1,
+      end_line: end_index,
+      total_lines: lines.length,
+      text: lines.slice(start_index, end_index).join("\n"),
+    };
   }
 }

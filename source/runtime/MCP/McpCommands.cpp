@@ -2459,6 +2459,84 @@ namespace spartan
             return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
         }
 
+        std::string command_entity_create_primitive_batch(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("primitive creation requires edit mode");
+            }
+
+            const std::optional<std::string> count_arg = get_argument(request, "count");
+            uint64_t count = 0;
+            if (!count_arg || !parse_uint64(*count_arg, count) || count == 0 || count > 64)
+            {
+                return json_error("count must be between 1 and 64");
+            }
+
+            const std::vector<std::string> keys =
+            {
+                "mesh",
+                "name",
+                "parent_id",
+                "position",
+                "rotation_euler",
+                "scale",
+                "with_physics",
+                "body_type",
+                "physics_static",
+                "physics_kinematic",
+                "physics_mass",
+                "physics_friction",
+                "physics_restitution"
+            };
+
+            std::string created_json = "[";
+            uint32_t created_count = 0;
+            for (uint64_t i = 0; i < count; i++)
+            {
+                McpRequest item_request;
+                item_request.command = "entity_create_primitive";
+                for (const std::string& key : keys)
+                {
+                    const std::string batch_key = "item_" + std::to_string(i) + "_" + key;
+                    const auto it = request.arguments.find(batch_key);
+                    if (it != request.arguments.end())
+                    {
+                        item_request.arguments[key] = it->second;
+                    }
+                }
+
+                const std::string item_result = command_entity_create_primitive(item_request);
+                if (item_result.find("\"ok\":true") == std::string::npos)
+                {
+                    created_json += "]";
+                    std::string json = "{\"ok\":false,\"error\":\"failed to create primitive batch item\"";
+                    json += ",\"created\":" + created_json;
+                    json += ",\"created_count\":" + std::to_string(created_count);
+                    json += ",\"failed_index\":" + std::to_string(i);
+                    json += ",\"failure\":" + item_result;
+                    json += "}";
+                    return json;
+                }
+
+                if (created_count > 0)
+                {
+                    created_json += ",";
+                }
+                created_json += item_result;
+                created_count++;
+            }
+
+            std::string json = "{\"ok\":true,\"created\":" + created_json + "]";
+            json += ",\"created_count\":" + std::to_string(created_count);
+            json += "}";
+            return json;
+        }
+
         std::string command_entity_select(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -2564,6 +2642,10 @@ namespace spartan
             if (ProgressTracker::IsLoading())
             {
                 return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("lua execution requires edit mode");
             }
 
             const std::optional<std::string> code = get_argument(request, "code");
@@ -2685,6 +2767,10 @@ namespace spartan
         if (request.command == "entity_create_primitive")
         {
             return command_entity_create_primitive(request);
+        }
+        if (request.command == "entity_create_primitive_batch")
+        {
+            return command_entity_create_primitive_batch(request);
         }
         if (request.command == "entity_update")
         {

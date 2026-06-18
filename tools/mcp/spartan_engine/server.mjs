@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 import http from "node:http";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { CodebaseIndex } from "./codebase_index.mjs";
 import { EngineClient } from "./engine_client.mjs";
+import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
+import { component_property_catalog, component_schema_markdown, edit_rules, engine_overview, search_capability_catalog } from "./knowledge.mjs";
+import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
+import { agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const project_root = path.resolve(__dirname, "../../..");
+const project_root = get_project_root();
+await ensure_agent_memory();
 
 const defaults = {
   host: process.env.SPARTAN_ENGINE_HOST ?? "127.0.0.1",
@@ -36,6 +36,7 @@ const requested_transport = read_arg("transport", "stdio");
 const http_enabled = requested_transport === "http" || process.argv.includes("--http") || process.argv.some((arg) => arg.startsWith("--http-port="));
 const stdio_enabled = !process.argv.includes("--no-stdio") && requested_transport !== "http";
 const http_port = Number.parseInt(read_arg("http-port", process.env.SPARTAN_MCP_HTTP_PORT ?? "8765"), 10);
+const read_only_mode = process.argv.includes("--read-only") || ["1", "true", "yes", "on"].includes(String(process.env.SPARTAN_MCP_READ_ONLY ?? "").toLowerCase());
 
 if (!Number.isInteger(engine_port) || engine_port <= 0 || engine_port > 65535) {
   console.error("invalid spartan engine port");
@@ -58,31 +59,34 @@ const engine = new EngineClient({
   timeout_ms: engine_timeout_ms,
 });
 
-const codebase = new CodebaseIndex(project_root);
-void codebase.ensure().catch((error) => {
-  console.error(`spartan codebase indexing failed: ${error.message}`);
-});
+const codebase = get_shared_codebase();
 
 function send_engine_command(command, args = {}) {
   return engine.command(command, args, engine_timeout_ms);
 }
 
 function tool_result(result) {
+  const normalized = normalize_result(result);
   return {
-    structuredContent: result,
+    structuredContent: normalized,
     content: [
       {
         type: "text",
-        text: JSON.stringify(result),
+        text: JSON.stringify(normalized),
       },
     ],
-    isError: !result.ok,
+    isError: !normalized.ok,
   };
 }
 
 const tool_registry = new Map();
+const resource_registry = new Map();
 
 function register_local_tool(name, config, handler) {
+  if (read_only_mode && config.annotations && !config.annotations.readOnlyHint) {
+    return;
+  }
+
   const input_schema = config.inputSchema ?? {};
   const tool = {
     name,
@@ -109,10 +113,18 @@ function register_tool(server, name, description, schema, command, options = {})
     title: options.title ?? name.replaceAll("_", " "),
     description,
     inputSchema: schema,
+    outputSchema: options.outputSchema ?? output_schemas.generic,
     annotations: options.annotations,
   }, async (args) => {
-    const map_args = options.map_args ?? ((value) => value);
-    const result = await send_engine_command(command, map_args(args));
+    let mapped_args = args;
+    try {
+      const map_args = options.map_args ?? ((value) => value);
+      mapped_args = map_args(args);
+    } catch (error) {
+      return tool_result(structured_error(error.message, { code: "invalid_arguments" }));
+    }
+
+    const result = await send_engine_command(command, mapped_args);
     return tool_result(result);
   });
 }
@@ -183,6 +195,7 @@ register_local_tool("spartan_status", {
   title: "Spartan Status",
   description: "Return Spartan MCP bridge, engine, and codebase-index status.",
   inputSchema: {},
+  outputSchema: output_schemas.spartan_status,
   annotations: read_only,
 }, async () => {
   const engine_status = await send_engine_command("engine_status");
@@ -198,6 +211,7 @@ register_local_tool("spartan_status", {
     project_root,
     engine_host,
     engine_port,
+    read_only_mode,
     engine: engine_status,
     codebase: codebase.status(),
   });
@@ -210,13 +224,11 @@ register_local_tool("search_codebase", {
     query: z.string(),
     top_k: z.number().int().min(1).max(25).optional(),
   },
+  outputSchema: output_schemas.search_codebase,
   annotations: read_only,
 }, async ({ query, top_k }) => {
   if (!query?.trim()) {
-    return tool_result({
-      ok: false,
-      error: "query is required",
-    });
+    return tool_result(structured_error("query is required", { code: "invalid_arguments" }));
   }
 
   const results = await codebase.search(query, top_k ?? 8);
@@ -228,12 +240,161 @@ register_local_tool("search_codebase", {
   });
 });
 
+register_local_tool("read_source_file", {
+  title: "Read Source File",
+  description: "Read a validated Spartan source file by project-relative path and optional line range.",
+  inputSchema: {
+    path: z.string(),
+    start_line: z.number().int().min(1).optional(),
+    line_count: z.number().int().min(1).max(400).optional(),
+  },
+  outputSchema: output_schemas.read_source_file,
+  annotations: read_only,
+}, async ({ path, start_line, line_count }) => {
+  try {
+    const file = await codebase.read_file(path, {
+      start_line: start_line ?? 1,
+      line_count: line_count ?? 160,
+    });
+    return tool_result({
+      ok: true,
+      ...file,
+    });
+  } catch (error) {
+    return tool_result(structured_error(error.message, {
+      code: "source_read_failed",
+      suggested_action: "use search_codebase first and pass a returned project-relative path",
+    }));
+  }
+});
+
+register_local_tool("search_capabilities", {
+  title: "Search Capabilities",
+  description: "Search Spartan MCP tools and resources by natural language. Use this before guessing tool names.",
+  inputSchema: {
+    query: z.string().optional(),
+    limit: z.number().int().min(1).max(25).optional(),
+  },
+  outputSchema: output_schemas.search_capabilities,
+  annotations: read_only,
+}, async ({ query, limit }) => {
+  return tool_result({
+    ok: true,
+    query: query ?? "",
+    matches: search_capability_catalog(tool_registry, resource_registry, query ?? "", limit ?? 8),
+  });
+});
+
+register_local_tool("get_capability_details", {
+  title: "Get Capability Details",
+  description: "Return full schema and metadata for one Spartan MCP tool or resource.",
+  inputSchema: {
+    name: z.string(),
+  },
+  outputSchema: output_schemas.get_capability_details,
+  annotations: read_only,
+}, async ({ name }) => {
+  const tool = tool_registry.get(name);
+  if (tool) {
+    return tool_result({
+      ok: true,
+      name,
+      kind: "tool",
+      tool: {
+        name: tool.name,
+        title: tool.title,
+        description: tool.description,
+        inputSchema: json_schema_from_raw_shape(tool.inputSchema),
+        outputSchema: json_schema_from_raw_shape(tool.outputSchema),
+        annotations: tool.annotations,
+      },
+    });
+  }
+
+  const resource = resource_registry.get(name) ?? [...resource_registry.values()].find((entry) => entry.uri === name);
+  if (resource) {
+    return tool_result({
+      ok: true,
+      name: resource.name,
+      kind: "resource",
+      resource,
+    });
+  }
+
+  return tool_result(structured_error(`unknown capability: ${name}`, {
+    code: "unknown_capability",
+    suggested_action: "call search_capabilities with a natural language query",
+  }));
+});
+
+register_local_tool("agent_memory_read", {
+  title: "Agent Memory Read",
+  description: "Read the shared Spartan agent memory markdown file. Use this early for project-specific lessons and maintainer advice.",
+  inputSchema: {},
+  outputSchema: output_schemas.agent_memory,
+  annotations: read_only,
+}, async () => {
+  return tool_result({
+    ok: true,
+    path: agent_memory_path,
+    memory: await read_agent_memory(),
+  });
+});
+
+register_local_tool("agent_memory_append", {
+  title: "Agent Memory Append",
+  description: "Append one durable lesson to a named section in the shared Spartan agent memory file.",
+  inputSchema: {
+    section: z.string(),
+    note: z.string(),
+  },
+  outputSchema: output_schemas.agent_memory,
+  annotations: edit_tool,
+}, async ({ section, note }) => {
+  try {
+    return tool_result({
+      ok: true,
+      path: agent_memory_path,
+      memory: await append_agent_memory(section, note),
+    });
+  } catch (error) {
+    return tool_result(structured_error(error.message, {
+      code: "agent_memory_update_failed",
+      suggested_action: "read agent_memory_read, prune or correct the memory text, then retry",
+    }));
+  }
+});
+
+register_local_tool("agent_memory_replace", {
+  title: "Agent Memory Replace",
+  description: "Replace the shared Spartan agent memory file after pruning stale or inaccurate notes.",
+  inputSchema: {
+    memory: z.string(),
+  },
+  outputSchema: output_schemas.agent_memory,
+  annotations: edit_tool,
+}, async ({ memory }) => {
+  try {
+    return tool_result({
+      ok: true,
+      path: agent_memory_path,
+      memory: await write_agent_memory(memory),
+    });
+  } catch (error) {
+    return tool_result(structured_error(error.message, {
+      code: "agent_memory_update_failed",
+      suggested_action: "keep the memory concise, preserve the title, and retry",
+    }));
+  }
+});
+
 register_tool(server, "ping", "Check that the Spartan live-control endpoint is reachable.", {}, "ping", {
   annotations: read_only,
 });
 
 register_tool(server, "engine_status", "Read editor/runtime status, frame metrics, and loading state.", {}, "engine_status", {
   annotations: read_only,
+  outputSchema: output_schemas.engine_status,
 });
 
 register_tool(
@@ -247,7 +408,7 @@ register_tool(
     editor_visible: z.boolean().optional(),
   },
   "engine_set_mode",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.engine_status },
 );
 
 register_tool(server, "cvar_list", "List registered console variables.", {}, "cvar_list", {
@@ -286,15 +447,17 @@ register_tool(
     minimum_type: z.enum(["info", "warning", "error"]).optional(),
   },
   "console_read",
-  { annotations: read_only },
+  { annotations: read_only, outputSchema: output_schemas.console_read },
 );
 
 register_tool(server, "world_summary", "Read the current world name, path, counts, environment, and bounds.", {}, "world_summary", {
   annotations: read_only,
+  outputSchema: output_schemas.world_summary,
 });
 
 register_tool(server, "context_snapshot", "Read engine status, world summary, and current selection in one native request.", {}, "context_snapshot", {
   annotations: read_only,
+  outputSchema: output_schemas.context_snapshot,
 });
 
 register_tool(
@@ -316,7 +479,7 @@ register_tool(
     path: z.string().optional(),
   },
   "world_save",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.generic },
 );
 
 register_tool(
@@ -329,7 +492,7 @@ register_tool(
     description: z.string().optional(),
   },
   "world_set_environment",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.world_summary },
 );
 
 register_tool(
@@ -341,7 +504,7 @@ register_tool(
     offset: z.number().int().min(0).optional(),
   },
   "entity_list",
-  { annotations: read_only },
+  { annotations: read_only, outputSchema: output_schemas.entity_list },
 );
 
 register_tool(
@@ -354,7 +517,7 @@ register_tool(
     limit: z.number().int().min(1).max(100).optional(),
   },
   "entity_find",
-  { annotations: read_only },
+  { annotations: read_only, outputSchema: output_schemas.entity_find },
 );
 
 register_tool(
@@ -367,7 +530,7 @@ register_tool(
     selected: z.boolean().optional(),
   },
   "entity_resolve",
-  { annotations: read_only },
+  { annotations: read_only, outputSchema: output_schemas.entity },
 );
 
 register_tool(
@@ -378,19 +541,22 @@ register_tool(
     id: z.string(),
   },
   "entity_get",
-  { annotations: read_only },
+  { annotations: read_only, outputSchema: output_schemas.entity },
 );
 
 register_tool(server, "selection_get", "Read the selected entity ids.", {}, "selection_get", {
   annotations: read_only,
+  outputSchema: output_schemas.selection_get,
 });
 
 register_tool(server, "component_types", "List valid Spartan component type names.", {}, "component_types", {
   annotations: read_only,
+  outputSchema: output_schemas.component_types,
 });
 
 register_tool(server, "primitive_types", "List valid Spartan built-in primitive mesh names and aliases.", {}, "primitive_types", {
   annotations: read_only,
+  outputSchema: output_schemas.primitive_types,
 });
 
 register_tool(
@@ -402,7 +568,7 @@ register_tool(
     parent_id: z.string().optional(),
   },
   "entity_create_empty",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.entity },
 );
 
 register_tool(
@@ -411,43 +577,35 @@ register_tool(
   "Create a primitive render entity in edit mode, optionally with transform, parent, and physics.",
   primitive_create_args,
   "entity_create_primitive",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.entity },
 );
 
 register_local_tool(
   "entity_create_primitive_batch",
   {
     title: "entity create primitive batch",
-    description: "Create many primitive render entities in edit mode. Uses one persistent engine connection but still applies each primitive as a separate engine command.",
+    description: "Create many primitive render entities in edit mode through one native engine batch command.",
     inputSchema: {
       items: z.array(z.object(primitive_create_args)).min(1).max(64),
     },
+    outputSchema: output_schemas.batch_receipt,
     annotations: edit_tool,
   },
   async ({ items }) => {
-    const created = [];
-    for (const item of items) {
-      const result = await send_engine_command("entity_create_primitive", item);
-      if (!result.ok) {
-        return tool_result({
-          ok: false,
-          error: result.error ?? "failed to create primitive",
-          created_count: created.length,
-          created,
-          failed_item: item,
-        });
+    const args = { count: items.length };
+    const keys = Object.keys(primitive_create_args);
+    for (let i = 0; i < items.length; i++) {
+      for (const key of keys) {
+        if (items[i][key] !== undefined && items[i][key] !== null) {
+          args[`item_${i}_${key}`] = items[i][key];
+        }
       }
-
-      created.push({
-        id: result.entity?.id,
-        name: result.entity?.name,
-      });
     }
 
+    const result = await send_engine_command("entity_create_primitive_batch", args);
     return tool_result({
-      ok: true,
-      created_count: created.length,
-      created,
+      ...result,
+      created_count: result.created_count ?? result.created?.length ?? 0,
     });
   },
 );
@@ -463,7 +621,7 @@ register_tool(
     parent_id: z.string().optional(),
   },
   "entity_update",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.entity },
 );
 
 register_tool(
@@ -474,7 +632,7 @@ register_tool(
     id: z.string(),
   },
   "entity_delete",
-  { annotations: destructive_tool },
+  { annotations: destructive_tool, outputSchema: output_schemas.delete_receipt },
 );
 
 register_tool(
@@ -485,7 +643,7 @@ register_tool(
     id: z.string(),
   },
   "entity_delete_children",
-  { annotations: destructive_tool },
+  { annotations: destructive_tool, outputSchema: output_schemas.delete_receipt },
 );
 
 register_tool(
@@ -496,7 +654,7 @@ register_tool(
     id: z.string(),
   },
   "entity_select",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.selection_get },
 );
 
 register_tool(
@@ -511,7 +669,7 @@ register_tool(
     scale: vector3.optional(),
   },
   "entity_set_transform",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.entity },
 );
 
 register_tool(
@@ -523,7 +681,7 @@ register_tool(
     type: component_type,
   },
   "entity_add_component",
-  { annotations: edit_tool },
+  { annotations: edit_tool, outputSchema: output_schemas.entity },
 );
 
 register_tool(
@@ -535,7 +693,7 @@ register_tool(
     type: component_type,
   },
   "entity_remove_component",
-  { annotations: destructive_tool },
+  { annotations: destructive_tool, outputSchema: output_schemas.entity },
 );
 
 register_tool(
@@ -547,7 +705,7 @@ register_tool(
     type: component_type,
   },
   "component_get",
-  { annotations: read_only },
+  { annotations: read_only, outputSchema: output_schemas.component_get },
 );
 
 register_tool(
@@ -556,12 +714,22 @@ register_tool(
   "Set one editable component property on an entity. Vector and color values are arrays.",
   {
     id: z.string(),
-    type: component_type,
+    type: z.enum(Object.keys(component_property_catalog)),
     property: z.string(),
     value: component_value,
   },
   "component_set",
-  { annotations: edit_tool },
+  {
+    annotations: edit_tool,
+    outputSchema: output_schemas.component_set,
+    map_args: (args) => {
+      const properties = component_property_catalog[args.type]?.properties ?? [];
+      if (!properties.includes(args.property)) {
+        throw new Error(`unsupported ${args.type} property: ${args.property}`);
+      }
+      return args;
+    },
+  },
 );
 
 register_tool(
@@ -576,71 +744,104 @@ register_tool(
     code: z.string(),
   },
   "execute_lua",
-  { annotations: destructive_tool },
+  { annotations: destructive_tool, outputSchema: output_schemas.lua_result },
 );
 
-function is_zod_optional(schema) {
-  return schema?._def?.typeName === "ZodOptional" || schema?._def?.typeName === "ZodDefault";
+function register_text_resource(name, uri, title, description, read_text, mime_type = "text/markdown") {
+  const resource = {
+    name,
+    uri,
+    title,
+    description,
+    mimeType: mime_type,
+  };
+  resource_registry.set(name, resource);
+
+  if (typeof server.registerResource === "function") {
+    server.registerResource(name, uri, {
+      title,
+      description,
+      mimeType: mime_type,
+    }, async (resource_uri) => {
+      const text = await read_text();
+      return {
+        contents: [
+          {
+            uri: resource_uri.href ?? uri,
+            mimeType: mime_type,
+            text,
+          },
+        ],
+      };
+    });
+  }
 }
 
-function zod_to_json_schema(schema) {
-  if (!schema?._def) {
-    return schema && typeof schema === "object" ? schema : {};
-  }
+register_text_resource(
+  "engine_overview",
+  "spartan://engine/overview",
+  "Spartan Engine MCP Overview",
+  "Architecture and usage notes for the Spartan MCP bridge.",
+  () => engine_overview,
+);
 
-  const type_name = schema._def.typeName;
-  if (type_name === "ZodOptional" || type_name === "ZodDefault") {
-    return zod_to_json_schema(schema._def.innerType);
-  }
-  if (type_name === "ZodString") {
-    return { type: "string" };
-  }
-  if (type_name === "ZodBoolean") {
-    return { type: "boolean" };
-  }
-  if (type_name === "ZodNumber") {
-    const is_integer = Array.isArray(schema._def.checks) && schema._def.checks.some((check) => check.kind === "int");
-    return { type: is_integer ? "integer" : "number" };
-  }
-  if (type_name === "ZodEnum") {
-    return { type: "string", enum: schema._def.values };
-  }
-  if (type_name === "ZodArray") {
-    return { type: "array", items: zod_to_json_schema(schema._def.type ?? schema._def.element) };
-  }
-  if (type_name === "ZodObject") {
-    const shape = typeof schema._def.shape === "function" ? schema._def.shape() : schema._def.shape;
-    return raw_shape_to_json_schema(shape);
-  }
-  if (type_name === "ZodUnion") {
-    return { anyOf: schema._def.options.map((option) => zod_to_json_schema(option)) };
-  }
+register_text_resource(
+  "edit_rules",
+  "spartan://engine/edit-rules",
+  "Spartan MCP Edit Rules",
+  "Safety and edit-mode rules for Spartan MCP tools.",
+  () => edit_rules,
+);
 
-  return {};
-}
+register_text_resource(
+  "component_schemas",
+  "spartan://engine/component-schemas",
+  "Spartan Component Schemas",
+  "Editable component property names and notes.",
+  () => component_schema_markdown(),
+);
+
+register_text_resource(
+  "world_current",
+  "spartan://world/current",
+  "Current Spartan World",
+  "Live world summary from the engine bridge.",
+  async () => JSON.stringify(await send_engine_command("world_summary"), null, 2),
+  "application/json",
+);
+
+register_text_resource(
+  "console_recent",
+  "spartan://console/recent",
+  "Recent Spartan Console",
+  "Recent engine console output.",
+  async () => JSON.stringify(await send_engine_command("console_read", { limit: 80 }), null, 2),
+  "application/json",
+);
+
+register_text_resource(
+  "source_access",
+  "spartan://source",
+  "Spartan Source Access",
+  "Use search_codebase and read_source_file for project-relative source files under source/ and tools/mcp/spartan_engine/.",
+  () => [
+    "# Spartan Source Access",
+    "",
+    "Use search_codebase to locate files and read_source_file to read focused line ranges.",
+    "The source reader accepts project-relative paths under source/ and tools/mcp/spartan_engine/.",
+  ].join("\n"),
+);
+
+register_text_resource(
+  "agent_memory",
+  "spartan://agent/memory",
+  "Spartan Agent Memory",
+  "Shared memory for future Spartan agents, including engine facts, strategies, gotchas, and maintainer advice.",
+  () => read_agent_memory(),
+);
 
 function raw_shape_to_json_schema(shape) {
-  if (shape?.type === "object" && shape.properties) {
-    return shape;
-  }
-
-  const properties = {};
-  const required = [];
-  for (const [name, schema] of Object.entries(shape ?? {})) {
-    properties[name] = zod_to_json_schema(schema);
-    if (!is_zod_optional(schema)) {
-      required.push(name);
-    }
-  }
-
-  const json_schema = {
-    type: "object",
-    properties,
-  };
-  if (required.length > 0) {
-    json_schema.required = required;
-  }
-  return json_schema;
+  return json_schema_from_raw_shape(shape);
 }
 
 function http_tool_list() {
@@ -652,13 +853,71 @@ function http_tool_list() {
       inputSchema: raw_shape_to_json_schema(tool.inputSchema),
     };
     if (tool.outputSchema) {
-      entry.outputSchema = tool.outputSchema;
+      entry.outputSchema = raw_shape_to_json_schema(tool.outputSchema);
     }
     if (tool.annotations) {
       entry.annotations = tool.annotations;
     }
     return entry;
   });
+}
+
+function http_resource_list() {
+  return [...resource_registry.values()].map((resource) => ({
+    uri: resource.uri,
+    name: resource.name,
+    title: resource.title,
+    description: resource.description,
+    mimeType: resource.mimeType,
+  }));
+}
+
+function http_resource_templates() {
+  return [
+    {
+      uriTemplate: "spartan://source/{path}",
+      name: "source_file",
+      title: "Spartan Source File",
+      description: "Read source files through the read_source_file tool using project-relative paths.",
+      mimeType: "text/plain",
+    },
+  ];
+}
+
+async function read_resource(uri) {
+  const resource = [...resource_registry.values()].find((entry) => entry.uri === uri);
+  if (!resource) {
+    return null;
+  }
+
+  if (uri === "spartan://world/current") {
+    return JSON.stringify(await send_engine_command("world_summary"), null, 2);
+  }
+  if (uri === "spartan://console/recent") {
+    return JSON.stringify(await send_engine_command("console_read", { limit: 80 }), null, 2);
+  }
+  if (uri === "spartan://engine/overview") {
+    return engine_overview;
+  }
+  if (uri === "spartan://engine/edit-rules") {
+    return edit_rules;
+  }
+  if (uri === "spartan://engine/component-schemas") {
+    return component_schema_markdown();
+  }
+  if (uri === "spartan://source") {
+    return [
+      "# Spartan Source Access",
+      "",
+      "Use search_codebase to locate files and read_source_file to read focused line ranges.",
+      "The source reader accepts project-relative paths under source/ and tools/mcp/spartan_engine/.",
+    ].join("\n");
+  }
+  if (uri === "spartan://agent/memory") {
+    return read_agent_memory();
+  }
+
+  return null;
 }
 
 function json_rpc_result(id, result) {
@@ -699,6 +958,7 @@ async function handle_http_rpc(message) {
         tools: {
           listChanged: false,
         },
+        resources: {},
         logging: {},
       },
       serverInfo: {
@@ -720,6 +980,40 @@ async function handle_http_rpc(message) {
     });
   }
 
+  if (method === "resources/list") {
+    return json_rpc_result(id, {
+      resultType: "complete",
+      resources: http_resource_list(),
+    });
+  }
+
+  if (method === "resources/templates/list") {
+    return json_rpc_result(id, {
+      resultType: "complete",
+      resourceTemplates: http_resource_templates(),
+    });
+  }
+
+  if (method === "resources/read") {
+    const uri = message.params?.uri;
+    const resource = [...resource_registry.values()].find((entry) => entry.uri === uri);
+    const text = await read_resource(uri);
+    if (!resource || text === null) {
+      return json_rpc_error(id, -32602, `resource not found: ${uri}`);
+    }
+
+    return json_rpc_result(id, {
+      resultType: "complete",
+      contents: [
+        {
+          uri,
+          mimeType: resource.mimeType,
+          text,
+        },
+      ],
+    });
+  }
+
   if (method === "tools/call") {
     const name = message.params?.name;
     const args = message.params?.arguments ?? {};
@@ -729,13 +1023,15 @@ async function handle_http_rpc(message) {
     }
 
     try {
-      const result = await tool.handler(args);
+      const parsed = parse_raw_shape(tool.inputSchema, args);
+      if (!parsed.ok) {
+        return json_rpc_result(id, tool_result(parsed.error));
+      }
+
+      const result = await tool.handler(parsed.value);
       return json_rpc_result(id, result);
     } catch (error) {
-      return json_rpc_result(id, tool_result({
-        ok: false,
-        error: error.message,
-      }));
+      return json_rpc_result(id, tool_result(structured_error(error.message)));
     }
   }
 

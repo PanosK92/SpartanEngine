@@ -32,6 +32,7 @@ class McpAssistant : public Widget
 {
 public:
     McpAssistant(Editor* editor);
+    ~McpAssistant() override;
 
     void OnTick() override;
     void OnTickVisible() override;
@@ -49,6 +50,7 @@ private:
     void RefreshModels();
     void RestartAssistant();
     bool LoadApiKeyFromFile();
+    void DrainAssistantResults();
     void ApplyModelList(const std::string& model_list);
     void DrawChatMessage(const ChatMessage& message, int index);
     void DrawAssistantRun();

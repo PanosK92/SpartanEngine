@@ -19,6 +19,26 @@ const engine_host = read_arg("engine-host", process.env.SPARTAN_ENGINE_HOST ?? "
 const run_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_RUN_TIMEOUT_MS ?? "180000", 10);
 const context_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_CONTEXT_TIMEOUT_MS ?? "2500", 10);
 const engine_first_timeout_ms = Number.parseInt(process.env.SPARTAN_ASSISTANT_ENGINE_FIRST_TIMEOUT_MS ?? "25000", 10);
+const read_only_mode = process.argv.includes("--read-only") || ["1", "true", "yes", "on"].includes(String(process.env.SPARTAN_ASSISTANT_READ_ONLY ?? process.env.SPARTAN_MCP_READ_ONLY ?? "").toLowerCase());
+const mutating_tools = new Set([
+  "engine_set_mode",
+  "cvar_set",
+  "world_load",
+  "world_save",
+  "world_set_environment",
+  "entity_create_empty",
+  "entity_create_primitive",
+  "entity_create_primitive_batch",
+  "entity_update",
+  "entity_delete",
+  "entity_delete_children",
+  "entity_select",
+  "entity_set_transform",
+  "entity_add_component",
+  "entity_remove_component",
+  "component_set",
+  "execute_lua",
+]);
 
 if (!Number.isInteger(assistant_port) || assistant_port <= 0 || assistant_port > 65535) {
   console.error("invalid assistant port");
@@ -137,6 +157,25 @@ class AssistantRun {
 
   async tool(name, args = {}, timeout_ms = context_timeout_ms) {
     this.throw_if_cancelled();
+    if (read_only_mode && mutating_tools.has(name)) {
+      const result = {
+        ok: false,
+        error: "assistant is running in read-only mode",
+        code: "read_only_mode",
+        retryable: false,
+        suggested_action: "restart the assistant without read-only mode to enable mutating tools",
+      };
+      this.event("tool_finished", {
+        tool_id: `tool_${++this.tool_index}`,
+        stage_id: this.current_stage_id,
+        name,
+        ok: false,
+        duration_ms: 0,
+        result,
+      });
+      return result;
+    }
+
     const tool_id = `tool_${++this.tool_index}`;
     const started_at = Date.now();
     this.event("tool_started", {
