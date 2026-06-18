@@ -249,6 +249,7 @@ namespace
                     menu_entry<RenderOptions>();
                     menu_entry<TextureViewer>();
                     menu_entry<ResourceViewer>();
+                    menu_entry<McpAssistant>();
                     menu_entry<AssetBrowser>();
                     menu_entry<Console>();
                     menu_entry<Properties>();
@@ -595,15 +596,11 @@ namespace
                 draw_active_underline();
             }
 
-            if (is_running)
-            {
-                const string tooltip = "MCP on 127.0.0.1:" + to_string(spartan::McpServer::GetPort());
-                ImGuiSp::tooltip(tooltip.c_str());
-            }
-            else
-            {
-                ImGuiSp::tooltip("Open MCP Assistant");
-            }
+            string tooltip = is_visible ? "Close MCP Assistant" : "Open MCP Assistant";
+            tooltip += is_running ?
+                "\nMCP active on 127.0.0.1:" + to_string(spartan::McpServer::GetPort()) :
+                "\nMCP inactive";
+            ImGuiSp::tooltip(tooltip.c_str());
 
             ImGui::PopStyleColor(3);
             ImGui::PopStyleVar(2);

@@ -1282,22 +1282,58 @@ namespace spartan
                 return json_error(error);
             }
 
-            std::vector<Entity*> children = entity->GetChildren();
             uint32_t deleted_count = 0;
-            for (Entity* child : children)
+            for (uint32_t pass = 0; pass < 64; pass++)
+            {
+                entity->AcquireChildren();
+                std::vector<Entity*> children = entity->GetChildren();
+                if (children.empty())
+                {
+                    break;
+                }
+
+                bool deleted_any = false;
+                for (Entity* child : children)
+                {
+                    if (child == nullptr || !World::EntityExists(child))
+                    {
+                        continue;
+                    }
+
+                    World::RemoveEntityImmediate(child);
+                    deleted_count++;
+                    deleted_any = true;
+                }
+
+                if (!deleted_any)
+                {
+                    break;
+                }
+            }
+
+            entity->AcquireChildren();
+
+            std::string json = "{\"ok\":true,\"deleted_count\":" + std::to_string(deleted_count);
+            json += ",\"id\":" + json_string(std::to_string(entity->GetObjectId()));
+            json += ",\"name\":" + json_string(entity->GetObjectName());
+            json += ",\"remaining_count\":" + std::to_string(entity->GetChildrenCount());
+            json += ",\"remaining_children\":[";
+            bool first_child = true;
+            for (Entity* child : entity->GetChildren())
             {
                 if (child == nullptr)
                 {
                     continue;
                 }
 
-                World::RemoveEntity(child);
-                deleted_count++;
+                if (!first_child)
+                {
+                    json += ",";
+                }
+                first_child = false;
+                json += json_string(child->GetObjectName());
             }
-
-            std::string json = "{\"ok\":true,\"deleted_count\":" + std::to_string(deleted_count);
-            json += ",\"id\":" + json_string(std::to_string(entity->GetObjectId()));
-            json += ",\"name\":" + json_string(entity->GetObjectName());
+            json += "]";
             json += "}";
             return json;
         }
@@ -2055,6 +2091,95 @@ namespace spartan
             return json;
         }
 
+        std::string command_context_snapshot()
+        {
+            std::string json = "{\"ok\":true";
+            json += ",\"status\":" + command_engine_status();
+            json += ",\"world\":" + command_world_summary();
+            json += ",\"selection\":" + command_selection_get();
+            json += "}";
+            return json;
+        }
+
+        std::string command_entity_resolve(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            bool selected = false;
+            if (const std::optional<std::string> selected_arg = get_argument(request, "selected"))
+            {
+                if (!parse_bool(*selected_arg, selected))
+                {
+                    return json_error("invalid selected");
+                }
+            }
+
+            if (selected)
+            {
+                Camera* camera = World::GetCamera();
+                if (camera == nullptr)
+                {
+                    return json_error("camera not found");
+                }
+
+                std::vector<Entity*> selected_entities;
+                for (Entity* entity : camera->GetSelectedEntities())
+                {
+                    if (entity != nullptr)
+                    {
+                        selected_entities.emplace_back(entity);
+                    }
+                }
+
+                if (selected_entities.empty())
+                {
+                    return json_error("nothing selected");
+                }
+                if (selected_entities.size() > 1)
+                {
+                    return json_error("multiple entities selected");
+                }
+
+                return "{\"ok\":true,\"entity\":" + entity_to_json_compact(selected_entities.front()) + ",\"source\":\"selection\"}";
+            }
+
+            if (const std::optional<std::string> id = get_argument(request, "id"))
+            {
+                std::string error;
+                Entity* entity = get_entity_from_request(request, error);
+                if (entity == nullptr)
+                {
+                    return json_error(error);
+                }
+
+                return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + ",\"source\":\"id\"}";
+            }
+
+            const std::optional<std::string> name = get_argument(request, "name");
+            if (!name || name->empty())
+            {
+                return json_error("missing id, name, or selected");
+            }
+
+            std::string error;
+            Entity* entity = find_entity_by_name_unique(*name, true, error);
+            if (entity != nullptr)
+            {
+                return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + ",\"source\":\"name_exact\"}";
+            }
+
+            entity = find_entity_by_name_unique(*name, false, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + ",\"source\":\"name_contains\"}";
+        }
+
         std::string command_entity_create_empty(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -2536,6 +2661,14 @@ namespace spartan
         if (request.command == "selection_get")
         {
             return command_selection_get();
+        }
+        if (request.command == "context_snapshot")
+        {
+            return command_context_snapshot();
+        }
+        if (request.command == "entity_resolve")
+        {
+            return command_entity_resolve(request);
         }
         if (request.command == "component_types")
         {

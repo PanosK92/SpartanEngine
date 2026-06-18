@@ -45,11 +45,13 @@ private:
     };
 
     void SubmitPrompt();
+    void CancelRun();
     void RefreshModels();
     void RestartAssistant();
     bool LoadApiKeyFromFile();
     void ApplyModelList(const std::string& model_list);
     void DrawChatMessage(const ChatMessage& message, int index);
+    void DrawAssistantRun();
     void UpdateInputOwnership();
     std::string GetSelectedModelId() const;
 

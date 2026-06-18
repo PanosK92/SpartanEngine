@@ -25,6 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MCP/McpServer.h"
 #include "Input/Input.h"
 #include "FileSystem/FileSystem.h"
+#include "../Editor.h"
+#include "../ImGui/ImGui_Extension.h"
+#include "../ImGui/ImGui_Style.h"
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -63,10 +66,137 @@ namespace
     std::string assistant_response;
     std::string assistant_models;
     std::string assistant_activity;
-    std::deque<std::string> assistant_activity_history;
     bool assistant_busy = false;
     std::chrono::steady_clock::time_point assistant_busy_start;
-    constexpr size_t assistant_activity_history_max = 8;
+
+    struct AssistantStage
+    {
+        std::string id;
+        std::string title;
+        std::string status;
+        bool finished = false;
+        bool failed = false;
+        int duration_ms = 0;
+    };
+
+    struct AssistantReceipt
+    {
+        std::string title;
+        std::string data;
+    };
+
+    struct AssistantRunState
+    {
+        bool has_run = false;
+        bool active = false;
+        bool failed = false;
+        bool cancelled = false;
+        std::string id;
+        std::string prompt;
+        std::string intent;
+        std::string status;
+        std::string summary;
+        std::vector<AssistantStage> stages;
+        std::vector<AssistantReceipt> receipts;
+        std::deque<std::string> raw_log;
+        int elapsed_ms = 0;
+    };
+
+    AssistantRunState assistant_run;
+
+    float ui_scale()
+    {
+        return spartan::Window::GetDpiScale();
+    }
+
+    ImVec4 with_alpha(const ImVec4& color, float alpha)
+    {
+        return ImVec4(color.x, color.y, color.z, alpha);
+    }
+
+    ImVec4 softened(const ImVec4& color, float amount, float alpha)
+    {
+        return with_alpha(ImGui::Style::lerp(color, ImGui::Style::bg_color_1, amount), alpha);
+    }
+
+    bool push_bold_font()
+    {
+        if (Editor::font_bold)
+        {
+            ImGui::PushFont(Editor::font_bold, 0.0f);
+            return true;
+        }
+
+        return false;
+    }
+
+    void pop_bold_font(bool pushed)
+    {
+        if (pushed)
+        {
+            ImGui::PopFont();
+        }
+    }
+
+    void draw_section_title(const char* title, const char* subtitle = nullptr)
+    {
+        const bool bold_font = push_bold_font();
+        ImGui::TextUnformatted(title);
+        pop_bold_font(bold_font);
+
+        if (subtitle && subtitle[0] != '\0')
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+            ImGui::TextWrapped("%s", subtitle);
+            ImGui::PopStyleColor();
+        }
+    }
+
+    bool begin_card(const char* id, float height = 0.0f)
+    {
+        const float scale = ui_scale();
+        const ImVec4 bg = ImGui::Style::lerp(ImGui::Style::bg_color_1, ImGui::Style::bg_color_2, 0.18f);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 6.0f * scale);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f * scale, 9.0f * scale));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, with_alpha(bg, 0.84f));
+        ImGui::PushStyleColor(ImGuiCol_Border, with_alpha(ImGui::Style::color_accent_1, 0.16f));
+        return ImGui::BeginChild(id, ImVec2(0.0f, height), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding);
+    }
+
+    void end_card()
+    {
+        ImGui::EndChild();
+        ImGui::PopStyleColor(2);
+        ImGui::PopStyleVar(2);
+    }
+
+    bool primary_button(const char* label, const ImVec2& size = ImVec2(0.0f, 0.0f))
+    {
+        const ImVec4 accent = ImGui::Style::color_accent_1;
+        ImGui::PushStyleColor(ImGuiCol_Button, with_alpha(accent, 0.34f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, with_alpha(accent, 0.48f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, with_alpha(accent, 0.26f));
+        const bool clicked = ImGuiSp::button(label, size);
+        ImGui::PopStyleColor(3);
+        return clicked;
+    }
+
+    void draw_status_pill(const char* label, const ImVec4& color)
+    {
+        const float scale = ui_scale();
+        const ImVec2 padding = ImVec2(8.0f * scale, 3.0f * scale);
+        const ImVec2 text_size = ImGui::CalcTextSize(label);
+        const ImVec2 pos = ImGui::GetCursorScreenPos();
+        const ImVec2 size = ImVec2(text_size.x + padding.x * 2.0f, text_size.y + padding.y * 2.0f);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+        draw_list->AddRectFilled(pos, ImVec2(pos.x + size.x, pos.y + size.y), ImGui::ColorConvertFloat4ToU32(with_alpha(color, 0.16f)), size.y * 0.5f);
+        draw_list->AddRect(pos, ImVec2(pos.x + size.x, pos.y + size.y), ImGui::ColorConvertFloat4ToU32(with_alpha(color, 0.52f)), size.y * 0.5f);
+        ImGui::SetCursorScreenPos(ImVec2(pos.x + padding.x, pos.y + padding.y));
+        ImGui::TextColored(color, "%s", label);
+        ImGui::SetCursorScreenPos(pos);
+        ImGui::Dummy(size);
+    }
 
 #ifdef _WIN32
     using socket_t = SOCKET;
@@ -187,7 +317,33 @@ namespace
 
     void log_error(const std::string& message)
     {
-        SP_LOG_ERROR("MCP Assistant: %s", message.c_str());
+        std::string line = message;
+        std::replace(line.begin(), line.end(), '\n', ' ');
+        std::replace(line.begin(), line.end(), '\r', ' ');
+        SP_LOG_ERROR("MCP Assistant: %s", line.c_str());
+    }
+
+    std::string trim_copy_paste_whitespace(const std::string& value);
+
+    bool is_generic_activity(const std::string& activity)
+    {
+        std::string value = activity;
+        std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c)
+        {
+            return static_cast<char>(std::tolower(c));
+        });
+
+        value = trim_copy_paste_whitespace(value);
+        return
+            value.empty() ||
+            value == "thinking" ||
+            value == "writing" ||
+            value == "using mcp" ||
+            value == "using tool" ||
+            value == "tool call" ||
+            value == "callmcptool" ||
+            (value.find("thinking") != std::string::npos && value.size() < 32) ||
+            (value.find("writing") != std::string::npos && value.size() < 32);
     }
 
     void set_busy(bool busy, const std::string& activity = "")
@@ -195,20 +351,215 @@ namespace
         std::lock_guard<std::mutex> lock(assistant_mutex);
         if (busy && !assistant_busy)
         {
-            assistant_activity_history.clear();
             assistant_busy_start = std::chrono::steady_clock::now();
         }
 
         assistant_busy = busy;
-        assistant_activity = activity;
-        if (busy && !activity.empty() && (assistant_activity_history.empty() || assistant_activity_history.back() != activity))
+        const std::string visible_activity = is_generic_activity(activity) ? "working on request" : activity;
+        assistant_activity = visible_activity;
+        if (busy && !visible_activity.empty())
         {
-            assistant_activity_history.emplace_back(activity);
-            while (assistant_activity_history.size() > assistant_activity_history_max)
+            if (!assistant_run.has_run || !assistant_run.active)
             {
-                assistant_activity_history.pop_front();
+                assistant_run = AssistantRunState();
+                assistant_run.has_run = true;
+                assistant_run.active = true;
+                assistant_run.status = visible_activity;
+                assistant_run.elapsed_ms = 0;
+                AssistantStage stage;
+                stage.id = "legacy_activity";
+                stage.title = "Working";
+                stage.status = visible_activity;
+                assistant_run.stages.emplace_back(stage);
+            }
+            else
+            {
+                assistant_run.status = visible_activity;
+                if (!assistant_run.stages.empty() && !assistant_run.stages.back().finished)
+                {
+                    assistant_run.stages.back().status = visible_activity;
+                }
             }
         }
+    }
+
+    void start_local_run(const std::string& prompt, const std::string& status)
+    {
+        std::lock_guard<std::mutex> lock(assistant_mutex);
+        assistant_run = AssistantRunState();
+        assistant_run.has_run = true;
+        assistant_run.active = true;
+        assistant_run.prompt = prompt;
+        assistant_run.intent = "starting";
+        assistant_run.status = status;
+        assistant_busy = true;
+        assistant_activity = status;
+        assistant_busy_start = std::chrono::steady_clock::now();
+
+        AssistantStage stage;
+        stage.id = "local_start";
+        stage.title = "Start";
+        stage.status = status;
+        assistant_run.stages.emplace_back(stage);
+    }
+
+    AssistantRunState get_run_snapshot()
+    {
+        std::lock_guard<std::mutex> lock(assistant_mutex);
+        return assistant_run;
+    }
+
+    std::string json_get_string(const std::string& json, const std::string& key);
+    int json_get_int(const std::string& json, const std::string& key, int fallback = 0);
+    std::string json_get_compound(const std::string& json, const std::string& key);
+    std::string json_to_compact_text(std::string text);
+
+    AssistantStage* find_stage(AssistantRunState& run, const std::string& id)
+    {
+        for (AssistantStage& stage : run.stages)
+        {
+            if (stage.id == id)
+            {
+                return &stage;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void append_raw_log(AssistantRunState& run, const std::string& text)
+    {
+        if (text.empty())
+        {
+            return;
+        }
+
+        run.raw_log.emplace_back(text);
+        while (run.raw_log.size() > 64)
+        {
+            run.raw_log.pop_front();
+        }
+    }
+
+    void handle_assistant_event(const std::string& json)
+    {
+        std::lock_guard<std::mutex> lock(assistant_mutex);
+
+        const std::string type = json_get_string(json, "type");
+        if (type.empty())
+        {
+            return;
+        }
+
+        if (type == "run_started")
+        {
+            assistant_run = AssistantRunState();
+            assistant_run.has_run = true;
+            assistant_run.active = true;
+            assistant_run.id = json_get_string(json, "run_id");
+            assistant_run.prompt = json_get_string(json, "prompt");
+            assistant_run.intent = json_get_string(json, "intent");
+            assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms");
+            assistant_run.status = "starting";
+            assistant_busy = true;
+            assistant_activity = "starting";
+            assistant_busy_start = std::chrono::steady_clock::now();
+        }
+        else if (type == "stage_started")
+        {
+            AssistantStage stage;
+            stage.id = json_get_string(json, "stage_id");
+            stage.title = json_get_string(json, "title");
+            stage.status = json_get_string(json, "status");
+            assistant_run.stages.emplace_back(stage);
+            assistant_run.status = stage.status.empty() ? stage.title : stage.status;
+            assistant_activity = assistant_run.status;
+        }
+        else if (type == "stage_finished")
+        {
+            const std::string stage_id = json_get_string(json, "stage_id");
+            if (AssistantStage* stage = find_stage(assistant_run, stage_id))
+            {
+                stage->finished = true;
+                stage->failed = json_get_string(json, "status") == "failed";
+                stage->duration_ms = json_get_int(json, "duration_ms");
+                stage->status = stage->failed ? json_get_string(json, "error") : "done";
+            }
+        }
+        else if (type == "tool_started")
+        {
+            const std::string name = json_get_string(json, "name");
+            assistant_run.status = "running " + name;
+            assistant_activity = assistant_run.status;
+            append_raw_log(assistant_run, "running " + name + " " + json_to_compact_text(json_get_compound(json, "args")));
+        }
+        else if (type == "tool_finished")
+        {
+            const std::string name = json_get_string(json, "name");
+            append_raw_log(assistant_run, "finished " + name + " " + json_to_compact_text(json_get_compound(json, "result")));
+        }
+        else if (type == "receipt")
+        {
+            AssistantReceipt receipt;
+            receipt.title = json_get_string(json, "title");
+            receipt.data = json_to_compact_text(json_get_compound(json, "data"));
+            assistant_run.receipts.emplace_back(receipt);
+        }
+        else if (type == "heartbeat" || type == "stage_note")
+        {
+            const std::string status = json_get_string(json, type == "stage_note" ? "text" : "status");
+            if (!status.empty() && !is_generic_activity(status))
+            {
+                assistant_run.status = status;
+                assistant_activity = status;
+            }
+        }
+        else if (type == "run_finished")
+        {
+            assistant_run.active = false;
+            assistant_run.summary = json_get_string(json, "summary");
+            assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms");
+            assistant_run.status = "done";
+        }
+        else if (type == "run_failed")
+        {
+            assistant_run.active = false;
+            assistant_run.failed = true;
+            assistant_run.summary = json_get_string(json, "summary");
+            assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms");
+            assistant_run.status = "failed";
+        }
+        else if (type == "run_cancelled")
+        {
+            assistant_run.active = false;
+            assistant_run.cancelled = true;
+            assistant_run.summary = json_get_string(json, "summary");
+            assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms");
+            assistant_run.status = "cancelled";
+        }
+
+        assistant_run.elapsed_ms = json_get_int(json, "elapsed_ms", assistant_run.elapsed_ms);
+        append_raw_log(assistant_run, json_to_compact_text(json));
+    }
+
+    std::string receipt_summary()
+    {
+        std::lock_guard<std::mutex> lock(assistant_mutex);
+        if (assistant_run.receipts.empty())
+        {
+            return "";
+        }
+
+        std::string text = "\n\nReceipts";
+        for (const AssistantReceipt& receipt : assistant_run.receipts)
+        {
+            text += "\n- " + receipt.title;
+            if (!receipt.data.empty())
+            {
+                text += ": " + receipt.data;
+            }
+        }
+        return text;
     }
 
     std::string url_encode(const std::string& value)
@@ -272,6 +623,201 @@ namespace
         }
 
         return decoded;
+    }
+
+    std::string json_unescape(const std::string& value)
+    {
+        std::string result;
+        result.reserve(value.size());
+        for (size_t i = 0; i < value.size(); i++)
+        {
+            if (value[i] != '\\' || i + 1 >= value.size())
+            {
+                result.push_back(value[i]);
+                continue;
+            }
+
+            const char escaped = value[++i];
+            if (escaped == 'n')
+            {
+                result.push_back('\n');
+            }
+            else if (escaped == 'r')
+            {
+                result.push_back('\r');
+            }
+            else if (escaped == 't')
+            {
+                result.push_back('\t');
+            }
+            else
+            {
+                result.push_back(escaped);
+            }
+        }
+
+        return result;
+    }
+
+    size_t json_value_start(const std::string& json, const std::string& key)
+    {
+        const std::string token = "\"" + key + "\":";
+        const size_t key_pos = json.find(token);
+        if (key_pos == std::string::npos)
+        {
+            return std::string::npos;
+        }
+
+        size_t pos = key_pos + token.size();
+        while (pos < json.size() && std::isspace(static_cast<unsigned char>(json[pos])))
+        {
+            pos++;
+        }
+        return pos;
+    }
+
+    std::string json_get_string(const std::string& json, const std::string& key)
+    {
+        size_t pos = json_value_start(json, key);
+        if (pos == std::string::npos || pos >= json.size() || json[pos] != '"')
+        {
+            return "";
+        }
+
+        pos++;
+        std::string value;
+        bool escaped = false;
+        for (; pos < json.size(); pos++)
+        {
+            const char c = json[pos];
+            if (escaped)
+            {
+                value.push_back('\\');
+                value.push_back(c);
+                escaped = false;
+                continue;
+            }
+            if (c == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+            if (c == '"')
+            {
+                break;
+            }
+            value.push_back(c);
+        }
+
+        return json_unescape(value);
+    }
+
+    int json_get_int(const std::string& json, const std::string& key, int fallback)
+    {
+        const size_t pos = json_value_start(json, key);
+        if (pos == std::string::npos)
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return std::stoi(json.substr(pos));
+        }
+        catch (...)
+        {
+            return fallback;
+        }
+    }
+
+    double json_get_number(const std::string& json, const std::string& key, double fallback = 0.0)
+    {
+        const size_t pos = json_value_start(json, key);
+        if (pos == std::string::npos)
+        {
+            return fallback;
+        }
+
+        try
+        {
+            return std::stod(json.substr(pos));
+        }
+        catch (...)
+        {
+            return fallback;
+        }
+    }
+
+    std::string json_get_compound(const std::string& json, const std::string& key)
+    {
+        size_t pos = json_value_start(json, key);
+        if (pos == std::string::npos || pos >= json.size())
+        {
+            return "";
+        }
+
+        const char open = json[pos];
+        const char close = open == '{' ? '}' : (open == '[' ? ']' : '\0');
+        if (close == '\0')
+        {
+            const size_t end = json.find_first_of(",}", pos);
+            return json.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
+        }
+
+        int depth = 0;
+        bool in_string = false;
+        bool escaped = false;
+        for (size_t i = pos; i < json.size(); i++)
+        {
+            const char c = json[i];
+            if (escaped)
+            {
+                escaped = false;
+                continue;
+            }
+            if (c == '\\')
+            {
+                escaped = true;
+                continue;
+            }
+            if (c == '"')
+            {
+                in_string = !in_string;
+                continue;
+            }
+            if (in_string)
+            {
+                continue;
+            }
+            if (c == open)
+            {
+                depth++;
+            }
+            else if (c == close)
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return json.substr(pos, i - pos + 1);
+                }
+            }
+        }
+
+        return json.substr(pos);
+    }
+
+    std::string json_to_compact_text(std::string text)
+    {
+        text.erase(std::remove(text.begin(), text.end(), '\r'), text.end());
+        while (text.find("  ") != std::string::npos)
+        {
+            text.erase(text.find("  "), 1);
+        }
+        if (text.size() > 360)
+        {
+            text = text.substr(0, 357) + "...";
+        }
+        return text;
     }
 
     std::string trim_copy_paste_whitespace(const std::string& value)
@@ -371,25 +917,15 @@ namespace
     {
         const int dot_count = static_cast<int>(ImGui::GetTime() * 2.5) % 4;
         std::string activity;
-        std::deque<std::string> history;
         int elapsed_seconds = 0;
         {
             std::lock_guard<std::mutex> lock(assistant_mutex);
             activity = assistant_activity.empty() ? "thinking" : assistant_activity;
-            history  = assistant_activity_history;
             elapsed_seconds = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - assistant_busy_start).count());
         }
 
         std::string text = activity + std::string(static_cast<size_t>(dot_count), '.');
         text += " (" + std::to_string(elapsed_seconds) + "s)";
-        if (!history.empty())
-        {
-            text += "\n\nActivity";
-            for (const std::string& entry : history)
-            {
-                text += "\n- " + entry;
-            }
-        }
 
         return text;
     }
@@ -661,6 +1197,12 @@ namespace
 
         const std::string status = line.substr(0, separator);
         const std::string text = url_decode(line.substr(separator + 1));
+        if (status == "event")
+        {
+            handle_assistant_event(text);
+            final = false;
+            return true;
+        }
         if (status == "activity")
         {
             set_busy(true, text);
@@ -668,7 +1210,7 @@ namespace
             return true;
         }
 
-        response = text;
+        response = text + receipt_summary();
         final = true;
         return status == "ok";
     }
@@ -710,6 +1252,19 @@ namespace
                 newline = buffer.find('\n');
             }
         }
+    }
+
+    bool should_restart_assistant_after_failure(const std::string& response)
+    {
+        return
+            response == "assistant is not running" ||
+            response == "failed to initialize Winsock" ||
+            response == "failed to create assistant socket" ||
+            response == "failed to send prompt to assistant" ||
+            response == "failed to send model request to assistant" ||
+            response == "assistant did not return a response before timeout" ||
+            response == "assistant returned an invalid response" ||
+            response == "assistant returned an invalid model response";
     }
 
     bool send_prompt_to_assistant(const std::string& prompt, const std::string& api_key, const std::string& model_id, std::string& response)
@@ -768,6 +1323,95 @@ namespace
     #endif
 
         return ok;
+    }
+
+    bool send_cancel_to_assistant(std::string& response)
+    {
+    #ifdef _WIN32
+        WSADATA data = {};
+        if (WSAStartup(MAKEWORD(2, 2), &data) != 0)
+        {
+            response = "failed to initialize Winsock";
+            return false;
+        }
+    #endif
+
+        socket_t socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (socket == invalid_socket)
+        {
+            response = "failed to create assistant socket";
+        #ifdef _WIN32
+            WSACleanup();
+        #endif
+            return false;
+        }
+
+        sockaddr_in address = {};
+        address.sin_family      = AF_INET;
+        address.sin_port        = htons(assistant_port);
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+        if (connect(socket, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0)
+        {
+            response = "assistant is not running";
+            close_socket(socket);
+        #ifdef _WIN32
+            WSACleanup();
+        #endif
+            return false;
+        }
+
+        set_receive_timeout(socket, 5000);
+        if (!send_all(socket, "cancel \n"))
+        {
+            response = "failed to send cancel request";
+            close_socket(socket);
+        #ifdef _WIN32
+            WSACleanup();
+        #endif
+            return false;
+        }
+
+        std::string buffer;
+        char receive_buffer[1024];
+        while (buffer.find('\n') == std::string::npos)
+        {
+            const int received = recv(socket, receive_buffer, sizeof(receive_buffer), 0);
+            if (received <= 0)
+            {
+                response = "assistant did not acknowledge cancellation";
+                close_socket(socket);
+            #ifdef _WIN32
+                WSACleanup();
+            #endif
+                return false;
+            }
+
+            buffer.append(receive_buffer, received);
+        }
+
+        close_socket(socket);
+    #ifdef _WIN32
+        WSACleanup();
+    #endif
+
+        const size_t newline = buffer.find('\n');
+        std::string line = buffer.substr(0, newline);
+        if (!line.empty() && line.back() == '\r')
+        {
+            line.pop_back();
+        }
+
+        const size_t separator = line.find(' ');
+        if (separator == std::string::npos)
+        {
+            response = "assistant returned an invalid cancel response";
+            return false;
+        }
+
+        const std::string status = line.substr(0, separator);
+        response = url_decode(line.substr(separator + 1));
+        return status == "ok";
     }
 
     bool send_models_to_assistant(const std::string& api_key, std::string& response)
@@ -866,8 +1510,8 @@ McpAssistant::McpAssistant(Editor* editor) : Widget(editor)
 {
     m_title        = "MCP Assistant";
     m_visible      = false;
-    m_size_initial = spartan::math::Vector2(520.0f, 340.0f);
-    m_size_min     = spartan::math::Vector2(360.0f, 260.0f);
+    m_size_initial = spartan::math::Vector2(660.0f, 540.0f);
+    m_size_min     = spartan::math::Vector2(460.0f, 360.0f);
     m_api_key_file_status = "Will look for cursor_api_key.txt next to the exe when opened.";
     assistant_response.clear();
 }
@@ -969,113 +1613,174 @@ void McpAssistant::OnTickVisible()
 
     UpdateInputOwnership();
 
-    ImGui::TextUnformatted("Cursor key");
-    ImGui::SameLine();
-    ImGui::PushItemWidth(-170.0f);
-    ImGui::InputText("##cursor_api_key", m_cursor_api_key.data(), m_cursor_api_key.size(), ImGuiInputTextFlags_Password);
-    ImGui::PopItemWidth();
-    ImGui::SameLine();
-    if (ImGui::Button("Get key"))
+    const float scale = ui_scale();
+    const ImGuiStyle& style = ImGui::GetStyle();
+    const ImVec4 status_color = is_running ? ImGui::Style::color_ok : ImGui::Style::color_error;
+
+    if (begin_card("##mcp_header"))
     {
-        spartan::FileSystem::OpenUrl("https://cursor.com/dashboard/api?section=user-keys#user-api-keys");
+        ImGuiSp::image(spartan::IconType::Mcp, 22.0f * scale, ImGui::Style::color_accent_1);
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        const bool bold_font = push_bold_font();
+        ImGui::TextUnformatted("Spartan AI");
+        pop_bold_font(bold_font);
+        ImGui::TextDisabled("Ask the engine-aware assistant to inspect, explain, and control the running scene.");
+        ImGui::EndGroup();
+
+        ImGui::SameLine();
+        const float pill_width = (has_api_key ? 132.0f : 118.0f) * scale;
+        const float pill_x = std::max(ImGui::GetCursorPosX(), ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - pill_width);
+        ImGui::SetCursorPosX(pill_x);
+        draw_status_pill(is_assistant_busy ? "working" : (has_api_key ? "ready" : "setup required"), is_assistant_busy ? ImGui::Style::color_warning : (has_api_key ? ImGui::Style::color_ok : ImGui::Style::color_info));
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Clear key"))
-    {
-        m_cursor_api_key[0] = '\0';
-    }
+    end_card();
+
+    ImGui::Spacing();
 
     if (!has_api_key)
     {
-        ImGui::TextWrapped("%s", m_api_key_file_status.c_str());
-        ImGui::TextWrapped("Paste your key here first. It is kept in memory for this Spartan session and is not written to disk.");
+        if (begin_card("##mcp_setup_card"))
+        {
+            draw_section_title("Connect Cursor", "Paste a Cursor API key to start chatting with the assistant.");
+            ImGui::Spacing();
+            ImGui::TextUnformatted("Cursor API key");
+
+            const float button_width = 78.0f * scale;
+            const float input_width = std::max(140.0f * scale, ImGui::GetContentRegionAvail().x - button_width * 2.0f - style.ItemSpacing.x * 2.0f);
+            ImGui::SetNextItemWidth(input_width);
+            ImGui::InputTextWithHint("##cursor_api_key", "paste key", m_cursor_api_key.data(), m_cursor_api_key.size(), ImGuiInputTextFlags_Password);
+            ImGui::SameLine();
+            if (primary_button("Get key", ImVec2(button_width, 0.0f)))
+            {
+                spartan::FileSystem::OpenUrl("https://cursor.com/dashboard/api?section=user-keys#user-api-keys");
+            }
+            ImGui::SameLine();
+            if (ImGuiSp::button("Clear", ImVec2(button_width, 0.0f)))
+            {
+                m_cursor_api_key[0] = '\0';
+            }
+
+            ImGui::Spacing();
+            ImGui::TextDisabled("%s", m_api_key_file_status.c_str());
+            ImGui::TextWrapped("The key stays in memory for this Spartan session and is not written to disk.");
+        }
+        end_card();
+
         return;
     }
 
-    if (!m_api_key_file_status.empty())
+    if (begin_card("##mcp_controls_card"))
     {
-        ImGui::TextDisabled("%s", m_api_key_file_status.c_str());
-    }
+        draw_section_title("Assistant Control", "Manage the local MCP bridge and choose the Cursor agent.");
+        ImGui::Spacing();
 
-    ImGui::Separator();
-    ImGui::TextUnformatted("Engine");
-    ImGui::SameLine(0.0f, 6.0f);
-    ImGui::TextColored(is_running ? ImVec4(0.35f, 0.95f, 0.45f, 1.0f) : ImVec4(0.95f, 0.45f, 0.35f, 1.0f), "%s", is_running ? "active" : "inactive");
+        ImGui::TextUnformatted("Cursor");
+        ImGui::SameLine(0.0f, 8.0f * scale);
+        draw_status_pill("connected", ImGui::Style::color_ok);
+        ImGui::SameLine(0.0f, 8.0f * scale);
+        if (ImGuiSp::button("Clear key"))
+        {
+            m_cursor_api_key[0] = '\0';
+        }
 
-    if (is_running)
-    {
-        ImGui::SameLine(0.0f, 10.0f);
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Engine");
+        ImGui::SameLine(0.0f, 8.0f * scale);
+        draw_status_pill(is_running ? "active" : "inactive", status_color);
+        ImGui::SameLine(0.0f, 8.0f * scale);
         ImGui::TextDisabled("127.0.0.1:%u", spartan::McpServer::GetPort());
+        ImGui::SameLine(0.0f, 10.0f * scale);
+        if (is_running)
+        {
+            if (ImGuiSp::button("Stop MCP"))
+            {
+                spartan::McpServer::Shutdown();
+                log_info("MCP stopped.");
+            }
+        }
+        else
+        {
+            if (primary_button("Start MCP"))
+            {
+                spartan::McpServer::Start();
+            }
+        }
+
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Agent");
+        ImGui::SameLine(0.0f, 8.0f * scale);
+        const float actions_width = 224.0f * scale;
+        ImGui::SetNextItemWidth(std::max(160.0f * scale, ImGui::GetContentRegionAvail().x - actions_width));
+        const char* model_preview = m_model_labels.empty() ? "Auto" : m_model_labels[static_cast<size_t>(m_model_index)].c_str();
+        if (ImGui::BeginCombo("##mcp_agent", model_preview))
+        {
+            for (int i = 0; i < static_cast<int>(m_model_labels.size()); i++)
+            {
+                const bool selected = i == m_model_index;
+                if (ImGui::Selectable(m_model_labels[static_cast<size_t>(i)].c_str(), selected))
+                {
+                    m_model_index = i;
+                }
+
+                if (selected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
         ImGui::SameLine();
-        if (ImGui::Button("Stop MCP"))
+        if (is_assistant_busy)
         {
-            spartan::McpServer::Shutdown();
-            log_info("MCP stopped.");
+            ImGui::BeginDisabled();
+        }
+        if (ImGuiSp::button("Refresh"))
+        {
+            RefreshModels();
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && is_assistant_busy)
+        {
+            ImGui::SetTooltip("Spartan AI is still working.");
+        }
+        ImGui::SameLine();
+        if (ImGuiSp::button("Restart"))
+        {
+            RestartAssistant();
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+        {
+            ImGui::SetTooltip("Kill and relaunch the Node assistant helper so updated tools and prompt load.");
+        }
+        if (is_assistant_busy)
+        {
+            ImGui::EndDisabled();
+        }
+
+        if (!m_api_key_file_status.empty())
+        {
+            ImGui::Spacing();
+            ImGui::TextDisabled("%s", m_api_key_file_status.c_str());
         }
     }
-    else if (ImGui::Button("Start MCP"))
-    {
-        spartan::McpServer::Start();
-    }
+    end_card();
 
-    ImGui::SameLine(0.0f, 14.0f);
-    ImGui::TextUnformatted("Agent");
-    ImGui::SameLine(0.0f, 6.0f);
-    ImGui::PushItemWidth(210.0f);
-    const char* model_preview = m_model_labels.empty() ? "Auto" : m_model_labels[static_cast<size_t>(m_model_index)].c_str();
-    if (ImGui::BeginCombo("##mcp_agent", model_preview))
-    {
-        for (int i = 0; i < static_cast<int>(m_model_labels.size()); i++)
-        {
-            const bool selected = i == m_model_index;
-            if (ImGui::Selectable(m_model_labels[static_cast<size_t>(i)].c_str(), selected))
-            {
-                m_model_index = i;
-            }
+    ImGui::Spacing();
 
-            if (selected)
-            {
-                ImGui::SetItemDefaultFocus();
-            }
-        }
-        ImGui::EndCombo();
-    }
-    ImGui::PopItemWidth();
-
-    ImGui::SameLine();
-    if (is_assistant_busy)
-    {
-        ImGui::BeginDisabled();
-    }
-    if (ImGui::Button("Refresh agents"))
-    {
-        RefreshModels();
-    }
-    if (is_assistant_busy)
-    {
-        ImGui::EndDisabled();
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Button("Restart assistant"))
-    {
-        RestartAssistant();
-    }
-    if (ImGui::IsItemHovered())
-    {
-        ImGui::SetTooltip("Kill and relaunch the Node assistant helper so updated tools and prompt load.");
-    }
-
-    ImGui::Separator();
-
-    const float composer_height = ImGui::GetTextLineHeight() * 5.5f + ImGui::GetStyle().ItemSpacing.y * 5.0f;
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.04f, 0.04f, 0.045f, 0.45f));
-    if (ImGui::BeginChild("##mcp_chat_history", ImVec2(0.0f, -composer_height), true))
+    const float composer_height = std::max(132.0f * scale, ImGui::GetTextLineHeight() * 6.8f + style.ItemSpacing.y * 7.0f);
+    const ImVec4 chat_bg = ImGui::Style::lerp(ImGui::Style::bg_color_1, ImVec4(0.0f, 0.0f, 0.0f, 1.0f), 0.22f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f * scale, 10.0f * scale));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, with_alpha(chat_bg, 0.72f));
+    if (ImGui::BeginChild("##mcp_chat_history", ImVec2(0.0f, -composer_height), ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding))
     {
         if (m_messages.empty() && !is_assistant_busy)
         {
-            ImGui::TextDisabled("Ask Spartan AI to inspect or control the running engine.");
-            ImGui::TextDisabled("Examples: what is selected, create an empty entity, summarize the world.");
+            const bool bold_font = push_bold_font();
+            ImGui::TextUnformatted("Start with a concrete engine task");
+            pop_bold_font(bold_font);
+            ImGui::TextDisabled("Try: what is selected, create an empty entity, summarize the world.");
+            ImGui::TextDisabled("The assistant can use the running MCP bridge when the engine is active.");
         }
 
         for (int i = 0; i < static_cast<int>(m_messages.size()); i++)
@@ -1085,7 +1790,7 @@ void McpAssistant::OnTickVisible()
 
         if (is_assistant_busy)
         {
-            DrawChatMessage({ false, thinking_text() }, static_cast<int>(m_messages.size()));
+            DrawAssistantRun();
         }
 
         if (m_scroll_to_bottom || is_assistant_busy)
@@ -1096,58 +1801,60 @@ void McpAssistant::OnTickVisible()
     }
     ImGui::EndChild();
     ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
 
-    ImGui::TextUnformatted("Message");
-    ImGui::InputTextMultiline(
-        "##mcp_prompt",
-        m_prompt.data(),
-        m_prompt.size(),
-        ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 3.0f)
-    );
+    ImGui::Spacing();
 
-    const bool has_prompt = m_prompt[0] != '\0';
-    if (!has_prompt)
+    if (begin_card("##mcp_composer_card"))
     {
-        ImGui::BeginDisabled();
-    }
+        draw_section_title("Message");
+        ImGui::InputTextMultiline(
+            "##mcp_prompt",
+            m_prompt.data(),
+            m_prompt.size(),
+            ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 3.3f)
+        );
 
-    if (is_assistant_busy)
-    {
-        ImGui::BeginDisabled();
-    }
+        const bool submit_from_keyboard = ImGui::IsItemFocused() && ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Enter);
+        const bool has_prompt = m_prompt[0] != '\0';
+        if (submit_from_keyboard && has_prompt && !is_assistant_busy)
+        {
+            SubmitPrompt();
+        }
 
-    if (ImGui::Button("Send"))
-    {
-        SubmitPrompt();
-    }
+        ImGui::Spacing();
+        if (!has_prompt || is_assistant_busy)
+        {
+            ImGui::BeginDisabled();
+        }
+        if (primary_button("Send", ImVec2(96.0f * scale, 0.0f)))
+        {
+            SubmitPrompt();
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && is_assistant_busy)
+        {
+            ImGui::SetTooltip("Spartan AI is still working.");
+        }
+        if (!has_prompt || is_assistant_busy)
+        {
+            ImGui::EndDisabled();
+        }
 
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && is_assistant_busy)
-    {
-        ImGui::SetTooltip("Spartan AI is still working.");
+        ImGui::SameLine();
+        ImGui::TextDisabled("Ctrl+Enter");
+        ImGui::SameLine();
+        if (ImGuiSp::button("Clear"))
+        {
+            m_prompt[0] = '\0';
+        }
+        ImGui::SameLine();
+        if (ImGuiSp::button("Clear chat"))
+        {
+            m_messages.clear();
+            set_response("");
+        }
     }
-
-    if (is_assistant_busy)
-    {
-        ImGui::EndDisabled();
-    }
-
-    if (!has_prompt)
-    {
-        ImGui::EndDisabled();
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Button("Clear"))
-    {
-        m_prompt[0] = '\0';
-    }
-
-    ImGui::SameLine();
-    if (ImGui::Button("Clear chat"))
-    {
-        m_messages.clear();
-        set_response("");
-    }
+    end_card();
 }
 
 void McpAssistant::SubmitPrompt()
@@ -1170,14 +1877,22 @@ void McpAssistant::SubmitPrompt()
     m_prompt[0] = '\0';
     m_scroll_to_bottom = true;
     set_response("");
-    set_busy(true, "thinking");
-    log_info("Sending prompt to Cursor with model " + model_id + ".");
+    start_local_run(prompt, "sending request to assistant");
+    log_info("Sending prompt to assistant with model " + model_id + ".");
 
     std::thread([prompt, api_key, model_id]()
     {
         std::string response;
         if (!send_prompt_to_assistant(prompt, api_key, model_id, response))
         {
+            if (!should_restart_assistant_after_failure(response))
+            {
+                log_error(response);
+                set_response(response);
+                set_busy(false);
+                return;
+            }
+
             log_info("Starting Cursor assistant.");
             if (!start_assistant_process())
             {
@@ -1201,6 +1916,22 @@ void McpAssistant::SubmitPrompt()
     }).detach();
 }
 
+void McpAssistant::CancelRun()
+{
+    log_info("Cancelling active assistant run.");
+    std::thread([]()
+    {
+        std::string response;
+        if (!send_cancel_to_assistant(response))
+        {
+            log_error(response);
+            return;
+        }
+
+        log_info(response);
+    }).detach();
+}
+
 void McpAssistant::RefreshModels()
 {
     std::string api_key = trim_copy_paste_whitespace(m_cursor_api_key.data());
@@ -1218,6 +1949,14 @@ void McpAssistant::RefreshModels()
         std::string response;
         if (!send_models_to_assistant(api_key, response))
         {
+            if (!should_restart_assistant_after_failure(response))
+            {
+                log_error(response);
+                set_response(response);
+                set_busy(false);
+                return;
+            }
+
             log_info("Starting Cursor assistant.");
             if (!start_assistant_process())
             {
@@ -1325,10 +2064,107 @@ std::string McpAssistant::GetSelectedModelId() const
     return m_model_ids[static_cast<size_t>(m_model_index)];
 }
 
+void McpAssistant::DrawAssistantRun()
+{
+    const AssistantRunState run = get_run_snapshot();
+    if (!run.has_run)
+    {
+        DrawChatMessage({ false, thinking_text() }, static_cast<int>(m_messages.size()));
+        return;
+    }
+
+    const float scale = ui_scale();
+    const ImVec4 state_color =
+        run.cancelled ? ImGui::Style::color_warning :
+        run.failed ? ImGui::Style::color_error :
+        run.active ? ImGui::Style::color_info :
+        ImGui::Style::color_ok;
+
+    ImGui::PushID("assistant_run");
+    if (begin_card("##assistant_run_card"))
+    {
+        const bool bold_font = push_bold_font();
+        ImGui::TextColored(state_color, "%s", run.active ? "Spartan AI is working" : (run.failed ? "Spartan AI failed" : (run.cancelled ? "Spartan AI cancelled" : "Spartan AI finished")));
+        pop_bold_font(bold_font);
+        ImGui::SameLine();
+        ImGui::TextDisabled("%0.1fs", static_cast<float>(run.elapsed_ms) / 1000.0f);
+
+        if (run.active)
+        {
+            ImGui::SameLine();
+            const float cancel_x = std::max(ImGui::GetCursorPosX(), ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 88.0f * scale);
+            ImGui::SetCursorPosX(cancel_x);
+            if (ImGuiSp::button("Cancel", ImVec2(82.0f * scale, 0.0f)))
+            {
+                CancelRun();
+            }
+        }
+
+        if (!run.intent.empty())
+        {
+            ImGui::TextDisabled("route: %s", run.intent.c_str());
+        }
+        if (!run.status.empty())
+        {
+            ImGui::TextWrapped("%s", run.status.c_str());
+        }
+
+        ImGui::Spacing();
+        draw_section_title("Stages");
+        for (const AssistantStage& stage : run.stages)
+        {
+            const ImVec4 color = stage.failed ? ImGui::Style::color_error : (stage.finished ? ImGui::Style::color_ok : ImGui::Style::color_info);
+            ImGui::Bullet();
+            ImGui::SameLine();
+            ImGui::TextColored(color, "%s", stage.title.empty() ? "Stage" : stage.title.c_str());
+            ImGui::SameLine();
+            ImGui::TextDisabled("%s", stage.status.empty() ? (stage.finished ? "done" : "running") : stage.status.c_str());
+            if (stage.duration_ms > 0)
+            {
+                ImGui::SameLine();
+                ImGui::TextDisabled("(%0.1fs)", static_cast<float>(stage.duration_ms) / 1000.0f);
+            }
+        }
+
+        if (!run.receipts.empty())
+        {
+            ImGui::Spacing();
+            draw_section_title("Receipts");
+            for (const AssistantReceipt& receipt : run.receipts)
+            {
+                ImGui::BulletText("%s", receipt.title.c_str());
+                if (!receipt.data.empty())
+                {
+                    ImGui::Indent(16.0f * scale);
+                    ImGui::TextWrapped("%s", receipt.data.c_str());
+                    ImGui::Unindent(16.0f * scale);
+                }
+            }
+        }
+
+        if (!run.raw_log.empty())
+        {
+            ImGui::Spacing();
+            if (ImGui::TreeNodeEx("Raw event log", 0))
+            {
+                for (const std::string& entry : run.raw_log)
+                {
+                    ImGui::TextWrapped("%s", entry.c_str());
+                }
+                ImGui::TreePop();
+            }
+        }
+    }
+    end_card();
+    ImGui::PopID();
+    ImGui::Spacing();
+}
+
 void McpAssistant::DrawChatMessage(const ChatMessage& message, int index)
 {
+    const float scale = ui_scale();
     const float width_available = ImGui::GetContentRegionAvail().x;
-    const float bubble_width = std::max(220.0f, width_available * 0.76f);
+    const float bubble_width = std::max(240.0f * scale, width_available * 0.78f);
     const float bubble_width_clamped = std::min(bubble_width, width_available);
 
     if (message.is_user)
@@ -1336,25 +2172,45 @@ void McpAssistant::DrawChatMessage(const ChatMessage& message, int index)
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, width_available - bubble_width_clamped));
     }
 
-    const ImVec4 accent = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
-    const ImVec4 user_bg = ImVec4(accent.x, accent.y, accent.z, 0.22f);
-    const ImVec4 assistant_bg = ImVec4(0.12f, 0.12f, 0.135f, 0.92f);
-    const ImVec4 role_color = message.is_user ? ImVec4(0.82f, 0.92f, 1.0f, 1.0f) : ImVec4(0.70f, 0.95f, 0.75f, 1.0f);
+    const ImVec4 accent = ImGui::Style::color_accent_1;
+    const ImVec4 user_bg = with_alpha(accent, 0.20f);
+    const ImVec4 assistant_bg = softened(ImGui::Style::bg_color_2, 0.46f, 0.94f);
+    const ImVec4 border = message.is_user ? with_alpha(accent, 0.34f) : with_alpha(ImGui::Style::color_ok, 0.18f);
+    const ImVec4 role_color = message.is_user ? accent : ImGui::Style::color_ok;
 
     ImGui::PushID(index);
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 8.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 7.0f * scale);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(11.0f * scale, 9.0f * scale));
     ImGui::PushStyleColor(ImGuiCol_ChildBg, message.is_user ? user_bg : assistant_bg);
+    ImGui::PushStyleColor(ImGuiCol_Border, border);
 
-    if (ImGui::BeginChild("##mcp_message", ImVec2(bubble_width_clamped, 0.0f), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysUseWindowPadding))
+    if (ImGui::BeginChild("##mcp_message", ImVec2(bubble_width_clamped, 0.0f), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_Borders | ImGuiChildFlags_AlwaysUseWindowPadding))
     {
+        const bool bold_font = push_bold_font();
         ImGui::TextColored(role_color, "%s", message.is_user ? "You" : "Spartan AI");
-        ImGui::Spacing();
-        ImGui::TextWrapped("%s", message.text.c_str());
+        pop_bold_font(bold_font);
+
+        std::vector<char> selectable_text(message.text.begin(), message.text.end());
+        selectable_text.push_back('\0');
+        const float text_width = std::max(1.0f, ImGui::GetContentRegionAvail().x);
+        const float text_height = ImGui::CalcTextSize(message.text.c_str(), nullptr, false, text_width).y + ImGui::GetStyle().FramePadding.y * 2.0f;
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+        ImGui::InputTextMultiline(
+            "##mcp_message_text",
+            selectable_text.data(),
+            selectable_text.size(),
+            ImVec2(-FLT_MIN, text_height),
+            ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_NoUndoRedo | ImGuiInputTextFlags_WordWrap
+        );
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(3);
     }
     ImGui::EndChild();
 
-    ImGui::PopStyleColor();
+    ImGui::PopStyleColor(2);
     ImGui::PopStyleVar(2);
     ImGui::PopID();
     ImGui::Spacing();

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import net from "node:net";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { EngineClient } from "./engine_client.mjs";
 
 const defaults = {
   host: process.env.SPARTAN_ENGINE_HOST ?? "127.0.0.1",
@@ -35,86 +35,19 @@ if (!Number.isInteger(engine_timeout_ms) || engine_timeout_ms <= 0) {
   process.exit(1);
 }
 
-function protocol_value(value) {
-  if (Array.isArray(value)) {
-    return value.join(",");
-  }
-
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-
-  return String(value);
-}
-
-function command_line(command, args = {}) {
-  const parts = [command];
-  for (const [key, value] of Object.entries(args)) {
-    if (value === undefined || value === null) {
-      continue;
-    }
-
-    parts.push(`${key}=${encodeURIComponent(protocol_value(value))}`);
-  }
-
-  return `${parts.join(" ")}\n`;
-}
+const engine = new EngineClient({
+  host: engine_host,
+  port: engine_port,
+  timeout_ms: engine_timeout_ms,
+});
 
 function send_engine_command(command, args = {}) {
-  return new Promise((resolve) => {
-    const socket = net.createConnection({ host: engine_host, port: engine_port });
-    let buffer = "";
-    let finished = false;
-
-    function finish(result) {
-      if (finished) {
-        return;
-      }
-
-      finished = true;
-      socket.destroy();
-      resolve(result);
-    }
-
-    socket.setTimeout(engine_timeout_ms);
-
-    socket.on("connect", () => {
-      socket.write(command_line(command, args));
-    });
-
-    socket.on("data", (chunk) => {
-      buffer += chunk.toString("utf8");
-      const newline = buffer.indexOf("\n");
-      if (newline === -1) {
-        return;
-      }
-
-      const line = buffer.slice(0, newline).trim();
-      try {
-        finish(JSON.parse(line));
-      } catch (error) {
-        finish({ ok: false, error: `invalid engine response, ${error.message}` });
-      }
-    });
-
-    socket.on("timeout", () => {
-      finish({ ok: false, error: `engine request timed out after ${engine_timeout_ms}ms` });
-    });
-
-    socket.on("error", (error) => {
-      finish({ ok: false, error: `engine connection failed, ${error.message}` });
-    });
-
-    socket.on("end", () => {
-      if (!finished) {
-        finish({ ok: false, error: "engine connection closed" });
-      }
-    });
-  });
+  return engine.command(command, args, engine_timeout_ms);
 }
 
 function tool_result(result) {
   return {
+    structuredContent: result,
     content: [
       {
         type: "text",
@@ -125,8 +58,14 @@ function tool_result(result) {
   };
 }
 
-function register_tool(server, name, description, schema, command, map_args = (args) => args) {
-  server.tool(name, description, schema, async (args) => {
+function register_tool(server, name, description, schema, command, options = {}) {
+  server.registerTool(name, {
+    title: options.title ?? name.replaceAll("_", " "),
+    description,
+    inputSchema: schema,
+    annotations: options.annotations,
+  }, async (args) => {
+    const map_args = options.map_args ?? ((value) => value);
     const result = await send_engine_command(command, map_args(args));
     return tool_result(result);
   });
@@ -173,9 +112,34 @@ const server = new McpServer({
   version: "0.1.0",
 });
 
-register_tool(server, "ping", "Check that the Spartan live-control endpoint is reachable.", {}, "ping");
+const read_only = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+};
 
-register_tool(server, "engine_status", "Read editor/runtime status, frame metrics, and loading state.", {}, "engine_status");
+const edit_tool = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
+const destructive_tool = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
+register_tool(server, "ping", "Check that the Spartan live-control endpoint is reachable.", {}, "ping", {
+  annotations: read_only,
+});
+
+register_tool(server, "engine_status", "Read editor/runtime status, frame metrics, and loading state.", {}, "engine_status", {
+  annotations: read_only,
+});
 
 register_tool(
   server,
@@ -188,9 +152,12 @@ register_tool(
     editor_visible: z.boolean().optional(),
   },
   "engine_set_mode",
+  { annotations: edit_tool },
 );
 
-register_tool(server, "cvar_list", "List registered console variables.", {}, "cvar_list");
+register_tool(server, "cvar_list", "List registered console variables.", {}, "cvar_list", {
+  annotations: read_only,
+});
 
 register_tool(
   server,
@@ -200,6 +167,7 @@ register_tool(
     name: z.string(),
   },
   "cvar_get",
+  { annotations: read_only },
 );
 
 register_tool(
@@ -211,6 +179,7 @@ register_tool(
     value: z.string(),
   },
   "cvar_set",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -222,9 +191,16 @@ register_tool(
     minimum_type: z.enum(["info", "warning", "error"]).optional(),
   },
   "console_read",
+  { annotations: read_only },
 );
 
-register_tool(server, "world_summary", "Read the current world name, path, counts, environment, and bounds.", {}, "world_summary");
+register_tool(server, "world_summary", "Read the current world name, path, counts, environment, and bounds.", {}, "world_summary", {
+  annotations: read_only,
+});
+
+register_tool(server, "context_snapshot", "Read engine status, world summary, and current selection in one native request.", {}, "context_snapshot", {
+  annotations: read_only,
+});
 
 register_tool(
   server,
@@ -234,6 +210,7 @@ register_tool(
     path: z.string(),
   },
   "world_load",
+  { annotations: destructive_tool },
 );
 
 register_tool(
@@ -244,6 +221,7 @@ register_tool(
     path: z.string().optional(),
   },
   "world_save",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -256,6 +234,7 @@ register_tool(
     description: z.string().optional(),
   },
   "world_set_environment",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -267,6 +246,7 @@ register_tool(
     offset: z.number().int().min(0).optional(),
   },
   "entity_list",
+  { annotations: read_only },
 );
 
 register_tool(
@@ -279,6 +259,20 @@ register_tool(
     limit: z.number().int().min(1).max(100).optional(),
   },
   "entity_find",
+  { annotations: read_only },
+);
+
+register_tool(
+  server,
+  "entity_resolve",
+  "Resolve one entity by id, name, or current selection and return a compact entity receipt.",
+  {
+    id: z.string().optional(),
+    name: z.string().optional(),
+    selected: z.boolean().optional(),
+  },
+  "entity_resolve",
+  { annotations: read_only },
 );
 
 register_tool(
@@ -289,13 +283,20 @@ register_tool(
     id: z.string(),
   },
   "entity_get",
+  { annotations: read_only },
 );
 
-register_tool(server, "selection_get", "Read the selected entity ids.", {}, "selection_get");
+register_tool(server, "selection_get", "Read the selected entity ids.", {}, "selection_get", {
+  annotations: read_only,
+});
 
-register_tool(server, "component_types", "List valid Spartan component type names.", {}, "component_types");
+register_tool(server, "component_types", "List valid Spartan component type names.", {}, "component_types", {
+  annotations: read_only,
+});
 
-register_tool(server, "primitive_types", "List valid Spartan built-in primitive mesh names and aliases.", {}, "primitive_types");
+register_tool(server, "primitive_types", "List valid Spartan built-in primitive mesh names and aliases.", {}, "primitive_types", {
+  annotations: read_only,
+});
 
 register_tool(
   server,
@@ -306,6 +307,7 @@ register_tool(
     parent_id: z.string().optional(),
   },
   "entity_create_empty",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -314,13 +316,18 @@ register_tool(
   "Create a primitive render entity in edit mode, optionally with transform, parent, and physics.",
   primitive_create_args,
   "entity_create_primitive",
+  { annotations: edit_tool },
 );
 
-server.tool(
+server.registerTool(
   "entity_create_primitive_batch",
-  "Create many primitive render entities in edit mode. Use this instead of repeated single creates for layouts.",
   {
-    items: z.array(z.object(primitive_create_args)).min(1).max(64),
+    title: "entity create primitive batch",
+    description: "Create many primitive render entities in edit mode. Uses one persistent engine connection but still applies each primitive as a separate engine command.",
+    inputSchema: {
+      items: z.array(z.object(primitive_create_args)).min(1).max(64),
+    },
+    annotations: edit_tool,
   },
   async ({ items }) => {
     const created = [];
@@ -361,6 +368,7 @@ register_tool(
     parent_id: z.string().optional(),
   },
   "entity_update",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -371,16 +379,18 @@ register_tool(
     id: z.string(),
   },
   "entity_delete",
+  { annotations: destructive_tool },
 );
 
 register_tool(
   server,
   "entity_delete_children",
-  "Delete all direct children of an entity in edit mode.",
+  "Delete all direct children of an entity immediately in edit mode and return any remaining direct children.",
   {
     id: z.string(),
   },
   "entity_delete_children",
+  { annotations: destructive_tool },
 );
 
 register_tool(
@@ -391,6 +401,7 @@ register_tool(
     id: z.string(),
   },
   "entity_select",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -405,6 +416,7 @@ register_tool(
     scale: vector3.optional(),
   },
   "entity_set_transform",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -416,6 +428,7 @@ register_tool(
     type: component_type,
   },
   "entity_add_component",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -427,6 +440,7 @@ register_tool(
     type: component_type,
   },
   "entity_remove_component",
+  { annotations: destructive_tool },
 );
 
 register_tool(
@@ -438,6 +452,7 @@ register_tool(
     type: component_type,
   },
   "component_get",
+  { annotations: read_only },
 );
 
 register_tool(
@@ -451,6 +466,7 @@ register_tool(
     value: component_value,
   },
   "component_set",
+  { annotations: edit_tool },
 );
 
 register_tool(
@@ -465,7 +481,12 @@ register_tool(
     code: z.string(),
   },
   "execute_lua",
+  { annotations: destructive_tool },
 );
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+process.on("beforeExit", () => {
+  engine.close();
+});
