@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Commands/Console/ConsoleCommands.h"
 #include "../Core/ProgressTracker.h"
 #include "../Logging/Log.h"
+#include "../Physics/PhysicsWorld.h"
 #include "../Profiling/Profiler.h"
 #include "../World/World.h"
 #include "../World/Entity.h"
@@ -693,6 +694,31 @@ namespace spartan
             return json;
         }
 
+        std::string command_camera_snapshot()
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            Camera* camera = World::GetCamera();
+            if (camera == nullptr || camera->GetEntity() == nullptr)
+            {
+                return json_error("camera not found");
+            }
+
+            Entity* entity = camera->GetEntity();
+            std::string json = "{\"ok\":true";
+            json += ",\"entity_id\":" + json_string(std::to_string(entity->GetObjectId()));
+            json += ",\"entity_name\":" + json_string(entity->GetObjectName());
+            json += ",\"position\":" + json_vector3(entity->GetPosition());
+            json += ",\"forward\":" + json_vector3(entity->GetForward());
+            json += ",\"right\":" + json_vector3(entity->GetRight());
+            json += ",\"up\":" + json_vector3(entity->GetUp());
+            json += "}";
+            return json;
+        }
+
         std::string command_engine_set_mode(const McpRequest& request)
         {
             if (const std::optional<std::string> mode = get_argument(request, "mode"))
@@ -1015,6 +1041,59 @@ namespace spartan
             }
 
             return command_world_summary();
+        }
+
+        std::string command_world_raycast(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            const std::optional<std::string> origin_arg = get_argument(request, "origin");
+            const std::optional<std::string> direction_arg = get_argument(request, "direction");
+            if (!origin_arg || !direction_arg)
+            {
+                return json_error("missing origin or direction");
+            }
+
+            math::Vector3 origin;
+            math::Vector3 direction;
+            if (!parse_vector3(*origin_arg, origin))
+            {
+                return json_error("invalid origin");
+            }
+            if (!parse_vector3(*direction_arg, direction) || direction == math::Vector3::Zero)
+            {
+                return json_error("invalid direction");
+            }
+
+            float max_distance = 1000.0f;
+            if (const std::optional<std::string> max_distance_arg = get_argument(request, "max_distance"))
+            {
+                if (!parse_float(*max_distance_arg, max_distance) || max_distance <= 0.0f)
+                {
+                    return json_error("invalid max_distance");
+                }
+            }
+
+            math::Vector3 hit_position;
+            Entity* hit_entity = nullptr;
+            const bool hit = PhysicsWorld::RaycastStatic(origin, direction, max_distance, hit_position, hit_entity);
+
+            std::string json = "{\"ok\":true";
+            json += ",\"hit\":" + json_bool(hit);
+            if (hit)
+            {
+                json += ",\"position\":" + json_vector3(hit_position);
+                if (hit_entity != nullptr)
+                {
+                    json += ",\"entity_id\":" + json_string(std::to_string(hit_entity->GetObjectId()));
+                    json += ",\"entity_name\":" + json_string(hit_entity->GetObjectName());
+                }
+            }
+            json += "}";
+            return json;
         }
 
         std::string command_entity_list(const McpRequest& request)
@@ -2097,6 +2176,7 @@ namespace spartan
             json += ",\"status\":" + command_engine_status();
             json += ",\"world\":" + command_world_summary();
             json += ",\"selection\":" + command_selection_get();
+            json += ",\"camera\":" + command_camera_snapshot();
             json += "}";
             return json;
         }
@@ -2393,7 +2473,13 @@ namespace spartan
                 with_physics = true;
             }
 
+            Stopwatch step_timer;
             Entity* entity = World::CreateEntity();
+            float step_ms = step_timer.GetElapsedTimeMs();
+            if (step_ms > 500.0f)
+            {
+                SP_LOG_WARNING("MCP entity_create_primitive: World::CreateEntity took %.1f ms", step_ms);
+            }
             if (entity == nullptr)
             {
                 return json_error("failed to create entity");
@@ -2417,23 +2503,53 @@ namespace spartan
                 entity->SetScaleLocal(*parsed_scale);
             }
 
+            step_timer.Start();
             Render* renderable = entity->AddComponent<Render>();
+            step_ms = step_timer.GetElapsedTimeMs();
+            if (step_ms > 500.0f)
+            {
+                SP_LOG_WARNING("MCP entity_create_primitive: AddComponent<Render> took %.1f ms", step_ms);
+            }
             if (renderable == nullptr)
             {
                 return json_error("failed to add render component");
             }
+            step_timer.Start();
             renderable->SetMesh(mesh_type);
+            step_ms = step_timer.GetElapsedTimeMs();
+            if (step_ms > 500.0f)
+            {
+                SP_LOG_WARNING("MCP entity_create_primitive: Render::SetMesh took %.1f ms", step_ms);
+            }
+            step_timer.Start();
             renderable->SetDefaultMaterial();
+            step_ms = step_timer.GetElapsedTimeMs();
+            if (step_ms > 500.0f)
+            {
+                SP_LOG_WARNING("MCP entity_create_primitive: Render::SetDefaultMaterial took %.1f ms", step_ms);
+            }
 
             if (with_physics)
             {
+                step_timer.Start();
                 Physics* physics = entity->AddComponent<Physics>();
+                step_ms = step_timer.GetElapsedTimeMs();
+                if (step_ms > 500.0f)
+                {
+                    SP_LOG_WARNING("MCP entity_create_primitive: AddComponent<Physics> took %.1f ms", step_ms);
+                }
                 if (physics == nullptr)
                 {
                     return json_error("failed to add physics component");
                 }
 
+                step_timer.Start();
                 physics->SetBodyType(body_type);
+                step_ms = step_timer.GetElapsedTimeMs();
+                if (step_ms > 500.0f)
+                {
+                    SP_LOG_WARNING("MCP entity_create_primitive: Physics::SetBodyType(%s) took %.1f ms", body_type_to_name(body_type).c_str(), step_ms);
+                }
                 if (physics_static)
                 {
                     physics->SetStatic(*physics_static);
@@ -2728,6 +2844,10 @@ namespace spartan
         {
             return command_world_set_environment(request);
         }
+        if (request.command == "world_raycast")
+        {
+            return command_world_raycast(request);
+        }
         if (request.command == "entity_list")
         {
             return command_entity_list(request);
@@ -2747,6 +2867,10 @@ namespace spartan
         if (request.command == "context_snapshot")
         {
             return command_context_snapshot();
+        }
+        if (request.command == "camera_snapshot")
+        {
+            return command_camera_snapshot();
         }
         if (request.command == "entity_resolve")
         {

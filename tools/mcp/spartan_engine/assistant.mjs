@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import net from "node:net";
+import { append_agent_memory } from "./agent_memory.mjs";
+import { append_debug_log } from "./debug_log.mjs";
 import { EngineClient } from "./engine_client.mjs";
 import { run_cursor_fallback, list_models, dispose_cached_agent } from "./cursor_agent.mjs";
 import { run_fast_path } from "./fast_paths.mjs";
@@ -54,10 +56,32 @@ const engine = new EngineClient({
   host: engine_host,
   port: engine_port,
   timeout_ms: context_timeout_ms,
+  source: "assistant",
+});
+void append_debug_log({
+  type: "assistant_started",
+  source: "assistant",
+  port: assistant_port,
+  engine_host,
+  engine_port,
+  client_features: {
+    idle_socket_reuse: true,
+    idle_close_ms: 250,
+    command_timeout_names: true,
+  },
 });
 
 const active_runs = new Map();
 let prompt_chain = Promise.resolve();
+
+function short_text(value, max_length = 180) {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim();
+  return text.length <= max_length ? text : `${text.slice(0, max_length - 3)}...`;
+}
+
+function capability_gap_note(prompt, detail) {
+  return `Capability gap: ${short_text(detail)} Prompt: "${short_text(prompt)}"`;
+}
 
 function sanitize_tool_args(args) {
   if (!args) {
@@ -194,6 +218,12 @@ class AssistantRun {
       duration_ms: Date.now() - started_at,
       result: summarize_tool_result(result),
     });
+    if (!result.ok && String(result.error ?? "").toLowerCase().includes("unknown command")) {
+      await this.report_capability_gap(`Native MCP command or tool \`${name}\` is missing from the engine bridge or Node registry.`);
+    }
+    if (!result.ok && (String(result.code ?? "") === "engine_timeout" || String(result.error ?? "").toLowerCase().includes("timed out"))) {
+      await this.report_capability_gap(`Native MCP command \`${name}\` timed out. Error: ${result.error ?? "timeout"}`);
+    }
     this.throw_if_cancelled();
     return result;
   }
@@ -217,6 +247,22 @@ class AssistantRun {
       summary,
       duration_ms: this.elapsed_ms(),
     });
+  }
+
+  async report_capability_gap(detail) {
+    const note = capability_gap_note(this.prompt, detail);
+    try {
+      await append_agent_memory("Problem Reports", note);
+      this.receipt("capability gap logged", {
+        section: "Problem Reports",
+        note,
+      });
+    } catch (error) {
+      this.receipt("capability gap log failed", {
+        error: error.message,
+        note,
+      });
+    }
   }
 }
 
@@ -266,6 +312,13 @@ async function execute_prompt(socket, payload) {
   const stop_heartbeat = start_heartbeat(run, () => phase);
   const intent = route_intent(payload.prompt);
   run.start(intent);
+  void append_debug_log({
+    type: "assistant_prompt",
+    source: "assistant",
+    run_id: run.id,
+    prompt: payload.prompt,
+    intent,
+  });
 
   try {
     let summary = null;
@@ -281,6 +334,11 @@ async function execute_prompt(socket, payload) {
     summary = await run_fast_path(run, intent, payload.prompt);
 
     if (summary === null) {
+      if (intent.allow_cursor_fallback === false) {
+        await run.report_capability_gap(`No deterministic scene operation matched intent ${intent.kind}. Add a native MCP tool or recipe instead of using Cursor fallback.`);
+        throw new Error("No deterministic Spartan scene operation matched this request, and live scene edits are not allowed to fall back to Cursor.");
+      }
+
       await run.stage("Escalate", "no direct tool path matched, starting Cursor only now", async () => {
         run.receipt("cursor fallback", {
           reason: "no deterministic tool path matched this request",

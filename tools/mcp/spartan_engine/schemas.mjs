@@ -60,12 +60,24 @@ export const output_schemas = {
     path: z.string().optional(),
     memory: z.string().optional(),
   }),
+  debug_log: with_error_fields({
+    path: z.string().optional(),
+    log: z.string().optional(),
+  }),
   engine_status: with_error_fields({
     playing: z.boolean().optional(),
     paused: z.boolean().optional(),
     loading: z.boolean().optional(),
     fps: z.number().optional(),
     frame_ms: z.number().optional(),
+  }),
+  camera_snapshot: with_error_fields({
+    entity_id: z.string().optional(),
+    entity_name: z.string().optional(),
+    position: vector3.optional(),
+    forward: vector3.optional(),
+    right: vector3.optional(),
+    up: vector3.optional(),
   }),
   world_summary: with_error_fields({
     name: z.string().optional(),
@@ -75,10 +87,17 @@ export const output_schemas = {
     wind: vector3.optional(),
     bounds: any_object.optional(),
   }),
+  world_raycast: with_error_fields({
+    hit: z.boolean().optional(),
+    position: vector3.optional(),
+    entity_id: z.string().optional(),
+    entity_name: z.string().optional(),
+  }),
   context_snapshot: with_error_fields({
     status: any_object.optional(),
     world: any_object.optional(),
     selection: any_object.optional(),
+    camera: any_object.optional(),
   }),
   console_read: with_error_fields({
     entries: z.array(any_object).optional(),

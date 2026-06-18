@@ -19,8 +19,14 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Good Agent Strategies
 - Start engine tasks with \`spartan_status\` or \`context_snapshot\`.
+- Use \`debug_log_read\` after failures to inspect actual engine command inputs and outputs.
 - Use \`search_capabilities\` and \`get_capability_details\` before guessing tool names.
 - Resolve targets with \`entity_resolve\` before mutating named or selected entities.
+- Use \`camera_snapshot\` before interpreting camera-relative placement.
+- Use \`world_raycast\` for ground or surface-relative placement when possible.
+- Live scene edits should use deterministic tools or fail fast, not Cursor fallback.
+- Missing deterministic capabilities should be logged immediately under Problem Reports.
+- User convention, \`physics <primitive>\` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
 - For repeated scene work, prefer \`entity_create_primitive_batch\` or one focused \`execute_lua\` script.
 - For source questions, use \`search_codebase\`, then \`read_source_file\` for focused context.
 

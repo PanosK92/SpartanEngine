@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { EngineClient } from "./engine_client.mjs";
+import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
 import { component_property_catalog, component_schema_markdown, edit_rules, engine_overview, search_capability_catalog } from "./knowledge.mjs";
 import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
@@ -57,6 +58,21 @@ const engine = new EngineClient({
   host: engine_host,
   port: engine_port,
   timeout_ms: engine_timeout_ms,
+  source: "server",
+});
+void append_debug_log({
+  type: "server_started",
+  source: "server",
+  engine_host,
+  engine_port,
+  transport: requested_transport,
+  http_enabled,
+  stdio_enabled,
+  client_features: {
+    idle_socket_reuse: true,
+    idle_close_ms: 250,
+    command_timeout_names: true,
+  },
 });
 
 const codebase = get_shared_codebase();
@@ -388,6 +404,22 @@ register_local_tool("agent_memory_replace", {
   }
 });
 
+register_local_tool("debug_log_read", {
+  title: "Debug Log Read",
+  description: "Read recent Spartan MCP debug trace entries, including assistant prompts and engine command results.",
+  inputSchema: {
+    limit: z.number().int().min(1).max(500).optional(),
+  },
+  outputSchema: output_schemas.debug_log,
+  annotations: read_only,
+}, async ({ limit }) => {
+  return tool_result({
+    ok: true,
+    path: debug_log_path,
+    log: await read_debug_log(limit ?? 80),
+  });
+});
+
 register_tool(server, "ping", "Check that the Spartan live-control endpoint is reachable.", {}, "ping", {
   annotations: read_only,
 });
@@ -460,6 +492,11 @@ register_tool(server, "context_snapshot", "Read engine status, world summary, an
   outputSchema: output_schemas.context_snapshot,
 });
 
+register_tool(server, "camera_snapshot", "Read the live editor camera position and basis vectors for camera-relative placement.", {}, "camera_snapshot", {
+  annotations: read_only,
+  outputSchema: output_schemas.camera_snapshot,
+});
+
 register_tool(
   server,
   "world_load",
@@ -493,6 +530,19 @@ register_tool(
   },
   "world_set_environment",
   { annotations: edit_tool, outputSchema: output_schemas.world_summary },
+);
+
+register_tool(
+  server,
+  "world_raycast",
+  "Cast a ray against static world physics and return the hit position and entity.",
+  {
+    origin: vector3,
+    direction: vector3,
+    max_distance: z.number().positive().optional(),
+  },
+  "world_raycast",
+  { annotations: read_only, outputSchema: output_schemas.world_raycast },
 );
 
 register_tool(
@@ -838,6 +888,15 @@ register_text_resource(
   "Spartan Agent Memory",
   "Shared memory for future Spartan agents, including engine facts, strategies, gotchas, and maintainer advice.",
   () => read_agent_memory(),
+);
+
+register_text_resource(
+  "debug_log",
+  "spartan://agent/debug-log",
+  "Spartan MCP Debug Log",
+  "Recent assistant prompts and engine command inputs/outputs for debugging MCP behavior.",
+  () => read_debug_log(120),
+  "application/jsonl",
 );
 
 function raw_shape_to_json_schema(shape) {

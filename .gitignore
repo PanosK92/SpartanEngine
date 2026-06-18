@@ -69,6 +69,8 @@ artifacts/
 *.tmp
 *.tmp_proj
 *.log
+MCP_DEBUG.jsonl
+MCP_DEBUG.jsonl.1
 *.vspscc
 *.vssscc
 .builds

@@ -7,6 +7,80 @@ function entity_label(entity) {
   return entity?.name ? `${entity.name} (${entity.id})` : String(entity?.id ?? "unknown");
 }
 
+function as_vector3(value) {
+  if (!Array.isArray(value) || value.length !== 3) {
+    return null;
+  }
+
+  const vector = value.map((component) => Number(component));
+  return vector.every(Number.isFinite) ? vector : null;
+}
+
+async function read_camera_snapshot(run) {
+  const snapshot = await run.stage("Read Context", "reading scene context for deterministic placement", () => run.tool("context_snapshot", {}, 5000));
+  if (!snapshot.ok) {
+    throw new Error(snapshot.error ?? "context_snapshot failed");
+  }
+
+  run.receipt("scene context", {
+    status: snapshot.status,
+    world: snapshot.world,
+    camera: snapshot.camera,
+  });
+
+  if (snapshot.camera?.ok) {
+    return snapshot.camera;
+  }
+
+  const camera = await run.stage("Read Camera", "reading focused camera pose", () => run.tool("camera_snapshot", {}, 5000));
+  if (!camera.ok) {
+    if (String(camera.error ?? "").toLowerCase().includes("unknown command")) {
+      throw new Error("camera-relative placement needs the native camera_snapshot command. Rebuild Spartan Engine so the C++ MCP bridge exposes it.");
+    }
+    throw new Error(camera.error ?? "camera_snapshot failed");
+  }
+
+  return camera;
+}
+
+async function place_above_ground(run, position, height, { use_raycast = false } = {}) {
+  if (!use_raycast)
+  {
+    const placed = [position[0], height, position[2]];
+    run.receipt("ground placement", {
+      mode: "world y",
+      position: placed,
+    });
+    return placed;
+  }
+
+  const ray_origin = [position[0], Math.max(position[1] + 500.0, height + 500.0), position[2]];
+  const raycast = await run.stage("Ground Placement", "raycasting ground under target", () => run.tool("world_raycast", {
+    origin: ray_origin,
+    direction: [0, -1, 0],
+    max_distance: 1000,
+  }, 3000));
+
+  if (raycast.ok && raycast.hit) {
+    const hit_position = as_vector3(raycast.position);
+    if (hit_position) {
+      const grounded = [position[0], hit_position[1] + height, position[2]];
+      run.receipt("ground placement", {
+        hit: raycast.entity_name ?? raycast.entity_id ?? "static world",
+        position: grounded,
+      });
+      return grounded;
+    }
+  }
+
+  const fallback = [position[0], height, position[2]];
+  run.receipt("ground placement", {
+    fallback: raycast.ok ? "no ground hit" : (raycast.error ?? "world_raycast unavailable"),
+    position: fallback,
+  });
+  return fallback;
+}
+
 async function resolve_target(run, intent, { allow_create = false } = {}) {
   const args = intent.use_selected ? { selected: true } : { name: intent.target_name };
   if (!intent.use_selected && !intent.target_name) {
@@ -154,6 +228,133 @@ async function run_simple_read(run, prompt) {
     `World: ${world.name ?? "unknown"} with ${world.entity_count ?? "unknown"} entities.`,
     `Engine: ${status.playing ? "playing" : "edit mode"}, ${status.loading ? "loading" : "ready"}.`,
   ].join(" ");
+}
+
+function default_body_type_for_mesh(mesh)
+{
+  if (mesh === "sphere")
+  {
+    return "sphere";
+  }
+  if (mesh === "quad")
+  {
+    return "plane";
+  }
+  if (mesh === "cylinder")
+  {
+    return "capsule";
+  }
+  return "box";
+}
+
+async function apply_primitive_physics(run, entity, intent)
+{
+  const id = entity?.id;
+  if (!id)
+  {
+    throw new Error("entity_create_primitive returned no entity id for physics setup");
+  }
+
+  const add_physics = await run.stage("Add Physics", `adding physics to ${entity.name ?? id}`, () => run.tool("entity_add_component", { id, type: "physics" }, 5000));
+  if (!add_physics.ok)
+  {
+    throw new Error(add_physics.error ?? "entity_add_component failed");
+  }
+
+  const body_type = intent.body_type ?? default_body_type_for_mesh(intent.mesh);
+  const configured = await run.stage("Configure Physics", `setting ${body_type} body type`, () => run.tool("component_set", {
+    id,
+    type: "physics",
+    property: "body_type",
+    value: body_type,
+  }, 5000));
+  if (!configured.ok)
+  {
+    throw new Error(configured.error ?? "component_set failed");
+  }
+
+  let is_static = undefined;
+  if (typeof intent.physics_static === "boolean")
+  {
+    is_static = intent.physics_static;
+    const static_result = await run.stage("Configure Physics", `setting static ${is_static}`, () => run.tool("component_set", {
+      id,
+      type: "physics",
+      property: "static",
+      value: is_static,
+    }, 5000));
+    if (!static_result.ok)
+    {
+      throw new Error(static_result.error ?? "component_set static failed");
+    }
+  }
+
+  run.receipt("physics configured", {
+    id,
+    name: entity.name,
+    body_type,
+    static: is_static,
+  });
+  return body_type;
+}
+
+async function run_create_primitive(run, intent) {
+  const args = {
+    mesh: intent.mesh,
+    name: intent.name,
+  };
+
+  let position = Array.isArray(intent.position) ? [...intent.position] : undefined;
+  if (Number.isFinite(intent.camera_forward_distance)) {
+    const camera = await read_camera_snapshot(run);
+    const camera_position = as_vector3(camera.position);
+    const camera_forward = as_vector3(camera.forward);
+    if (!camera_position || !camera_forward) {
+      throw new Error("camera_snapshot returned an invalid transform");
+    }
+
+    position = [
+      Number(camera_position[0]) + Number(camera_forward[0]) * intent.camera_forward_distance,
+      Number(camera_position[1]) + Number(camera_forward[1]) * intent.camera_forward_distance,
+      Number(camera_position[2]) + Number(camera_forward[2]) * intent.camera_forward_distance,
+    ];
+    run.receipt("camera placement", {
+      camera: camera.entity_name ?? camera.entity_id,
+      distance: intent.camera_forward_distance,
+      position,
+    });
+  }
+
+  if (Number.isFinite(intent.height_above_ground)) {
+    position = position ?? [0, 0, 0];
+    position = await place_above_ground(run, position, intent.height_above_ground, { use_raycast: Boolean(intent.use_ground_raycast) });
+  }
+
+  if (Array.isArray(position)) {
+    args.position = position;
+  }
+
+  run.receipt("create arguments", args);
+  const result = await run.stage("Create Primitive", `creating ${intent.name}`, () => run.tool("entity_create_primitive", args, 10000));
+  if (!result.ok) {
+    throw new Error(result.error ?? "entity_create_primitive failed");
+  }
+
+  let physics_body_type = undefined;
+  if (intent.with_physics)
+  {
+    physics_body_type = await apply_primitive_physics(run, result.entity, intent);
+  }
+
+  run.receipt("primitive created", {
+    id: result.entity?.id,
+    name: result.entity?.name,
+    mesh: intent.mesh,
+    physics: Boolean(intent.with_physics),
+    body_type: physics_body_type,
+  });
+
+  return `Created ${result.entity?.name ?? intent.name}.`;
 }
 
 function format_log_entry(entry) {
@@ -306,6 +507,11 @@ async function run_car_playground(run, intent) {
 }
 
 export async function run_fast_path(run, intent, prompt) {
+  if (intent.kind === "unsupported_live_scene_edit") {
+    await run.report_capability_gap("No deterministic Spartan operation exists for this live scene edit intent. Add a native MCP tool or recipe before using the assistant for this class of request.");
+    throw new Error("This live scene edit has no deterministic Spartan operation yet. Add a native tool or recipe for this request before using the assistant for it.");
+  }
+
   if (intent.kind === "mcp_status") {
     return run_mcp_status(run);
   }
@@ -324,6 +530,10 @@ export async function run_fast_path(run, intent, prompt) {
 
   if (intent.kind === "simple_read") {
     return run_simple_read(run, prompt);
+  }
+
+  if (intent.kind === "create_primitive") {
+    return run_create_primitive(run, intent);
   }
 
   if (intent.kind === "delete_children") {

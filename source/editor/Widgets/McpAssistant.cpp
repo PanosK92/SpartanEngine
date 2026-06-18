@@ -227,6 +227,21 @@ namespace
     #endif
     }
 
+    bool terminate_any_assistant_process()
+    {
+    #ifdef _WIN32
+        const char* command =
+            "powershell -NoProfile -ExecutionPolicy Bypass -Command \""
+            "Get-CimInstance Win32_Process -Filter \\\"name = 'node.exe'\\\" | "
+            "Where-Object { $_.CommandLine -like '*tools\\\\mcp\\\\spartan_engine\\\\assistant.mjs*' -or $_.CommandLine -like '*tools/mcp/spartan_engine/assistant.mjs*' } | "
+            "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+            "\"";
+        return std::system(command) == 0;
+    #else
+        return std::system("pkill -f assistant.mjs >/dev/null 2>&1") == 0;
+    #endif
+    }
+
     bool kill_assistant_process()
     {
     #ifdef _WIN32
@@ -235,7 +250,7 @@ namespace
             return true;
         }
 
-        return false;
+        return terminate_any_assistant_process();
     #else
         return terminate_tracked_assistant_process();
     #endif

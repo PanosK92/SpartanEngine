@@ -51,6 +51,104 @@ function is_delete_entity_request(value) {
   return wants_delete && mentions_target && !mentions_children;
 }
 
+function primitive_from_prompt(value) {
+  for (const primitive of ["cone", "cylinder", "sphere", "cube", "quad", "plane"]) {
+    if (new RegExp(`\\b${primitive}\\b`).test(value)) {
+      return primitive === "plane" ? "quad" : primitive;
+    }
+  }
+  return "";
+}
+
+function default_body_type_for_primitive(mesh) {
+  if (mesh === "cube") {
+    return "box";
+  }
+  if (mesh === "quad") {
+    return "plane";
+  }
+  if (mesh === "sphere") {
+    return "sphere";
+  }
+  if (mesh === "cylinder") {
+    return "capsule";
+  }
+  if (mesh === "cone") {
+    return "mesh_convex";
+  }
+  return undefined;
+}
+
+function is_create_primitive_request(value) {
+  const wants_create = /\b(create|make|spawn|add)\b/.test(value);
+  return wants_create && primitive_from_prompt(value) !== "" && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
+}
+
+function is_live_scene_edit_request(value) {
+  const edit_verb = /\b(create|make|spawn|add|place|put|move|delete|remove|destroy|rotate|scale|select|build|clear|wipe)\b/.test(value);
+  const scene_object = /\b(entity|entities|world|scene|primitive|mesh|cube|box|quad|plane|sphere|ball|cylinder|cone|camera|light|physics|rigidbody|collider|playground|track|ramp)\b/.test(value);
+  return edit_verb && scene_object && !/\b(source|code|file|cpp|c\+\+|javascript|compile|build error|git|diff)\b/.test(value);
+}
+
+function number_from_text(value) {
+  const words = new Map([
+    ["zero", 0],
+    ["one", 1],
+    ["two", 2],
+    ["three", 3],
+    ["four", 4],
+    ["five", 5],
+    ["six", 6],
+    ["seven", 7],
+    ["eight", 8],
+    ["nine", 9],
+    ["ten", 10],
+  ]);
+  const numeric = Number.parseFloat(value);
+  if (Number.isFinite(numeric)) {
+    return numeric;
+  }
+  return words.get(value) ?? null;
+}
+
+function distance_match(value, pattern) {
+  const match = value.match(pattern);
+  if (!match?.[1]) {
+    return undefined;
+  }
+
+  const distance = number_from_text(match[1]);
+  return distance === null ? undefined : distance;
+}
+
+function primitive_position_constraints(value) {
+  return {
+    height_above_ground: distance_match(value, /\b(\d+(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:units?|meters?|metres?|m)?\s+(?:above|over)\s+(?:the\s+)?ground\b/),
+    camera_forward_distance: distance_match(value, /\b(\d+(?:\.\d+)?|zero|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:units?|meters?|metres?|m)?\s+(?:in\s+front\s+of|ahead\s+of|from)\s+(?:the\s+)?camera\b/),
+    use_ground_raycast: /\b(on|onto|snap(?:ped)? to|rest(?:ing)? on)\s+(?:the\s+)?(?:ground|terrain|surface)\b/.test(value),
+  };
+}
+
+function primitive_name_from_prompt(value, mesh, with_physics) {
+  const named_match = value.match(/\bnamed\s+["']?([a-z0-9 _-]+?)["']?(?:\s|,|\.|$)/);
+  if (named_match?.[1]) {
+    return named_match[1].trim();
+  }
+
+  const label = mesh === "quad" ? "Quad" : mesh.charAt(0).toUpperCase() + mesh.slice(1);
+  return with_physics ? `Physics ${label}` : label;
+}
+
+function physics_static_from_prompt(value) {
+  if (/\b(static|fixed|immovable|non[- ]?dynamic|not dynamic|anchored)\b/.test(value)) {
+    return true;
+  }
+  if (/\b(dynamic|movable|fall(?:ing)?|non[- ]?static|not static)\b/.test(value)) {
+    return false;
+  }
+  return undefined;
+}
+
 function is_simple_read_request(value) {
   return (
     /\b(what is selected|what's selected|selected entity|current selection)\b/.test(value) ||
@@ -129,8 +227,30 @@ export function route_intent(prompt) {
     return {
       kind: "car_playground",
       confidence: 0.88,
+      live_scene_action: true,
+      allow_cursor_fallback: false,
       target_name: target_name_from_prompt(prompt) || "playground",
       use_selected: should_use_selected_entity(prompt),
+    };
+  }
+
+  if (is_create_primitive_request(value)) {
+    const mesh = primitive_from_prompt(value);
+    const with_physics = /\b(physics|physical|rigidbody|rigid body|collision|collider|dynamic)\b/.test(value);
+    const position_constraints = primitive_position_constraints(value);
+    const physics_static = physics_static_from_prompt(value);
+    return {
+      kind: "create_primitive",
+      confidence: 0.94,
+      live_scene_action: true,
+      allow_cursor_fallback: false,
+      mesh,
+      name: primitive_name_from_prompt(value, mesh, with_physics),
+      with_physics,
+      body_type: with_physics ? default_body_type_for_primitive(mesh) : undefined,
+      physics_static: with_physics ? physics_static ?? false : undefined,
+      position: position_constraints.height_above_ground !== undefined ? [0, position_constraints.height_above_ground, 0] : undefined,
+      ...position_constraints,
     };
   }
 
@@ -138,6 +258,8 @@ export function route_intent(prompt) {
     return {
       kind: "delete_children",
       confidence: 0.95,
+      live_scene_action: true,
+      allow_cursor_fallback: false,
       target_name: target_name_from_prompt(prompt),
       use_selected: should_use_selected_entity(prompt),
     };
@@ -147,6 +269,8 @@ export function route_intent(prompt) {
     return {
       kind: "delete_entity",
       confidence: 0.95,
+      live_scene_action: true,
+      allow_cursor_fallback: false,
       target_name: target_name_from_prompt(prompt),
       use_selected: should_use_selected_entity(prompt),
     };
@@ -156,5 +280,14 @@ export function route_intent(prompt) {
     return { kind: "source_code", confidence: 0.9 };
   }
 
-  return { kind: "cursor", confidence: 0.4 };
+  if (is_live_scene_edit_request(value)) {
+    return {
+      kind: "unsupported_live_scene_edit",
+      confidence: 0.82,
+      live_scene_action: true,
+      allow_cursor_fallback: false,
+    };
+  }
+
+  return { kind: "cursor", confidence: 0.4, allow_cursor_fallback: true };
 }

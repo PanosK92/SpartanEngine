@@ -65,14 +65,19 @@ Mutating tools are not registered by `server.mjs` in read-only mode. The assista
 Use these first:
 
 - `agent_memory_read` to load durable project lessons and maintainer advice.
+- `debug_log_read` after failures to inspect recent prompts, engine commands, arguments, durations, and outputs.
 - `spartan_status` to check bridge, transport, read-only mode, and code index health.
 - `search_capabilities` and `get_capability_details` to discover tools/resources without guessing.
-- `context_snapshot` to read engine status, world summary, and selection in one call.
+- `context_snapshot` to read engine status, world summary, selection, and camera grounding in one call.
+- `camera_snapshot` before camera-relative placement.
+- `world_raycast` before ground or surface-relative placement.
 - `entity_resolve` before mutating a named or selected entity.
 - `component_get` before `component_set`.
 - `search_codebase`, then `read_source_file`, for source questions.
 - `entity_create_primitive_batch` or `execute_lua` for repeated scene work.
 - `agent_memory_append` after a durable lesson, correction, recurring problem, or maintainer improvement idea.
+
+Live scene edits should route through deterministic tools or recipes. If no deterministic operation matches, fail fast and add the missing tool or recipe instead of falling through to long Cursor fallback. Missing deterministic capabilities should be appended to `AGENT_MEMORY.md` under `Problem Reports` immediately.
 
 ## Resources
 
@@ -85,6 +90,7 @@ The server exposes stable MCP resources:
 - `spartan://console/recent`
 - `spartan://source`
 - `spartan://agent/memory`
+- `spartan://agent/debug-log`
 
 Use `read_source_file` for actual source file contents.
 
