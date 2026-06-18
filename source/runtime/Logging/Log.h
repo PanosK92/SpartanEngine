@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======
 #include <string>
 #include <memory>
+#include <vector>
 #include "ILogger.h"
 //==================
 
@@ -77,6 +78,7 @@ namespace spartan
         static void SetLogger(ILogger* logger);
         static void SetLogToFile(const bool log_to_file);
         static void Clear();
+        static std::vector<LogCmd> GetRecentEntries(uint32_t count);
 
         // buffer-based logging
         static void WriteBuffer(const char* text, LogType type);

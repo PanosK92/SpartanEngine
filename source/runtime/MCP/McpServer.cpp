@@ -361,7 +361,7 @@ namespace spartan
             return;
         }
 
-        if (listen(listen_socket, 1) != 0)
+        if (listen(listen_socket, 16) != 0)
         {
             SP_LOG_ERROR("Failed to listen for MCP on 127.0.0.1:%u", mcp_port);
             Shutdown();

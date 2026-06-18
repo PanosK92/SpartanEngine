@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "pch.h"
+#include <algorithm>
 #include <fstream>
 #include "../Core/Debugging.h"
 //============================
@@ -34,10 +35,12 @@ namespace spartan
     namespace
     {
         vector<LogCmd> logs;
+        vector<LogCmd> history;
         string log_file_name = "log.txt";
         ILogger* logger      = nullptr;
         bool log_to_file     = true;
         mutex log_output_mutex;
+        constexpr uint32_t history_max_count = 2000;
 
         void write_to_file(string text, const LogType type)
         {
@@ -101,6 +104,7 @@ namespace spartan
         lock_guard<mutex> guard(log_output_mutex);
 
         logs.clear();
+        history.clear();
 
         if (log_to_file || Debugging::IsLoggingToFileEnabled())
         {
@@ -110,6 +114,15 @@ namespace spartan
                 file.close();
             }
         }
+    }
+
+    vector<LogCmd> Log::GetRecentEntries(uint32_t count)
+    {
+        lock_guard<mutex> guard(log_output_mutex);
+
+        count = std::min<uint32_t>(count, static_cast<uint32_t>(history.size()));
+        const size_t start = history.size() - count;
+        return vector<LogCmd>(history.begin() + start, history.end());
     }
 
     void Log::WriteBuffer(const char* text, const LogType type)
@@ -142,6 +155,12 @@ namespace spartan
         // serialize access to the shared log vector, file, and logger
         {
             lock_guard<mutex> output_guard(log_output_mutex);
+
+            history.emplace_back(buffer, type);
+            if (history.size() > history_max_count)
+            {
+                history.erase(history.begin(), history.begin() + (history.size() - history_max_count));
+            }
 
             if (log_to_file || !logger || Debugging::IsLoggingToFileEnabled())
             {

@@ -24,9 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "McpAssistant.h"
 #include "MCP/McpServer.h"
 #include "Input/Input.h"
+#include "FileSystem/FileSystem.h"
+#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <cstdlib>
+#include <deque>
 #include <filesystem>
 #include <iomanip>
 #include <mutex>
@@ -38,7 +41,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #define WIN32_LEAN_AND_MEAN
     #include <winsock2.h>
     #include <ws2tcpip.h>
+    #include <iphlpapi.h>
     #include <Windows.h>
+    #pragma comment(lib, "iphlpapi.lib")
 #else
     #include <arpa/inet.h>
     #include <netinet/in.h>
@@ -49,11 +54,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace
 {
     constexpr uint16_t assistant_port = 47778;
+    constexpr int assistant_prompt_timeout_ms = 240000;
+    constexpr int assistant_model_timeout_ms = 60000;
+    constexpr int assistant_start_timeout_ms = 10000;
+    constexpr int assistant_start_poll_ms = 100;
     std::mutex assistant_mutex;
+    std::mutex assistant_start_mutex;
     std::string assistant_response;
     std::string assistant_models;
     std::string assistant_activity;
+    std::deque<std::string> assistant_activity_history;
     bool assistant_busy = false;
+    std::chrono::steady_clock::time_point assistant_busy_start;
+    constexpr size_t assistant_activity_history_max = 8;
 
 #ifdef _WIN32
     using socket_t = SOCKET;
@@ -74,6 +87,68 @@ namespace
         closesocket(socket);
     #else
         close(socket);
+    #endif
+    }
+
+#ifdef _WIN32
+    uint32_t find_pid_on_port(uint16_t port)
+    {
+        ULONG size = 0;
+        if (GetExtendedTcpTable(nullptr, &size, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0) != ERROR_INSUFFICIENT_BUFFER)
+        {
+            return 0;
+        }
+
+        std::vector<char> buffer(size);
+        PMIB_TCPTABLE_OWNER_PID table = reinterpret_cast<PMIB_TCPTABLE_OWNER_PID>(buffer.data());
+        if (GetExtendedTcpTable(table, &size, FALSE, AF_INET, TCP_TABLE_OWNER_PID_ALL, 0) != NO_ERROR)
+        {
+            return 0;
+        }
+
+        const u_short target = htons(port);
+        for (DWORD i = 0; i < table->dwNumEntries; i++)
+        {
+            const MIB_TCPROW_OWNER_PID& row = table->table[i];
+            if (row.dwState == MIB_TCP_STATE_LISTEN && static_cast<u_short>(row.dwLocalPort & 0xFFFF) == target)
+            {
+                return static_cast<uint32_t>(row.dwOwningPid);
+            }
+        }
+
+        return 0;
+    }
+#endif
+
+    bool kill_assistant_process()
+    {
+    #ifdef _WIN32
+        bool killed = false;
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            const uint32_t pid = find_pid_on_port(assistant_port);
+            if (pid == 0)
+            {
+                break;
+            }
+
+            HANDLE process = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE, FALSE, pid);
+            if (process == nullptr)
+            {
+                break;
+            }
+
+            TerminateProcess(process, 0);
+            WaitForSingleObject(process, 2000);
+            CloseHandle(process);
+            killed = true;
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        return killed;
+    #else
+        return std::system("pkill -f assistant.mjs >/dev/null 2>&1") == 0;
     #endif
     }
 
@@ -118,8 +193,22 @@ namespace
     void set_busy(bool busy, const std::string& activity = "")
     {
         std::lock_guard<std::mutex> lock(assistant_mutex);
+        if (busy && !assistant_busy)
+        {
+            assistant_activity_history.clear();
+            assistant_busy_start = std::chrono::steady_clock::now();
+        }
+
         assistant_busy = busy;
         assistant_activity = activity;
+        if (busy && !activity.empty() && (assistant_activity_history.empty() || assistant_activity_history.back() != activity))
+        {
+            assistant_activity_history.emplace_back(activity);
+            while (assistant_activity_history.size() > assistant_activity_history_max)
+            {
+                assistant_activity_history.pop_front();
+            }
+        }
     }
 
     std::string url_encode(const std::string& value)
@@ -197,16 +286,112 @@ namespace
         return value.substr(start, end - start + 1);
     }
 
+    std::filesystem::path executable_directory()
+    {
+    #ifdef _WIN32
+        char path[MAX_PATH] = {};
+        const DWORD length = GetModuleFileNameA(nullptr, path, MAX_PATH);
+        if (length > 0 && length < MAX_PATH)
+        {
+            return std::filesystem::path(path).parent_path();
+        }
+    #endif
+
+        return std::filesystem::current_path();
+    }
+
+    void add_key_file_candidate(std::vector<std::filesystem::path>& candidates, const std::filesystem::path& directory)
+    {
+        if (directory.empty())
+        {
+            return;
+        }
+
+        const std::filesystem::path candidate = std::filesystem::absolute(directory / "cursor_api_key.txt");
+        for (const std::filesystem::path& existing_candidate : candidates)
+        {
+            if (existing_candidate == candidate)
+            {
+                return;
+            }
+        }
+
+        candidates.emplace_back(candidate);
+    }
+
+    std::vector<std::filesystem::path> api_key_file_candidates()
+    {
+        std::vector<std::filesystem::path> candidates;
+        add_key_file_candidate(candidates, executable_directory());
+        add_key_file_candidate(candidates, std::filesystem::current_path());
+        add_key_file_candidate(candidates, spartan::FileSystem::GetWorkingDirectory());
+
+        std::filesystem::path directory = std::filesystem::current_path();
+        for (uint32_t i = 0; i < 4 && !directory.empty(); i++)
+        {
+            add_key_file_candidate(candidates, directory);
+            directory = directory.parent_path();
+        }
+
+        return candidates;
+    }
+
+    bool read_api_key_file(std::string& api_key, std::filesystem::path& loaded_path, std::vector<std::filesystem::path>& searched_paths)
+    {
+        searched_paths = api_key_file_candidates();
+        for (const std::filesystem::path& key_path : searched_paths)
+        {
+            std::string contents;
+            if (!spartan::FileSystem::ReadFile(key_path.string(), contents))
+            {
+                continue;
+            }
+
+            std::istringstream stream(contents);
+            std::string line;
+            while (std::getline(stream, line))
+            {
+                api_key = trim_copy_paste_whitespace(line);
+                if (api_key.rfind("\xEF\xBB\xBF", 0) == 0)
+                {
+                    api_key.erase(0, 3);
+                }
+                if (!api_key.empty())
+                {
+                    loaded_path = key_path;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     std::string thinking_text()
     {
         const int dot_count = static_cast<int>(ImGui::GetTime() * 2.5) % 4;
         std::string activity;
+        std::deque<std::string> history;
+        int elapsed_seconds = 0;
         {
             std::lock_guard<std::mutex> lock(assistant_mutex);
             activity = assistant_activity.empty() ? "thinking" : assistant_activity;
+            history  = assistant_activity_history;
+            elapsed_seconds = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - assistant_busy_start).count());
         }
 
-        return activity + std::string(static_cast<size_t>(dot_count), '.');
+        std::string text = activity + std::string(static_cast<size_t>(dot_count), '.');
+        text += " (" + std::to_string(elapsed_seconds) + "s)";
+        if (!history.empty())
+        {
+            text += "\n\nActivity";
+            for (const std::string& entry : history)
+            {
+                text += "\n- " + entry;
+            }
+        }
+
+        return text;
     }
 
     bool find_assistant_script(std::filesystem::path& script_path)
@@ -286,8 +471,23 @@ namespace
     #endif
     }
 
+    bool assistant_dependencies_ready(const std::filesystem::path& script_directory)
+    {
+        const std::filesystem::path node_modules = script_directory / "node_modules";
+        return
+            std::filesystem::exists(node_modules / "@cursor" / "sdk") &&
+            std::filesystem::exists(node_modules / "@modelcontextprotocol" / "sdk") &&
+            std::filesystem::exists(node_modules / "zod");
+    }
+
     bool ensure_assistant_dependencies(const std::filesystem::path& script_directory)
     {
+        if (assistant_dependencies_ready(script_directory))
+        {
+            return true;
+        }
+
+        set_busy(true, "installing assistant dependencies");
         log_info("Verifying MCP assistant dependencies.");
     #ifdef _WIN32
         return run_process_and_wait(
@@ -304,8 +504,63 @@ namespace
     #endif
     }
 
+    bool is_assistant_ready()
+    {
+    #ifdef _WIN32
+        WSADATA data = {};
+        if (WSAStartup(MAKEWORD(2, 2), &data) != 0)
+        {
+            return false;
+        }
+    #endif
+
+        socket_t socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (socket == invalid_socket)
+        {
+        #ifdef _WIN32
+            WSACleanup();
+        #endif
+            return false;
+        }
+
+        sockaddr_in address = {};
+        address.sin_family      = AF_INET;
+        address.sin_port        = htons(assistant_port);
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+        const bool ready = connect(socket, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == 0;
+        close_socket(socket);
+    #ifdef _WIN32
+        WSACleanup();
+    #endif
+
+        return ready;
+    }
+
+    bool wait_for_assistant_ready()
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(assistant_start_timeout_ms);
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            if (is_assistant_ready())
+            {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(assistant_start_poll_ms));
+        }
+
+        return false;
+    }
+
     bool start_assistant_process()
     {
+        std::lock_guard<std::mutex> start_lock(assistant_start_mutex);
+        if (is_assistant_ready())
+        {
+            return true;
+        }
+
         std::filesystem::path script_path;
         if (!find_assistant_script(script_path))
         {
@@ -319,6 +574,7 @@ namespace
             return false;
         }
 
+        set_busy(true, "starting assistant");
         const std::string command =
             "node \"" + script_path.string() + "\" --port=" + std::to_string(assistant_port) +
             " --engine-port=" + std::to_string(spartan::McpServer::GetPort());
@@ -351,10 +607,15 @@ namespace
 
         CloseHandle(process_info.hThread);
         CloseHandle(process_info.hProcess);
-        return true;
+        return wait_for_assistant_ready();
     #else
         const std::string shell_command = command + " >/dev/null 2>&1 &";
-        return std::system(shell_command.c_str()) == 0;
+        if (std::system(shell_command.c_str()) != 0)
+        {
+            return false;
+        }
+
+        return wait_for_assistant_ready();
     #endif
     }
 
@@ -388,6 +649,69 @@ namespace
     #endif
     }
 
+    bool parse_assistant_line(const std::string& line, std::string& response, bool& final)
+    {
+        const size_t separator = line.find(' ');
+        if (separator == std::string::npos)
+        {
+            response = "assistant returned an invalid response";
+            final = true;
+            return false;
+        }
+
+        const std::string status = line.substr(0, separator);
+        const std::string text = url_decode(line.substr(separator + 1));
+        if (status == "activity")
+        {
+            set_busy(true, text);
+            final = false;
+            return true;
+        }
+
+        response = text;
+        final = true;
+        return status == "ok";
+    }
+
+    bool read_assistant_response(socket_t socket, std::string& response)
+    {
+        std::string buffer;
+        char receive_buffer[4096];
+
+        while (true)
+        {
+            const int received = recv(socket, receive_buffer, sizeof(receive_buffer), 0);
+            if (received <= 0)
+            {
+                response = "assistant did not return a response before timeout";
+                return false;
+            }
+
+            buffer.append(receive_buffer, received);
+            size_t newline = buffer.find('\n');
+            while (newline != std::string::npos)
+            {
+                std::string line = buffer.substr(0, newline);
+                buffer.erase(0, newline + 1);
+                if (!line.empty() && line.back() == '\r')
+                {
+                    line.pop_back();
+                }
+                if (!line.empty())
+                {
+                    bool final = false;
+                    const bool ok = parse_assistant_line(line, response, final);
+                    if (final)
+                    {
+                        return ok;
+                    }
+                }
+
+                newline = buffer.find('\n');
+            }
+        }
+    }
+
     bool send_prompt_to_assistant(const std::string& prompt, const std::string& api_key, const std::string& model_id, std::string& response)
     {
     #ifdef _WIN32
@@ -416,6 +740,7 @@ namespace
 
         if (connect(socket, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0)
         {
+            response = "assistant is not running";
             close_socket(socket);
         #ifdef _WIN32
             WSACleanup();
@@ -423,7 +748,7 @@ namespace
             return false;
         }
 
-        set_receive_timeout(socket, 210000);
+        set_receive_timeout(socket, assistant_prompt_timeout_ms);
 
         const std::string request = "prompt api_key=" + url_encode(api_key) + "&model=" + url_encode(model_id) + "&prompt=" + url_encode(prompt) + "\n";
         if (!send_all(socket, request))
@@ -436,46 +761,13 @@ namespace
             return false;
         }
 
-        std::string buffer;
-        char receive_buffer[4096];
-        while (buffer.find('\n') == std::string::npos)
-        {
-            const int received = recv(socket, receive_buffer, sizeof(receive_buffer), 0);
-            if (received <= 0)
-            {
-                response = "assistant did not return a response before timeout";
-                close_socket(socket);
-            #ifdef _WIN32
-                WSACleanup();
-            #endif
-                return false;
-            }
-
-            buffer.append(receive_buffer, received);
-        }
-
+        const bool ok = read_assistant_response(socket, response);
         close_socket(socket);
     #ifdef _WIN32
         WSACleanup();
     #endif
 
-        const size_t newline = buffer.find('\n');
-        std::string line = buffer.substr(0, newline);
-        if (!line.empty() && line.back() == '\r')
-        {
-            line.pop_back();
-        }
-
-        const size_t separator = line.find(' ');
-        if (separator == std::string::npos)
-        {
-            response = "assistant returned an invalid response";
-            return false;
-        }
-
-        const std::string status = line.substr(0, separator);
-        response = url_decode(line.substr(separator + 1));
-        return status == "ok";
+        return ok;
     }
 
     bool send_models_to_assistant(const std::string& api_key, std::string& response)
@@ -506,6 +798,7 @@ namespace
 
         if (connect(socket, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != 0)
         {
+            response = "assistant is not running";
             close_socket(socket);
         #ifdef _WIN32
             WSACleanup();
@@ -513,7 +806,7 @@ namespace
             return false;
         }
 
-        set_receive_timeout(socket, 45000);
+        set_receive_timeout(socket, assistant_model_timeout_ms);
 
         const std::string request = "models api_key=" + url_encode(api_key) + "\n";
         if (!send_all(socket, request))
@@ -575,6 +868,7 @@ McpAssistant::McpAssistant(Editor* editor) : Widget(editor)
     m_visible      = false;
     m_size_initial = spartan::math::Vector2(520.0f, 340.0f);
     m_size_min     = spartan::math::Vector2(360.0f, 260.0f);
+    m_api_key_file_status = "Will look for cursor_api_key.txt next to the exe when opened.";
     assistant_response.clear();
 }
 
@@ -593,6 +887,40 @@ void McpAssistant::OnInvisible()
     spartan::Input::SetBlockedByUi(false);
 }
 
+bool McpAssistant::LoadApiKeyFromFile()
+{
+    if (m_api_key_file_checked)
+    {
+        return false;
+    }
+
+    m_api_key_file_checked = true;
+    std::string api_key;
+    std::filesystem::path loaded_path;
+    std::vector<std::filesystem::path> searched_paths;
+    if (!read_api_key_file(api_key, loaded_path, searched_paths))
+    {
+        m_api_key_file_status =
+            searched_paths.empty() ?
+            "No cursor_api_key.txt found next to the exe or working directory." :
+            "No cursor_api_key.txt found. First checked " + searched_paths.front().string();
+        return false;
+    }
+
+    if (api_key.size() >= m_cursor_api_key.size())
+    {
+        m_api_key_file_status = "cursor_api_key.txt was found, but the key is too long.";
+        log_error("cursor_api_key.txt key is too long.");
+        return false;
+    }
+
+    std::fill(m_cursor_api_key.begin(), m_cursor_api_key.end(), '\0');
+    std::copy(api_key.begin(), api_key.end(), m_cursor_api_key.begin());
+    m_api_key_file_status = "Loaded Cursor API key from " + loaded_path.string();
+    log_info(m_api_key_file_status);
+    return true;
+}
+
 void McpAssistant::OnTickVisible()
 {
     if (!m_visible)
@@ -602,12 +930,30 @@ void McpAssistant::OnTickVisible()
         return;
     }
 
-    const bool is_running = spartan::McpServer::IsRunning();
+    if (m_cursor_api_key[0] == '\0' && LoadApiKeyFromFile())
+    {
+        m_refresh_models_after_key_load = true;
+    }
+
     const bool has_api_key = m_cursor_api_key[0] != '\0';
+    if (has_api_key && !m_mcp_auto_start_attempted && !spartan::McpServer::IsRunning())
+    {
+        m_mcp_auto_start_attempted = true;
+        spartan::McpServer::Start();
+    }
+
+    const bool is_running = spartan::McpServer::IsRunning();
     bool is_assistant_busy = false;
     {
         std::lock_guard<std::mutex> lock(assistant_mutex);
         is_assistant_busy = assistant_busy;
+    }
+
+    if (has_api_key && m_refresh_models_after_key_load && !is_assistant_busy)
+    {
+        m_refresh_models_after_key_load = false;
+        RefreshModels();
+        is_assistant_busy = true;
     }
 
     if (std::string response = take_response(); !response.empty())
@@ -641,8 +987,14 @@ void McpAssistant::OnTickVisible()
 
     if (!has_api_key)
     {
+        ImGui::TextWrapped("%s", m_api_key_file_status.c_str());
         ImGui::TextWrapped("Paste your key here first. It is kept in memory for this Spartan session and is not written to disk.");
         return;
+    }
+
+    if (!m_api_key_file_status.empty())
+    {
+        ImGui::TextDisabled("%s", m_api_key_file_status.c_str());
     }
 
     ImGui::Separator();
@@ -702,6 +1054,16 @@ void McpAssistant::OnTickVisible()
     if (is_assistant_busy)
     {
         ImGui::EndDisabled();
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Restart assistant"))
+    {
+        RestartAssistant();
+    }
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("Kill and relaunch the Node assistant helper so updated tools and prompt load.");
     }
 
     ImGui::Separator();
@@ -819,18 +1181,16 @@ void McpAssistant::SubmitPrompt()
             log_info("Starting Cursor assistant.");
             if (!start_assistant_process())
             {
+                set_response("failed to start Cursor assistant. install Node.js and run npm install under tools/mcp/spartan_engine, then try again.");
                 set_busy(false);
                 return;
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1200));
             if (!send_prompt_to_assistant(prompt, api_key, model_id, response))
             {
-                log_error(
-                    response.empty() ?
-                    "failed to connect to Cursor assistant. install Node.js, then try again." :
-                    response
-                );
+                response = response.empty() ? "failed to connect to Cursor assistant. install Node.js, then try again." : response;
+                log_error(response);
+                set_response(response);
                 set_busy(false);
                 return;
             }
@@ -861,20 +1221,47 @@ void McpAssistant::RefreshModels()
             log_info("Starting Cursor assistant.");
             if (!start_assistant_process())
             {
+                set_response("failed to start Cursor assistant. install Node.js and run npm install under tools/mcp/spartan_engine, then try again.");
                 set_busy(false);
                 return;
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1200));
             if (!send_models_to_assistant(api_key, response))
             {
-                log_error(response.empty() ? "failed to refresh Cursor agents." : response);
+                response = response.empty() ? "failed to refresh Cursor agents." : response;
+                log_error(response);
+                set_response(response);
                 set_busy(false);
                 return;
             }
         }
 
         set_models(response);
+        set_busy(false);
+    }).detach();
+}
+
+void McpAssistant::RestartAssistant()
+{
+    set_busy(true, "restarting assistant");
+    log_info("Restarting Cursor assistant.");
+
+    std::thread([]()
+    {
+        const bool killed = kill_assistant_process();
+        if (killed)
+        {
+            log_info("Stopped the running Cursor assistant.");
+        }
+
+        if (!start_assistant_process())
+        {
+            set_response("failed to restart Cursor assistant. install Node.js and run npm install under tools/mcp/spartan_engine, then try again.");
+            set_busy(false);
+            return;
+        }
+
+        set_response("Cursor assistant restarted. Updated tools and prompt are now loaded.");
         set_busy(false);
     }).detach();
 }

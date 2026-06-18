@@ -46,6 +46,8 @@ private:
 
     void SubmitPrompt();
     void RefreshModels();
+    void RestartAssistant();
+    bool LoadApiKeyFromFile();
     void ApplyModelList(const std::string& model_list);
     void DrawChatMessage(const ChatMessage& message, int index);
     void UpdateInputOwnership();
@@ -53,10 +55,14 @@ private:
 
     std::array<char, 512> m_cursor_api_key = {};
     std::array<char, 4096> m_prompt = {};
+    std::string m_api_key_file_status;
     std::vector<ChatMessage> m_messages;
     std::vector<std::string> m_model_ids = { "auto" };
     std::vector<std::string> m_model_labels = { "Auto" };
     int m_model_index = 0;
     bool m_blocks_input = false;
     bool m_scroll_to_bottom = false;
+    bool m_api_key_file_checked = false;
+    bool m_refresh_models_after_key_load = false;
+    bool m_mcp_auto_start_attempted = false;
 };

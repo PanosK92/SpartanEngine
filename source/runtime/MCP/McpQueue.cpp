@@ -43,6 +43,7 @@ namespace spartan
         std::mutex queue_mutex;
         std::deque<std::shared_ptr<McpJob>> jobs;
         bool shutting_down = false;
+        constexpr auto mcp_job_timeout = std::chrono::seconds(30);
 
         std::string error_response(const char* message)
         {
@@ -72,9 +73,9 @@ namespace spartan
         }
 
         std::unique_lock<std::mutex> lock(job->mutex);
-        if (!job->completed_condition.wait_for(lock, std::chrono::seconds(10), [&job]() { return job->completed; }))
+        if (!job->completed_condition.wait_for(lock, mcp_job_timeout, [&job]() { return job->completed; }))
         {
-            return error_response("engine did not answer in time");
+            return error_response("engine did not answer within 30000ms");
         }
 
         return job->response;
