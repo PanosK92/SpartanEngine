@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/tools/mcp/spartan_engine"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "@connectrpc/connect-node"
+        update-types:
+          - "version-update:semver-major"
