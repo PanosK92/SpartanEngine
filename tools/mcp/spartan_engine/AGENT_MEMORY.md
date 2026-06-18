@@ -14,11 +14,14 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use `debug_log_read` after failures to inspect actual engine command inputs and outputs.
 - Use `search_capabilities` and `get_capability_details` before guessing tool names.
 - Resolve targets with `entity_resolve` before mutating named or selected entities.
+- Before deleting or rebuilding geometry that should preserve look, call `entity_render_materials` on the target and reuse material names.
+- Use `entity_create_light` for generic point, spot, directional, and area lights, and calibrate intensity, range, and area size to the scene scale.
 - Use `camera_snapshot` before interpreting camera-relative placement.
 - Use `world_raycast` for ground or surface-relative placement when possible.
-- Live scene edits should use deterministic tools or fail fast, not Cursor fallback.
+- Simple live scene edits should use deterministic tools or fail fast; complex blockouts can use the higher-level scene path.
 - Missing deterministic capabilities should be logged immediately under Problem Reports.
 - Simple entity deletes should resolve the target and call `entity_delete` directly, not fall through to Cursor fallback.
+- Do not route delete plus rebuild prompts to `entity_delete`; preserve materials first, then rebuild through a complex scene path.
 - Simple primitive creation, such as `create a physics cone`, should route directly to `entity_create_primitive`.
 - User convention, `physics <primitive>` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
 - For repeated scene work, prefer `entity_create_primitive_batch` or one focused `execute_lua` script.
@@ -52,8 +55,3 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Problem Reports
 - Add specific recurring friction here, with the file/tool involved and why it matters.
-- If `MCP_DEBUG.jsonl` is missing and assistant errors use old wording, check the running `node assistant.mjs` process start time; the editor helper may be stale and needs restart before source changes apply.
-- The editor Restart button must kill untracked `node ... assistant.mjs` processes too; otherwise stale helpers can keep port 47778 and hide new debug/code changes.
-- `Create a physics cylinder... 2 units above ground, 5 units in front of camera` should not require `world_raycast`; if raycast blocks or is missing, use camera XZ plus world Y height and reserve raycast for explicit surface snapping.
-- `MCP_DEBUG.jsonl` showed `context_snapshot` succeeded, then immediate `entity_create_primitive` failed with `engine connection is not available`; do not close the engine TCP socket immediately between sequential assistant stages, use a short idle close window.
-- Capability gap: Native MCP command `context_snapshot` timed out. Error: engine command context_snapshot timed out after 5000ms Prompt: "Create a physics cylinder and place it 2 units above the ground, and 5 units in front of the camera"

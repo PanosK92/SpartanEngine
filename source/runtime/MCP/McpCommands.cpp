@@ -1662,6 +1662,77 @@ namespace spartan
             return json;
         }
 
+        void append_render_material_snapshot(std::string& json, Entity* entity, bool include_descendants, bool& first)
+        {
+            if (entity == nullptr)
+            {
+                return;
+            }
+
+            if (Render* renderable = entity->GetComponent<Render>())
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+
+                Entity* parent = entity->GetParent();
+                json += "{";
+                json += "\"id\":" + json_string(std::to_string(entity->GetObjectId()));
+                json += ",\"name\":" + json_string(entity->GetObjectName());
+                json += ",\"parent_id\":";
+                json += parent ? json_string(std::to_string(parent->GetObjectId())) : "null";
+                json += ",\"mesh\":" + json_string(renderable->GetMeshName());
+                json += ",\"material\":" + json_string(renderable->GetMaterialName());
+                json += ",\"default_material\":" + json_bool(renderable->IsUsingDefaultMaterial());
+                json += "}";
+            }
+
+            if (!include_descendants)
+            {
+                return;
+            }
+
+            for (Entity* child : entity->GetChildren())
+            {
+                append_render_material_snapshot(json, child, include_descendants, first);
+            }
+        }
+
+        std::string command_entity_render_materials(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            bool include_descendants = true;
+            if (const std::optional<std::string> value = get_argument(request, "include_descendants"))
+            {
+                if (!parse_bool(*value, include_descendants))
+                {
+                    return json_error("invalid include_descendants");
+                }
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"id\":" + json_string(std::to_string(entity->GetObjectId()));
+            json += ",\"name\":" + json_string(entity->GetObjectName());
+            json += ",\"materials\":[";
+            bool first = true;
+            append_render_material_snapshot(json, entity, include_descendants, first);
+            json += "]}";
+            return json;
+        }
+
         bool set_render_property(Render* renderable, const std::string& property, const std::string& value, std::string& error)
         {
             if (property == "mesh")
@@ -2528,6 +2599,17 @@ namespace spartan
             {
                 SP_LOG_WARNING("MCP entity_create_primitive: Render::SetDefaultMaterial took %.1f ms", step_ms);
             }
+            if (const std::optional<std::string> material = get_argument(request, "material"))
+            {
+                if (*material == "default")
+                {
+                    renderable->SetDefaultMaterial();
+                }
+                else
+                {
+                    renderable->SetMaterial(*material);
+                }
+            }
 
             if (with_physics)
             {
@@ -2601,6 +2683,7 @@ namespace spartan
                 "position",
                 "rotation_euler",
                 "scale",
+                "material",
                 "with_physics",
                 "body_type",
                 "physics_static",
@@ -2927,6 +3010,10 @@ namespace spartan
         if (request.command == "component_get")
         {
             return command_component_get(request);
+        }
+        if (request.command == "entity_render_materials")
+        {
+            return command_entity_render_materials(request);
         }
         if (request.command == "component_set")
         {

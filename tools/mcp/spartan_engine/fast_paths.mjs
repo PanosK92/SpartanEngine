@@ -1,4 +1,3 @@
-import { car_playground_lua } from "./recipes/playground.mjs";
 import { get_shared_codebase } from "./shared_codebase.mjs";
 
 const codebase = get_shared_codebase();
@@ -441,75 +440,10 @@ async function run_source_code_search(run, prompt) {
   return `Top source matches:\n${lines.join("\n")}`;
 }
 
-async function run_car_playground(run, intent) {
-  const entity = await run.stage("Resolve Target", "finding the playground parent", async () => {
-    const entity = await resolve_target(run, intent, { allow_create: true });
-    run.receipt("target resolved", {
-      id: entity.id,
-      name: entity.name,
-      source: intent.use_selected ? "selection" : "name",
-    });
-    return entity;
-  });
-
-  const deletion = await run.stage("Clear Target", `deleting old children under ${entity.name ?? entity.id}`, async () => {
-    const deletion = await run.tool("entity_delete_children", { id: entity.id }, 10000);
-    if (!deletion.ok) {
-      throw new Error(deletion.error ?? "entity_delete_children failed");
-    }
-
-    run.receipt("children deleted", {
-      id: deletion.id ?? entity.id,
-      name: deletion.name ?? entity.name,
-      deleted_count: deletion.deleted_count ?? 0,
-      remaining_count: deletion.remaining_count ?? 0,
-    });
-
-    return deletion;
-  });
-
-  await run.stage("Verify Clear", "checking the target is empty", async () => {
-    if (Number(deletion.remaining_count ?? 0) !== 0) {
-      throw new Error(`stopped because ${deletion.remaining_count} children remain`);
-    }
-  });
-
-  const result = await run.stage("Build Blockout", "creating the car playground in one engine script", async () => {
-    const script = car_playground_lua(entity.name);
-    const result = await run.tool("execute_lua", { code: script }, 30000);
-    if (!result.ok) {
-      throw new Error(result.error ?? "execute_lua failed");
-    }
-
-    run.receipt("playground built", {
-      id: entity.id,
-      name: entity.name,
-      result: result.result ?? "done",
-    });
-
-    return result;
-  });
-
-  await run.stage("Verify Build", "checking the playground parent after build", async () => {
-    const verification = await run.tool("entity_get", { id: entity.id });
-    if (!verification.ok) {
-      throw new Error(verification.error ?? "entity_get failed");
-    }
-
-    run.receipt("verification", {
-      id: entity.id,
-      name: entity.name,
-      child_count: Array.isArray(verification.entity?.children) ? verification.entity.children.length : "unknown",
-    });
-  });
-
-  return result.result ?? `Built car playground under ${entity.name}.`;
-}
-
 export async function run_fast_path(run, intent, prompt) {
   if (intent.kind === "unsupported_live_scene_edit") {
-    await run.report_capability_gap("No deterministic Spartan operation exists for this live scene edit intent. Add a native MCP tool or recipe before using the assistant for this class of request.");
-    throw new Error("This live scene edit has no deterministic Spartan operation yet. Add a native tool or recipe for this request before using the assistant for it.");
+    await run.report_capability_gap("No deterministic Spartan operation exists for this live scene edit intent. Add a native MCP tool or generic operation before using the assistant for this class of request.");
+    throw new Error("This live scene edit has no deterministic Spartan operation yet. Add a native tool or generic operation for this request before using the assistant for it.");
   }
 
   if (intent.kind === "mcp_status") {
@@ -542,10 +476,6 @@ export async function run_fast_path(run, intent, prompt) {
 
   if (intent.kind === "delete_entity") {
     return run_delete_entity(run, intent);
-  }
-
-  if (intent.kind === "car_playground") {
-    return run_car_playground(run, intent);
   }
 
   return null;

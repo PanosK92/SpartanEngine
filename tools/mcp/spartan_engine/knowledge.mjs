@@ -33,8 +33,10 @@ export const engine_overview = [
   "The in-editor assistant talks to assistant.mjs on 127.0.0.1:47778 and uses deterministic fast paths before escalating to Cursor.",
   "",
   "Prefer context_snapshot, camera_snapshot, world_raycast, entity_resolve, component_get, and native batch tools before issuing many small commands.",
+  "Before destructive rebuilds that should preserve appearance, call entity_render_materials and reuse the returned material names on new render geometry.",
+  "Use entity_create_light for point, spot, directional, and area lights; calibrate intensity, range, and area size to the room or blockout scale.",
   "Use debug_log_read or spartan://agent/debug-log to inspect assistant prompts, engine command arguments, durations, and outputs.",
-  "Live scene edits should route through deterministic tools or recipes and fail fast when no deterministic operation exists.",
+  "Live scene edits should route through deterministic tools or generic operations and fail fast when no deterministic operation exists.",
   "Missing deterministic capabilities should be recorded in agent memory under Problem Reports immediately.",
   "For procedural scene edits, execute_lua is the broad capability layer, but it is edit-mode guarded by default.",
 ].join("\n");

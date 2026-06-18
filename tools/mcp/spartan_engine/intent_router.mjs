@@ -8,13 +8,15 @@ export function should_use_selected_entity(prompt) {
 
 export function target_name_from_prompt(prompt) {
   const value = normalized(prompt);
+  const explicit_entity_match = value.match(/\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b/);
+  if (explicit_entity_match?.[1])
+  {
+    return explicit_entity_match[1].trim();
+  }
+
   const named_match = value.match(/\bnamed\s+["']?([a-z0-9 _-]+?)["']?(?:\s|,|\.|$)/);
   if (named_match?.[1]) {
     return named_match[1].trim();
-  }
-
-  if (value.includes("playground")) {
-    return "playground";
   }
 
   const children_match = value.match(/children\s+of\s+(?:the\s+)?([a-z0-9 _-]+?)\s+entity\b/);
@@ -47,8 +49,15 @@ function is_delete_children_request(value) {
 function is_delete_entity_request(value) {
   const wants_delete = /\b(delete|remove|destroy)\b/.test(value);
   const mentions_children = /\b(children|child|contents)\b/.test(value);
-  const mentions_target = /\b(selected|current|this|entity|playground)\b/.test(value) || target_name_from_prompt(value) !== "";
+  const mentions_target = /\b(selected|current|this|entity)\b/.test(value) || target_name_from_prompt(value) !== "";
   return wants_delete && mentions_target && !mentions_children;
+}
+
+function is_rebuild_scene_request(value) {
+  const destructive = /\b(delete|remove|replace|rebuild|redo|remake|recreate)\b/.test(value);
+  const constructive = /\b(create|make|build|generate|rebuild|remake|recreate|bigger|larger|architecture|hallways?|corridors?|rooms?|open areas?|columns?)\b/.test(value);
+  const scene_target = /\b(room|level|area|scene|geometry|construct|environment|blockout)\b/.test(value) || target_name_from_prompt(value) !== "";
+  return destructive && constructive && scene_target && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
 }
 
 function primitive_from_prompt(value) {
@@ -86,7 +95,7 @@ function is_create_primitive_request(value) {
 
 function is_live_scene_edit_request(value) {
   const edit_verb = /\b(create|make|spawn|add|place|put|move|delete|remove|destroy|rotate|scale|select|build|clear|wipe)\b/.test(value);
-  const scene_object = /\b(entity|entities|world|scene|primitive|mesh|cube|box|quad|plane|sphere|ball|cylinder|cone|camera|light|physics|rigidbody|collider|playground|track|ramp)\b/.test(value);
+  const scene_object = /\b(entity|entities|world|scene|primitive|mesh|cube|box|quad|plane|sphere|ball|cylinder|cone|camera|light|physics|rigidbody|collider|track|ramp)\b/.test(value);
   return edit_verb && scene_object && !/\b(source|code|file|cpp|c\+\+|javascript|compile|build error|git|diff)\b/.test(value);
 }
 
@@ -188,14 +197,9 @@ function is_mcp_status_request(value) {
     /\b(status|health|ready|working|connected|slow|broken|diagnose|check)\b/.test(value);
 }
 
-function is_car_playground_request(value) {
-  const wants_build = /\b(build|create|make|generate|spawn|blockout)\b/.test(value);
-  return wants_build && /\b(playground|course|test track|track)\b/.test(value) && /\b(car|vehicle|driving)\b/.test(value);
-}
-
 function is_source_code_request(value) {
   const asks_about_code = /\b(source|code|file|files|cpp|c\+\+|javascript|script|compile|build|git|diff|commit|bug|crash|stack|log|function|class|where|implementation)\b/.test(value);
-  const live_scene_action = /\b(entity|world|scene|playground|selection|selected|create|delete|spawn|ramp|cone|car)\b/.test(value) &&
+  const live_scene_action = /\b(entity|world|scene|selection|selected|create|delete|spawn|ramp|cone)\b/.test(value) &&
     /\b(create|delete|spawn|move|rotate|scale|select|clear|build|make)\b/.test(value);
   return asks_about_code && !live_scene_action;
 }
@@ -223,13 +227,14 @@ export function route_intent(prompt) {
     return { kind: "engine_mode", confidence: 0.9, mode: engine_mode_from_prompt(value) };
   }
 
-  if (is_car_playground_request(value)) {
+  if (is_rebuild_scene_request(value))
+  {
     return {
-      kind: "car_playground",
-      confidence: 0.88,
+      kind: "scene_rebuild",
+      confidence: 0.9,
       live_scene_action: true,
-      allow_cursor_fallback: false,
-      target_name: target_name_from_prompt(prompt) || "playground",
+      allow_cursor_fallback: true,
+      target_name: target_name_from_prompt(prompt),
       use_selected: should_use_selected_entity(prompt),
     };
   }

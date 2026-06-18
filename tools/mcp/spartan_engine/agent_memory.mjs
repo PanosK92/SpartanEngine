@@ -22,10 +22,13 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use \`debug_log_read\` after failures to inspect actual engine command inputs and outputs.
 - Use \`search_capabilities\` and \`get_capability_details\` before guessing tool names.
 - Resolve targets with \`entity_resolve\` before mutating named or selected entities.
+- Before deleting or rebuilding geometry that should preserve look, call \`entity_render_materials\` on the target and reuse material names.
+- Use \`entity_create_light\` for generic point, spot, directional, and area lights, and calibrate intensity, range, and area size to the scene scale.
 - Use \`camera_snapshot\` before interpreting camera-relative placement.
 - Use \`world_raycast\` for ground or surface-relative placement when possible.
-- Live scene edits should use deterministic tools or fail fast, not Cursor fallback.
+- Simple live scene edits should use deterministic tools or fail fast; complex blockouts can use the higher-level scene path.
 - Missing deterministic capabilities should be logged immediately under Problem Reports.
+- Do not route delete plus rebuild prompts to \`entity_delete\`; preserve materials first, then rebuild through a complex scene path.
 - User convention, \`physics <primitive>\` means dynamic non-static physics unless static, fixed, or immovable is explicitly requested.
 - For repeated scene work, prefer \`entity_create_primitive_batch\` or one focused \`execute_lua\` script.
 - For source questions, use \`search_codebase\`, then \`read_source_file\` for focused context.

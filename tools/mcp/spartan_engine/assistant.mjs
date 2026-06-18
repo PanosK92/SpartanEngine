@@ -29,6 +29,7 @@ const mutating_tools = new Set([
   "world_save",
   "world_set_environment",
   "entity_create_empty",
+  "entity_create_light",
   "entity_create_primitive",
   "entity_create_primitive_batch",
   "entity_update",
@@ -335,7 +336,7 @@ async function execute_prompt(socket, payload) {
 
     if (summary === null) {
       if (intent.allow_cursor_fallback === false) {
-        await run.report_capability_gap(`No deterministic scene operation matched intent ${intent.kind}. Add a native MCP tool or recipe instead of using Cursor fallback.`);
+        await run.report_capability_gap(`No deterministic scene operation matched intent ${intent.kind}. Add a native MCP tool or generic operation instead of using Cursor fallback.`);
         throw new Error("No deterministic Spartan scene operation matched this request, and live scene edits are not allowed to fall back to Cursor.");
       }
 

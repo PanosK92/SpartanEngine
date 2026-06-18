@@ -119,6 +119,11 @@ export const output_schemas = {
     matches: z.array(any_object).optional(),
     truncated: z.boolean().optional(),
   }),
+  entity_render_materials: with_error_fields({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    materials: z.array(any_object).optional(),
+  }),
   selection_get: with_error_fields({
     selected_ids: z.array(z.string()).optional(),
   }),

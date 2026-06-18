@@ -165,6 +165,7 @@ const component_type = z.enum([
   "skid_marks",
 ]);
 const component_value = z.union([z.string(), z.number(), z.boolean(), vector3, vector4]);
+const light_type = z.enum(["directional", "point", "spot", "area"]);
 const primitive_create_args = {
   mesh: mesh_type.optional(),
   name: z.string().optional(),
@@ -172,6 +173,7 @@ const primitive_create_args = {
   position: vector3.optional(),
   rotation_euler: vector3.optional(),
   scale: vector3.optional(),
+  material: z.string().optional(),
   with_physics: z.boolean().optional(),
   body_type: body_type.optional(),
   physics_static: z.boolean().optional(),
@@ -180,6 +182,56 @@ const primitive_create_args = {
   physics_friction: z.number().optional(),
   physics_restitution: z.number().optional(),
 };
+
+function calibrated_light_defaults(type)
+{
+  if (type === "area")
+  {
+    return {
+      light_type: "area",
+      color: [1.0, 0.93, 0.82, 1.0],
+      temperature: 3200,
+      intensity: 5000,
+      range: 24,
+      area_width: 5,
+      area_height: 3,
+      shadows: true,
+    };
+  }
+
+  if (type === "spot")
+  {
+    return {
+      light_type: "spot",
+      color: [1.0, 0.94, 0.84, 1.0],
+      temperature: 3500,
+      intensity: 2500,
+      range: 24,
+      angle_degrees: 45,
+      shadows: true,
+    };
+  }
+
+  if (type === "directional")
+  {
+    return {
+      light_type: "directional",
+      color: [1.0, 0.96, 0.9, 1.0],
+      temperature: 5500,
+      intensity: 8,
+      shadows: true,
+    };
+  }
+
+  return {
+    light_type: "point",
+    color: [1.0, 0.92, 0.78, 1.0],
+    temperature: 3200,
+    intensity: 1200,
+    range: 14,
+    shadows: true,
+  };
+}
 
 const server = new McpServer({
   name: "spartan-engine",
@@ -621,6 +673,116 @@ register_tool(
   { annotations: edit_tool, outputSchema: output_schemas.entity },
 );
 
+register_local_tool(
+  "entity_create_light",
+  {
+    title: "entity create light",
+    description: "Create a light entity in edit mode and configure common light properties in one generic operation. By default, omitted light values are calibrated to usable per-type values; pass calibrated false to leave engine defaults.",
+    inputSchema: {
+      name: z.string().optional(),
+      parent_id: z.string().optional(),
+      position: vector3.optional(),
+      rotation_euler: vector3.optional(),
+      scale: vector3.optional(),
+      light_type: light_type.optional(),
+      color: vector4.optional(),
+      temperature: z.number().optional(),
+      intensity: z.number().optional(),
+      range: z.number().optional(),
+      angle_degrees: z.number().optional(),
+      area_width: z.number().optional(),
+      area_height: z.number().optional(),
+      shadows: z.boolean().optional(),
+      volumetric: z.boolean().optional(),
+      draw_distance: z.number().optional(),
+      shadow_distance: z.number().optional(),
+      volumetric_distance: z.number().optional(),
+      calibrated: z.boolean().optional(),
+    },
+    outputSchema: output_schemas.entity,
+    annotations: edit_tool,
+  },
+  async (args) => {
+    const create_args = {
+      name: args.name ?? "light",
+    };
+    if (args.parent_id)
+    {
+      create_args.parent_id = args.parent_id;
+    }
+
+    const created = await send_engine_command("entity_create_empty", create_args);
+    if (!created.ok)
+    {
+      return tool_result(created);
+    }
+
+    const id = created.entity?.id;
+    if (!id)
+    {
+      return tool_result(structured_error("entity_create_empty returned no entity id", { code: "engine_invalid_response" }));
+    }
+
+    const transform_args = { id };
+    for (const key of ["position", "rotation_euler", "scale"])
+    {
+      if (args[key] !== undefined)
+      {
+        transform_args[key] = args[key];
+      }
+    }
+    if (Object.keys(transform_args).length > 1)
+    {
+      const transformed = await send_engine_command("entity_set_transform", transform_args);
+      if (!transformed.ok)
+      {
+        return tool_result(transformed);
+      }
+    }
+
+    const added = await send_engine_command("entity_add_component", { id, type: "light" });
+    if (!added.ok)
+    {
+      return tool_result(added);
+    }
+
+    const effective_light_type = args.light_type ?? "point";
+    const defaults = args.calibrated === false ? {} : calibrated_light_defaults(effective_light_type);
+    const properties = {
+      light_type: args.light_type ?? defaults.light_type,
+      color: args.color ?? defaults.color,
+      temperature: args.temperature ?? defaults.temperature,
+      intensity: args.intensity ?? defaults.intensity,
+      range: args.range ?? defaults.range,
+      angle_degrees: args.angle_degrees ?? defaults.angle_degrees,
+      area_width: args.area_width ?? defaults.area_width,
+      area_height: args.area_height ?? defaults.area_height,
+      shadows: args.shadows ?? defaults.shadows,
+      volumetric: args.volumetric ?? defaults.volumetric,
+      draw_distance: args.draw_distance ?? defaults.draw_distance,
+      shadow_distance: args.shadow_distance ?? defaults.shadow_distance,
+      volumetric_distance: args.volumetric_distance ?? defaults.volumetric_distance,
+    };
+
+    for (const [property, value] of Object.entries(properties))
+    {
+      if (value === undefined || value === null)
+      {
+        continue;
+      }
+
+      const configured = await send_engine_command("component_set", { id, type: "light", property, value });
+      if (!configured.ok)
+      {
+        return tool_result(configured);
+      }
+    }
+
+    const final_entity = await send_engine_command("entity_get", { id });
+    return tool_result(final_entity.ok ? final_entity : created);
+  },
+);
+
 register_tool(
   server,
   "entity_create_primitive",
@@ -748,6 +910,18 @@ register_tool(
 
 register_tool(
   server,
+  "entity_render_materials",
+  "Read render material names for an entity and optionally its descendants. Use before destructive rebuilds that must preserve materials.",
+  {
+    id: z.string(),
+    include_descendants: z.boolean().optional(),
+  },
+  "entity_render_materials",
+  { annotations: read_only, outputSchema: output_schemas.entity_render_materials },
+);
+
+register_tool(
+  server,
   "component_get",
   "Read editable properties for a component on an entity.",
   {
@@ -787,7 +961,7 @@ register_tool(
   "execute_lua",
   [
     "Run a Lua script inside the engine in a single call, using the engine's Lua bindings (World, Entity, Render, Physics, Light, ParticleSystem, WorldHelpers, Timer, ComponentType, etc.).",
-    "Best for procedural or multi-step scene work: write ONE script with loops and math (grids, repeated props, whole playgrounds) instead of many individual tool calls.",
+    "Best for procedural or multi-step scene work: write ONE script with loops and math (grids, repeated props, whole layouts) instead of many individual tool calls.",
     "Runs on the engine main thread. Use print(...) for diagnostics (read it back with console_read) and return a short summary string describing what you built.",
   ].join(" "),
   {
