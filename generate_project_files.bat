@@ -2,8 +2,8 @@
 setlocal enableextensions
 pushd "%~dp0"
 
-set "premake=build_scripts\premake5.exe"
-set "lua=build_scripts/premake.lua"
+set "premake=tools\premake5.exe"
+set "lua=tools/premake.lua"
 set "interactive=1"
 
 if not "%~1"=="" (

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 #include <array>
 #include <string>
+#include <vector>
 //=====================
 
 class McpAssistant : public Widget
@@ -32,11 +33,30 @@ class McpAssistant : public Widget
 public:
     McpAssistant(Editor* editor);
 
+    void OnTick() override;
     void OnTickVisible() override;
+    void OnInvisible() override;
 
 private:
-    void SubmitPrompt();
+    struct ChatMessage
+    {
+        bool is_user = false;
+        std::string text;
+    };
 
+    void SubmitPrompt();
+    void RefreshModels();
+    void ApplyModelList(const std::string& model_list);
+    void DrawChatMessage(const ChatMessage& message, int index);
+    void UpdateInputOwnership();
+    std::string GetSelectedModelId() const;
+
+    std::array<char, 512> m_cursor_api_key = {};
     std::array<char, 4096> m_prompt = {};
-    std::string m_status;
+    std::vector<ChatMessage> m_messages;
+    std::vector<std::string> m_model_ids = { "auto" };
+    std::vector<std::string> m_model_labels = { "Auto" };
+    int m_model_index = 0;
+    bool m_blocks_input = false;
+    bool m_scroll_to_bottom = false;
 };

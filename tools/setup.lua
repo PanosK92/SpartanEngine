@@ -23,8 +23,8 @@ local PROJECT_ROOT     = path.getabsolute(path.join(_MAIN_SCRIPT_DIR or _SCRIPT_
 local BINARIES_DIR     = path.join(PROJECT_ROOT, "binaries")
 local DATA_DIR         = path.join(PROJECT_ROOT, "data")
 local LIBRARIES_DIR    = path.join(PROJECT_ROOT, "third_party", "libraries")
-local BUILD_SCRIPTS    = path.join(PROJECT_ROOT, "build_scripts")
-local SEVEN_ZIP        = path.join(BUILD_SCRIPTS, "7z.exe")
+local TOOLS_DIR        = path.join(PROJECT_ROOT, "tools")
+local SEVEN_ZIP        = path.join(TOOLS_DIR, "7z.exe")
 local ARCHIVE_PATH     = path.join(LIBRARIES_DIR, "libraries.7z")
 
 local LIBRARY_URL      = "https://www.dropbox.com/scl/fi/soird6jf3416nd43tr3hl/libraries.7z?rlkey=0k7i9sb5jsdcqgd2dw3f2n82s&dl=1"
@@ -178,8 +178,8 @@ end
 function setup.run()
     print("\n[1/4] copying data files into binaries...")
     copy_dir(DATA_DIR, path.join(BINARIES_DIR, "data"))
-    copy_file(path.join(BUILD_SCRIPTS, "7z.exe"), path.join(BINARIES_DIR, "7z.exe"))
-    copy_file(path.join(BUILD_SCRIPTS, "7z.dll"), path.join(BINARIES_DIR, "7z.dll"))
+    copy_file(path.join(TOOLS_DIR, "7z.exe"), path.join(BINARIES_DIR, "7z.exe"))
+    copy_file(path.join(TOOLS_DIR, "7z.dll"), path.join(BINARIES_DIR, "7z.dll"))
 
     print("\n[2/4] ensuring libraries archive is present...")
     ensure_archive()

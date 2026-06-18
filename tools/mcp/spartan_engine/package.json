@@ -7,9 +7,12 @@
     "spartan-engine-mcp": "./server.mjs"
   },
   "scripts": {
-    "start": "node ./server.mjs"
+    "start": "node ./server.mjs",
+    "assistant": "node ./assistant.mjs"
   },
   "dependencies": {
+    "@connectrpc/connect-node": "^1.7.0",
+    "@cursor/sdk": "latest",
     "@modelcontextprotocol/sdk": "latest",
     "zod": "latest"
   }

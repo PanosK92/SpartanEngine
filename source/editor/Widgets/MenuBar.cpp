@@ -584,11 +584,6 @@ namespace
             const ImVec4 tint = (is_running || is_visible) ? ImGui::Style::color_accent_1 : ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
             if (ImGuiSp::image_button(spartan::IconType::Mcp, spartan::math::Vector2(tool_icon_size(), tool_icon_size()), false, tint))
             {
-                if (!is_running)
-                {
-                    spartan::McpServer::Start();
-                }
-
                 if (assistant)
                 {
                     assistant->SetVisible(!assistant->GetVisible());
@@ -607,7 +602,7 @@ namespace
             }
             else
             {
-                ImGuiSp::tooltip("Start MCP");
+                ImGuiSp::tooltip("Open MCP Assistant");
             }
 
             ImGui::PopStyleColor(3);
@@ -870,19 +865,19 @@ void MenuBar::Tick()
 {
     // keyboard shortcuts
     {
-        if (ImGui::IsKeyPressed(ImGuiKey_F5, false))
+        const bool keyboard_captured = ImGui::GetIO().WantTextInput || ImGui::GetIO().WantCaptureKeyboard;
+        if (!keyboard_captured)
         {
-            buttons_toolbar::toggle_playing();
-        }
+            if (ImGui::IsKeyPressed(ImGuiKey_F5, false))
+            {
+                buttons_toolbar::toggle_playing();
+            }
 
-        if (ImGui::IsKeyPressed(ImGuiKey_F6, false))
-        {
-            buttons_toolbar::toggle_paused();
-        }
+            if (ImGui::IsKeyPressed(ImGuiKey_F6, false))
+            {
+                buttons_toolbar::toggle_paused();
+            }
 
-        // world save shortcuts, gated on no text input so we don't hijack typing in fields
-        if (!ImGui::GetIO().WantTextInput)
-        {
             const bool ctrl  = ImGui::GetIO().KeyCtrl;
             const bool shift = ImGui::GetIO().KeyShift;
             if (ctrl && ImGui::IsKeyPressed(ImGuiKey_S, false))

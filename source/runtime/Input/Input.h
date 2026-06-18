@@ -124,6 +124,8 @@ namespace spartan
         static bool GetKeyDown(const KeyCode key);
         // returns true during the frame the user releases the button
         static bool GetKeyUp(const KeyCode key);
+        static void SetBlockedByUi(bool blocked);
+        static bool IsBlockedByUi();
 
         // mouse
         static void SetMouseCursorVisible(const bool visible);
@@ -165,6 +167,7 @@ namespace spartan
 
         // keys
         static std::array<bool, 107> m_keys;
+        static bool m_blocked_by_ui;
         static uint32_t m_start_index_mouse;
         static uint32_t m_start_index_gamepad;
     };

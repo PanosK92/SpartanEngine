@@ -1190,7 +1190,7 @@ namespace spartan
     {
         // find 7z executable - check all possible locations and names at runtime
         string seven_zip_exe;
-        vector<string> candidates = {"7z.exe", "build_scripts/7z.exe", "7z", "7za"};
+        vector<string> candidates = {"7z.exe", "tools/7z.exe", "7z", "7za"};
 
         for (const auto& candidate : candidates)
         {
@@ -1203,7 +1203,7 @@ namespace spartan
 
         if (seven_zip_exe.empty())
         {
-            SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, build_scripts/, or PATH.");
+            SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, tools/, or PATH.");
             return false;
         }
 
@@ -1244,7 +1244,7 @@ namespace spartan
 
         // find 7z executable - check all possible locations and names at runtime
         string seven_zip_exe;
-        vector<string> candidates = {"7z.exe", "build_scripts/7z.exe", "7z", "7za"};
+        vector<string> candidates = {"7z.exe", "tools/7z.exe", "7z", "7za"};
 
         for (const auto& candidate : candidates)
         {
@@ -1257,7 +1257,7 @@ namespace spartan
 
         if (seven_zip_exe.empty())
         {
-            SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, build_scripts/, or PATH.");
+            SP_LOG_ERROR("7z not found. Please ensure it exists in the current directory, tools/, or PATH.");
             return false;
         }
 

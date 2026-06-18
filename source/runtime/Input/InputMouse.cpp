@@ -129,6 +129,11 @@ namespace spartan
 
     bool Input::GetMouseIsInViewport()
     {
+        if (Input::IsBlockedByUi())
+        {
+            return false;
+        }
+
         return m_mouse_is_in_viewport;
     }
 
@@ -150,11 +155,21 @@ namespace spartan
 
     const spartan::math::Vector2& Input::GetMouseDelta()
     {
+        if (Input::IsBlockedByUi())
+        {
+            return Vector2::Zero;
+        }
+
         return m_mouse_delta;
     }
 
     const spartan::math::Vector2& Input::GetMouseWheelDelta()
     {
+        if (Input::IsBlockedByUi())
+        {
+            return Vector2::Zero;
+        }
+
         return m_mouse_wheel_delta;
     }
 

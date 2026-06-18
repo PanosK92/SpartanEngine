@@ -151,21 +151,41 @@ namespace spartan
 
     const Vector2& Input::GetGamepadThumbStickLeft()
     {
+        if (Input::IsBlockedByUi())
+        {
+            return Vector2::Zero;
+        }
+
         return controller_thumb_left;
     }
 
     const Vector2& Input::GetGamepadThumbStickRight()
     {
+        if (Input::IsBlockedByUi())
+        {
+            return Vector2::Zero;
+        }
+
         return controller_thumb_right;
     }
 
     float Input::GetGamepadTriggerLeft()
     {
+        if (Input::IsBlockedByUi())
+        {
+            return 0.0f;
+        }
+
         return controller_trigger_left;
     }
 
     float Input::GetGamepadTriggerRight()
     {
+        if (Input::IsBlockedByUi())
+        {
+            return 0.0f;
+        }
+
         return controller_trigger_right;
     }
 }

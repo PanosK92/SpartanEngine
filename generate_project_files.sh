@@ -3,8 +3,8 @@ set -e
 
 cd "$(dirname "$0")"
 
-premake="build_scripts/premake5"
-lua="build_scripts/premake.lua"
+premake="tools/premake5"
+lua="tools/premake.lua"
 
 run_choice() {
     case "$1" in

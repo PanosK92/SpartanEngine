@@ -37,6 +37,7 @@ namespace spartan
     // keys
     array<bool, 107> Input::m_keys;
     array<bool, 107> m_keys_previous_frame;
+    bool Input::m_blocked_by_ui = false;
     uint32_t Input::m_start_index_mouse   = 83;
     uint32_t Input::m_start_index_gamepad = 86;
 
@@ -70,17 +71,42 @@ namespace spartan
 
     bool Input::GetKey(const KeyCode key)
     {
+        if (m_blocked_by_ui)
+        {
+            return false;
+        }
+
         return m_keys[static_cast<uint32_t>(key)];
     }
 
     bool Input::GetKeyDown(const KeyCode key)
     {
+        if (m_blocked_by_ui)
+        {
+            return false;
+        }
+
         return GetKey(key) && !m_keys_previous_frame[static_cast<uint32_t>(key)];
     }
 
     bool Input::GetKeyUp(const KeyCode key)
     {
+        if (m_blocked_by_ui)
+        {
+            return false;
+        }
+
         return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)];
+    }
+
+    void Input::SetBlockedByUi(bool blocked)
+    {
+        m_blocked_by_ui = blocked;
+    }
+
+    bool Input::IsBlockedByUi()
+    {
+        return m_blocked_by_ui;
     }
 
     array<bool, 107>& Input::GetKeys()
