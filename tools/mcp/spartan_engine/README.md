@@ -70,10 +70,16 @@ Use these first:
 - `search_capabilities` and `get_capability_details` to discover tools/resources without guessing.
 - `context_snapshot` to read engine status, world summary, selection, and camera grounding in one call.
 - `entity_render_materials` before deleting/rebuilding existing geometry when materials should be preserved.
+- `resource_list`, `material_get`, `material_set_property`, and `material_set_texture` for cached asset/material inspection and edits.
+- `selection_update`, `entity_clone`, and `entity_move_index` for editor selection and hierarchy operations.
+- `prefab_types`, `prefab_save`, and `prefab_load` for prefab discovery and file prefab workflows.
 - `camera_snapshot` before camera-relative placement.
 - `world_raycast` before ground or surface-relative placement.
 - `entity_resolve` before mutating a named or selected entity.
+- `entity_find_by_component` when targeting all entities with a component type.
 - `component_get` before `component_set`.
+- `component_set_batch` for multiple edits on one component.
+- `component_action` for supported component methods before using Lua.
 - `search_codebase`, then `read_source_file`, for source questions.
 - `entity_create_primitive_batch` or `execute_lua` for repeated scene work.
 - `agent_memory_append` after a durable lesson, correction, recurring problem, or maintainer improvement idea.

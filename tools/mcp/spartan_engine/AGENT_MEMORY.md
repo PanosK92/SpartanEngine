@@ -7,13 +7,20 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Mutating scene tools require edit mode.
 - `execute_lua` is the broad capability layer for procedural scene edits and is edit-mode guarded.
 - `context_snapshot` is the fastest first read for engine status, world summary, and selection.
-- `component_get` exposes editable properties for an entity component before calling `component_set`.
+- `component_get` exposes friendly properties plus registered raw members for an entity component before calling `component_set`.
+- `component_action` invokes deterministic component methods that are not simple property writes.
+- `resource_list` and `material_get` expose cached resources and material scalar/texture state.
 
 ## Good Agent Strategies
 - Start engine tasks with `spartan_status` or `context_snapshot`.
 - Use `debug_log_read` after failures to inspect actual engine command inputs and outputs.
 - Use `search_capabilities` and `get_capability_details` before guessing tool names.
 - Resolve targets with `entity_resolve` before mutating named or selected entities.
+- Use `entity_find_by_component` to locate all entities with a component type.
+- Use `component_set_batch` for multiple property/member edits on one component.
+- Use `component_action` before falling back to Lua for terrain, spline, particle, physics, audio, light, or camera actions.
+- Use `selection_update`, `entity_clone`, `entity_move_index`, and prefab tools before using Lua for common editor hierarchy workflows.
+- Use `material_set_property` and `material_set_texture` for material edits instead of custom Lua.
 - Before deleting or rebuilding geometry that should preserve look, call `entity_render_materials` on the target and reuse material names.
 - Use `entity_create_light` for generic point, spot, directional, and area lights, and calibrate intensity, range, and area size to the scene scale.
 - Use `camera_snapshot` before interpreting camera-relative placement.
@@ -29,7 +36,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Gotchas
 - World loading blocks many engine commands until loading completes.
-- `component_set` supports editable properties only for supported component types and known property names.
+- `component_set` supports friendly properties and registered raw component member names for all component types.
 - Long Lua scripts run on the main thread, so they should do a bounded amount of work and return a short summary.
 - Tool errors are advisory data for recovery, not transport failures.
 

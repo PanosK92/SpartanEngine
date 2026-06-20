@@ -33,9 +33,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Component.h"
 #include "../World/Components/AudioSource.h"
 #include "../World/Components/Light.h"
+#include "../World/Components/ParticleSystem.h"
 #include "../World/Components/Physics.h"
 #include "../World/Components/Render.h"
 #include "../World/Components/Script.h"
+#include "../World/Components/Spline.h"
+#include "../World/Components/Terrain.h"
+#include "../World/Prefab.h"
+#include "../Resource/ResourceCache.h"
+#include "../Geometry/Mesh.h"
+#include "../RHI/RHI_Texture.h"
+#include "../Rendering/Material.h"
+#include "../Math/Vector2.h"
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -43,6 +52,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iomanip>
 #include <optional>
 #include <sstream>
+#include <typeinfo>
 //==============================================
 
 namespace spartan
@@ -116,9 +126,28 @@ namespace spartan
             return "[" + std::to_string(value.x) + "," + std::to_string(value.y) + "," + std::to_string(value.z) + "]";
         }
 
+        std::string json_vector2(const math::Vector2& value)
+        {
+            return "[" + std::to_string(value.x) + "," + std::to_string(value.y) + "]";
+        }
+
+        std::string json_quaternion(const math::Quaternion& value)
+        {
+            return "[" + std::to_string(value.x) + "," + std::to_string(value.y) + "," + std::to_string(value.z) + "," + std::to_string(value.w) + "]";
+        }
+
         std::string json_color(const Color& value)
         {
             return "[" + std::to_string(value.r) + "," + std::to_string(value.g) + "," + std::to_string(value.b) + "," + std::to_string(value.a) + "]";
+        }
+
+        std::string json_matrix(const math::Matrix& value)
+        {
+            return "["
+                + std::to_string(value.m00) + "," + std::to_string(value.m01) + "," + std::to_string(value.m02) + "," + std::to_string(value.m03) + ","
+                + std::to_string(value.m10) + "," + std::to_string(value.m11) + "," + std::to_string(value.m12) + "," + std::to_string(value.m13) + ","
+                + std::to_string(value.m20) + "," + std::to_string(value.m21) + "," + std::to_string(value.m22) + "," + std::to_string(value.m23) + ","
+                + std::to_string(value.m30) + "," + std::to_string(value.m31) + "," + std::to_string(value.m32) + "," + std::to_string(value.m33) + "]";
         }
 
         std::string json_bounding_box(const math::BoundingBox& value)
@@ -197,6 +226,43 @@ namespace spartan
             return values.size() == expected_count;
         }
 
+        bool parse_int32(const std::string& value, int32_t& result)
+        {
+            char* end = nullptr;
+            const long parsed = std::strtol(value.c_str(), &end, 10);
+            if (end == value.c_str() || *end != '\0' || parsed < std::numeric_limits<int32_t>::min() || parsed > std::numeric_limits<int32_t>::max())
+            {
+                return false;
+            }
+
+            result = static_cast<int32_t>(parsed);
+            return true;
+        }
+
+        bool parse_uint32(const std::string& value, uint32_t& result)
+        {
+            uint64_t parsed = 0;
+            if (!parse_uint64(value, parsed) || parsed > std::numeric_limits<uint32_t>::max())
+            {
+                return false;
+            }
+
+            result = static_cast<uint32_t>(parsed);
+            return true;
+        }
+
+        bool parse_vector2(const std::string& value, math::Vector2& result)
+        {
+            std::vector<float> values;
+            if (!parse_float_list(value, values, 2))
+            {
+                return false;
+            }
+
+            result = math::Vector2(values[0], values[1]);
+            return result.IsFinite();
+        }
+
         bool parse_vector3(const std::string& value, math::Vector3& result)
         {
             std::vector<float> values;
@@ -219,6 +285,37 @@ namespace spartan
 
             result = math::Quaternion(values[0], values[1], values[2], values[3]);
             return result.IsFinite();
+        }
+
+        bool parse_matrix(const std::string& value, math::Matrix& result)
+        {
+            std::vector<float> values;
+            if (!parse_float_list(value, values, 16))
+            {
+                return false;
+            }
+
+            result = math::Matrix(values.data());
+            return true;
+        }
+
+        bool parse_bounding_box(const std::string& value, math::BoundingBox& result)
+        {
+            std::vector<float> values;
+            if (!parse_float_list(value, values, 6))
+            {
+                return false;
+            }
+
+            const math::Vector3 min(values[0], values[1], values[2]);
+            const math::Vector3 max(values[3], values[4], values[5]);
+            if (!min.IsFinite() || !max.IsFinite())
+            {
+                return false;
+            }
+
+            result = math::BoundingBox(min, max);
+            return true;
         }
 
         bool parse_color(const std::string& value, Color& result)
@@ -571,6 +668,1091 @@ namespace spartan
 
             json += "]";
             return json;
+        }
+
+        std::string camel_to_snake(const std::string& value)
+        {
+            std::string result;
+            for (size_t i = 0; i < value.size(); i++)
+            {
+                const unsigned char c = static_cast<unsigned char>(value[i]);
+                if (std::isupper(c))
+                {
+                    if (i != 0 && !result.empty() && result.back() != '_' && (std::islower(static_cast<unsigned char>(value[i - 1])) || std::isdigit(static_cast<unsigned char>(value[i - 1]))))
+                    {
+                        result.push_back('_');
+                    }
+                    result.push_back(static_cast<char>(std::tolower(c)));
+                }
+                else
+                {
+                    result.push_back(static_cast<char>(c));
+                }
+            }
+
+            return result;
+        }
+
+        std::string attribute_property_name(const Attribute& attribute)
+        {
+            if (attribute.name.rfind("m_", 0) == 0)
+            {
+                return attribute.name.substr(2);
+            }
+            if (attribute.name.rfind("Get", 0) == 0 && attribute.name.size() > 3)
+            {
+                return camel_to_snake(attribute.name.substr(3));
+            }
+
+            return camel_to_snake(attribute.name);
+        }
+
+        bool attribute_matches_property(const Attribute& attribute, const std::string& property)
+        {
+            const std::string query = to_lower_copy(property);
+            return query == to_lower_copy(attribute.name) || query == to_lower_copy(attribute_property_name(attribute));
+        }
+
+        std::string projection_type_to_name(ProjectionType type)
+        {
+            return type == Projection_Orthographic ? "orthographic" : "perspective";
+        }
+
+        std::optional<ProjectionType> projection_type_from_name(const std::string& name)
+        {
+            if (name == "perspective" || name == "0")
+            {
+                return Projection_Perspective;
+            }
+            if (name == "orthographic" || name == "1")
+            {
+                return Projection_Orthographic;
+            }
+
+            return std::nullopt;
+        }
+
+        std::string spline_profile_to_name(SplineProfile profile)
+        {
+            switch (profile)
+            {
+            case SplineProfile::Road:
+                return "road";
+            case SplineProfile::Wall:
+                return "wall";
+            case SplineProfile::Tube:
+                return "tube";
+            case SplineProfile::Fence:
+                return "fence";
+            case SplineProfile::Channel:
+                return "channel";
+            default:
+                return "unknown";
+            }
+        }
+
+        std::optional<SplineProfile> spline_profile_from_name(const std::string& name)
+        {
+            if (name == "road" || name == "0")
+            {
+                return SplineProfile::Road;
+            }
+            if (name == "wall" || name == "1")
+            {
+                return SplineProfile::Wall;
+            }
+            if (name == "tube" || name == "2")
+            {
+                return SplineProfile::Tube;
+            }
+            if (name == "fence" || name == "3")
+            {
+                return SplineProfile::Fence;
+            }
+            if (name == "channel" || name == "4")
+            {
+                return SplineProfile::Channel;
+            }
+
+            return std::nullopt;
+        }
+
+        std::string spline_attach_mode_to_name(SplineAttachMode mode)
+        {
+            switch (mode)
+            {
+            case SplineAttachMode::None:
+                return "none";
+            case SplineAttachMode::Centerline:
+                return "centerline";
+            case SplineAttachMode::LeftEdge:
+                return "left_edge";
+            case SplineAttachMode::RightEdge:
+                return "right_edge";
+            case SplineAttachMode::LeftOuter:
+                return "left_outer";
+            case SplineAttachMode::RightOuter:
+                return "right_outer";
+            default:
+                return "unknown";
+            }
+        }
+
+        std::optional<SplineAttachMode> spline_attach_mode_from_name(const std::string& name)
+        {
+            if (name == "none" || name == "0")
+            {
+                return SplineAttachMode::None;
+            }
+            if (name == "centerline" || name == "1")
+            {
+                return SplineAttachMode::Centerline;
+            }
+            if (name == "left_edge" || name == "2")
+            {
+                return SplineAttachMode::LeftEdge;
+            }
+            if (name == "right_edge" || name == "3")
+            {
+                return SplineAttachMode::RightEdge;
+            }
+            if (name == "left_outer" || name == "4")
+            {
+                return SplineAttachMode::LeftOuter;
+            }
+            if (name == "right_outer" || name == "5")
+            {
+                return SplineAttachMode::RightOuter;
+            }
+
+            return std::nullopt;
+        }
+
+        std::optional<ParticlePreset> particle_preset_from_name(const std::string& name)
+        {
+            if (name == "custom" || name == "0")
+            {
+                return ParticlePreset::Custom;
+            }
+            if (name == "fire" || name == "1")
+            {
+                return ParticlePreset::Fire;
+            }
+            if (name == "smoke" || name == "2")
+            {
+                return ParticlePreset::Smoke;
+            }
+            if (name == "steam" || name == "3")
+            {
+                return ParticlePreset::Steam;
+            }
+            if (name == "sparks" || name == "4")
+            {
+                return ParticlePreset::Sparks;
+            }
+            if (name == "dust" || name == "5")
+            {
+                return ParticlePreset::Dust;
+            }
+            if (name == "snow" || name == "6")
+            {
+                return ParticlePreset::Snow;
+            }
+            if (name == "rain" || name == "7")
+            {
+                return ParticlePreset::Rain;
+            }
+            if (name == "confetti" || name == "8")
+            {
+                return ParticlePreset::Confetti;
+            }
+            if (name == "fireflies" || name == "9")
+            {
+                return ParticlePreset::Fireflies;
+            }
+            if (name == "blood" || name == "10")
+            {
+                return ParticlePreset::Blood;
+            }
+            if (name == "magic" || name == "11")
+            {
+                return ParticlePreset::Magic;
+            }
+            if (name == "explosion" || name == "12")
+            {
+                return ParticlePreset::Explosion;
+            }
+            if (name == "waterfall" || name == "13")
+            {
+                return ParticlePreset::Waterfall;
+            }
+            if (name == "embers" || name == "14")
+            {
+                return ParticlePreset::Embers;
+            }
+            if (name == "tire_smoke" || name == "tiresmoke" || name == "15")
+            {
+                return ParticlePreset::TireSmoke;
+            }
+            if (name == "exhaust" || name == "16")
+            {
+                return ParticlePreset::Exhaust;
+            }
+
+            return std::nullopt;
+        }
+
+        std::optional<PhysicsForce> physics_force_from_name(const std::string& name)
+        {
+            if (name == "constant" || name == "force" || name == "0")
+            {
+                return PhysicsForce::Constant;
+            }
+            if (name == "impulse" || name == "1")
+            {
+                return PhysicsForce::Impulse;
+            }
+
+            return std::nullopt;
+        }
+
+        std::string resource_type_to_name(ResourceType type)
+        {
+            switch (type)
+            {
+            case ResourceType::Texture:
+                return "texture";
+            case ResourceType::Audio:
+                return "audio";
+            case ResourceType::Material:
+                return "material";
+            case ResourceType::Mesh:
+                return "mesh";
+            case ResourceType::Cubemap:
+                return "cubemap";
+            case ResourceType::Animation:
+                return "animation";
+            case ResourceType::Font:
+                return "font";
+            case ResourceType::Shader:
+                return "shader";
+            case ResourceType::Unknown:
+                return "unknown";
+            default:
+                return "all";
+            }
+        }
+
+        std::optional<ResourceType> resource_type_from_name(const std::string& name)
+        {
+            if (name == "all" || name == "max" || name.empty())
+            {
+                return ResourceType::Max;
+            }
+            if (name == "texture")
+            {
+                return ResourceType::Texture;
+            }
+            if (name == "audio")
+            {
+                return ResourceType::Audio;
+            }
+            if (name == "material")
+            {
+                return ResourceType::Material;
+            }
+            if (name == "mesh")
+            {
+                return ResourceType::Mesh;
+            }
+            if (name == "cubemap")
+            {
+                return ResourceType::Cubemap;
+            }
+            if (name == "animation")
+            {
+                return ResourceType::Animation;
+            }
+            if (name == "font")
+            {
+                return ResourceType::Font;
+            }
+            if (name == "shader")
+            {
+                return ResourceType::Shader;
+            }
+            if (name == "unknown")
+            {
+                return ResourceType::Unknown;
+            }
+
+            return std::nullopt;
+        }
+
+        std::string material_texture_type_to_name(MaterialTextureType type)
+        {
+            switch (type)
+            {
+            case MaterialTextureType::Color:
+                return "color";
+            case MaterialTextureType::Roughness:
+                return "roughness";
+            case MaterialTextureType::Metalness:
+                return "metalness";
+            case MaterialTextureType::Normal:
+                return "normal";
+            case MaterialTextureType::Occlusion:
+                return "occlusion";
+            case MaterialTextureType::Emission:
+                return "emission";
+            case MaterialTextureType::Height:
+                return "height";
+            case MaterialTextureType::AlphaMask:
+                return "alpha_mask";
+            case MaterialTextureType::Packed:
+                return "packed";
+            default:
+                return "unknown";
+            }
+        }
+
+        std::optional<MaterialTextureType> material_texture_type_from_name(const std::string& name)
+        {
+            if (name == "color" || name == "albedo" || name == "base_color")
+            {
+                return MaterialTextureType::Color;
+            }
+            if (name == "roughness")
+            {
+                return MaterialTextureType::Roughness;
+            }
+            if (name == "metalness" || name == "metallic")
+            {
+                return MaterialTextureType::Metalness;
+            }
+            if (name == "normal")
+            {
+                return MaterialTextureType::Normal;
+            }
+            if (name == "occlusion" || name == "ao")
+            {
+                return MaterialTextureType::Occlusion;
+            }
+            if (name == "emission" || name == "emissive")
+            {
+                return MaterialTextureType::Emission;
+            }
+            if (name == "height")
+            {
+                return MaterialTextureType::Height;
+            }
+            if (name == "alpha_mask" || name == "alpha")
+            {
+                return MaterialTextureType::AlphaMask;
+            }
+            if (name == "packed")
+            {
+                return MaterialTextureType::Packed;
+            }
+
+            return std::nullopt;
+        }
+
+        std::string material_property_to_name(MaterialProperty property)
+        {
+            switch (property)
+            {
+            case MaterialProperty::Gltf:
+                return "gltf";
+            case MaterialProperty::WorldHeight:
+                return "world_space_height";
+            case MaterialProperty::WorldWidth:
+                return "world_space_width";
+            case MaterialProperty::WorldSpaceUv:
+                return "world_space_uv";
+            case MaterialProperty::Tessellation:
+                return "tessellation";
+            case MaterialProperty::ColorR:
+                return "color_r";
+            case MaterialProperty::ColorG:
+                return "color_g";
+            case MaterialProperty::ColorB:
+                return "color_b";
+            case MaterialProperty::ColorA:
+                return "color_a";
+            case MaterialProperty::Roughness:
+                return "roughness";
+            case MaterialProperty::Metalness:
+                return "metalness";
+            case MaterialProperty::Normal:
+                return "normal";
+            case MaterialProperty::Height:
+                return "height";
+            case MaterialProperty::Clearcoat:
+                return "clearcoat";
+            case MaterialProperty::Clearcoat_Roughness:
+                return "clearcoat_roughness";
+            case MaterialProperty::Anisotropic:
+                return "anisotropic";
+            case MaterialProperty::AnisotropicRotation:
+                return "anisotropic_rotation";
+            case MaterialProperty::Sheen:
+                return "sheen";
+            case MaterialProperty::SubsurfaceScattering:
+                return "subsurface_scattering";
+            case MaterialProperty::NormalFromAlbedo:
+                return "normal_from_albedo";
+            case MaterialProperty::EmissiveFromAlbedo:
+                return "emissive_from_albedo";
+            case MaterialProperty::TextureTilingX:
+                return "texture_tiling_x";
+            case MaterialProperty::TextureTilingY:
+                return "texture_tiling_y";
+            case MaterialProperty::TextureOffsetX:
+                return "texture_offset_x";
+            case MaterialProperty::TextureOffsetY:
+                return "texture_offset_y";
+            case MaterialProperty::TextureInvertX:
+                return "texture_invert_x";
+            case MaterialProperty::TextureInvertY:
+                return "texture_invert_y";
+            case MaterialProperty::TextureRotation:
+                return "texture_rotation";
+            case MaterialProperty::IsTerrain:
+                return "texture_slope_based";
+            case MaterialProperty::IsGrassBlade:
+                return "is_grass_blade";
+            case MaterialProperty::IsFlower:
+                return "is_flower";
+            case MaterialProperty::WindAnimation:
+                return "wind_animation";
+            case MaterialProperty::ColorVariationFromInstance:
+                return "color_variation_from_instance";
+            case MaterialProperty::IsWater:
+                return "vertex_animate_water";
+            case MaterialProperty::CullMode:
+                return "cull_mode";
+            default:
+                return "unknown";
+            }
+        }
+
+        std::optional<MaterialProperty> material_property_from_name(const std::string& name)
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); i++)
+            {
+                const MaterialProperty property = static_cast<MaterialProperty>(i);
+                if (name == material_property_to_name(property))
+                {
+                    return property;
+                }
+            }
+
+            if (name == "world_height")
+            {
+                return MaterialProperty::WorldHeight;
+            }
+            if (name == "world_width")
+            {
+                return MaterialProperty::WorldWidth;
+            }
+            if (name == "world_uv")
+            {
+                return MaterialProperty::WorldSpaceUv;
+            }
+            if (name == "base_color_r")
+            {
+                return MaterialProperty::ColorR;
+            }
+            if (name == "base_color_g")
+            {
+                return MaterialProperty::ColorG;
+            }
+            if (name == "base_color_b")
+            {
+                return MaterialProperty::ColorB;
+            }
+            if (name == "base_color_a")
+            {
+                return MaterialProperty::ColorA;
+            }
+
+            return std::nullopt;
+        }
+
+        IResource* get_resource_by_name_or_path(const std::string& name_or_path, ResourceType type)
+        {
+            std::lock_guard<std::recursive_mutex> guard(ResourceCache::GetMutex());
+            for (std::shared_ptr<IResource>& resource : ResourceCache::GetResources())
+            {
+                if (!resource || (type != ResourceType::Max && resource->GetResourceType() != type))
+                {
+                    continue;
+                }
+
+                if (resource->GetObjectName() == name_or_path || resource->GetResourceFilePath() == name_or_path)
+                {
+                    return resource.get();
+                }
+            }
+
+            return nullptr;
+        }
+
+        Material* get_material_from_request(const McpRequest& request, std::string& error)
+        {
+            const std::optional<std::string> name = get_argument(request, "name");
+            const std::optional<std::string> path = get_argument(request, "path");
+            const std::string key = name ? *name : (path ? *path : "");
+            if (key.empty())
+            {
+                error = "missing material name or path";
+                return nullptr;
+            }
+
+            Material* material = static_cast<Material*>(get_resource_by_name_or_path(key, ResourceType::Material));
+            if (material == nullptr)
+            {
+                error = "material not found";
+            }
+
+            return material;
+        }
+
+        std::string resource_to_json(IResource* resource)
+        {
+            if (resource == nullptr)
+            {
+                return "null";
+            }
+
+            std::string json = "{";
+            json += "\"id\":" + json_string(std::to_string(resource->GetObjectId()));
+            json += ",\"name\":" + json_string(resource->GetObjectName());
+            json += ",\"type\":" + json_string(resource_type_to_name(resource->GetResourceType()));
+            json += ",\"path\":" + json_string(resource->GetResourceFilePath());
+            json += ",\"state\":" + std::to_string(static_cast<uint32_t>(resource->GetResourceState()));
+            json += ",\"flags\":" + std::to_string(resource->GetFlags());
+            json += "}";
+            return json;
+        }
+
+        std::string material_to_json(Material* material)
+        {
+            if (material == nullptr)
+            {
+                return "null";
+            }
+
+            std::string json = "{";
+            json += "\"resource\":" + resource_to_json(material);
+            json += ",\"properties\":{";
+            bool first_property = true;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialProperty::Max); i++)
+            {
+                const MaterialProperty property = static_cast<MaterialProperty>(i);
+                const std::string name = material_property_to_name(property);
+                if (name == "unknown")
+                {
+                    continue;
+                }
+
+                if (!first_property)
+                {
+                    json += ",";
+                }
+                first_property = false;
+                json += json_string(name) + ":" + std::to_string(material->GetProperty(property));
+            }
+            json += "}";
+
+            json += ",\"textures\":{";
+            bool first_texture = true;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(MaterialTextureType::Max); i++)
+            {
+                const MaterialTextureType texture_type = static_cast<MaterialTextureType>(i);
+                if (!first_texture)
+                {
+                    json += ",";
+                }
+                first_texture = false;
+                json += json_string(material_texture_type_to_name(texture_type)) + ":[";
+                for (uint32_t slot = 0; slot < Material::slots_per_texture; slot++)
+                {
+                    if (slot != 0)
+                    {
+                        json += ",";
+                    }
+                    json += json_string(material->GetTexturePathByType(texture_type, static_cast<uint8_t>(slot)));
+                }
+                json += "]";
+            }
+            json += "}}";
+            return json;
+        }
+
+        std::string attribute_value_to_json(const std::any& value, const std::string& type_name)
+        {
+            const std::type_info& type = value.type();
+
+            if (type == typeid(bool))
+            {
+                return json_bool(std::any_cast<bool>(value));
+            }
+            if (type == typeid(float))
+            {
+                return std::to_string(std::any_cast<float>(value));
+            }
+            if (type == typeid(double))
+            {
+                return std::to_string(std::any_cast<double>(value));
+            }
+            if (type == typeid(int32_t))
+            {
+                return std::to_string(std::any_cast<int32_t>(value));
+            }
+            if (type == typeid(uint32_t))
+            {
+                return std::to_string(std::any_cast<uint32_t>(value));
+            }
+            if (type == typeid(uint64_t))
+            {
+                return std::to_string(std::any_cast<uint64_t>(value));
+            }
+            if (type == typeid(std::string))
+            {
+                return json_string(std::any_cast<std::string>(value));
+            }
+            if (type == typeid(math::Vector2))
+            {
+                return json_vector2(std::any_cast<math::Vector2>(value));
+            }
+            if (type == typeid(math::Vector3))
+            {
+                return json_vector3(std::any_cast<math::Vector3>(value));
+            }
+            if (type == typeid(math::Quaternion))
+            {
+                return json_quaternion(std::any_cast<math::Quaternion>(value));
+            }
+            if (type == typeid(Color))
+            {
+                return json_color(std::any_cast<Color>(value));
+            }
+            if (type == typeid(math::BoundingBox))
+            {
+                return json_bounding_box(std::any_cast<math::BoundingBox>(value));
+            }
+            if (type == typeid(math::Matrix))
+            {
+                return json_matrix(std::any_cast<math::Matrix>(value));
+            }
+            if (type == typeid(ProjectionType))
+            {
+                return json_string(projection_type_to_name(std::any_cast<ProjectionType>(value)));
+            }
+            if (type == typeid(BodyType))
+            {
+                return json_string(body_type_to_name(std::any_cast<BodyType>(value)));
+            }
+            if (type == typeid(LightType))
+            {
+                return json_string(light_type_to_name(std::any_cast<LightType>(value)));
+            }
+            if (type == typeid(SplineProfile))
+            {
+                return json_string(spline_profile_to_name(std::any_cast<SplineProfile>(value)));
+            }
+            if (type == typeid(SplineAttachMode))
+            {
+                return json_string(spline_attach_mode_to_name(std::any_cast<SplineAttachMode>(value)));
+            }
+            if (type == typeid(ParticlePreset))
+            {
+                return std::to_string(static_cast<uint32_t>(std::any_cast<ParticlePreset>(value)));
+            }
+            if (type == typeid(ParticleBlendMode))
+            {
+                return std::to_string(static_cast<uint32_t>(std::any_cast<ParticleBlendMode>(value)));
+            }
+            if (type == typeid(ParticleLightingMode))
+            {
+                return std::to_string(static_cast<uint32_t>(std::any_cast<ParticleLightingMode>(value)));
+            }
+            if (type == typeid(Material*))
+            {
+                Material* material = std::any_cast<Material*>(value);
+                return material ? json_string(material->GetObjectName()) : "null";
+            }
+            if (type == typeid(Mesh*))
+            {
+                Mesh* mesh = std::any_cast<Mesh*>(value);
+                return mesh ? json_string(mesh->GetObjectName()) : "null";
+            }
+            if (type == typeid(std::vector<Instance>))
+            {
+                const std::vector<Instance>& instances = std::any_cast<const std::vector<Instance>&>(value);
+                return "{\"count\":" + std::to_string(instances.size()) + "}";
+            }
+
+            return "{\"unsupported_type\":" + json_string(type_name) + "}";
+        }
+
+        bool attribute_type_is_writable(const std::any& value)
+        {
+            const std::type_info& type = value.type();
+            return type == typeid(bool) ||
+                type == typeid(float) ||
+                type == typeid(double) ||
+                type == typeid(int32_t) ||
+                type == typeid(uint32_t) ||
+                type == typeid(uint64_t) ||
+                type == typeid(std::string) ||
+                type == typeid(math::Vector2) ||
+                type == typeid(math::Vector3) ||
+                type == typeid(math::Quaternion) ||
+                type == typeid(Color) ||
+                type == typeid(math::BoundingBox) ||
+                type == typeid(math::Matrix) ||
+                type == typeid(ProjectionType) ||
+                type == typeid(BodyType) ||
+                type == typeid(LightType) ||
+                type == typeid(SplineProfile) ||
+                type == typeid(SplineAttachMode) ||
+                type == typeid(ParticlePreset) ||
+                type == typeid(ParticleBlendMode) ||
+                type == typeid(ParticleLightingMode);
+        }
+
+        bool parse_attribute_value(const Attribute& attribute, const std::string& value, std::any& parsed, std::string& error)
+        {
+            const std::type_info& type = attribute.getter().type();
+
+            if (type == typeid(bool))
+            {
+                bool result = false;
+                if (!parse_bool(value, result))
+                {
+                    error = "invalid bool";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(float))
+            {
+                float result = 0.0f;
+                if (!parse_float(value, result))
+                {
+                    error = "invalid float";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(double))
+            {
+                float result = 0.0f;
+                if (!parse_float(value, result))
+                {
+                    error = "invalid double";
+                    return false;
+                }
+                parsed = static_cast<double>(result);
+                return true;
+            }
+            if (type == typeid(int32_t))
+            {
+                int32_t result = 0;
+                if (!parse_int32(value, result))
+                {
+                    error = "invalid int32";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(uint32_t))
+            {
+                uint32_t result = 0;
+                if (!parse_uint32(value, result))
+                {
+                    error = "invalid uint32";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(uint64_t))
+            {
+                uint64_t result = 0;
+                if (!parse_uint64(value, result))
+                {
+                    error = "invalid uint64";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(std::string))
+            {
+                parsed = value;
+                return true;
+            }
+            if (type == typeid(math::Vector2))
+            {
+                math::Vector2 result;
+                if (!parse_vector2(value, result))
+                {
+                    error = "invalid vector2";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(math::Vector3))
+            {
+                math::Vector3 result;
+                if (!parse_vector3(value, result))
+                {
+                    error = "invalid vector3";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(math::Quaternion))
+            {
+                math::Quaternion result;
+                if (!parse_quaternion(value, result))
+                {
+                    error = "invalid quaternion";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(Color))
+            {
+                Color result;
+                if (!parse_color(value, result))
+                {
+                    error = "invalid color";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(math::Matrix))
+            {
+                math::Matrix result;
+                if (!parse_matrix(value, result))
+                {
+                    error = "invalid matrix";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(math::BoundingBox))
+            {
+                math::BoundingBox result;
+                if (!parse_bounding_box(value, result))
+                {
+                    error = "invalid bounding_box";
+                    return false;
+                }
+                parsed = result;
+                return true;
+            }
+            if (type == typeid(ProjectionType))
+            {
+                const std::optional<ProjectionType> result = projection_type_from_name(value);
+                if (!result)
+                {
+                    error = "invalid projection";
+                    return false;
+                }
+                parsed = *result;
+                return true;
+            }
+            if (type == typeid(BodyType))
+            {
+                const std::optional<BodyType> result = body_type_from_name(value);
+                if (!result)
+                {
+                    error = "invalid body_type";
+                    return false;
+                }
+                parsed = *result;
+                return true;
+            }
+            if (type == typeid(LightType))
+            {
+                const std::optional<LightType> result = light_type_from_name(value);
+                if (!result)
+                {
+                    error = "invalid light_type";
+                    return false;
+                }
+                parsed = *result;
+                return true;
+            }
+            if (type == typeid(SplineProfile))
+            {
+                const std::optional<SplineProfile> result = spline_profile_from_name(value);
+                if (!result)
+                {
+                    error = "invalid spline_profile";
+                    return false;
+                }
+                parsed = *result;
+                return true;
+            }
+            if (type == typeid(SplineAttachMode))
+            {
+                const std::optional<SplineAttachMode> result = spline_attach_mode_from_name(value);
+                if (!result)
+                {
+                    error = "invalid spline_attach_mode";
+                    return false;
+                }
+                parsed = *result;
+                return true;
+            }
+            if (type == typeid(ParticlePreset))
+            {
+                uint32_t result = 0;
+                if (!parse_uint32(value, result) || result >= static_cast<uint32_t>(ParticlePreset::Count))
+                {
+                    error = "invalid particle_preset";
+                    return false;
+                }
+                parsed = static_cast<ParticlePreset>(result);
+                return true;
+            }
+            if (type == typeid(ParticleBlendMode))
+            {
+                uint32_t result = 0;
+                if (!parse_uint32(value, result) || result >= static_cast<uint32_t>(ParticleBlendMode::Count))
+                {
+                    error = "invalid particle_blend_mode";
+                    return false;
+                }
+                parsed = static_cast<ParticleBlendMode>(result);
+                return true;
+            }
+            if (type == typeid(ParticleLightingMode))
+            {
+                uint32_t result = 0;
+                if (!parse_uint32(value, result) || result >= static_cast<uint32_t>(ParticleLightingMode::Count))
+                {
+                    error = "invalid particle_lighting_mode";
+                    return false;
+                }
+                parsed = static_cast<ParticleLightingMode>(result);
+                return true;
+            }
+
+            error = "member is read-only through MCP";
+            return false;
+        }
+
+        std::string component_member_names_json(Component* component)
+        {
+            std::string json = "[";
+            bool first = true;
+
+            for (const Attribute& attribute : component->GetAttributes())
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(attribute_property_name(attribute));
+            }
+
+            json += "]";
+            return json;
+        }
+
+        std::string component_members_to_json(Component* component)
+        {
+            std::string json = "[";
+            bool first = true;
+
+            for (const Attribute& attribute : component->GetAttributes())
+            {
+                const std::any value = attribute.getter();
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += "{";
+                json += "\"property\":" + json_string(attribute_property_name(attribute));
+                json += ",\"member\":" + json_string(attribute.name);
+                json += ",\"type\":" + json_string(attribute.type);
+                json += ",\"writable\":" + json_bool(attribute_type_is_writable(value));
+                json += ",\"value\":" + attribute_value_to_json(value, attribute.type);
+                json += "}";
+            }
+
+            json += "]";
+            return json;
+        }
+
+        std::string component_member_properties_to_json(Component* component)
+        {
+            std::string json = "{";
+            bool first = true;
+
+            for (const Attribute& attribute : component->GetAttributes())
+            {
+                const std::any value = attribute.getter();
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(attribute_property_name(attribute)) + ":" + attribute_value_to_json(value, attribute.type);
+            }
+
+            json += "}";
+            return json;
+        }
+
+        bool set_component_member(Component* component, const std::string& property, const std::string& value, std::string& error)
+        {
+            for (const Attribute& attribute : component->GetAttributes())
+            {
+                if (!attribute_matches_property(attribute, property))
+                {
+                    continue;
+                }
+
+                std::any parsed;
+                if (!parse_attribute_value(attribute, value, parsed, error))
+                {
+                    return false;
+                }
+
+                try
+                {
+                    attribute.setter(parsed);
+                }
+                catch (const std::bad_any_cast&)
+                {
+                    error = "member type mismatch";
+                    return false;
+                }
+
+                return true;
+            }
+
+            error = "unknown component property";
+            return false;
         }
 
         std::string entity_components_json(Entity* entity)
@@ -1587,6 +2769,10 @@ namespace spartan
                 Script* script = static_cast<Script*>(component);
                 json += "\"file_path\":" + json_string(script->file_path);
             }
+            else
+            {
+                return component_member_properties_to_json(component);
+            }
 
             json += "}";
             return json;
@@ -1657,7 +2843,9 @@ namespace spartan
             std::string json = "{\"ok\":true,\"component\":{";
             json += "\"type\":" + json_string(*type_name);
             json += ",\"editable_properties\":" + editable_properties_json(*type);
+            json += ",\"editable_members\":" + component_member_names_json(component);
             json += ",\"properties\":" + component_properties_to_json(component);
+            json += ",\"members\":" + component_members_to_json(component);
             json += "}}";
             return json;
         }
@@ -1731,6 +2919,513 @@ namespace spartan
             append_render_material_snapshot(json, entity, include_descendants, first);
             json += "]}";
             return json;
+        }
+
+        std::string command_resource_list(const McpRequest& request)
+        {
+            ResourceType type = ResourceType::Max;
+            if (const std::optional<std::string> type_arg = get_argument(request, "type"))
+            {
+                const std::optional<ResourceType> parsed = resource_type_from_name(to_lower_copy(*type_arg));
+                if (!parsed)
+                {
+                    return json_error("invalid resource type");
+                }
+                type = *parsed;
+            }
+
+            uint32_t limit = 500;
+            if (const std::optional<std::string> limit_arg = get_argument(request, "limit"))
+            {
+                uint64_t parsed = 0;
+                if (!parse_uint64(*limit_arg, parsed) || parsed == 0 || parsed > 5000)
+                {
+                    return json_error("limit must be between 1 and 5000");
+                }
+                limit = static_cast<uint32_t>(parsed);
+            }
+
+            uint32_t offset = 0;
+            if (const std::optional<std::string> offset_arg = get_argument(request, "offset"))
+            {
+                uint64_t parsed = 0;
+                if (!parse_uint64(*offset_arg, parsed))
+                {
+                    return json_error("invalid offset");
+                }
+                offset = static_cast<uint32_t>(parsed);
+            }
+
+            uint32_t total = 0;
+            uint32_t emitted = 0;
+            std::string json = "{\"ok\":true";
+            json += ",\"type\":" + json_string(resource_type_to_name(type));
+            json += ",\"offset\":" + std::to_string(offset);
+            json += ",\"resources\":[";
+            bool first = true;
+            std::lock_guard<std::recursive_mutex> guard(ResourceCache::GetMutex());
+            for (std::shared_ptr<IResource>& resource : ResourceCache::GetResources())
+            {
+                if (!resource || (type != ResourceType::Max && resource->GetResourceType() != type))
+                {
+                    continue;
+                }
+
+                if (total++ < offset)
+                {
+                    continue;
+                }
+
+                if (emitted >= limit)
+                {
+                    continue;
+                }
+
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                emitted++;
+                json += resource_to_json(resource.get());
+            }
+
+            json += "],\"total\":" + std::to_string(total);
+            json += ",\"count\":" + std::to_string(emitted);
+            json += ",\"truncated\":" + json_bool(total > offset + emitted);
+            json += "}";
+            return json;
+        }
+
+        std::string command_material_get(const McpRequest& request)
+        {
+            std::string error;
+            Material* material = get_material_from_request(request, error);
+            if (material == nullptr)
+            {
+                return json_error(error);
+            }
+
+            return "{\"ok\":true,\"material\":" + material_to_json(material) + "}";
+        }
+
+        std::string command_material_set_property(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("material edits require edit mode");
+            }
+
+            std::string error;
+            Material* material = get_material_from_request(request, error);
+            if (material == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> property_arg = get_argument(request, "property");
+            const std::optional<std::string> value_arg = get_argument(request, "value");
+            if (!property_arg || !value_arg)
+            {
+                return json_error("missing property or value");
+            }
+
+            const std::optional<MaterialProperty> property = material_property_from_name(to_lower_copy(*property_arg));
+            if (!property)
+            {
+                return json_error("invalid material property");
+            }
+
+            float value = 0.0f;
+            if (!parse_float(*value_arg, value))
+            {
+                return json_error("invalid material property value");
+            }
+
+            material->SetProperty(*property, value);
+            return "{\"ok\":true,\"material\":" + material_to_json(material) + "}";
+        }
+
+        std::string command_material_set_texture(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("material edits require edit mode");
+            }
+
+            std::string error;
+            Material* material = get_material_from_request(request, error);
+            if (material == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> texture_type_arg = get_argument(request, "texture_type");
+            const std::optional<std::string> texture_path = get_argument(request, "texture_path");
+            if (!texture_type_arg || !texture_path)
+            {
+                return json_error("missing texture_type or texture_path");
+            }
+
+            const std::optional<MaterialTextureType> texture_type = material_texture_type_from_name(to_lower_copy(*texture_type_arg));
+            if (!texture_type)
+            {
+                return json_error("invalid material texture type");
+            }
+
+            uint8_t slot = 0;
+            if (const std::optional<std::string> slot_arg = get_argument(request, "slot"))
+            {
+                uint32_t parsed = 0;
+                if (!parse_uint32(*slot_arg, parsed) || parsed >= Material::slots_per_texture)
+                {
+                    return json_error("invalid texture slot");
+                }
+                slot = static_cast<uint8_t>(parsed);
+            }
+
+            material->SetTexture(*texture_type, *texture_path, slot);
+            return "{\"ok\":true,\"material\":" + material_to_json(material) + "}";
+        }
+
+        std::string command_selection_update(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("selection update requires edit mode");
+            }
+
+            Camera* camera = World::GetCamera();
+            if (camera == nullptr)
+            {
+                return json_error("camera not found");
+            }
+
+            const std::optional<std::string> action_arg = get_argument(request, "action");
+            if (!action_arg)
+            {
+                return json_error("missing action");
+            }
+
+            const std::string action = to_lower_copy(*action_arg);
+            if (action == "clear")
+            {
+                camera->ClearSelection();
+            }
+            else if (action == "set_by_component")
+            {
+                const std::optional<std::string> type_name = get_argument(request, "type");
+                if (!type_name)
+                {
+                    return json_error("missing type");
+                }
+
+                const std::optional<ComponentType> type = component_type_from_name(*type_name);
+                if (!type)
+                {
+                    return json_error("unknown component type");
+                }
+
+                camera->ClearSelection();
+                for (Entity* entity : World::GetEntities())
+                {
+                    if (entity != nullptr && entity->GetComponentByType(*type) != nullptr)
+                    {
+                        camera->AddToSelection(entity);
+                    }
+                }
+            }
+            else
+            {
+                std::string error;
+                Entity* entity = get_entity_from_request(request, error);
+                if (entity == nullptr)
+                {
+                    return json_error(error);
+                }
+
+                if (action == "set")
+                {
+                    camera->ClearSelection();
+                    camera->AddToSelection(entity);
+                }
+                else if (action == "add")
+                {
+                    camera->AddToSelection(entity);
+                }
+                else if (action == "remove")
+                {
+                    camera->RemoveFromSelection(entity);
+                }
+                else if (action == "toggle")
+                {
+                    camera->ToggleSelection(entity);
+                }
+                else
+                {
+                    return json_error("unknown selection action");
+                }
+            }
+
+            std::string json = "{\"ok\":true,\"selected_ids\":[";
+            bool first = true;
+            for (Entity* selected_entity : camera->GetSelectedEntities())
+            {
+                if (selected_entity == nullptr)
+                {
+                    continue;
+                }
+
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(std::to_string(selected_entity->GetObjectId()));
+            }
+            json += "]}";
+            return json;
+        }
+
+        std::string command_entity_clone(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("entity clone requires edit mode");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            Entity* parent = nullptr;
+            if (const std::optional<std::string> parent_id = get_argument(request, "parent_id"))
+            {
+                if (!parent_id->empty() && *parent_id != "null" && *parent_id != "none" && *parent_id != "root" && *parent_id != "0")
+                {
+                    uint64_t parsed_parent_id = 0;
+                    if (!parse_uint64(*parent_id, parsed_parent_id))
+                    {
+                        return json_error("invalid parent_id");
+                    }
+
+                    parent = World::GetEntityById(parsed_parent_id);
+                    if (parent == nullptr)
+                    {
+                        return json_error("parent entity not found");
+                    }
+                    if (parent == entity || parent->IsDescendantOf(entity))
+                    {
+                        return json_error("parent cannot be self or descendant");
+                    }
+                }
+            }
+
+            Entity* clone = entity->Clone();
+            if (clone == nullptr)
+            {
+                return json_error("failed to clone entity");
+            }
+
+            if (const std::optional<std::string> name = get_argument(request, "name"))
+            {
+                clone->SetObjectName(*name);
+            }
+
+            if (get_argument(request, "parent_id"))
+            {
+                clone->SetParent(parent);
+            }
+
+            bool select = false;
+            if (const std::optional<std::string> select_arg = get_argument(request, "select"))
+            {
+                if (!parse_bool(*select_arg, select))
+                {
+                    return json_error("invalid select");
+                }
+            }
+            if (select)
+            {
+                if (Camera* camera = World::GetCamera())
+                {
+                    camera->ClearSelection();
+                    camera->AddToSelection(clone);
+                }
+            }
+
+            return "{\"ok\":true,\"entity\":" + entity_to_json(clone, true) + "}";
+        }
+
+        std::string command_entity_move_index(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("entity move requires edit mode");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> index_arg = get_argument(request, "index");
+            if (!index_arg)
+            {
+                return json_error("missing index");
+            }
+
+            uint32_t index = 0;
+            if (!parse_uint32(*index_arg, index))
+            {
+                return json_error("invalid index");
+            }
+
+            if (Entity* parent = entity->GetParent())
+            {
+                parent->MoveChildToIndex(entity, index);
+            }
+            else
+            {
+                World::MoveEntityToIndex(entity, index);
+            }
+
+            return "{\"ok\":true,\"entity\":" + entity_to_json_compact(entity) + "}";
+        }
+
+        std::string command_prefab_types()
+        {
+            std::vector<std::string> types = Prefab::GetRegisteredTypes();
+            std::string json = "{\"ok\":true,\"types\":[";
+            bool first = true;
+            for (const std::string& type : types)
+            {
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                json += json_string(type);
+            }
+            json += "]}";
+            return json;
+        }
+
+        std::string command_prefab_save(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("prefab save requires edit mode");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> path = get_argument(request, "path");
+            if (!path || path->empty())
+            {
+                return json_error("missing path");
+            }
+
+            const bool saved = Prefab::SaveToFile(entity, *path);
+            if (!saved)
+            {
+                return json_error("failed to save prefab");
+            }
+
+            return "{\"ok\":true,\"path\":" + json_string(*path) + ",\"entity\":" + entity_to_json_compact(entity) + "}";
+        }
+
+        std::string command_prefab_load(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("prefab load requires edit mode");
+            }
+
+            const std::optional<std::string> path = get_argument(request, "path");
+            if (!path || path->empty())
+            {
+                return json_error("missing path");
+            }
+
+            Entity* parent = nullptr;
+            if (const std::optional<std::string> parent_id = get_argument(request, "parent_id"))
+            {
+                uint64_t parsed_parent_id = 0;
+                if (!parse_uint64(*parent_id, parsed_parent_id))
+                {
+                    return json_error("invalid parent_id");
+                }
+
+                parent = World::GetEntityById(parsed_parent_id);
+                if (parent == nullptr)
+                {
+                    return json_error("parent entity not found");
+                }
+            }
+
+            if (parent == nullptr)
+            {
+                parent = World::CreateEntity();
+                if (parent == nullptr)
+                {
+                    return json_error("failed to create prefab root");
+                }
+                parent->SetObjectName("prefab");
+            }
+
+            if (const std::optional<std::string> name = get_argument(request, "name"))
+            {
+                parent->SetObjectName(*name);
+            }
+
+            const bool loaded = Prefab::LoadFromFile(*path, parent);
+            if (!loaded)
+            {
+                return json_error("failed to load prefab");
+            }
+
+            parent->SetPrefabFilePath(*path);
+            parent->MarkPrefabBaseline();
+            return "{\"ok\":true,\"path\":" + json_string(*path) + ",\"entity\":" + entity_to_json(parent, true) + "}";
         }
 
         bool set_render_property(Render* renderable, const std::string& property, const std::string& value, std::string& error)
@@ -2127,6 +3822,52 @@ namespace spartan
             return false;
         }
 
+        bool set_component_property(ComponentType type, Component* component, const std::string& property, const std::string& value, std::string& error)
+        {
+            bool changed = false;
+            if (type == ComponentType::Render)
+            {
+                changed = set_render_property(static_cast<Render*>(component), property, value, error);
+            }
+            else if (type == ComponentType::Physics)
+            {
+                changed = set_physics_property(static_cast<Physics*>(component), property, value, error);
+            }
+            else if (type == ComponentType::Light)
+            {
+                changed = set_light_property(static_cast<Light*>(component), property, value, error);
+            }
+            else if (type == ComponentType::Camera)
+            {
+                changed = set_camera_property(static_cast<Camera*>(component), property, value, error);
+            }
+            else if (type == ComponentType::AudioSource)
+            {
+                changed = set_audio_source_property(static_cast<AudioSource*>(component), property, value, error);
+            }
+            else if (type == ComponentType::Script && property == "file_path")
+            {
+                static_cast<Script*>(component)->LoadScriptFile(value);
+                changed = true;
+            }
+            else
+            {
+                changed = set_component_member(component, property, value, error);
+            }
+
+            if (!changed && (error.empty() || error.rfind("unsupported", 0) == 0))
+            {
+                std::string member_error;
+                changed = set_component_member(component, property, value, member_error);
+                if (!changed)
+                {
+                    error = member_error;
+                }
+            }
+
+            return changed;
+        }
+
         std::string command_component_set(const McpRequest& request)
         {
             if (ProgressTracker::IsLoading())
@@ -2165,38 +3906,7 @@ namespace spartan
                 return json_error("entity does not have component");
             }
 
-            bool changed = false;
-            if (*type == ComponentType::Render)
-            {
-                changed = set_render_property(static_cast<Render*>(component), *property, *value, error);
-            }
-            else if (*type == ComponentType::Physics)
-            {
-                changed = set_physics_property(static_cast<Physics*>(component), *property, *value, error);
-            }
-            else if (*type == ComponentType::Light)
-            {
-                changed = set_light_property(static_cast<Light*>(component), *property, *value, error);
-            }
-            else if (*type == ComponentType::Camera)
-            {
-                changed = set_camera_property(static_cast<Camera*>(component), *property, *value, error);
-            }
-            else if (*type == ComponentType::AudioSource)
-            {
-                changed = set_audio_source_property(static_cast<AudioSource*>(component), *property, *value, error);
-            }
-            else if (*type == ComponentType::Script && *property == "file_path")
-            {
-                static_cast<Script*>(component)->LoadScriptFile(*value);
-                changed = true;
-            }
-            else
-            {
-                error = "unsupported component property";
-            }
-
-            if (!changed)
+            if (!set_component_property(*type, component, *property, *value, error))
             {
                 return json_error(error.empty() ? "failed to set component property" : error);
             }
@@ -2204,6 +3914,337 @@ namespace spartan
             std::string json = "{\"ok\":true,\"component\":{";
             json += "\"type\":" + json_string(*type_name);
             json += ",\"properties\":" + component_properties_to_json(component);
+            json += ",\"members\":" + component_members_to_json(component);
+            json += "}}";
+            return json;
+        }
+
+        std::string command_component_set_batch(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+            if (!is_edit_mode())
+            {
+                return json_error("component edits require edit mode");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> type_name = get_argument(request, "type");
+            const std::optional<std::string> count_arg = get_argument(request, "count");
+            if (!type_name || !count_arg)
+            {
+                return json_error("missing type or count");
+            }
+
+            const std::optional<ComponentType> type = component_type_from_name(*type_name);
+            if (!type)
+            {
+                return json_error("unknown component type");
+            }
+
+            uint64_t count = 0;
+            if (!parse_uint64(*count_arg, count) || count == 0 || count > 128)
+            {
+                return json_error("count must be between 1 and 128");
+            }
+
+            Component* component = entity->GetComponentByType(*type);
+            if (component == nullptr)
+            {
+                return json_error("entity does not have component");
+            }
+
+            for (uint64_t i = 0; i < count; i++)
+            {
+                const std::optional<std::string> property = get_argument(request, "property_" + std::to_string(i));
+                const std::optional<std::string> value = get_argument(request, "value_" + std::to_string(i));
+                if (!property || !value)
+                {
+                    return json_error("missing batch property or value at index " + std::to_string(i));
+                }
+
+                if (!set_component_property(*type, component, *property, *value, error))
+                {
+                    std::string json = "{\"ok\":false";
+                    json += ",\"failed_index\":" + std::to_string(i);
+                    json += ",\"error\":" + json_string(error.empty() ? "failed to set component property" : error);
+                    json += "}";
+                    return json;
+                }
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"updated_count\":" + std::to_string(count);
+            json += ",\"component\":{";
+            json += "\"type\":" + json_string(*type_name);
+            json += ",\"properties\":" + component_properties_to_json(component);
+            json += ",\"members\":" + component_members_to_json(component);
+            json += "}}";
+            return json;
+        }
+
+        std::string command_entity_find_by_component(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            const std::optional<std::string> type_name = get_argument(request, "type");
+            if (!type_name)
+            {
+                return json_error("missing type");
+            }
+
+            const std::optional<ComponentType> type = component_type_from_name(*type_name);
+            if (!type)
+            {
+                return json_error("unknown component type");
+            }
+
+            uint32_t limit = 100;
+            if (const std::optional<std::string> limit_arg = get_argument(request, "limit"))
+            {
+                uint64_t parsed = 0;
+                if (!parse_uint64(*limit_arg, parsed) || parsed == 0 || parsed > 1000)
+                {
+                    return json_error("limit must be between 1 and 1000");
+                }
+
+                limit = static_cast<uint32_t>(parsed);
+            }
+
+            uint32_t offset = 0;
+            if (const std::optional<std::string> offset_arg = get_argument(request, "offset"))
+            {
+                uint64_t parsed = 0;
+                if (!parse_uint64(*offset_arg, parsed))
+                {
+                    return json_error("invalid offset");
+                }
+
+                offset = static_cast<uint32_t>(parsed);
+            }
+
+            uint32_t total = 0;
+            uint32_t emitted = 0;
+            std::string json = "{\"ok\":true";
+            json += ",\"type\":" + json_string(*type_name);
+            json += ",\"offset\":" + std::to_string(offset);
+            json += ",\"entities\":[";
+            bool first = true;
+            for (Entity* entity : World::GetEntities())
+            {
+                if (entity == nullptr || entity->GetComponentByType(*type) == nullptr)
+                {
+                    continue;
+                }
+
+                if (total++ < offset)
+                {
+                    continue;
+                }
+
+                if (emitted >= limit)
+                {
+                    continue;
+                }
+
+                if (!first)
+                {
+                    json += ",";
+                }
+                first = false;
+                emitted++;
+                json += entity_to_json_compact(entity);
+            }
+
+            json += "],\"total\":" + std::to_string(total);
+            json += ",\"count\":" + std::to_string(emitted);
+            json += ",\"truncated\":" + json_bool(total > offset + emitted);
+            json += "}";
+            return json;
+        }
+
+        std::string command_component_action(const McpRequest& request)
+        {
+            if (ProgressTracker::IsLoading())
+            {
+                return json_error("world is loading");
+            }
+
+            std::string error;
+            Entity* entity = get_entity_from_request(request, error);
+            if (entity == nullptr)
+            {
+                return json_error(error);
+            }
+
+            const std::optional<std::string> type_name = get_argument(request, "type");
+            const std::optional<std::string> action_arg = get_argument(request, "action");
+            if (!type_name || !action_arg)
+            {
+                return json_error("missing type or action");
+            }
+
+            const std::optional<ComponentType> type = component_type_from_name(*type_name);
+            if (!type)
+            {
+                return json_error("unknown component type");
+            }
+
+            Component* component = entity->GetComponentByType(*type);
+            if (component == nullptr)
+            {
+                return json_error("entity does not have component");
+            }
+
+            const std::string action = to_lower_copy(*action_arg);
+            const bool runtime_action =
+                (*type == ComponentType::Physics && (action == "apply_force" || action == "sync_wheel_offsets" || action == "reset_tire_wear" || action == "shift_up" || action == "shift_down" || action == "shift_to_neutral" || action == "draw_debug_visualization")) ||
+                (*type == ComponentType::AudioSource && (action == "play" || action == "stop"));
+
+            if (!runtime_action && !is_edit_mode())
+            {
+                return json_error("component action requires edit mode");
+            }
+
+            std::string result_json = "{}";
+            if (*type == ComponentType::Terrain && action == "generate")
+            {
+                static_cast<Terrain*>(component)->Generate();
+            }
+            else if (*type == ComponentType::Spline && action == "generate_road_mesh")
+            {
+                static_cast<Spline*>(component)->GenerateRoadMesh();
+            }
+            else if (*type == ComponentType::Spline && action == "clear_road_mesh")
+            {
+                static_cast<Spline*>(component)->ClearRoadMesh();
+            }
+            else if (*type == ComponentType::Spline && action == "spawn_instances")
+            {
+                static_cast<Spline*>(component)->SpawnInstances();
+            }
+            else if (*type == ComponentType::Spline && action == "clear_instances")
+            {
+                static_cast<Spline*>(component)->ClearInstances();
+            }
+            else if (*type == ComponentType::ParticleSystem && action == "apply_preset")
+            {
+                const std::optional<std::string> preset_arg = get_argument(request, "preset");
+                const std::optional<std::string> value_arg = get_argument(request, "value");
+                const std::string preset_name = preset_arg ? *preset_arg : (value_arg ? *value_arg : "");
+                const std::optional<ParticlePreset> preset = particle_preset_from_name(to_lower_copy(preset_name));
+                if (!preset)
+                {
+                    return json_error("invalid particle preset");
+                }
+
+                static_cast<ParticleSystem*>(component)->ApplyPreset(*preset);
+            }
+            else if (*type == ComponentType::ParticleSystem && action == "trigger_burst")
+            {
+                const std::optional<std::string> count_arg = get_argument(request, "count");
+                const std::optional<std::string> value_arg = get_argument(request, "value");
+                float count = 0.0f;
+                if (!parse_float(count_arg ? *count_arg : (value_arg ? *value_arg : ""), count) || count <= 0.0f)
+                {
+                    return json_error("invalid burst count");
+                }
+
+                static_cast<ParticleSystem*>(component)->TriggerBurst(count);
+            }
+            else if (*type == ComponentType::Physics && action == "apply_force")
+            {
+                const std::optional<std::string> force_arg = get_argument(request, "force");
+                if (!force_arg)
+                {
+                    return json_error("missing force");
+                }
+
+                math::Vector3 force;
+                if (!parse_vector3(*force_arg, force))
+                {
+                    return json_error("invalid force");
+                }
+
+                PhysicsForce mode = PhysicsForce::Impulse;
+                if (const std::optional<std::string> mode_arg = get_argument(request, "mode"))
+                {
+                    const std::optional<PhysicsForce> parsed = physics_force_from_name(to_lower_copy(*mode_arg));
+                    if (!parsed)
+                    {
+                        return json_error("invalid force mode");
+                    }
+                    mode = *parsed;
+                }
+
+                static_cast<Physics*>(component)->ApplyForce(force, mode);
+            }
+            else if (*type == ComponentType::Physics && action == "sync_wheel_offsets")
+            {
+                static_cast<Physics*>(component)->SyncWheelOffsetsFromEntities();
+            }
+            else if (*type == ComponentType::Physics && action == "reset_tire_wear")
+            {
+                static_cast<Physics*>(component)->ResetTireWear();
+            }
+            else if (*type == ComponentType::Physics && action == "shift_up")
+            {
+                static_cast<Physics*>(component)->ShiftUp();
+            }
+            else if (*type == ComponentType::Physics && action == "shift_down")
+            {
+                static_cast<Physics*>(component)->ShiftDown();
+            }
+            else if (*type == ComponentType::Physics && action == "shift_to_neutral")
+            {
+                static_cast<Physics*>(component)->ShiftToNeutral();
+            }
+            else if (*type == ComponentType::Physics && action == "draw_debug_visualization")
+            {
+                static_cast<Physics*>(component)->DrawDebugVisualization();
+            }
+            else if (*type == ComponentType::AudioSource && action == "play")
+            {
+                static_cast<AudioSource*>(component)->PlayClip();
+            }
+            else if (*type == ComponentType::AudioSource && action == "stop")
+            {
+                static_cast<AudioSource*>(component)->StopClip();
+            }
+            else if (*type == ComponentType::Light && action == "fit_to_mesh")
+            {
+                const bool fitted = static_cast<Light*>(component)->FitToMesh();
+                result_json = "{\"fitted\":" + json_bool(fitted) + "}";
+            }
+            else if (*type == ComponentType::Camera && action == "focus_selected")
+            {
+                static_cast<Camera*>(component)->FocusOnSelectedEntity();
+            }
+            else
+            {
+                return json_error("unsupported component action");
+            }
+
+            std::string json = "{\"ok\":true";
+            json += ",\"entity\":" + entity_to_json_compact(entity);
+            json += ",\"type\":" + json_string(*type_name);
+            json += ",\"action\":" + json_string(action);
+            json += ",\"result\":" + result_json;
+            json += ",\"component\":{";
+            json += "\"type\":" + json_string(*type_name);
+            json += ",\"properties\":" + component_properties_to_json(component);
+            json += ",\"members\":" + component_members_to_json(component);
             json += "}}";
             return json;
         }
@@ -2939,6 +4980,10 @@ namespace spartan
         {
             return command_entity_find(request);
         }
+        if (request.command == "entity_find_by_component")
+        {
+            return command_entity_find_by_component(request);
+        }
         if (request.command == "entity_get")
         {
             return command_entity_get(request);
@@ -2995,6 +5040,18 @@ namespace spartan
         {
             return command_entity_select(request);
         }
+        if (request.command == "selection_update")
+        {
+            return command_selection_update(request);
+        }
+        if (request.command == "entity_clone")
+        {
+            return command_entity_clone(request);
+        }
+        if (request.command == "entity_move_index")
+        {
+            return command_entity_move_index(request);
+        }
         if (request.command == "entity_set_transform")
         {
             return command_entity_set_transform(request);
@@ -3015,9 +5072,45 @@ namespace spartan
         {
             return command_entity_render_materials(request);
         }
+        if (request.command == "resource_list")
+        {
+            return command_resource_list(request);
+        }
+        if (request.command == "material_get")
+        {
+            return command_material_get(request);
+        }
+        if (request.command == "material_set_property")
+        {
+            return command_material_set_property(request);
+        }
+        if (request.command == "material_set_texture")
+        {
+            return command_material_set_texture(request);
+        }
         if (request.command == "component_set")
         {
             return command_component_set(request);
+        }
+        if (request.command == "component_set_batch")
+        {
+            return command_component_set_batch(request);
+        }
+        if (request.command == "component_action")
+        {
+            return command_component_action(request);
+        }
+        if (request.command == "prefab_types")
+        {
+            return command_prefab_types();
+        }
+        if (request.command == "prefab_save")
+        {
+            return command_prefab_save(request);
+        }
+        if (request.command == "prefab_load")
+        {
+            return command_prefab_load(request);
         }
         if (request.command == "execute_lua")
         {

@@ -58,7 +58,14 @@ namespace spartan
 
     SkidMarks::SkidMarks(Entity* entity) : Component(entity)
     {
-
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_slip_threshold, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_min_segment_distance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_segments, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_opacity, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_z_offset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_uv_tiling, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_fade_distance, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_smoothing, float);
     }
 
     SkidMarks::~SkidMarks()

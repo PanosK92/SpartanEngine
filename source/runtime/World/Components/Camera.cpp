@@ -48,6 +48,17 @@ namespace spartan
 {
     Camera::Camera(Entity* entity) : Component(entity)
     {
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flags, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_aperture, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shutter_speed, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_iso, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_fov_horizontal_rad, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_near_plane, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_far_plane, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_projection_type, SetProjection, ProjectionType);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mouse_sensitivity, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mouse_smoothing, float);
+
         // do not override the entity's transform here, otherwise loading a saved scene clobbers the persisted camera position
         SetFlag(CameraFlags::CanBeControlled, true);
         SetFlag(CameraFlags::PhysicalBodyAnimation, true);

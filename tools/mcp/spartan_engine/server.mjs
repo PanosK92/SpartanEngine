@@ -7,7 +7,7 @@ import { z } from "zod";
 import { EngineClient } from "./engine_client.mjs";
 import { append_debug_log, debug_log_path, read_debug_log } from "./debug_log.mjs";
 import { get_project_root, get_shared_codebase } from "./shared_codebase.mjs";
-import { component_property_catalog, component_schema_markdown, edit_rules, engine_overview, search_capability_catalog } from "./knowledge.mjs";
+import { component_schema_markdown, edit_rules, engine_overview, search_capability_catalog } from "./knowledge.mjs";
 import { json_schema_from_raw_shape, normalize_result, output_schemas, parse_raw_shape, structured_error } from "./schemas.mjs";
 import { agent_memory_path, append_agent_memory, ensure_agent_memory, read_agent_memory, write_agent_memory } from "./agent_memory.mjs";
 
@@ -148,8 +148,11 @@ function register_tool(server, name, description, schema, command, options = {})
 const vector3 = z.array(z.number()).length(3);
 const quaternion = z.array(z.number()).length(4);
 const vector4 = z.array(z.number()).length(4);
+const numeric_array = z.array(z.number()).min(2).max(16);
 const mesh_type = z.enum(["cube", "quad", "plane", "sphere", "cylinder", "cone"]);
 const body_type = z.enum(["box", "sphere", "plane", "capsule", "mesh", "mesh_convex", "controller", "vehicle", "cloth"]);
+const resource_type = z.enum(["all", "unknown", "texture", "audio", "material", "mesh", "cubemap", "animation", "font", "shader"]);
+const material_texture_type = z.enum(["color", "albedo", "base_color", "roughness", "metalness", "metallic", "normal", "occlusion", "ao", "emission", "emissive", "height", "alpha_mask", "alpha", "packed"]);
 const component_type = z.enum([
   "audio_source",
   "camera",
@@ -164,7 +167,7 @@ const component_type = z.enum([
   "particle_system",
   "skid_marks",
 ]);
-const component_value = z.union([z.string(), z.number(), z.boolean(), vector3, vector4]);
+const component_value = z.union([z.string(), z.number(), z.boolean(), numeric_array]);
 const light_type = z.enum(["directional", "point", "spot", "area"]);
 const primitive_create_args = {
   mesh: mesh_type.optional(),
@@ -624,6 +627,19 @@ register_tool(
 
 register_tool(
   server,
+  "entity_find_by_component",
+  "Find entities that have a specific component type.",
+  {
+    type: component_type,
+    limit: z.number().int().min(1).max(1000).optional(),
+    offset: z.number().int().min(0).optional(),
+  },
+  "entity_find_by_component",
+  { annotations: read_only, outputSchema: output_schemas.entity_list },
+);
+
+register_tool(
+  server,
   "entity_resolve",
   "Resolve one entity by id, name, or current selection and return a compact entity receipt.",
   {
@@ -650,6 +666,19 @@ register_tool(server, "selection_get", "Read the selected entity ids.", {}, "sel
   annotations: read_only,
   outputSchema: output_schemas.selection_get,
 });
+
+register_tool(
+  server,
+  "selection_update",
+  "Update editor selection: clear, set/add/remove/toggle one entity, or set selection by component type.",
+  {
+    action: z.enum(["clear", "set", "add", "remove", "toggle", "set_by_component"]),
+    id: z.string().optional(),
+    type: component_type.optional(),
+  },
+  "selection_update",
+  { annotations: edit_tool, outputSchema: output_schemas.selection_get },
+);
 
 register_tool(server, "component_types", "List valid Spartan component type names.", {}, "component_types", {
   annotations: read_only,
@@ -838,6 +867,32 @@ register_tool(
 
 register_tool(
   server,
+  "entity_clone",
+  "Clone an entity hierarchy in edit mode, optionally renaming, reparenting, and selecting the clone.",
+  {
+    id: z.string(),
+    name: z.string().optional(),
+    parent_id: z.string().optional(),
+    select: z.boolean().optional(),
+  },
+  "entity_clone",
+  { annotations: edit_tool, outputSchema: output_schemas.entity },
+);
+
+register_tool(
+  server,
+  "entity_move_index",
+  "Move an entity to a sibling/root index in edit mode.",
+  {
+    id: z.string(),
+    index: z.number().int().min(0),
+  },
+  "entity_move_index",
+  { annotations: edit_tool, outputSchema: output_schemas.entity },
+);
+
+register_tool(
+  server,
   "entity_delete",
   "Delete an entity in edit mode.",
   {
@@ -922,8 +977,96 @@ register_tool(
 
 register_tool(
   server,
+  "resource_list",
+  "List cached engine resources by type, including names, paths, states, and flags.",
+  {
+    type: resource_type.optional(),
+    limit: z.number().int().min(1).max(5000).optional(),
+    offset: z.number().int().min(0).optional(),
+  },
+  "resource_list",
+  { annotations: read_only, outputSchema: output_schemas.resource_list },
+);
+
+register_tool(
+  server,
+  "material_get",
+  "Inspect one cached material by name or path, including all scalar properties and texture slots.",
+  {
+    name: z.string().optional(),
+    path: z.string().optional(),
+  },
+  "material_get",
+  { annotations: read_only, outputSchema: output_schemas.material },
+);
+
+register_tool(
+  server,
+  "material_set_property",
+  "Set one scalar material property in edit mode. Use material_get to inspect valid property names.",
+  {
+    name: z.string().optional(),
+    path: z.string().optional(),
+    property: z.string(),
+    value: z.number(),
+  },
+  "material_set_property",
+  { annotations: edit_tool, outputSchema: output_schemas.material },
+);
+
+register_tool(
+  server,
+  "material_set_texture",
+  "Set one material texture slot in edit mode by texture type, path, and optional slot.",
+  {
+    name: z.string().optional(),
+    path: z.string().optional(),
+    texture_type: material_texture_type,
+    texture_path: z.string(),
+    slot: z.number().int().min(0).max(3).optional(),
+  },
+  "material_set_texture",
+  { annotations: edit_tool, outputSchema: output_schemas.material },
+);
+
+register_tool(
+  server,
+  "prefab_types",
+  "List registered code prefab type names.",
+  {},
+  "prefab_types",
+  { annotations: read_only, outputSchema: output_schemas.prefab_types },
+);
+
+register_tool(
+  server,
+  "prefab_save",
+  "Save an entity hierarchy as a .prefab file in edit mode.",
+  {
+    id: z.string(),
+    path: z.string(),
+  },
+  "prefab_save",
+  { annotations: edit_tool, outputSchema: output_schemas.prefab_receipt },
+);
+
+register_tool(
+  server,
+  "prefab_load",
+  "Load a .prefab file into an existing parent entity or a new root entity in edit mode.",
+  {
+    path: z.string(),
+    parent_id: z.string().optional(),
+    name: z.string().optional(),
+  },
+  "prefab_load",
+  { annotations: edit_tool, outputSchema: output_schemas.prefab_receipt },
+);
+
+register_tool(
+  server,
   "component_get",
-  "Read editable properties for a component on an entity.",
+  "Read editable properties and registered raw members for a component on an entity.",
   {
     id: z.string(),
     type: component_type,
@@ -935,10 +1078,10 @@ register_tool(
 register_tool(
   server,
   "component_set",
-  "Set one editable component property on an entity. Vector and color values are arrays.",
+  "Set one component property or registered raw member on an entity. Vector, color, bounding box, quaternion, and matrix values are arrays.",
   {
     id: z.string(),
-    type: z.enum(Object.keys(component_property_catalog)),
+    type: component_type,
     property: z.string(),
     value: component_value,
   },
@@ -946,14 +1089,79 @@ register_tool(
   {
     annotations: edit_tool,
     outputSchema: output_schemas.component_set,
+  },
+);
+
+register_tool(
+  server,
+  "component_set_batch",
+  "Set many component properties or registered raw members on one entity component in a single engine command.",
+  {
+    id: z.string(),
+    type: component_type,
+    items: z.array(z.object({
+      property: z.string(),
+      value: component_value,
+    })).min(1).max(128),
+  },
+  "component_set_batch",
+  {
+    annotations: edit_tool,
+    outputSchema: output_schemas.component_set_batch,
     map_args: (args) => {
-      const properties = component_property_catalog[args.type]?.properties ?? [];
-      if (!properties.includes(args.property)) {
-        throw new Error(`unsupported ${args.type} property: ${args.property}`);
+      const mapped = {
+        id: args.id,
+        type: args.type,
+        count: args.items.length,
+      };
+      for (let i = 0; i < args.items.length; i++)
+      {
+        mapped[`property_${i}`] = args.items[i].property;
+        mapped[`value_${i}`] = args.items[i].value;
       }
-      return args;
+      return mapped;
     },
   },
+);
+
+register_tool(
+  server,
+  "component_action",
+  [
+    "Invoke deterministic component methods that are not simple property writes.",
+    "Supported actions include terrain generate; spline generate_road_mesh, clear_road_mesh, spawn_instances, clear_instances; particle_system apply_preset and trigger_burst; physics apply_force and vehicle utility actions; audio_source play and stop; light fit_to_mesh; camera focus_selected.",
+  ].join(" "),
+  {
+    id: z.string(),
+    type: component_type,
+    action: z.enum([
+      "generate",
+      "generate_road_mesh",
+      "clear_road_mesh",
+      "spawn_instances",
+      "clear_instances",
+      "apply_preset",
+      "trigger_burst",
+      "apply_force",
+      "sync_wheel_offsets",
+      "reset_tire_wear",
+      "shift_up",
+      "shift_down",
+      "shift_to_neutral",
+      "draw_debug_visualization",
+      "play",
+      "stop",
+      "fit_to_mesh",
+      "focus_selected",
+    ]),
+    preset: z.string().optional(),
+    value: z.union([z.string(), z.number()]).optional(),
+    count: z.number().optional(),
+    force: vector3.optional(),
+    mode: z.enum(["constant", "force", "impulse"]).optional(),
+  },
+  "component_action",
+  { annotations: edit_tool, outputSchema: output_schemas.component_action },
 );
 
 register_tool(

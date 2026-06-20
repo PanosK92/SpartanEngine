@@ -52,6 +52,7 @@ namespace spartan
         }
 
         // register attributes for copy/paste and cloning
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetBoundingBox, SetBoundingBox, math::BoundingBox);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetReverbEnabled, SetReverbEnabled, bool);
     }
 

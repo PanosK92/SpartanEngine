@@ -1048,6 +1048,22 @@ namespace spartan
 
     Terrain::Terrain(Entity* entity) : Component(entity)
     {
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_min_y, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_y, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_level_sea, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_level_snow, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_smoothing, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_density, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_scale, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_create_border, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_width, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_height, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_area_km2, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_height_samples, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_vertex_count, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_index_count, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_triangle_count, uint32_t);
+
         m_material = make_shared<Material>();
         m_material->SetObjectName("terrain");
     }

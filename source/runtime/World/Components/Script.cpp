@@ -18,6 +18,15 @@ namespace
 Script::Script(Entity* Entity)
     :Component(Entity)
 {
+    RegisterAttribute("file_path", "std::string",
+        [this]()
+        {
+            return file_path;
+        },
+        [this](const std::any& value)
+        {
+            LoadScriptFile(std::any_cast<std::string>(value));
+        });
 }
 
 sol::reference Script::AsLua(sol::state_view state)

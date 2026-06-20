@@ -46,6 +46,42 @@ namespace spartan
 
     Spline::Spline(Entity* entity) : Component(entity)
     {
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_closed_loop, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_resolution, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_road_width, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_needs_road_regeneration, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_profile, SplineProfile);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_height, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_thickness, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_tube_sides, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_road_width_end, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_uv_tiling_u, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_uv_tiling_v, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sidewalk_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_sidewalk_width, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_curb_height, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_conform_to_terrain, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_terrain_offset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_source_spline_entity_id, SetSourceSplineEntityId, uint64_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_mode, SplineAttachMode);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_lateral_offset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_vertical_offset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_inherit_closed_loop, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_attach_sample_count, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_spacing, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_align_instances_to_spline, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_mesh_path, std::string);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_template_id, uint64_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_lateral_offset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_mirror, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_face_inward, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_random_offset, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_random_scale_min, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_random_scale_max, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_instance_random_yaw, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_saved_material_name, std::string);
+
         // regenerate the mesh on scene boot so meshes appear without requiring play mode
         m_world_loaded_handle = SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoaded, SP_EVENT_HANDLER(OnWorldLoaded));
     }

@@ -155,6 +155,9 @@ namespace spartan::math
             }
         }
 
+        bool IsFinite() const { return std::isfinite(x) && std::isfinite(y); }
+
+
         [[nodiscard]] Vector2 Normalized() const
         {
             Vector2 result = *this;

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <vector>
 #include <functional>
+#include <string>
 #include <sol/forward.hpp>
 #include "../../Core/SpartanObject.h"
 //===================================
@@ -68,6 +69,8 @@ namespace spartan
 
     struct Attribute
     {
+        std::string name;
+        std::string type;
         std::function<std::any()> getter;
         std::function<void(std::any)> setter;
     };
@@ -147,21 +150,26 @@ namespace spartan
 
     protected:
         #define SP_REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(  \
+        #getter, #type,                                                                 \
         [this]()                        { return getter(); },                           \
         [this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });     \
 
         #define SP_REGISTER_ATTRIBUTE_VALUE_SET(value, setter, type) RegisterAttribute( \
+        #value, #type,                                                                  \
         [this]()                        { return value; },                              \
         [this](const std::any& valueIn) { setter(std::any_cast<type>(valueIn)); });     \
 
         #define SP_REGISTER_ATTRIBUTE_VALUE_VALUE(value, type) RegisterAttribute(       \
+        #value, #type,                                                                  \
         [this]()                        { return value; },                              \
         [this](const std::any& valueIn) { value = std::any_cast<type>(valueIn); });     \
 
         // registers an attribute
-        void RegisterAttribute(std::function<std::any()>&& getter, std::function<void(std::any)>&& setter)
+        void RegisterAttribute(const char* name, const char* type, std::function<std::any()>&& getter, std::function<void(std::any)>&& setter)
         {
             Attribute attribute;
+            attribute.name   = name;
+            attribute.type   = type;
             attribute.getter = std::move(getter);
             attribute.setter = std::move(setter);
             m_attributes.emplace_back(attribute);

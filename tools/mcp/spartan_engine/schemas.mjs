@@ -133,10 +133,40 @@ export const output_schemas = {
   primitive_types: with_error_fields({
     primitive_types: z.array(any_object).optional(),
   }),
+  resource_list: with_error_fields({
+    type: z.string().optional(),
+    offset: z.number().int().optional(),
+    count: z.number().int().optional(),
+    total: z.number().int().optional(),
+    truncated: z.boolean().optional(),
+    resources: z.array(any_object).optional(),
+  }),
+  material: with_error_fields({
+    material: any_object.optional(),
+  }),
+  prefab_types: with_error_fields({
+    types: z.array(z.string()).optional(),
+  }),
+  prefab_receipt: with_error_fields({
+    path: z.string().optional(),
+    entity: any_object.optional(),
+  }),
   component_get: with_error_fields({
     component: any_object.optional(),
   }),
   component_set: with_error_fields({
+    component: any_object.optional(),
+  }),
+  component_set_batch: with_error_fields({
+    updated_count: z.number().int().optional(),
+    failed_index: z.number().int().optional(),
+    component: any_object.optional(),
+  }),
+  component_action: with_error_fields({
+    entity: any_object.optional(),
+    type: z.string().optional(),
+    action: z.string().optional(),
+    result: any_object.optional(),
     component: any_object.optional(),
   }),
   batch_receipt: with_error_fields({

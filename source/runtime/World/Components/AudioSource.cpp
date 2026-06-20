@@ -161,6 +161,18 @@ namespace spartan
 {
     AudioSource::AudioSource(Entity* entity) : Component(entity)
     {
+        SP_REGISTER_ATTRIBUTE_GET_SET(GetAudioClipName, SetAudioClip, std::string);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_is_3d, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mute, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_loop, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_play_on_start, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_volume, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_pitch, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_enabled, bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_room_size, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_decay, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_reverb_wet, float);
+
         audio_device::acquire();
     }
 

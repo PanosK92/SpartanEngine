@@ -41,6 +41,7 @@ namespace spartan
 {
     ParticleSystem::ParticleSystem(Entity* entity) : Component(entity)
     {
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_preset, ApplyPreset, ParticlePreset);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_max_particles, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_rate, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_lifetime, float);
@@ -54,6 +55,8 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_direction, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emission_cone_angle, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_directional_blend, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_blend_mode, SetBlendMode, ParticleBlendMode);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_lighting_mode, SetLightingMode, ParticleLightingMode);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_emissive_strength, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_soft_depth_scale, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_drag, float);
@@ -65,6 +68,7 @@ namespace spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flipbook_rows, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flipbook_columns, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_flipbook_fps, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_SET(m_effect_path, SetEffectPath, std::string);
 
         ApplyPreset(ParticlePreset::Fire);
     }
