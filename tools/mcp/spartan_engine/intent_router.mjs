@@ -60,6 +60,13 @@ function is_rebuild_scene_request(value) {
   return destructive && constructive && scene_target && !/\b(source|code|file|cpp|c\+\+|javascript)\b/.test(value);
 }
 
+function is_scene_construction_request(value) {
+  const constructive = /\b(create|make|build|uild|generate|construct|blockout|layout|lay out|design|place)\b/.test(value);
+  const scene_target = /\b(room|rooms|level|levels|area|scene|geometry|environment|blockout|hallway|hallways|corridor|corridors|maze|map|interior|space|backrooms|liminal)\b/.test(value);
+  const code_context = /\b(source|code|file|files|cpp|c\+\+|javascript|compile|compilation|build error|build failed|build system|git|diff|commit|function|class|implementation)\b/.test(value);
+  return constructive && scene_target && !code_context;
+}
+
 function primitive_from_prompt(value) {
   for (const primitive of ["cone", "cylinder", "sphere", "cube", "quad", "plane"]) {
     if (new RegExp(`\\b${primitive}\\b`).test(value)) {
@@ -95,7 +102,7 @@ function is_create_primitive_request(value) {
 
 function is_live_scene_edit_request(value) {
   const edit_verb = /\b(create|make|spawn|add|place|put|move|delete|remove|destroy|rotate|scale|select|build|clear|wipe)\b/.test(value);
-  const scene_object = /\b(entity|entities|world|scene|primitive|mesh|cube|box|quad|plane|sphere|ball|cylinder|cone|camera|light|physics|rigidbody|collider|track|ramp)\b/.test(value);
+  const scene_object = /\b(entity|entities|world|scene|primitive|mesh|cube|box|quad|plane|sphere|ball|cylinder|cone|camera|light|physics|rigidbody|collider|track|ramp|room|rooms|level|levels|area|environment|hallway|hallways|corridor|corridors|backrooms|liminal)\b/.test(value);
   return edit_verb && scene_object && !/\b(source|code|file|cpp|c\+\+|javascript|compile|build error|git|diff)\b/.test(value);
 }
 
@@ -198,8 +205,8 @@ function is_mcp_status_request(value) {
 }
 
 function is_source_code_request(value) {
-  const asks_about_code = /\b(source|code|file|files|cpp|c\+\+|javascript|script|compile|build|git|diff|commit|bug|crash|stack|log|function|class|where|implementation)\b/.test(value);
-  const live_scene_action = /\b(entity|world|scene|selection|selected|create|delete|spawn|ramp|cone)\b/.test(value) &&
+  const asks_about_code = /\b(source|code|file|files|cpp|c\+\+|javascript|script|compile|compilation|build error|build failed|build system|git|diff|commit|bug|crash|stack|log|function|class|where|implementation)\b/.test(value);
+  const live_scene_action = /\b(entity|world|scene|selection|selected|create|delete|spawn|ramp|cone|room|rooms|level|levels|area|environment|hallway|hallways|corridor|corridors|backrooms|liminal)\b/.test(value) &&
     /\b(create|delete|spawn|move|rotate|scale|select|clear|build|make)\b/.test(value);
   return asks_about_code && !live_scene_action;
 }
@@ -232,6 +239,18 @@ export function route_intent(prompt) {
     return {
       kind: "scene_rebuild",
       confidence: 0.9,
+      live_scene_action: true,
+      allow_cursor_fallback: true,
+      target_name: target_name_from_prompt(prompt),
+      use_selected: should_use_selected_entity(prompt),
+    };
+  }
+
+  if (is_scene_construction_request(value))
+  {
+    return {
+      kind: "scene_rebuild",
+      confidence: 0.88,
       live_scene_action: true,
       allow_cursor_fallback: true,
       target_name: target_name_from_prompt(prompt),

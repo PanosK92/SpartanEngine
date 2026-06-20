@@ -73,6 +73,7 @@ export const engine_overview = [
   "Use debug_log_read or spartan://agent/debug-log to inspect assistant prompts, engine command arguments, durations, and outputs.",
   "Use async_task_start and async_task_get for long-running MCP tools that should be reported without blocking the main client request.",
   "Live scene edits should route through deterministic tools or generic operations and fail fast when no deterministic operation exists.",
+  "Treat scene construction prompts such as build a level, make rooms, backrooms, and liminal space as live scene edits, not source-code search requests.",
   "Missing deterministic capabilities should be recorded in agent memory under Problem Reports immediately.",
   "For procedural scene edits, execute_lua is the broad capability layer, but it is edit-mode guarded by default.",
 ].join("\n");

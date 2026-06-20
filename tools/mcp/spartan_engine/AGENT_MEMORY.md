@@ -39,6 +39,7 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 - Use `camera_snapshot` before interpreting camera-relative placement.
 - Use `world_raycast` for ground or surface-relative placement when possible.
 - Simple live scene edits should use deterministic tools or fail fast; complex blockouts can use the higher-level scene path.
+- Scene construction prompts such as `build a level`, `make rooms`, `backrooms`, or `liminal space` are live scene edits, not source-code search requests.
 - Missing deterministic capabilities should be logged immediately under Problem Reports.
 - Simple entity deletes should resolve the target and call `entity_delete` directly, not fall through to Cursor fallback.
 - Do not route delete plus rebuild prompts to `entity_delete`; preserve materials first, then rebuild through a complex scene path.
@@ -72,3 +73,4 @@ This file is shared memory for agents working on Spartan Engine. Keep it short, 
 
 ## Problem Reports
 - Add specific recurring friction here, with the file/tool involved and why it matters.
+- `engine_set_mode` can apply the requested mode while its MCP response fails structured output validation; verify with `context_snapshot` before retrying scene edits.

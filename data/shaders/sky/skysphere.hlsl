@@ -435,6 +435,20 @@ void night_make_basis(float3 n, out float3 t, out float3 b)
     b = cross(n, t);
 }
 
+float3 night_rotate_about_axis(float3 dir, float3 axis, float angle)
+{
+    float s = sin(angle);
+    float c = cos(angle);
+    return dir * c + cross(axis, dir) * s + axis * dot(axis, dir) * (1.0 - c);
+}
+
+float3 night_apply_earth_rotation(float3 view_dir, float time_seconds)
+{
+    const float sidereal_day_seconds = 86164.0905;
+    const float3 celestial_axis      = float3(0.0, 0.70710678, 0.70710678);
+    return night_rotate_about_axis(view_dir, celestial_axis, time_seconds * PI2 / sidereal_day_seconds);
+}
+
 // stars and milky way are dimmed by airmass toward the horizon, blue is attenuated more than red
 float3 night_atmospheric_extinction(float3 view_dir)
 {
@@ -559,24 +573,29 @@ struct moon_result
     float3 halo;
 };
 
-moon_result night_compute_moon(float3 view_dir, float3 sun_dir)
+moon_result night_compute_moon(float3 view_dir, float3 moon_dir)
 {
     moon_result r;
     r.disc = float3(0, 0, 0);
     r.halo = float3(0, 0, 0);
     
-    float3 moon_dir = -sun_dir;
     float moon_elev = dot(moon_dir, up_direction);
     
     // fade the moon and its halo as it dips below the horizon
     float horizon_fade = smoothstep(-0.05, 0.10, moon_elev);
-    if (horizon_fade <= 0.0) return r;
+    if (horizon_fade <= 0.0)
+    {
+        return r;
+    }
     
     const float moon_radius = 0.018;
     const float sin_r       = sin(moon_radius);
     
     float cos_angle = dot(view_dir, moon_dir);
-    if (cos_angle < 0.0) return r;
+    if (cos_angle < 0.0)
+    {
+        return r;
+    }
     
     // soft wide gaussian halo around the moon
     float angle_to_moon = acos(saturate(cos_angle));
@@ -584,7 +603,10 @@ moon_result night_compute_moon(float3 view_dir, float3 sun_dir)
     r.halo = float3(0.55, 0.72, 0.95) * halo_falloff * 0.030 * horizon_fade;
     
     // outside the disc, only the halo contributes
-    if (cos_angle < cos(moon_radius * 1.05)) return r;
+    if (cos_angle < cos(moon_radius * 1.05))
+    {
+        return r;
+    }
     
     // tangent basis around the moon for disc-local coordinates
     float3 t_axis, b_axis;
@@ -594,7 +616,10 @@ moon_result night_compute_moon(float3 view_dir, float3 sun_dir)
     float u  = dot(view_dir, t_axis) / sin_r;
     float v  = dot(view_dir, b_axis) / sin_r;
     float r2 = u * u + v * v;
-    if (r2 > 1.0) return r;
+    if (r2 > 1.0)
+    {
+        return r;
+    }
     
     // surface normal of the visible hemisphere point at this disc location
     float w  = safe_sqrt(1.0 - r2);
@@ -652,7 +677,7 @@ moon_result night_compute_moon(float3 view_dir, float3 sun_dir)
 }
 
 // night atmosphere combines a zenith to horizon gradient, a horizon airglow band and physical moonlight rayleigh scatter
-float3 night_compute_atmosphere(float3 view_dir, float3 sun_dir, float3 cam_pos,
+float3 night_compute_atmosphere(float3 view_dir, float3 moon_dir, float3 cam_pos,
     Texture2D trans_lut, Texture2D ms_lut, SamplerState samp)
 {
     // deep navy at zenith fading to a slightly warmer indigo near the horizon
@@ -668,7 +693,6 @@ float3 night_compute_atmosphere(float3 view_dir, float3 sun_dir, float3 cam_pos,
     
     // moonlight rayleigh scatter, reuse the daytime atmosphere with the moon as light source
     // result is then scaled by an empirical moon to sun irradiance ratio
-    float3 moon_dir = -sun_dir;
     float moon_elev = dot(moon_dir, up_direction);
     float3 moon_scatter = float3(0, 0, 0);
     if (moon_elev > -0.10)
@@ -860,18 +884,21 @@ void main_cs(uint3 tid : SV_DispatchThreadID)
     float3 night_celestials = float3(0, 0, 0);
     if (night_factor > 0.001)
     {
-        float time_val = (float)buffer_frame.time * 0.001f;
+        float time_seconds    = (float)buffer_frame.time;
+        float star_time       = time_seconds * 0.08f;
+        float3 celestial_view = night_apply_earth_rotation(orig_view, time_seconds);
+        float3 moon_dir       = night_apply_earth_rotation(-sun_dir, time_seconds);
 
-        night_ambient = night_compute_atmosphere(view_dir, sun_dir, cam_pos,
+        night_ambient = night_compute_atmosphere(view_dir, moon_dir, cam_pos,
             tex, tex2, GET_SAMPLER(sampler_bilinear_clamp));
 
         if (!below_horizon)
         {
             float3 ext = night_atmospheric_extinction(orig_view);
-            night_celestials += night_compute_milky_way(orig_view) * ext;
-            night_celestials += night_compute_stars(orig_view, time_val) * ext;
+            night_celestials += night_compute_milky_way(celestial_view) * ext;
+            night_celestials += night_compute_stars(celestial_view, star_time) * ext;
 
-            moon_result mr    = night_compute_moon(orig_view, sun_dir);
+            moon_result mr    = night_compute_moon(orig_view, moon_dir);
             night_ambient    += mr.halo;
             night_celestials += mr.disc;
         }
